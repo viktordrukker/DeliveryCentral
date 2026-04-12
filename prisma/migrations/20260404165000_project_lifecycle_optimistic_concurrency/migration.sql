@@ -1,0 +1,6 @@
+ALTER TABLE "Project"
+ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;
+
+UPDATE "Project"
+SET "version" = 1
+WHERE "version" IS NULL;

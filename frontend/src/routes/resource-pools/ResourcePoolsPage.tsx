@@ -1,0 +1,189 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import { useAuth } from '@/app/auth-context';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
+import { FilterBar } from '@/components/common/FilterBar';
+import { LoadingState } from '@/components/common/LoadingState';
+import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
+import {
+  ResourcePoolFormValues,
+  initialResourcePoolFormValues,
+  useResourcePools,
+} from '@/features/resource-pools/useResourcePools';
+
+const RM_ADMIN_ROLES = ['resource_manager', 'admin'];
+
+export function ResourcePoolsPage(): JSX.Element {
+  const { principal } = useAuth();
+  const state = useResourcePools();
+  const [search, setSearch] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [formValues, setFormValues] = useState<ResourcePoolFormValues>(initialResourcePoolFormValues);
+  const [formErrors, setFormErrors] = useState<Partial<ResourcePoolFormValues>>({});
+
+  const canManage = principal?.roles.some((r) => RM_ADMIN_ROLES.includes(r)) ?? false;
+
+  const filteredPools = state.pools.filter(
+    (pool) =>
+      !search ||
+      pool.name.toLowerCase().includes(search.toLowerCase()) ||
+      pool.code.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  function handleFieldChange(field: keyof ResourcePoolFormValues, value: string): void {
+    setFormValues((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  }
+
+  function validate(): boolean {
+    const errors: Partial<ResourcePoolFormValues> = {};
+    if (!formValues.code.trim()) errors.code = 'Code is required.';
+    if (!formValues.name.trim()) errors.name = 'Name is required.';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSubmit(event: React.FormEvent): Promise<void> {
+    event.preventDefault();
+    if (!validate()) return;
+    const success = await state.createPool(formValues);
+    if (success) {
+      setFormValues(initialResourcePoolFormValues);
+      setFormErrors({});
+      setShowCreate(false);
+    }
+  }
+
+  return (
+    <PageContainer testId="resource-pools-page">
+      <PageHeader
+        actions={
+          canManage ? (
+            <button
+              className="button"
+              onClick={() => {
+                setShowCreate((prev) => !prev);
+                setFormErrors({});
+                setFormValues(initialResourcePoolFormValues);
+              }}
+              type="button"
+            >
+              {showCreate ? 'Cancel' : 'Create pool'}
+            </button>
+          ) : undefined
+        }
+        eyebrow="Resource Management"
+        subtitle="Named pools of people available for staffing allocation across projects."
+        title="Resource Pools"
+      />
+
+      {showCreate && canManage ? (
+        <SectionCard title="Create Resource Pool">
+          {state.error ? <ErrorState description={state.error} /> : null}
+          <form className="form-stack" onSubmit={(e) => void handleSubmit(e)}>
+            <label className="field">
+              <span className="field__label">Code *</span>
+              <input
+                aria-invalid={!!formErrors.code}
+                className="field__control"
+                onChange={(e) => handleFieldChange('code', e.target.value)}
+                placeholder="e.g. BACKEND"
+                type="text"
+                value={formValues.code}
+              />
+              {formErrors.code ? <span className="field__error">{formErrors.code}</span> : null}
+            </label>
+            <label className="field">
+              <span className="field__label">Name *</span>
+              <input
+                aria-invalid={!!formErrors.name}
+                className="field__control"
+                onChange={(e) => handleFieldChange('name', e.target.value)}
+                placeholder="e.g. Backend Engineers"
+                type="text"
+                value={formValues.name}
+              />
+              {formErrors.name ? <span className="field__error">{formErrors.name}</span> : null}
+            </label>
+            <label className="field">
+              <span className="field__label">Description</span>
+              <input
+                className="field__control"
+                onChange={(e) => handleFieldChange('description', e.target.value)}
+                placeholder="Optional description"
+                type="text"
+                value={formValues.description}
+              />
+            </label>
+            <div className="form-actions">
+              <button className="button" disabled={state.isSubmitting} type="submit">
+                {state.isSubmitting ? 'Creating…' : 'Create pool'}
+              </button>
+            </div>
+          </form>
+        </SectionCard>
+      ) : null}
+
+      <FilterBar>
+        <label className="field">
+          <span className="field__label">Search</span>
+          <input
+            className="field__control"
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or code"
+            type="search"
+            value={search}
+          />
+        </label>
+      </FilterBar>
+
+      <SectionCard title="Resource Pools">
+        {state.isLoading ? <LoadingState label="Loading resource pools..." /> : null}
+        {!state.isLoading && state.error && !showCreate ? (
+          <ErrorState description={state.error} />
+        ) : null}
+
+        {!state.isLoading && !state.error ? (
+          filteredPools.length === 0 ? (
+            <EmptyState
+              action={canManage ? { href: '#', label: 'Create Pool' } : undefined}
+              description="No resource pools match the current filter."
+              title="No pools"
+            />
+          ) : (
+            <div className="monitoring-list">
+              {filteredPools.map((pool) => (
+                <div className="monitoring-list__item" key={pool.id}>
+                  <div className="monitoring-card__header">
+                    <div>
+                      <div className="monitoring-list__title">{pool.name}</div>
+                      <p className="monitoring-list__summary">
+                        {pool.code}
+                        {pool.description ? ` · ${pool.description}` : ''}
+                        {' · '}
+                        {pool.members.length} member{pool.members.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <Link className="button button--secondary" to={`/resource-pools/${pool.id}`}>
+                      View pool
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : null}
+
+        {state.successMessage ? (
+          <p className="form-success">{state.successMessage}</p>
+        ) : null}
+      </SectionCard>
+    </PageContainer>
+  );
+}

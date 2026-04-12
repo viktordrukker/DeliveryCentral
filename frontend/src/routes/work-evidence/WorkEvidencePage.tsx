@@ -1,0 +1,246 @@
+import { FormEvent, useState } from 'react';
+
+import { CreateWorkEvidenceForm, CreateWorkEvidenceFormErrors, CreateWorkEvidenceFormValues } from '@/components/work-evidence/CreateWorkEvidenceForm';
+import { exportToXlsx } from '@/lib/export';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
+import { FilterBar } from '@/components/common/FilterBar';
+import { LoadingState } from '@/components/common/LoadingState';
+import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
+import { ViewportTable } from '@/components/layout/ViewportTable';
+import { WorkEvidenceTable } from '@/components/work-evidence/WorkEvidenceTable';
+import { createWorkEvidence } from '@/lib/api/work-evidence';
+import { useWorkEvidencePage } from '@/features/work-evidence/useWorkEvidencePage';
+
+function makeInitialCreateValues(): CreateWorkEvidenceFormValues {
+  const now = new Date();
+  const localIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T09:00`;
+  return {
+    effortHours: '',
+    personId: '',
+    projectId: '',
+    recordedAt: localIso,
+    sourceRecordKey: '',
+    sourceType: 'MANUAL',
+    summary: '',
+  };
+}
+
+export function WorkEvidencePage(): JSX.Element {
+  const [person, setPerson] = useState('');
+  const [project, setProject] = useState('');
+  const [source, setSource] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [createValues, setCreateValues] = useState<CreateWorkEvidenceFormValues>(makeInitialCreateValues);
+  const [createErrors, setCreateErrors] = useState<CreateWorkEvidenceFormErrors>({});
+  const [createServerError, setCreateServerError] = useState<string>();
+  const [createSuccess, setCreateSuccess] = useState<string>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const state = useWorkEvidencePage({
+    dateFrom,
+    dateTo,
+    person,
+    project,
+    source,
+  });
+
+  function handleCreateChange(field: keyof CreateWorkEvidenceFormValues, value: string): void {
+    setCreateValues((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function validateCreateForm(values: CreateWorkEvidenceFormValues): CreateWorkEvidenceFormErrors {
+    const errors: CreateWorkEvidenceFormErrors = {};
+
+    if (!values.sourceType.trim()) {
+      errors.sourceType = 'Source type is required.';
+    }
+
+    if (!values.sourceRecordKey.trim()) {
+      errors.sourceRecordKey = 'Source record key is required.';
+    }
+
+    if (!values.recordedAt) {
+      errors.recordedAt = 'Recorded at is required.';
+    }
+
+    const effort = Number(values.effortHours);
+    if (!values.effortHours.trim()) {
+      errors.effortHours = 'Effort hours are required.';
+    } else if (Number.isNaN(effort) || effort <= 0) {
+      errors.effortHours = 'Effort hours must be greater than zero.';
+    }
+
+    return errors;
+  }
+
+  async function handleCreateSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    const nextErrors = validateCreateForm(createValues);
+    setCreateErrors(nextErrors);
+    setCreateServerError(undefined);
+    setCreateSuccess(undefined);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createWorkEvidence({
+        effortHours: Number(createValues.effortHours),
+        ...(createValues.personId ? { personId: createValues.personId } : {}),
+        ...(createValues.projectId ? { projectId: createValues.projectId } : {}),
+        recordedAt: new Date(createValues.recordedAt).toISOString(),
+        sourceRecordKey: createValues.sourceRecordKey.trim(),
+        sourceType: createValues.sourceType.trim(),
+        ...(createValues.summary.trim() ? { summary: createValues.summary.trim() } : {}),
+      });
+      setCreateSuccess('Work evidence recorded.');
+      setCreateValues(makeInitialCreateValues());
+      state.reload();
+    } catch (error) {
+      setCreateServerError(
+        error instanceof Error ? error.message : 'Failed to record work evidence.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <PageContainer testId="work-evidence-page">
+      <PageHeader
+        actions={
+          state.visibleItems.length > 0 ? (
+            <button
+              className="button button--secondary"
+              disabled={state.isLoading}
+              onClick={() => {
+                exportToXlsx(
+                  state.visibleItems.map((e) => ({
+                    'Effort Hours': e.effortHours,
+                    'Recorded At': e.recordedAt,
+                    'Source Type': e.sourceType,
+                    Summary: e.summary ?? '',
+                  })),
+                  'work-evidence',
+                );
+              }}
+              type="button"
+            >
+              Export XLSX
+            </button>
+          ) : undefined
+        }
+        eyebrow="Work Evidence"
+        subtitle="Observed work is shown separately from formal assignments so actual execution can be reviewed without rewriting staffing truth."
+        title="Work Evidence"
+      />
+
+      <SectionCard title="Record Manual Work Evidence">
+        {createServerError ? <ErrorState description={createServerError} /> : null}
+        {createSuccess ? (
+          <div className="success-banner" data-testid="work-evidence-success" role="status">
+            {createSuccess}
+          </div>
+        ) : null}
+        <CreateWorkEvidenceForm
+          errors={createErrors}
+          isSubmitting={isSubmitting}
+          onChange={handleCreateChange}
+          onSubmit={handleCreateSubmit}
+          people={state.people}
+          projects={state.projects}
+          values={createValues}
+        />
+      </SectionCard>
+
+      <FilterBar>
+        <label className="field">
+          <span className="field__label">Person</span>
+          <input
+            className="field__control"
+            onChange={(event) => setPerson(event.target.value)}
+            placeholder="Filter by person name"
+            type="search"
+            value={person}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Project</span>
+          <input
+            className="field__control"
+            onChange={(event) => setProject(event.target.value)}
+            placeholder="Filter by project name"
+            type="search"
+            value={project}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Source</span>
+          <input
+            className="field__control"
+            onChange={(event) => setSource(event.target.value)}
+            placeholder="Example: JIRA or MANUAL"
+            type="search"
+            value={source}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Date From</span>
+          <input
+            className="field__control"
+            onChange={(event) => setDateFrom(event.target.value)}
+            type="date"
+            value={dateFrom}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Date To</span>
+          <input
+            className="field__control"
+            onChange={(event) => setDateTo(event.target.value)}
+            type="date"
+            value={dateTo}
+          />
+        </label>
+      </FilterBar>
+
+      <ViewportTable>
+        {state.isLoading ? <LoadingState label="Loading work evidence..." /> : null}
+        {state.error ? <ErrorState description={state.error} /> : null}
+
+        {!state.isLoading && !state.error ? (
+          <>
+            {state.data && state.data.items.length > 0 ? (
+              <div className="results-meta">
+                <span>
+                  Showing {state.visibleItems.length} of {state.data.items.length} evidence records
+                </span>
+              </div>
+            ) : null}
+
+            {state.visibleItems.length === 0 ? (
+              <EmptyState
+                action={{ href: '/work-evidence', label: 'Log Evidence' }}
+                description="Observed work is enabled, but no evidence matched the current filters."
+                title="No evidence logged"
+              />
+            ) : (
+              <WorkEvidenceTable items={state.visibleItems} onUpdated={state.reload} />
+            )}
+          </>
+        ) : null}
+      </ViewportTable>
+    </PageContainer>
+  );
+}

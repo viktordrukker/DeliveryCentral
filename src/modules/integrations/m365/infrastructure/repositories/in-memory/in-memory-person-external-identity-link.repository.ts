@@ -1,0 +1,57 @@
+import { PersonExternalIdentityLink } from '../../../domain/entities/person-external-identity-link.entity';
+import { PersonExternalIdentityLinkRepositoryPort } from '../../../domain/repositories/person-external-identity-link.repository.port';
+
+export class InMemoryPersonExternalIdentityLinkRepository
+  implements PersonExternalIdentityLinkRepositoryPort
+{
+  public constructor(private readonly items: PersonExternalIdentityLink[] = []) {}
+
+  public async countByProvider(provider: string): Promise<number> {
+    return this.items.filter((item) => item.provider === provider).length;
+  }
+
+  public async delete(id: string): Promise<void> {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index >= 0) {
+      this.items.splice(index, 1);
+    }
+  }
+
+  public async findByExternalUserId(
+    provider: string,
+    externalUserId: string,
+  ): Promise<PersonExternalIdentityLink | null> {
+    return (
+      this.items.find(
+        (item) => item.provider === provider && item.externalUserId === externalUserId,
+      ) ?? null
+    );
+  }
+
+  public async findById(id: string): Promise<PersonExternalIdentityLink | null> {
+    return this.items.find((item) => item.id === id) ?? null;
+  }
+
+  public async findByPersonId(
+    provider: string,
+    personId: string,
+  ): Promise<PersonExternalIdentityLink | null> {
+    return (
+      this.items.find((item) => item.provider === provider && item.personId === personId) ?? null
+    );
+  }
+
+  public async listByProvider(provider: string): Promise<PersonExternalIdentityLink[]> {
+    return this.items.filter((item) => item.provider === provider);
+  }
+
+  public async save(aggregate: PersonExternalIdentityLink): Promise<void> {
+    const existingIndex = this.items.findIndex((item) => item.id === aggregate.id);
+    if (existingIndex >= 0) {
+      this.items.splice(existingIndex, 1, aggregate);
+      return;
+    }
+
+    this.items.push(aggregate);
+  }
+}

@@ -1,0 +1,1236 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PersonEmploymentStatus {
+  ACTIVE
+  LEAVE
+  INACTIVE
+  TERMINATED
+}
+
+enum OrgUnitStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ReportingLineType {
+  SOLID_LINE
+  DOTTED_LINE
+  FUNCTIONAL
+  PROJECT
+}
+
+enum ReportingAuthority {
+  APPROVER
+  REVIEWER
+  VIEWER
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  CLOSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum AssignmentStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  ACTIVE
+  ENDED
+  REVOKED
+  ARCHIVED
+}
+
+enum ApprovalDecision {
+  REQUESTED
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum WorkEvidenceStatus {
+  CAPTURED
+  RECONCILED
+  IGNORED
+  ARCHIVED
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum CaseParticipantRole {
+  SUBJECT
+  REQUESTER
+  APPROVER
+  REVIEWER
+  OBSERVER
+  OPERATOR
+}
+
+enum MetadataDataType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  DECIMAL
+  BOOLEAN
+  DATE
+  DATETIME
+  ENUM
+  JSON
+}
+
+enum WorkflowDefinitionStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum SyncStatus {
+  IDLE
+  RUNNING
+  SUCCEEDED
+  FAILED
+  PARTIAL
+}
+
+enum NotificationRequestStatus {
+  QUEUED
+  RETRYING
+  SENT
+  FAILED_TERMINAL
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  RETRYING
+  SUCCEEDED
+  FAILED_TERMINAL
+}
+
+model Person {
+  id                       String                         @id @default(uuid()) @db.Uuid
+  personNumber             String?                        @unique
+  givenName                String
+  familyName               String
+  displayName              String
+  primaryEmail             String?                        @unique
+  grade                    String?
+  role                     String?
+  skillsets                String[]                       @default([])
+  employmentStatus         PersonEmploymentStatus         @default(ACTIVE)
+  hiredAt                  DateTime?
+  terminatedAt             DateTime?
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
+  archivedAt               DateTime?
+  deletedAt                DateTime?
+  positionsHeld            Position[]                     @relation("PositionOccupant")
+  orgMemberships           PersonOrgMembership[]
+  managerReportingLines    ReportingLine[]                @relation("ReportingLineManager")
+  subjectReportingLines    ReportingLine[]                @relation("ReportingLineSubject")
+  resourcePoolMemberships  PersonResourcePoolMembership[]
+  requestedAssignments     ProjectAssignment[]            @relation("AssignmentRequestedBy")
+  projectAssignments       ProjectAssignment[]            @relation("AssignmentPerson")
+  assignmentApprovalsMade  AssignmentApproval[]           @relation("AssignmentApprovalDecidedBy")
+  assignmentHistoryEntries AssignmentHistory[]            @relation("AssignmentHistoryChangedBy")
+  workEvidenceRecords      WorkEvidence[]
+  caseRecords              CaseRecord[]                   @relation("CaseSubjectPerson")
+  ownedCaseRecords         CaseRecord[]                   @relation("CaseOwnerPerson")
+  caseStepsAssigned        CaseStep[]                     @relation("CaseStepAssignedTo")
+  caseParticipants         CaseParticipant[]
+  managedOrgUnits          OrgUnit[]                      @relation("OrgUnitManager")
+  managedProjects          Project[]                      @relation("ProjectManager")
+  externalIdentityLinks    PersonExternalIdentityLink[]
+  externalAccountLinks     ExternalAccountLink[]
+
+  @@index([employmentStatus, archivedAt])
+  @@index([familyName, givenName])
+}
+
+model PersonExternalIdentityLink {
+  id                     String   @id @default(uuid()) @db.Uuid
+  personId               String   @db.Uuid
+  provider               String
+  externalUserId         String
+  externalPrincipalName  String?
+  matchedByStrategy      String
+  sourceDepartment       String?
+  sourceJobTitle         String?
+  sourceAccountEnabled   Boolean?
+  externalManagerUserId  String?
+  resolvedManagerPersonId String? @db.Uuid
+  sourceUpdatedAt        DateTime?
+  lastSeenAt             DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  archivedAt             DateTime?
+  person                 Person   @relation(fields: [personId], references: [id])
+
+  @@unique([provider, externalUserId])
+  @@unique([provider, personId])
+  @@index([personId])
+  @@index([externalPrincipalName])
+  @@index([resolvedManagerPersonId])
+}
+
+model M365DirectoryReconciliationRecord {
+  id                     String   @id @default(uuid()) @db.Uuid
+  provider               String
+  externalUserId         String
+  externalPrincipalName  String?
+  externalEmail          String?
+  externalDisplayName    String?
+  personId               String?  @db.Uuid
+  matchedByStrategy      String?
+  category               String
+  summary                String
+  candidatePersonIds     String[] @default([])
+  resolvedManagerPersonId String? @db.Uuid
+  sourceDepartment       String?
+  sourceJobTitle         String?
+  sourceAccountEnabled   Boolean?
+  sourceUpdatedAt        DateTime?
+  lastSeenAt             DateTime?
+  lastEvaluatedAt        DateTime
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([provider, externalUserId])
+  @@index([provider, category])
+  @@index([personId])
+  @@index([lastEvaluatedAt])
+}
+
+model ExternalAccountLink {
+  id                   String   @id @default(uuid()) @db.Uuid
+  personId             String?  @db.Uuid
+  provider             String
+  sourceType           String
+  externalAccountId    String
+  externalUsername     String?
+  externalDisplayName  String?
+  externalEmail        String?
+  matchedByStrategy    String?
+  accountPresenceState String?
+  sourceUpdatedAt      DateTime?
+  lastSeenAt           DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  archivedAt           DateTime?
+  person               Person?  @relation(fields: [personId], references: [id])
+
+  @@unique([provider, externalAccountId])
+  @@index([provider, personId])
+  @@index([externalUsername])
+  @@index([externalEmail])
+}
+
+model RadiusReconciliationRecord {
+  id                   String   @id @default(uuid()) @db.Uuid
+  provider             String
+  externalAccountId    String
+  externalUsername     String?
+  externalDisplayName  String?
+  externalEmail        String?
+  personId             String?  @db.Uuid
+  matchedByStrategy    String?
+  category             String
+  summary              String
+  candidatePersonIds   String[] @default([])
+  accountPresenceState String?
+  sourceType           String
+  sourceUpdatedAt      DateTime?
+  lastSeenAt           DateTime?
+  lastEvaluatedAt      DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([provider, externalAccountId])
+  @@index([provider, category])
+  @@index([personId])
+  @@index([lastEvaluatedAt])
+}
+
+model OrgUnit {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  code                 String                   @unique
+  name                 String
+  description          String?
+  status               OrgUnitStatus            @default(ACTIVE)
+  parentOrgUnitId      String?                  @db.Uuid
+  managerPersonId      String?                  @db.Uuid
+  validFrom            DateTime                 @default(now())
+  validTo              DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  archivedAt           DateTime?
+  deletedAt            DateTime?
+  parentOrgUnit        OrgUnit?                 @relation("OrgUnitHierarchy", fields: [parentOrgUnitId], references: [id])
+  childOrgUnits        OrgUnit[]                @relation("OrgUnitHierarchy")
+  manager              Person?                  @relation("OrgUnitManager", fields: [managerPersonId], references: [id])
+  positions            Position[]
+  memberships          PersonOrgMembership[]
+  resourcePools        ResourcePool[]
+  metadataDictionaries MetadataDictionary[]
+  customFieldDefinitions CustomFieldDefinition[]
+  entityLayouts        EntityLayoutDefinition[]
+
+  @@index([parentOrgUnitId])
+  @@index([managerPersonId])
+  @@index([status, archivedAt])
+}
+
+model Position {
+  id               String    @id @default(uuid()) @db.Uuid
+  orgUnitId        String    @db.Uuid
+  occupantPersonId String?   @db.Uuid
+  code             String?
+  title            String
+  description      String?
+  isManagerial     Boolean   @default(false)
+  validFrom        DateTime  @default(now())
+  validTo          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  archivedAt       DateTime?
+  orgUnit          OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  occupant         Person?   @relation("PositionOccupant", fields: [occupantPersonId], references: [id])
+  personOrgMemberships PersonOrgMembership[]
+
+  @@unique([orgUnitId, code])
+  @@index([occupantPersonId])
+  @@index([orgUnitId, validFrom, validTo])
+}
+
+model PersonOrgMembership {
+  id         String    @id @default(uuid()) @db.Uuid
+  personId   String    @db.Uuid
+  orgUnitId  String    @db.Uuid
+  positionId String?   @db.Uuid
+  isPrimary  Boolean   @default(false)
+  validFrom  DateTime
+  validTo    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+  person     Person    @relation(fields: [personId], references: [id])
+  orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
+  position   Position? @relation(fields: [positionId], references: [id])
+
+  @@unique([personId, orgUnitId, validFrom])
+  @@index([personId, validFrom, validTo])
+  @@index([orgUnitId, validFrom, validTo])
+  @@index([positionId])
+}
+
+model ReportingLine {
+  id               String             @id @default(uuid()) @db.Uuid
+  subjectPersonId  String             @db.Uuid
+  managerPersonId  String             @db.Uuid
+  relationshipType ReportingLineType
+  authority        ReportingAuthority @default(VIEWER)
+  isPrimary        Boolean            @default(false)
+  validFrom        DateTime
+  validTo          DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  archivedAt       DateTime?
+  manager          Person             @relation("ReportingLineManager", fields: [managerPersonId], references: [id])
+  subject          Person             @relation("ReportingLineSubject", fields: [subjectPersonId], references: [id])
+
+  @@unique([subjectPersonId, managerPersonId, relationshipType, validFrom])
+  @@index([subjectPersonId, relationshipType, validFrom, validTo])
+  @@index([managerPersonId, relationshipType, validFrom, validTo])
+  @@index([isPrimary, validTo])
+}
+
+model ResourcePool {
+  id                String                         @id @default(uuid()) @db.Uuid
+  orgUnitId         String?                        @db.Uuid
+  code              String                         @unique
+  name              String
+  description       String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  archivedAt        DateTime?
+  orgUnit           OrgUnit?                       @relation(fields: [orgUnitId], references: [id])
+  personMemberships PersonResourcePoolMembership[]
+
+  @@index([orgUnitId])
+  @@index([archivedAt])
+}
+
+model PersonResourcePoolMembership {
+  id             String       @id @default(uuid()) @db.Uuid
+  personId       String       @db.Uuid
+  resourcePoolId String       @db.Uuid
+  validFrom      DateTime
+  validTo        DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  archivedAt     DateTime?
+  person         Person       @relation(fields: [personId], references: [id])
+  resourcePool   ResourcePool @relation(fields: [resourcePoolId], references: [id])
+
+  @@unique([personId, resourcePoolId, validFrom])
+  @@index([personId, validFrom, validTo])
+  @@index([resourcePoolId, validFrom, validTo])
+}
+
+// Project is the canonical internal identity. External links remain separate.
+model Project {
+  id                  String                @id @default(uuid()) @db.Uuid
+  projectCode         String                @unique
+  name                String
+  description         String?
+  projectManagerId    String?               @db.Uuid
+  status              ProjectStatus         @default(DRAFT)
+  startsOn            DateTime?
+  endsOn              DateTime?
+  version             Int                   @default(1)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  archivedAt          DateTime?
+  deletedAt           DateTime?
+  projectManager      Person?               @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  externalLinks       ProjectExternalLink[]
+  assignments         ProjectAssignment[]
+  workEvidenceRecords WorkEvidence[]
+  caseRecords         CaseRecord[]
+
+  @@index([status, archivedAt])
+  @@index([name])
+  @@index([projectManagerId])
+}
+
+model ProjectExternalLink {
+  id                  String             @id @default(uuid()) @db.Uuid
+  projectId           String             @db.Uuid
+  provider            String
+  connectionKey       String?
+  externalProjectKey  String
+  externalProjectName String?
+  externalUrl         String?
+  providerEnvironment String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  archivedAt          DateTime?
+  lastSeenAt          DateTime?
+  project             Project            @relation(fields: [projectId], references: [id])
+  syncState           ExternalSyncState?
+
+  @@unique([provider, externalProjectKey])
+  @@index([projectId])
+  @@index([provider, archivedAt])
+}
+
+model ExternalSyncState {
+  id                     String              @id @default(uuid()) @db.Uuid
+  projectExternalLinkId  String              @unique @db.Uuid
+  syncStatus             SyncStatus          @default(IDLE)
+  lastSyncedAt           DateTime?
+  lastSuccessfulSyncedAt DateTime?
+  lastError              String?
+  lastPayloadFingerprint String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  projectExternalLink    ProjectExternalLink @relation(fields: [projectExternalLinkId], references: [id], onDelete: Cascade)
+}
+
+// Assignment is planned staffing truth and intentionally independent from work evidence.
+model ProjectAssignment {
+  id                String             @id @default(uuid()) @db.Uuid
+  personId          String             @db.Uuid
+  projectId         String             @db.Uuid
+  requestedByPersonId String?          @db.Uuid
+  assignmentCode    String?            @unique
+  staffingRole      String
+  status            AssignmentStatus   @default(REQUESTED)
+  allocationPercent Decimal?           @db.Decimal(5, 2)
+  requestedAt       DateTime           @default(now())
+  approvedAt        DateTime?
+  validFrom         DateTime
+  validTo           DateTime?
+  notes             String?
+  version           Int                @default(1)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  archivedAt        DateTime?
+  person            Person             @relation("AssignmentPerson", fields: [personId], references: [id])
+  project           Project            @relation(fields: [projectId], references: [id])
+  requestedBy       Person?            @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
+  approvals         AssignmentApproval[]
+  historyEntries    AssignmentHistory[]
+  caseRecords       CaseRecord[]
+
+  @@unique([personId, projectId, validFrom])
+  @@index([personId, status, validFrom, validTo])
+  @@index([projectId, status, validFrom, validTo])
+  @@index([requestedByPersonId])
+}
+
+model AssignmentApproval {
+  id               String           @id @default(uuid()) @db.Uuid
+  assignmentId     String           @db.Uuid
+  decidedByPersonId String?         @db.Uuid
+  sequenceNumber   Int              @default(1)
+  decision         ApprovalDecision @default(PENDING)
+  decisionReason   String?
+  decisionAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  assignment       ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  decidedBy        Person?          @relation("AssignmentApprovalDecidedBy", fields: [decidedByPersonId], references: [id])
+
+  @@unique([assignmentId, sequenceNumber])
+  @@index([assignmentId, decision])
+  @@index([decidedByPersonId])
+}
+
+model AssignmentHistory {
+  id               String            @id @default(uuid()) @db.Uuid
+  assignmentId     String            @db.Uuid
+  changedByPersonId String?          @db.Uuid
+  changeType       String
+  changeReason     String?
+  previousSnapshot Json?
+  newSnapshot      Json?
+  occurredAt       DateTime          @default(now())
+  assignment       ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  changedBy        Person?           @relation("AssignmentHistoryChangedBy", fields: [changedByPersonId], references: [id])
+
+  @@index([assignmentId, occurredAt])
+  @@index([changedByPersonId])
+}
+
+model WorkEvidenceSource {
+  id                  String         @id @default(uuid()) @db.Uuid
+  provider            String
+  sourceType          String
+  connectionKey       String?
+  displayName         String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  archivedAt          DateTime?
+  workEvidenceRecords WorkEvidence[]
+
+  @@unique([provider, sourceType, connectionKey])
+  @@index([provider, archivedAt])
+}
+
+// Work evidence is observational and may exist without any assignment.
+model WorkEvidence {
+  id                   String             @id @default(uuid()) @db.Uuid
+  workEvidenceSourceId String             @db.Uuid
+  personId             String?            @db.Uuid
+  projectId            String?            @db.Uuid
+  sourceRecordKey      String
+  evidenceType         String
+  recordedAt           DateTime
+  occurredOn           DateTime?
+  durationMinutes      Int?
+  status               WorkEvidenceStatus @default(CAPTURED)
+  capex                Boolean            @default(false)
+  summary              String?
+  details              Json?
+  trace                Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  archivedAt           DateTime?
+  person               Person?            @relation(fields: [personId], references: [id])
+  project              Project?           @relation(fields: [projectId], references: [id])
+  workEvidenceSource   WorkEvidenceSource @relation(fields: [workEvidenceSourceId], references: [id])
+  links                WorkEvidenceLink[]
+
+  @@unique([workEvidenceSourceId, sourceRecordKey])
+  @@index([personId, recordedAt])
+  @@index([projectId, recordedAt])
+  @@index([workEvidenceSourceId, recordedAt])
+  @@index([status, archivedAt])
+}
+
+model WorkEvidenceLink {
+  id             String       @id @default(uuid()) @db.Uuid
+  workEvidenceId String       @db.Uuid
+  provider       String
+  externalKey    String
+  externalUrl    String?
+  linkType       String
+  createdAt      DateTime     @default(now())
+  workEvidence   WorkEvidence @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([workEvidenceId, provider, externalKey])
+  @@index([provider, externalKey])
+}
+
+model CaseType {
+  id                   String              @id @default(uuid()) @db.Uuid
+  key                  String              @unique
+  displayName          String
+  description          String?
+  workflowDefinitionId String?             @db.Uuid
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  archivedAt           DateTime?
+  caseRecords          CaseRecord[]
+  workflowDefinition   WorkflowDefinition? @relation(fields: [workflowDefinitionId], references: [id])
+
+  @@index([archivedAt])
+}
+
+model CaseRecord {
+  id                  String            @id @default(uuid()) @db.Uuid
+  caseNumber          String            @unique
+  caseTypeId          String            @db.Uuid
+  subjectPersonId     String            @db.Uuid
+  ownerPersonId       String            @db.Uuid
+  relatedProjectId    String?           @db.Uuid
+  relatedAssignmentId String?           @db.Uuid
+  status              CaseStatus        @default(OPEN)
+  openedAt            DateTime          @default(now())
+  dueAt               DateTime?
+  closedAt            DateTime?
+  summary             String?
+  payload             Json?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  archivedAt          DateTime?
+  caseType            CaseType          @relation(fields: [caseTypeId], references: [id])
+  subjectPerson       Person            @relation("CaseSubjectPerson", fields: [subjectPersonId], references: [id])
+  ownerPerson         Person            @relation("CaseOwnerPerson", fields: [ownerPersonId], references: [id])
+  relatedProject      Project?          @relation(fields: [relatedProjectId], references: [id])
+  relatedAssignment   ProjectAssignment? @relation(fields: [relatedAssignmentId], references: [id])
+  steps               CaseStep[]
+  participants        CaseParticipant[]
+
+  @@index([caseTypeId, status])
+  @@index([subjectPersonId, status])
+  @@index([ownerPersonId, status])
+  @@index([relatedProjectId])
+  @@index([relatedAssignmentId])
+}
+
+model CaseStep {
+  id                        String                  @id @default(uuid()) @db.Uuid
+  caseRecordId              String                  @db.Uuid
+  workflowStateDefinitionId String?                 @db.Uuid
+  stepKey                   String
+  displayName               String
+  status                    CaseStatus              @default(OPEN)
+  assignedToPersonId        String?                 @db.Uuid
+  dueAt                     DateTime?
+  completedAt               DateTime?
+  payload                   Json?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  caseRecord                CaseRecord              @relation(fields: [caseRecordId], references: [id], onDelete: Cascade)
+  workflowStateDefinition   WorkflowStateDefinition? @relation(fields: [workflowStateDefinitionId], references: [id])
+  assignedTo                Person?                 @relation("CaseStepAssignedTo", fields: [assignedToPersonId], references: [id])
+
+  @@unique([caseRecordId, stepKey])
+  @@index([caseRecordId])
+  @@index([assignedToPersonId, status])
+  @@index([workflowStateDefinitionId])
+}
+
+model CaseParticipant {
+  id           String              @id @default(uuid()) @db.Uuid
+  caseRecordId String              @db.Uuid
+  personId     String              @db.Uuid
+  role         CaseParticipantRole
+  createdAt    DateTime            @default(now())
+  caseRecord   CaseRecord          @relation(fields: [caseRecordId], references: [id], onDelete: Cascade)
+  person       Person              @relation(fields: [personId], references: [id])
+
+  @@unique([caseRecordId, personId, role])
+  @@index([personId, role])
+}
+
+model MetadataDictionary {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  entityType             String
+  dictionaryKey          String
+  displayName            String
+  description            String?
+  scopeOrgUnitId         String?                 @db.Uuid
+  isSystemManaged        Boolean                 @default(false)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  archivedAt             DateTime?
+  scopeOrgUnit           OrgUnit?                @relation(fields: [scopeOrgUnitId], references: [id])
+  entries                MetadataEntry[]
+  customFieldDefinitions CustomFieldDefinition[]
+
+  @@unique([entityType, dictionaryKey, scopeOrgUnitId])
+  @@index([entityType, archivedAt])
+  @@index([scopeOrgUnitId])
+}
+
+model MetadataEntry {
+  id                   String             @id @default(uuid()) @db.Uuid
+  metadataDictionaryId String             @db.Uuid
+  entryKey             String
+  entryValue           String
+  displayName          String
+  sortOrder            Int                @default(0)
+  isEnabled            Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  archivedAt           DateTime?
+  metadataDictionary   MetadataDictionary @relation(fields: [metadataDictionaryId], references: [id], onDelete: Cascade)
+
+  @@unique([metadataDictionaryId, entryKey])
+  @@index([metadataDictionaryId, isEnabled, archivedAt])
+}
+
+model CustomFieldDefinition {
+  id                   String              @id @default(uuid()) @db.Uuid
+  entityType           String
+  fieldKey             String
+  displayName          String
+  description          String?
+  dataType             MetadataDataType
+  metadataDictionaryId String?             @db.Uuid
+  scopeOrgUnitId       String?             @db.Uuid
+  validationSchema     Json?
+  defaultValue         Json?
+  isRequired           Boolean             @default(false)
+  isEnabled            Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  archivedAt           DateTime?
+  metadataDictionary   MetadataDictionary? @relation(fields: [metadataDictionaryId], references: [id])
+  scopeOrgUnit         OrgUnit?            @relation(fields: [scopeOrgUnitId], references: [id])
+  customFieldValues    CustomFieldValue[]
+
+  @@unique([entityType, fieldKey, scopeOrgUnitId])
+  @@index([entityType, isEnabled, archivedAt])
+  @@index([metadataDictionaryId])
+  @@index([scopeOrgUnitId])
+}
+
+model CustomFieldValue {
+  id                      String                @id @default(uuid()) @db.Uuid
+  entityType              String
+  entityId                String                @db.Uuid
+  customFieldDefinitionId String                @db.Uuid
+  value                   Json
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  archivedAt              DateTime?
+  customFieldDefinition   CustomFieldDefinition @relation(fields: [customFieldDefinitionId], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId, customFieldDefinitionId])
+  @@index([entityType, entityId, archivedAt])
+  @@index([customFieldDefinitionId])
+}
+
+model WorkflowDefinition {
+  id          String                   @id @default(uuid()) @db.Uuid
+  entityType  String
+  workflowKey String
+  displayName String
+  version     Int                      @default(1)
+  status      WorkflowDefinitionStatus @default(DRAFT)
+  definition  Json?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  archivedAt  DateTime?
+  caseTypes   CaseType[]
+  states      WorkflowStateDefinition[]
+
+  @@unique([entityType, workflowKey, version])
+  @@index([entityType, status, archivedAt])
+}
+
+model WorkflowStateDefinition {
+  id                   String             @id @default(uuid()) @db.Uuid
+  workflowDefinitionId String             @db.Uuid
+  stateKey             String
+  displayName          String
+  sequenceNumber       Int                @default(0)
+  isInitial            Boolean            @default(false)
+  isTerminal           Boolean            @default(false)
+  validationSchema     Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  caseSteps            CaseStep[]
+
+  @@unique([workflowDefinitionId, stateKey])
+  @@index([workflowDefinitionId, sequenceNumber])
+}
+
+model EntityLayoutDefinition {
+  id             String    @id @default(uuid()) @db.Uuid
+  entityType     String
+  layoutKey      String
+  displayName    String
+  scopeOrgUnitId String?   @db.Uuid
+  version        Int       @default(1)
+  isDefault      Boolean   @default(false)
+  layoutSchema   Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  archivedAt     DateTime?
+  scopeOrgUnit   OrgUnit?  @relation(fields: [scopeOrgUnitId], references: [id])
+
+  @@unique([entityType, layoutKey, version, scopeOrgUnitId])
+  @@index([entityType, isDefault, archivedAt])
+  @@index([scopeOrgUnitId])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  aggregateType String
+  aggregateId   String   @db.Uuid
+  eventName     String
+  actorId       String?  @db.Uuid
+  correlationId String?
+  payload       Json
+  createdAt     DateTime @default(now())
+
+  @@index([aggregateType, aggregateId])
+  @@index([createdAt])
+  @@index([correlationId])
+}
+
+model OutboxEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  topic         String
+  eventName     String
+  aggregateType String
+  aggregateId   String   @db.Uuid
+  correlationId String?
+  payload       Json
+  status        String   @default("pending")
+  availableAt   DateTime @default(now())
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId])
+  @@index([createdAt])
+}
+
+// Technical sync cursor/state across provider resources and scopes.
+model IntegrationSyncState {
+  id           String     @id @default(uuid()) @db.Uuid
+  provider     String
+  resourceType String
+  scopeKey     String
+  lastCursor   String?
+  lastSyncedAt DateTime?
+  lastStatus   SyncStatus @default(IDLE)
+  lastError    String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([provider, resourceType, scopeKey])
+  @@index([provider, resourceType, lastStatus])
+}
+
+model NotificationChannel {
+  id          String                @id @default(uuid()) @db.Uuid
+  channelKey  String                @unique
+  displayName String
+  kind        String
+  isEnabled   Boolean               @default(true)
+  config      Json?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  templates   NotificationTemplate[]
+  requests    NotificationRequest[]
+  deliveries  NotificationDelivery[]
+
+  @@index([kind, isEnabled])
+}
+
+model NotificationTemplate {
+  id                    String                @id @default(uuid()) @db.Uuid
+  templateKey           String                @unique
+  eventName             String
+  displayName           String
+  channelId             String                @db.Uuid
+  subjectTemplate       String?
+  bodyTemplate          String
+  isSystemManaged       Boolean               @default(true)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  archivedAt            DateTime?
+  channel               NotificationChannel   @relation(fields: [channelId], references: [id])
+  notificationRequests  NotificationRequest[]
+
+  @@index([eventName, archivedAt])
+  @@index([channelId, archivedAt])
+}
+
+model NotificationRequest {
+  id               String                    @id @default(uuid()) @db.Uuid
+  eventName        String
+  templateId       String                    @db.Uuid
+  channelId        String                    @db.Uuid
+  recipient        String
+  payload          Json
+  status           NotificationRequestStatus @default(QUEUED)
+  attemptCount     Int                       @default(0)
+  maxAttempts      Int                       @default(1)
+  failureReason    String?
+  requestedAt      DateTime                  @default(now())
+  deliveredAt      DateTime?
+  nextAttemptAt    DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  channel          NotificationChannel       @relation(fields: [channelId], references: [id])
+  template         NotificationTemplate      @relation(fields: [templateId], references: [id])
+  deliveries       NotificationDelivery[]
+
+  @@index([eventName, status, requestedAt])
+  @@index([status, nextAttemptAt])
+  @@index([recipient, requestedAt])
+  @@index([templateId])
+}
+
+model NotificationDelivery {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  notificationRequestId String                  @db.Uuid
+  channelId          String                     @db.Uuid
+  recipient          String
+  attemptNumber      Int                        @default(1)
+  status             NotificationDeliveryStatus @default(PENDING)
+  renderedSubject    String?
+  renderedBody       String
+  providerMessageId  String?
+  failureReason      String?
+  attemptedAt        DateTime                   @default(now())
+  nextAttemptAt      DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  notificationRequest NotificationRequest       @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
+  channel            NotificationChannel        @relation(fields: [channelId], references: [id])
+
+  @@index([notificationRequestId, attemptedAt])
+  @@index([status, attemptedAt])
+  @@index([status, nextAttemptAt])
+  @@index([channelId])
+}
+
+// =============================================================================
+// Timesheets — weekly grid, entries, approval workflow
+// =============================================================================
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model TimesheetWeek {
+  id             String           @id @default(uuid())
+  personId       String
+  weekStart      DateTime         @db.Date
+  status         TimesheetStatus  @default(DRAFT)
+  submittedAt    DateTime?
+  approvedBy     String?
+  approvedAt     DateTime?
+  rejectedReason String?
+  version        Int              @default(1)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  entries        TimesheetEntry[]
+
+  @@unique([personId, weekStart])
+  @@index([personId, weekStart])
+  @@map("timesheet_weeks")
+}
+
+model TimesheetEntry {
+  id              String        @id @default(uuid())
+  timesheetWeekId String
+  timesheetWeek   TimesheetWeek @relation(fields: [timesheetWeekId], references: [id], onDelete: Cascade)
+  projectId       String
+  assignmentId    String?
+  date            DateTime      @db.Date
+  hours           Decimal       @db.Decimal(5, 2)
+  capex           Boolean       @default(false)
+  description     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([timesheetWeekId, projectId, date])
+  @@map("timesheet_entries")
+}
+
+// =============================================================================
+// Auth — local accounts, sessions, password reset
+// =============================================================================
+
+model LocalAccount {
+  id                  String    @id @default(uuid()) @db.Uuid
+  personId            String?   @unique @db.Uuid
+  email               String    @unique
+  displayName         String
+  passwordHash        String
+  roles               String[]  @default([])
+  source              String    @default("local")
+  twoFactorEnabled    Boolean   @default(false)
+  twoFactorSecret     String?
+  backupCodesHash     String[]
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  mustChangePw        Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  refreshTokens    RefreshToken[]
+  passwordResets   PasswordResetToken[]
+
+  @@index([email])
+  @@index([personId])
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  accountId   String    @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  account     LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  accountId   String    @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  account     LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([accountId])
+}
+
+// =============================================================================
+// Financial Governance — Period Locks, Project Budgets, Person Cost Rates
+// =============================================================================
+
+model PeriodLock {
+  id         String   @id @default(uuid())
+  periodFrom DateTime @db.Date
+  periodTo   DateTime @db.Date
+  lockedBy   String
+  lockedAt   DateTime @default(now())
+
+  @@map("period_locks")
+}
+
+model ProjectBudget {
+  id          String   @id @default(uuid())
+  projectId   String
+  fiscalYear  Int
+  capexBudget Decimal  @db.Decimal(15, 2) @default(0)
+  opexBudget  Decimal  @db.Decimal(15, 2) @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, fiscalYear])
+  @@map("project_budgets")
+}
+
+model PersonCostRate {
+  id            String   @id @default(uuid())
+  personId      String
+  effectiveFrom DateTime @db.Date
+  hourlyRate    Decimal  @db.Decimal(10, 2)
+  rateType      String   @default("INTERNAL")
+  createdAt     DateTime @default(now())
+
+  @@map("person_cost_rates")
+}
+
+model PulseEntry {
+  id          String   @id @default(uuid())
+  personId    String
+  weekStart   DateTime @db.Date
+  mood        Int
+  note        String?
+  submittedAt DateTime @default(now())
+
+  @@unique([personId, weekStart])
+  @@index([personId, weekStart])
+  @@map("pulse_entries")
+}
+
+model InAppNotification {
+  id                String    @id @default(uuid())
+  recipientPersonId String
+  eventType         String
+  title             String
+  body              String?
+  link              String?
+  readAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([recipientPersonId, createdAt])
+  @@index([recipientPersonId, readAt])
+  @@map("in_app_notifications")
+}
+
+// =============================================================================
+// Platform Settings — key/value configuration store
+// =============================================================================
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// =============================================================================
+// Skills Registry
+// =============================================================================
+
+model Skill {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  category     String?
+  createdAt    DateTime      @default(now())
+  personSkills PersonSkill[]
+
+  @@map("skills")
+}
+
+model PersonSkill {
+  id          String   @id @default(uuid())
+  personId    String
+  skillId     String
+  skill       Skill    @relation(fields: [skillId], references: [id])
+  proficiency Int
+  certified   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([personId, skillId])
+  @@index([personId])
+  @@map("person_skills")
+}
+
+// =============================================================================
+// Supply & Demand — Staffing Requests (Phase 13)
+// =============================================================================
+
+enum StaffingRequestStatus {
+  DRAFT
+  OPEN
+  IN_REVIEW
+  FULFILLED
+  CANCELLED
+}
+
+enum StaffingRequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model StaffingRequest {
+  id                    String                    @id @default(uuid())
+  projectId             String
+  requestedByPersonId   String
+  role                  String
+  skills                String[]
+  summary               String?
+  allocationPercent     Int
+  headcountRequired     Int                       @default(1)
+  headcountFulfilled    Int                       @default(0)
+  priority              StaffingRequestPriority   @default(MEDIUM)
+  status                StaffingRequestStatus     @default(DRAFT)
+  startDate             DateTime                  @db.Date
+  endDate               DateTime                  @db.Date
+  cancelledAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  fulfilments           StaffingRequestFulfilment[]
+
+  @@index([projectId, status])
+  @@index([requestedByPersonId, status])
+  @@index([status, priority, startDate])
+  @@map("staffing_requests")
+}
+
+model StaffingRequestFulfilment {
+  id                  String          @id @default(uuid())
+  requestId           String
+  assignedPersonId    String
+  proposedByPersonId  String
+  fulfilledAt         DateTime        @default(now())
+  request             StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([assignedPersonId])
+  @@map("staffing_request_fulfilments")
+}
+
+enum LeaveRequestType {
+  ANNUAL
+  SICK
+  OTHER
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id         String             @id @default(uuid())
+  personId   String
+  type       LeaveRequestType
+  startDate  DateTime           @db.Date
+  endDate    DateTime           @db.Date
+  notes      String?
+  status     LeaveRequestStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([personId, status])
+  @@index([status])
+  @@map("leave_requests")
+}

@@ -1,0 +1,26 @@
+data_dir = "/tmp/vector"
+
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+[sources.docker_logs]
+type = "docker_logs"
+
+[transforms.normalize]
+type = "remap"
+inputs = ["docker_logs"]
+source = '''
+.service = .container_name ?? "unknown"
+.monitoring = {
+  "stack": "deliverycentral",
+  "source": "docker",
+  "stream": .stream ?? null
+}
+'''
+
+[sinks.console]
+type = "console"
+inputs = ["normalize"]
+target = "stdout"
+encoding.codec = "json"

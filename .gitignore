@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+coverage/
+.idea/
+.vscode/
+.claude/
+*.log
+logs/
+prisma/dev.db
+tmp/
+test-results/
+playwright-report/
+frontend/dist/

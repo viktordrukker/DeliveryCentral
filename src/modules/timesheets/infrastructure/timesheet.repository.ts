@@ -1,0 +1,204 @@
+import { Injectable } from '@nestjs/common';
+import { Prisma, PrismaClient } from '@prisma/client';
+
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+type TimesheetWeekWithEntries = Prisma.TimesheetWeekGetPayload<{
+  include: { entries: true };
+}>;
+
+@Injectable()
+export class TimesheetRepository {
+  public constructor(private readonly prisma: PrismaService) {}
+
+  public async findWeekWithEntries(
+    personId: string,
+    weekStart: Date,
+  ): Promise<TimesheetWeekWithEntries | null> {
+    return this.prisma.timesheetWeek.findUnique({
+      where: { personId_weekStart: { personId, weekStart } },
+      include: { entries: true },
+    });
+  }
+
+  public async findWeekById(id: string): Promise<TimesheetWeekWithEntries | null> {
+    return this.prisma.timesheetWeek.findUnique({
+      where: { id },
+      include: { entries: true },
+    });
+  }
+
+  public async createWeek(
+    personId: string,
+    weekStart: Date,
+  ): Promise<TimesheetWeekWithEntries> {
+    return this.prisma.timesheetWeek.create({
+      data: { personId, weekStart },
+      include: { entries: true },
+    });
+  }
+
+  public async updateWeek(
+    id: string,
+    data: Prisma.TimesheetWeekUpdateInput,
+  ): Promise<TimesheetWeekWithEntries> {
+    return this.prisma.timesheetWeek.update({
+      where: { id },
+      data,
+      include: { entries: true },
+    });
+  }
+
+  public async upsertEntry(
+    timesheetWeekId: string,
+    projectId: string,
+    date: Date,
+    hours: Prisma.Decimal | number,
+    capex: boolean,
+    description?: string,
+  ): Promise<Prisma.TimesheetEntryGetPayload<Record<string, never>>> {
+    return this.prisma.timesheetEntry.upsert({
+      where: { timesheetWeekId_projectId_date: { timesheetWeekId, projectId, date } },
+      create: {
+        timesheetWeekId,
+        projectId,
+        date,
+        hours,
+        capex,
+        description,
+      },
+      update: {
+        hours,
+        capex,
+        description,
+      },
+    });
+  }
+
+  public async findApprovalQueue(query: {
+    status?: string;
+    personId?: string;
+    from?: string;
+    to?: string;
+  }): Promise<TimesheetWeekWithEntries[]> {
+    const where: Prisma.TimesheetWeekWhereInput = {};
+
+    if (query.status) {
+      where.status = query.status as Prisma.EnumTimesheetStatusFilter;
+    } else {
+      where.status = 'SUBMITTED';
+    }
+
+    if (query.personId) {
+      where.personId = query.personId;
+    }
+
+    if (query.from) {
+      where.weekStart = { gte: new Date(query.from) };
+    }
+
+    if (query.to) {
+      where.weekStart = {
+        ...(typeof where.weekStart === 'object' && where.weekStart !== null
+          ? (where.weekStart as object)
+          : {}),
+        lte: new Date(query.to),
+      };
+    }
+
+    return this.prisma.timesheetWeek.findMany({
+      where,
+      include: { entries: true },
+      orderBy: { weekStart: 'asc' },
+    });
+  }
+
+  public async findHistory(
+    personId: string,
+    from?: string,
+    to?: string,
+  ): Promise<TimesheetWeekWithEntries[]> {
+    const where: Prisma.TimesheetWeekWhereInput = { personId };
+
+    if (from) {
+      where.weekStart = { gte: new Date(from) };
+    }
+
+    if (to) {
+      where.weekStart = {
+        ...(typeof where.weekStart === 'object' && where.weekStart !== null
+          ? (where.weekStart as object)
+          : {}),
+        lte: new Date(to),
+      };
+    }
+
+    return this.prisma.timesheetWeek.findMany({
+      where,
+      include: { entries: true },
+      orderBy: { weekStart: 'desc' },
+    });
+  }
+
+  public async findLocksForDate(date: Date): Promise<{ id: string }[]> {
+    return this.prisma.periodLock.findMany({
+      where: {
+        periodFrom: { lte: date },
+        periodTo: { gte: date },
+      },
+      select: { id: true },
+    });
+  }
+
+  public async findApprovedEntries(
+    from?: string,
+    to?: string,
+    projectId?: string,
+    personId?: string,
+  ): Promise<
+    Array<
+      Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
+        timesheetWeek: { personId: string };
+      }
+    >
+  > {
+    const weekWhere: Prisma.TimesheetWeekWhereInput = { status: 'APPROVED' };
+
+    if (personId) {
+      weekWhere.personId = personId;
+    }
+
+    if (from) {
+      weekWhere.weekStart = { gte: new Date(from) };
+    }
+
+    if (to) {
+      weekWhere.weekStart = {
+        ...(typeof weekWhere.weekStart === 'object' && weekWhere.weekStart !== null
+          ? (weekWhere.weekStart as object)
+          : {}),
+        lte: new Date(to),
+      };
+    }
+
+    const entryWhere: Prisma.TimesheetEntryWhereInput = {
+      timesheetWeek: weekWhere,
+    };
+
+    if (projectId) {
+      entryWhere.projectId = projectId;
+    }
+
+    return this.prisma.timesheetEntry.findMany({
+      where: entryWhere,
+      include: { timesheetWeek: { select: { personId: true } } },
+      orderBy: { date: 'asc' },
+    }) as Promise<
+      Array<
+        Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
+          timesheetWeek: { personId: string };
+        }
+      >
+    >;
+  }
+}

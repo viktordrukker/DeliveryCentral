@@ -1,0 +1,4 @@
+ALTER TABLE "Person"
+ADD COLUMN "grade" TEXT,
+ADD COLUMN "role" TEXT,
+ADD COLUMN "skillsets" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

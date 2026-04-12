@@ -1,0 +1,5 @@
+-- Initial placeholder migration.
+-- The Prisma schema now contains the first domain-ready database foundation.
+-- After installing dependencies and configuring PostgreSQL, run:
+--   npx prisma migrate dev --name init_domain_foundation
+-- This placeholder exists only to keep migration structure present in the repository.

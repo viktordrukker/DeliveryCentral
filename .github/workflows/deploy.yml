@@ -1,0 +1,109 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build & push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: meta
+        run: echo "tag=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/deliverycentral
+
+            # Pull latest images
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+
+            # Update image tags in compose override
+            export BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ needs.build-and-push.outputs.image_tag }}
+            export FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ needs.build-and-push.outputs.image_tag }}
+
+            # Rolling restart — migrate first, then app services
+            docker compose -f docker-compose.prod.yml up -d --no-build migrate
+            docker compose -f docker-compose.prod.yml wait migrate
+            docker compose -f docker-compose.prod.yml up -d --no-build backend frontend caddy
+
+            # Health check
+            sleep 15
+            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health || \
+              (echo "Health check failed — rolling back" && \
+               docker compose -f docker-compose.prod.yml pull \
+                 --policy missing \
+                 backend:previous frontend:previous && \
+               docker compose -f docker-compose.prod.yml up -d --no-build backend frontend && \
+               exit 1)
+
+            echo "Deploy ${{ needs.build-and-push.outputs.image_tag }} successful"
