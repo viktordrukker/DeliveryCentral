@@ -1,15 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { demoPeople, demoProjects } from '../../../../prisma/seeds/demo-dataset';
-import { phase2People, phase2Projects } from '../../../../prisma/seeds/phase2-dataset';
-import { lifeDemoPeople, lifeDemoProjects } from '../../../../prisma/seeds/life-demo-dataset';
-
-const allPeopleById = new Map(
-  [...demoPeople, ...phase2People, ...lifeDemoPeople].map((person) => [person.id, person]),
-);
-const allProjectsById = new Map(
-  [...demoProjects, ...phase2Projects, ...lifeDemoProjects].map((project) => [project.id, project]),
-);
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectAssignmentRepositoryPort } from '../domain/repositories/project-assignment-repository.port';
 import { AssignmentId } from '../domain/value-objects/assignment-id';
 import { AssignmentDetailsDto } from './contracts/assignment-directory.dto';
@@ -18,6 +9,7 @@ import { AssignmentDetailsDto } from './contracts/assignment-directory.dto';
 export class GetAssignmentByIdService {
   public constructor(
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(id: string): Promise<AssignmentDetailsDto | null> {
@@ -28,6 +20,13 @@ export class GetAssignmentByIdService {
     if (!assignment) {
       return null;
     }
+
+    const [dbPeople, dbProjects] = await Promise.all([
+      this.prisma.person.findMany({ select: { id: true, displayName: true } }),
+      this.prisma.project.findMany({ select: { id: true, name: true } }),
+    ]);
+    const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
+    const allProjectsById = new Map(dbProjects.map((p) => [p.id, p]));
 
     const person = allPeopleById.get(assignment.personId);
     const project = allProjectsById.get(assignment.projectId);

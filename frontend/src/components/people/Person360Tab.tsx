@@ -48,10 +48,10 @@ export function Person360Tab({ personId }: Person360TabProps): JSX.Element {
           data-testid="low-mood-alert"
           role="alert"
           style={{
-            background: '#fee2e2',
-            border: '1px solid #ef4444',
+            background: 'var(--color-danger-bg)',
+            border: '1px solid var(--color-status-danger)',
             borderRadius: '6px',
-            color: '#dc2626',
+            color: 'var(--color-status-danger)',
             fontWeight: 600,
             marginBottom: '16px',
             padding: '10px 16px',

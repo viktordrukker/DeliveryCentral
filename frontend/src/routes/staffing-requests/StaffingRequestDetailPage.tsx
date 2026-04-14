@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -10,6 +10,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { ApiError } from '@/lib/api/http-client';
+import { formatDateShort } from '@/lib/format-date';
 import {
   StaffingRequest,
   SuggestionCandidate,
@@ -50,6 +51,11 @@ export function StaffingRequestDetailPage(): JSX.Element {
 
   const isRM = principal?.roles.includes('resource_manager') || principal?.roles.includes('admin');
   const isPM = principal?.roles.includes('project_manager') || principal?.roles.includes('admin');
+  const { setCurrentLabel } = useDrilldown();
+
+  useEffect(() => {
+    if (request?.role) setCurrentLabel(request.role);
+  }, [request?.role, setCurrentLabel]);
 
   useEffect(() => {
     if (!id) return;
@@ -66,7 +72,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
         }
       })
       .catch((err) => {
-        if (err instanceof ApiError && err.statusCode === 404) {
+        if (err instanceof ApiError && err.status === 404) {
           setNotFound(true);
         } else {
           setError('Failed to load staffing request.');
@@ -116,7 +122,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
     }
   }
 
-  if (isLoading) return <LoadingState label="Loading staffing request..." />;
+  if (isLoading) return <LoadingState label="Loading staffing request..." variant="skeleton" skeletonType="detail" />;
   if (notFound) {
     return (
       <PageContainer>
@@ -128,13 +134,6 @@ export function StaffingRequestDetailPage(): JSX.Element {
 
   return (
     <PageContainer>
-      <Breadcrumb
-        items={[
-          { label: 'Home', to: '/' },
-          { label: 'Staffing Requests', to: '/staffing-requests' },
-          { label: request.role },
-        ]}
-      />
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/staffing-requests">
@@ -187,7 +186,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
 
       {request.fulfilments.length > 0 ? (
         <SectionCard title="Fulfilments">
-          <table className="table">
+          <table className="dash-compact-table">
             <thead>
               <tr>
                 <th>Assigned Person</th>
@@ -204,7 +203,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
                   <td>
                     <Link to={`/people/${f.proposedByPersonId}`}>{f.proposedByPersonId}</Link>
                   </td>
-                  <td>{new Date(f.fulfilledAt).toLocaleDateString('en-US')}</td>
+                  <td>{formatDateShort(f.fulfilledAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -215,12 +214,12 @@ export function StaffingRequestDetailPage(): JSX.Element {
       {isRM && (request.status === 'OPEN' || request.status === 'IN_REVIEW') && request.skills.length > 0 ? (
         <SectionCard title="Skill-Matched Candidates">
           {suggestionsLoading ? (
-            <LoadingState label="Finding matching candidates..." />
+            <LoadingState label="Finding matching candidates..." variant="skeleton" skeletonType="detail" />
           ) : suggestions.length === 0 ? (
             <EmptyState description="No candidates matched the required skills." title="No suggestions" />
           ) : (
-            <div className="data-table" data-testid="skill-suggestions-panel">
-              <table>
+            <div data-testid="skill-suggestions-panel" style={{ overflow: 'auto' }}>
+              <table className="dash-compact-table">
                 <thead>
                   <tr>
                     <th>Candidate</th>
@@ -237,9 +236,9 @@ export function StaffingRequestDetailPage(): JSX.Element {
                       </td>
                       <td>
                         <span style={{
-                          background: c.score >= 1 ? '#22c55e' : c.score >= 0.5 ? '#f59e0b' : '#94a3b8',
+                          background: c.score >= 1 ? 'var(--color-status-active)' : c.score >= 0.5 ? 'var(--color-status-warning)' : 'var(--color-status-neutral)',
                           borderRadius: 3,
-                          color: '#fff',
+                          color: 'var(--color-surface)',
                           fontSize: 11,
                           fontWeight: 600,
                           padding: '1px 6px',

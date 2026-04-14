@@ -1,20 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
-import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
-
-import {
-  demoPeople,
-  demoProjects,
-} from '../../../../prisma/seeds/demo-dataset';
-import { phase2People, phase2Projects } from '../../../../prisma/seeds/phase2-dataset';
-import { lifeDemoPeople, lifeDemoProjects } from '../../../../prisma/seeds/life-demo-dataset';
-
-const allPeopleById = new Map(
-  [...demoPeople, ...phase2People, ...lifeDemoPeople].map((person) => [person.id, person]),
-);
-const allProjectsById = new Map(
-  [...demoProjects, ...phase2Projects, ...lifeDemoProjects].map((project) => [project.id, project]),
-);
+import { PrismaClient } from '@prisma/client';
 
 interface PlannedVsActualQuery {
   asOf?: string;
@@ -22,12 +7,20 @@ interface PlannedVsActualQuery {
   projectId?: string;
 }
 
+interface PersonSummary {
+  displayName: string;
+  id: string;
+}
+
+interface ProjectSummary {
+  id: string;
+  name: string;
+  projectCode: string;
+}
+
 @Injectable()
 export class PlannedVsActualQueryService {
-  public constructor(
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
-  ) {}
+  private readonly prisma = new PrismaClient();
 
   public async execute(query: PlannedVsActualQuery) {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
@@ -36,102 +29,120 @@ export class PlannedVsActualQueryService {
       throw new Error('Planned vs actual asOf is invalid.');
     }
 
-    const assignments = await this.projectAssignmentRepository.findAll();
-    const workEvidence = await this.workEvidenceRepository.list({
-      dateTo: asOf,
-      ...(query.personId ? { personId: query.personId } : {}),
-      ...(query.projectId ? { projectId: query.projectId } : {}),
+    // Fetch assignments from DB with person + project names
+    const assignmentWhere: Record<string, unknown> = {
+      validFrom: { lte: asOf },
+    };
+    if (query.projectId) assignmentWhere.projectId = query.projectId;
+    if (query.personId) assignmentWhere.personId = query.personId;
+
+    const dbAssignments = await this.prisma.projectAssignment.findMany({
+      where: assignmentWhere,
+      select: {
+        id: true,
+        personId: true,
+        projectId: true,
+        staffingRole: true,
+        status: true,
+        allocationPercent: true,
+        validFrom: true,
+        validTo: true,
+        person: { select: { id: true, displayName: true } },
+        project: { select: { id: true, name: true, projectCode: true } },
+      },
     });
 
-    const filteredAssignments = assignments.filter((assignment) => {
-      if (query.projectId && assignment.projectId !== query.projectId) {
-        return false;
-      }
+    // Fetch work evidence from DB with person + project names
+    const evidenceWhere: Record<string, unknown> = {
+      recordedAt: { lte: asOf },
+    };
+    if (query.projectId) evidenceWhere.projectId = query.projectId;
+    if (query.personId) evidenceWhere.personId = query.personId;
 
-      if (query.personId && assignment.personId !== query.personId) {
-        return false;
-      }
-
-      return assignment.validFrom <= asOf;
+    const dbEvidence = await this.prisma.workEvidence.findMany({
+      where: evidenceWhere,
+      select: {
+        id: true,
+        personId: true,
+        projectId: true,
+        evidenceType: true,
+        durationMinutes: true,
+        recordedAt: true,
+        occurredOn: true,
+        person: { select: { id: true, displayName: true } },
+        project: { select: { id: true, name: true, projectCode: true } },
+      },
     });
 
-    const filteredEvidence = workEvidence.filter((item) => item.recordedAt <= asOf);
-
-    const approvedOrActiveAssignments = filteredAssignments.filter((assignment) =>
-      ['APPROVED', 'ACTIVE'].includes(assignment.status.value),
+    const approvedOrActive = dbAssignments.filter(
+      (a) => a.status === 'APPROVED' || a.status === 'ACTIVE',
     );
 
-    const assignedButNoEvidence = approvedOrActiveAssignments
-      .filter(
-        (assignment) =>
-          !filteredEvidence.some(
-            (item) => item.personId === assignment.personId && item.projectId === assignment.projectId,
-          ),
-      )
-      .map((assignment) => ({
-        allocationPercent: assignment.allocationPercent?.value ?? 0,
-        assignmentId: assignment.assignmentId.value,
-        person: this.toPersonSummary(assignment.personId),
-        project: this.toProjectSummary(assignment.projectId),
-        staffingRole: assignment.staffingRole,
-      }));
-
-    const evidenceButNoApprovedAssignment = filteredEvidence
-      .filter(
-        (item) =>
-          !approvedOrActiveAssignments.some(
-            (assignment) =>
-              assignment.personId === item.personId && assignment.projectId === item.projectId,
-          ),
-      )
-      .map((item) => ({
-        activityDate: (item.occurredOn ?? item.recordedAt).toISOString(),
-        effortHours: Number((((item.durationMinutes ?? 0) / 60)).toFixed(2)),
-        person: this.toPersonSummary(item.personId ?? 'unattributed-person'),
-        project: this.toProjectSummary(item.projectId ?? 'unattributed-project'),
-        sourceType: item.evidenceType,
-        workEvidenceId: item.workEvidenceId.value,
-      }));
-
-    const matchedRecords = filteredEvidence
-      .map((item) => {
-        const assignment = approvedOrActiveAssignments.find(
-          (candidate) =>
-            candidate.personId === item.personId && candidate.projectId === item.projectId,
+    // Matched: evidence that has a matching approved/active assignment
+    const matchedRecords = dbEvidence
+      .map((ev) => {
+        const assignment = approvedOrActive.find(
+          (a) => a.personId === ev.personId && a.projectId === ev.projectId,
         );
-
-        if (!assignment) {
-          return null;
-        }
-
+        if (!assignment) return null;
         return {
-          allocationPercent: assignment.allocationPercent?.value ?? 0,
-          assignmentId: assignment.assignmentId.value,
-          effortHours: Number((((item.durationMinutes ?? 0) / 60)).toFixed(2)),
-          person: this.toPersonSummary(item.personId ?? 'unattributed-person'),
-          project: this.toProjectSummary(item.projectId ?? 'unattributed-project'),
+          allocationPercent: Number(assignment.allocationPercent ?? 0),
+          assignmentId: assignment.id,
+          effortHours: Number(((ev.durationMinutes ?? 0) / 60).toFixed(2)),
+          person: this.toPersonSummary(ev.person, ev.personId),
+          project: this.toProjectSummary(ev.project, ev.projectId),
           staffingRole: assignment.staffingRole,
-          workEvidenceId: item.workEvidenceId.value,
+          workEvidenceId: ev.id,
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    const anomalies = [
-      ...filteredEvidence
-        .filter((item) => {
-          const assignment = filteredAssignments.find(
-            (candidate) =>
-            candidate.personId === item.personId && candidate.projectId === item.projectId,
-          );
+    // Assigned but no evidence
+    const assignedButNoEvidence = approvedOrActive
+      .filter(
+        (a) =>
+          !dbEvidence.some(
+            (ev) => ev.personId === a.personId && ev.projectId === a.projectId,
+          ),
+      )
+      .map((a) => ({
+        allocationPercent: Number(a.allocationPercent ?? 0),
+        assignmentId: a.id,
+        person: this.toPersonSummary(a.person, a.personId),
+        project: this.toProjectSummary(a.project, a.projectId),
+        staffingRole: a.staffingRole,
+      }));
 
-          return Boolean(
-            assignment && assignment.validTo && item.recordedAt > assignment.validTo,
+    // Evidence without approved assignment
+    const evidenceButNoApprovedAssignment = dbEvidence
+      .filter(
+        (ev) =>
+          !approvedOrActive.some(
+            (a) => a.personId === ev.personId && a.projectId === ev.projectId,
+          ),
+      )
+      .map((ev) => ({
+        activityDate: (ev.occurredOn ?? ev.recordedAt).toISOString(),
+        effortHours: Number(((ev.durationMinutes ?? 0) / 60).toFixed(2)),
+        person: this.toPersonSummary(ev.person, ev.personId),
+        project: this.toProjectSummary(ev.project, ev.projectId),
+        sourceType: ev.evidenceType,
+        workEvidenceId: ev.id,
+      }));
+
+    // Anomalies: evidence after assignment end, evidence without assignment
+    const anomalies = [
+      ...dbEvidence
+        .filter((ev) => {
+          const assignment = dbAssignments.find(
+            (a) => a.personId === ev.personId && a.projectId === ev.projectId,
           );
+          return Boolean(assignment && assignment.validTo && ev.recordedAt > assignment.validTo);
         })
-        .map((item) => ({
+        .map((ev) => ({
           message: 'Observed work exists after the assignment end date.',
-          person: this.toPersonSummary(item.personId ?? 'unattributed-person'),
-          project: this.toProjectSummary(item.projectId ?? 'unattributed-project'),
+          person: this.toPersonSummary(ev.person, ev.personId),
+          project: this.toProjectSummary(ev.project, ev.projectId),
           type: 'EVIDENCE_AFTER_ASSIGNMENT_END',
         })),
       ...evidenceButNoApprovedAssignment.map((item) => ({
@@ -151,22 +162,23 @@ export class PlannedVsActualQueryService {
     };
   }
 
-  private toPersonSummary(personId: string) {
-    const person = allPeopleById.get(personId);
-
-    return {
-      displayName: person?.displayName ?? personId,
-      id: personId,
-    };
+  private toPersonSummary(
+    person: { id: string; displayName: string } | null,
+    fallbackId: string | null,
+  ): PersonSummary {
+    if (person) {
+      return { displayName: person.displayName, id: person.id };
+    }
+    return { displayName: fallbackId ?? 'Unknown', id: fallbackId ?? '' };
   }
 
-  private toProjectSummary(projectId: string) {
-    const project = allProjectsById.get(projectId);
-
-    return {
-      id: projectId,
-      name: project?.name ?? projectId,
-      projectCode: project?.projectCode ?? 'UNKNOWN',
-    };
+  private toProjectSummary(
+    project: { id: string; name: string; projectCode: string } | null,
+    fallbackId: string | null,
+  ): ProjectSummary {
+    if (project) {
+      return { id: project.id, name: project.name, projectCode: project.projectCode };
+    }
+    return { id: fallbackId ?? '', name: fallbackId ?? 'Unknown', projectCode: 'UNKNOWN' };
   }
 }

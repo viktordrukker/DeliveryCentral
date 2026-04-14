@@ -132,11 +132,13 @@ describe('Employee dashboard query', () => {
           },
           displayName: 'Evidence Only User',
           dottedLineManagers: [],
+          grade: null,
           id: 'person-evidence-only',
           lifecycleStatus: 'ACTIVE',
           primaryEmail: 'evidence.only@example.com',
           resourcePoolIds: [],
           resourcePools: [],
+          role: null,
         },
       ]),
     );

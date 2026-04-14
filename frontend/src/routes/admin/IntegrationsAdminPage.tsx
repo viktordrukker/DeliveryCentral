@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDateTime } from '@/lib/format-date';
 import {
   IntegrationStatusRecord,
   useIntegrationAdmin,
@@ -36,7 +37,7 @@ export function IntegrationsAdminPage(): JSX.Element {
         title="Integrations"
       />
 
-      {state.isLoading ? <LoadingState label="Loading integration status..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading integration status..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? (
         <div className="success-banner" role="status">
@@ -71,7 +72,7 @@ export function IntegrationsAdminPage(): JSX.Element {
               <SectionCard title="Status Overview">
                 {state.selectedIntegration && selectedStatus ? (
                   <>
-                    <div className="details-summary-grid">
+                    <div className="kpi-strip">
                       <div className="section-card metadata-detail__stat">
                         <span className="metric-card__label">Provider</span>
                         <strong>{state.selectedIntegration.provider.toUpperCase()}</strong>
@@ -199,7 +200,7 @@ function formatLastSyncAt(value: string | undefined): string | null {
     return null;
   }
 
-  return new Date(value).toLocaleString('en-US');
+  return formatDateTime(value);
 }
 
 function renderStatusDetails(status: IntegrationStatusRecord) {

@@ -5,10 +5,6 @@ import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infra
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
 import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
-import { demoProjects } from '../../../../prisma/seeds/demo-dataset';
-import { lifeDemoProjects } from '../../../../prisma/seeds/life-demo-dataset';
-
-const allSeedProjects = [...demoProjects, ...lifeDemoProjects];
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
 import { DeliveryManagerDashboardResponseDto, ProjectScorecardHistoryItemDto } from './contracts/delivery-manager-dashboard.dto';
@@ -163,7 +159,6 @@ export class DeliveryManagerDashboardQueryService {
       })
       .map((a) => {
         const project = activeProjects.find((p) => p.projectId.value === a.projectId);
-        const seedProject = allSeedProjects.find((p) => p.id === a.projectId);
         const endDate = a.validTo!;
         const daysUntilEnd = Math.round((endDate.getTime() - asOf.getTime()) / 86400000);
         return {
@@ -171,9 +166,9 @@ export class DeliveryManagerDashboardQueryService {
           daysUntilEnd,
           endDate: endDate.toISOString().slice(0, 10),
           personId: a.personId,
-          projectCode: project?.projectCode ?? seedProject?.projectCode ?? a.projectId,
+          projectCode: project?.projectCode ?? a.projectId,
           projectId: a.projectId,
-          projectName: project?.name ?? seedProject?.name ?? a.projectId,
+          projectName: project?.name ?? a.projectId,
         };
       })
       .sort((a, b) => a.daysUntilEnd - b.daysUntilEnd);
@@ -191,12 +186,11 @@ export class DeliveryManagerDashboardQueryService {
     }
     const openRequestsByProject = Array.from(requestsByProjectMap.entries()).map(([projectId, data]) => {
       const project = activeProjects.find((p) => p.projectId.value === projectId);
-      const seedProject = allSeedProjects.find((p) => p.id === projectId);
       return {
         openRequestCount: data.count,
-        projectCode: project?.projectCode ?? seedProject?.projectCode ?? projectId,
+        projectCode: project?.projectCode ?? projectId,
         projectId,
-        projectName: project?.name ?? seedProject?.name ?? projectId,
+        projectName: project?.name ?? projectId,
         totalHeadcountFulfilled: data.fulfilled,
         totalHeadcountRequired: data.required,
       };

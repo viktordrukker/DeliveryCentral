@@ -27,17 +27,9 @@ export class ErrorBoundary extends Component<Props, State> {
         <div style={{ padding: '2rem' }}>
           <ErrorState
             description={this.state.error.message || 'An unexpected error occurred. Please refresh the page.'}
+            onRetry={() => this.setState({ error: null })}
             title="Something went wrong"
           />
-          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-            <button
-              className="button button--secondary"
-              onClick={() => this.setState({ error: null })}
-              type="button"
-            >
-              Try again
-            </button>
-          </div>
         </div>
       );
     }

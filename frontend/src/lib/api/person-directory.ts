@@ -17,11 +17,13 @@ export interface PersonDirectoryItem {
   currentOrgUnit: OrgUnitSummary | null;
   displayName: string;
   dottedLineManagers: PersonSummary[];
+  grade: string | null;
   id: string;
   lifecycleStatus: string;
   primaryEmail: string | null;
   resourcePoolIds: string[];
   resourcePools: Array<{ id: string; name: string }>;
+  role: string | null;
 }
 
 export interface PersonDirectoryResponse {

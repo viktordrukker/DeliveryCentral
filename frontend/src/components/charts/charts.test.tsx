@@ -92,7 +92,7 @@ describe('Chart smoke tests', () => {
       <MemoryRouter>
         <PlannedVsActualBars
           data={[
-            { actualHours: 30, personId: 'p1', personName: 'Alice', plannedHours: 40 },
+            { actual: 30, person: 'Alice', planned: 40 },
           ]}
         />
       </MemoryRouter>,

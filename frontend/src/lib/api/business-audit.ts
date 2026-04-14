@@ -3,6 +3,7 @@ import { httpGet } from './http-client';
 export interface BusinessAuditRecord {
   actionType: string;
   actorId?: string | null;
+  actorDisplayName?: string | null;
   changeSummary?: string | null;
   correlationId?: string | null;
   metadata: Record<string, unknown>;

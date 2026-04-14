@@ -4,10 +4,7 @@ import { PersonDirectoryQueryService } from '@src/modules/organization/applicati
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
-import { demoPeople } from '../../../../prisma/seeds/demo-dataset';
-import { lifeDemoPeople } from '../../../../prisma/seeds/life-demo-dataset';
-
-const allPeople = [...demoPeople, ...lifeDemoPeople];
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
@@ -29,6 +26,7 @@ export class ProjectManagerDashboardQueryService {
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
     private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly platformSettingsService: PlatformSettingsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: ProjectManagerDashboardQuery): Promise<ProjectManagerDashboardResponseDto> {
@@ -45,6 +43,9 @@ export class ProjectManagerDashboardQueryService {
     if (!person) {
       throw new Error('Project manager dashboard person was not found.');
     }
+
+    const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
+    const allPeople = dbPeople;
 
     const allProjects = await this.projectRepository.findAll();
     const managedProjects = allProjects

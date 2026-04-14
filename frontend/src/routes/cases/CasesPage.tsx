@@ -1,32 +1,37 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { CaseListTable } from '@/components/cases/CaseListTable';
 import { PersonSelect } from '@/components/common/PersonSelect';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
-import { TableSkeleton } from '@/components/common/Skeleton';
+import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { useCasesList } from '@/features/cases/useCasesList';
 
 export function CasesPage(): JSX.Element {
   const navigate = useNavigate();
+  const { setActions } = useTitleBarActions();
   const state = useCasesList();
+
+  useEffect(() => {
+    setActions(
+      <>
+        <button className="button" onClick={() => navigate('/cases/new')} type="button">
+          Create case
+        </button>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, navigate]);
 
   return (
     <PageContainer testId="cases-page" viewport>
-      <PageHeader
-        actions={
-          <button className="button" onClick={() => navigate('/cases/new')} type="button">
-            Create case
-          </button>
-        }
-        eyebrow="Cases"
-        subtitle="Track onboarding and governance workflows without collapsing them into assignment lifecycle."
-        title="Cases"
-      />
 
       <FilterBar>
         <label className="field">
@@ -54,7 +59,7 @@ export function CasesPage(): JSX.Element {
       </FilterBar>
 
       <SectionCard title="Case List">
-        {state.isLoading ? <TableSkeleton cols={4} rows={6} /> : null}
+        {state.isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
         {state.error ? <ErrorState description={state.error} /> : null}
 
         {!state.isLoading && !state.error ? (

@@ -22,6 +22,33 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    css: false,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        maxForks: 2,
+        minForks: 1,
+      },
+    },
+    reporter: process.env.CI ? 'default' : 'dot',
     setupFiles: ['./src/test/setup.ts', './src/test/recharts-mock.ts', './src/test/d3-tree-mock.ts'],
+    deps: {
+      optimizer: {
+        web: {
+          include: [
+            '@mui/material',
+            '@mui/icons-material',
+            '@mui/x-data-grid',
+            '@mui/x-date-pickers',
+            '@emotion/react',
+            '@emotion/styled',
+            'recharts',
+            'd3',
+            'd3-org-chart',
+            '@xyflow/react',
+          ],
+        },
+      },
+    },
   },
 });

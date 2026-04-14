@@ -4,6 +4,7 @@ import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { WorkEvidenceViewItem } from '@/features/work-evidence/useWorkEvidencePage';
 import { updateWorkEvidence } from '@/lib/api/work-evidence';
+import { formatDateShort } from '@/lib/format-date';
 
 const EXTERNAL_TYPES = ['JIRA_WORKLOG', 'MEETING'];
 
@@ -39,14 +40,14 @@ export function WorkEvidenceTable({ items, onUpdated }: WorkEvidenceTableProps):
         {
           key: 'activityDate',
           render: (item: WorkEvidenceViewItem) =>
-            new Date(item.activityDate).toLocaleDateString('en-US'),
+            formatDateShort(item.activityDate),
           title: 'Activity Date',
         },
         {
           key: 'actions',
           render: (item: WorkEvidenceViewItem) =>
             EXTERNAL_TYPES.includes(item.sourceType) ? (
-              <span style={{ color: '#6b7280', fontSize: '11px' }}>Read-only</span>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: '11px' }}>Read-only</span>
             ) : (
               <WorkEvidenceEditCell id={item.id} item={item} onUpdated={onUpdated} />
             ),

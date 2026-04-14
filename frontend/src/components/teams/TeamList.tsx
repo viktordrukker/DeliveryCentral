@@ -22,7 +22,7 @@ export function TeamList({ items, onSelect, selectedId }: TeamListProps): JSX.El
             <span className="dictionary-list__title">{item.name}</span>
             <span
               className="dictionary-list__count"
-              style={item.memberCount === 0 ? { color: '#9ca3af' } : undefined}
+              style={item.memberCount === 0 ? { color: 'var(--color-text-muted)' } : undefined}
             >
               {item.memberCount === 0 ? 'No members' : item.memberCount}
             </span>

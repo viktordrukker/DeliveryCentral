@@ -8,6 +8,7 @@ import { TemplatePreview } from '@/components/admin/TemplatePreview';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { formatDateTime } from '@/lib/format-date';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -60,7 +61,7 @@ export function NotificationsPage(): JSX.Element {
         title="Notification Templates"
       />
 
-      {state.isLoading ? <LoadingState label="Loading notification templates..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading notification templates..." variant="skeleton" skeletonType="table" /> : null}
       {state.error && !state.selectedTemplate ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error ? (
@@ -124,7 +125,7 @@ export function NotificationsPage(): JSX.Element {
           </label>
         </div>
 
-        {queue.isLoading ? <LoadingState label="Loading notification queue..." /> : null}
+        {queue.isLoading ? <LoadingState label="Loading notification queue..." variant="skeleton" skeletonType="table" /> : null}
         {queue.error ? <ErrorState description={queue.error} /> : null}
 
         {!queue.isLoading && !queue.error ? (
@@ -142,7 +143,7 @@ export function NotificationsPage(): JSX.Element {
                 title="No notifications"
               />
             ) : (
-              <table className="data-table">
+              <table className="dash-compact-table">
                 <thead>
                   <tr>
                     <th>Recipient</th>
@@ -167,7 +168,7 @@ export function NotificationsPage(): JSX.Element {
                       <td>
                         {item.attemptCount} / {item.maxAttempts}
                       </td>
-                      <td>{new Date(item.requestedAt).toLocaleString('en-US')}</td>
+                      <td>{formatDateTime(item.requestedAt)}</td>
                       <td>
                         <details>
                           <summary>Detail</summary>

@@ -63,11 +63,11 @@ export function PeriodSelector({ label = 'Period', onAsOfChange, value }: Period
             key={p.id}
             onClick={() => handlePeriodClick(p.id)}
             style={{
-              background: activePeriod === p.id ? '#6366f1' : '#f3f4f6',
+              background: activePeriod === p.id ? 'var(--color-accent)' : 'var(--color-surface-alt)',
               border: '1px solid',
-              borderColor: activePeriod === p.id ? '#6366f1' : '#e5e7eb',
+              borderColor: activePeriod === p.id ? 'var(--color-accent)' : 'var(--color-border)',
               borderRadius: '4px',
-              color: activePeriod === p.id ? '#fff' : '#374151',
+              color: activePeriod === p.id ? 'var(--color-surface)' : 'var(--color-text)',
               cursor: 'pointer',
               fontSize: '12px',
               fontWeight: activePeriod === p.id ? 600 : 400,

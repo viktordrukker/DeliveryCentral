@@ -64,7 +64,7 @@ export function EmployeeDirectoryTable({
           render: (item: PersonDirectoryItem) => {
             const s = item.lifecycleStatus;
             const color =
-              s === 'ACTIVE' ? '#16a34a' : s === 'INACTIVE' ? '#d97706' : '#6b7280';
+              s === 'ACTIVE' ? 'var(--color-status-active)' : s === 'INACTIVE' ? 'var(--color-status-warning)' : 'var(--color-text-muted)';
             return (
               <span
                 style={{

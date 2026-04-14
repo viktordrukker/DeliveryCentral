@@ -1,5 +1,5 @@
 export interface AppRouteDefinition {
-  description: string;
+  description?: string;
   group: 'dashboard' | 'people-org' | 'work' | 'governance' | 'admin';
   path: string;
   title: string;
@@ -8,10 +8,9 @@ export interface AppRouteDefinition {
 
 export const appRoutes: AppRouteDefinition[] = [
   {
-    description: 'Summary of staffing, project, and evidence signals.',
     group: 'dashboard',
     path: '/',
-    title: 'Dashboard',
+    title: 'Workload Overview',
   },
   {
     description: 'Diagnostic comparison of planned staffing and observed work.',

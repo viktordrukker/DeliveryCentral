@@ -21,20 +21,20 @@ interface WorkloadCardProps {
 function TrendIndicator({ change }: { change: number }): JSX.Element {
   if (change > 0) {
     return (
-      <span style={{ color: '#16a34a', fontSize: '11px', marginLeft: '4px' }} title={`+${change}% vs prior period`}>
+      <span style={{ color: 'var(--color-status-active)', fontSize: '11px', marginLeft: '4px' }} title={`+${change}% vs prior period`}>
         ↑ +{change}%
       </span>
     );
   }
   if (change < 0) {
     return (
-      <span style={{ color: '#dc2626', fontSize: '11px', marginLeft: '4px' }} title={`${change}% vs prior period`}>
+      <span style={{ color: 'var(--color-status-danger)', fontSize: '11px', marginLeft: '4px' }} title={`${change}% vs prior period`}>
         ↓ {change}%
       </span>
     );
   }
   return (
-    <span style={{ color: '#6b7280', fontSize: '11px', marginLeft: '4px' }} title="No change vs prior period">
+    <span style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginLeft: '4px' }} title="No change vs prior period">
       → 0%
     </span>
   );
@@ -61,9 +61,9 @@ export function WorkloadCard({
 
   const variantStyle: React.CSSProperties =
     effectiveVariant === 'danger'
-      ? { borderColor: '#ef4444', borderLeftWidth: '4px', borderStyle: 'solid' }
+      ? { borderColor: 'var(--color-status-danger)', borderLeftWidth: '4px', borderStyle: 'solid' }
       : effectiveVariant === 'warning'
-        ? { borderColor: '#f59e0b', borderLeftWidth: '4px', borderStyle: 'solid' }
+        ? { borderColor: 'var(--color-status-warning)', borderLeftWidth: '4px', borderStyle: 'solid' }
         : {};
 
   const showAlert =
@@ -71,10 +71,10 @@ export function WorkloadCard({
 
   const valueStyle: React.CSSProperties =
     effectiveVariant === 'danger'
-      ? { color: '#dc2626' }
+      ? { color: 'var(--color-status-danger)' }
       : effectiveVariant === 'warning'
-        ? { color: '#d97706' }
-        : undefined;
+        ? { color: 'var(--color-status-warning)' }
+        : {};
 
   const inner = compact ? (
     <div className="monitoring-card--compact-row">

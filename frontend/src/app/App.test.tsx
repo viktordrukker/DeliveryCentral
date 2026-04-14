@@ -26,7 +26,7 @@ describe('App shell navigation', () => {
     // Brand and always-visible sidebar structure
     expect(screen.getByText('Workload Tracking')).toBeInTheDocument();
     // Active group (dashboards) items are visible
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Workload Overview')).toBeInTheDocument();
     // Section group headers are always rendered (collapsed sections show header)
     expect(screen.getByText('Work')).toBeInTheDocument();
     expect(screen.getByText('People & Org')).toBeInTheDocument();

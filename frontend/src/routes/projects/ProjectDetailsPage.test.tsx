@@ -124,7 +124,7 @@ describe('ProjectDetailsPage', () => {
     });
     mockedFetchPersonDirectory.mockResolvedValue({
       items: [
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Resource Manager One', dottedLineManagers: [], id: 'resource-manager-1', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [] },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Resource Manager One', dottedLineManagers: [], grade: null, id: 'resource-manager-1', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
       ],
       page: 1,
       pageSize: 200,

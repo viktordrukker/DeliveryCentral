@@ -10,6 +10,7 @@ export interface RadiusReconciliationRecordDto {
   lastSeenAt?: string;
   matchedByStrategy?: string;
   personId?: string;
+  personDisplayName?: string;
   sourceType: string;
   sourceUpdatedAt?: string;
   summary: string;

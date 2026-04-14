@@ -199,7 +199,7 @@ export function TimeReportPage(): JSX.Element {
         </button>
       </div>
 
-      {isLoading && <LoadingState label="Loading time report..." />}
+      {isLoading && <LoadingState label="Loading time report..." variant="skeleton" skeletonType="chart" />}
       {error && <ErrorState description={error} />}
 
       {data && !isLoading && (

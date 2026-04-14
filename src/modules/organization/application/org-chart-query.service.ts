@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-import { demoOrgUnits } from '../../../../prisma/seeds/demo-dataset';
 import { PersonRepositoryPort } from '../domain/repositories/person-repository.port';
 import { OrgUnitRepositoryPort } from '../domain/repositories/org-unit-repository.port';
 import { PersonOrgMembershipRepositoryPort } from '../domain/repositories/person-org-membership-repository.port';
@@ -66,8 +65,7 @@ export class OrgChartQueryService {
         children: childUnits,
         code: orgUnit.code,
         id: orgUnit.orgUnitId.value,
-        kind:
-          demoOrgUnits.find((item) => item.id === orgUnit.orgUnitId.value)?.kind ?? 'ORG_UNIT',
+        kind: 'ORG_UNIT',
         manager: orgUnit.managerPersonId
           ? await buildPersonSummary(orgUnit.managerPersonId.value)
           : null,

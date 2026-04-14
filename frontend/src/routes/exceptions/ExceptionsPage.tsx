@@ -1,13 +1,17 @@
+import { useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { AuthTokenField } from '@/components/common/AuthTokenField';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { formatDistanceToNow } from 'date-fns';
 import { ExceptionDetailPanel } from '@/components/exceptions/ExceptionDetailPanel';
 import { ExceptionQueueFilters } from '@/components/exceptions/ExceptionQueueFilters';
 import { ExceptionQueueTable } from '@/components/exceptions/ExceptionQueueTable';
@@ -17,19 +21,39 @@ import { useExceptionQueue } from '@/features/exceptions/useExceptionQueue';
 export function ExceptionsPage(): JSX.Element {
   const state = useExceptionQueue();
   const tokenState = useStoredApiToken();
+  const { setActions } = useTitleBarActions();
+
+  const handleResolve = useCallback(
+    async (id: string, resolution: string): Promise<void> => {
+      await state.handleResolve(id, resolution);
+      toast.success('Exception resolved');
+    },
+    [state.handleResolve],
+  );
+
+  const handleSuppress = useCallback(
+    async (id: string, reason: string): Promise<void> => {
+      await state.handleSuppress(id, reason);
+      toast.success('Exception suppressed');
+    },
+    [state.handleSuppress],
+  );
+
+  // Inject actions into title bar (filters stay in FilterBar since >3 fields)
+  useEffect(() => {
+    setActions(
+      <>
+        <Link className="button button--secondary button--sm" to="/dashboard/planned-vs-actual">
+          Open planned vs actual
+        </Link>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions]);
 
   return (
     <PageContainer testId="exceptions-page" viewport>
-      <PageHeader
-        actions={
-          <Link className="button button--secondary" to="/dashboard/planned-vs-actual">
-            Open planned vs actual
-          </Link>
-        }
-        eyebrow="Operations"
-        subtitle="Review staffing, project, and reconciliation anomalies in one queue instead of hunting through dashboards, detail screens, or logs."
-        title="Exception Queue"
-      />
 
       {!tokenState.hasToken ? (
         <SectionCard title="Authentication">
@@ -54,17 +78,18 @@ export function ExceptionsPage(): JSX.Element {
         />
       </FilterBar>
 
-      {state.isLoading ? <LoadingState label="Loading exceptions..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading exceptions..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error ? (
         state.data ? (
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Exception Queue">
               <div className="results-meta">
                 <span>
                   {state.data.summary.total} open exception
                   {state.data.summary.total === 1 ? '' : 's'}
+                  {' '}<TipBalloon tip="Exceptions surface anomalies from assignments, work evidence, projects, and reconciliation." arrow="left" />
                 </span>
                 <span>Derived from assignments, work evidence, projects, and reconciliation records.</span>
               </div>
@@ -77,15 +102,16 @@ export function ExceptionsPage(): JSX.Element {
               ) : (
                 <ExceptionQueueTable
                   items={state.data.items}
-                  onResolve={state.handleResolve}
+                  onResolve={handleResolve}
                   onSelect={(item) => state.selectException(item.id)}
-                  onSuppress={state.handleSuppress}
+                  onSuppress={handleSuppress}
                   selectedId={state.selectedId}
                 />
               )}
             </SectionCard>
 
             <SectionCard title="Exception Review">
+              <div style={{ marginBottom: 8 }}><TipBalloon tip="Select an exception row to see full context and resolution actions here." arrow="left" /></div>
               <ExceptionDetailPanel isLoading={state.isLoadingDetail} item={state.activeItem} />
             </SectionCard>
           </div>
@@ -98,6 +124,11 @@ export function ExceptionsPage(): JSX.Element {
           </SectionCard>
         )
       ) : null}
+
+      <div className="data-freshness">
+        {state.lastUpdated ? `Updated ${formatDistanceToNow(state.lastUpdated, { addSuffix: true })}` : 'Loading...'} {'\u00B7'}{' '}
+        <button onClick={state.reload} type="button" disabled={state.isLoading}>{state.isLoading ? 'Refreshing...' : 'Refresh'}</button>
+      </div>
     </PageContainer>
   );
 }

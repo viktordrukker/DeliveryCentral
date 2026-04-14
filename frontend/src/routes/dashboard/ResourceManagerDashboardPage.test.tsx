@@ -57,11 +57,13 @@ describe('ResourceManagerDashboardPage', () => {
           currentOrgUnit: { code: 'DEP-ENG', id: 'org-1', name: 'Engineering' },
           displayName: 'Olivia Chen',
           dottedLineManagers: [],
+          grade: null,
           id: '11111111-1111-1111-1111-111111111003',
           primaryEmail: 'olivia@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+          role: null,
         },
       ],
       page: 1,
@@ -144,7 +146,7 @@ describe('ResourceManagerDashboardPage', () => {
     expect(
       await screen.findByRole('heading', { name: 'Olivia Chen' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Engineering Pool')).toBeInTheDocument();
+    expect(screen.getAllByText('Engineering Pool').length).toBeGreaterThan(0);
     expect(screen.getByText('Sophia Kim')).toBeInTheDocument();
     expect(
       screen.getByText((content) => content.includes('Mia Lopez')),

@@ -12,6 +12,7 @@ import {
   fetchWebhookDeliveries,
 } from '@/lib/api/webhooks';
 import { useAuth } from '@/app/auth-context';
+import { formatDateShort } from '@/lib/format-date';
 
 const ALL_EVENT_TYPES = [
   'case.created',
@@ -106,12 +107,12 @@ export function WebhooksAdminPage(): JSX.Element {
       />
 
       {error ? (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
           {error}
         </div>
       ) : null}
 
-      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', marginBottom: '1.5rem' }}>
         <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 700 }}>Add Subscription</h3>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <label className="field" style={{ flex: '2 1 200px' }}>
@@ -136,7 +137,7 @@ export function WebhooksAdminPage(): JSX.Element {
           </label>
         </div>
         <div style={{ marginTop: '0.5rem' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>Event Types (empty = all):</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>Event Types (empty = all):</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
             {ALL_EVENT_TYPES.map((et) => (
               <label key={et} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', cursor: 'pointer' }}>
@@ -162,25 +163,25 @@ export function WebhooksAdminPage(): JSX.Element {
       </div>
 
       {subscriptions.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No webhook subscriptions configured.</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>No webhook subscriptions configured.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
-            <tr style={{ background: '#f3f4f6' }}>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>URL</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Event Types</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Created</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Actions</th>
+            <tr style={{ background: 'var(--color-surface-alt)' }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>URL</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Event Types</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Created</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {subscriptions.map((sub) => (
-              <tr key={sub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <tr key={sub.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td style={{ padding: '8px 12px', wordBreak: 'break-all' }}>{sub.url}</td>
                 <td style={{ padding: '8px 12px' }}>
                   {sub.eventTypes.length === 0 ? 'all' : sub.eventTypes.join(', ')}
                 </td>
-                <td style={{ padding: '8px 12px' }}>{sub.createdAt.slice(0, 10)}</td>
+                <td style={{ padding: '8px 12px' }}>{formatDateShort(sub.createdAt)}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
@@ -220,8 +221,8 @@ export function WebhooksAdminPage(): JSX.Element {
           style={{
             marginTop: '1rem',
             padding: '0.75rem',
-            background: testResult.success ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${testResult.success ? '#86efac' : '#fca5a5'}`,
+            background: testResult.success ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+            border: `1px solid ${testResult.success ? 'var(--color-status-active)' : 'var(--color-status-danger)'}`,
             borderRadius: 6,
             fontSize: '0.8rem',
           }}
@@ -238,17 +239,17 @@ export function WebhooksAdminPage(): JSX.Element {
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Last 10 Delivery Attempts</h4>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
             <thead>
-              <tr style={{ background: '#f3f4f6' }}>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Event</th>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time</th>
+              <tr style={{ background: 'var(--color-surface-alt)' }}>
+                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Event</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Status</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Time</th>
               </tr>
             </thead>
             <tbody>
               {deliveries.map((d, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--color-surface-alt)' }}>
                   <td style={{ padding: '6px 10px' }}>{d.eventType}</td>
-                  <td style={{ padding: '6px 10px', color: d.success ? '#15803d' : '#dc2626' }}>
+                  <td style={{ padding: '6px 10px', color: d.success ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
                     {d.success ? `OK ${d.statusCode ?? ''}` : `Failed ${d.statusCode ?? ''} ${d.error ?? ''}`}
                   </td>
                   <td style={{ padding: '6px 10px' }}>{d.attemptedAt.slice(0, 19).replace('T', ' ')}</td>

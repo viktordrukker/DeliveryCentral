@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 import { AppRouteDefinition } from '@/app/navigation';
+import { markSidebarNavigation } from '@/app/drilldown-context';
 import { useAuth } from '@/app/auth-context';
 import { NavIcon, getIconKey } from '@/components/common/NavIcon';
 import { SidebarSection } from './SidebarSection';
@@ -80,8 +81,11 @@ export function SidebarNav({
     {},
   );
 
+  // Only show "My Dashboard" (employee dashboard) to roles that can access it
+  const employeeDashRoles = ['employee', 'hr_manager', 'director', 'admin'];
+  const canSeeEmployeeDash = principal?.roles.some((r) => employeeDashRoles.includes(r)) ?? false;
   const myWorkItems = [
-    { description: 'Your personal dashboard and overview.', path: '/dashboard/employee', title: 'My Dashboard' },
+    ...(canSeeEmployeeDash ? [{ description: 'Your personal dashboard and overview.', path: '/dashboard/employee', title: 'My Dashboard' }] : []),
     { description: 'Update your password and account details.', path: '/settings/account', title: 'Account Settings' },
   ];
 
@@ -100,12 +104,13 @@ export function SidebarNav({
     return (
       <div className="sidebar-nav__item-row" key={item.path} style={{ alignItems: 'center', display: 'flex' }}>
         <NavLink
+          aria-current={activePath === item.path ? 'page' : undefined}
           className={
             activePath === item.path
               ? 'sidebar-nav__item sidebar-nav__item--active'
               : 'sidebar-nav__item'
           }
-          onClick={onNavigate}
+          onClick={() => { markSidebarNavigation(); onNavigate?.(); }}
           style={{ alignItems: 'center', display: 'flex', flex: 1, gap: '8px' }}
           title={item.description}
           to={item.path}
@@ -117,7 +122,7 @@ export function SidebarNav({
           aria-label={pins.has(item.path) ? `Unpin ${item.title}` : `Pin ${item.title}`}
           onClick={(e) => { e.preventDefault(); togglePin(item.path); }}
           style={{
-            background: 'none', border: 'none', color: pins.has(item.path) ? '#f59e0b' : 'transparent',
+            background: 'none', border: 'none', color: pins.has(item.path) ? 'var(--color-status-warning)' : 'transparent',
             cursor: 'pointer', fontSize: '14px', padding: '0 4px',
           }}
           title={pins.has(item.path) ? 'Unpin' : 'Pin to Favorites'}
@@ -157,7 +162,7 @@ export function SidebarNav({
                     : 'sidebar-nav__item sidebar-nav__item--rail'
                 }
                 key={item.path}
-                onClick={onNavigate}
+                onClick={() => { markSidebarNavigation(); onNavigate?.(); }}
                 title={item.title}
                 to={item.path}
               >

@@ -3,11 +3,10 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, us
 import { CSS } from '@dnd-kit/utilities';
 
 import { useAuth } from '@/app/auth-context';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { TableSkeleton } from '@/components/common/Skeleton';
+import { LoadingState } from '@/components/common/LoadingState';
 import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { checkAllocationConflict } from '@/lib/api/staffing-requests';
 
@@ -58,8 +57,8 @@ function AssignmentBar({ assignment, week, conflict }: {
       {...listeners}
       {...attributes}
       style={{
-        background: conflict ? '#fecaca' : (isDragging ? '#bfdbfe' : '#dbeafe'),
-        border: `1px solid ${conflict ? '#ef4444' : '#3b82f6'}`,
+        background: conflict ? 'var(--color-danger-bg)' : (isDragging ? 'var(--color-info-bg)' : 'var(--color-accent-bg)'),
+        border: `1px solid ${conflict ? 'var(--color-status-danger)' : 'var(--color-accent)'}`,
         borderRadius: '4px',
         cursor: 'grab',
         fontSize: '0.75rem',
@@ -99,8 +98,8 @@ function BoardCell({ personId, week, children, isSelected, cellRef, onKeyDown }:
       onKeyDown={onKeyDown}
       role="gridcell"
       style={{
-        background: isOver ? '#eff6ff' : undefined,
-        border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+        background: isOver ? 'var(--color-info-bg)' : undefined,
+        border: isSelected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
         minWidth: '80px',
         outline: 'none',
         padding: '4px',
@@ -243,12 +242,6 @@ export function StaffingBoardPage(): JSX.Element {
 
   return (
     <PageContainer viewport>
-      <Breadcrumb
-        items={[
-          { label: 'Home', to: '/' },
-          { label: 'Staffing Board' },
-        ]}
-      />
       <PageHeader
         eyebrow="Supply & Demand"
         subtitle="Drag assignments between people to re-staff. Conflict detection prevents overallocation."
@@ -258,8 +251,8 @@ export function StaffingBoardPage(): JSX.Element {
       {conflictMessage ? (
         <div
           style={{
-            background: conflictMessage.includes('succeed') ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${conflictMessage.includes('succeed') ? '#22c55e' : '#ef4444'}`,
+            background: conflictMessage.includes('succeed') ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+            border: `1px solid ${conflictMessage.includes('succeed') ? 'var(--color-status-active)' : 'var(--color-status-danger)'}`,
             borderRadius: '6px',
             marginBottom: '1rem',
             padding: '0.75rem 1rem',
@@ -270,7 +263,7 @@ export function StaffingBoardPage(): JSX.Element {
       ) : null}
 
       {error ? <ErrorState description={error} /> : null}
-      {isLoading ? <TableSkeleton cols={13} rows={6} /> : null}
+      {isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
 
       {!isLoading && !error ? (
         <div style={{ overflowX: 'auto' }}>
@@ -295,13 +288,13 @@ export function StaffingBoardPage(): JSX.Element {
             <table role="grid" style={{ borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed', width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #e2e8f0', minWidth: '120px', padding: '6px', textAlign: 'left' }}>
+                  <th style={{ border: '1px solid var(--color-border)', minWidth: '120px', padding: '6px', textAlign: 'left' }}>
                     Person
                   </th>
                   {weeks.map((week) => (
                     <th
                       key={week}
-                      style={{ border: '1px solid #e2e8f0', fontSize: '0.7rem', minWidth: '80px', padding: '4px', textAlign: 'center' }}
+                      style={{ border: '1px solid var(--color-border)', fontSize: '0.7rem', minWidth: '80px', padding: '4px', textAlign: 'center' }}
                     >
                       {week.slice(5)}
                     </th>
@@ -315,7 +308,7 @@ export function StaffingBoardPage(): JSX.Element {
                     <tr key={personId}>
                       <td
                         style={{
-                          border: '1px solid #e2e8f0',
+                          border: '1px solid var(--color-border)',
                           color: 'var(--color-text)',
                           fontWeight: 500,
                           padding: '6px',
@@ -373,8 +366,8 @@ export function StaffingBoardPage(): JSX.Element {
               {draggedAssignment ? (
                 <div
                   style={{
-                    background: '#bfdbfe',
-                    border: '1px solid #3b82f6',
+                    background: 'var(--color-info-bg)',
+                    border: '1px solid var(--color-accent)',
                     borderRadius: '4px',
                     fontSize: '0.75rem',
                     fontWeight: 500,

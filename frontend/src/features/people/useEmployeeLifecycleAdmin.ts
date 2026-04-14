@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
+import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { EmployeeLifecycleFormValues } from '@/components/people/EmployeeLifecycleForm';
 import {
   CreateEmployeeRequest,
@@ -162,6 +163,7 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
       const created = await createEmployee(request);
       setCreatedEmployee(created);
       setSuccessMessage(`Created employee ${created.name} with status ${created.status}.`);
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       setValues(initialEmployeeLifecycleFormValues);
       setErrors({});
       return created;

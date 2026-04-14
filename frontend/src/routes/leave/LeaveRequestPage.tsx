@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDate } from '@/lib/format-date';
 import {
   LeaveRequestDto,
   LeaveRequestType,
@@ -24,9 +25,9 @@ const LEAVE_TYPE_LABELS: Record<LeaveRequestType, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  APPROVED: '#22c55e',
-  PENDING: '#f59e0b',
-  REJECTED: '#ef4444',
+  APPROVED: 'var(--color-status-active)',
+  PENDING: 'var(--color-status-warning)',
+  REJECTED: 'var(--color-status-danger)',
 };
 
 export function LeaveRequestPage(): JSX.Element {
@@ -130,7 +131,7 @@ export function LeaveRequestPage(): JSX.Element {
         title="Time Off"
       />
 
-      {isLoading ? <LoadingState label="Loading leave requests..." /> : null}
+      {isLoading ? <LoadingState label="Loading leave requests..." variant="skeleton" skeletonType="table" /> : null}
       {error ? <ErrorState description={error} /> : null}
 
       <SectionCard title="Request Leave">
@@ -189,10 +190,10 @@ export function LeaveRequestPage(): JSX.Element {
           </div>
 
           {submitError ? (
-            <p style={{ color: '#ef4444', fontSize: '13px', marginBottom: '8px' }}>{submitError}</p>
+            <p style={{ color: 'var(--color-status-danger)', fontSize: '13px', marginBottom: '8px' }}>{submitError}</p>
           ) : null}
           {successMessage ? (
-            <p style={{ color: '#22c55e', fontSize: '13px', marginBottom: '8px' }}>{successMessage}</p>
+            <p style={{ color: 'var(--color-status-active)', fontSize: '13px', marginBottom: '8px' }}>{successMessage}</p>
           ) : null}
 
           <button
@@ -212,36 +213,45 @@ export function LeaveRequestPage(): JSX.Element {
             title="No leave requests"
           />
         ) : (
-          <div className="monitoring-list">
-            {myRequests.map((req) => (
-              <div className="monitoring-list__item" key={req.id}>
-                <div className="monitoring-list__title">
-                  {LEAVE_TYPE_LABELS[req.type]}: {req.startDate} → {req.endDate}
-                  <span
-                    style={{
-                      background: STATUS_COLORS[req.status] ?? '#94a3b8',
-                      borderRadius: '4px',
-                      color: '#fff',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      marginLeft: '8px',
-                      padding: '1px 6px',
-                    }}
-                  >
-                    {req.status}
-                  </span>
-                </div>
-                {req.notes ? (
-                  <p className="monitoring-list__summary">{req.notes}</p>
-                ) : null}
-                <p style={{ color: '#9ca3af', fontSize: '11px', marginTop: '2px' }}>
-                  Submitted {new Date(req.createdAt).toLocaleDateString('en-US')}
-                  {req.reviewedAt
-                    ? ` · Reviewed ${new Date(req.reviewedAt).toLocaleDateString('en-US')}`
-                    : ''}
-                </p>
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table className="dash-compact-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th>Submitted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myRequests.map((req) => (
+                  <tr key={req.id}>
+                    <td style={{ fontWeight: 500 }}>{LEAVE_TYPE_LABELS[req.type]}</td>
+                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{req.startDate} → {req.endDate}</td>
+                    <td>
+                      <span
+                        style={{
+                          background: STATUS_COLORS[req.status] ?? 'var(--color-status-neutral)',
+                          borderRadius: '4px',
+                          color: 'var(--color-surface)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '1px 6px',
+                        }}
+                      >
+                        {req.status}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{req.notes ?? ''}</td>
+                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      {formatDate(req.createdAt)}
+                      {req.reviewedAt ? ` · Reviewed ${formatDate(req.reviewedAt)}` : ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </SectionCard>
@@ -255,7 +265,7 @@ export function LeaveRequestPage(): JSX.Element {
             />
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
+              <table className="dash-compact-table">
                 <thead>
                   <tr>
                     <th>Person</th>
@@ -289,7 +299,7 @@ export function LeaveRequestPage(): JSX.Element {
                           <button
                             className="button button--secondary"
                             onClick={() => void handleReject(req.id)}
-                            style={{ color: '#ef4444', fontSize: '12px', padding: '2px 8px' }}
+                            style={{ color: 'var(--color-status-danger)', fontSize: '12px', padding: '2px 8px' }}
                             type="button"
                           >
                             Reject

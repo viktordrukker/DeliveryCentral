@@ -1,18 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { demoPeople, demoProjects } from '../../../../prisma/seeds/demo-dataset';
-import { lifeDemoPeople, lifeDemoProjects } from '../../../../prisma/seeds/life-demo-dataset';
-import { phase2People, phase2Projects } from '../../../../prisma/seeds/phase2-dataset';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectAssignmentRepositoryPort } from '../domain/repositories/project-assignment-repository.port';
 import { AssignmentDirectoryItemDto } from './contracts/assignment-directory.dto';
-
-// Merged lookup maps — covers demo, phase2, and life-demo seed datasets.
-const allPeopleById = new Map(
-  [...demoPeople, ...phase2People, ...lifeDemoPeople].map((person) => [person.id, person]),
-);
-const allProjectsById = new Map(
-  [...demoProjects, ...phase2Projects, ...lifeDemoProjects].map((project) => [project.id, project]),
-);
 
 interface ListAssignmentsQuery {
   from?: string;
@@ -28,6 +18,7 @@ interface ListAssignmentsQuery {
 export class ListAssignmentsService {
   public constructor(
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: ListAssignmentsQuery): Promise<{ items: AssignmentDirectoryItemDto[]; page: number; pageSize: number; totalCount: number }> {
@@ -57,6 +48,13 @@ export class ListAssignmentsService {
     const pageSize = Math.min(500, Math.max(1, query.pageSize ?? 100));
     const totalCount = filtered.length;
     const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+    const [dbPeople, dbProjects] = await Promise.all([
+      this.prisma.person.findMany({ select: { id: true, displayName: true } }),
+      this.prisma.project.findMany({ select: { id: true, name: true } }),
+    ]);
+    const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
+    const allProjectsById = new Map(dbProjects.map((p) => [p.id, p]));
 
     const items = paginated.map<AssignmentDirectoryItemDto>((assignment) => {
       const person = allPeopleById.get(assignment.personId);

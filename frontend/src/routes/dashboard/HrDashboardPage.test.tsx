@@ -78,11 +78,13 @@ describe('HrDashboardPage', () => {
           currentOrgUnit: { code: 'DEP-HR', id: 'org-hr', name: 'People Operations' },
           displayName: 'Harper Ali',
           dottedLineManagers: [],
+          grade: null,
           id: '11111111-1111-1111-1111-111111111005',
           primaryEmail: 'harper@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
+          role: null,
         },
       ],
       page: 1,
@@ -166,8 +168,8 @@ describe('HrDashboardPage', () => {
 
     // Roles tab: role and grade distribution
     await user.click(screen.getByRole('tab', { name: 'Roles' }));
-    expect(screen.getByText('Role: Engineering Manager')).toBeInTheDocument();
-    expect(screen.getByText('Grade: G7')).toBeInTheDocument();
+    expect(screen.getByText('Engineering Manager')).toBeInTheDocument();
+    expect(screen.getByText('G7')).toBeInTheDocument();
 
     // Wellbeing tab: mood heatmap
     await user.click(screen.getByRole('tab', { name: 'Wellbeing' }));

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { OrgChart } from 'd3-org-chart';
 
 import type { OrgChartNode, OrgChartPersonSummary } from '@/lib/api/org-chart';
-import { renderOrgChartNodeContent } from './OrgChartNode';
+import type { OrgPersonEnriched, OrgViewMode } from '@/features/org-chart/useOrgChart';
+import { renderPersonNodeContent, renderDeptNodeContent } from './OrgChartNode';
+import { PersonSidebarDrawer } from './PersonSidebarDrawer';
+import { DepartmentSidebarDrawer } from './DepartmentSidebarDrawer';
+
+/* ── Legacy flat node for department view ──────────────────────────────────── */
 
 export interface FlatOrgNode {
   id: string;
@@ -14,13 +19,67 @@ export interface FlatOrgNode {
   memberCount: number;
   activeAssignments: number;
   utilization: number;
+  onBench: number;
+  overallocated: number;
   healthStatus: 'green' | 'yellow' | 'red';
+  /** All descendant org unit codes (including this node), used to match people */
+  allCodes: string[];
 }
 
-function flattenTree(nodes: OrgChartNode[], parentId: string | null = null): FlatOrgNode[] {
+/** Collect all org unit codes in a subtree (this node + all descendants) */
+function collectDescendantCodes(node: OrgChartNode): string[] {
+  const codes = [node.code];
+  for (const child of node.children) {
+    codes.push(...collectDescendantCodes(child));
+  }
+  return codes;
+}
+
+/** Gather all people that belong to any of the given org unit codes */
+function gatherPeopleForCodes(
+  codes: string[],
+  peopleByUnit: Map<string, OrgPersonEnriched[]>,
+): OrgPersonEnriched[] {
+  const seen = new Set<string>();
+  const result: OrgPersonEnriched[] = [];
+  for (const code of codes) {
+    for (const p of peopleByUnit.get(code) ?? []) {
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        result.push(p);
+      }
+    }
+  }
+  return result;
+}
+
+function flattenDeptTree(
+  nodes: OrgChartNode[],
+  parentId: string | null = null,
+  peopleByUnit: Map<string, OrgPersonEnriched[]> = new Map(),
+): FlatOrgNode[] {
   const result: FlatOrgNode[] = [];
   for (const node of nodes) {
-    const memberCount = node.members.length;
+    // Collect all codes in this subtree so we match people in child units too
+    const allCodes = collectDescendantCodes(node);
+    const unitPeople = gatherPeopleForCodes(allCodes, peopleByUnit);
+    const memberCount = unitPeople.length > 0 ? unitPeople.length : node.members.length;
+    const totalAssignments = unitPeople.reduce((s, p) => s + p.assignmentCount, 0);
+    const avgAllocation = memberCount > 0
+      ? Math.round(unitPeople.reduce((s, p) => s + p.totalAllocation, 0) / memberCount)
+      : 0;
+    const overallocated = unitPeople.filter((p) => p.totalAllocation > 100).length;
+    const onBench = unitPeople.filter((p) => p.totalAllocation === 0 && p.lifecycleStatus.toUpperCase() === 'ACTIVE').length;
+
+    let healthStatus: 'green' | 'yellow' | 'red';
+    if (overallocated > 0) {
+      healthStatus = 'red';
+    } else if (onBench > 0 || memberCount === 0) {
+      healthStatus = memberCount === 0 && node.children.length > 0 ? 'green' : 'yellow';
+    } else {
+      healthStatus = 'green';
+    }
+
     result.push({
       id: node.id,
       parentId,
@@ -29,87 +88,362 @@ function flattenTree(nodes: OrgChartNode[], parentId: string | null = null): Fla
       kind: node.kind,
       manager: node.manager,
       memberCount,
-      activeAssignments: memberCount,
-      utilization: memberCount > 0 ? Math.min(100, Math.round(Math.random() * 40 + 60)) : 0,
-      healthStatus: memberCount === 0 ? (node.children.length > 0 ? 'green' : 'red') : memberCount < 3 ? 'yellow' : 'green',
+      activeAssignments: totalAssignments,
+      utilization: avgAllocation,
+      onBench,
+      overallocated,
+      healthStatus,
+      allCodes,
     });
-    result.push(...flattenTree(node.children, node.id));
+    result.push(...flattenDeptTree(node.children, node.id, peopleByUnit));
   }
   return result;
 }
 
-interface InteractiveOrgChartProps {
-  roots: OrgChartNode[];
-  searchTerm?: string;
-  dottedLines?: Array<{ from: string; to: string }>;
-  onNodeClick?: (node: FlatOrgNode) => void;
+/* ── People-centric flat node ──────────────────────────────────────────────── */
+
+export interface FlatPersonNode {
+  id: string;
+  parentId: string | null;
+  displayName: string;
+  primaryEmail: string | null;
+  orgUnitName: string | null;
+  lifecycleStatus: string;
+  assignmentCount: number;
+  totalAllocation: number;
+  /** Top 3 assignments by allocation % */
+  topAssignments: Array<{ projectId: string; projectName: string; pct: number }>;
+  resourcePools: Array<{ id: string; name: string }>;
+  dottedLineManagerIds: string[];
 }
 
-export function InteractiveOrgChart({ roots, searchTerm = '', dottedLines = [], onNodeClick }: InteractiveOrgChartProps): JSX.Element {
+/** Sentinel ID for the synthetic root that groups all top-level people */
+export const SYNTHETIC_ROOT_ID = '__org_root__';
+
+function buildPeopleTree(people: OrgPersonEnriched[]): FlatPersonNode[] {
+  const personIds = new Set(people.map((p) => p.id));
+
+  const nodes: FlatPersonNode[] = people.map((p) => {
+    const sorted = [...p.allocations].sort((a, b) => b.allocationPercent - a.allocationPercent);
+    const hasParentInTree = p.lineManagerId && personIds.has(p.lineManagerId);
+    return {
+      id: p.id,
+      parentId: hasParentInTree ? p.lineManagerId : SYNTHETIC_ROOT_ID,
+      displayName: p.displayName,
+      primaryEmail: p.primaryEmail,
+      orgUnitName: p.orgUnitName,
+      lifecycleStatus: p.lifecycleStatus,
+      assignmentCount: p.assignmentCount,
+      totalAllocation: p.totalAllocation,
+      topAssignments: sorted.slice(0, 3).map((a) => ({
+        projectId: a.projectId,
+        projectName: a.projectName,
+        pct: a.allocationPercent,
+      })),
+      resourcePools: p.resourcePools,
+      dottedLineManagerIds: p.dottedLineManagerIds,
+    };
+  });
+
+  // d3.stratify() requires exactly one root (parentId === null).
+  nodes.unshift({
+    id: SYNTHETIC_ROOT_ID,
+    parentId: null,
+    displayName: 'Organization',
+    primaryEmail: null,
+    orgUnitName: null,
+    lifecycleStatus: 'ACTIVE',
+    assignmentCount: 0,
+    totalAllocation: 0,
+    topAssignments: [],
+    resourcePools: [],
+    dottedLineManagerIds: [],
+  });
+
+  return nodes;
+}
+
+/* ── Expand level helpers ─────────────────────────────────────────────────── */
+
+function computeMaxDepth(chart: OrgChart<unknown>): number {
+  try {
+    const state = (chart as unknown as { getChartState: () => { root?: { descendants?: () => Array<{ depth: number }> } } }).getChartState();
+    const descendants = state.root?.descendants?.() ?? [];
+    return descendants.reduce((max, d) => Math.max(max, d.depth), 0);
+  } catch {
+    return 5;
+  }
+}
+
+function expandToLevel(chart: OrgChart<unknown>, level: number): void {
+  try {
+    const state = (chart as unknown as { getChartState: () => { root?: { descendants?: () => Array<{ depth: number; data: { _expanded?: boolean } }> } } }).getChartState();
+    const descendants = state.root?.descendants?.() ?? [];
+    for (const d of descendants) {
+      d.data._expanded = d.depth < level;
+    }
+    (chart as unknown as { update: (d: unknown) => void }).update(state.root);
+    chart.fit();
+  } catch {
+    // fallback: use built-in methods
+    if (level <= 0) {
+      chart.collapseAll();
+    } else {
+      chart.expandAll();
+    }
+  }
+}
+
+/* ── Props ─────────────────────────────────────────────────────────────────── */
+
+interface InteractiveOrgChartProps {
+  roots: OrgChartNode[];
+  people: OrgPersonEnriched[];
+  allPeople: OrgPersonEnriched[];
+  searchTerm?: string;
+  dottedLines?: Array<{ from: string; to: string }>;
+  onNodeClick?: (node: FlatOrgNode | FlatPersonNode) => void;
+  viewMode: OrgViewMode;
+}
+
+/* ── Component ─────────────────────────────────────────────────────────────── */
+
+export function InteractiveOrgChart({
+  roots,
+  people,
+  allPeople,
+  searchTerm = '',
+  dottedLines = [],
+  onNodeClick,
+  viewMode,
+}: InteractiveOrgChartProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<OrgChart<FlatOrgNode> | null>(null);
-  const [selectedNode, setSelectedNode] = useState<FlatOrgNode | null>(null);
+  const chartRef = useRef<OrgChart<FlatPersonNode | FlatOrgNode> | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<OrgPersonEnriched | null>(null);
+  const [selectedDept, setSelectedDept] = useState<FlatOrgNode | null>(null);
+  const [expandLevel, setExpandLevel] = useState(2);
+  const [maxDepth, setMaxDepth] = useState(5);
 
-  const handleNodeClick = useCallback((d: FlatOrgNode) => {
-    setSelectedNode(d);
-    onNodeClick?.(d);
-  }, [onNodeClick]);
+  // Close drawers when switching views
+  useEffect(() => {
+    setSelectedPerson(null);
+    setSelectedDept(null);
+  }, [viewMode]);
 
+  // d3-org-chart passes the d3 hierarchy node, not the raw data object.
+  // The raw data is on node.data. The hierarchy node also has .id from stratify.
+  const handleNodeClick = useCallback((node: unknown) => {
+    // Extract the actual data from the d3 hierarchy node
+    const raw = (node && typeof node === 'object' && 'data' in node)
+      ? (node as { data: FlatPersonNode | FlatOrgNode }).data
+      : node as FlatPersonNode | FlatOrgNode;
+    const id = raw?.id ?? ((node as { id?: string })?.id);
+
+    if (!id || id === SYNTHETIC_ROOT_ID) return;
+
+    if (viewMode === 'people') {
+      const enriched = allPeople.find((p) => p.id === id) ?? null;
+      setSelectedPerson(enriched);
+      setSelectedDept(null);
+    } else {
+      setSelectedDept(raw as FlatOrgNode);
+      setSelectedPerson(null);
+    }
+    onNodeClick?.(raw);
+  }, [onNodeClick, allPeople, viewMode]);
+
+  // Build people-by-unit map for department utilization
+  const peopleByUnit = useRef(new Map<string, OrgPersonEnriched[]>());
+  useEffect(() => {
+    const map = new Map<string, OrgPersonEnriched[]>();
+    for (const p of allPeople) {
+      if (p.orgUnitCode) {
+        const arr = map.get(p.orgUnitCode) ?? [];
+        arr.push(p);
+        map.set(p.orgUnitCode, arr);
+      }
+    }
+    peopleByUnit.current = map;
+  }, [allPeople]);
+
+  // Render / re-render chart
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || roots.length === 0) return;
-
-    // Wait for container to have dimensions (lazy-loaded pages)
+    if (!el) return;
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    const flatData = flattenTree(roots);
-    if (flatData.length === 0) return;
+    el.innerHTML = '';
+    chartRef.current = null;
 
-    try {
-      const chart = new OrgChart<FlatOrgNode>()
-        .container(`#${el.id}`)
-        .data(flatData)
-        .nodeWidth(() => 220)
-        .nodeHeight(() => 120)
-        .nodeId((d) => d.id)
-        .parentNodeId((d) => d.parentId)
-        .compact(false)
-        .nodeContent((d) => renderOrgChartNodeContent(d.data, d.width, d.height, searchTerm))
-        .onNodeClick(handleNodeClick)
-        .render();
+    if (viewMode === 'people') {
+      if (people.length === 0) return;
+      const flatData = buildPeopleTree(people);
+      if (flatData.length === 0) return;
 
-      if (dottedLines.length > 0) {
-        chart.connections(dottedLines.map(({ from, to }) => ({ from, to, label: 'dotted-line' })));
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const chart = (new OrgChart<FlatPersonNode>()
+          .container(`#${el.id}`)
+          .data(flatData)
+          .nodeWidth(() => 280)
+          .nodeHeight(() => 160)
+          .nodeId((d: FlatPersonNode) => d.id)
+          .parentNodeId((d: FlatPersonNode) => d.parentId)
+          .compact(false) as any)
+          .initialExpandLevel(expandLevel)
+          .connectionsUpdate(function (this: SVGPathElement) {
+            this.setAttribute('stroke', '#be185d');
+            this.setAttribute('stroke-dasharray', '8 5');
+            this.setAttribute('stroke-width', '2.5');
+            this.setAttribute('stroke-linecap', 'round');
+            this.setAttribute('opacity', '0.75');
+            this.style.pointerEvents = 'none';
+            this.removeAttribute('marker-start');
+            this.removeAttribute('marker-end');
+          })
+          .nodeContent((d: { data: FlatPersonNode; width: number; height: number }) => renderPersonNodeContent(d.data, d.width, d.height, searchTerm))
+          .onNodeClick(handleNodeClick)
+          .render() as OrgChart<FlatPersonNode>;
+
+        const peopleDottedLines: Array<{ from: string; to: string }> = [];
+        for (const p of people) {
+          for (const mgrId of p.dottedLineManagerIds) {
+            peopleDottedLines.push({ from: mgrId, to: p.id });
+          }
+        }
+        if (peopleDottedLines.length > 0) {
+          chart.connections(peopleDottedLines.map(({ from, to }) => ({ from, to, label: 'dotted-line' })));
+        }
+
+        chart.fit();
+        chartRef.current = chart as unknown as OrgChart<FlatPersonNode | FlatOrgNode>;
+        setMaxDepth(computeMaxDepth(chart as unknown as OrgChart<unknown>));
+      } catch {
+        // d3-org-chart may fail if container is not ready
       }
+    } else {
+      if (roots.length === 0) return;
+      const flatData = flattenDeptTree(roots, null, peopleByUnit.current);
+      if (flatData.length === 0) return;
 
-      chart.fit();
-      chartRef.current = chart;
-    } catch {
-      // d3-org-chart may fail if container is not ready
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const chart = (new OrgChart<FlatOrgNode>()
+          .container(`#${el.id}`)
+          .data(flatData)
+          .nodeWidth(() => 220)
+          .nodeHeight(() => 120)
+          .nodeId((d: FlatOrgNode) => d.id)
+          .parentNodeId((d: FlatOrgNode) => d.parentId)
+          .compact(false) as any)
+          .initialExpandLevel(expandLevel)
+          .connectionsUpdate(function (this: SVGPathElement) {
+            this.setAttribute('stroke', '#be185d');
+            this.setAttribute('stroke-dasharray', '8 5');
+            this.setAttribute('stroke-width', '2.5');
+            this.setAttribute('stroke-linecap', 'round');
+            this.setAttribute('opacity', '0.75');
+            this.style.pointerEvents = 'none';
+            this.removeAttribute('marker-start');
+            this.removeAttribute('marker-end');
+          })
+          .nodeContent((d: { data: FlatOrgNode; width: number; height: number }) => renderDeptNodeContent(d.data, d.width, d.height, searchTerm))
+          .onNodeClick(handleNodeClick)
+          .render() as OrgChart<FlatOrgNode>;
+
+        if (dottedLines.length > 0) {
+          chart.connections(dottedLines.map(({ from, to }) => ({ from, to, label: 'dotted-line' })));
+        }
+
+        chart.fit();
+        chartRef.current = chart as unknown as OrgChart<FlatPersonNode | FlatOrgNode>;
+        setMaxDepth(computeMaxDepth(chart as unknown as OrgChart<unknown>));
+      } catch {
+        // d3-org-chart may fail if container is not ready
+      }
     }
-  }, [roots, searchTerm, dottedLines, handleNodeClick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roots, people, searchTerm, dottedLines, handleNodeClick, viewMode]);
 
   const handleFit = () => chartRef.current?.fit();
   const handleZoomIn = () => chartRef.current?.zoomIn();
   const handleZoomOut = () => chartRef.current?.zoomOut();
-  const handleExpandAll = () => chartRef.current?.expandAll();
-  const handleCollapseAll = () => chartRef.current?.collapseAll();
-
-  const handleExportPng = () => {
-    chartRef.current?.exportImg({ full: true, save: true });
+  const handleExpandAll = () => {
+    chartRef.current?.expandAll();
+    setExpandLevel(maxDepth);
   };
+  const handleCollapseAll = () => {
+    chartRef.current?.collapseAll();
+    setExpandLevel(0);
+  };
+  const handleExportPng = () => { chartRef.current?.exportImg({ full: true, save: true }); };
+
+  const handleLevelChange = (level: number) => {
+    setExpandLevel(level);
+    if (chartRef.current) {
+      expandToLevel(chartRef.current as unknown as OrgChart<unknown>, level);
+    }
+  };
+
+  // Build level buttons (1 through min(maxDepth, 6))
+  const levelButtons = Array.from({ length: Math.min(maxDepth, 6) }, (_, i) => i + 1);
 
   return (
     <div className="interactive-org-chart" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Compact toolbar */}
-      <div className="org-chart-toolbar">
-        <button className="button button--secondary button--sm" onClick={handleZoomIn} title="Zoom in" type="button">+</button>
-        <button className="button button--secondary button--sm" onClick={handleZoomOut} title="Zoom out" type="button">−</button>
-        <button className="button button--secondary button--sm" onClick={handleFit} title="Fit to screen" type="button">⊞ Fit</button>
-        <button className="button button--secondary button--sm" onClick={handleExpandAll} title="Expand all" type="button">↕ Expand</button>
-        <button className="button button--secondary button--sm" onClick={handleCollapseAll} title="Collapse all" type="button">↔ Collapse</button>
-        <button className="button button--secondary button--sm" onClick={handleExportPng} title="Export PNG" type="button">📷 Export</button>
+      {/* Toolbar */}
+      <div className="org-chart-toolbar" style={{ flexWrap: 'wrap', height: 'auto', minHeight: 44, padding: '4px var(--space-3, 12px)' }}>
+        {/* Zoom controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="button button--secondary button--sm" onClick={handleZoomIn} title="Zoom in" type="button">+</button>
+          <button className="button button--secondary button--sm" onClick={handleZoomOut} title="Zoom out" type="button">{'\u2212'}</button>
+          <button className="button button--secondary button--sm" onClick={handleFit} title="Fit to screen" type="button">{'\u229E'} Fit</button>
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+        {/* Expand/Collapse */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button className="button button--secondary button--sm" onClick={handleCollapseAll} title="Collapse all" type="button">{'\u2194'} Collapse</button>
+          <button className="button button--secondary button--sm" onClick={handleExpandAll} title="Expand all" type="button">{'\u2195'} Expand</button>
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+        {/* Level controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginRight: 4, fontWeight: 500 }}>Depth:</span>
+          {levelButtons.map((level) => (
+            <button
+              key={level}
+              className="button button--sm"
+              onClick={() => handleLevelChange(level)}
+              title={`Expand to level ${level}`}
+              type="button"
+              style={{
+                minWidth: 26,
+                padding: '2px 6px',
+                fontSize: 11,
+                fontWeight: expandLevel === level ? 700 : 400,
+                background: expandLevel === level ? 'var(--color-primary, #114b7a)' : 'transparent',
+                color: expandLevel === level ? '#fff' : 'var(--color-text-secondary)',
+                border: expandLevel === level ? 'none' : '1px solid var(--color-border)',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+        {/* Export */}
+        <button className="button button--secondary button--sm" onClick={handleExportPng} title="Export PNG" type="button">{'\uD83D\uDCF7'} Export</button>
       </div>
 
       {/* Chart area */}
@@ -120,22 +454,22 @@ export function InteractiveOrgChart({ roots, searchTerm = '', dottedLines = [], 
         style={{ flex: 1, width: '100%', minHeight: 0 }}
       />
 
-      {/* Side drawer */}
-      {selectedNode ? (
-        <div className="org-chart-drawer">
-          <div className="org-chart-drawer__header">
-            <h3>{selectedNode.name}</h3>
-            <button className="button button--ghost button--sm" onClick={() => setSelectedNode(null)} type="button">✕</button>
-          </div>
-          <dl className="pva-detail__dl">
-            <dt>Code</dt><dd>{selectedNode.code}</dd>
-            <dt>Type</dt><dd>{selectedNode.kind}</dd>
-            <dt>Manager</dt><dd>{selectedNode.manager?.displayName ?? 'No manager'}</dd>
-            <dt>Members</dt><dd>{selectedNode.memberCount}</dd>
-            <dt>Utilization</dt><dd>{selectedNode.utilization}%</dd>
-          </dl>
-        </div>
-      ) : null}
+      {/* Person sidebar drawer */}
+      {selectedPerson && (
+        <PersonSidebarDrawer
+          person={selectedPerson}
+          onClose={() => setSelectedPerson(null)}
+        />
+      )}
+
+      {/* Department sidebar drawer */}
+      {selectedDept && (
+        <DepartmentSidebarDrawer
+          dept={selectedDept}
+          people={allPeople}
+          onClose={() => setSelectedDept(null)}
+        />
+      )}
     </div>
   );
 }

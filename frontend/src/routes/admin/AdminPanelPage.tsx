@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDateTime } from '@/lib/format-date';
 import { useAdminPanel } from '@/features/admin/useAdminPanel';
 import {
   AdminAccountItem,
@@ -135,7 +136,7 @@ export function AdminPanelPage(): JSX.Element {
         title="Admin Panel"
       />
 
-      {state.isLoading ? <LoadingState label="Loading admin panel..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading admin panel..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error && state.data ? (
@@ -265,15 +266,15 @@ function AdminAccountsSection({
         description="All local authentication accounts. Enable, disable, or delete accounts as needed."
         title="Account List"
       >
-        {accountsLoading ? <LoadingState label="Loading accounts..." /> : null}
+        {accountsLoading ? <LoadingState label="Loading accounts..." variant="skeleton" skeletonType="page" /> : null}
         {accountsError ? <ErrorState description={accountsError} /> : null}
         {actionError ? <ErrorState description={actionError} /> : null}
         {!accountsLoading && !accountsError && accounts.length === 0 ? (
           <EmptyState description="No local accounts found." title="No accounts" />
         ) : null}
         {!accountsLoading && accounts.length > 0 ? (
-          <div className="data-table" style={{ marginTop: '8px' }}>
-            <table>
+          <div style={{ marginTop: '8px', overflow: 'auto' }}>
+            <table className="dash-compact-table">
               <thead>
                 <tr>
                   <th>Email</th>
@@ -288,7 +289,7 @@ function AdminAccountsSection({
                     <td>{account.email}</td>
                     <td>{account.roles.join(', ')}</td>
                     <td>
-                      <span style={{ color: account.isEnabled ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                      <span style={{ color: account.isEnabled ? 'var(--color-status-active)' : 'var(--color-status-danger)', fontWeight: 600 }}>
                         {account.isEnabled ? 'Enabled' : 'Disabled'}
                       </span>
                     </td>
@@ -393,7 +394,7 @@ function AdminAccountsSection({
               type="text"
               value={accountForm.roles}
             />
-            <span style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
               Available: admin, delivery_manager, project_manager, resource_manager, hr_manager, director, employee
             </span>
           </label>
@@ -498,7 +499,7 @@ function renderSection(
               emptyMessage="No integration details were returned."
               items={data.integrations.integrations.map<AdminListItem>((item) => ({
                 description: item.lastProjectSyncAt
-                  ? `Last sync ${new Date(item.lastProjectSyncAt).toLocaleString('en-US')}`
+                  ? `Last sync ${formatDateTime(item.lastProjectSyncAt)}`
                   : 'No sync recorded yet',
                 id: item.provider,
                 metrics: [

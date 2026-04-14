@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { VirtualTable } from '@/components/common/VirtualTable';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
 import { BusinessAuditRecord } from '@/lib/api/business-audit';
+import { formatDateTime } from '@/lib/format-date';
 
 const VIRTUAL_THRESHOLD = 100;
 
@@ -33,7 +34,7 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
           render: (item: BusinessAuditRecord) => (
             <div className="audit-record">
               <div className="audit-record__primary">
-                {new Date(item.occurredAt).toLocaleString('en-US')}
+                {formatDateTime(item.occurredAt)}
               </div>
               <div className="audit-record__secondary">
                 {item.correlationId ? `Correlation: ${item.correlationId}` : 'No correlation id'}
@@ -67,7 +68,7 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
         {
           key: 'actor',
           render: (item: BusinessAuditRecord) => (
-            <span className="audit-record__primary">{item.actorId ?? 'System / unknown'}</span>
+            <span className="audit-record__primary">{item.actorDisplayName ?? item.actorId ?? 'System / unknown'}</span>
           ),
           title: COLUMN_LABELS.actor,
         },

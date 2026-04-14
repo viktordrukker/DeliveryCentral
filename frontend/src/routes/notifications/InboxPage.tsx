@@ -98,7 +98,7 @@ export function InboxPage(): JSX.Element {
         title="Notifications"
       />
 
-      {isLoading ? <LoadingState label="Loading notifications..." /> : null}
+      {isLoading ? <LoadingState label="Loading notifications..." variant="skeleton" skeletonType="table" /> : null}
       {error ? <ErrorState description={error} /> : null}
 
       {!isLoading && !error ? (
@@ -114,9 +114,9 @@ export function InboxPage(): JSX.Element {
                 <li
                   key={notification.id}
                   style={{
-                    borderLeft: notification.readAt ? 'none' : '3px solid #3182ce',
-                    background: notification.readAt ? 'transparent' : '#ebf8ff',
-                    borderBottom: '1px solid #f0f0f0',
+                    borderLeft: notification.readAt ? 'none' : '3px solid var(--color-accent)',
+                    background: notification.readAt ? 'transparent' : 'var(--color-info-bg)',
+                    borderBottom: '1px solid var(--color-border)',
                   }}
                 >
                   <div
@@ -144,11 +144,11 @@ export function InboxPage(): JSX.Element {
                         {notification.title}
                       </div>
                       {notification.body && (
-                        <div style={{ fontSize: '13px', color: '#4a5568', marginTop: '3px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '3px' }}>
                           {notification.body}
                         </div>
                       )}
-                      <div style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                         {relativeTime(notification.createdAt)}
                       </div>
                     </div>
@@ -163,7 +163,7 @@ export function InboxPage(): JSX.Element {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#718096',
+                          color: 'var(--color-text-muted)',
                           fontSize: '18px',
                           flexShrink: 0,
                           padding: '0 4px',

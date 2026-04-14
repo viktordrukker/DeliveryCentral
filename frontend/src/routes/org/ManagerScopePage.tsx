@@ -20,7 +20,7 @@ export function ManagerScopePage(): JSX.Element {
         title={state.manager ? `${state.manager.displayName} Scope` : 'Manager Scope'}
       />
 
-      {state.isLoading ? <LoadingState label="Loading manager scope..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading manager scope..." variant="skeleton" skeletonType="chart" /> : null}
       {state.managerNotFound ? (
         <SectionCard>
           <EmptyState
@@ -33,7 +33,7 @@ export function ManagerScopePage(): JSX.Element {
 
       {state.manager && state.data ? (
         <>
-          <div className="details-summary-grid">
+          <div className="kpi-strip">
             <SummaryCard label="Manager" value={state.manager.displayName} />
             <SummaryCard
               label="Org Unit"

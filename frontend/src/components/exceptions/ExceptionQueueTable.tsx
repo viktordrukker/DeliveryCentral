@@ -2,7 +2,9 @@ import { useState } from 'react';
 
 import { ExceptionQueueItem } from '@/lib/api/exceptions';
 import { DataTable } from '@/components/common/DataTable';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { humanizeEnum } from '@/lib/labels';
+import { formatDateTime } from '@/lib/format-date';
 
 interface ExceptionQueueTableProps {
   items: ExceptionQueueItem[];
@@ -31,7 +33,7 @@ export function ExceptionQueueTable({
                 {selectedId === item.id ? ' (selected)' : ''}
               </span>
               <span className="audit-record__secondary">
-                <span className={`status-indicator status-indicator--${item.status.toLowerCase()}`}>{item.status}</span>
+                <StatusBadge status={item.status} variant="dot" />
               </span>
             </div>
           ),
@@ -53,7 +55,7 @@ export function ExceptionQueueTable({
         },
         {
           key: 'observedAt',
-          render: (item) => new Date(item.observedAt).toLocaleString('en-US'),
+          render: (item) => formatDateTime(item.observedAt),
           title: 'Observed',
         },
         ...(onResolve || onSuppress

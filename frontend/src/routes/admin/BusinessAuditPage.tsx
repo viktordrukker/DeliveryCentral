@@ -79,7 +79,7 @@ export function BusinessAuditPage(): JSX.Element {
         />
       </SectionCard>
 
-      {state.isLoading ? <LoadingState label="Loading business audit..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading business audit..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error ? (

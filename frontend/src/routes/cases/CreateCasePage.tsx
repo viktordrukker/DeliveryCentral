@@ -54,7 +54,7 @@ export function CreateCasePage(): JSX.Element {
         title="Create Case"
       />
 
-      {state.isLoadingOptions ? <LoadingState label="Loading case form options..." /> : null}
+      {state.isLoadingOptions ? <LoadingState label="Loading case form options..." variant="skeleton" skeletonType="detail" /> : null}
       {!state.isLoadingOptions && state.error && !canRenderForm ? (
         <ErrorState description={state.error} />
       ) : null}
@@ -75,7 +75,7 @@ export function CreateCasePage(): JSX.Element {
             </div>
           ) : null}
 
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Case Intake">
               {state.error ? <ErrorState description={state.error} /> : null}
               <CaseForm

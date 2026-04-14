@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { AuthTokenField } from '@/components/common/AuthTokenField';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -14,6 +14,7 @@ import { ProjectHealthBadge } from '@/components/common/ProjectHealthBadge';
 import { SectionCard } from '@/components/common/SectionCard';
 import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { TabBar } from '@/components/common/TabBar';
+import { formatDate as formatDateLib, formatDateShort } from '@/lib/format-date';
 import { EvidenceTimelineBar } from '@/components/charts/EvidenceTimelineBar';
 import { BudgetBurnDownChart } from '@/components/charts/BudgetBurnDownChart';
 import { CostBreakdownDonut } from '@/components/charts/CostBreakdownDonut';
@@ -60,12 +61,12 @@ const TABS = [
 ];
 
 const ROLE_COLORS: Record<string, string> = {
-  default: '#6366f1',
-  'delivery lead': '#22c55e',
-  engineer: '#3b82f6',
-  'lead engineer': '#f59e0b',
-  'product owner': '#ec4899',
-  'project manager': '#8b5cf6',
+  default: 'var(--color-chart-1, #6366f1)',
+  'delivery lead': 'var(--color-status-active, #22c55e)',
+  engineer: 'var(--color-chart-2, #3b82f6)',
+  'lead engineer': 'var(--color-status-warning, #f59e0b)',
+  'product owner': 'var(--color-chart-4, #ec4899)',
+  'project manager': 'var(--color-chart-5, #8b5cf6)',
 };
 
 function roleColor(role: string): string {
@@ -82,6 +83,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
     principal?.roles.some((r) => PROJECT_MANAGE_ROLES.includes(r)) ?? false;
   const canManageBudget = principal?.roles.some((r) => ['admin', 'project_manager', 'delivery_manager', 'director'].includes(r)) ?? false;
   const state = useProjectDetails(id);
+  const { setCurrentLabel } = useDrilldown();
   const tokenState = useStoredApiToken();
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
@@ -146,6 +148,10 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
   const [budgetSaving, setBudgetSaving] = useState(false);
   const [budgetSaveError, setBudgetSaveError] = useState<string | null>(null);
   const [budgetSaveSuccess, setBudgetSaveSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (state.data?.name) setCurrentLabel(state.data.name);
+  }, [state.data?.name, setCurrentLabel]);
 
   useEffect(() => {
     let active = true;
@@ -604,13 +610,6 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
         open={confirmOverrideOpen}
         title="Confirm Closure Override"
       />
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { href: '/projects', label: 'Projects' },
-          { label: state.data?.name ?? 'Project Details' },
-        ]}
-      />
       <PageHeader
         actions={
           id ? (
@@ -646,7 +645,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
         title={state.data?.name ?? 'Project Details'}
       />
 
-      {state.isLoading ? <LoadingState label="Loading project details..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading project details..." variant="skeleton" skeletonType="detail" /> : null}
       {state.notFound ? (
         <SectionCard>
           <EmptyState
@@ -661,7 +660,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
       {state.data ? (
         <>
-          <div className="details-summary-grid">
+          <div className="kpi-strip">
             <SummaryCard label="Project" value={state.data.name} />
             <SummaryCard label="Project Code" value={state.data.projectCode} />
             <SummaryCard label="Status" value={humanizeEnum(state.data.status, PROJECT_STATUS_LABELS)} />
@@ -675,7 +674,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
           {/* ── Summary Tab ─────────────────────────────────────────── */}
           {activeTab === 'summary' ? (
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               <SectionCard title="Project Summary">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                   {health ? (
@@ -958,9 +957,9 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
           {/* ── Team Tab ─────────────────────────────────────────────── */}
           {activeTab === 'team' ? (
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               <SectionCard title="Team Assignments">
-                {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." /> : null}
+                {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
                 {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
                 {!teamAssignmentsLoading && !teamAssignmentsError ? (
                   teamAssignments.length === 0 ? (
@@ -969,7 +968,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                       title="No team members"
                     />
                   ) : (
-                    <table className="data-table">
+                    <table className="dash-compact-table">
                       <thead>
                         <tr>
                           <th>Person</th>
@@ -988,8 +987,8 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                             </td>
                             <td>{a.staffingRole}</td>
                             <td>{a.allocationPercent}%</td>
-                            <td>{a.startDate.slice(0, 10)}</td>
-                            <td>{a.endDate ? a.endDate.slice(0, 10) : '—'}</td>
+                            <td>{formatDateShort(a.startDate)}</td>
+                            <td>{a.endDate ? formatDateShort(a.endDate) : '—'}</td>
                             <td>{a.approvalState}</td>
                           </tr>
                         ))}
@@ -1015,7 +1014,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                     />
                   ) : null}
 
-                  {teamsLoading ? <LoadingState label="Loading teams..." /> : null}
+                  {teamsLoading ? <LoadingState label="Loading teams..." variant="skeleton" skeletonType="detail" /> : null}
                   {teamsError ? <ErrorState description={teamsError} /> : null}
 
                   {!teamsLoading && !teamsError ? (
@@ -1099,7 +1098,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
           {/* ── Timeline Tab ─────────────────────────────────────────── */}
           {activeTab === 'timeline' ? (
             <SectionCard title="Assignment Timeline">
-              {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." /> : null}
+              {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." variant="skeleton" skeletonType="detail" /> : null}
               {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
               {!teamAssignmentsLoading && !teamAssignmentsError ? (
                 ganttData.length === 0 ? (
@@ -1153,9 +1152,9 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
           {/* ── Evidence Tab ─────────────────────────────────────────── */}
           {activeTab === 'evidence' ? (
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               <SectionCard title="Work Evidence">
-                {evidenceLoading ? <LoadingState label="Loading evidence..." /> : null}
+                {evidenceLoading ? <LoadingState label="Loading evidence..." variant="skeleton" skeletonType="detail" /> : null}
                 {evidenceError ? <ErrorState description={evidenceError} /> : null}
                 {!evidenceLoading && !evidenceError ? (
                   evidenceItems.length === 0 ? (
@@ -1164,7 +1163,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                       title="No evidence"
                     />
                   ) : (
-                    <table className="data-table">
+                    <table className="dash-compact-table">
                       <thead>
                         <tr>
                           <th>Activity Date</th>
@@ -1176,7 +1175,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                       <tbody>
                         {evidenceItems.map((e) => (
                           <tr key={e.id}>
-                            <td>{e.activityDate?.slice(0, 10) ?? '—'}</td>
+                            <td>{e.activityDate ? formatDateShort(e.activityDate) : '—'}</td>
                             <td>{e.sourceType}</td>
                             <td>{e.effortHours}</td>
                             <td>{e.summary ?? '—'}</td>
@@ -1198,7 +1197,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
           {/* ── Budget Tab ─────────────────────────────────────────── */}
           {activeTab === 'budget' ? (
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               {/* Budget edit form — admin/pm only */}
               {canManageBudget ? (
                 <SectionCard title="Set Budget">
@@ -1254,7 +1253,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
               ) : null}
 
               {budgetLoading ? (
-                <SectionCard title="Budget Dashboard"><LoadingState /></SectionCard>
+                <SectionCard title="Budget Dashboard"><LoadingState variant="skeleton" skeletonType="detail" /></SectionCard>
               ) : budgetError ? (
                 <SectionCard title="Budget Dashboard"><ErrorState description={budgetError} /></SectionCard>
               ) : budgetDashboard ? (
@@ -1303,7 +1302,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
           {/* ── History Tab ─────────────────────────────────────────── */}
           {activeTab === 'history' ? (
             <SectionCard title="Change History">
-              {historyLoading ? <LoadingState label="Loading history..." /> : null}
+              {historyLoading ? <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" /> : null}
               {historyError ? <ErrorState description={historyError} /> : null}
               {!historyLoading && !historyError ? (
                 <AuditTimeline events={historyEvents} />
@@ -1376,5 +1375,5 @@ function toIsoDate(value: string): string {
 
 function formatDate(value: string | null): string {
   if (!value) return 'Not set';
-  return new Date(value).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDateLib(value);
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
-import { demoPeople } from '@src/../prisma/seeds/demo-dataset';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectExternalLinkRepositoryPort } from '../domain/repositories/project-external-link-repository.port';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 
@@ -13,6 +13,7 @@ export class GetProjectByIdService {
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly projectExternalLinkRepository: ProjectExternalLinkRepositoryPort,
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(projectId: string): Promise<ProjectDetailsDto | null> {
@@ -55,8 +56,12 @@ export class GetProjectByIdService {
       plannedEndDate: project.endsOn?.toISOString() ?? null,
       projectCode: project.projectCode,
       projectManagerId: project.projectManagerId?.value ?? null,
-      projectManagerDisplayName:
-        demoPeople.find((p) => p.id === project.projectManagerId?.value)?.displayName ?? null,
+      projectManagerDisplayName: project.projectManagerId?.value
+        ? (await this.prisma.person.findFirst({
+            select: { displayName: true },
+            where: { id: project.projectManagerId.value },
+          }))?.displayName ?? null
+        : null,
       startDate: project.startsOn?.toISOString() ?? null,
       status: project.status,
       version: project.version,

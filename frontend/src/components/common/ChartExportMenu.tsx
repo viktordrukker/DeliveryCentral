@@ -67,9 +67,9 @@ export function ChartExportMenu({ csvData, title }: ChartExportMenuProps): JSX.E
         onClick={() => setOpen((v) => !v)}
         style={{
           background: 'none',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--color-border)',
           borderRadius: 4,
-          color: '#6b7280',
+          color: 'var(--color-text-muted)',
           cursor: 'pointer',
           fontSize: '16px',
           lineHeight: 1,
@@ -81,14 +81,14 @@ export function ChartExportMenu({ csvData, title }: ChartExportMenuProps): JSX.E
         ⋯
       </button>
       {copied ? (
-        <span style={{ color: '#16a34a', fontSize: '12px', marginLeft: 6 }}>Copied!</span>
+        <span style={{ color: 'var(--color-status-active)', fontSize: '12px', marginLeft: 6 }}>Copied!</span>
       ) : null}
       {open ? (
         <div
           role="menu"
           style={{
-            background: '#fff',
-            border: '1px solid #d1d5db',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
             borderRadius: 6,
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             minWidth: 160,

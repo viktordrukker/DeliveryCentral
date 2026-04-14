@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ExceptionQueueItem } from '@/lib/api/exceptions';
 import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { formatDateTime } from '@/lib/format-date';
 
 interface ExceptionDetailPanelProps {
   isLoading: boolean;
@@ -45,7 +46,7 @@ export function ExceptionDetailPanel({
         </div>
         <div>
           <dt>Observed At</dt>
-          <dd>{new Date(item.observedAt).toLocaleString('en-US')}</dd>
+          <dd>{formatDateTime(item.observedAt)}</dd>
         </div>
         <div>
           <dt>Target Entity</dt>

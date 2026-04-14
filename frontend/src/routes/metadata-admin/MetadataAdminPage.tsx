@@ -55,7 +55,7 @@ export function MetadataAdminPage(): JSX.Element {
         </label>
       </FilterBar>
 
-      {state.isLoading ? <LoadingState label="Loading metadata dictionaries..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading metadata dictionaries..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error ? (
@@ -89,7 +89,7 @@ export function MetadataAdminPage(): JSX.Element {
                 </button>
               </div>
 
-              {state.isLoadingDetails ? <LoadingState label="Loading dictionary details..." /> : null}
+              {state.isLoadingDetails ? <LoadingState label="Loading dictionary details..." variant="skeleton" skeletonType="table" /> : null}
 
               {!state.isLoadingDetails && state.selectedDictionary ? (
                 <MetadataEntryPanel dictionary={state.selectedDictionary} />

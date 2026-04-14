@@ -42,7 +42,7 @@ export function TeamsPage(): JSX.Element {
         title="Teams"
       />
 
-      {state.isLoading ? <LoadingState label="Loading teams..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading teams..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? (
         <div className="success-banner" role="status">

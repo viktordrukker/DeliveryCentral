@@ -32,6 +32,7 @@ export interface M365ReconciliationRecord {
   lastSeenAt?: string;
   matchedByStrategy?: string;
   personId?: string;
+  personDisplayName?: string;
   resolvedManagerPersonId?: string;
   sourceAccountEnabled?: boolean;
   sourceDepartment?: string;
@@ -84,6 +85,7 @@ export interface RadiusReconciliationRecord {
   lastSeenAt?: string;
   matchedByStrategy?: string;
   personId?: string;
+  personDisplayName?: string;
   sourceType: string;
   sourceUpdatedAt?: string;
   summary: string;

@@ -4,7 +4,7 @@ import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/in
 import { ListCasesService } from '@src/modules/case-management/application/list-cases.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
-import { demoPeople } from '../../../../prisma/seeds/demo-dataset';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { HrManagerDashboardResponseDto } from './contracts/hr-manager-dashboard.dto';
 
@@ -22,12 +22,6 @@ interface LifecyclePersonRecord {
 
 @Injectable()
 export class HrManagerDashboardQueryService {
-  private readonly lifecyclePeople: LifecyclePersonRecord[] = demoPeople.map((person) => ({
-    displayName: person.displayName,
-    hiredAt: person.hiredAt,
-    id: person.id,
-    primaryEmail: person.primaryEmail ?? null,
-  }));
 
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
@@ -35,6 +29,7 @@ export class HrManagerDashboardQueryService {
     private readonly auditLoggerService: AuditLoggerService,
     private readonly listCasesService: ListCasesService,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: HrManagerDashboardQuery): Promise<HrManagerDashboardResponseDto> {
@@ -110,7 +105,17 @@ export class HrManagerDashboardQueryService {
       }))
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
 
-    const recentJoinerActivity = [...this.lifecyclePeople]
+    const dbLifecyclePeople = await this.prisma.person.findMany({
+      select: { id: true, displayName: true, primaryEmail: true, createdAt: true },
+    });
+    const lifecyclePeople: LifecyclePersonRecord[] = dbLifecyclePeople.map((p) => ({
+      displayName: p.displayName,
+      hiredAt: p.createdAt,
+      id: p.id,
+      primaryEmail: p.primaryEmail ?? null,
+    }));
+
+    const recentJoinerActivity = [...lifecyclePeople]
       .filter((person) => person.hiredAt && person.hiredAt <= asOf)
       .sort((left, right) => (right.hiredAt?.getTime() ?? 0) - (left.hiredAt?.getTime() ?? 0))
       .slice(0, 5)

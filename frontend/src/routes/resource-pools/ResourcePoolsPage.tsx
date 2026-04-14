@@ -144,7 +144,7 @@ export function ResourcePoolsPage(): JSX.Element {
       </FilterBar>
 
       <SectionCard title="Resource Pools">
-        {state.isLoading ? <LoadingState label="Loading resource pools..." /> : null}
+        {state.isLoading ? <LoadingState label="Loading resource pools..." variant="skeleton" skeletonType="table" /> : null}
         {!state.isLoading && state.error && !showCreate ? (
           <ErrorState description={state.error} />
         ) : null}
@@ -157,25 +157,31 @@ export function ResourcePoolsPage(): JSX.Element {
               title="No pools"
             />
           ) : (
-            <div className="monitoring-list">
-              {filteredPools.map((pool) => (
-                <div className="monitoring-list__item" key={pool.id}>
-                  <div className="monitoring-card__header">
-                    <div>
-                      <div className="monitoring-list__title">{pool.name}</div>
-                      <p className="monitoring-list__summary">
-                        {pool.code}
-                        {pool.description ? ` · ${pool.description}` : ''}
-                        {' · '}
-                        {pool.members.length} member{pool.members.length !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <Link className="button button--secondary" to={`/resource-pools/${pool.id}`}>
-                      View pool
-                    </Link>
-                  </div>
-                </div>
-              ))}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="dash-compact-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Members</th>
+                    <th style={{ textAlign: 'right' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPools.map((pool) => (
+                    <tr key={pool.id} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/resource-pools/${pool.id}`)}>
+                      <td style={{ fontWeight: 500 }}>{pool.name}</td>
+                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{pool.code}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{pool.members.length}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/resource-pools/${pool.id}`}>
+                          Go
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )
         ) : null}

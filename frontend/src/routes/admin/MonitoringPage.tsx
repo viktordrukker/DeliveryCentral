@@ -11,6 +11,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { MonitoringAdminData, useMonitoringAdmin } from '@/features/admin/useMonitoringAdmin';
+import { formatDateTime } from '@/lib/format-date';
 
 function computeHealthChecks(d: MonitoringAdminData): { label: string; ok: boolean }[] {
   return [
@@ -43,7 +44,7 @@ export function MonitoringPage(): JSX.Element {
         title="Monitoring"
       />
 
-      {state.isLoading ? <LoadingState label="Loading monitoring data..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading monitoring data..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error ? (
@@ -53,7 +54,7 @@ export function MonitoringPage(): JSX.Element {
               const checks = computeHealthChecks(state.data);
               const passed = checks.filter((c) => c.ok).length;
               const pct = Math.round((passed / checks.length) * 100);
-              const color = pct === 100 ? '#22c55e' : pct >= 70 ? '#f59e0b' : '#ef4444';
+              const color = pct === 100 ? 'var(--color-status-active)' : pct >= 70 ? 'var(--color-status-warning)' : 'var(--color-status-danger)';
               const pieData = [
                 { name: 'Healthy', value: passed },
                 { name: 'Issues', value: checks.length - passed },
@@ -76,7 +77,7 @@ export function MonitoringPage(): JSX.Element {
                             strokeWidth={0}
                           >
                             <Cell fill={color} />
-                            <Cell fill="#e5e7eb" />
+                            <Cell fill="var(--color-border)" />
                           </Pie>
                           <Tooltip formatter={(v, name) => [v, String(name)]} />
                         </PieChart>
@@ -92,12 +93,12 @@ export function MonitoringPage(): JSX.Element {
                       </div>
                     </div>
                     <div>
-                      <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
+                      <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '8px' }}>
                         {passed}/{checks.length} checks passing
                       </p>
                       <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: '13px' }}>
                         {checks.map((c) => (
-                          <li key={c.label} style={{ color: c.ok ? '#16a34a' : '#dc2626', padding: '2px 0' }}>
+                          <li key={c.label} style={{ color: c.ok ? 'var(--color-status-active)' : 'var(--color-status-danger)', padding: '2px 0' }}>
                             {c.ok ? '✓' : '✗'} {c.label}
                           </li>
                         ))}
@@ -108,7 +109,7 @@ export function MonitoringPage(): JSX.Element {
               );
             })()}
 
-            <div className="details-summary-grid">
+            <div className="kpi-strip">
               <HealthCard
                 label="System Status"
                 status={state.data.overallStatus}
@@ -149,7 +150,7 @@ export function MonitoringPage(): JSX.Element {
               />
             </div>
 
-            <div className="details-summary-grid">
+            <div className="kpi-strip">
               <HealthCard
                 label="Integrations"
                 status={diagnostics?.integrations.overallStatus ?? 'degraded'}
@@ -178,14 +179,14 @@ export function MonitoringPage(): JSX.Element {
                 status={state.data.health.status}
                 summary={
                   diagnostics?.auditVisibility.lastBusinessAuditAt
-                    ? `Last audit record ${new Date(diagnostics.auditVisibility.lastBusinessAuditAt).toLocaleString('en-US')}.`
+                    ? `Last audit record ${formatDateTime(diagnostics.auditVisibility.lastBusinessAuditAt)}.`
                     : 'No business audit records visible in current runtime.'
                 }
                 value={String(diagnostics?.auditVisibility.totalBusinessAuditRecords ?? 0)}
               />
             </div>
 
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               <SectionCard title="System Status">
                 <dl className="details-list">
                   <div>
@@ -198,7 +199,7 @@ export function MonitoringPage(): JSX.Element {
                   </div>
                   <div>
                     <dt>Latest Diagnostics Timestamp</dt>
-                    <dd>{new Date(state.data.diagnostics.timestamp).toLocaleString('en-US')}</dd>
+                    <dd>{formatDateTime(state.data.diagnostics.timestamp)}</dd>
                   </div>
                   <div>
                     <dt>Business Audit Records</dt>
@@ -220,7 +221,7 @@ export function MonitoringPage(): JSX.Element {
               </SectionCard>
             </div>
 
-            <div className="details-grid">
+            <div className="dashboard-main-grid">
               <SectionCard title="Database Health">
                 <dl className="details-list">
                   <div>
@@ -262,7 +263,7 @@ export function MonitoringPage(): JSX.Element {
                     <dt>Last Attempt</dt>
                     <dd>
                       {state.data.diagnostics.notifications.lastAttemptedAt
-                        ? new Date(state.data.diagnostics.notifications.lastAttemptedAt).toLocaleString('en-US')
+                        ? formatDateTime(state.data.diagnostics.notifications.lastAttemptedAt)
                         : 'No attempts observed'}
                     </dd>
                   </div>
@@ -299,7 +300,7 @@ export function MonitoringPage(): JSX.Element {
                           <dt>Last Sync</dt>
                           <dd>
                             {item.lastSyncAt
-                              ? new Date(item.lastSyncAt).toLocaleString('en-US')
+                              ? formatDateTime(item.lastSyncAt)
                               : 'Never synced'}
                           </dd>
                         </div>

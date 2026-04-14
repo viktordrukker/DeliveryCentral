@@ -1,5 +1,6 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { CreateWorkEvidenceForm, CreateWorkEvidenceFormErrors, CreateWorkEvidenceFormValues } from '@/components/work-evidence/CreateWorkEvidenceForm';
 import { exportToXlsx } from '@/lib/export';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -7,10 +8,11 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { ViewportTable } from '@/components/layout/ViewportTable';
 import { WorkEvidenceTable } from '@/components/work-evidence/WorkEvidenceTable';
+import { useFilterParams } from '@/hooks/useFilterParams';
 import { createWorkEvidence } from '@/lib/api/work-evidence';
 import { useWorkEvidencePage } from '@/features/work-evidence/useWorkEvidencePage';
 
@@ -29,11 +31,8 @@ function makeInitialCreateValues(): CreateWorkEvidenceFormValues {
 }
 
 export function WorkEvidencePage(): JSX.Element {
-  const [person, setPerson] = useState('');
-  const [project, setProject] = useState('');
-  const [source, setSource] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const { setActions } = useTitleBarActions();
+  const [filters, setFilters] = useFilterParams({ dateFrom: '', dateTo: '', person: '', project: '', source: '' });
   const [createValues, setCreateValues] = useState<CreateWorkEvidenceFormValues>(makeInitialCreateValues);
   const [createErrors, setCreateErrors] = useState<CreateWorkEvidenceFormErrors>({});
   const [createServerError, setCreateServerError] = useState<string>();
@@ -41,12 +40,41 @@ export function WorkEvidencePage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const state = useWorkEvidencePage({
-    dateFrom,
-    dateTo,
-    person,
-    project,
-    source,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    person: filters.person,
+    project: filters.project,
+    source: filters.source,
   });
+
+  useEffect(() => {
+    setActions(
+      <>
+        {state.visibleItems.length > 0 ? (
+          <button
+            className="button button--secondary"
+            disabled={state.isLoading}
+            onClick={() => {
+              exportToXlsx(
+                state.visibleItems.map((e) => ({
+                  'Effort Hours': e.effortHours,
+                  'Recorded At': e.recordedAt,
+                  'Source Type': e.sourceType,
+                  Summary: e.summary ?? '',
+                })),
+                'work-evidence',
+              );
+            }}
+            type="button"
+          >
+            Export XLSX
+          </button>
+        ) : null}
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, state.visibleItems, state.isLoading]);
 
   function handleCreateChange(field: keyof CreateWorkEvidenceFormValues, value: string): void {
     setCreateValues((current) => ({
@@ -118,34 +146,6 @@ export function WorkEvidencePage(): JSX.Element {
 
   return (
     <PageContainer testId="work-evidence-page">
-      <PageHeader
-        actions={
-          state.visibleItems.length > 0 ? (
-            <button
-              className="button button--secondary"
-              disabled={state.isLoading}
-              onClick={() => {
-                exportToXlsx(
-                  state.visibleItems.map((e) => ({
-                    'Effort Hours': e.effortHours,
-                    'Recorded At': e.recordedAt,
-                    'Source Type': e.sourceType,
-                    Summary: e.summary ?? '',
-                  })),
-                  'work-evidence',
-                );
-              }}
-              type="button"
-            >
-              Export XLSX
-            </button>
-          ) : undefined
-        }
-        eyebrow="Work Evidence"
-        subtitle="Observed work is shown separately from formal assignments so actual execution can be reviewed without rewriting staffing truth."
-        title="Work Evidence"
-      />
-
       <SectionCard title="Record Manual Work Evidence">
         {createServerError ? <ErrorState description={createServerError} /> : null}
         {createSuccess ? (
@@ -169,54 +169,54 @@ export function WorkEvidencePage(): JSX.Element {
           <span className="field__label">Person</span>
           <input
             className="field__control"
-            onChange={(event) => setPerson(event.target.value)}
+            onChange={(event) => setFilters({ person: event.target.value })}
             placeholder="Filter by person name"
             type="search"
-            value={person}
+            value={filters.person}
           />
         </label>
         <label className="field">
           <span className="field__label">Project</span>
           <input
             className="field__control"
-            onChange={(event) => setProject(event.target.value)}
+            onChange={(event) => setFilters({ project: event.target.value })}
             placeholder="Filter by project name"
             type="search"
-            value={project}
+            value={filters.project}
           />
         </label>
         <label className="field">
           <span className="field__label">Source</span>
           <input
             className="field__control"
-            onChange={(event) => setSource(event.target.value)}
+            onChange={(event) => setFilters({ source: event.target.value })}
             placeholder="Example: JIRA or MANUAL"
             type="search"
-            value={source}
+            value={filters.source}
           />
         </label>
         <label className="field">
           <span className="field__label">Date From</span>
           <input
             className="field__control"
-            onChange={(event) => setDateFrom(event.target.value)}
+            onChange={(event) => setFilters({ dateFrom: event.target.value })}
             type="date"
-            value={dateFrom}
+            value={filters.dateFrom}
           />
         </label>
         <label className="field">
           <span className="field__label">Date To</span>
           <input
             className="field__control"
-            onChange={(event) => setDateTo(event.target.value)}
+            onChange={(event) => setFilters({ dateTo: event.target.value })}
             type="date"
-            value={dateTo}
+            value={filters.dateTo}
           />
         </label>
       </FilterBar>
 
       <ViewportTable>
-        {state.isLoading ? <LoadingState label="Loading work evidence..." /> : null}
+        {state.isLoading ? <LoadingState label="Loading work evidence..." variant="skeleton" skeletonType="table" /> : null}
         {state.error ? <ErrorState description={state.error} /> : null}
 
         {!state.isLoading && !state.error ? (

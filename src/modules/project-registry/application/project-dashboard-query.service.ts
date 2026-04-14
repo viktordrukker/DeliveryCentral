@@ -1,14 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-import { demoPeople, demoPeople as _demoPeople } from '../../../../prisma/seeds/demo-dataset';
-import { phase2People } from '../../../../prisma/seeds/phase2-dataset';
 import { InMemoryProjectRepository } from '../infrastructure/repositories/in-memory/in-memory-project.repository';
-
-const allPeopleById = new Map(
-  [...demoPeople, ...phase2People].map((person) => [person.id, person]),
-);
 
 interface ProjectDashboardQuery {
   asOf?: string;
@@ -59,6 +54,7 @@ export class ProjectDashboardQueryService {
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: ProjectDashboardQuery): Promise<ProjectDashboardResponseDto> {
@@ -75,6 +71,9 @@ export class ProjectDashboardQueryService {
     if (!project) {
       throw new Error('Project not found.');
     }
+
+    const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
+    const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
 
     const allAssignments = await this.projectAssignmentRepository.findAll();
     const projectAssignments = allAssignments.filter(

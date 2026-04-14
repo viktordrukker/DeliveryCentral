@@ -2,13 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TeamQueryService } from '@src/modules/organization/application/team-query.service';
-import { demoOrgUnits, demoPeople, demoProjects, demoResourcePools } from '../../../../prisma/seeds/demo-dataset';
-import { lifeDemoOrgUnits, lifeDemoPeople, lifeDemoProjects, lifeDemoResourcePools } from '../../../../prisma/seeds/life-demo-dataset';
-
-const allOrgUnits = [...demoOrgUnits, ...lifeDemoOrgUnits];
-const allPeople = [...demoPeople, ...lifeDemoPeople];
-const allProjects = [...demoProjects, ...lifeDemoProjects];
-const allResourcePools = [...demoResourcePools, ...lifeDemoResourcePools];
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
@@ -26,6 +20,7 @@ export class ResourceManagerDashboardQueryService {
     private readonly teamQueryService: TeamQueryService,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly staffingRequestService: InMemoryStaffingRequestService,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: ResourceManagerDashboardQuery): Promise<ResourceManagerDashboardResponseDto> {
@@ -40,8 +35,17 @@ export class ResourceManagerDashboardQueryService {
       throw new Error('Resource manager dashboard person was not found.');
     }
 
-    const managedTeams = allResourcePools.filter((pool) => {
-      const orgUnit = allOrgUnits.find((item) => item.id === pool.orgUnitId);
+    const [dbPeople, dbProjects, dbOrgUnits, dbResourcePools] = await Promise.all([
+      this.prisma.person.findMany({ select: { id: true, displayName: true } }),
+      this.prisma.project.findMany({ select: { id: true, name: true } }),
+      this.prisma.orgUnit.findMany({ select: { id: true, managerPersonId: true } }),
+      this.prisma.resourcePool.findMany({ select: { id: true, name: true, orgUnitId: true } }),
+    ]);
+    const allPeople = dbPeople;
+    const allProjects = dbProjects;
+
+    const managedTeams = dbResourcePools.filter((pool) => {
+      const orgUnit = dbOrgUnits.find((item) => item.id === pool.orgUnitId);
       return orgUnit?.managerPersonId === query.personId;
     });
 

@@ -1,15 +1,17 @@
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { AssignmentList } from '@/components/dashboard/AssignmentList';
-import { WorkloadCard } from '@/components/dashboard/WorkloadCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
-import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { formatDate } from '@/lib/format-date';
 import { WorkloadGauge } from '@/components/charts/WorkloadGauge';
 import { WeeklyAllocationArea } from '@/components/charts/WeeklyAllocationArea';
 import { EvidenceTimelineBar } from '@/components/charts/EvidenceTimelineBar';
@@ -17,12 +19,10 @@ import { PulseWidget } from '@/components/common/PulseWidget';
 import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { WorkEvidenceItem } from '@/lib/api/work-evidence';
-import { DashboardGrid } from '@/components/layout/DashboardGrid';
-import { DraggableKpiGrid } from '@/components/dashboard/DraggableKpiGrid';
 
+const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const ELEVATED_ROLES = ['hr_manager', 'director', 'admin'];
 
-/** Build an array of ISO date strings for the last N weeks */
 function buildWeeks(count: number, asOf: string): string[] {
   const base = new Date(asOf);
   return Array.from({ length: count }, (_, i) => {
@@ -32,7 +32,6 @@ function buildWeeks(count: number, asOf: string): string[] {
   });
 }
 
-/** Build assignment-like objects for WeeklyAllocationArea from AssignmentDirectoryItem */
 function toAllocationItems(
   assignments: AssignmentDirectoryItem[],
 ): Array<{ allocationPercent: number; projectName: string; validFrom: string; validTo: string | null }> {
@@ -44,11 +43,7 @@ function toAllocationItems(
   }));
 }
 
-/** Build day-by-day evidence data for the last 14 days */
-function buildEvidenceDayData(
-  items: WorkEvidenceItem[],
-  asOf: string,
-): Array<{ date: string; hours: number }> {
+function buildEvidenceDayData(items: WorkEvidenceItem[], asOf: string): Array<{ date: string; hours: number }> {
   const base = new Date(asOf);
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(base);
@@ -66,14 +61,13 @@ function buildEvidenceDayData(
 export function EmployeeDashboardPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal } = useAuth();
+  const { setActions } = useTitleBarActions();
   const isElevated = principal?.roles.some((r) => ELEVATED_ROLES.includes(r)) ?? false;
+  const [lastFetch, setLastFetch] = useState(new Date());
 
-  // Employees can only see their own dashboard; elevated roles can switch person
   const ownPersonId = principal?.personId;
   const requestedPersonId = searchParams.get('personId');
-  const effectivePersonId = isElevated
-    ? (requestedPersonId ?? ownPersonId)
-    : ownPersonId;
+  const effectivePersonId = isElevated ? (requestedPersonId ?? ownPersonId) : ownPersonId;
 
   const state = useEmployeeDashboard(effectivePersonId);
 
@@ -87,225 +81,198 @@ export function EmployeeDashboardPage(): JSX.Element {
     state.setPersonId(value);
   }
 
-  const weeks = buildWeeks(12, state.asOf);
-  const allAssignments = state.data
-    ? toAllocationItems([
-        ...state.data.currentAssignments,
-        ...state.data.futureAssignments,
-      ])
-    : [];
-  const evidenceDayData = state.data
-    ? buildEvidenceDayData(state.data.recentWorkEvidenceSummary.recentItems, state.asOf)
-    : [];
-
-  return (
-    <PageContainer testId="employee-dashboard-page">
-      <PageHeader
-        actions={
-          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {state.data?.person.currentLineManager ? (
-              <span style={{ color: '#6b7280', fontSize: '13px' }}>
-                Manager:{' '}
-                <Link
-                  style={{ color: '#4f46e5', fontWeight: 500 }}
-                  to={`/people/${state.data.person.currentLineManager.id}`}
-                >
-                  {state.data.person.currentLineManager.displayName}
-                </Link>
-              </span>
-            ) : null}
-            <Link className="button button--secondary" to="/people">
-              Open employee directory
-            </Link>
-          </div>
-        }
-        eyebrow="Dashboard"
-        title={state.data?.person.displayName ?? 'Employee Dashboard'}
-      />
-
-      <FilterBar>
+  // Title bar actions
+  useEffect(() => {
+    setActions(
+      <>
         {isElevated ? (
-          <label className="field">
-            <span className="field__label">Employee</span>
-            <select
-              className="field__control"
-              onChange={(event) => handlePersonChange(event.target.value)}
-              value={state.personId}
-            >
-              {state.people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.displayName}
-                </option>
-              ))}
+          <label className="field" style={{ minWidth: 160 }}>
+            <select className="field__control" onChange={(event) => handlePersonChange(event.target.value)} value={state.personId}>
+              {state.people.map((person) => <option key={person.id} value={person.id}>{person.displayName}</option>)}
             </select>
           </label>
         ) : null}
-        <label className="field">
-          <span className="field__label">As of</span>
-          <input
-            className="field__control"
-            onChange={(event) => state.setAsOf(`${event.target.value}:00.000Z`)}
-            type="datetime-local"
-            value={state.asOf.slice(0, 16)}
-          />
-        </label>
-      </FilterBar>
+        <Link className="button button--secondary button--sm" to="/timesheets">Timesheets</Link>
+        <Link className="button button--secondary button--sm" to="/work-evidence">Evidence</Link>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, isElevated, state.people, state.personId, state.asOf]);
 
-      {!state.isLoading && !state.error && !state.data && isElevated ? (
-        <SectionCard>
-          <EmptyState
-            description="Use the Employee selector above to pick a person."
-            title="Select a person to view their dashboard"
-          />
-        </SectionCard>
+  useEffect(() => {
+    if (state.data && !state.isLoading) setLastFetch(new Date());
+  }, [state.data, state.isLoading]);
+
+  const d = state.data;
+  const weeks = buildWeeks(12, state.asOf);
+  const allAssignments = d ? toAllocationItems([...d.currentAssignments, ...d.futureAssignments]) : [];
+  const evidenceDayData = d ? buildEvidenceDayData(d.recentWorkEvidenceSummary.recentItems, state.asOf) : [];
+  const allocPct = d?.currentWorkloadSummary.totalAllocationPercent ?? 0;
+  const isOverallocated = d?.currentWorkloadSummary.isOverallocated ?? false;
+
+  const refetch = (): void => state.setAsOf(new Date().toISOString());
+
+  return (
+    <PageContainer testId="employee-dashboard-page">
+      {state.isLoading ? <LoadingState label="Loading employee dashboard..." variant="skeleton" skeletonType="page" /> : null}
+      {state.error ? <ErrorState description={state.error} /> : null}
+      {!state.isLoading && !state.error && !d && isElevated ? (
+        <SectionCard><EmptyState description="Use the Employee selector above to pick a person." title="Select a person to view their dashboard" /></SectionCard>
       ) : null}
 
-      {state.isLoading ? <LoadingState label="Loading employee dashboard..." /> : null}
-      {state.error ? <ErrorState description={state.error} /> : null}
-
-      {state.data ? (
+      {d ? (
         <>
-          <SectionCard title="Weekly Pulse Check">
+          {/* ── Person header ── */}
+          {d.person.displayName && <h2 style={{ margin: '0 0 var(--space-2)', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{d.person.displayName}</h2>}
+          {d.person.currentLineManager ? (
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}>
+              Manager:{' '}
+              <Link style={{ color: 'var(--color-accent)', fontWeight: 500 }} to={`/people/${d.person.currentLineManager.id}`}>
+                {d.person.currentLineManager.displayName}
+              </Link>
+            </div>
+          ) : null}
+
+          {/* ── Pulse ── */}
+          <SectionCard title="Weekly Pulse Check" collapsible>
             <PulseWidget />
           </SectionCard>
 
-          <DraggableKpiGrid storageKey={`${ownPersonId ?? 'employee'}:employee`}>
-            <WorkloadCard
-              href="#assignments"
-              label="Current Assignments"
-              value={String(state.data.currentAssignments.length)}
-            />
-            <WorkloadCard
-              href="#future-assignments"
-              label="Future Assignments"
-              value={String(state.data.futureAssignments.length)}
-            />
-            <WorkloadCard
-              href="#workload-gauge"
-              label="Allocation"
-              supportingText={
-                state.data.currentWorkloadSummary.isOverallocated
-                  ? 'Overallocated — exceeds 100%.'
-                  : 'Current allocation across active assignments.'
-              }
-              value={`${state.data.currentWorkloadSummary.totalAllocationPercent}%`}
-              variant={state.data.currentWorkloadSummary.isOverallocated ? 'danger' : 'default'}
-            />
-            <WorkloadCard
-              href="/work-evidence"
-              label="Recent Evidence Hours"
-              value={`${state.data.recentWorkEvidenceSummary.totalEffortHours}h`}
-            />
-          </DraggableKpiGrid>
+          {/* ── KPI STRIP ── */}
+          <div className="kpi-strip" aria-label="Key metrics">
+            <Link className="kpi-strip__item" to="#assignments" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+              <TipBalloon tip="Number of projects you are currently assigned to." arrow="left" />
+              <span className="kpi-strip__value">{d.currentAssignments.length}</span>
+              <span className="kpi-strip__label">Current Assignments</span>
+            </Link>
 
-          <DashboardGrid>
+            <Link className="kpi-strip__item" to="#future-assignments" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+              <TipBalloon tip="Upcoming assignments that have not started yet." arrow="left" />
+              <span className="kpi-strip__value">{d.futureAssignments.length}</span>
+              <span className="kpi-strip__label">Future Assignments</span>
+            </Link>
+
+            <Link className="kpi-strip__item" to="#workload-gauge"
+              style={{ borderLeft: `3px solid ${isOverallocated ? 'var(--color-status-danger)' : allocPct >= 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
+              <TipBalloon tip="Your combined allocation across all active assignments. Over 100% means you are overbooked." arrow="left" />
+              <span className="kpi-strip__value">{allocPct}%</span>
+              <span className="kpi-strip__label">Allocation</span>
+              <div className="kpi-strip__progress">
+                <div className="kpi-strip__progress-fill" style={{ width: `${Math.min(allocPct, 100)}%`, background: isOverallocated ? 'var(--color-status-danger)' : allocPct >= 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }} />
+              </div>
+              {isOverallocated && <span className="kpi-strip__context" style={{ color: 'var(--color-status-danger)' }}>Overallocated</span>}
+            </Link>
+
+            <Link className="kpi-strip__item" to="/work-evidence" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
+              <TipBalloon tip="Total hours of work evidence logged recently." arrow="left" />
+              <span className="kpi-strip__value">{d.recentWorkEvidenceSummary.totalEffortHours}h</span>
+              <span className="kpi-strip__label">Recent Evidence</span>
+            </Link>
+
+            {d.pendingWorkflowItems.itemCount > 0 && (
+              <Link className="kpi-strip__item" to="#pending-items" style={{ borderLeft: '3px solid var(--color-status-warning)' }}>
+                <TipBalloon tip="Items pending your action — assignment approvals, etc." arrow="left" />
+                <span className="kpi-strip__value">{d.pendingWorkflowItems.itemCount}</span>
+                <span className="kpi-strip__label">Pending Items</span>
+              </Link>
+            )}
+          </div>
+
+          {/* ── HERO: Workload Gauge + Evidence ── */}
+          <div className="dashboard-main-grid">
             <SectionCard collapsible id="workload-gauge" title="Workload Gauge">
-              <WorkloadGauge
-                allocationPercent={state.data.currentWorkloadSummary.totalAllocationPercent}
-              />
+              <WorkloadGauge allocationPercent={allocPct} />
             </SectionCard>
-
             <SectionCard collapsible title="Evidence Last 14 Days">
               <EvidenceTimelineBar data={evidenceDayData} />
             </SectionCard>
-          </DashboardGrid>
+          </div>
 
-          {allAssignments.length > 0 ? (
+          {/* ── Weekly Allocation ── */}
+          {allAssignments.length > 0 && (
             <SectionCard collapsible title="Weekly Allocation (12 Weeks)">
               <WeeklyAllocationArea assignments={allAssignments} weeks={weeks} />
             </SectionCard>
-          ) : null}
+          )}
 
-          <div className="details-grid">
-            <SectionCard id="assignments" title="Assignments">
-              <AssignmentList
-                emptyDescription="This employee has no current assignments for the selected date."
-                emptyTitle="No current assignments"
-                items={state.data.currentAssignments}
-              />
-            </SectionCard>
+          {/* ── Assignments tables ── */}
+          <SectionCard id="assignments" title="Current Assignments" collapsible>
+            <AssignmentList
+              emptyDescription="This employee has no current assignments for the selected date."
+              emptyTitle="No current assignments"
+              items={d.currentAssignments}
+            />
+          </SectionCard>
 
-            <SectionCard id="future-assignments" title="Future Assignments">
-              <AssignmentList
-                emptyDescription="There are no future assignments queued yet."
-                emptyTitle="No future assignments"
-                items={state.data.futureAssignments}
-              />
-            </SectionCard>
+          <SectionCard id="future-assignments" title="Future Assignments" collapsible>
+            <AssignmentList
+              emptyDescription="There are no future assignments queued yet."
+              emptyTitle="No future assignments"
+              items={d.futureAssignments}
+            />
+          </SectionCard>
 
-            <SectionCard title="Workload">
-              <dl className="details-list">
-                <div>
-                  <dt>Active assignment count</dt>
-                  <dd>{state.data.currentWorkloadSummary.activeAssignmentCount}</dd>
-                </div>
-                <div>
-                  <dt>Future assignment count</dt>
-                  <dd>{state.data.currentWorkloadSummary.futureAssignmentCount}</dd>
-                </div>
-                <div>
-                  <dt>Pending self workflow items</dt>
-                  <dd>{state.data.currentWorkloadSummary.pendingSelfWorkflowItemCount}</dd>
-                </div>
-                <div>
-                  <dt>Overallocated</dt>
-                  <dd>{state.data.currentWorkloadSummary.isOverallocated ? 'Yes' : 'No'}</dd>
-                </div>
-              </dl>
-            </SectionCard>
+          {/* ── Evidence table ── */}
+          <SectionCard title="Recent Evidence" collapsible chartExport={{
+            headers: ['Summary', 'Source', 'Hours', 'Date'],
+            rows: d.recentWorkEvidenceSummary.recentItems.map((i) => ({ Summary: i.summary ?? i.sourceRecordKey, Source: i.sourceType, Hours: String(i.effortHours), Date: i.recordedAt.slice(0, 10) })),
+          }}>
+            {effectivePersonId ? (
+              <div style={{ marginBottom: 8 }}>
+                <Link className="button button--secondary button--sm" to={`/work-evidence?personId=${effectivePersonId}`}>View all evidence</Link>
+              </div>
+            ) : null}
+            {d.recentWorkEvidenceSummary.recentItems.length === 0 ? (
+              <EmptyState description="No recent work evidence exists." title="No evidence" />
+            ) : (
+              <div style={{ overflow: 'auto' }}>
+                <table className="dash-compact-table">
+                  <thead>
+                    <tr><th>Summary</th><th style={{ width: 80 }}>Source</th><th style={NUM}>Hours</th><th style={{ width: 90 }}>Date</th></tr>
+                  </thead>
+                  <tbody>
+                    {d.recentWorkEvidenceSummary.recentItems.map((item) => (
+                      <tr key={item.id}>
+                        <td style={{ fontWeight: 500 }}>{item.summary ?? item.sourceRecordKey}</td>
+                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.sourceType}</td>
+                        <td style={NUM}>{item.effortHours}h</td>
+                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.recordedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
 
-            <SectionCard title="Evidence">
-              {effectivePersonId ? (
-                <div className="section-card__actions-row">
-                  <Link
-                    className="button button--secondary"
-                    to={`/work-evidence?personId=${effectivePersonId}`}
-                  >
-                    View all evidence
-                  </Link>
-                </div>
-              ) : null}
-              {state.data.recentWorkEvidenceSummary.recentItems.length === 0 ? (
-                <EmptyState
-                  description="No recent work evidence exists for the selected employee."
-                  title="No evidence"
-                />
-              ) : (
-                <div className="monitoring-list">
-                  {state.data.recentWorkEvidenceSummary.recentItems.map((item) => (
-                    <div className="monitoring-list__item" key={item.id}>
-                      <div className="monitoring-list__title">
-                        {item.summary ?? item.sourceRecordKey}
-                      </div>
-                      <p className="monitoring-list__summary">
-                        {item.sourceType} · {item.effortHours}h ·{' '}
-                        {new Date(item.recordedAt).toLocaleDateString('en-US')}
-                      </p>
-                    </div>
+          {/* ── Pending Workflow Items ── */}
+          <SectionCard id="pending-items" title="Pending Workflow Items" collapsible>
+            {d.pendingWorkflowItems.itemCount === 0 ? (
+              <EmptyState description="No assignment requests are pending your approval or action." title="No pending items" />
+            ) : (
+              <table className="dash-compact-table">
+                <thead>
+                  <tr><th>Title</th><th style={{ width: 200 }}>Detail</th></tr>
+                </thead>
+                <tbody>
+                  {d.pendingWorkflowItems.items.map((item) => (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: 500 }}>{item.title}</td>
+                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.detail ?? '\u2014'}</td>
+                    </tr>
                   ))}
-                </div>
-              )}
-            </SectionCard>
+                </tbody>
+              </table>
+            )}
+          </SectionCard>
 
-            <SectionCard title="Pending Workflow Items">
-              {state.data.pendingWorkflowItems.itemCount === 0 ? (
-                <EmptyState
-                  description="No assignment requests are pending your approval or action."
-                  title="No pending items"
-                />
-              ) : (
-                <div className="monitoring-list">
-                  {state.data.pendingWorkflowItems.items.map((item) => (
-                    <div className="monitoring-list__item" key={item.id}>
-                      <div className="monitoring-list__title">{item.title}</div>
-                      {item.detail ? (
-                        <p className="monitoring-list__summary">{item.detail}</p>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
+          {/* ── DATA FRESHNESS ── */}
+          <div className="data-freshness">
+            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
+            <button onClick={refetch} type="button">Refresh</button>
+            {' '}
+            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
           </div>
         </>
       ) : null}

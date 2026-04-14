@@ -412,6 +412,7 @@ export class PrismaPersonDirectoryQueryRepository
     person: {
       displayName: string;
       employmentStatus: string;
+      grade: string | null;
       id: string;
       orgMemberships: Array<{
         isPrimary: boolean;
@@ -421,6 +422,7 @@ export class PrismaPersonDirectoryQueryRepository
       resourcePoolMemberships: Array<{
         resourcePool: { id: string; name: string } | null;
       }>;
+      role: string | null;
       subjectReportingLines: Array<{
         manager: { displayName: string; id: string } | null;
         relationshipType: 'DOTTED_LINE' | 'FUNCTIONAL' | 'PROJECT' | 'SOLID_LINE';
@@ -452,6 +454,7 @@ export class PrismaPersonDirectoryQueryRepository
           }
         : null,
       displayName: person.displayName,
+      grade: person.grade,
       dottedLineManagers: person.subjectReportingLines
         .filter((line) => line.relationshipType === 'DOTTED_LINE' && line.manager)
         .map((line) => ({
@@ -462,6 +465,7 @@ export class PrismaPersonDirectoryQueryRepository
       id: person.id,
       lifecycleStatus: person.employmentStatus,
       primaryEmail: person.primaryEmail,
+      role: person.role,
       resourcePoolIds: person.resourcePoolMemberships
         .map((membership) => membership.resourcePool?.id ?? null)
         .filter((id): id is string => Boolean(id)),

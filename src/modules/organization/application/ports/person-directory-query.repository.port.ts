@@ -4,11 +4,13 @@ export interface PersonDirectoryRecord {
   currentOrgUnit: { code: string; id: string; name: string } | null;
   displayName: string;
   dottedLineManagers: Array<{ displayName: string; id: string }>;
+  grade: string | null;
   id: string;
   lifecycleStatus: string;
   primaryEmail: string | null;
   resourcePoolIds: string[];
   resourcePools: Array<{ id: string; name: string }>;
+  role: string | null;
 }
 
 export interface ListPersonDirectoryResult {

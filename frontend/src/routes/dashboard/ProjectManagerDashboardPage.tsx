@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { formatChangeType } from '@/lib/labels';
-import { WorkloadCard } from '@/components/dashboard/WorkloadCard';
+import { DateRangePreset } from '@/components/common/DateRangePreset';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
-import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TabBar } from '@/components/common/TabBar';
+import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { formatDate } from '@/lib/format-date';
 import { AnomalyPanel } from '@/components/projects/AnomalyPanel';
+import { AnomalyStrip } from '@/components/dashboard/AnomalyStrip';
 import { ProjectStaffingCoverageChart } from '@/components/charts/ProjectStaffingCoverageChart';
 import { ProjectTimelineGantt } from '@/components/charts/ProjectTimelineGantt';
 import { useProjectManagerDashboard } from '@/features/dashboard/useProjectManagerDashboard';
-import { StaffingRequestStatusBadge } from '@/components/staffing/StaffingRequestStatusBadge';
 import { PriorityBadge } from '@/components/staffing/PriorityBadge';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
-import { DashboardGrid } from '@/components/layout/DashboardGrid';
+
+const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
 const PM_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -31,11 +34,13 @@ const PM_TABS = [
 export function ProjectManagerDashboardPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal, isLoading: authLoading } = useAuth();
+  const { setActions } = useTitleBarActions();
+  const navigate = useNavigate();
   const effectivePersonId = authLoading ? null : (searchParams.get('personId') ?? principal?.personId ?? undefined);
   const state = useProjectManagerDashboard(effectivePersonId);
+  const [lastFetch, setLastFetch] = useState(new Date());
 
   const location = useLocation();
-  const navigate = useNavigate();
   const activeTab = PM_TABS.some((t) => `#${t.id}` === location.hash)
     ? location.hash.slice(1)
     : 'overview';
@@ -53,6 +58,45 @@ export function ProjectManagerDashboardPage(): JSX.Element {
     state.setPersonId(value);
   }
 
+  // Title bar actions
+  useEffect(() => {
+    setActions(
+      <>
+        <DateRangePreset
+          compact
+          value={{ from: state.asOf.slice(0, 10), to: '' }}
+          onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
+        />
+        <label className="field field--inline" style={{ fontSize: 12 }}>
+          <input
+            className="field__control"
+            list="pm-people-list-tb"
+            onChange={(event) => {
+              const match = state.people.find((p) => p.displayName === event.target.value);
+              if (match) handlePersonChange(match.id);
+            }}
+            placeholder="Project manager..."
+            type="text"
+            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
+            key={state.personId}
+          />
+          <datalist id="pm-people-list-tb">
+            {state.people.map((person) => (
+              <option key={person.id} value={person.displayName} />
+            ))}
+          </datalist>
+        </label>
+        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, state.asOf, state.personId, state.people]);
+
+  useEffect(() => {
+    if (state.data && !state.isLoading) setLastFetch(new Date());
+  }, [state.data, state.isLoading]);
+
   // Overallocated resources
   const [overallocated, setOverallocated] = useState<Array<{ id: string; displayName: string; totalPercent: number }>>([]);
   useEffect(() => {
@@ -67,317 +111,348 @@ export function ProjectManagerDashboardPage(): JSX.Element {
       .catch(() => undefined);
   }, []);
 
-  // Derive chart data from managed projects
-  const coverageData = (state.data?.managedProjects ?? []).map((p) => ({
+  /* ── Derived data ────────────────────────────────────────────── */
+  const d = state.data;
+  const managedProjects = d?.managedProjects ?? [];
+  const staffingGaps = d?.staffingSummary.projectsWithStaffingGapsCount ?? 0;
+  const evidenceAnomalies = d?.staffingSummary.projectsWithEvidenceAnomaliesCount ?? 0;
+  const attentionProjects = d?.attentionProjects ?? [];
+  const openRequests = d?.openRequests ?? [];
+  const recentChanges = d?.recentlyChangedAssignments ?? [];
+
+  const coverageData = managedProjects.map((p) => ({
     allocated: p.staffingCount,
     name: p.name,
     projectId: p.id,
     required: Math.max(p.staffingCount, 1),
   }));
 
-  const ganttData = (state.data?.managedProjects ?? []).map((p) => ({
+  const ganttData = managedProjects.map((p) => ({
     endDate: p.plannedEndDate,
     name: p.name,
     startDate: p.plannedStartDate,
     status: p.status,
   }));
 
+  const refetch = (): void => state.setAsOf(new Date().toISOString());
+
   return (
     <PageContainer testId="project-manager-dashboard-page">
-      <PageHeader
-        actions={
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <Link className="button button--primary" to="/assignments/new">
-              Quick assignment
-            </Link>
-            <Link className="button button--secondary" to="/staffing-requests/new">
-              Staffing request
-            </Link>
-            <Link className="button button--secondary" to="/projects">
-              Open projects
-            </Link>
-          </div>
-        }
-        eyebrow="Dashboard"
-        title={state.data?.person.displayName ?? 'Project Manager Dashboard'}
-      />
-
-      <FilterBar>
-        <label className="field">
-          <span className="field__label">Project manager</span>
-          <input
-            className="field__control"
-            list="pm-people-list"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Search project managers..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
-          />
-          <datalist id="pm-people-list">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
-        <label className="field">
-          <span className="field__label">As of</span>
-          <input
-            className="field__control"
-            onChange={(event) => state.setAsOf(`${event.target.value}:00.000Z`)}
-            type="datetime-local"
-            value={state.asOf.slice(0, 16)}
-          />
-        </label>
-      </FilterBar>
-
-      {state.isLoading ? <LoadingState label="Loading project manager dashboard..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading project manager dashboard..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
-      {state.data ? (
+      {d ? (
         <>
-          <div className="details-summary-grid">
-            <WorkloadCard
-              href="/projects"
-              label="Managed Projects"
-              value={String(state.data.staffingSummary.managedProjectCount)}
-            />
-            <WorkloadCard
-              href="/assignments?status=active"
-              label="Active Assignments"
-              value={String(state.data.staffingSummary.activeAssignmentCount)}
-            />
-            <WorkloadCard
-              href="/staffing-requests"
-              label="Staffing Gaps"
-              value={String(state.data.staffingSummary.projectsWithStaffingGapsCount)}
-            />
-            <WorkloadCard
-              href="/staffing-requests"
-              label="Evidence Anomalies"
-              value={String(state.data.staffingSummary.projectsWithEvidenceAnomaliesCount)}
-            />
-            <WorkloadCard
-              href="/projects?closingInDays=30"
-              label="Closing in 30 Days"
-              supportingText={state.data.attentionProjects.length > 0 ? 'Review and prepare closure.' : undefined}
-              value={String(state.data.attentionProjects.length)}
-              variant={state.data.attentionProjects.length > 0 ? 'warning' : 'default'}
-            />
+          {d.person.displayName && <h2 style={{ margin: '0 0 var(--space-2)', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{d.person.displayName}</h2>}
+
+          {/* ── ANOMALY STRIP ── */}
+          <AnomalyStrip
+            alerts={[
+              ...(staffingGaps > 0
+                ? [{ id: 'staffing-gaps', severity: 'high' as const, message: `${staffingGaps} project(s) have staffing gaps`, href: '/staffing-requests' }]
+                : []),
+              ...(evidenceAnomalies > 0
+                ? [{ id: 'evidence-anomalies', severity: 'critical' as const, message: `${evidenceAnomalies} project(s) have evidence anomalies`, href: '/exceptions' }]
+                : []),
+            ]}
+          />
+
+          {/* ── KPI STRIP ── */}
+          <div className="kpi-strip" aria-label="Key metrics">
+            <Link className="kpi-strip__item" to="/projects" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+              <TipBalloon tip="Total projects you manage. Click to view the full project registry." arrow="left" />
+              <span className="kpi-strip__value">{d.staffingSummary.managedProjectCount}</span>
+              <span className="kpi-strip__label">Managed Projects</span>
+            </Link>
+
+            <Link className="kpi-strip__item" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+              <TipBalloon tip="People currently assigned to your projects with active status." arrow="left" />
+              <span className="kpi-strip__value">{d.staffingSummary.activeAssignmentCount}</span>
+              <span className="kpi-strip__label">Active Assignments</span>
+            </Link>
+
+            <Link className="kpi-strip__item" to="/staffing-requests"
+              style={{ borderLeft: `3px solid ${staffingGaps > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
+              <TipBalloon tip="Projects missing required staffing roles. Red means immediate action needed." arrow="left" />
+              <span className="kpi-strip__value">{staffingGaps}</span>
+              <span className="kpi-strip__label">Staffing Gaps</span>
+              <span className="kpi-strip__context" style={{ color: staffingGaps > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>
+                {staffingGaps === 0 ? 'All covered' : 'needs attention'}
+              </span>
+            </Link>
+
+            <Link className="kpi-strip__item" to="/exceptions"
+              style={{ borderLeft: `3px solid ${evidenceAnomalies > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
+              <TipBalloon tip="Projects with evidence mismatches such as unapproved work logs." arrow="left" />
+              <span className="kpi-strip__value">{evidenceAnomalies}</span>
+              <span className="kpi-strip__label">Evidence Anomalies</span>
+            </Link>
+
+            <Link className="kpi-strip__item" to="/projects?closingInDays=30"
+              style={{ borderLeft: `3px solid ${attentionProjects.length > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
+              <TipBalloon tip="Active projects whose planned end date is within the next 30 days." arrow="left" />
+              <span className="kpi-strip__value">{attentionProjects.length}</span>
+              <span className="kpi-strip__label">Closing in 30d</span>
+            </Link>
           </div>
 
+          {/* ── TABS ── */}
           <div className="tab-bar-sticky">
             <TabBar activeTab={activeTab} onTabChange={handleTabChange} tabs={PM_TABS} />
           </div>
 
-          {/* Overview tab */}
+          {/* ── Overview tab ── */}
           {activeTab === 'overview' && (
             <>
-              {coverageData.length > 0 ? (
-                <SectionCard
-                  chartExport={{
-                    headers: ['Project', 'Allocated', 'Required'],
-                    rows: coverageData.map((d) => ({ Project: d.name, Allocated: d.allocated, Required: d.required })),
-                  }}
-                  title="Staffing Coverage"
-                >
-                  <ProjectStaffingCoverageChart data={coverageData} />
-                </SectionCard>
-              ) : null}
-              <SectionCard title="Projects">
-                {state.data.managedProjects.length === 0 ? (
-                  <EmptyState
-                    description="This project manager does not currently own any projects."
-                    title="No managed projects"
-                  />
+              {coverageData.length > 0 && (
+                <div className="dashboard-hero" style={{ position: 'relative' }}>
+                  <TipBalloon tip="Staffing coverage across your projects. Bars show allocated vs required headcount." arrow="left" />
+                  <div className="dashboard-hero__header">
+                    <div>
+                      <div className="dashboard-hero__title">Staffing Coverage</div>
+                      <div className="dashboard-hero__subtitle">Allocated vs required headcount per project</div>
+                    </div>
+                  </div>
+                  <div className="dashboard-hero__chart">
+                    <ProjectStaffingCoverageChart data={coverageData} />
+                  </div>
+                </div>
+              )}
+              <SectionCard title="Managed Projects" collapsible chartExport={{
+                headers: ['Project', 'Code', 'Status', 'Staff', 'Evidence'],
+                rows: managedProjects.map((p) => ({ Project: p.name, Code: p.projectCode, Status: p.status, Staff: String(p.staffingCount), Evidence: String(p.evidenceCount) })),
+              }}>
+                {managedProjects.length === 0 ? (
+                  <EmptyState description="This project manager does not currently own any projects." title="No managed projects" action={{ label: 'Create project', href: '/projects/new' }} />
                 ) : (
-                  <div className="monitoring-list">
-                    {state.data.managedProjects.map((project) => (
-                      <div className="monitoring-list__item" key={project.id}>
-                        <div className="monitoring-list__title">{project.name}</div>
-                        <p className="monitoring-list__summary">
-                          {project.projectCode} · {project.status} · {project.staffingCount} staffed
-                        </p>
-                        <div style={{ margin: '6px 0 4px', width: '100%' }}>
-                          <div style={{ fontSize: '11px', marginBottom: '2px' }}>
-                            Evidence: {project.evidenceCount} entries
-                          </div>
-                          <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '6px', overflow: 'hidden', width: '100%' }}>
-                            <div
-                              style={{
-                                background: project.evidenceCount > 0 ? '#22c55e' : '#ef4444',
-                                height: '100%',
-                                width: `${Math.min(100, project.evidenceCount > 0 ? 100 : 0)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <Link
-                          className="button button--secondary"
-                          style={{ marginTop: '6px' }}
-                          to={`/projects/${project.id}/dashboard`}
-                        >
-                          Open dashboard
-                        </Link>
-                      </div>
-                    ))}
+                  <div style={{ overflow: 'auto' }}>
+                    <table className="dash-compact-table">
+                      <thead>
+                        <tr>
+                          <th>Project</th>
+                          <th style={{ width: 80 }}>Code</th>
+                          <th style={{ width: 70 }}>Status</th>
+                          <th style={NUM}>Staff</th>
+                          <th style={NUM}>Evidence</th>
+                          <th style={{ width: 80 }}>Coverage</th>
+                          <th style={{ width: 40 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {managedProjects.map((p) => (
+                          <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${p.id}/dashboard`)}>
+                            <td style={{ fontWeight: 500 }}>{p.name}</td>
+                            <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{p.projectCode}</td>
+                            <td><span style={{ fontSize: 11, fontWeight: 600 }}>{p.status}</span></td>
+                            <td style={NUM}>{p.staffingCount}</td>
+                            <td style={{ ...NUM, color: p.evidenceCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>{p.evidenceCount}</td>
+                            <td>
+                              <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: p.evidenceCount > 0 ? '100%' : '0%', borderRadius: 2, background: p.evidenceCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }} />
+                              </div>
+                            </td>
+                            <td><Link to={`/projects/${p.id}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </SectionCard>
             </>
           )}
 
-          {/* Timeline tab */}
+          {/* ── Timeline tab ── */}
           {activeTab === 'timeline' && (
-            <DashboardGrid>
-              <SectionCard title="Project Timeline">
-                <ProjectTimelineGantt projects={ganttData} />
-              </SectionCard>
-              <SectionCard title="Nearing Closure">
-                {state.data.attentionProjects.length === 0 ? (
-                  <EmptyState
-                    description="No active projects are approaching their planned end date within 30 days."
-                    title="No projects nearing closure"
-                  />
+            <>
+              <div className="dashboard-hero" style={{ position: 'relative' }}>
+                <TipBalloon tip="Gantt chart showing project timelines. Hover for dates." arrow="left" />
+                <div className="dashboard-hero__header">
+                  <div>
+                    <div className="dashboard-hero__title">Project Timeline</div>
+                    <div className="dashboard-hero__subtitle">Planned start and end dates for managed projects</div>
+                  </div>
+                </div>
+                <div className="dashboard-hero__chart">
+                  <ProjectTimelineGantt projects={ganttData} />
+                </div>
+              </div>
+
+              <SectionCard title="Nearing Closure" collapsible>
+                {attentionProjects.length === 0 ? (
+                  <EmptyState description="No active projects are approaching their planned end date within 30 days." title="No projects nearing closure" />
                 ) : (
-                  <div className="monitoring-list">
-                    {state.data.attentionProjects.map((item) => (
-                      <div className="monitoring-list__item" key={item.projectId}>
-                        <div className="monitoring-list__title">{item.projectCode} — {item.projectName}</div>
-                        <p className="monitoring-list__summary">
-                          {item.reason} · {item.detail}
-                        </p>
-                      </div>
-                    ))}
+                  <div style={{ overflow: 'auto' }}>
+                    <table className="dash-compact-table">
+                      <thead>
+                        <tr><th>Code</th><th>Project</th><th style={{ width: 140 }}>Reason</th><th style={{ width: 200 }}>Detail</th><th style={{ width: 40 }}></th></tr>
+                      </thead>
+                      <tbody>
+                        {attentionProjects.map((item) => (
+                          <tr key={item.projectId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${item.projectId}/dashboard`)}>
+                            <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{item.projectCode}</td>
+                            <td style={{ fontWeight: 500 }}>{item.projectName}</td>
+                            <td style={{ fontSize: 11 }}>{item.reason}</td>
+                            <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.detail}</td>
+                            <td><Link to={`/projects/${item.projectId}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </SectionCard>
-            </DashboardGrid>
+            </>
           )}
 
-          {/* Staffing tab */}
+          {/* ── Staffing tab ── */}
           {activeTab === 'staffing' && (
-            <div className="details-grid">
-              <SectionCard title="Overallocated Resources">
-                {overallocated.length === 0 ? (
-                  <EmptyState description="No people are currently overallocated (>100%)." title="No overallocations" />
-                ) : (
-                  <div className="monitoring-list">
-                    {overallocated.map((person) => (
-                      <div className="monitoring-list__item" key={person.id} style={{ borderLeft: '3px solid #ef4444' }}>
-                        <div className="monitoring-list__title" style={{ color: '#dc2626' }}>{person.displayName}</div>
-                        <p className="monitoring-list__summary">{person.totalPercent}% total allocation (over 100%)</p>
-                      </div>
-                    ))}
+            <>
+              {/* Action items: overallocated + staffing gaps */}
+              {(overallocated.length > 0 || (d.projectsWithStaffingGaps ?? []).length > 0) && (
+                <div className="dash-action-section" style={{ position: 'relative' }}>
+                  <TipBalloon tip="Staffing issues needing attention — overallocated people and projects with gaps." arrow="left" />
+                  <div className="dash-action-section__header">
+                    <span className="dash-action-section__title">Staffing Issues ({overallocated.length + (d.projectsWithStaffingGaps ?? []).length})</span>
                   </div>
-                )}
-              </SectionCard>
-
-              <SectionCard title="Staffing Gaps">
-                {state.data.projectsWithStaffingGaps.length === 0 ? (
-                  <EmptyState
-                    description="No staffing gaps were reported for managed projects."
-                    title="No staffing gaps"
-                  />
-                ) : (
-                  <div className="monitoring-list">
-                    {state.data.projectsWithStaffingGaps.map((item) => (
-                      <div className="monitoring-list__item" key={`${item.projectId}-${item.reason}`}>
-                        <div className="monitoring-list__title">{item.projectName}</div>
-                        <p className="monitoring-list__summary">
-                          {item.reason} · {item.detail}
-                        </p>
-                        <Link
-                          className="button button--secondary"
-                          style={{ marginTop: '6px' }}
-                          to={`/assignments/new?projectId=${item.projectId}`}
-                        >
-                          Request resource
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </SectionCard>
-
-              <SectionCard title="Recently Changed Assignments">
-                {state.data.recentlyChangedAssignments.length === 0 ? (
-                  <EmptyState
-                    description="No recent assignment changes were found for managed projects."
-                    title="No recent changes"
-                  />
-                ) : (
-                  <div className="monitoring-list">
-                    {state.data.recentlyChangedAssignments.map((item) => (
-                      <div className="monitoring-list__item" key={item.assignmentId}>
-                        <div className="monitoring-list__title">{item.projectName}</div>
-                        <p className="monitoring-list__summary">
-                          {item.personDisplayName} · {formatChangeType(item.changeType)} ·{' '}
-                          {new Date(item.changedAt).toLocaleDateString('en-US')}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </SectionCard>
-
-              {(state.data.openRequests ?? []).length > 0 ? (
-                <SectionCard title="Open Staffing Requests">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f3f4f6' }}>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Role</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Priority</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Start</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Headcount</th>
-                        <th style={{ padding: '6px 10px', borderBottom: '1px solid #e5e7eb' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {state.data!.openRequests.map((req) => (
-                        <tr key={req.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '6px 10px', fontWeight: 500 }}>{req.role}</td>
-                          <td style={{ padding: '6px 10px' }}><PriorityBadge priority={req.priority} /></td>
-                          <td style={{ padding: '6px 10px' }}>{req.startDate}</td>
-                          <td style={{ padding: '6px 10px' }}>{req.headcountFulfilled}/{req.headcountRequired}</td>
-                          <td style={{ padding: '6px 10px' }}>
-                            <Link style={{ fontSize: '0.75rem', color: '#2563eb' }} to={`/staffing-requests/${req.id}`}>View</Link>
-                          </td>
+                  <div style={{ overflow: 'auto' }}>
+                    <table className="dash-compact-table" style={{ minWidth: 600 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: 28 }}>#</th>
+                          <th style={{ width: 70 }}>Severity</th>
+                          <th style={{ width: 100 }}>Category</th>
+                          <th>Entity</th>
+                          <th style={{ width: 160 }}>Detail</th>
+                          <th style={{ width: 40 }}></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <Link style={{ fontSize: '0.75rem', color: '#6b7280' }} to="/staffing-requests">View all staffing requests →</Link>
+                      </thead>
+                      <tbody>
+                        {overallocated.map((person, i) => (
+                          <tr key={`over-${person.id}`} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${person.id}`)}>
+                            <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{i + 1}</td>
+                            <td>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-danger)', flexShrink: 0 }} />
+                                <span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>High</span>
+                              </span>
+                            </td>
+                            <td>Overallocated</td>
+                            <td style={{ fontWeight: 500 }}>{person.displayName}</td>
+                            <td style={{ fontSize: 11 }}>{person.totalPercent}% total allocation</td>
+                            <td><Link to={`/people/${person.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
+                          </tr>
+                        ))}
+                        {(d.projectsWithStaffingGaps ?? []).map((item, i) => (
+                          <tr key={`gap-${item.projectId}-${item.reason}`} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${item.projectId}/dashboard`)}>
+                            <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{overallocated.length + i + 1}</td>
+                            <td>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-warning)', flexShrink: 0 }} />
+                                <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>Med</span>
+                              </span>
+                            </td>
+                            <td>Staffing Gap</td>
+                            <td style={{ fontWeight: 500 }}>{item.projectName}</td>
+                            <td style={{ fontSize: 11 }}>{item.reason} · {item.detail}</td>
+                            <td><Link to={`/assignments/new?projectId=${item.projectId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Fill</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Open Staffing Requests */}
+              {openRequests.length > 0 && (
+                <SectionCard title={`Open Staffing Requests (${openRequests.length})`} collapsible>
+                  <div style={{ overflow: 'auto' }}>
+                    <table className="dash-compact-table">
+                      <thead>
+                        <tr>
+                          <th>Role</th>
+                          <th style={{ width: 80 }}>Priority</th>
+                          <th style={{ width: 90 }}>Start</th>
+                          <th style={NUM}>Headcount</th>
+                          <th style={{ width: 40 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {openRequests.map((req) => (
+                          <tr key={req.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/staffing-requests/${req.id}`)}>
+                            <td style={{ fontWeight: 500 }}>{req.role}</td>
+                            <td><PriorityBadge priority={req.priority} /></td>
+                            <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{req.startDate}</td>
+                            <td style={NUM}>{req.headcountFulfilled}/{req.headcountRequired}</td>
+                            <td><Link to={`/staffing-requests/${req.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-requests">View all staffing requests</Link>
                   </div>
                 </SectionCard>
-              ) : null}
-            </div>
+              )}
+
+              {/* Recently Changed Assignments */}
+              <SectionCard title="Recently Changed Assignments" collapsible chartExport={{
+                headers: ['Project', 'Person', 'Change', 'Date'],
+                rows: recentChanges.map((i) => ({ Project: i.projectName, Person: i.personDisplayName, Change: i.changeType, Date: i.changedAt.slice(0, 10) })),
+              }}>
+                {recentChanges.length === 0 ? (
+                  <EmptyState description="No recent assignment changes were found for managed projects." title="No recent changes" />
+                ) : (
+                  <div style={{ overflow: 'auto' }}>
+                    <table className="dash-compact-table">
+                      <thead>
+                        <tr>
+                          <th>Project</th>
+                          <th>Person</th>
+                          <th style={{ width: 100 }}>Change</th>
+                          <th style={{ width: 90 }}>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentChanges.map((item) => (
+                          <tr key={item.assignmentId}>
+                            <td style={{ fontWeight: 500 }}>{item.projectName}</td>
+                            <td>{item.personDisplayName}</td>
+                            <td style={{ fontSize: 11 }}>{formatChangeType(item.changeType)}</td>
+                            <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.changedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </SectionCard>
+            </>
           )}
 
-          {/* Anomalies tab */}
+          {/* ── Anomalies tab ── */}
           {activeTab === 'anomalies' && (
-            <SectionCard title="Anomalies">
+            <SectionCard title="Anomalies" collapsible>
               <AnomalyPanel
-                items={state.data.projectsWithEvidenceAnomalies.map((item) => ({
+                items={(d.projectsWithEvidenceAnomalies ?? []).map((item) => ({
                   message: item.detail,
-                  person: {
-                    displayName: state.data!.person.displayName,
-                    id: state.data!.person.id,
-                  },
-                  project: {
-                    id: item.projectId,
-                    name: item.projectName,
-                    projectCode: item.projectCode,
-                  },
+                  person: { displayName: d.person.displayName, id: d.person.id },
+                  project: { id: item.projectId, name: item.projectName, projectCode: item.projectCode },
                   type: item.reason,
                 }))}
               />
             </SectionCard>
           )}
+
+          {/* ── DATA FRESHNESS ── */}
+          <div className="data-freshness">
+            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
+            <button onClick={refetch} type="button">Refresh</button>
+            {' '}
+            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
+          </div>
         </>
       ) : null}
     </PageContainer>

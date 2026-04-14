@@ -47,7 +47,7 @@ export function HrisConfigPage(): JSX.Element {
     return (
       <PageContainer viewport>
         <PageHeader eyebrow="Admin" title="HRIS Integration" subtitle="Configure BambooHR or Workday integration." />
-        {error ? <p style={{ color: '#dc2626' }}>{error}</p> : <p>Loading…</p>}
+        {error ? <p style={{ color: 'var(--color-status-danger)' }}>{error}</p> : <p>Loading…</p>}
       </PageContainer>
     );
   }
@@ -61,7 +61,7 @@ export function HrisConfigPage(): JSX.Element {
       />
 
       {error ? (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
           {error}
         </div>
       ) : null}
@@ -81,7 +81,7 @@ export function HrisConfigPage(): JSX.Element {
         </label>
 
         {config.activeAdapter === 'bamboohr' ? (
-          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700 }}>BambooHR Settings</h3>
             <label className="field">
               <span className="field__label">API Key</span>
@@ -107,7 +107,7 @@ export function HrisConfigPage(): JSX.Element {
         ) : null}
 
         {config.activeAdapter === 'workday' ? (
-          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700 }}>Workday Settings</h3>
             <label className="field">
               <span className="field__label">Tenant URL</span>
@@ -164,8 +164,8 @@ export function HrisConfigPage(): JSX.Element {
         {syncResult ? (
           <div
             style={{
-              background: syncResult.errors.length > 0 ? '#fef2f2' : '#f0fdf4',
-              border: `1px solid ${syncResult.errors.length > 0 ? '#fca5a5' : '#86efac'}`,
+              background: syncResult.errors.length > 0 ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
+              border: `1px solid ${syncResult.errors.length > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}`,
               borderRadius: 6,
               padding: '0.75rem',
               fontSize: '0.8rem',
@@ -173,7 +173,7 @@ export function HrisConfigPage(): JSX.Element {
           >
             <strong>Sync complete</strong> — {syncResult.created} created, {syncResult.updated} updated
             {syncResult.errors.length > 0 ? (
-              <ul style={{ margin: '4px 0 0', padding: '0 0 0 1.2rem', color: '#dc2626' }}>
+              <ul style={{ margin: '4px 0 0', padding: '0 0 0 1.2rem', color: 'var(--color-status-danger)' }}>
                 {syncResult.errors.map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             ) : null}

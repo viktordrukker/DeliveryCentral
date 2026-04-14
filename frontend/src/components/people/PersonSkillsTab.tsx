@@ -11,6 +11,7 @@ import {
   fetchSkills,
   upsertPersonSkills,
 } from '@/lib/api/skills';
+import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 
 const PROFICIENCY_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Beginner', color: '#6b7280' },
@@ -95,6 +96,7 @@ export function PersonSkillsTab({ personId, canEdit }: PersonSkillsTabProps): JS
       const result = await upsertPersonSkills(personId, editItems);
       setSkills(result);
       setEditing(false);
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save skills.');
     } finally {

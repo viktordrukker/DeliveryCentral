@@ -8,6 +8,14 @@ import { fetchProjectById } from '@/lib/api/project-registry';
 import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { ProjectDashboardPage } from './ProjectDashboardPage';
 
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'test-pm', roles: ['project_manager'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
 vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectById: vi.fn(),
 }));
@@ -195,6 +203,7 @@ function mockResponses(
       evidenceButNoApprovedAssignment: [],
       matchedRecords: [
         {
+          allocationPercent: 100,
           assignmentId: 'asn-1',
           effortHours: 2.5,
           person: { displayName: 'Ethan Brooks', id: 'person-1' },

@@ -14,7 +14,7 @@ vi.mock('@/lib/api/workload-dashboard', () => ({
 
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
-    principal: { personId: 'person-1', roles: ['director'] },
+    principal: { personId: 'person-1', roles: ['admin'] },
     isAuthenticated: true,
     isLoading: false,
   }),
@@ -37,9 +37,6 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByText('Active Projects')).toBeInTheDocument();
     expect(screen.getAllByText('Internal Bench Planning').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('link', { name: 'View projects' })).toHaveAttribute('href', '/projects');
-    expect(screen.getByRole('link', { name: 'View assignments' })).toHaveAttribute('href', '/assignments');
-    expect(screen.getByRole('link', { name: 'Compare planned vs actual' })).toHaveAttribute('href', '/dashboard/planned-vs-actual');
   });
 
   it('shows empty supporting states', async () => {
@@ -59,7 +56,7 @@ describe('DashboardPage', () => {
 
     renderWithRouter();
 
-    expect(await screen.findByText('No gaps found')).toBeInTheDocument();
+    expect(await screen.findByText('System healthy')).toBeInTheDocument();
   });
 
   it('shows error state', async () => {

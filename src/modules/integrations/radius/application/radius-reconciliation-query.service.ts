@@ -1,3 +1,4 @@
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import {
   RadiusReconciliationRecordDto,
   RadiusReconciliationReviewDto,
@@ -14,6 +15,7 @@ export class RadiusReconciliationQueryService {
   public constructor(
     private readonly reconciliationRecordRepository: RadiusReconciliationRecordRepositoryPort,
     private readonly radiusSyncStateRepository: RadiusSyncStateRepositoryPort,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async getReview(
@@ -23,6 +25,12 @@ export class RadiusReconciliationQueryService {
       this.reconciliationRecordRepository.listByProvider('radius'),
       this.radiusSyncStateRepository.findByScope('radius', 'accounts', 'default'),
     ]);
+
+    const personIds = [...new Set(records.map((r) => r.personId).filter((id): id is string => Boolean(id)))];
+    const dbPeople = personIds.length > 0
+      ? await this.prisma.person.findMany({ select: { id: true, displayName: true }, where: { id: { in: personIds } } })
+      : [];
+    const peopleById = new Map(dbPeople.map((p) => [p.id, p.displayName]));
 
     const normalizedQuery = filter.query?.trim().toLowerCase();
     const items = records
@@ -59,6 +67,7 @@ export class RadiusReconciliationQueryService {
         lastSeenAt: record.lastSeenAt?.toISOString(),
         matchedByStrategy: record.matchedByStrategy,
         personId: record.personId,
+        personDisplayName: record.personId ? peopleById.get(record.personId) : undefined,
         sourceType: record.sourceType,
         sourceUpdatedAt: record.sourceUpdatedAt?.toISOString(),
         summary: record.summary,

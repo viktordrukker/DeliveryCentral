@@ -70,7 +70,7 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
     <div
       data-testid="skill-match-panel"
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         borderRadius: '8px',
         marginTop: '16px',
         overflow: 'hidden',
@@ -79,7 +79,7 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
       <button
         onClick={() => { void handleExpand(); }}
         style={{
-          background: '#f9fafb',
+          background: 'var(--color-surface-alt)',
           border: 'none',
           cursor: 'pointer',
           display: 'block',
@@ -189,7 +189,7 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
                     <td>
                       <span
                         style={{
-                          color: c.currentAllocation < 50 ? '#16a34a' : c.currentAllocation < 80 ? '#d97706' : '#dc2626',
+                          color: c.currentAllocation < 50 ? 'var(--color-status-active)' : c.currentAllocation < 80 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
                           fontWeight: 600,
                         }}
                       >

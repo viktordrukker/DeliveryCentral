@@ -1,5 +1,6 @@
 import { NotificationOutcome } from '@/lib/api/notifications';
 import { EmptyState } from '@/components/common/EmptyState';
+import { formatDateTime } from '@/lib/format-date';
 
 interface NotificationOutcomeListProps {
   items: NotificationOutcome[];
@@ -27,7 +28,7 @@ export function NotificationOutcomeList({ items }: NotificationOutcomeListProps)
             <div>
               <div className="monitoring-list__title">{item.templateDisplayName}</div>
               <p className="monitoring-list__summary">
-                {item.eventName} · {item.channelKey} · {item.targetSummary}
+                {item.eventName} ï¿½ {item.channelKey} ï¿½ {item.targetSummary}
               </p>
             </div>
             <span className={`status-indicator status-indicator--${normalizeStatus(item.status)}`}>
@@ -38,7 +39,7 @@ export function NotificationOutcomeList({ items }: NotificationOutcomeListProps)
           <dl className="details-list">
             <div>
               <dt>Attempted</dt>
-              <dd>{new Date(item.attemptedAt).toLocaleString('en-US')}</dd>
+              <dd>{formatDateTime(item.attemptedAt)}</dd>
             </div>
             <div>
               <dt>Attempt</dt>

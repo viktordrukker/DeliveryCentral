@@ -49,8 +49,14 @@ export class PersonDirectoryItemDto {
   @ApiProperty()
   public currentAssignmentCount!: number;
 
+  @ApiProperty({ nullable: true })
+  public grade!: string | null;
+
   @ApiProperty()
   public lifecycleStatus!: string;
+
+  @ApiProperty({ nullable: true })
+  public role!: string | null;
 
   @ApiProperty({ type: [String] })
   public resourcePoolIds!: string[];

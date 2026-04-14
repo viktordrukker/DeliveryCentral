@@ -1,4 +1,5 @@
 import { AssignmentHistoryItem } from '@/lib/api/assignments';
+import { formatDateTime } from '@/lib/format-date';
 
 interface AssignmentHistoryTimelineProps {
   items: AssignmentHistoryItem[];
@@ -24,7 +25,7 @@ export function AssignmentHistoryTimeline({
             <div>
               <div className="history-timeline__title">{formatChangeType(item.changeType)}</div>
               <div className="history-timeline__meta">
-                {new Date(item.occurredAt).toLocaleString('en-US')}
+                {formatDateTime(item.occurredAt)}
                 {item.changedByPersonId ? ` · ${item.changedByPersonId}` : ''}
               </div>
             </div>

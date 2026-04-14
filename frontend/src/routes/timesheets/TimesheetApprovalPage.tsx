@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { ViewportTable } from '@/components/layout/ViewportTable';
+import { useFilterParams } from '@/hooks/useFilterParams';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import {
   TimesheetWeek,
@@ -46,16 +48,19 @@ function getStatusBadgeClass(status: string): string {
 }
 
 export function TimesheetApprovalPage(): JSX.Element {
+  const { setActions } = useTitleBarActions();
   const [weeks, setWeeks] = useState<TimesheetWeek[]>([]);
   const [personNames, setPersonNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('SUBMITTED');
-  const [personFilter, setPersonFilter] = useState('');
-  const [fromFilter, setFromFilter] = useState('');
-  const [toFilter, setToFilter] = useState('');
+  const [filters, setFilters] = useFilterParams({ from: '', person: '', status: 'SUBMITTED', to: '' });
+
+  useEffect(() => {
+    setActions(<TipTrigger />);
+    return () => setActions(null);
+  }, [setActions]);
 
   // Selected for bulk approve
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -75,10 +80,10 @@ export function TimesheetApprovalPage(): JSX.Element {
     setLoadError(null);
 
     fetchApprovalQueue({
-      status: statusFilter || undefined,
-      personId: personFilter || undefined,
-      from: fromFilter || undefined,
-      to: toFilter || undefined,
+      status: filters.status || undefined,
+      personId: filters.person || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
     })
       .then((data) => {
         if (active) {
@@ -96,7 +101,7 @@ export function TimesheetApprovalPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [statusFilter, personFilter, fromFilter, toFilter]);
+  }, [filters.status, filters.person, filters.from, filters.to]);
 
   useEffect(() => {
     void fetchPersonDirectory({ page: 1, pageSize: 200 })
@@ -168,25 +173,19 @@ export function TimesheetApprovalPage(): JSX.Element {
   const totalCount = weeks.length;
   const progressPct = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
 
-  if (isLoading) return <LoadingState label="Loading approval queue..." />;
+  if (isLoading) return <LoadingState label="Loading approval queue..." variant="skeleton" skeletonType="table" />;
   if (loadError) return <ErrorState description={loadError} />;
 
   return (
     <PageContainer testId="timesheet-approval-page" viewport>
-      <PageHeader
-        eyebrow="Approvals"
-        title="Timesheet Approval"
-        subtitle="Review and approve submitted timesheets."
-      />
-
       {/* Filter Bar */}
       <div className="filter-bar">
         <label className="field">
           <span className="field__label">Status</span>
           <select
             className="field__control"
-            onChange={(e) => setStatusFilter(e.target.value)}
-            value={statusFilter}
+            onChange={(e) => setFilters({ status: e.target.value })}
+            value={filters.status}
           >
             <option value="">All</option>
             <option value="SUBMITTED">Submitted</option>
@@ -198,28 +197,28 @@ export function TimesheetApprovalPage(): JSX.Element {
           <span className="field__label">Person ID</span>
           <input
             className="field__control"
-            onChange={(e) => setPersonFilter(e.target.value)}
+            onChange={(e) => setFilters({ person: e.target.value })}
             placeholder="Filter by person"
             type="text"
-            value={personFilter}
+            value={filters.person}
           />
         </label>
         <label className="field">
           <span className="field__label">From</span>
           <input
             className="field__control"
-            onChange={(e) => setFromFilter(e.target.value)}
+            onChange={(e) => setFilters({ from: e.target.value })}
             type="date"
-            value={fromFilter}
+            value={filters.from}
           />
         </label>
         <label className="field">
           <span className="field__label">To</span>
           <input
             className="field__control"
-            onChange={(e) => setToFilter(e.target.value)}
+            onChange={(e) => setFilters({ to: e.target.value })}
             type="date"
-            value={toFilter}
+            value={filters.to}
           />
         </label>
       </div>
@@ -265,7 +264,7 @@ export function TimesheetApprovalPage(): JSX.Element {
       {weeks.length === 0 ? (
         <div className="empty-state">No timesheets match the current filters.</div>
       ) : (
-        <table className="data-table" aria-label="Approval queue">
+        <table className="dash-compact-table" aria-label="Approval queue">
           <thead>
             <tr>
               <th>

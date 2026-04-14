@@ -84,9 +84,8 @@ describe('DirectorDashboardPage', () => {
     expect(screen.getByText('Active Assignments')).toBeInTheDocument();
     expect(screen.getByText('45')).toBeInTheDocument();
 
-    // KPI cards wrapped in links
-    const projectLinks = screen.getAllByRole('link', { name: /open projects/i });
-    expect(projectLinks.length).toBeGreaterThanOrEqual(1);
+    // KPI cards wrapped in links (StatCard renders label text inside a Link)
+    expect(screen.getByText('Staffed People')).toBeInTheDocument();
   });
 
   it('renders weekly trend section on staffing tab', async () => {

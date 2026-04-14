@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { RadiusReconciliationReview } from '@/lib/api/integrations-admin';
+import { formatDateTime } from '@/lib/format-date';
 
 interface RadiusReconciliationPanelProps {
   filter: {
@@ -72,7 +73,7 @@ export function RadiusReconciliationPanel({
         <dl className="admin-config-viewer">
           <div>
             <dt>Last sync</dt>
-            <dd>{review?.lastSyncAt ? new Date(review.lastSyncAt).toLocaleString('en-US') : 'Not available'}</dd>
+            <dd>{review?.lastSyncAt ? formatDateTime(review.lastSyncAt) : 'Not available'}</dd>
           </div>
           <div>
             <dt>Last outcome</dt>
@@ -128,7 +129,7 @@ export function RadiusReconciliationPanel({
                 <div>
                   <dt>Person</dt>
                   <dd>
-                    {item.personId ? <Link to={`/people/${item.personId}`}>{item.personId}</Link> : 'Not linked'}
+                    {item.personId ? <Link to={`/people/${item.personId}`}>{item.personDisplayName ?? item.personId}</Link> : 'Not linked'}
                   </dd>
                 </div>
                 <div>
@@ -137,7 +138,7 @@ export function RadiusReconciliationPanel({
                 </div>
                 <div>
                   <dt>Last evaluated</dt>
-                  <dd>{new Date(item.lastEvaluatedAt).toLocaleString('en-US')}</dd>
+                  <dd>{formatDateTime(item.lastEvaluatedAt)}</dd>
                 </div>
                 <div>
                   <dt>Operational follow-up</dt>

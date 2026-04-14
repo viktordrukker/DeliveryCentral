@@ -58,7 +58,7 @@ describe('BusinessAuditPage', () => {
 
     renderWithRouter();
 
-    expect(screen.getByText('Loading business audit...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading business audit...')).toBeInTheDocument();
   });
 
   it('shows error state when the API fails', async () => {

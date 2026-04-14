@@ -19,8 +19,8 @@ vi.mock('@/lib/api/cases', async () => {
 vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: vi.fn().mockResolvedValue({
     items: [
-      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [] },
-      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [] },
+      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
+      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
     ],
     page: 1,
     pageSize: 200,
@@ -36,8 +36,8 @@ describe('CasesPage', () => {
     mockedFetchCases.mockReset();
     mockedFetchPersonDirectory.mockResolvedValue({
       items: [
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [] },
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [] },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
       ],
       page: 1,
       pageSize: 200,
@@ -68,8 +68,7 @@ describe('CasesPage', () => {
 
     renderWithRouter();
 
-    expect(await screen.findByRole('heading', { name: 'Cases' })).toBeInTheDocument();
-    expect(screen.getByText('CASE-1001')).toBeInTheDocument();
+    expect(await screen.findByText('CASE-1001')).toBeInTheDocument();
     expect(screen.getByText('Onboarding')).toBeInTheDocument();
     expect(screen.getByText('subject-1')).toBeInTheDocument();
     expect(screen.getByText('owner-1')).toBeInTheDocument();

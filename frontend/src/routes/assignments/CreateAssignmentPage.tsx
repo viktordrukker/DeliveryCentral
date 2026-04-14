@@ -111,7 +111,7 @@ export function CreateAssignmentPage(): JSX.Element {
         title="Create Assignment"
       />
 
-      {state.isLoadingOptions ? <LoadingState label="Loading assignment form options..." /> : null}
+      {state.isLoadingOptions ? <LoadingState label="Loading assignment form options..." variant="skeleton" skeletonType="detail" /> : null}
       {!state.isLoadingOptions && state.serverError && !canRenderForm ? (
         <ErrorState description={state.serverError} />
       ) : null}

@@ -37,11 +37,13 @@ describe('WorkEvidencePage', () => {
           currentOrgUnit: { code: 'DEP-APP', id: 'org-1', name: 'Application Engineering' },
           displayName: 'Ethan Brooks',
           dottedLineManagers: [],
+          grade: null,
           id: 'person-1',
           primaryEmail: 'ethan@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [],
+          role: null,
         },
       ],
       page: 1,
@@ -69,7 +71,7 @@ describe('WorkEvidencePage', () => {
 
     renderWithRouter();
 
-    expect(screen.getByText('Loading work evidence...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading work evidence...')).toBeInTheDocument();
   });
 
   it('shows empty state', async () => {

@@ -12,7 +12,7 @@ export function FulfilmentProgressBar({
         style={{
           flex: 1,
           height: 8,
-          background: '#e5e7eb',
+          background: 'var(--color-border)',
           borderRadius: 4,
           overflow: 'hidden',
         }}
@@ -21,13 +21,13 @@ export function FulfilmentProgressBar({
           style={{
             width: `${pct}%`,
             height: '100%',
-            background: pct >= 100 ? '#16a34a' : pct >= 50 ? '#2563eb' : '#d97706',
+            background: pct >= 100 ? 'var(--color-status-active)' : pct >= 50 ? 'var(--color-accent)' : 'var(--color-status-warning)',
             borderRadius: 4,
             transition: 'width 0.3s',
           }}
         />
       </div>
-      <span style={{ fontSize: '0.75rem', color: '#374151', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
         {fulfilled}/{required}
       </span>
     </div>

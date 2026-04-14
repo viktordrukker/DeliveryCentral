@@ -45,15 +45,15 @@ import { AssignmentsController } from './presentation/assignments.controller';
     },
     {
       provide: ListAssignmentsService,
-      useFactory: (repository: InMemoryProjectAssignmentRepository) =>
-        new ListAssignmentsService(repository),
-      inject: [InMemoryProjectAssignmentRepository],
+      useFactory: (repository: InMemoryProjectAssignmentRepository, prisma: PrismaService) =>
+        new ListAssignmentsService(repository, prisma),
+      inject: [InMemoryProjectAssignmentRepository, PrismaService],
     },
     {
       provide: GetAssignmentByIdService,
-      useFactory: (repository: InMemoryProjectAssignmentRepository) =>
-        new GetAssignmentByIdService(repository),
-      inject: [InMemoryProjectAssignmentRepository],
+      useFactory: (repository: InMemoryProjectAssignmentRepository, prisma: PrismaService) =>
+        new GetAssignmentByIdService(repository, prisma),
+      inject: [InMemoryProjectAssignmentRepository, PrismaService],
     },
     {
       provide: CreateProjectAssignmentService,

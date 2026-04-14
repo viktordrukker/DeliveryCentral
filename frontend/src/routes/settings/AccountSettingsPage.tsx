@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { setDarkMode } from '@/app/App';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -85,12 +84,6 @@ export function AccountSettingsPage(): JSX.Element {
 
   return (
     <PageContainer testId="account-settings-page">
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { label: 'Account Settings' },
-        ]}
-      />
       <PageHeader
         eyebrow="Settings"
         subtitle="Manage your account credentials and security preferences."

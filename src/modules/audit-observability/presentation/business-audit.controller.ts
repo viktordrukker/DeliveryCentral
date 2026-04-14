@@ -34,7 +34,7 @@ export class BusinessAuditController {
     @Query('to') to?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
-  ): BusinessAuditResponseDto {
+  ): Promise<BusinessAuditResponseDto> {
     return this.businessAuditQueryService.execute({
       actionType,
       actorId,

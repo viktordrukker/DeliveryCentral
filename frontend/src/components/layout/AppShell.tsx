@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppRouteDefinition } from '@/app/navigation';
+import { DrilldownProvider } from '@/app/drilldown-context';
+import { TitleBarProvider, useTitleBarActions } from '@/app/title-bar-context';
 import { CommandPalette, RecentPage } from '@/components/common/CommandPalette';
+import { TipsProvider } from '@/components/common/TipBalloon';
+import { DrilldownBar } from './DrilldownBar';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { PageTitleBar } from './PageTitleBar';
 import { SidebarNav } from './SidebarNav';
@@ -124,6 +128,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <CommandPalette onClose={() => setPaletteOpen(false)} open={paletteOpen} recentPages={recentPages} />
       {DEMO_MODE && demoPanelOpen ? (
         <div
@@ -131,22 +136,22 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
           role="dialog"
           style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
         >
-          <div style={{ background: '#fff', borderRadius: 8, padding: '24px 28px', minWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 8, padding: '24px 28px', minWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Demo Control Panel</span>
               <button onClick={() => setDemoPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }} type="button">✕</button>
             </div>
-            <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Switch role — all accounts use password <strong>InvestorDemo1!</strong></p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 14 }}>Switch role — all accounts use password <strong>InvestorDemo1!</strong></p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
               <tbody>
                 {DEMO_ROLES.map((r) => (
                   <tr key={r.role}>
-                    <td style={{ padding: '5px 0', color: '#374151', width: 140 }}>{r.role}</td>
-                    <td style={{ padding: '5px 0', color: '#6b7280', fontFamily: 'monospace', fontSize: 11 }}>{r.email}</td>
+                    <td style={{ padding: '5px 0', color: 'var(--color-text)', width: 140 }}>{r.role}</td>
+                    <td style={{ padding: '5px 0', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontSize: 11 }}>{r.email}</td>
                     <td style={{ padding: '5px 4px', textAlign: 'right' }}>
                       <button
                         onClick={() => { void navigate('/login'); setDemoPanelOpen(false); }}
-                        style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: '1px solid #d1d5db', cursor: 'pointer', background: '#f3f4f6' }}
+                        style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-surface-alt)' }}
                         type="button"
                       >
                         Switch
@@ -173,8 +178,10 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
           onClick={closeSidebar}
         />
       ) : null}
-      <aside className={`app-shell__sidebar${sidebarOpen ? ' app-shell__sidebar--open' : ''}`}>
-        <SidebarNav activePath={location.pathname} collapsed={sidebarCollapsed} onNavigate={closeSidebar} onToggleCollapse={toggleSidebarCollapse} routes={routes} />
+      <aside className={`app-shell__sidebar${sidebarOpen ? ' app-shell__sidebar--open' : ''}`} aria-label="Main navigation">
+        <nav>
+          <SidebarNav activePath={location.pathname} collapsed={sidebarCollapsed} onNavigate={closeSidebar} onToggleCollapse={toggleSidebarCollapse} routes={routes} />
+        </nav>
       </aside>
       <div className="app-shell__main">
         <ImpersonationBanner />
@@ -191,14 +198,33 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
           </button>
           <TopHeader />
         </div>
-        <PageTitleBar
-          description={activeRoute?.description ?? ''}
-          title={activeRoute?.title ?? 'Workload Tracking Platform'}
-        />
-        <main className="app-shell__content">
-          <Outlet />
-        </main>
+        <DrilldownProvider>
+        <TipsProvider>
+        <TitleBarProvider>
+          <ConnectedPageTitleBar
+            description={activeRoute?.description ?? ''}
+            title={activeRoute?.title ?? 'Workload Tracking Platform'}
+            parentLabel={activeRoute?.group === 'dashboard' ? 'Dashboards' : undefined}
+            parentHref={activeRoute?.group === 'dashboard' ? '/' : undefined}
+          />
+          <main id="main-content" className="app-shell__content">
+            <Outlet />
+          </main>
+        </TitleBarProvider>
+        </TipsProvider>
+        </DrilldownProvider>
       </div>
     </div>
   );
+}
+
+/** Reads page-injected actions from context and passes them to PageTitleBar */
+function ConnectedPageTitleBar(props: {
+  description: string;
+  title: string;
+  parentLabel?: string;
+  parentHref?: string;
+}): JSX.Element {
+  const { actions } = useTitleBarActions();
+  return <PageTitleBar {...props} actions={actions} />;
 }

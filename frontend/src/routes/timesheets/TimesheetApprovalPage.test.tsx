@@ -60,13 +60,13 @@ describe('TimesheetApprovalPage', () => {
   it('shows loading state initially', () => {
     mockedFetchApprovalQueue.mockReturnValue(new Promise(() => undefined));
     renderPage();
-    expect(screen.getByText('Loading approval queue...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading approval queue...')).toBeInTheDocument();
   });
 
   it('renders the page after loading', async () => {
     renderPage();
     expect(await screen.findByTestId('timesheet-approval-page')).toBeInTheDocument();
-    expect(screen.getByText('Timesheet Approval')).toBeInTheDocument();
+    expect(screen.getByText('Approval Progress')).toBeInTheDocument();
   });
 
   it('renders approval queue items', async () => {

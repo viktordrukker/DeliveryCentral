@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { type BusinessAuditRecord } from '@/lib/api/business-audit';
+import { formatDate } from '@/lib/format-date';
 
 interface AuditTimelineProps {
   events: BusinessAuditRecord[];
@@ -22,17 +23,17 @@ function relativeTime(occurredAt: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(occurredAt).toLocaleDateString('en-US');
+  return formatDate(occurredAt);
 }
 
 function actionColor(actionType: string): string {
   const upper = actionType.toUpperCase();
-  if (upper.includes('CREATE') || upper.includes('ADD')) return '#2563eb';
-  if (upper.includes('DELETE') || upper.includes('REMOVE') || upper.includes('REVOKE') || upper.includes('TERMINATE')) return '#dc2626';
-  if (upper.includes('UPDATE') || upper.includes('EDIT') || upper.includes('AMEND') || upper.includes('CHANGE')) return '#d97706';
-  if (upper.includes('APPROVE')) return '#16a34a';
-  if (upper.includes('REJECT')) return '#dc2626';
-  return '#6b7280';
+  if (upper.includes('CREATE') || upper.includes('ADD')) return 'var(--color-accent)';
+  if (upper.includes('DELETE') || upper.includes('REMOVE') || upper.includes('REVOKE') || upper.includes('TERMINATE')) return 'var(--color-status-danger)';
+  if (upper.includes('UPDATE') || upper.includes('EDIT') || upper.includes('AMEND') || upper.includes('CHANGE')) return 'var(--color-status-warning)';
+  if (upper.includes('APPROVE')) return 'var(--color-status-active)';
+  if (upper.includes('REJECT')) return 'var(--color-status-danger)';
+  return 'var(--color-text-muted)';
 }
 
 interface EventCardProps {
@@ -55,20 +56,20 @@ function EventCard({ event }: EventCardProps): JSX.Element {
   return (
     <div className="audit-timeline__event" data-testid="audit-timeline-event">
       <div className="audit-timeline__icon" style={{ backgroundColor: color }}>
-        <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700 }}>
+        <span style={{ color: 'var(--color-surface)', fontSize: '10px', fontWeight: 700 }}>
           {event.actionType.charAt(0).toUpperCase()}
         </span>
       </div>
       <div className="audit-timeline__content">
         <div className="audit-timeline__header">
           <span className="audit-timeline__action">{humanizeAction(event.actionType)}</span>
-          <span className="audit-timeline__entity" style={{ color: '#6b7280', fontSize: '12px' }}>
+          <span className="audit-timeline__entity" style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>
             {event.targetEntityType}
             {event.targetEntityId ? ` · ${event.targetEntityId}` : ''}
           </span>
           {event.actorId ? (
-            <span className="audit-timeline__actor" style={{ color: '#374151', fontSize: '12px' }}>
-              by {event.actorId}
+            <span className="audit-timeline__actor" style={{ color: 'var(--color-text)', fontSize: '12px' }}>
+              by {event.actorDisplayName ?? event.actorId}
             </span>
           ) : null}
           <span className="audit-timeline__time" style={{ color: '#9ca3af', fontSize: '11px', marginLeft: 'auto' }}>

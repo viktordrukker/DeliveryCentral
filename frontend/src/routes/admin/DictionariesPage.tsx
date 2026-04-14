@@ -50,7 +50,7 @@ export function DictionariesPage(): JSX.Element {
         title="Dictionaries"
       />
 
-      {state.isLoading ? <LoadingState label="Loading dictionaries..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading dictionaries..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? (
         <div className="success-banner" role="status">

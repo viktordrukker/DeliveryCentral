@@ -24,6 +24,32 @@ function relativeTime(isoDate: string): string {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }
 
+function groupNotifications(items: InAppNotification[]): Array<{ label: string; items: InAppNotification[] }> {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const todayStr = today.toDateString();
+  const yesterdayStr = yesterday.toDateString();
+
+  const groups: Record<string, InAppNotification[]> = { Today: [], Yesterday: [], 'This Week': [], Earlier: [] };
+
+  for (const item of items) {
+    const d = new Date(item.createdAt).toDateString();
+    const itemDate = new Date(item.createdAt);
+    if (d === todayStr) groups.Today.push(item);
+    else if (d === yesterdayStr) groups.Yesterday.push(item);
+    else if (itemDate >= weekAgo) groups['This Week'].push(item);
+    else groups.Earlier.push(item);
+  }
+
+  return Object.entries(groups)
+    .filter(([, v]) => v.length > 0)
+    .map(([label, items]) => ({ label, items }));
+}
+
 export function NotificationBell(): JSX.Element {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
@@ -138,7 +164,7 @@ export function NotificationBell(): JSX.Element {
               position: 'absolute',
               top: 0,
               right: 0,
-              background: '#e53e3e',
+              background: 'var(--color-status-danger)',
               color: '#fff',
               borderRadius: '9999px',
               fontSize: '10px',
@@ -195,7 +221,7 @@ export function NotificationBell(): JSX.Element {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '12px',
-                  color: '#3182ce',
+                  color: 'var(--color-accent)',
                   padding: 0,
                 }}
                 type="button"
@@ -206,18 +232,23 @@ export function NotificationBell(): JSX.Element {
           </div>
 
           {notifications.length === 0 ? (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#718096', fontSize: '14px' }}>
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '14px' }}>
               No notifications
             </div>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {notifications.map((notification) => (
+              {groupNotifications(notifications).map(({ label, items }) => (
+                <li key={label}>
+                  <div style={{ padding: '6px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--color-text-subtle)', textTransform: 'uppercase', background: 'var(--color-surface-alt)' }}>
+                    {label}
+                  </div>
+                  {items.map((notification) => (
                 <li
                   key={notification.id}
                   style={{
-                    borderLeft: notification.readAt ? 'none' : '3px solid #3182ce',
-                    background: notification.readAt ? 'transparent' : '#ebf8ff',
-                    borderBottom: '1px solid #f0f0f0',
+                    borderLeft: notification.readAt ? 'none' : '3px solid var(--color-accent)',
+                    background: notification.readAt ? 'transparent' : 'var(--color-accent-soft)',
+                    borderBottom: '1px solid var(--color-border)',
                   }}
                 >
                   <div
@@ -258,7 +289,7 @@ export function NotificationBell(): JSX.Element {
                         <div
                           style={{
                             fontSize: '12px',
-                            color: '#4a5568',
+                            color: 'var(--color-text-muted)',
                             whiteSpace: 'normal',
                             marginTop: '2px',
                             lineHeight: 1.4,
@@ -267,7 +298,7 @@ export function NotificationBell(): JSX.Element {
                           {notification.body}
                         </div>
                       )}
-                      <div style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-subtle)', marginTop: '4px' }}>
                         {relativeTime(notification.createdAt)}
                       </div>
                     </div>
@@ -282,7 +313,7 @@ export function NotificationBell(): JSX.Element {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#718096',
+                          color: 'var(--color-text-muted)',
                           fontSize: '14px',
                           flexShrink: 0,
                           padding: '0 4px',
@@ -295,19 +326,21 @@ export function NotificationBell(): JSX.Element {
                   </div>
                 </li>
               ))}
+                </li>
+              ))}
             </ul>
           )}
 
           <div
             style={{
               padding: '10px 16px',
-              borderTop: '1px solid #e2e8f0',
+              borderTop: '1px solid var(--color-border)',
               textAlign: 'center',
             }}
           >
             <Link
               onClick={() => setOpen(false)}
-              style={{ fontSize: '13px', color: '#3182ce', textDecoration: 'none' }}
+              style={{ fontSize: '13px', color: 'var(--color-accent)', textDecoration: 'none' }}
               to="/notifications"
             >
               View all notifications

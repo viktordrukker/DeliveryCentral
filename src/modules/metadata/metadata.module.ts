@@ -32,12 +32,14 @@ import { MetadataDictionariesController } from './presentation/metadata-dictiona
       useFactory: (
         metadataDictionaryRepository: InMemoryMetadataDictionaryRepository,
         metadataEntryRepository: InMemoryMetadataEntryRepository,
+        prisma: PrismaService,
       ) =>
         new MetadataDictionaryQueryService(
           metadataDictionaryRepository,
           metadataEntryRepository,
+          prisma,
         ),
-      inject: [InMemoryMetadataDictionaryRepository, InMemoryMetadataEntryRepository],
+      inject: [InMemoryMetadataDictionaryRepository, InMemoryMetadataEntryRepository, PrismaService],
     },
     {
       provide: CreateDictionaryEntryService,

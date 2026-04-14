@@ -28,7 +28,7 @@ describe('MetadataAdminPage', () => {
 
     renderWithRouter();
 
-    expect(screen.getByText('Loading metadata dictionaries...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading metadata dictionaries...')).toBeInTheDocument();
   });
 
   it('shows empty state', async () => {

@@ -99,14 +99,17 @@ import { RadiusController } from './presentation/radius.controller';
       useFactory: (
         reconciliationRecordRepository: InMemoryRadiusReconciliationRecordRepository,
         radiusSyncStateRepository: InMemoryRadiusSyncStateRepository,
+        prisma: PrismaService,
       ) =>
         new RadiusReconciliationQueryService(
           reconciliationRecordRepository,
           radiusSyncStateRepository,
+          prisma,
         ),
       inject: [
         InMemoryRadiusReconciliationRecordRepository,
         InMemoryRadiusSyncStateRepository,
+        PrismaService,
       ],
     },
   ],

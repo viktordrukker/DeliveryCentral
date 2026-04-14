@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { ASSIGNMENT_STATUS_LABELS, humanizeEnum } from '@/lib/labels';
+import { formatDateShort } from '@/lib/format-date';
 
 interface AssignmentsTableProps {
   items: AssignmentDirectoryItem[];
@@ -13,8 +14,8 @@ interface AssignmentsTableProps {
 }
 
 function formatDateRange(startDate: string, endDate: string | null): string {
-  const start = new Date(startDate).toLocaleDateString('en-US');
-  const end = endDate ? new Date(endDate).toLocaleDateString('en-US') : 'Open-ended';
+  const start = formatDateShort(startDate);
+  const end = endDate ? formatDateShort(endDate) : 'Open-ended';
 
   return `${start} - ${end}`;
 }

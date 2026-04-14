@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { CaseRecord } from '@/lib/api/cases';
+import { formatDateShort } from '@/lib/format-date';
 
 interface CaseListTableProps {
   items: CaseRecord[];
@@ -56,7 +57,7 @@ export function CaseListTable({ items, onRowClick }: CaseListTableProps): JSX.El
           key: 'openedAt',
           render: (item) => (
             <div className="audit-record">
-              <div className="audit-record__primary">{new Date(item.openedAt).toLocaleDateString('en-US')}</div>
+              <div className="audit-record__primary">{formatDateShort(item.openedAt)}</div>
               <div className="audit-record__secondary">
                 <Link className="button button--secondary" to={`/cases/${item.id}`}>
                   Open case

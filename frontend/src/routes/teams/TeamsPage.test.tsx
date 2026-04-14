@@ -208,11 +208,13 @@ function buildPeopleResponse() {
       },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [],
+      grade: null,
       id: 'person-1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['team-1'],
       resourcePools: [],
+      role: null,
     },
     {
       currentAssignmentCount: 0,
@@ -224,11 +226,13 @@ function buildPeopleResponse() {
       },
       displayName: 'Mia Lopez',
       dottedLineManagers: [],
+      grade: null,
       id: 'person-2',
       primaryEmail: 'mia.lopez@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
+      role: null,
     },
   ];
 }

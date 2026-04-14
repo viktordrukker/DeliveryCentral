@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
@@ -13,69 +13,35 @@ import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchWorkloadMatrix, WorkloadMatrixResponse } from '@/lib/api/workload';
 import { exportToXlsx } from '@/lib/export';
 
-function getCellColour(percent: number): string {
-  if (percent === 0) return 'transparent';
-  if (percent < 50) return '#bfdbfe';
-  if (percent < 80) return '#3b82f6';
-  if (percent <= 100) return '#22c55e';
-  return '#ef4444';
+/* ── Allocation helpers (private) ──────────────────────────────────────────── */
+
+function allocClass(pct: number): string {
+  if (pct === 0) return 'alloc-cell alloc-cell--zero';
+  if (pct < 50) return 'alloc-cell alloc-cell--low';
+  if (pct < 80) return 'alloc-cell alloc-cell--medium';
+  if (pct < 100) return 'alloc-cell alloc-cell--high';
+  return 'alloc-cell alloc-cell--over';
 }
 
-function getCellTextColour(percent: number): string {
-  if (percent === 0) return '#9ca3af';
-  if (percent < 50) return '#1e40af';
-  return '#fff';
+function allocColor(pct: number): string {
+  if (pct === 0) return 'var(--color-text-tertiary, #aaa)';
+  if (pct < 50) return '#2e7d32';
+  if (pct < 80) return '#1b5e20';
+  if (pct < 100) return '#e65100';
+  return '#b71c1c';
 }
 
-function AllocationCell({
-  allocationPercent,
-  personId,
-  projectId,
-}: {
-  allocationPercent: number;
+/* ── Panel data ────────────────────────────────────────────────────────────── */
+
+interface PanelData {
+  personName: string;
   personId: string;
+  projectName: string;
   projectId: string;
-}): JSX.Element {
-  const bg = getCellColour(allocationPercent);
-  const color = getCellTextColour(allocationPercent);
-
-  if (allocationPercent === 0) {
-    return (
-      <td
-        style={{
-          background: '#f9fafb',
-          color: '#9ca3af',
-          textAlign: 'center',
-          padding: '6px',
-          fontSize: '0.8rem',
-        }}
-      >
-        —
-      </td>
-    );
-  }
-
-  return (
-    <td style={{ padding: '4px', textAlign: 'center' }}>
-      <Link
-        style={{
-          display: 'inline-block',
-          background: bg,
-          color,
-          borderRadius: '4px',
-          padding: '3px 8px',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          textDecoration: 'none',
-          minWidth: '48px',
-        }}
-        to={`/assignments?personId=${personId}&projectId=${projectId}`}
-      >
-        {allocationPercent}%
-      </Link>
-    </td>
-  );
+  allocationPercent: number;
 }
+
+/* ── Component ─────────────────────────────────────────────────────────────── */
 
 export function WorkloadMatrixPage(): JSX.Element {
   const [matrix, setMatrix] = useState<WorkloadMatrixResponse | null>(null);
@@ -89,6 +55,17 @@ export function WorkloadMatrixPage(): JSX.Element {
   const [poolId, setPoolId] = useState('');
   const [orgUnitId, setOrgUnitId] = useState('');
   const [managerId, setManagerId] = useState('');
+
+  // Search filters (A5)
+  const [personFilter, setPersonFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useState('');
+
+  // Keyboard focus (A2)
+  const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const cellRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Drill-down panel (A3)
+  const [panel, setPanel] = useState<PanelData | null>(null);
 
   // Load filter option data
   useEffect(() => {
@@ -134,13 +111,125 @@ export function WorkloadMatrixPage(): JSX.Element {
       });
   }, [poolId, orgUnitId, managerId]);
 
+  // Filtered data
+  const filteredPeople = matrix
+    ? matrix.people.filter((p) => p.displayName.toLowerCase().includes(personFilter.toLowerCase()))
+    : [];
+  const filteredProjects = matrix
+    ? matrix.projects.filter((p) => p.name.toLowerCase().includes(projectFilter.toLowerCase()))
+    : [];
+
+  // Focus effect
+  useEffect(() => {
+    if (focusedCell) {
+      cellRefs.current[focusedCell]?.focus();
+    }
+  }, [focusedCell]);
+
+  // Escape to close panel
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape' && panel) {
+        setPanel(null);
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [panel]);
+
+  const handleGridKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!focusedCell) return;
+      const [rStr, cStr] = focusedCell.split('-');
+      let r = parseInt(rStr, 10);
+      let c = parseInt(cStr, 10);
+      const maxR = filteredPeople.length - 1;
+      const maxC = filteredProjects.length - 1;
+      let handled = true;
+
+      switch (e.key) {
+        case 'ArrowRight':
+          c = Math.min(c + 1, maxC);
+          break;
+        case 'ArrowLeft':
+          c = Math.max(c - 1, 0);
+          break;
+        case 'ArrowDown':
+          r = Math.min(r + 1, maxR);
+          break;
+        case 'ArrowUp':
+          r = Math.max(r - 1, 0);
+          break;
+        case 'Home':
+          if (e.ctrlKey || e.metaKey) {
+            r = 0;
+            c = 0;
+          } else {
+            c = 0;
+          }
+          break;
+        case 'End':
+          if (e.ctrlKey || e.metaKey) {
+            r = maxR;
+            c = maxC;
+          } else {
+            c = maxC;
+          }
+          break;
+        case 'Enter': {
+          e.preventDefault();
+          const person = filteredPeople[r];
+          const project = filteredProjects[c];
+          if (person && project) {
+            const alloc = person.allocations.find((a) => a.projectId === project.id);
+            const pct = alloc?.allocationPercent ?? 0;
+            if (pct > 0) {
+              setPanel({
+                personName: person.displayName,
+                personId: person.id,
+                projectName: project.name,
+                projectId: project.id,
+                allocationPercent: pct,
+              });
+            }
+          }
+          return;
+        }
+        case 'Escape':
+          e.preventDefault();
+          setPanel(null);
+          return;
+        default:
+          handled = false;
+      }
+
+      if (handled) {
+        e.preventDefault();
+        setFocusedCell(`${r}-${c}`);
+      }
+    },
+    [focusedCell, filteredPeople, filteredProjects],
+  );
+
+  function handleCellClick(person: typeof filteredPeople[0], project: typeof filteredProjects[0], pct: number): void {
+    if (pct > 0) {
+      setPanel({
+        personName: person.displayName,
+        personId: person.id,
+        projectName: project.name,
+        projectId: project.id,
+        allocationPercent: pct,
+      });
+    }
+  }
+
   function handleExport(): void {
     if (!matrix) return;
     const rows = matrix.people.map((person) => {
       const row: Record<string, unknown> = { Person: person.displayName };
       for (const project of matrix.projects) {
         const alloc = person.allocations.find((a) => a.projectId === project.id);
-        row[project.name] = alloc ? `${alloc.allocationPercent}%` : '—';
+        row[project.name] = alloc ? `${alloc.allocationPercent}%` : '\u2014';
       }
       const total = person.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
       row['Total'] = `${total}%`;
@@ -160,11 +249,7 @@ export function WorkloadMatrixPage(): JSX.Element {
       <FilterBar>
         <label className="field">
           <span className="field__label">Resource Pool</span>
-          <select
-            className="field__control"
-            onChange={(e) => setPoolId(e.target.value)}
-            value={poolId}
-          >
+          <select className="field__control" onChange={(e) => setPoolId(e.target.value)} value={poolId}>
             <option value="">All pools</option>
             {pools.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
@@ -174,11 +259,7 @@ export function WorkloadMatrixPage(): JSX.Element {
 
         <label className="field">
           <span className="field__label">Org Unit</span>
-          <select
-            className="field__control"
-            onChange={(e) => setOrgUnitId(e.target.value)}
-            value={orgUnitId}
-          >
+          <select className="field__control" onChange={(e) => setOrgUnitId(e.target.value)} value={orgUnitId}>
             <option value="">All org units</option>
             {orgUnits.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
@@ -188,11 +269,7 @@ export function WorkloadMatrixPage(): JSX.Element {
 
         <label className="field">
           <span className="field__label">Manager</span>
-          <select
-            className="field__control"
-            onChange={(e) => setManagerId(e.target.value)}
-            value={managerId}
-          >
+          <select className="field__control" onChange={(e) => setManagerId(e.target.value)} value={managerId}>
             <option value="">All managers</option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>{m.displayName}</option>
@@ -210,7 +287,7 @@ export function WorkloadMatrixPage(): JSX.Element {
         </button>
       </FilterBar>
 
-      {isLoading ? <LoadingState label="Loading workload matrix..." /> : null}
+      {isLoading ? <LoadingState label="Loading workload matrix..." variant="skeleton" skeletonType="chart" /> : null}
       {error ? <ErrorState description={error} /> : null}
 
       {!isLoading && !error && matrix ? (
@@ -221,180 +298,254 @@ export function WorkloadMatrixPage(): JSX.Element {
           />
         ) : (
           <>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem', fontSize: '0.8rem', color: '#374151' }}>
+            {/* Search filters (A5) */}
+            <div style={{ display: 'flex', gap: 'var(--space-3, 12px)', flexWrap: 'wrap', marginTop: 'var(--space-3, 12px)' }}>
+              <input
+                className="field__control"
+                onChange={(e) => setPersonFilter(e.target.value)}
+                placeholder="Filter people..."
+                style={{ maxWidth: '220px' }}
+                type="text"
+                value={personFilter}
+              />
+              <input
+                className="field__control"
+                onChange={(e) => setProjectFilter(e.target.value)}
+                placeholder="Filter projects..."
+                style={{ maxWidth: '220px' }}
+                type="text"
+                value={projectFilter}
+              />
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px', marginBottom: 'var(--space-3, 12px)' }}>
+              Showing {filteredPeople.length} of {matrix.people.length} people, {filteredProjects.length} of {matrix.projects.length} projects
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem', color: '#374151' }}>
               <span style={{ fontWeight: 600 }}>Legend:</span>
               {[
-                { color: '#bfdbfe', textColor: '#1e40af', label: '< 50% (under)' },
-                { color: '#3b82f6', textColor: '#fff', label: '50–79% (normal)' },
-                { color: '#22c55e', textColor: '#fff', label: '80–100% (full)' },
-                { color: '#ef4444', textColor: '#fff', label: '> 100% (over)' },
-              ].map(({ color, textColor, label }) => (
+                { cls: 'alloc-cell alloc-cell--low', label: '< 50% (under)' },
+                { cls: 'alloc-cell alloc-cell--medium', label: '50\u201379% (normal)' },
+                { cls: 'alloc-cell alloc-cell--high', label: '80\u201399% (high)' },
+                { cls: 'alloc-cell alloc-cell--over', label: '\u2265 100% (over)' },
+              ].map(({ cls, label }) => (
                 <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '3px', background: color, border: '1px solid #e5e7eb' }} />
-                  <span style={{ color: '#374151' }}>{label}</span>
+                  <span className={cls} style={{ width: '14px', height: '14px', minHeight: 0, fontSize: 0, border: '1px solid var(--color-border)' }} />
+                  <span>{label}</span>
                 </span>
               ))}
             </div>
-          <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-            <table
-              style={{
-                borderCollapse: 'collapse',
-                width: '100%',
-                fontSize: '0.85rem',
-              }}
-            >
-              <thead>
-                <tr style={{ background: '#f3f4f6' }}>
-                  <th
-                    style={{
-                      position: 'sticky',
-                      left: 0,
-                      background: '#f3f4f6',
-                      zIndex: 2,
-                      padding: '8px 12px',
-                      textAlign: 'left',
-                      borderBottom: '2px solid #e5e7eb',
-                      minWidth: '160px',
-                    }}
-                  >
-                    Person
-                  </th>
-                  {matrix.projects.map((project) => (
+
+            <div style={{ overflowX: 'auto', marginTop: '1rem' }} role="grid" onKeyDown={handleGridKeyDown}>
+              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-surface-secondary, #f3f4f6)' }}>
                     <th
-                      key={project.id}
                       style={{
-                        padding: '8px',
-                        textAlign: 'center',
-                        borderBottom: '2px solid #e5e7eb',
-                        minWidth: '80px',
-                        maxWidth: '120px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        position: 'sticky',
+                        left: 0,
+                        background: 'var(--color-surface-secondary, #f3f4f6)',
+                        zIndex: 2,
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        borderBottom: '2px solid var(--color-border)',
+                        minWidth: '160px',
                       }}
-                      title={project.name}
                     >
-                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
-                        {project.projectCode}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
-                        {project.name}
-                      </div>
+                      Person
                     </th>
-                  ))}
-                  <th
-                    style={{
-                      padding: '8px',
-                      textAlign: 'center',
-                      borderBottom: '2px solid #e5e7eb',
-                      minWidth: '70px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    Total
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {matrix.people.map((person) => {
-                  const total = person.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
-                  return (
-                    <tr
-                      key={person.id}
-                      style={{ borderBottom: '1px solid #e5e7eb' }}
-                    >
-                      <td
-                        style={{
-                          position: 'sticky',
-                          left: 0,
-                          background: 'white',
-                          zIndex: 1,
-                          padding: '6px 12px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        <Link style={{ color: '#2563eb' }} to={`/people/${person.id}`}>
-                          {person.displayName}
-                        </Link>
-                      </td>
-                      {matrix.projects.map((project) => {
-                        const alloc = person.allocations.find((a) => a.projectId === project.id);
-                        const pct = alloc?.allocationPercent ?? 0;
-                        return (
-                          <AllocationCell
-                            allocationPercent={pct}
-                            key={project.id}
-                            personId={person.id}
-                            projectId={project.id}
-                          />
-                        );
-                      })}
-                      <td
-                        style={{
-                          textAlign: 'center',
-                          padding: '4px',
-                          fontWeight: 700,
-                        }}
-                      >
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            background: getCellColour(total),
-                            color: getCellTextColour(total),
-                            borderRadius: '4px',
-                            padding: '3px 8px',
-                            fontSize: '0.8rem',
-                            minWidth: '48px',
-                          }}
-                        >
-                          {total === 0 ? '—' : `${total}%`}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* Column totals row */}
-                <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
-                  <td
-                    style={{
-                      position: 'sticky',
-                      left: 0,
-                      background: '#f9fafb',
-                      zIndex: 1,
-                      padding: '6px 12px',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    FTE Total
-                  </td>
-                  {matrix.projects.map((project) => {
-                    const total = matrix.people.reduce((sum, person) => {
-                      const alloc = person.allocations.find((a) => a.projectId === project.id);
-                      return sum + (alloc?.allocationPercent ?? 0) / 100;
-                    }, 0);
-                    return (
-                      <td
+                    {filteredProjects.map((project) => (
+                      <th
                         key={project.id}
                         style={{
+                          padding: '8px',
                           textAlign: 'center',
-                          padding: '4px',
-                          fontWeight: 600,
-                          fontSize: '0.8rem',
-                          color: '#374151',
+                          borderBottom: '2px solid var(--color-border)',
+                          minWidth: '80px',
+                          maxWidth: '120px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
+                        title={project.name}
                       >
-                        {total === 0 ? '—' : total.toFixed(2)}
-                      </td>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
+                          {project.projectCode}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
+                          {project.name}
+                        </div>
+                      </th>
+                    ))}
+                    <th
+                      className="alloc-row-total"
+                      style={{
+                        position: 'sticky',
+                        right: 0,
+                        background: 'var(--color-surface-secondary, #f3f4f6)',
+                        zIndex: 2,
+                        padding: '8px',
+                        textAlign: 'center',
+                        borderBottom: '2px solid var(--color-border)',
+                        minWidth: '70px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredPeople.map((person, rowIdx) => {
+                    const total = person.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
+                    return (
+                      <tr key={person.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td
+                          style={{
+                            position: 'sticky',
+                            left: 0,
+                            background: 'var(--color-surface, white)',
+                            zIndex: 1,
+                            padding: '6px 12px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          <Link style={{ color: 'var(--color-primary, #2563eb)' }} to={`/people/${person.id}`}>
+                            {person.displayName}
+                          </Link>
+                        </td>
+                        {filteredProjects.map((project, colIdx) => {
+                          const alloc = person.allocations.find((a) => a.projectId === project.id);
+                          const pct = alloc?.allocationPercent ?? 0;
+                          const cellKey = `${rowIdx}-${colIdx}`;
+                          const isFocused = focusedCell === cellKey;
+
+                          return (
+                            <td key={project.id} style={{ padding: '4px', textAlign: 'center' }}>
+                              <div
+                                ref={(el) => { cellRefs.current[cellKey] = el; }}
+                                className={allocClass(pct)}
+                                tabIndex={isFocused ? 0 : -1}
+                                onFocus={() => setFocusedCell(cellKey)}
+                                onClick={() => handleCellClick(person, project, pct)}
+                                role="gridcell"
+                              >
+                                {pct === 0 ? '\u2014' : `${pct}%`}
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td
+                          className="alloc-row-total"
+                          style={{
+                            position: 'sticky',
+                            right: 0,
+                            background: 'var(--color-surface, white)',
+                            zIndex: 1,
+                          }}
+                        >
+                          <div className={allocClass(total)}>
+                            {total === 0
+                              ? '\u2014'
+                              : total > 100
+                                ? `\u26A0 ${total}%`
+                                : `${total}%`}
+                          </div>
+                        </td>
+                      </tr>
                     );
                   })}
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
+
+                  {/* Column totals row */}
+                  <tr style={{ borderTop: '2px solid var(--color-border)', background: 'var(--color-surface-secondary, #f9fafb)' }}>
+                    <td
+                      style={{
+                        position: 'sticky',
+                        left: 0,
+                        background: 'var(--color-surface-secondary, #f9fafb)',
+                        zIndex: 1,
+                        padding: '6px 12px',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      FTE Total
+                    </td>
+                    {filteredProjects.map((project) => {
+                      const total = filteredPeople.reduce((sum, person) => {
+                        const alloc = person.allocations.find((a) => a.projectId === project.id);
+                        return sum + (alloc?.allocationPercent ?? 0) / 100;
+                      }, 0);
+                      return (
+                        <td
+                          key={project.id}
+                          style={{
+                            textAlign: 'center',
+                            padding: '4px',
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                            color: 'var(--color-text)',
+                          }}
+                        >
+                          {total === 0 ? '\u2014' : total.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                    <td />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Drill-down side panel (A3) */}
+            {panel && (
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'transparent' }}
+                onClick={() => setPanel(null)}
+              />
+            )}
+            <div className={'alloc-panel' + (panel ? ' open' : '')}>
+              {panel && (
+                <>
+                  <div className="alloc-panel__header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2, 8px)' }}>
+                      <div className="alloc-panel__avatar">{panel.personName[0].toUpperCase()}</div>
+                      <strong>{panel.personName}</strong>
+                    </div>
+                    <button
+                      onClick={() => setPanel(null)}
+                      aria-label="Close"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text-secondary)' }}
+                      type="button"
+                    >
+                      \u2715
+                    </button>
+                  </div>
+                  <div className="alloc-panel__stat">
+                    <span className="alloc-panel__stat-value" style={{ color: allocColor(panel.allocationPercent) }}>{panel.allocationPercent}%</span>
+                    <span className="alloc-panel__stat-label">Allocation</span>
+                  </div>
+                  <div className="alloc-panel__stat">
+                    <span className="alloc-panel__stat-value" style={{ fontSize: 16 }}>{panel.projectName}</span>
+                    <span className="alloc-panel__stat-label">Project</span>
+                  </div>
+                  <div className="alloc-panel__links">
+                    <a href={'/assignments?personId=' + panel.personId}>View all assignments \u2192</a>
+                    <a href={'/projects/' + panel.projectId}>View project \u2192</a>
+                  </div>
+                  <button
+                    className="button button--secondary"
+                    onClick={() => setPanel(null)}
+                    style={{ marginTop: 'var(--space-5, 20px)', width: '100%' }}
+                    type="button"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
           </>
         )
       ) : null}

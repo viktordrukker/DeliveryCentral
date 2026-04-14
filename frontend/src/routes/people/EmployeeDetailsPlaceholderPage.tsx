@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
+import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { useAuth } from '@/app/auth-context';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { AuthTokenField } from '@/components/common/AuthTokenField';
 import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -11,6 +12,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDate, formatDateShort } from '@/lib/format-date';
 import { ReportingLineForm } from '@/components/people/ReportingLineForm';
 import { PersonSkillsTab } from '@/components/people/PersonSkillsTab';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
@@ -53,6 +55,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     });
   }
   const state = useEmployeeDetails(id);
+  const { setCurrentLabel } = useDrilldown();
   const authToken = useStoredApiToken();
   const reportingLine = useReportingLineManagement(id);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
@@ -61,6 +64,10 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   const [lifecycleStatus, setLifecycleStatus] = useState<string | null>(null);
   const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false);
   const [confirmTerminateOpen, setConfirmTerminateOpen] = useState(false);
+
+  useEffect(() => {
+    if (state.data?.displayName) setCurrentLabel(state.data.displayName);
+  }, [state.data?.displayName, setCurrentLabel]);
 
   useEffect(() => {
     if (state.data?.lifecycleStatus && !lifecycleStatus) {
@@ -128,6 +135,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       const response = await deactivateEmployee(id);
       setLifecycleStatus(response.status);
       setDeactivateSuccess(`Employee ${response.name} deactivated.`);
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
     } catch (error) {
       setDeactivateError(
         error instanceof Error ? error.message : 'Failed to deactivate employee.',
@@ -153,6 +161,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       });
       setLifecycleStatus(response.status);
       setTerminateSuccess(`Employee ${response.name} terminated.`);
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       setShowTerminateForm(false);
     } catch (error) {
       setTerminateError(
@@ -209,13 +218,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         }}
         open={confirmTerminateOpen}
         title="Terminate Employee"
-      />
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { href: '/people', label: 'People' },
-          { label: state.data?.displayName ?? 'Employee Details' },
-        ]}
       />
       <PageHeader
         actions={
@@ -299,7 +301,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         </button>
       </div>
 
-      {state.isLoading ? <LoadingState label="Loading employee details..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading employee details..." variant="skeleton" skeletonType="detail" /> : null}
       {state.notFound ? (
         <SectionCard>
           <EmptyState
@@ -370,7 +372,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
       {activeTab === 'history' && id ? (
         <SectionCard title="Change History">
-          {personAuditLoading ? <LoadingState label="Loading history..." /> : null}
+          {personAuditLoading ? <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" /> : null}
           {personAuditError ? <ErrorState description={personAuditError} /> : null}
           {!personAuditLoading && !personAuditError ? (
             <AuditTimeline events={personAuditEvents} />
@@ -380,7 +382,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
       {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
         <>
-          <div className="details-summary-grid">
+          <div className="kpi-strip">
             <SummaryCard label="Person" value={state.data.displayName} />
             <SummaryCard
               label="Current Org Unit"
@@ -400,7 +402,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             />
           </div>
 
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Employee Summary">
               <dl className="details-list">
                 <div>
@@ -451,7 +453,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                 relationships.
               </p>
               {reportingLine.isLoadingManagers ? (
-                <LoadingState label="Loading manager options..." />
+                <LoadingState label="Loading manager options..." variant="skeleton" skeletonType="detail" />
               ) : null}
               {reportingLine.error ? <ErrorState description={reportingLine.error} /> : null}
               {reportingLine.successMessage ? (
@@ -463,9 +465,9 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                     <span className="reporting-line-panel__label">Latest scheduled change</span>
                     <strong>
                       {reportingLine.lastCreatedReportingLine.type} from{' '}
-                      {reportingLine.lastCreatedReportingLine.startDate.slice(0, 10)}
+                      {formatDate(reportingLine.lastCreatedReportingLine.startDate)}
                       {reportingLine.lastCreatedReportingLine.endDate
-                        ? ` until ${reportingLine.lastCreatedReportingLine.endDate.slice(0, 10)}`
+                        ? ` until ${formatDate(reportingLine.lastCreatedReportingLine.endDate)}`
                         : ''}
                     </strong>
                   </div>
@@ -523,14 +525,14 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
             <SectionCard title="Work Evidence Summary">
               {workEvidenceLoading ? (
-                <LoadingState />
+                <LoadingState variant="skeleton" skeletonType="detail" />
               ) : workEvidence.length === 0 ? (
                 <EmptyState
                   description="No work evidence records found for this employee."
                   title="No work evidence records"
                 />
               ) : (
-                <table className="data-table">
+                <table className="dash-compact-table">
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -542,7 +544,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                   <tbody>
                     {workEvidence.slice(0, 10).map((ev) => (
                       <tr key={ev.id}>
-                        <td>{ev.activityDate.slice(0, 10)}</td>
+                        <td>{formatDateShort(ev.activityDate)}</td>
                         <td>{ev.sourceType}</td>
                         <td>{ev.summary ?? '—'}</td>
                         <td>{ev.effortHours}</td>

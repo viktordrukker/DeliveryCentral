@@ -70,14 +70,14 @@ describe('TimesheetPage', () => {
   it('shows loading state initially', () => {
     mockedFetchMyTimesheetWeek.mockReturnValue(new Promise(() => undefined));
     renderPage();
-    expect(screen.getByText('Loading timesheet...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading timesheet...')).toBeInTheDocument();
   });
 
 
   it('renders the weekly grid after load', async () => {
     renderPage();
     expect(await screen.findByTestId('timesheet-page')).toBeInTheDocument();
-    expect(screen.getByText('My Timesheet')).toBeInTheDocument();
+    expect(screen.getByText('DRAFT')).toBeInTheDocument();
   });
 
   it('renders the week navigation buttons', async () => {

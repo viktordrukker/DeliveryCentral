@@ -31,11 +31,13 @@ describe('ManagerScopePage', () => {
       currentOrgUnit: { code: 'DEP-APP', id: 'org-1', name: 'Application Engineering' },
       displayName: 'Sophia Kim',
       dottedLineManagers: [],
+      grade: null,
       id: 'mgr-1',
       primaryEmail: 'sophia@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [],
+      role: null,
     });
 
     mockedFetchManagerScope.mockResolvedValue({
@@ -46,11 +48,13 @@ describe('ManagerScopePage', () => {
           currentOrgUnit: { code: 'DEP-APP', id: 'org-1', name: 'Application Engineering' },
           displayName: 'Ethan Brooks',
           dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'mgr-2' }],
+          grade: null,
           id: 'person-1',
           primaryEmail: 'ethan@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [],
+          role: null,
         },
       ],
       dottedLinePeople: [
@@ -60,11 +64,13 @@ describe('ManagerScopePage', () => {
           currentOrgUnit: { code: 'DEP-PMO', id: 'org-2', name: 'Program Management Office' },
           displayName: 'Lucas Reed',
           dottedLineManagers: [{ displayName: 'Sophia Kim', id: 'mgr-1' }],
+          grade: null,
           id: 'person-2',
           primaryEmail: 'lucas@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-2'],
           resourcePools: [],
+          role: null,
         },
       ],
       managerId: 'mgr-1',
@@ -105,11 +111,13 @@ describe('ManagerScopePage', () => {
       currentOrgUnit: { code: 'DEP-APP', id: 'org-1', name: 'Application Engineering' },
       displayName: 'Sophia Kim',
       dottedLineManagers: [],
+      grade: null,
       id: 'mgr-1',
       primaryEmail: 'sophia@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [],
+      role: null,
     });
 
     renderWithRouter('/org/managers/mgr-1/scope');

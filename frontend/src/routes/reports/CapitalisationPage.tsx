@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatDateShort } from '@/lib/format-date';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -282,7 +283,7 @@ export function CapitalisationPage(): JSX.Element {
       </SectionCard>
 
       {isLoading ? (
-        <LoadingState />
+        <LoadingState variant="skeleton" skeletonType="chart" />
       ) : error ? (
         <ErrorState description={error} />
       ) : report ? (
@@ -290,7 +291,7 @@ export function CapitalisationPage(): JSX.Element {
           {/* CAPEX/OPEX Breakdown Table (8-2-02) */}
           <SectionCard title="CAPEX / OPEX Breakdown by Project">
             <div className="table-container">
-              <table className="table">
+              <table className="dash-compact-table">
                 <thead>
                   <tr>
                     {(
@@ -446,11 +447,11 @@ export function CapitalisationPage(): JSX.Element {
           {lockError ? <p className="text-red-600 text-sm mb-3">{lockError}</p> : null}
 
           {locksLoading ? (
-            <LoadingState />
+            <LoadingState variant="skeleton" skeletonType="chart" />
           ) : locks.length === 0 ? (
             <p className="text-sm text-gray-500">No locked periods.</p>
           ) : (
-            <table className="table">
+            <table className="dash-compact-table">
               <thead>
                 <tr>
                   <th>From</th>
@@ -466,7 +467,7 @@ export function CapitalisationPage(): JSX.Element {
                     <td>{lock.periodFrom}</td>
                     <td>{lock.periodTo}</td>
                     <td>{lock.lockedBy}</td>
-                    <td>{lock.lockedAt.slice(0, 10)}</td>
+                    <td>{formatDateShort(lock.lockedAt)}</td>
                     <td>
                       <button
                         className="button button--danger"

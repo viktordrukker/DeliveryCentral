@@ -120,6 +120,27 @@ services:
       retries: 20
       start_period: 15s
 
+  mock-data-generator:
+    profiles: ['tools']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public
+      PRISMA_CLI_BINARY_TARGETS: debian-openssl-3.0.x
+      SEED_PROFILE: realistic
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: sh -c "npx prisma generate && npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts"
+    restart: 'no'
+
   monitoring:
     profiles: ['monitoring']
     image: amir20/dozzle:v8.14.6

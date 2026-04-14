@@ -72,7 +72,7 @@ export function BulkAssignmentPage(): JSX.Element {
         title="Bulk Assignments"
       />
 
-      {state.isLoadingOptions ? <LoadingState label="Loading bulk assignment options..." /> : null}
+      {state.isLoadingOptions ? <LoadingState label="Loading bulk assignment options..." variant="skeleton" skeletonType="table" /> : null}
       {!state.isLoadingOptions && state.serverError && !canRenderForm ? (
         <ErrorState description={state.serverError} />
       ) : null}

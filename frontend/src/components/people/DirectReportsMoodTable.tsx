@@ -122,7 +122,7 @@ export function DirectReportsMoodTable({ managerId }: DirectReportsMoodTableProp
                         width: '14px',
                         height: '14px',
                         borderRadius: '3px',
-                        background: mood !== null ? MOOD_COLORS[mood] : '#e5e7eb',
+                        background: mood !== null ? MOOD_COLORS[mood] : 'var(--color-border)',
                       }}
                       title={mood !== null ? `Mood: ${mood}/5` : 'No data'}
                     />
@@ -131,11 +131,11 @@ export function DirectReportsMoodTable({ managerId }: DirectReportsMoodTableProp
               </td>
               <td>
                 {row.alertActive ? (
-                  <span style={{ color: '#dc2626', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>
                     &#9888; Low mood
                   </span>
                 ) : (
-                  <span style={{ color: '#16a34a' }}>OK</span>
+                  <span style={{ color: 'var(--color-status-active)' }}>OK</span>
                 )}
               </td>
             </tr>

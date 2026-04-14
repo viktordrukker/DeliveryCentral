@@ -16,8 +16,8 @@ export function ContextMenu({ items, onClose, position }: ContextMenuProps): JSX
       aria-label="Context menu"
       role="menu"
       style={{
-        background: '#fff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
         borderRadius: '6px',
         boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         left: adjustedX,

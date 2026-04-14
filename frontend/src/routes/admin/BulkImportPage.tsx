@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 
-import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -77,13 +76,6 @@ export function BulkImportPage(): JSX.Element {
 
   return (
     <PageContainer viewport>
-      <Breadcrumb
-        items={[
-          { label: 'Home', to: '/' },
-          { label: 'Admin', to: '/admin' },
-          { label: 'Bulk Import' },
-        ]}
-      />
       <PageHeader
         eyebrow="Admin"
         subtitle="Import up to 200+ employees from a CSV file. Preview before confirming."
@@ -96,14 +88,14 @@ export function BulkImportPage(): JSX.Element {
         <SectionCard title="Import Complete">
           <dl className="detail-list">
             <dt>Created</dt>
-            <dd style={{ color: '#22c55e', fontWeight: 600 }}>{result.created}</dd>
+            <dd style={{ color: 'var(--color-status-active)', fontWeight: 600 }}>{result.created}</dd>
             <dt>Skipped (already exist)</dt>
             <dd>{result.skipped}</dd>
             <dt>Failed</dt>
-            <dd style={{ color: result.failed.length > 0 ? '#ef4444' : undefined }}>{result.failed.length}</dd>
+            <dd style={{ color: result.failed.length > 0 ? 'var(--color-status-danger)' : undefined }}>{result.failed.length}</dd>
           </dl>
           {result.failed.length > 0 ? (
-            <table className="table" style={{ marginTop: '1rem' }}>
+            <table className="dash-compact-table" style={{ marginTop: '1rem' }}>
               <thead>
                 <tr>
                   <th>Email</th>
@@ -114,7 +106,7 @@ export function BulkImportPage(): JSX.Element {
                 {result.failed.map((f) => (
                   <tr key={f.email}>
                     <td>{f.email}</td>
-                    <td style={{ color: '#ef4444' }}>{f.reason}</td>
+                    <td style={{ color: 'var(--color-status-danger)' }}>{f.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -181,9 +173,9 @@ export function BulkImportPage(): JSX.Element {
             <SectionCard title={`2. Review — ${previewRows.length} valid, ${invalidRows.length} invalid`}>
               {invalidRows.length > 0 ? (
                 <div style={{ marginBottom: '1rem' }}>
-                  <p style={{ color: '#ef4444', fontWeight: 600 }}>Invalid rows (will be skipped):</p>
+                  <p style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>Invalid rows (will be skipped):</p>
                   {invalidRows.map((inv) => (
-                    <p key={inv.row} style={{ color: '#ef4444', fontSize: '0.875rem' }}>
+                    <p key={inv.row} style={{ color: 'var(--color-status-danger)', fontSize: '0.875rem' }}>
                       Row {inv.row}: {inv.errors.join('; ')}
                     </p>
                   ))}
@@ -192,7 +184,7 @@ export function BulkImportPage(): JSX.Element {
 
               {previewRows.length > 0 ? (
                 <>
-                  <table className="table">
+                  <table className="dash-compact-table">
                     <thead>
                       <tr>
                         <th>Given Name</th>
@@ -204,7 +196,7 @@ export function BulkImportPage(): JSX.Element {
                     </thead>
                     <tbody>
                       {previewRows.slice(0, 20).map((row) => (
-                        <tr key={row.email} style={{ background: '#f0fdf4' }}>
+                        <tr key={row.email} style={{ background: 'var(--color-success-bg)' }}>
                           <td>{row.givenName}</td>
                           <td>{row.familyName}</td>
                           <td>{row.email}</td>
@@ -230,7 +222,7 @@ export function BulkImportPage(): JSX.Element {
                   </button>
                 </>
               ) : (
-                <p style={{ color: '#f59e0b' }}>No valid rows to import. Check the invalid row errors above.</p>
+                <p style={{ color: 'var(--color-status-warning)' }}>No valid rows to import. Check the invalid row errors above.</p>
               )}
             </SectionCard>
           ) : null}

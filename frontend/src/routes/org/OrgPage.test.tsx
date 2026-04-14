@@ -4,19 +4,31 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchOrgChart } from '@/lib/api/org-chart';
+import { fetchPersonDirectory } from '@/lib/api/person-directory';
+import { fetchWorkloadMatrix } from '@/lib/api/workload';
 import { OrgPage } from './OrgPage';
 
 vi.mock('@/lib/api/org-chart', () => ({
   fetchOrgChart: vi.fn(),
 }));
 
+vi.mock('@/lib/api/person-directory', () => ({
+  fetchPersonDirectory: vi.fn(),
+}));
+
+vi.mock('@/lib/api/workload', () => ({
+  fetchWorkloadMatrix: vi.fn(),
+}));
+
 vi.mock('@/components/org/InteractiveOrgChart', () => ({
-  InteractiveOrgChart: ({ roots }: { roots: unknown[] }) => (
-    <div data-testid="interactive-org-chart">Org chart with {roots.length} roots</div>
+  InteractiveOrgChart: ({ roots, people }: { roots: unknown[]; people: unknown[] }) => (
+    <div data-testid="interactive-org-chart">Org chart with {roots.length} roots and {people.length} people</div>
   ),
 }));
 
 const mockedFetchOrgChart = vi.mocked(fetchOrgChart);
+const mockedFetchDirectory = vi.mocked(fetchPersonDirectory);
+const mockedFetchMatrix = vi.mocked(fetchWorkloadMatrix);
 
 const SAMPLE_ORG = {
   dottedLineRelationships: [
@@ -50,54 +62,55 @@ const SAMPLE_ORG = {
   ],
 };
 
+const SAMPLE_PEOPLE = {
+  items: [
+    {
+      id: 'person-1',
+      displayName: 'Ethan Brooks',
+      primaryEmail: 'ethan@example.com',
+      currentLineManager: { id: 'mgr-1', displayName: 'Sophia Kim' },
+      currentOrgUnit: { id: 'org-2', code: 'DEP-APP', name: 'Application Engineering' },
+      currentAssignmentCount: 1,
+      dottedLineManagers: [],
+      grade: null,
+      lifecycleStatus: 'ACTIVE',
+      resourcePoolIds: [],
+      resourcePools: [],
+      role: null,
+    },
+  ],
+  page: 1,
+  pageSize: 500,
+  total: 1,
+};
+
+function setupMocks(): void {
+  mockedFetchOrgChart.mockResolvedValue(SAMPLE_ORG);
+  mockedFetchDirectory.mockResolvedValue(SAMPLE_PEOPLE);
+  mockedFetchMatrix.mockResolvedValue({ people: [], projects: [] });
+}
+
 describe('OrgPage', () => {
   beforeEach(() => {
-    mockedFetchOrgChart.mockReset();
+    vi.clearAllMocks();
+    setupMocks();
   });
 
   it('renders org chart page with title', async () => {
-    mockedFetchOrgChart.mockResolvedValue(SAMPLE_ORG);
-
     renderWithRouter();
 
     expect(await screen.findByText('Org Chart')).toBeInTheDocument();
   });
 
   it('renders the interactive chart container', async () => {
-    mockedFetchOrgChart.mockResolvedValue(SAMPLE_ORG);
-
     renderWithRouter();
 
-    // The chart viewport should be present
+    // The chart viewport should be present (people view is default, needs people data)
     await screen.findByText('Org Chart');
     expect(document.querySelector('.org-chart-viewport')).toBeInTheDocument();
   });
 
   it('supports search filtering', async () => {
-    mockedFetchOrgChart.mockResolvedValue({
-      dottedLineRelationships: [],
-      roots: [
-        {
-          children: [],
-          code: 'DIR-DEL',
-          id: 'org-1',
-          kind: 'DIRECTORATE',
-          manager: null,
-          members: [],
-          name: 'Delivery Directorate',
-        },
-        {
-          children: [],
-          code: 'DIR-PLT',
-          id: 'org-2',
-          kind: 'DIRECTORATE',
-          manager: null,
-          members: [],
-          name: 'Platform Directorate',
-        },
-      ],
-    });
-
     const user = userEvent.setup();
     renderWithRouter();
 
@@ -108,12 +121,14 @@ describe('OrgPage', () => {
     expect(searchInput).toHaveValue('Platform');
   });
 
-  it('shows error state', async () => {
+  it('shows error state when all data sources fail', async () => {
     mockedFetchOrgChart.mockRejectedValue(new Error('Org chart unavailable'));
+    mockedFetchDirectory.mockRejectedValue(new Error('Directory unavailable'));
+    mockedFetchMatrix.mockRejectedValue(new Error('Matrix unavailable'));
 
     renderWithRouter();
 
-    expect(await screen.findByText('Org chart unavailable')).toBeInTheDocument();
+    expect(await screen.findByText('Failed to load org chart data.')).toBeInTheDocument();
   });
 });
 

@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusCard } from '@/components/integrations/StatusCard';
 import { useJiraIntegrationStatus } from '@/features/integrations/useJiraIntegrationStatus';
+import { formatDateTime } from '@/lib/format-date';
 
 export function IntegrationsPage(): JSX.Element {
   const state = useJiraIntegrationStatus();
@@ -24,7 +25,7 @@ export function IntegrationsPage(): JSX.Element {
         title="Jira Integration Status"
       />
 
-      {state.isLoading ? <LoadingState label="Loading Jira integration status..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading Jira integration status..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {state.data ? (
@@ -50,7 +51,7 @@ export function IntegrationsPage(): JSX.Element {
             </SectionCard>
           </div>
 
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Project Sync">
               <dl className="details-list">
                 <div>
@@ -65,7 +66,7 @@ export function IntegrationsPage(): JSX.Element {
                   <dt>Last sync time</dt>
                   <dd>
                     {state.data.lastProjectSyncAt
-                      ? new Date(state.data.lastProjectSyncAt).toLocaleString('en-US')
+                      ? formatDateTime(state.data.lastProjectSyncAt)
                       : 'Not available'}
                   </dd>
                 </div>

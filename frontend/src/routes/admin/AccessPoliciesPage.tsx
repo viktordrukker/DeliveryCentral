@@ -41,11 +41,11 @@ export function AccessPoliciesPage(): JSX.Element {
   });
 
   const actionColor: Record<string, string> = {
-    read: '#1d4ed8',
-    create: '#15803d',
-    update: '#b45309',
-    delete: '#dc2626',
-    approve: '#7c3aed',
+    read: 'var(--color-accent)',
+    create: 'var(--color-status-active)',
+    update: 'var(--color-status-warning)',
+    delete: 'var(--color-status-danger)',
+    approve: 'var(--color-info)',
   };
 
   return (
@@ -57,7 +57,7 @@ export function AccessPoliciesPage(): JSX.Element {
       />
 
       {error ? (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
           {error}
         </div>
       ) : null}
@@ -88,24 +88,24 @@ export function AccessPoliciesPage(): JSX.Element {
       </div>
 
       {isLoading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading policies…</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Loading policies…</p>
       ) : filtered.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No policies match the current filters.</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>No policies match the current filters.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
-            <tr style={{ background: '#f3f4f6' }}>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>ID</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Roles</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Resource</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Action</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Description</th>
+            <tr style={{ background: 'var(--color-surface-alt)' }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>ID</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Roles</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Resource</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Action</th>
+              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Description</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#4b5563' }}>{p.id}</td>
+              <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{p.id}</td>
                 <td style={{ padding: '8px 12px' }}>
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                     {p.roles.map((r) => (
@@ -122,7 +122,7 @@ export function AccessPoliciesPage(): JSX.Element {
                 <td style={{ padding: '8px 12px' }}>
                   <span
                     style={{
-                      color: actionColor[p.action] ?? '#374151',
+                      color: actionColor[p.action] ?? 'var(--color-text)',
                       fontWeight: 700,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
@@ -131,7 +131,7 @@ export function AccessPoliciesPage(): JSX.Element {
                     {p.action}
                   </span>
                 </td>
-                <td style={{ padding: '8px 12px', color: '#4b5563' }}>{p.description}</td>
+                <td style={{ padding: '8px 12px', color: 'var(--color-text-muted)' }}>{p.description}</td>
               </tr>
             ))}
           </tbody>
@@ -141,12 +141,12 @@ export function AccessPoliciesPage(): JSX.Element {
       <div
         style={{
           marginTop: '1.5rem',
-          background: '#fffbeb',
-          border: '1px solid #fcd34d',
+          background: 'var(--color-warning-bg)',
+          border: '1px solid var(--color-status-warning)',
           borderRadius: 6,
           padding: '0.75rem',
           fontSize: '0.8rem',
-          color: '#92400e',
+          color: 'var(--color-warning-text)',
         }}
       >
         <strong>Note:</strong> Policies are defined in code at{' '}

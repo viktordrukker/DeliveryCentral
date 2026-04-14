@@ -15,7 +15,7 @@ export function getDashboardPath(roles: string[]): string {
     case 'admin':
       return '/admin';
     case 'director':
-      return '/';
+      return '/dashboard/director';
     case 'hr_manager':
       return '/dashboard/hr';
     case 'resource_manager':

@@ -7,6 +7,9 @@ export class BusinessAuditRecordDto {
   @ApiPropertyOptional({ nullable: true })
   public actorId?: string | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  public actorDisplayName?: string | null;
+
   @ApiProperty()
   public targetEntityType!: string;
 

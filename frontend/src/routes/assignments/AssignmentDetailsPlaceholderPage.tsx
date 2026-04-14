@@ -1,7 +1,7 @@
-import { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { FormEvent, useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { AssignmentEndActions } from '@/components/assignments/AssignmentEndActions';
 import { AssignmentHistoryTimeline } from '@/components/assignments/AssignmentHistoryTimeline';
 import { AuditTimeline } from '@/components/common/AuditTimeline';
@@ -13,16 +13,16 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { AssignmentWorkflowActions } from '@/components/assignments/AssignmentWorkflowActions';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import { useAssignmentDetails } from '@/features/assignments/useAssignmentDetails';
 import { useAuth } from '@/app/auth-context';
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
 
 export function AssignmentDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
   const { principal } = useAuth();
   const state = useAssignmentDetails(id);
+  const { setCurrentLabel } = useDrilldown();
   const actorId = principal?.personId ?? '';
   const [amendAllocation, setAmendAllocation] = useState('');
   const [amendRole, setAmendRole] = useState('');
@@ -77,6 +77,10 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
     ? `${state.data.person.displayName} on ${state.data.project.displayName}`
     : 'Assignment Details';
 
+  useEffect(() => {
+    if (state.data) setCurrentLabel(breadcrumbLabel);
+  }, [state.data, breadcrumbLabel, setCurrentLabel]);
+
   return (
     <PageContainer testId="assignment-details-page">
       <ConfirmDialog
@@ -90,20 +94,13 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
         open={confirmRevokeOpen}
         title="Revoke Assignment"
       />
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { href: '/assignments', label: 'Assignments' },
-          { label: breadcrumbLabel },
-        ]}
-      />
       <PageHeader
         eyebrow="Assignments"
         subtitle="Review formal staffing state and execute explicit approval workflow actions."
         title={state.data ? `${state.data.person.displayName} on ${state.data.project.displayName}` : 'Assignment Details'}
       />
 
-      {state.isLoading ? <LoadingState label="Loading assignment details..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading assignment details..." variant="skeleton" skeletonType="detail" /> : null}
       {state.notFound ? (
         <SectionCard>
           <EmptyState
@@ -116,7 +113,7 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
 
       {state.data ? (
         <>
-          <div className="details-summary-grid">
+          <div className="kpi-strip">
             <SummaryCard label="Person" value={state.data.person.displayName} />
             <SummaryCard label="Project" value={state.data.project.displayName} />
             <SummaryCard label="Approval State" value={state.data.approvalState} />
@@ -129,7 +126,7 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
             </div>
           ) : null}
 
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Assignment Summary">
               <dl className="details-list">
                 <div>
@@ -155,13 +152,13 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
                 <div>
                   <dt>Date Range</dt>
                   <dd>
-                    {new Date(state.data.startDate).toLocaleDateString('en-US')} -{' '}
-                    {state.data.endDate ? new Date(state.data.endDate).toLocaleDateString('en-US') : 'Open-ended'}
+                    {formatDate(state.data.startDate)} -{' '}
+                    {state.data.endDate ? formatDate(state.data.endDate) : 'Open-ended'}
                   </dd>
                 </div>
                 <div>
                   <dt>Requested At</dt>
-                  <dd>{new Date(state.data.requestedAt).toLocaleString('en-US')}</dd>
+                  <dd>{formatDateTime(state.data.requestedAt)}</dd>
                 </div>
               </dl>
             </SectionCard>
@@ -292,21 +289,29 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
                   title="No approvals"
                 />
               ) : (
-                <div className="monitoring-list">
-                  {state.data.approvals.map((approval) => (
-                    <div className="monitoring-list__item" key={approval.id}>
-                      <div className="monitoring-list__title">
-                        {approval.decision}
-                        {approval.decidedByPersonId ? ` — by ${approval.decidedByPersonId}` : ''}
-                      </div>
-                      <p className="monitoring-list__summary">
-                        {approval.decisionAt
-                          ? new Date(approval.decisionAt).toLocaleString('en-US')
-                          : 'No date recorded'}
-                        {approval.decisionReason ? ` · ${approval.decisionReason}` : ''}
-                      </p>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="dash-compact-table">
+                    <thead>
+                      <tr>
+                        <th>Decision</th>
+                        <th>Decided By</th>
+                        <th>Date</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.data.approvals.map((approval) => (
+                        <tr key={approval.id}>
+                          <td style={{ fontWeight: 500 }}>{approval.decision}</td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{approval.decidedByPersonId ?? '—'}</td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            {approval.decisionAt ? formatDateTime(approval.decisionAt) : 'No date recorded'}
+                          </td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{approval.decisionReason ?? ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </SectionCard>
@@ -316,7 +321,7 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
             </SectionCard>
 
             <SectionCard title="Audit History">
-              {auditLoading ? <LoadingState label="Loading audit history..." /> : null}
+              {auditLoading ? <LoadingState label="Loading audit history..." variant="skeleton" skeletonType="detail" /> : null}
               {auditError ? <ErrorState description={auditError} /> : null}
               {!auditLoading && !auditError ? (
                 <AuditTimeline events={auditEvents} />

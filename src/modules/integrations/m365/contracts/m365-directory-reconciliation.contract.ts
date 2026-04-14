@@ -9,6 +9,7 @@ export interface M365DirectoryReconciliationRecordDto {
   lastSeenAt?: string;
   matchedByStrategy?: string;
   personId?: string;
+  personDisplayName?: string;
   resolvedManagerPersonId?: string;
   sourceAccountEnabled?: boolean;
   sourceDepartment?: string;

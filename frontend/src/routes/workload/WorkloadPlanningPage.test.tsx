@@ -31,13 +31,19 @@ vi.mock('@/lib/api/http-client', () => ({
 
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => children,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => children,
   useDraggable: () => ({
     attributes: {},
     listeners: {},
     setNodeRef: () => undefined,
     transform: null,
+    isDragging: false,
   }),
   useDroppable: () => ({ setNodeRef: () => undefined, isOver: false }),
+}));
+
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: { Translate: { toString: () => '' } },
 }));
 
 const mockedFetchPlanning = vi.mocked(fetchWorkloadPlanning);

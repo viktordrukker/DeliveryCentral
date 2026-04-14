@@ -17,7 +17,7 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingEvent, setPendingEvent] = useState<FormEvent<HTMLFormElement> | null>(null);
 
-  function handleSubmitRequest(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmitRequest(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setPendingEvent(event);
     setConfirmOpen(true);
@@ -51,12 +51,12 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
         title="Employee Lifecycle Admin"
       />
 
-      {state.isLoading ? <LoadingState label="Loading employee lifecycle admin..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading employee lifecycle admin..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? <div className="success-banner">{state.successMessage}</div> : null}
 
       {!state.isLoading && !state.error ? (
-        <div className="details-grid">
+        <div className="dashboard-main-grid">
           <SectionCard title="Create Employee">
             {state.orgUnitOptions.length === 0 ? (
               <EmptyState

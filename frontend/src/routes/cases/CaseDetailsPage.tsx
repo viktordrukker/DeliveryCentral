@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDate, formatDateTime } from '@/lib/format-date';
 import {
   CaseComment,
   CaseRecord,
@@ -32,6 +33,7 @@ export function CaseDetailsPage(): JSX.Element {
   const { id } = useParams();
   const { principal } = useAuth();
   const state = useCaseDetails(id);
+  const { setCurrentLabel } = useDrilldown();
   const [caseData, setCaseData] = useState<CaseRecord | null>(null);
   const [steps, setSteps] = useState<CaseStep[]>([]);
   const [stepsLoading, setStepsLoading] = useState(false);
@@ -57,6 +59,10 @@ export function CaseDetailsPage(): JSX.Element {
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   const displayCase = caseData ?? state.data;
+
+  useEffect(() => {
+    if (displayCase?.caseNumber) setCurrentLabel(displayCase.caseNumber);
+  }, [displayCase?.caseNumber, setCurrentLabel]);
 
   useEffect(() => {
     if (!id) {
@@ -227,13 +233,6 @@ export function CaseDetailsPage(): JSX.Element {
         open={confirmCancelOpen}
         title="Cancel Case"
       />
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { href: '/cases', label: 'Cases' },
-          { label: displayCase?.caseNumber ?? 'Case Detail' },
-        ]}
-      />
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/cases">
@@ -245,7 +244,7 @@ export function CaseDetailsPage(): JSX.Element {
         title={displayCase?.caseNumber ?? 'Case Detail'}
       />
 
-      {state.isLoading ? <LoadingState label="Loading case details..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading case details..." variant="skeleton" skeletonType="detail" /> : null}
       {state.notFound ? (
         <SectionCard>
           <EmptyState
@@ -258,7 +257,7 @@ export function CaseDetailsPage(): JSX.Element {
 
       {displayCase ? (
         <>
-          <div className="details-summary-grid">
+          <div className="kpi-strip">
             <SummaryCard label="Case Number" value={displayCase.caseNumber} />
             <SummaryCard label="Type" value={displayCase.caseTypeDisplayName} />
             <SummaryCard label="Status" value={displayCase.status} />
@@ -269,9 +268,9 @@ export function CaseDetailsPage(): JSX.Element {
             <div
               style={{
                 background: slaStatus.isOverdue
-                  ? (slaStatus.escalationTier >= 2 ? '#fef2f2' : '#fffbeb')
-                  : '#f0fdf4',
-                border: `1px solid ${slaStatus.isOverdue ? (slaStatus.escalationTier >= 2 ? '#ef4444' : '#f59e0b') : '#22c55e'}`,
+                  ? (slaStatus.escalationTier >= 2 ? 'var(--color-danger-bg)' : 'var(--color-warning-bg)')
+                  : 'var(--color-success-bg)',
+                border: `1px solid ${slaStatus.isOverdue ? (slaStatus.escalationTier >= 2 ? 'var(--color-status-danger)' : 'var(--color-status-warning)') : 'var(--color-status-active)'}`,
                 borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
@@ -284,13 +283,13 @@ export function CaseDetailsPage(): JSX.Element {
                 SLA:
               </span>
               {slaStatus.isOverdue ? (
-                <span style={{ color: slaStatus.escalationTier >= 2 ? '#ef4444' : '#f59e0b', fontSize: '0.875rem' }}>
+                <span style={{ color: slaStatus.escalationTier >= 2 ? 'var(--color-status-danger)' : 'var(--color-status-warning)', fontSize: '0.875rem' }}>
                   {slaStatus.hoursOverdue.toFixed(1)}h overdue
                   {slaStatus.escalationTier > 0 ? ` — Escalation Tier ${slaStatus.escalationTier}` : ''}
                 </span>
               ) : (
-                <span style={{ color: '#22c55e', fontSize: '0.875rem' }}>
-                  {slaStatus.hoursRemaining.toFixed(1)}h remaining (deadline: {new Date(slaStatus.deadline).toLocaleString('en-US')})
+                <span style={{ color: 'var(--color-status-active)', fontSize: '0.875rem' }}>
+                  {slaStatus.hoursRemaining.toFixed(1)}h remaining (deadline: {formatDateTime(slaStatus.deadline)})
                 </span>
               )}
             </div>
@@ -358,7 +357,7 @@ export function CaseDetailsPage(): JSX.Element {
             </SectionCard>
           ) : null}
 
-          <div className="details-grid">
+          <div className="dashboard-main-grid">
             <SectionCard title="Case Summary">
               <dl className="details-list">
                 <div>
@@ -387,12 +386,12 @@ export function CaseDetailsPage(): JSX.Element {
                 </div>
                 <div>
                   <dt>Opened</dt>
-                  <dd>{new Date(displayCase.openedAt).toLocaleString('en-US')}</dd>
+                  <dd>{formatDateTime(displayCase.openedAt)}</dd>
                 </div>
                 {displayCase.closedAt ? (
                   <div>
                     <dt>Closed</dt>
-                    <dd>{new Date(displayCase.closedAt).toLocaleString('en-US')}</dd>
+                    <dd>{formatDateTime(displayCase.closedAt)}</dd>
                   </div>
                 ) : null}
                 {displayCase.cancelReason ? (
@@ -409,7 +408,7 @@ export function CaseDetailsPage(): JSX.Element {
             </SectionCard>
 
             <SectionCard title="Workflow Steps">
-              {stepsLoading ? <LoadingState label="Loading steps..." /> : null}
+              {stepsLoading ? <LoadingState label="Loading steps..." variant="skeleton" skeletonType="detail" /> : null}
               {stepError ? <ErrorState description={stepError} /> : null}
               {!stepsLoading && steps.length === 0 ? (
                 <EmptyState
@@ -417,71 +416,74 @@ export function CaseDetailsPage(): JSX.Element {
                   title="No steps"
                 />
               ) : (
-                <div className="monitoring-list">
-                  {steps.map((step) => (
-                    <div className="monitoring-list__item" key={step.stepKey}>
-                      <div
-                        className="monitoring-card__header"
-                        style={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between' }}
-                      >
-                        <div>
-                          <div className="monitoring-list__title">
-                            {step.displayName}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="dash-compact-table">
+                    <thead>
+                      <tr>
+                        <th>Step</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {steps.map((step) => (
+                        <tr key={step.stepKey}>
+                          <td style={{ fontWeight: 500 }}>{step.displayName}</td>
+                          <td>
                             {step.status === 'COMPLETED' ? (
                               <span
                                 style={{
-                                  backgroundColor: '#dcfce7',
-                                  border: '1px solid #86efac',
+                                  backgroundColor: 'var(--color-success-bg)',
+                                  border: '1px solid var(--color-status-active)',
                                   borderRadius: '4px',
-                                  color: '#166534',
+                                  color: 'var(--color-status-active)',
                                   fontSize: '11px',
                                   fontWeight: 600,
-                                  marginLeft: '8px',
                                   padding: '1px 6px',
                                 }}
                               >
                                 Completed
                               </span>
-                            ) : null}
-                          </div>
-                          <p className="monitoring-list__summary">
-                            {step.status}
-                            {step.completedAt
-                              ? ` · ${new Date(step.completedAt).toLocaleString('en-US')}`
-                              : ''}
-                            {step.dueAt && step.status !== 'COMPLETED'
-                              ? ` · Due ${new Date(step.dueAt).toLocaleDateString('en-US')}`
-                              : ''}
-                          </p>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {step.status !== 'COMPLETED' ? (
-                            <button
-                              className="button button--secondary"
-                              disabled={completingStep === step.stepKey}
-                              onClick={() => { void handleCompleteStep(step.stepKey); }}
-                              type="button"
-                            >
-                              {completingStep === step.stepKey ? 'Completing...' : 'Complete'}
-                            </button>
-                          ) : null}
-                          <button
-                            className="button button--secondary"
-                            disabled={removingStep === step.stepKey}
-                            onClick={() => { void handleRemoveStep(step.stepKey); }}
-                            style={{ fontSize: '12px' }}
-                            type="button"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            ) : (
+                              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{step.status}</span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                            {step.completedAt ? formatDateTime(step.completedAt) : ''}
+                            {step.dueAt && step.status !== 'COMPLETED' ? `Due ${formatDate(step.dueAt)}` : ''}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              {step.status !== 'COMPLETED' ? (
+                                <button
+                                  className="button button--secondary"
+                                  disabled={completingStep === step.stepKey}
+                                  onClick={() => { void handleCompleteStep(step.stepKey); }}
+                                  type="button"
+                                >
+                                  {completingStep === step.stepKey ? 'Completing...' : 'Complete'}
+                                </button>
+                              ) : null}
+                              <button
+                                className="button button--secondary"
+                                disabled={removingStep === step.stepKey}
+                                onClick={() => { void handleRemoveStep(step.stepKey); }}
+                                style={{ fontSize: '12px' }}
+                                type="button"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
               {(displayCase?.status === 'OPEN' || displayCase?.status === 'IN_PROGRESS') ? (
-                <div style={{ borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px' }}>
+                <div style={{ borderTop: '1px solid var(--color-border)', display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px' }}>
                   <input
                     className="field__control"
                     onChange={(e) => setNewStepName(e.target.value)}
@@ -503,24 +505,34 @@ export function CaseDetailsPage(): JSX.Element {
             </SectionCard>
 
             <SectionCard title="Comments">
-              {commentsLoading ? <LoadingState label="Loading comments..." /> : null}
+              {commentsLoading ? <LoadingState label="Loading comments..." variant="skeleton" skeletonType="detail" /> : null}
               {commentError ? <ErrorState description={commentError} /> : null}
               {!commentsLoading && comments.length === 0 ? (
                 <EmptyState description="No comments yet." title="No comments" />
               ) : (
-                <div className="monitoring-list">
-                  {comments.map((comment) => (
-                    <div className="monitoring-list__item" key={comment.id}>
-                      <div className="monitoring-list__title">{comment.body}</div>
-                      <p className="monitoring-list__summary">
-                        {comment.authorPersonId} · {new Date(comment.createdAt).toLocaleString('en-US')}
-                      </p>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="dash-compact-table">
+                    <thead>
+                      <tr>
+                        <th>Comment</th>
+                        <th>Author</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comments.map((comment) => (
+                        <tr key={comment.id}>
+                          <td style={{ fontWeight: 500 }}>{comment.body}</td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{comment.authorPersonId}</td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDateTime(comment.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
               {principal?.personId ? (
-                <div style={{ borderTop: comments.length > 0 ? '1px solid #e5e7eb' : 'none', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: comments.length > 0 ? '12px' : 0 }}>
+                <div style={{ borderTop: comments.length > 0 ? '1px solid var(--color-border)' : 'none', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: comments.length > 0 ? '12px' : 0 }}>
                   <textarea
                     className="field__control"
                     onChange={(e) => setNewComment(e.target.value)}
@@ -577,20 +589,29 @@ export function CaseDetailsPage(): JSX.Element {
                   title="No participants"
                 />
               ) : (
-                <div className="monitoring-list">
-                  {displayCase.participants.map((participant) => (
-                    <div className="monitoring-list__item" key={`${participant.personId}-${participant.role}`}>
-                      <div className="monitoring-card__header">
-                        <div>
-                          <div className="monitoring-list__title">{participant.role}</div>
-                          <p className="monitoring-list__summary">{participant.personId}</p>
-                        </div>
-                        <Link className="button button--secondary" to={`/people/${participant.personId}`}>
-                          Open person
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="dash-compact-table">
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Person</th>
+                        <th style={{ textAlign: 'right' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayCase.participants.map((participant) => (
+                        <tr key={`${participant.personId}-${participant.role}`} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/people/${participant.personId}`)}>
+                          <td style={{ fontWeight: 500 }}>{participant.role}</td>
+                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{participant.personId}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${participant.personId}`}>
+                              Open person
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </SectionCard>

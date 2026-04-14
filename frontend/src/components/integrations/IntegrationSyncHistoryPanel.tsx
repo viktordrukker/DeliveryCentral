@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/common/EmptyState';
 import { DataTable } from '@/components/common/DataTable';
 import { IntegrationSyncHistoryItem } from '@/lib/api/integrations-admin';
+import { formatDateTime } from '@/lib/format-date';
 
 interface IntegrationSyncHistoryPanelProps {
   items: IntegrationSyncHistoryItem[];
@@ -67,6 +68,6 @@ export function IntegrationSyncHistoryPanel({
 }
 
 function formatTimestamp(value: string): string {
-  return new Date(value).toLocaleString('en-US');
+  return formatDateTime(value);
 }
 

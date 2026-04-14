@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { useDrilldown } from '@/app/drilldown-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { formatDate } from '@/lib/format-date';
 import {
   ResourcePool,
   addResourcePoolMember,
@@ -33,6 +34,11 @@ export function ResourcePoolDetailPage(): JSX.Element {
   const [selectedPersonId, setSelectedPersonId] = useState('');
 
   const canManage = principal?.roles.some((r) => RM_ADMIN_ROLES.includes(r)) ?? false;
+  const { setCurrentLabel } = useDrilldown();
+
+  useEffect(() => {
+    if (pool?.name) setCurrentLabel(pool.name);
+  }, [pool?.name, setCurrentLabel]);
 
   useEffect(() => {
     if (!id) return;
@@ -109,13 +115,6 @@ export function ResourcePoolDetailPage(): JSX.Element {
 
   return (
     <PageContainer testId="resource-pool-detail-page">
-      <Breadcrumb
-        items={[
-          { href: '/', label: 'Home' },
-          { href: '/resource-pools', label: 'Resource Pools' },
-          { label: pool?.name ?? 'Resource Pool' },
-        ]}
-      />
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/resource-pools">
@@ -127,7 +126,7 @@ export function ResourcePoolDetailPage(): JSX.Element {
         title={pool?.name ?? 'Resource Pool'}
       />
 
-      {isLoading ? <LoadingState label="Loading resource pool..." /> : null}
+      {isLoading ? <LoadingState label="Loading resource pool..." variant="skeleton" skeletonType="detail" /> : null}
       {error ? <ErrorState description={error} /> : null}
       {notFound ? (
         <SectionCard>
@@ -205,37 +204,41 @@ export function ResourcePoolDetailPage(): JSX.Element {
                 title="No members"
               />
             ) : (
-              <div className="monitoring-list">
-                {pool.members.map((member) => (
-                  <div className="monitoring-list__item" key={member.personId}>
-                    <div className="monitoring-card__header">
-                      <div>
-                        <div className="monitoring-list__title">{member.displayName}</div>
-                        <p className="monitoring-list__summary">
-                          Member since {new Date(member.validFrom).toLocaleDateString('en-US')}
-                        </p>
-                      </div>
-                      <div className="button-stack">
-                        <Link
-                          className="button button--secondary"
-                          to={`/people/${member.personId}`}
-                        >
-                          View person
-                        </Link>
-                        {canManage ? (
-                          <button
-                            className="button button--danger"
-                            disabled={isSubmitting}
-                            onClick={() => void handleRemoveMember(member.personId)}
-                            type="button"
-                          >
-                            Remove
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div style={{ overflowX: 'auto' }}>
+                <table className="dash-compact-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Member Since</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pool.members.map((member) => (
+                      <tr key={member.personId} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/people/${member.personId}`)}>
+                        <td style={{ fontWeight: 500 }}>{member.displayName}</td>
+                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDate(member.validFrom)}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${member.personId}`} onClick={(e) => e.stopPropagation()}>
+                              Go
+                            </Link>
+                            {canManage ? (
+                              <button
+                                className="button button--danger"
+                                disabled={isSubmitting}
+                                onClick={(e) => { e.stopPropagation(); void handleRemoveMember(member.personId); }}
+                                type="button"
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </SectionCard>

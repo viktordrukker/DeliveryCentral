@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { ApiError } from '@/lib/api/http-client';
+import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import {
   AmendAssignmentRequest,
   AssignmentDetails,
@@ -91,6 +92,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
         setSuccessMessage('Assignment rejected successfully.');
       }
 
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       return true;
     } catch (decisionError) {
@@ -114,6 +116,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     try {
       await endAssignment(id, request);
       setSuccessMessage('Assignment ended successfully.');
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       return true;
     } catch (endError) {
@@ -137,6 +140,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     try {
       await amendAssignment(id, request);
       setSuccessMessage('Assignment amended successfully.');
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       return true;
     } catch (amendError) {
@@ -160,6 +164,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     try {
       await revokeAssignment(id, request);
       setSuccessMessage('Assignment revoked.');
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       return true;
     } catch (revokeError) {

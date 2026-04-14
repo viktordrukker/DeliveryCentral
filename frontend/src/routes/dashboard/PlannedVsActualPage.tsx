@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { ANOMALY_TYPE_LABELS, humanizeEnum } from '@/lib/labels';
 import { ErrorState } from '@/components/common/ErrorState';
-import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { PersonSelect } from '@/components/common/PersonSelect';
 import { SectionCard } from '@/components/common/SectionCard';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { PlannedVsActualBars } from '@/components/charts/PlannedVsActualBars';
 import { DeviationScatter } from '@/components/charts/DeviationScatter';
 import { usePlannedVsActual } from '@/features/dashboard/usePlannedVsActual';
+import { formatDateShort } from '@/lib/format-date';
 import type {
   AssignedButNoEvidenceItem,
   ComparisonAnomalyItem,
@@ -25,6 +26,7 @@ const PAGE_SIZE = 20;
 type TabKey = 'matched' | 'noEvidence' | 'noAssignment' | 'anomalies';
 
 export function PlannedVsActualPage(): JSX.Element {
+  const { setActions } = useTitleBarActions();
   const [projectId, setProjectId] = useState('');
   const [personId, setPersonId] = useState('');
   const [asOf, setAsOf] = useState(() => new Date().toISOString());
@@ -34,6 +36,46 @@ export function PlannedVsActualPage(): JSX.Element {
   const [page, setPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const state = usePlannedVsActual({ asOf, personId, projectId });
+
+  // Inject filters + tip into title bar
+  useEffect(() => {
+    setActions(
+      <>
+        <label className="field">
+          <span className="field__label">Project</span>
+          <input
+            className="field__control"
+            list="pva-project-list"
+            onChange={(event) => {
+              const val = event.target.value;
+              if (!val) { setProjectId(''); return; }
+              const match = projects.find((p) => p.name === val || p.projectCode === val);
+              if (match) setProjectId(match.id);
+            }}
+            placeholder="Search projects..."
+            type="text"
+          />
+          <datalist id="pva-project-list">
+            {projects.map((p) => (
+              <option key={p.id} value={p.name}>{p.projectCode}</option>
+            ))}
+          </datalist>
+        </label>
+        <PersonSelect label="Person" onChange={setPersonId} value={personId} />
+        <label className="field">
+          <span className="field__label">As of</span>
+          <input
+            className="field__control"
+            onChange={(event) => setAsOf(event.target.value)}
+            type="datetime-local"
+            value={asOf.slice(0, 16)}
+          />
+        </label>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, projects, personId, asOf]);
 
   // Reset pagination and expanded rows when filters change
   useEffect(() => { setPage(1); setExpandedRows(new Set()); }, [projectId, personId, asOf, activeTab]);
@@ -71,7 +113,7 @@ export function PlannedVsActualPage(): JSX.Element {
     : [];
 
   // Get current tab items
-  const currentItems = getCurrentTabItems(state.data, activeTab);
+  const currentItems = getCurrentTabItems(state.data ?? null, activeTab);
   const totalPages = Math.max(1, Math.ceil(currentItems.length / PAGE_SIZE));
   const pagedItems = currentItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -85,46 +127,7 @@ export function PlannedVsActualPage(): JSX.Element {
 
   return (
     <PageContainer testId="planned-vs-actual-page">
-      <PageHeader
-        eyebrow="Diagnostics"
-        subtitle="Compare planned staffing against observed work."
-        title="Planned vs Actual"
-      />
-
-      <FilterBar>
-        <label className="field">
-          <span className="field__label">Project</span>
-          <input
-            className="field__control"
-            list="pva-project-list"
-            onChange={(event) => {
-              const val = event.target.value;
-              if (!val) { setProjectId(''); return; }
-              const match = projects.find((p) => p.name === val || p.projectCode === val);
-              if (match) setProjectId(match.id);
-            }}
-            placeholder="Search projects..."
-            type="text"
-          />
-          <datalist id="pva-project-list">
-            {projects.map((p) => (
-              <option key={p.id} value={p.name}>{p.projectCode}</option>
-            ))}
-          </datalist>
-        </label>
-        <PersonSelect label="Person" onChange={setPersonId} value={personId} />
-        <label className="field">
-          <span className="field__label">As of</span>
-          <input
-            className="field__control"
-            onChange={(event) => setAsOf(event.target.value)}
-            type="datetime-local"
-            value={asOf.slice(0, 16)}
-          />
-        </label>
-      </FilterBar>
-
-      {state.isLoading ? <LoadingState label="Loading planned vs actual comparison..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading planned vs actual comparison..." variant="skeleton" skeletonType="chart" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
 
       {!state.isLoading && !state.error && state.data ? (
@@ -323,7 +326,7 @@ function NoAssignmentCells({ item }: { item: EvidenceButNoApprovedAssignmentItem
       <td><span className="text-muted">{item.project.projectCode}</span> {item.project.name}</td>
       <td>{item.sourceType}</td>
       <td className="text-right">{item.effortHours}h</td>
-      <td>{item.activityDate.slice(0, 10)}</td>
+      <td>{formatDateShort(item.activityDate)}</td>
     </>
   );
 }
@@ -367,7 +370,7 @@ function NoAssignmentDetail({ item }: { item: EvidenceButNoApprovedAssignmentIte
       <dt>Evidence ID</dt><dd className="text-muted">{item.workEvidenceId}</dd>
       <dt>Source</dt><dd>{item.sourceType}</dd>
       <dt>Hours</dt><dd>{item.effortHours}h</dd>
-      <dt>Date</dt><dd>{item.activityDate.slice(0, 10)}</dd>
+      <dt>Date</dt><dd>{formatDateShort(item.activityDate)}</dd>
     </dl>
   );
 }

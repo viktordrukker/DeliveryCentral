@@ -78,11 +78,13 @@ describe('EmployeeDetailsPage', () => {
           currentOrgUnit: { code: 'DEP-APP', id: 'o1', name: 'Application Engineering' },
           displayName: 'Ethan Brooks',
           dottedLineManagers: [],
+          grade: null,
           id: 'p1',
           primaryEmail: 'ethan.brooks@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+          role: null,
         },
         {
           currentAssignmentCount: 0,
@@ -90,11 +92,13 @@ describe('EmployeeDetailsPage', () => {
           currentOrgUnit: { code: 'DEP-PLAT', id: 'o2', name: 'Platform Engineering' },
           displayName: 'Sophia Kim',
           dottedLineManagers: [],
+          grade: null,
           id: 'm1',
           primaryEmail: 'sophia.kim@example.com',
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
+          role: null,
         },
       ],
       page: 1,
@@ -114,11 +118,13 @@ describe('EmployeeDetailsPage', () => {
       },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'm2' }],
+      grade: null,
       id: 'p1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+      role: null,
     });
 
     renderWithRouter('/people/p1');
@@ -166,11 +172,13 @@ describe('EmployeeDetailsPage', () => {
       },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'm2' }],
+      grade: null,
       id: 'p1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+      role: null,
     });
     mockedDeactivateEmployee.mockResolvedValue({
       email: 'ethan.brooks@example.com',
@@ -206,11 +214,13 @@ describe('EmployeeDetailsPage', () => {
       },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'm2' }],
+      grade: null,
       id: 'p1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+      role: null,
     });
     mockedCreateReportingLine.mockResolvedValue({
       id: 'line-1',
@@ -250,11 +260,13 @@ describe('EmployeeDetailsPage', () => {
       },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'm2' }],
+      grade: null,
       id: 'p1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
+      role: null,
     });
 
     const user = userEvent.setup();
@@ -274,11 +286,13 @@ describe('EmployeeDetailsPage', () => {
       currentOrgUnit: { code: 'DEP-APP', id: 'o1', name: 'Application Engineering' },
       displayName: 'Ethan Brooks',
       dottedLineManagers: [],
+      grade: null,
       id: 'p1',
       primaryEmail: 'ethan.brooks@example.com',
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
+      role: null,
     });
 
     mockedFetchPerson360.mockResolvedValue({

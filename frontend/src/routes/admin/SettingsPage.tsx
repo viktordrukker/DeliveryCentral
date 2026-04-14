@@ -163,7 +163,7 @@ export function SettingsPage(): JSX.Element {
         title="Platform Settings"
       />
 
-      {isLoading ? <LoadingState label="Loading settings..." /> : null}
+      {isLoading ? <LoadingState label="Loading settings..." variant="skeleton" skeletonType="page" /> : null}
       {loadError ? <ErrorState description={loadError} /> : null}
 
       {!isLoading && !loadError && settings ? (
@@ -301,10 +301,10 @@ function SettingsSection({ section, values, onSave }: SettingsSectionProps): JSX
             </button>
 
             {errors[field.key] ? (
-              <span style={{ color: '#dc2626', fontSize: '12px' }}>{errors[field.key]}</span>
+              <span style={{ color: 'var(--color-status-danger)', fontSize: '12px' }}>{errors[field.key]}</span>
             ) : null}
             {successes[field.key] ? (
-              <span style={{ color: '#16a34a', fontSize: '12px' }}>Saved</span>
+              <span style={{ color: 'var(--color-status-active)', fontSize: '12px' }}>Saved</span>
             ) : null}
           </div>
         ))}

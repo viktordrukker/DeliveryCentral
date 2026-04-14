@@ -2,7 +2,6 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -74,13 +73,6 @@ export function CreateStaffingRequestPage(): JSX.Element {
 
   return (
     <PageContainer>
-      <Breadcrumb
-        items={[
-          { label: 'Home', to: '/' },
-          { label: 'Staffing Requests', to: '/staffing-requests' },
-          { label: 'New Request' },
-        ]}
-      />
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/staffing-requests">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { markSidebarNavigation } from '@/app/drilldown-context';
 import { appRoutes } from '@/app/navigation';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
@@ -101,6 +102,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       label: route.title,
       sublabel: route.description,
       onSelect: () => {
+        markSidebarNavigation();
         navigate(route.path);
         onClose();
       },
@@ -144,6 +146,36 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       sublabel: 'Review pending staffing requests',
       onSelect: () => {
         navigate('/staffing-requests');
+        onClose();
+      },
+    },
+    {
+      group: 'Actions',
+      id: 'action-create-project',
+      label: 'Create Project',
+      sublabel: 'Register a new project',
+      onSelect: () => {
+        navigate('/projects/new');
+        onClose();
+      },
+    },
+    {
+      group: 'Actions',
+      id: 'action-create-staffing-request',
+      label: 'Create Staffing Request',
+      sublabel: 'Request staffing for a project',
+      onSelect: () => {
+        navigate('/staffing-requests/new');
+        onClose();
+      },
+    },
+    {
+      group: 'Actions',
+      id: 'action-create-case',
+      label: 'Create Case',
+      sublabel: 'Open a new HR/operational case',
+      onSelect: () => {
+        navigate('/cases/new');
         onClose();
       },
     },

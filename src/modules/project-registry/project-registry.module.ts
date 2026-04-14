@@ -151,16 +151,19 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
         projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        prisma: PrismaService,
       ) =>
         new GetProjectByIdService(
           projectRepository,
           projectExternalLinkRepository,
           projectAssignmentRepository,
+          prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
         InMemoryProjectAssignmentRepository,
+        PrismaService,
       ],
     },
     {
@@ -178,8 +181,9 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         projectRepository: InMemoryProjectRepository,
         projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
-      ) => new ProjectDashboardQueryService(projectRepository, projectAssignmentRepository, workEvidenceRepository),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, InMemoryWorkEvidenceRepository],
+        prisma: PrismaService,
+      ) => new ProjectDashboardQueryService(projectRepository, projectAssignmentRepository, workEvidenceRepository, prisma),
+      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, InMemoryWorkEvidenceRepository, PrismaService],
     },
     {
       provide: UpdateProjectService,

@@ -103,14 +103,17 @@ import { M365DirectoryController } from './presentation/m365-directory.controlle
       useFactory: (
         reconciliationRecordRepository: InMemoryM365DirectoryReconciliationRecordRepository,
         directorySyncStateRepository: InMemoryDirectorySyncStateRepository,
+        prisma: PrismaService,
       ) =>
         new M365DirectoryReconciliationQueryService(
           reconciliationRecordRepository,
           directorySyncStateRepository,
+          prisma,
         ),
       inject: [
         InMemoryM365DirectoryReconciliationRecordRepository,
         InMemoryDirectorySyncStateRepository,
+        PrismaService,
       ],
     },
   ],

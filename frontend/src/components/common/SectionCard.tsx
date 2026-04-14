@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState } from 'react';
+import { type ReactNode, PropsWithChildren, useState } from 'react';
 
 import { ChartCsvData, ChartExportMenu } from './ChartExportMenu';
 
@@ -6,7 +6,7 @@ interface SectionCardProps {
   chartExport?: ChartCsvData;
   collapsible?: boolean;
   id?: string;
-  title?: string;
+  title?: ReactNode;
 }
 
 export function SectionCard({
@@ -16,7 +16,8 @@ export function SectionCard({
   id,
   title,
 }: PropsWithChildren<SectionCardProps>): JSX.Element {
-  const storageKey = collapsible && title ? `section-card-collapsed:${title}` : null;
+  const titleStr = typeof title === 'string' ? title : '';
+  const storageKey = collapsible && titleStr ? `section-card-collapsed:${titleStr}` : null;
   const [collapsed, setCollapsed] = useState(() => {
     if (!storageKey) return false;
     return localStorage.getItem(storageKey) === 'true';
@@ -35,14 +36,14 @@ export function SectionCard({
           <h3 className="section-card__title" style={{ margin: 0 }}>{title}</h3>
           <div style={{ alignItems: 'center', display: 'flex', gap: '4px' }}>
             {chartExport ? (
-              <ChartExportMenu csvData={chartExport} title={title} />
+              <ChartExportMenu csvData={chartExport} title={titleStr} />
             ) : null}
             {collapsible ? (
               <button
                 aria-expanded={!collapsed}
                 aria-label={collapsed ? 'Expand section' : 'Collapse section'}
                 onClick={toggleCollapse}
-                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', padding: '2px 6px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '14px', padding: '2px 6px' }}
                 type="button"
               >
                 {collapsed ? '▸' : '▾'}

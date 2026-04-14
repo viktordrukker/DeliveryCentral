@@ -28,11 +28,11 @@ export function CreateProjectPage(): JSX.Element {
         title="Create Project"
       />
 
-      {state.isLoading ? <LoadingState label="Loading project lifecycle admin..." /> : null}
+      {state.isLoading ? <LoadingState label="Loading project lifecycle admin..." variant="skeleton" skeletonType="detail" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? <div className="success-banner">{state.successMessage}</div> : null}
 
-      <div className="details-grid">
+      <div className="dashboard-main-grid">
         <SectionCard title="Project Charter">
           {!tokenState.hasToken ? (
             <AuthTokenField

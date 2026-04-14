@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
-import { TableSkeleton } from '@/components/common/Skeleton';
+import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
+import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { ViewportTable } from '@/components/layout/ViewportTable';
 import { AssignmentsTable } from '@/components/assignments/AssignmentsTable';
 import { useAssignments } from '@/features/assignments/useAssignments';
+import { useFilterParams } from '@/hooks/useFilterParams';
 import { ASSIGNMENT_STATUS_LABELS } from '@/lib/labels';
 import { exportToXlsx } from '@/lib/export';
 
@@ -19,12 +21,7 @@ const ASSIGNMENT_MANAGE_ROLES = ['project_manager', 'resource_manager', 'deliver
 export function AssignmentsPage(): JSX.Element {
   const navigate = useNavigate();
   const { isLoading: authLoading, principal } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [person, setPerson] = useState(() => searchParams.get('person') ?? '');
-  const [project, setProject] = useState(() => searchParams.get('project') ?? '');
-  const [status, setStatus] = useState(() => searchParams.get('status') ?? '');
-  const [from, setFrom] = useState(() => searchParams.get('from') ?? '');
-  const [to, setTo] = useState(() => searchParams.get('to') ?? '');
+  const [filters, setFilters, resetFilters] = useFilterParams({ from: '', person: '', project: '', status: '', to: '' });
 
   // Employees can only see their own assignments. Default the person filter
   // to the logged-in person's id when the role is employee-only.
@@ -35,81 +32,65 @@ export function AssignmentsPage(): JSX.Element {
   const effectivePersonId = isEmployeeOnly ? (principal?.personId ?? '') : undefined;
   const effectivePerson = isEmployeeOnly
     ? (principal?.personId ?? '')
-    : person;
+    : filters.person;
 
-  useEffect(() => {
-    if (!isEmployeeOnly) {
-      setPerson(searchParams.get('person') ?? '');
-    }
-    setProject(searchParams.get('project') ?? '');
-    setStatus(searchParams.get('status') ?? '');
-    setFrom(searchParams.get('from') ?? '');
-    setTo(searchParams.get('to') ?? '');
-  }, [searchParams, isEmployeeOnly]);
+  const { setActions } = useTitleBarActions();
 
   const state = useAssignments({
-    from,
+    from: filters.from,
     person: effectivePerson,
     personId: effectivePersonId,
-    project,
-    status,
-    to,
+    project: filters.project,
+    status: filters.status,
+    to: filters.to,
   });
 
-  function handleReset(): void {
-    setPerson('');
-    setProject('');
-    setStatus('');
-    setFrom('');
-    setTo('');
-  }
+  // Inject actions into title bar (filters stay in FilterBar since >3 fields)
+  useEffect(() => {
+    setActions(
+      <>
+        {state.visibleItems.length > 0 && !isEmployeeOnly ? (
+          <button
+            className="button button--secondary button--sm"
+            disabled={state.isLoading}
+            onClick={() => {
+              exportToXlsx(
+                state.visibleItems.map((a) => ({
+                  'Allocation %': a.allocationPercent,
+                  Person: a.person.displayName,
+                  Project: a.project.displayName,
+                  'Staffing Role': a.staffingRole,
+                  Status: a.approvalState,
+                })),
+                'assignments',
+              );
+            }}
+            type="button"
+          >
+            Export XLSX
+          </button>
+        ) : null}
+        {!isEmployeeOnly ? (
+          <>
+            <Link className="button button--secondary button--sm" to="/assignments/bulk">
+              Bulk assign
+            </Link>
+            <Link className="button button--sm" to="/assignments/new">
+              Create assignment
+            </Link>
+          </>
+        ) : null}
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, state.visibleItems, state.isLoading, isEmployeeOnly]);
 
   return (
     <PageContainer testId="assignments-page" viewport>
-      <PageHeader
-        actions={
-          <>
-            {state.visibleItems.length > 0 && !isEmployeeOnly ? (
-              <button
-                className="button button--secondary"
-                disabled={state.isLoading}
-                onClick={() => {
-                  exportToXlsx(
-                    state.visibleItems.map((a) => ({
-                      'Allocation %': a.allocationPercent,
-                      Person: a.person.displayName,
-                      Project: a.project.displayName,
-                      'Staffing Role': a.staffingRole,
-                      Status: a.approvalState,
-                    })),
-                    'assignments',
-                  );
-                }}
-                type="button"
-              >
-                Export XLSX
-              </button>
-            ) : null}
-            {!isEmployeeOnly ? (
-              <>
-                <Link className="button button--secondary" to="/assignments/bulk">
-                  Bulk assign
-                </Link>
-                <Link className="button" to="/assignments/new">
-                  Create assignment
-                </Link>
-              </>
-            ) : null}
-          </>
-        }
-        eyebrow="Assignments"
-        subtitle="Review authoritative person-to-project staffing assignments without mixing in work evidence or external issue data."
-        title="Assignments"
-      />
-
       <FilterBar
         actions={
-          <button className="button button--secondary" onClick={handleReset} type="button">
+          <button className="button button--secondary" onClick={resetFilters} type="button">
             Reset
           </button>
         }
@@ -118,28 +99,28 @@ export function AssignmentsPage(): JSX.Element {
           <span className="field__label">Person</span>
           <input
             className="field__control"
-            onChange={(event) => setPerson(event.target.value)}
+            onChange={(event) => setFilters({ person: event.target.value })}
             placeholder="Filter by person name"
             type="search"
-            value={person}
+            value={filters.person}
           />
         </label>
         <label className="field">
           <span className="field__label">Project</span>
           <input
             className="field__control"
-            onChange={(event) => setProject(event.target.value)}
+            onChange={(event) => setFilters({ project: event.target.value })}
             placeholder="Filter by project name"
             type="search"
-            value={project}
+            value={filters.project}
           />
         </label>
         <label className="field">
           <span className="field__label">Approval State</span>
           <select
             className="field__control"
-            onChange={(event) => setStatus(event.target.value)}
-            value={status}
+            onChange={(event) => setFilters({ status: event.target.value })}
+            value={filters.status}
           >
             <option value="">All statuses</option>
             {Object.entries(ASSIGNMENT_STATUS_LABELS).map(([key, label]) => (
@@ -151,24 +132,24 @@ export function AssignmentsPage(): JSX.Element {
           <span className="field__label">From</span>
           <input
             className="field__control"
-            onChange={(event) => setFrom(event.target.value)}
+            onChange={(event) => setFilters({ from: event.target.value })}
             type="date"
-            value={from}
+            value={filters.from}
           />
         </label>
         <label className="field">
           <span className="field__label">To</span>
           <input
             className="field__control"
-            onChange={(event) => setTo(event.target.value)}
+            onChange={(event) => setFilters({ to: event.target.value })}
             type="date"
-            value={to}
+            value={filters.to}
           />
         </label>
       </FilterBar>
 
       <ViewportTable>
-        {state.isLoading ? <TableSkeleton cols={5} rows={6} /> : null}
+        {state.isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
         {state.error ? <ErrorState description={state.error} /> : null}
 
         {!state.isLoading && !state.error ? (
@@ -177,6 +158,7 @@ export function AssignmentsPage(): JSX.Element {
               <div className="results-meta">
                 <span>
                   Showing {state.visibleItems.length} of {state.totalCount} assignments
+                  {' '}<TipBalloon tip="Filter by person, project, status, or date range to narrow results." arrow="left" />
                 </span>
               </div>
             ) : null}

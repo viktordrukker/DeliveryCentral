@@ -27,6 +27,7 @@ interface ExceptionQueueState {
   filters: ExceptionQueueFilters;
   isLoading: boolean;
   isLoadingDetail: boolean;
+  lastUpdated: Date | null;
   selectedId: string | null;
   selectException: (id: string | null) => void;
   setFilter: <TKey extends keyof ExceptionQueueFilters>(
@@ -35,6 +36,7 @@ interface ExceptionQueueState {
   ) => void;
   handleResolve: (id: string, resolution: string) => Promise<void>;
   handleSuppress: (id: string, reason: string) => Promise<void>;
+  reload: () => void;
 }
 
 export function useExceptionQueue(): ExceptionQueueState {
@@ -45,6 +47,7 @@ export function useExceptionQueue(): ExceptionQueueState {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const filters = useMemo<ExceptionQueueFilters>(
     () => ({
@@ -81,6 +84,7 @@ export function useExceptionQueue(): ExceptionQueueState {
         }
 
         setData(response);
+        setLastUpdated(new Date());
       } catch (reason) {
         if (isCancelled) {
           return;
@@ -171,6 +175,8 @@ export function useExceptionQueue(): ExceptionQueueState {
     handleSuppress,
     isLoading,
     isLoadingDetail,
+    lastUpdated,
+    reload,
     selectedId,
     selectException: (id) => {
       const next = new URLSearchParams(searchParams);

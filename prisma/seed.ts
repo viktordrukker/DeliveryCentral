@@ -86,6 +86,33 @@ import {
   idWorkEvidenceSources,
 } from './seeds/investor-demo-dataset';
 
+import {
+  generateNotifications,
+  generatePulseEntries,
+  generateTimesheets,
+  realisticAccounts,
+  realisticAssignmentApprovals,
+  realisticAssignmentHistory,
+  realisticAssignments,
+  realisticCases,
+  realisticDatasetSummary,
+  realisticExternalSyncStates,
+  realisticOrgUnits,
+  realisticPeople,
+  realisticPersonOrgMemberships,
+  realisticPositions,
+  realisticProjectExternalLinks,
+  realisticProjects,
+  realisticReportingLines,
+  realisticResourcePoolMemberships,
+  realisticResourcePools,
+  realisticStaffingRequestFulfilments,
+  realisticStaffingRequests,
+  realisticWorkEvidence,
+  realisticWorkEvidenceLinks,
+  realisticWorkEvidenceSources,
+} from './seeds/realistic-dataset';
+
 const prisma = new PrismaClient();
 const prismaSeed = prisma as any;
 
@@ -169,6 +196,10 @@ async function seedNotificationInfrastructure(): Promise<void> {
 // Metadata Dictionaries + Entries
 // ---------------------------------------------------------------------------
 async function seedMetadata(): Promise<void> {
+  // Resolve a valid org unit for scoped dictionaries — pick the first one that exists
+  const firstOrgUnit = await prisma.orgUnit.findFirst({ select: { id: true } });
+  const fallbackOrgUnitId = firstOrgUnit?.id ?? null;
+
   const dictionaries = [
     // From demo-dataset
     {
@@ -186,7 +217,7 @@ async function seedMetadata(): Promise<void> {
       description: 'Resource banding model for assignment requests in Platform Directorate.',
       entityType: 'ProjectAssignment',
       isSystemManaged: false,
-      scopeOrgUnitId: '22222222-2222-2222-2222-222222222002',
+      scopeOrgUnitId: fallbackOrgUnitId,
     },
     {
       id: '42222222-0000-0000-0000-000000000003',
@@ -1033,6 +1064,159 @@ async function seedSuperadmin(): Promise<void> {
   console.log(`Superadmin seeded: ${email}`);
 }
 
+// ---------------------------------------------------------------------------
+// Realistic profile helpers
+// ---------------------------------------------------------------------------
+async function seedCaseStepsForRealistic(): Promise<void> {
+  const STEP_TEMPLATES: Record<string, Array<{ displayName: string; stepKey: string }>> = {
+    ONBOARDING: [
+      { displayName: 'Provision System Access', stepKey: 'provision-access' },
+      { displayName: 'Complete Paperwork', stepKey: 'complete-paperwork' },
+      { displayName: 'Meet Your Manager', stepKey: 'meet-manager' },
+      { displayName: 'First Day Check-in', stepKey: 'first-day-checkin' },
+    ],
+    OFFBOARDING: [
+      { displayName: 'Exit Interview', stepKey: 'exit-interview' },
+      { displayName: 'Revoke System Access', stepKey: 'revoke-access' },
+      { displayName: 'Return Equipment', stepKey: 'return-equipment' },
+      { displayName: 'Knowledge Transfer', stepKey: 'knowledge-transfer' },
+      { displayName: 'Final Payroll Confirmation', stepKey: 'payroll-confirmation' },
+    ],
+    PERFORMANCE: [
+      { displayName: 'Schedule Review Meeting', stepKey: 'schedule-meeting' },
+      { displayName: 'Complete Self-Assessment', stepKey: 'self-assessment' },
+      { displayName: 'Manager Assessment', stepKey: 'manager-assessment' },
+      { displayName: 'Define Improvement Goals', stepKey: 'define-goals' },
+    ],
+    TRANSFER: [
+      { displayName: 'Transfer Request Approved', stepKey: 'transfer-approved' },
+      { displayName: 'Knowledge Handover', stepKey: 'knowledge-handover' },
+      { displayName: 'New Team Onboarding', stepKey: 'new-team-onboarding' },
+    ],
+  };
+
+  let count = 0;
+  for (const c of realisticCases) {
+    const steps = STEP_TEMPLATES[c.caseTypeKey] ?? [];
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const isCompleted = i === 0;
+      count++;
+      await prismaSeed.caseStep.create({
+        data: {
+          id: `cccc0002-c500-0000-${String(count).padStart(4, '0')}-000000000000`,
+          caseRecordId: c.id,
+          stepKey: step.stepKey,
+          displayName: step.displayName,
+          status: isCompleted ? 'COMPLETED' : 'OPEN',
+          completedAt: isCompleted ? new Date() : null,
+        },
+      });
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(`  Case steps: ${count} steps for ${realisticCases.length} cases`);
+}
+
+async function seedRealisticPersonSkills(): Promise<void> {
+  // Map skills to people based on their defined skillsets
+  const skillMap: Record<string, string> = {
+    TYPESCRIPT: '55555555-5c00-0000-0000-000000000001',
+    JAVASCRIPT: '55555555-5c00-0000-0000-000000000002',
+    PYTHON: '55555555-5c00-0000-0000-000000000003',
+    JAVA: '55555555-5c00-0000-0000-000000000004',
+    GO: '55555555-5c00-0000-0000-000000000006',
+    REACT: '55555555-5c00-0000-0000-000000000007',
+    ANGULAR: '55555555-5c00-0000-0000-000000000008',
+    NESTJS: '55555555-5c00-0000-0000-000000000010',
+    SPRING: '55555555-5c00-0000-0000-000000000011',
+    POSTGRESQL: '55555555-5c00-0000-0000-000000000012',
+    SQL: '55555555-5c00-0000-0000-000000000012',
+    DOCKER: '55555555-5c00-0000-0000-000000000018',
+    KUBERNETES: '55555555-5c00-0000-0000-000000000019',
+    TERRAFORM: '55555555-5c00-0000-0000-000000000020',
+    AWS: '55555555-5c00-0000-0000-000000000015',
+    AGILE: '55555555-5c00-0000-0000-000000000022',
+    PMO: '55555555-5c00-0000-0000-000000000023',
+    DATA: '55555555-5c00-0000-0000-000000000024',
+    SPARK: '55555555-5c00-0000-0000-000000000024',
+    SNOWFLAKE: '55555555-5c00-0000-0000-000000000024',
+    NODE: '55555555-5c00-0000-0000-000000000010',
+    TENSORFLOW: '55555555-5c00-0000-0000-000000000025',
+    AIRFLOW: '55555555-5c00-0000-0000-000000000024',
+  };
+
+  let count = 0;
+  for (const person of realisticPeople) {
+    const seenSkills = new Set<string>();
+    for (const skillKey of (person.skillsets ?? [])) {
+      const skillId = skillMap[skillKey];
+      if (!skillId || seenSkills.has(skillId)) continue;
+      seenSkills.add(skillId);
+      count++;
+      try {
+        await prismaSeed.personSkill.create({
+          data: {
+            id: `cccc0003-ps00-0000-${String(count).padStart(4, '0')}-000000000000`,
+            personId: person.id,
+            skillId,
+            proficiency: person.grade === 'G10' || person.grade === 'G11' ? 5 : (person.grade === 'G9' ? 4 : 3),
+          },
+        });
+      } catch {
+        // Skip duplicates
+      }
+    }
+  }
+  // eslint-disable-next-line no-console
+  console.log(`  Person skills: ${count} assignments`);
+}
+
+async function seedRealisticAccounts(): Promise<void> {
+  const adminPersonId = '00000000-0000-0000-0000-000000000001';
+
+  // Create admin person if not exists
+  await prisma.person.upsert({
+    where: { id: adminPersonId },
+    create: {
+      id: adminPersonId,
+      givenName: 'System',
+      familyName: 'Administrator',
+      displayName: 'System Administrator',
+      primaryEmail: 'admin@deliverycentral.local',
+      employmentStatus: 'ACTIVE',
+    },
+    update: {},
+  });
+
+  for (const account of realisticAccounts) {
+    const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
+    if (existing) {
+      // eslint-disable-next-line no-console
+      console.log(`  Account already exists, skipping: ${account.email}`);
+      continue;
+    }
+
+    const passwordHash = await bcrypt.hash(account.password, 12);
+    await prisma.localAccount.create({
+      data: {
+        email: account.email,
+        displayName: account.displayName,
+        passwordHash,
+        roles: account.roles,
+        source: 'local',
+        personId: account.email === 'admin@deliverycentral.local' ? adminPersonId : account.personId,
+        twoFactorEnabled: false,
+        backupCodesHash: [],
+        mustChangePw: false,
+      },
+    });
+
+    // eslint-disable-next-line no-console
+    console.log(`  Account seeded: ${account.email} [${account.roles.join(', ')}]`);
+  }
+}
+
 async function createManyInChunks(table: string, data: unknown[], chunkSize = 1000): Promise<void> {
   for (let index = 0; index < data.length; index += chunkSize) {
     await prismaSeed[table].createMany({
@@ -1239,6 +1423,94 @@ async function main(): Promise<void> {
     await seedSuperadmin();
     await seedInvestorDemoAccounts();
     await seedFullNotificationInfrastructure();
+    return;
+  }
+
+  if (profile === 'realistic') {
+    await seedDataset({
+      assignmentApprovals: realisticAssignmentApprovals,
+      assignmentHistory: realisticAssignmentHistory,
+      assignments: realisticAssignments,
+      externalSyncStates: realisticExternalSyncStates,
+      orgUnits: realisticOrgUnits,
+      people: realisticPeople,
+      personOrgMemberships: realisticPersonOrgMemberships,
+      positions: realisticPositions,
+      projectExternalLinks: realisticProjectExternalLinks,
+      projects: realisticProjects,
+      reportingLines: realisticReportingLines,
+      resourcePoolMemberships: realisticResourcePoolMemberships,
+      resourcePools: realisticResourcePools,
+      summary: realisticDatasetSummary,
+      workEvidence: realisticWorkEvidence,
+      workEvidenceLinks: realisticWorkEvidenceLinks,
+      workEvidenceSources: realisticWorkEvidenceSources,
+    });
+
+    await createManyInChunks('staffingRequest', realisticStaffingRequests);
+    await createManyInChunks('staffingRequestFulfilment', realisticStaffingRequestFulfilments);
+
+    // Timesheets — 24 weeks for all assigned people
+    const { weeks, entries } = generateTimesheets();
+    await createManyInChunks('timesheetWeek', weeks);
+    await createManyInChunks('timesheetEntry', entries);
+
+    // Pulse entries — 24 weeks for all ICs
+    const pulseEntries = generatePulseEntries();
+    await createManyInChunks('pulseEntry', pulseEntries);
+
+    // Cases
+    await seedCaseTypes();
+    const onboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'ONBOARDING' } }) as { id: string } | null;
+    const performanceType = await prismaSeed.caseType.findFirst({ where: { key: 'PERFORMANCE' } }) as { id: string } | null;
+    const offboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'OFFBOARDING' } }) as { id: string } | null;
+    const transferType = await prismaSeed.caseType.findFirst({ where: { key: 'TRANSFER' } }) as { id: string } | null;
+
+    const caseTypeMap: Record<string, string> = {
+      ONBOARDING: onboardingType?.id ?? '',
+      PERFORMANCE: performanceType?.id ?? '',
+      OFFBOARDING: offboardingType?.id ?? '',
+      TRANSFER: transferType?.id ?? '',
+    };
+
+    for (const c of realisticCases) {
+      await prismaSeed.caseRecord.create({
+        data: {
+          id: c.id,
+          caseNumber: c.caseNumber,
+          caseTypeId: caseTypeMap[c.caseTypeKey],
+          subjectPersonId: c.subjectPersonId,
+          ownerPersonId: c.ownerPersonId,
+          status: c.status,
+          summary: c.summary,
+        },
+      });
+    }
+
+    // Case steps for each case
+    await seedCaseStepsForRealistic();
+
+    // In-app notifications
+    const notifications = generateNotifications();
+    await createManyInChunks('inAppNotification', notifications);
+
+    // Infrastructure
+    await seedMetadata();
+    await seedPlatformSettings();
+    await seedSkills();
+    await seedFullNotificationInfrastructure();
+
+    // Assign skills to key people
+    await seedRealisticPersonSkills();
+
+    // eslint-disable-next-line no-console
+    console.log('Realistic dataset seeded.', realisticDatasetSummary);
+    console.log(`  Timesheets: ${weeks.length} weeks, ${entries.length} entries`);
+    console.log(`  Pulse entries: ${pulseEntries.length}`);
+    console.log(`  Notifications: ${notifications.length}`);
+
+    // Accounts
+    await seedRealisticAccounts();
     return;
   }
 

@@ -103,7 +103,7 @@ describe('AuditTimeline', () => {
     render(<AuditTimeline events={events} />);
     const icon = document.querySelector('.audit-timeline__icon');
     expect(icon).not.toBeNull();
-    // CREATE = blue (#2563eb)
-    expect((icon as HTMLElement).style.backgroundColor).toBe('rgb(37, 99, 235)');
+    // CREATE = accent color (CSS variable)
+    expect((icon as HTMLElement).style.backgroundColor).toBe('var(--color-accent)');
   });
 });

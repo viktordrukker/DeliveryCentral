@@ -39,7 +39,7 @@ describe('ExceptionsPage', () => {
 
     renderWithRouter('/exceptions');
 
-    expect(screen.getByText('Loading exceptions...')).toBeInTheDocument();
+    expect(screen.getByLabelText('Loading exceptions...')).toBeInTheDocument();
   });
 
   it('shows error state when the queue fails to load', async () => {
