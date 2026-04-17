@@ -17,12 +17,14 @@ export function buildPersonDirectoryItem(
     displayName: 'Ethan Brooks',
     dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'manager-2' }],
     grade: null,
+    hiredAt: '2025-01-15T00:00:00.000Z',
     id: 'person-ethan-brooks',
     lifecycleStatus: 'ACTIVE',
     primaryEmail: 'ethan.brooks@example.com',
     resourcePoolIds: ['pool-platform-engineering'],
     role: null,
     resourcePools: [{ id: 'pool-platform-engineering', name: 'Platform Engineering Pool' }],
+    terminatedAt: null,
     ...overrides,
   };
 }

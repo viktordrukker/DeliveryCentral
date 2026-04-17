@@ -11,7 +11,7 @@ class WeeklyTrendPointDto {
   public staffedPersonCount!: number;
 
   @ApiProperty()
-  public evidenceCoverageRate!: number;
+  public staffingUtilisationRate!: number;
 }
 
 class DirectorDashboardSummaryDto {
@@ -28,7 +28,7 @@ class DirectorDashboardSummaryDto {
   public unstaffedActivePersonCount!: number;
 
   @ApiProperty()
-  public evidenceCoverageRate!: number;
+  public staffingUtilisationRate!: number;
 }
 
 class UnitUtilisationItemDto {

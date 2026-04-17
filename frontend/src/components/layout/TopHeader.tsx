@@ -4,10 +4,9 @@ import { Box, Button, Chip, Typography } from '@mui/material';
 
 import { useAuth } from '@/app/auth-context';
 import { useImpersonation } from '@/app/impersonation-context';
+import { ADMIN_ROLES, ROLE_PRIORITY, hasAnyRole } from '@/app/route-manifest';
 import { NotificationBell } from './NotificationBell';
 import { fetchAdminAccounts, AdminAccountItem } from '@/lib/api/admin';
-
-const ROLE_PRIORITY = ['admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee'];
 
 function topRole(roles: string[]): string {
   return ROLE_PRIORITY.find((r) => roles.includes(r)) ?? roles[0] ?? 'user';
@@ -23,7 +22,7 @@ export function TopHeader(): JSX.Element {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<AdminAccountItem[]>([]);
 
-  const isAdmin = principal?.roles.includes('admin') ?? false;
+  const isAdmin = hasAnyRole(principal?.roles, ADMIN_ROLES);
 
   useEffect(() => {
     if (!isAdmin) return;

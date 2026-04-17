@@ -34,7 +34,7 @@ class ManagedProjectDashboardItemDto {
   public staffingCount!: number;
 
   @ApiProperty()
-  public evidenceCount!: number;
+  public approvedHours!: number;
 }
 
 class ProjectManagerStaffingSummaryDto {
@@ -48,7 +48,7 @@ class ProjectManagerStaffingSummaryDto {
   public projectsWithStaffingGapsCount!: number;
 
   @ApiProperty()
-  public projectsWithEvidenceAnomaliesCount!: number;
+  public projectsWithTimeVarianceCount!: number;
 }
 
 class ProjectDashboardAttentionItemDto {
@@ -131,7 +131,7 @@ export class ProjectManagerDashboardResponseDto {
   public projectsWithStaffingGaps!: ProjectDashboardAttentionItemDto[];
 
   @ApiProperty({ type: () => [ProjectDashboardAttentionItemDto] })
-  public projectsWithEvidenceAnomalies!: ProjectDashboardAttentionItemDto[];
+  public projectsWithTimeVariance!: ProjectDashboardAttentionItemDto[];
 
   @ApiProperty({ type: () => [RecentlyChangedAssignmentItemDto] })
   public recentlyChangedAssignments!: RecentlyChangedAssignmentItemDto[];

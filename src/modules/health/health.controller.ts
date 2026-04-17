@@ -2,15 +2,16 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '@src/modules/identity-access/application/public.decorator';
+import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { HealthService } from './health.service';
 
 @ApiTags('health')
 @Controller()
-@Public()
 export class HealthController {
   public constructor(private readonly healthService: HealthService) {}
 
   @Get('health')
+  @Public()
   @ApiOperation({ summary: 'Liveness probe' })
   @ApiOkResponse({ description: 'Service is alive.' })
   public async getHealth(): Promise<{
@@ -24,6 +25,7 @@ export class HealthController {
   }
 
   @Get('readiness')
+  @Public()
   @ApiOperation({ summary: 'Readiness probe' })
   @ApiOkResponse({ description: 'Service is ready.' })
   public async getReadiness(): Promise<{
@@ -35,6 +37,7 @@ export class HealthController {
   }
 
   @Get('diagnostics')
+  @RequireRoles('admin')
   @ApiOperation({ summary: 'Operational diagnostics surface' })
   @ApiOkResponse({ description: 'Operational diagnostics summary.' })
   public async getDiagnostics(): Promise<unknown> {

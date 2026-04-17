@@ -64,6 +64,7 @@ const PEL = 'aaaa000f'; // ProjectExternalLink
 const ESS = 'aaaa0010'; // ExternalSyncState
 const SRQ = 'aaaa0011'; // StaffingRequest
 const SRF = 'aaaa0012'; // StaffingRequestFulfilment
+const ACT = 'aaaa0013'; // EmployeeActivityEvent
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -88,8 +89,10 @@ function daysAgo(n: number): Date {
 
 function weekMonday(weeksAgo: number): Date {
   const d = new Date(NOW);
-  d.setDate(d.getDate() - d.getDay() + 1 - weeksAgo * 7);
-  d.setHours(0, 0, 0, 0);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff - weeksAgo * 7);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
 }
 
@@ -115,6 +118,7 @@ interface PersonDef {
   skillsets: string[];
   employmentStatus: string;
   hiredAt: Date;
+  terminatedAt?: Date;
   orgLevel: 'CEO' | 'VP' | 'DIR' | 'MGR' | 'IC';
   managerId?: string;
   orgUnitId: string;
@@ -474,7 +478,7 @@ people.push({
   id: terminatedId, personNumber: 'MCG-047', givenName: 'Viktor', familyName: 'Drago',
   displayName: 'Viktor Drago', primaryEmail: 'viktor.drago@meridian.demo',
   grade: 'G9', role: 'Former Consultant', skillsets: ['CONSULTING'],
-  employmentStatus: 'TERMINATED', hiredAt: monthsAgo(18),
+  employmentStatus: 'TERMINATED', hiredAt: monthsAgo(18), terminatedAt: monthsAgo(1),
   orgLevel: 'IC', managerId: conMgrId, orgUnitId: '',
 });
 
@@ -1076,6 +1080,26 @@ export const realisticAssignments = assignments.map(a => ({
   createdAt: a.validFrom, updatedAt: NOW,
 }));
 
+// Employee lifecycle activity events
+let actSeq = 0;
+const actId = (): string => ns(ACT, ++actSeq);
+
+export const realisticActivityEvents = people.flatMap(p => {
+  const events: Array<{ id: string; personId: string; eventType: string; occurredAt: Date; actorId: string | null; summary: string; relatedEntityId: string | null; metadata: Record<string, unknown> | null }> = [];
+  events.push({ id: actId(), personId: p.id, eventType: 'HIRED', occurredAt: p.hiredAt, actorId: null, summary: `${p.displayName} joined as ${p.role}`, relatedEntityId: null, metadata: { grade: p.grade, role: p.role } });
+  const personAssignments = assignments.filter(a => a.personId === p.id);
+  for (const a of personAssignments) {
+    events.push({ id: actId(), personId: p.id, eventType: 'ASSIGNED', occurredAt: a.validFrom, actorId: a.requestedByPersonId, summary: `Assigned to project as ${a.staffingRole} at ${a.allocationPercent}%`, relatedEntityId: a.id, metadata: { projectId: a.projectId, staffingRole: a.staffingRole, allocationPercent: a.allocationPercent } });
+    if (a.validTo) {
+      events.push({ id: actId(), personId: p.id, eventType: 'UNASSIGNED', occurredAt: a.validTo, actorId: null, summary: `Assignment ended for ${a.staffingRole} role`, relatedEntityId: a.id, metadata: { projectId: a.projectId } });
+    }
+  }
+  if (p.employmentStatus === 'TERMINATED' && p.terminatedAt) {
+    events.push({ id: actId(), personId: p.id, eventType: 'TERMINATED', occurredAt: p.terminatedAt, actorId: null, summary: `${p.displayName} terminated. ${personAssignments.filter(a => a.status === 'ENDED').length} assignment(s) ended.`, relatedEntityId: null, metadata: null });
+  }
+  return events;
+});
+
 export const realisticAssignmentApprovals = assignmentApprovals;
 export const realisticAssignmentHistory = assignmentHistory;
 export const realisticWorkEvidenceSources = workEvidenceSources;
@@ -1110,6 +1134,8 @@ export function generateTimesheets(): { weeks: Array<Record<string, unknown>>; e
   const entries: Array<Record<string, unknown>> = [];
   let weekSeq = 0;
   let entrySeq = 0;
+  const currentWeekStart = weekMonday(0);
+  const weekIdByPersonAndStart = new Map<string, string>();
 
   // Get unique assigned ICs with their project allocations
   const personAssignments = new Map<string, Array<{ projectId: string; allocationPercent: number; validFrom: Date; validTo: Date | null }>>();
@@ -1121,13 +1147,17 @@ export function generateTimesheets(): { weeks: Array<Record<string, unknown>>; e
     });
   });
 
+  let personIndex = 0;
   for (const [personId, asgns] of personAssignments) {
-    for (let w = 24; w >= 1; w--) {
+    personIndex++;
+    for (let w = 24; w >= 0; w--) {
       const monday = weekMonday(w);
       weekSeq++;
 
-      const status = w > 4 ? 'APPROVED' : (w > 2 ? 'SUBMITTED' : 'DRAFT');
+      const status =
+        w === 0 ? 'APPROVED' : w > 4 ? 'APPROVED' : (w > 2 ? 'SUBMITTED' : 'DRAFT');
       const weekId = `bbbb0001-ts00-0000-${String(weekSeq).padStart(4, '0')}-000000000000`;
+      weekIdByPersonAndStart.set(`${personId}:${monday.toISOString().slice(0, 10)}`, weekId);
 
       weeks.push({
         id: weekId, personId, weekStart: monday, status,
@@ -1143,6 +1173,7 @@ export function generateTimesheets(): { weeks: Array<Record<string, unknown>>; e
       );
 
       if (activeAsgns.length === 0) continue;
+      if (w === 0 && personIndex % 5 === 0) continue;
 
       for (let dayOffset = 0; dayOffset < 5; dayOffset++) {
         const entryDate = new Date(monday);
@@ -1153,18 +1184,66 @@ export function generateTimesheets(): { weeks: Array<Record<string, unknown>>; e
           entrySeq++;
           const hoursForProject = Math.round((asgn.allocationPercent / 100) * 8 * 10) / 10;
           if (hoursForProject <= 0) continue;
+          const adjustedHours =
+            w === 0 && dayOffset === 0 && personIndex % 4 === 0
+              ? Math.round((hoursForProject + 2) * 10) / 10
+              : w === 0 && dayOffset === 4 && personIndex % 3 === 0
+                ? Math.max(0, Math.round((hoursForProject - 2) * 10) / 10)
+                : hoursForProject;
+          if (adjustedHours <= 0) continue;
 
           entries.push({
             id: `bbbb0001-te00-0000-${String(entrySeq).padStart(4, '0')}-000000000000`,
             timesheetWeekId: weekId,
             projectId: asgn.projectId,
             date: entryDate,
-            hours: hoursForProject,
+            hours: adjustedHours,
             capex: entrySeq % 7 === 0,
             description: `Work on project`,
           });
         }
       }
+    }
+  }
+
+  const people = [...personAssignments.keys()];
+  const unassignedProject = assignments.find((assignment) =>
+    people.length > 0 && assignment.personId !== people[0],
+  );
+  if (people[0] && unassignedProject) {
+    const weekId = weekIdByPersonAndStart.get(`${people[0]}:${currentWeekStart.toISOString().slice(0, 10)}`);
+    if (weekId) {
+      entrySeq++;
+      entries.push({
+        id: `bbbb0001-te00-0000-${String(entrySeq).padStart(4, '0')}-000000000000`,
+        timesheetWeekId: weekId,
+        projectId: unassignedProject.projectId,
+        date: currentWeekStart,
+        hours: 6,
+        capex: false,
+        description: 'Unplanned support across shared services',
+      });
+    }
+  }
+
+  const endedAssignment = assignments.find((assignment) =>
+    assignment.status !== 'REQUESTED' &&
+    assignment.validTo !== null &&
+    assignment.validTo < currentWeekStart,
+  );
+  if (endedAssignment) {
+    const weekId = weekIdByPersonAndStart.get(`${endedAssignment.personId}:${currentWeekStart.toISOString().slice(0, 10)}`);
+    if (weekId) {
+      entrySeq++;
+      entries.push({
+        id: `bbbb0001-te00-0000-${String(entrySeq).padStart(4, '0')}-000000000000`,
+        timesheetWeekId: weekId,
+        projectId: endedAssignment.projectId,
+        date: currentWeekStart,
+        hours: 4,
+        capex: false,
+        description: 'Late approved activity after assignment end',
+      });
     }
   }
 

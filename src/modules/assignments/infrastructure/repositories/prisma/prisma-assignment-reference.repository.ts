@@ -5,7 +5,7 @@ import { InMemoryPersonRepository } from '@src/modules/organization/infrastructu
 import { AssignmentReferenceRepositoryPort } from '../../../application/ports/assignment-reference.repository.port';
 
 interface ProjectGateway {
-  findFirst(args: any): Promise<{ id: string } | null>;
+  findFirst(args: any): Promise<{ id: string; endsOn?: Date | null; [key: string]: unknown } | null>;
 }
 
 @Injectable()
@@ -26,5 +26,13 @@ export class PrismaAssignmentReferenceRepository implements AssignmentReferenceR
 
   public async projectExists(projectId: string): Promise<boolean> {
     return Boolean(await this.projectGateway.findFirst({ where: { id: projectId } }));
+  }
+
+  public async projectEndDate(projectId: string): Promise<Date | null> {
+    const project = await this.projectGateway.findFirst({
+      where: { id: projectId },
+      select: { endsOn: true },
+    });
+    return project?.endsOn ?? null;
   }
 }

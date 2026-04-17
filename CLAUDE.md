@@ -209,9 +209,129 @@ These were discovered during Phases 1–3:
 
 13. **`useAuth()` returns impersonated identity when active.** The admin "View as" feature overlays the impersonated person's `personId`, `displayName`, and `roles` onto `useAuth().principal`. All downstream code (dashboards, role guards, data hooks) automatically reflects the impersonated user.
 
+14. **Project detail page has no CTA to approve work hours.** This is a known gap — the "Resolve" action from the Planned vs Actual dashboard cannot currently lead to an approval flow on the project detail page. Future work needed: add work-hour approval actions to `ProjectDetailsPlaceholderPage.tsx`.
+
+15. **Modal components must not call hooks unconditionally.** When a modal uses `useAuth()` or other context hooks, wrap the inner component and only render it when `open` is true. This prevents "must be used within Provider" errors in tests and avoids unnecessary hook calls when the modal is hidden.
+
+16. **Modal windows must follow the common theme.** Use `var(--color-surface)` for background, `var(--color-border)` for borders, `var(--shadow-modal)` for shadows, and `var(--color-text)` / `var(--color-text-muted)` for text. Never use raw `#fff` or `rgba()` in modal CSS — the `.confirm-dialog` class already uses tokens.
+
 ---
 
-## 9. Seed Data Reference
+## 9. Design System & UI Standards
+
+### Canonical reference page
+`frontend/src/routes/dashboard/DashboardPage.tsx` (Workload Overview) is the gold-standard page. All dashboard and page redesign work must match its structure and visual language. Full code-level reference saved in memory at `reference-dashboard-design.md`.
+
+### Dashboard page grammar (top to bottom)
+1. **Title bar** — `useTitleBarActions()` injects filters + quick-action links + `<TipTrigger />`
+2. **KPI strip** — `<div className="kpi-strip">` with `<Link className="kpi-strip__item">` children (NEVER `<button>`)
+3. **Hero chart** — `<div className="dashboard-hero">` with `__header` (title + subtitle) and `__chart` child
+4. **Action table** — `<div className="dash-action-section">` with `DataTable variant="compact"` inside
+5. **Secondary analysis** — `SectionCard`s in inline grid (`repeat(2, minmax(0, 1fr))` — NOT `dashboard-grid` class which spans last child)
+6. **Data freshness** — `<div className="data-freshness">` with timestamp + refresh button
+
+### KPI strip rules
+- Each item is a `<Link>` or `<a>` — never `<button>` (buttons get browser default styling)
+- Left border color set via threshold helper: `style={{ borderLeft: '3px solid ${tc(val, warn, danger)}' }}`
+- Contains: `TipBalloon`, `.kpi-strip__value`, `.kpi-strip__label`, optional `.kpi-strip__progress`, `.kpi-strip__context`, `.kpi-strip__sparkline`
+- Threshold helper: `tc(val, warn, danger, higherIsBad=true)` returns `var(--color-status-active|warning|danger)`
+
+### Required shared components (never reinvent)
+| Component | Import | Usage |
+|-----------|--------|-------|
+| `DataTable` | `@/components/common/DataTable` | All tabular data. Use `variant="compact"` in dashboards. Never raw `<table>` in new page code. |
+| `StatusBadge` | `@/components/common/StatusBadge` | All status indicators. Tones: `active`, `warning`, `danger`, `info`, `neutral`, `pending`. Variants: `dot`, `chip`, `text`, `score`. |
+| `SectionCard` | `@/components/common/SectionCard` | All content section framing. Supports `title`, `collapsible`, `chartExport`. |
+| `PageContainer` | `@/components/common/PageContainer` | Layout shell for every page. Use `testId` prop. |
+| `EmptyState` | `@/components/common/EmptyState` | All empty-data states. Must include forward action (UX Law 2). |
+| `ErrorState` | `@/components/common/ErrorState` | All error states. `description` prop. |
+| `LoadingState` | `@/components/common/LoadingState` | All loading states. `variant="skeleton"` + `skeletonType="page"` for dashboards. |
+| `TipBalloon` | `@/components/common/TipBalloon` | Contextual help tooltips. `arrow="left"` or `"top"`. |
+| `ConfirmDialog` | `@/components/common/ConfirmDialog` | All destructive actions. Props: `open`, `onCancel`, `onConfirm(reason?)`, `message`, `title`. |
+| `Sparkline` | `@/components/charts/Sparkline` | Mini trend lines in KPI cards. `data: number[]`, `height`, `width`, `color`. |
+
+### Color tokens (never use raw hex in page files)
+- **Status:** `var(--color-status-active)` green, `var(--color-status-warning)` amber, `var(--color-status-danger)` red, `var(--color-status-info)` cyan, `var(--color-status-neutral)` grey
+- **Text:** `var(--color-text)` primary, `var(--color-text-muted)` secondary, `var(--color-text-subtle)` tertiary
+- **Surfaces:** `var(--color-surface)` main, `var(--color-surface-alt)` alternate/header bg, `var(--color-bg)` page bg
+- **Borders:** `var(--color-border)` standard, `var(--color-border-strong)` emphasis
+- **Accent:** `var(--color-accent)` links and primary brand
+- **Charts:** `var(--color-chart-1)` through `var(--color-chart-8)` — use sequentially for multi-series
+- **Shadows:** `var(--shadow-card)`, `var(--shadow-dropdown)`, `var(--shadow-modal)`
+- **Spacing:** `var(--space-1)` 4px through `var(--space-10)` 40px
+- Token source: `frontend/src/styles/design-tokens.ts` (single source of truth, drives both CSS vars and MUI theme)
+- Guardrail: `npm run tokens:check` must pass — blocks new raw hex outside token files
+- Baseline: `scripts/design-token-baseline.json` — update intentionally if raw hex is unavoidable (e.g., chart library requirement)
+
+### Tabular numbers
+```ts
+const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
+```
+Use on all numeric table columns.
+
+### Dashboard compact tables
+Inside dashboard pages, compact data sections use `<table className="dash-compact-table">` — this is the established pattern for dashboard-embedded tables. `DataTable` is used for the primary action table only.
+
+### Action table column pattern (from DashboardPage)
+`#` (28px) → Severity (`StatusBadge variant="dot"`, 88px) → Category (140px) → Entity (fontWeight 500, flex) → Code (text-muted, 72px) → Impact (fontSize 11, 220px) → Portfolio % (right, 90px) → Status (`StatusBadge`, 80px) → Suggested Action (fontSize 11, 170px) → Go link (accent, 40px)
+
+### Pagination in action section
+Place inside `dash-action-section__summary`:
+```html
+<button className="button button--secondary button--sm" disabled={page<=1}>←</button>
+<span style={{ fontSize: 11 }}>Page {n} of {total}</span>
+<button className="button button--secondary button--sm" disabled={page>=total}>→</button>
+```
+
+### Hero chart height gotcha
+`dashboard-hero__chart` is `flex: 1; min-height: 0`. Recharts `<ResponsiveContainer height="100%">` needs explicit parent height. For vertical bar charts: `style={{ minHeight: Math.max(300, rows * 50) }}` on the `__chart` div.
+
+### RBAC in UI
+- All role arrays centralized in `frontend/src/app/route-manifest.ts` — never define local role arrays
+- Use `hasAnyRole(userRoles, ROLE_CONSTANT)` from route-manifest for role checks
+- Use `canAccessRoute(path, roles)` for route visibility checks
+
+### No mock data in app code
+Never insert mock, fake, or placeholder data into the application or frontend code. If a page needs data to render, the data must come from the database via the seed script. Use `docker compose exec -e SEED_PROFILE=phase2 backend sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"` to populate. If the seed is missing data for a feature, add it to the seed script — not to the app.
+
+### Dropdown selectors — standard style
+All dropdown selectors in title bars and filter bars must use the `<select className="field__control">` pattern (matching `PersonSelect`). Never use `<input>` + `<datalist>` — it produces inconsistent browser-native UI. Wrap in `<label className="field"><span className="field__label">Label</span><select ...>`.
+
+### Action section summary bar — standard layout
+The `dash-action-section__summary` bar at the bottom of every action/detail section must follow this centered layout:
+```
+left label (flex: 1 1 0, text-align: left) | centered pagination | right label (flex: 1 1 0, text-align: right)
+```
+Pagination is always shown (even on page 1 of 1). Use the `PaginationBar` pattern: `← Page N of M →` centered between the left summary text and right context text. This is the standard for all `dash-action-section` components.
+
+### Page grammars (Phase 18)
+Every page must conform to one of 8 grammars documented in `docs/planning/phase18-page-grammars.md`:
+1. Decision Dashboard — dashboards
+2. List-Detail Workflow — directories and registries
+3. Detail Surface — entity detail pages
+4. Create/Edit Form — creation and editing flows
+5. Operational Queue — triage and approval surfaces
+6. Analysis Surface — reports
+7. Admin Control Surface — admin/config pages
+8. Auth Form — login/reset flows
+
+### UX Laws (enforced — see `.claude/rules/ux-laws.md`)
+Key ones for design work: Law 2 (no dead-end screens), Law 3 (no context loss after actions), Law 4 (action-data adjacency within 200px), Law 5 (filter persistence via URL), Law 9 (every KPI is a clickable drilldown).
+
+### Design system documentation maintenance
+When changing any design pattern, component API, page grammar, token, or CSS class:
+- Update `docs/planning/phase18-page-grammars.md` if a grammar changes
+- Update `docs/planning/phase18-refactor-standards.md` if a primitive or verification rule changes
+- Update `docs/planning/phase18-standardization-changelog.md` with a log entry for the affected page
+- Update `docs/planning/phase18-route-jtbd-audit.md` if routes, personas, or grammar assignments change
+- Update `scripts/design-token-baseline.json` if new raw colors are unavoidable
+- Update `docs/testing/slo-budgets.json` if latency/error budgets change
+- Update `docs/testing/jtbd-matrix.json` if JTBD-to-test mappings change
+- When redesigning a page: update its entry in the standardization changelog and verify it against the Phase 18 verification template (Section 2 of `phase18-refactor-standards.md`)
+
+---
+
+## 10. Seed Data Reference
 
 Phase 2 seed profile creates the canonical test dataset. It seeds ALL DB-backed entities including metadata dictionaries, notification infrastructure, platform settings, skills, timesheets, pulse entries, case steps, and in-app notifications. Seed command:
 ```bash
@@ -239,12 +359,27 @@ Key test accounts (full list in `docs/planning/current-state.md`):
 | `docs/planning/current-state.md` | What is implemented vs outstanding |
 | `docs/testing/MANUAL_TEST_PLAN.md` | Comprehensive manual test plan (142 tests) |
 | `docs/planning/DELIVERY_CENTRAL_PRODUCT_BACKLOG.md` | Original backlog (read-only reference) |
-| `frontend/src/app/navigation.ts` | All routes + `allowedRoles` definitions |
+| **Design system & standards** | |
+| `frontend/src/styles/design-tokens.ts` | Single source of truth for color, spacing, and shadow tokens |
+| `frontend/src/styles/global.css` | All CSS classes (kpi-strip, dashboard-hero, dash-action-section, etc.) |
+| `frontend/src/app/route-manifest.ts` | Centralized route/role/nav manifest — all role constants and access helpers |
+| `scripts/check-design-tokens.cjs` | Raw-color guardrail (`npm run tokens:check`) |
+| `scripts/design-token-baseline.json` | Allowed raw-color exceptions (ratcheting baseline) |
+| `docs/planning/phase18-page-grammars.md` | 8 canonical page grammars with structural zones |
+| `docs/planning/phase18-refactor-standards.md` | Shared primitives checklist, verification template, context continuity |
+| `docs/planning/phase18-route-jtbd-audit.md` | Route-to-JTBD mapping for all 60+ routes |
+| `docs/planning/phase18-standardization-changelog.md` | Per-page standardization status log |
+| `docs/testing/slo-budgets.json` | API latency and UI performance budgets |
+| `docs/testing/jtbd-matrix.json` | Machine-readable JTBD-to-test mapping per persona |
+| `.claude/rules/ux-laws.md` | 10 UX operating laws enforced on every UI change |
+| **Application core** | |
 | `frontend/src/app/auth-context.tsx` | Auth context + impersonation overlay |
 | `frontend/src/app/impersonation-context.tsx` | Admin "View as" impersonation state |
 | `frontend/src/lib/labels.ts` | Enum → human label maps |
 | `frontend/src/lib/api/` | All frontend API clients |
-| `frontend/src/features/dashboard/` | All dashboard hooks |
+| `frontend/src/features/dashboard/` | All dashboard hooks + selectors |
+| `frontend/src/components/common/` | All shared UI primitives (DataTable, StatusBadge, SectionCard, etc.) |
+| `frontend/src/routes/dashboard/DashboardPage.tsx` | **Canonical dashboard reference** (Workload Overview) |
 | `src/modules/identity-access/application/` | RBAC guard, roles decorator, self-scope decorator |
 | `prisma/schema.prisma` | DB schema (53 models) |
 | `prisma/seed.ts` | Seed script (5 profiles: demo, phase2, bank-scale, life-demo, investor-demo) |

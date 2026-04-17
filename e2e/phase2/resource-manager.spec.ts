@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, resourceManager.email, resourceManager.password);
 });
 
-test.describe('RM1 — RM sees allocation indicators for pool members', () => {
+test.describe('@full RM1 — RM sees allocation indicators for pool members', () => {
   test('RM dashboard shows Allocation Indicators section with OVERALLOCATED for Ethan', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
@@ -31,7 +31,7 @@ test.describe('RM1 — RM sees allocation indicators for pool members', () => {
   });
 });
 
-test.describe('RM2 — RM approves and rejects assignment requests', () => {
+test.describe('@full RM2 — RM approves and rejects assignment requests', () => {
   test('approve action on REQUESTED assignment transitions it to APPROVED', async ({ page }) => {
     // The REQUESTED assignment for Raj on Jupiter is accessible
     await page.goto(`/assignments/${p2.assignments.rajOnJupiterRequested}`);
@@ -54,7 +54,7 @@ test.describe('RM2 — RM approves and rejects assignment requests', () => {
   });
 });
 
-test.describe('RM3 — RM sees future assignment pipeline', () => {
+test.describe('@full RM3 — RM sees future assignment pipeline', () => {
   test('RM dashboard shows Pipeline section with future assignments', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
@@ -62,7 +62,7 @@ test.describe('RM3 — RM sees future assignment pipeline', () => {
   });
 });
 
-test.describe('RM4 — RM views team capacity by resource pool', () => {
+test.describe('@full RM4 — RM views team capacity by resource pool', () => {
   test('RM dashboard shows Capacity section with pool-level counts', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
@@ -70,7 +70,7 @@ test.describe('RM4 — RM views team capacity by resource pool', () => {
   });
 });
 
-test.describe('RM5 — RM bulk-assigns multiple people', () => {
+test.describe('@full RM5 — RM bulk-assigns multiple people', () => {
   test('bulk assignment page exists and shows form', async ({ page }) => {
     await page.goto('/assignments/bulk');
 

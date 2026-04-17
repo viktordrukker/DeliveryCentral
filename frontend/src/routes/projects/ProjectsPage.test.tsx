@@ -32,7 +32,7 @@ describe('ProjectsPage', () => {
   beforeEach(() => {
     mockedFetchProjectDirectory.mockReset();
     mockedFetchProjectHealth.mockResolvedValue({
-      evidenceScore: 16,
+      timeScore: 16,
       grade: 'yellow',
       projectId: 'prj-1',
       score: 50,
@@ -117,7 +117,7 @@ describe('ProjectsPage', () => {
       }),
     );
     mockedFetchProjectHealth.mockResolvedValue({
-      evidenceScore: 33,
+      timeScore: 33,
       grade: 'green',
       projectId: 'prj-1',
       score: 84,

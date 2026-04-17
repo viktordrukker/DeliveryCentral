@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
+import { PLAYWRIGHT_BASE_URL } from '../fixtures/auth-state';
 
-const BASE = 'http://127.0.0.1:5173';
+const BASE = PLAYWRIGHT_BASE_URL;
 
-test.describe('Loading States: Skeleton loaders visible before data', () => {
+test.describe('@full Loading States: Skeleton loaders visible before data', () => {
   test('dashboard shows skeleton while loading', async ({ page }) => {
     await loginAs(page, 'admin@deliverycentral.local', 'DeliveryCentral@Admin1');
 

@@ -43,7 +43,7 @@ describe('WorkEvidencePage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,
@@ -79,7 +79,7 @@ describe('WorkEvidencePage', () => {
 
     renderWithRouter();
 
-    expect(await screen.findByText('No evidence logged')).toBeInTheDocument();
+    expect(await screen.findByText('No observed work found')).toBeInTheDocument();
   });
 
   it('renders evidence data', async () => {

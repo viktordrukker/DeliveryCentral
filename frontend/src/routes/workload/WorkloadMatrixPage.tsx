@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useFilterParams } from '@/hooks/useFilterParams';
+
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
@@ -23,12 +25,23 @@ function allocClass(pct: number): string {
   return 'alloc-cell alloc-cell--over';
 }
 
+/* ── Extracted style constants (20d-02) ── */
+const S_FILTER_ROW: React.CSSProperties = { display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginTop: 'var(--space-3)' };
+const S_FILTER_INPUT: React.CSSProperties = { maxWidth: '220px' };
+const S_SUMMARY: React.CSSProperties = { fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: 'var(--space-3)' };
+const S_LEGEND: React.CSSProperties = { display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--color-text)' };
+const S_LEGEND_ITEM: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '4px' };
+const S_LEGEND_SWATCH: React.CSSProperties = { width: '14px', height: '14px', minHeight: 0, fontSize: 0, border: '1px solid var(--color-border)' };
+const S_GRID_WRAP: React.CSSProperties = { overflowX: 'auto', marginTop: '1rem' };
+const S_MATRIX_TABLE: React.CSSProperties = { borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem' };
+const S_THEAD_ROW: React.CSSProperties = { background: 'var(--color-surface-alt)' };
+const S_STICKY_TH: React.CSSProperties = { position: 'sticky', left: 0, background: 'var(--color-surface-alt)', zIndex: 2, padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)', minWidth: '160px' };
+
 function allocColor(pct: number): string {
-  if (pct === 0) return 'var(--color-text-tertiary, #aaa)';
-  if (pct < 50) return '#2e7d32';
-  if (pct < 80) return '#1b5e20';
-  if (pct < 100) return '#e65100';
-  return '#b71c1c';
+  if (pct === 0) return 'var(--color-text-tertiary)';
+  if (pct < 80) return 'var(--color-status-active)';
+  if (pct < 100) return 'var(--color-status-warning)';
+  return 'var(--color-status-danger)';
 }
 
 /* ── Panel data ────────────────────────────────────────────────────────────── */
@@ -52,13 +65,19 @@ export function WorkloadMatrixPage(): JSX.Element {
   const [orgUnits, setOrgUnits] = useState<Array<{ id: string; name: string }>>([]);
   const [managers, setManagers] = useState<Array<{ id: string; displayName: string }>>([]);
 
-  const [poolId, setPoolId] = useState('');
-  const [orgUnitId, setOrgUnitId] = useState('');
-  const [managerId, setManagerId] = useState('');
+  const [urlFilters, setUrlFilters] = useFilterParams({ poolId: '', orgUnitId: '', managerId: '', personFilter: '', projectFilter: '' });
+  const poolId = urlFilters.poolId;
+  const orgUnitId = urlFilters.orgUnitId;
+  const managerId = urlFilters.managerId;
+  const setPoolId = (v: string) => setUrlFilters({ poolId: v });
+  const setOrgUnitId = (v: string) => setUrlFilters({ orgUnitId: v });
+  const setManagerId = (v: string) => setUrlFilters({ managerId: v });
 
-  // Search filters (A5)
-  const [personFilter, setPersonFilter] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
+  // Search filters (A5) — persisted in URL
+  const personFilter = urlFilters.personFilter;
+  const projectFilter = urlFilters.projectFilter;
+  const setPersonFilter = (v: string) => setUrlFilters({ personFilter: v });
+  const setProjectFilter = (v: string) => setUrlFilters({ projectFilter: v });
 
   // Keyboard focus (A2)
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
@@ -288,23 +307,24 @@ export function WorkloadMatrixPage(): JSX.Element {
       </FilterBar>
 
       {isLoading ? <LoadingState label="Loading workload matrix..." variant="skeleton" skeletonType="chart" /> : null}
-      {error ? <ErrorState description={error} /> : null}
+      {error ? <ErrorState description={error} onRetry={() => { setError(null); setIsLoading(true); }} /> : null}
 
       {!isLoading && !error && matrix ? (
         matrix.projects.length === 0 || matrix.people.length === 0 ? (
           <EmptyState
+            action={{ href: '/projects', label: 'View Projects' }}
             description="No active assignments found for the current filters."
             title="No workload data"
           />
         ) : (
           <>
             {/* Search filters (A5) */}
-            <div style={{ display: 'flex', gap: 'var(--space-3, 12px)', flexWrap: 'wrap', marginTop: 'var(--space-3, 12px)' }}>
+            <div style={S_FILTER_ROW}>
               <input
                 className="field__control"
                 onChange={(e) => setPersonFilter(e.target.value)}
                 placeholder="Filter people..."
-                style={{ maxWidth: '220px' }}
+                style={S_FILTER_INPUT}
                 type="text"
                 value={personFilter}
               />
@@ -312,17 +332,17 @@ export function WorkloadMatrixPage(): JSX.Element {
                 className="field__control"
                 onChange={(e) => setProjectFilter(e.target.value)}
                 placeholder="Filter projects..."
-                style={{ maxWidth: '220px' }}
+                style={S_FILTER_INPUT}
                 type="text"
                 value={projectFilter}
               />
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px', marginBottom: 'var(--space-3, 12px)' }}>
+            <div style={S_SUMMARY}>
               Showing {filteredPeople.length} of {matrix.people.length} people, {filteredProjects.length} of {matrix.projects.length} projects
             </div>
 
             {/* Legend */}
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem', color: '#374151' }}>
+            <div style={S_LEGEND}>
               <span style={{ fontWeight: 600 }}>Legend:</span>
               {[
                 { cls: 'alloc-cell alloc-cell--low', label: '< 50% (under)' },
@@ -330,28 +350,18 @@ export function WorkloadMatrixPage(): JSX.Element {
                 { cls: 'alloc-cell alloc-cell--high', label: '80\u201399% (high)' },
                 { cls: 'alloc-cell alloc-cell--over', label: '\u2265 100% (over)' },
               ].map(({ cls, label }) => (
-                <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span className={cls} style={{ width: '14px', height: '14px', minHeight: 0, fontSize: 0, border: '1px solid var(--color-border)' }} />
+                <span key={label} style={S_LEGEND_ITEM}>
+                  <span className={cls} style={S_LEGEND_SWATCH} />
                   <span>{label}</span>
                 </span>
               ))}
             </div>
 
-            <div style={{ overflowX: 'auto', marginTop: '1rem' }} role="grid" onKeyDown={handleGridKeyDown}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem' }}>
+            <div style={S_GRID_WRAP} role="grid" onKeyDown={handleGridKeyDown}>
+              <table style={S_MATRIX_TABLE}>
                 <thead>
-                  <tr style={{ background: 'var(--color-surface-secondary, #f3f4f6)' }}>
-                    <th
-                      style={{
-                        position: 'sticky',
-                        left: 0,
-                        background: 'var(--color-surface-secondary, #f3f4f6)',
-                        zIndex: 2,
-                        padding: '8px 12px',
-                        textAlign: 'left',
-                        borderBottom: '2px solid var(--color-border)',
-                        minWidth: '160px',
-                      }}
+                  <tr style={S_THEAD_ROW}>
+                    <th style={S_STICKY_TH}
                     >
                       Person
                     </th>

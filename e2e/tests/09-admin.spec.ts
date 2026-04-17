@@ -20,11 +20,11 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-25 Create local account ───────────────────────────────────────────────
 
-test.describe('2d-25 Admin — create local account', () => {
+test.describe('@critical 2d-25 Admin — create local account', () => {
   test('admin panel renders User Accounts section with Create Account form', async ({ page }) => {
     await page.goto('/admin');
 
-    await expect(page.getByText(/User Accounts/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /User Accounts/i })).toBeVisible();
     await expect(page.getByLabel(/Email/i)).toBeVisible();
     await expect(page.getByLabel(/Password/i)).toBeVisible();
   });
@@ -52,11 +52,11 @@ test.describe('2d-25 Admin — create local account', () => {
 
 // ── 2d-26 Enable/disable account ─────────────────────────────────────────────
 
-test.describe('2d-26 Admin — enable/disable account', () => {
+test.describe('@critical 2d-26 Admin — enable/disable account', () => {
   test('admin panel shows account list with enabled status', async ({ page }) => {
     await page.goto('/admin');
 
-    await expect(page.getByText(/User Accounts/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /User Accounts/i })).toBeVisible();
     // At least one account row with enabled indicator
     await expect(page.locator('table').or(page.getByText(/employee|admin|director/i)).first()).toBeVisible();
   });
@@ -102,13 +102,13 @@ test.describe('2d-26 Admin — enable/disable account', () => {
 
 // ── 2d-27 Trigger integration sync ──────────────────────────────────────────
 
-test.describe('2d-27 Admin — trigger integration sync', () => {
+test.describe('@critical 2d-27 Admin — trigger integration sync', () => {
   test('integrations admin page is reachable', async ({ page }) => {
     await page.goto('/admin/integrations');
 
     // Page renders without critical error
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
-    await expect(page.getByText(/Integration|Sync|Provider/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Integration|Sync|Provider/i })).toBeVisible();
   });
 
   test('integrations API returns list of configured integrations', async ({ page }) => {
@@ -124,7 +124,7 @@ test.describe('2d-27 Admin — trigger integration sync', () => {
 
 // ── 2d-28 View business audit log ───────────────────────────────────────────
 
-test.describe('2d-28 Admin — view business audit log', () => {
+test.describe('@critical 2d-28 Admin — view business audit log', () => {
   test('business audit page renders with filter controls', async ({ page }) => {
     await page.goto('/admin/audit');
 
@@ -155,11 +155,11 @@ test.describe('2d-28 Admin — view business audit log', () => {
 
 // ── 2d-29 Manage metadata dictionary entries ─────────────────────────────────
 
-test.describe('2d-29 Admin — manage metadata dictionary entries', () => {
+test.describe('@critical 2d-29 Admin — manage metadata dictionary entries', () => {
   test('metadata admin page renders dictionary list', async ({ page }) => {
     await page.goto('/admin/metadata');
 
-    await expect(page.getByText(/Dictionar/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Dictionar/i })).toBeVisible();
   });
 
   test('dictionaries API returns list with entries', async ({ page }) => {
@@ -211,12 +211,12 @@ test.describe('2d-29 Admin — manage metadata dictionary entries', () => {
 
 // ── 2d-30 View exception queue ───────────────────────────────────────────────
 
-test.describe('2d-30 Admin — view exception queue', () => {
+test.describe('@critical 2d-30 Admin — view exception queue', () => {
   test('exceptions page renders without error', async ({ page }) => {
     await page.goto('/exceptions');
 
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
-    await expect(page.getByText(/Exception|Queue|exception/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Exception|Queue/i })).toBeVisible();
   });
 
   test('exceptions API returns paginated response', async ({ page }) => {
@@ -234,11 +234,11 @@ test.describe('2d-30 Admin — view exception queue', () => {
 
 // ── 2d-31 Send test notification ─────────────────────────────────────────────
 
-test.describe('2d-31 Admin — send test notification', () => {
+test.describe('@critical 2d-31 Admin — send test notification', () => {
   test('notifications admin page renders Queue section', async ({ page }) => {
     await page.goto('/admin/notifications');
 
-    await expect(page.getByText(/Notification Queue/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Notification/i })).toBeVisible();
   });
 
   test('test-send API enqueues a notification successfully', async ({ page }) => {

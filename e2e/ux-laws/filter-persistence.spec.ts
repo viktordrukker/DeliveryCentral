@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
+import { PLAYWRIGHT_BASE_URL } from '../fixtures/auth-state';
 
-const BASE = 'http://127.0.0.1:5173';
+const BASE = PLAYWRIGHT_BASE_URL;
 
-test.describe('UX Law 5: Filter Persistence via URL', () => {
+test.describe('@full UX Law 5: Filter Persistence via URL', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'admin@deliverycentral.local', 'DeliveryCentral@Admin1');
     await page.goto(BASE);

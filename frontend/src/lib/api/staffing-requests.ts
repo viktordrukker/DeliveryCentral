@@ -103,6 +103,10 @@ export async function cancelStaffingRequest(id: string): Promise<StaffingRequest
   return httpPost<StaffingRequest, Record<string, never>>(`/staffing-requests/${id}/cancel`, {});
 }
 
+export async function releaseStaffingRequest(id: string): Promise<StaffingRequest> {
+  return httpPost<StaffingRequest, Record<string, never>>(`/staffing-requests/${id}/release`, {});
+}
+
 export interface SkillBreakdown {
   availabilityModifier: number;
   importanceWeight: number;

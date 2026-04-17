@@ -63,7 +63,7 @@ describe('ResourceManagerDashboardPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,

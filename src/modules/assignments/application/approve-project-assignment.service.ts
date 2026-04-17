@@ -9,6 +9,7 @@ import { ProjectAssignment } from '../domain/entities/project-assignment.entity'
 import { ProjectAssignmentRepositoryPort } from '../domain/repositories/project-assignment-repository.port';
 import { ApprovalState } from '../domain/value-objects/approval-state';
 import { AssignmentId } from '../domain/value-objects/assignment-id';
+import { AssignmentReferenceRepositoryPort } from './ports/assignment-reference.repository.port';
 
 interface ApproveProjectAssignmentCommand {
   actorId: string;
@@ -22,6 +23,7 @@ export class ApproveProjectAssignmentService {
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly assignmentReferenceRepository?: AssignmentReferenceRepositoryPort,
   ) {}
 
   public async execute(
@@ -33,6 +35,17 @@ export class ApproveProjectAssignmentService {
 
     if (!assignment) {
       throw new Error('Assignment not found.');
+    }
+
+    if (assignment.personId === command.actorId) {
+      throw new Error('Cannot approve your own assignment.');
+    }
+
+    if (this.assignmentReferenceRepository) {
+      const isActive = await this.assignmentReferenceRepository.personIsActive(assignment.personId);
+      if (!isActive) {
+        throw new Error('Cannot approve assignment for an inactive or terminated employee.');
+      }
     }
 
     assignment.approve(new Date());

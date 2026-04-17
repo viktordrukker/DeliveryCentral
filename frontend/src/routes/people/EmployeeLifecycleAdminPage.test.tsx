@@ -55,7 +55,7 @@ describe('EmployeeLifecycleAdminPage', () => {
     window.localStorage.clear();
 
     mockedFetchPersonDirectory.mockResolvedValue({
-      items: [{ currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Alice Manager', dottedLineManagers: [], grade: null, id: 'person-mgr-1', lifecycleStatus: 'ACTIVE', primaryEmail: 'alice@example.com', resourcePoolIds: [], resourcePools: [], role: null }],
+      items: [{ currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Alice Manager', dottedLineManagers: [], grade: null, id: 'person-mgr-1', lifecycleStatus: 'ACTIVE', primaryEmail: 'alice@example.com', resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null }],
       page: 1,
       pageSize: 500,
       total: 1,

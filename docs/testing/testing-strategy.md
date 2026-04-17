@@ -44,18 +44,49 @@ Frontend tests stay next to the code they protect:
 - `npm run test:repository`
 - `npm run test:integration`
 - `npm run test:contracts`
+- `npm run test:fast`
+- `npm run test:db`
+- `npm run test:slow`
+- `npm run verify:pr`
+- `npm run verify:full`
 - `npm run test:e2e`
 - `npm run test:performance`
 - `npm run test:all`
 
-## CI baseline
-CI runs the architectural minimum on every push and pull request:
-- lint
-- unit tests
-- domain tests
-- integration tests
-- contract tests
-- architecture check
-- contract validation script
+## Runtime lanes
 
-Broader e2e and frontend runs remain available locally and can be added to CI when dependency installation and environment startup are made reproducible in the pipeline.
+The backend test runtime is split into three lanes so pull requests fail fast on cheap regressions and keep DB-coupled suites serialized by default:
+
+- `test:fast`: unit, domain, and contract suites. Uses Jest's default local/CI worker policy unless `JEST_MAX_WORKERS` or `JEST_FAST_MAX_WORKERS` is set.
+- `test:db`: repository and integration suites. Defaults to `1` worker because these suites reset and reseed shared Prisma-backed state.
+- `test:slow`: performance plus backend Jest e2e suites. Runs after the fast and DB lanes.
+
+Playwright follows a similar lane split:
+
+- `npm run test:e2e:ui:smoke`: merge-gate browser checks tagged `@smoke`
+- `npm run test:e2e:ui:critical`: primary JTBD browser coverage tagged `@critical`
+- `npm run test:e2e:ui:full`: broad regression coverage tagged `@full`
+- `npm run test:e2e:ui:non-smoke`: everything except the smoke gate, suitable for CI sharding
+
+Role-based Playwright auth is precomputed in `e2e/auth.setup.ts` and stored under `playwright/.auth/`. Core role suites reuse that cached state instead of logging in before every test.
+
+## Runtime targets
+
+These are planning targets for day-to-day engineering flow, not hard guarantees:
+
+| Command | Local target | CI target | Notes |
+|---------|--------------|-----------|-------|
+| `npm run test:fast` | <= 30s | <= 60s | PR feedback lane |
+| `npm run test:db` | <= 90s | <= 180s | Serialized Prisma-backed suites |
+| `npm run test:slow` | <= 60s | <= 120s | Performance + backend Jest e2e |
+| `npm run verify:pr` | <= 5m | <= 8m | Default pre-PR check |
+| `npm run verify:full` | <= 10m | <= 15m | Release-candidate confidence run |
+
+## CI baseline
+CI runs fast checks first, then promotes the build to slower lanes:
+- backend fast checks: lint, architecture, contract validation, `test:fast`
+- frontend quality: type check and Vitest
+- backend DB lane: `test:db`
+- backend slow lane: `test:slow`
+- production image build smoke tests
+- Playwright smoke merge gate plus sharded non-smoke coverage

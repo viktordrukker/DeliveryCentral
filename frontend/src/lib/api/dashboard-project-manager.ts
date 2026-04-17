@@ -7,7 +7,7 @@ export interface ProjectManagerDashboardPersonSummary {
 }
 
 export interface ManagedProjectDashboardItem {
-  evidenceCount: number;
+  approvedHours: number;
   id: string;
   name: string;
   plannedEndDate: string | null;
@@ -53,13 +53,13 @@ export interface ProjectManagerDashboardResponse {
   openRequestCount: number;
   openRequests: OpenStaffingRequestSummary[];
   person: ProjectManagerDashboardPersonSummary;
-  projectsWithEvidenceAnomalies: ProjectDashboardAttentionItem[];
+  projectsWithTimeVariance: ProjectDashboardAttentionItem[];
   projectsWithStaffingGaps: ProjectDashboardAttentionItem[];
   recentlyChangedAssignments: RecentlyChangedAssignmentItem[];
   staffingSummary: {
     activeAssignmentCount: number;
     managedProjectCount: number;
-    projectsWithEvidenceAnomaliesCount: number;
+    projectsWithTimeVarianceCount: number;
     projectsWithStaffingGapsCount: number;
   };
 }

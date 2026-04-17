@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -17,8 +18,7 @@ import {
   removeResourcePoolMember,
 } from '@/lib/api/resource-pools';
 import { PersonDirectoryItem, fetchPersonDirectory } from '@/lib/api/person-directory';
-
-const RM_ADMIN_ROLES = ['resource_manager', 'admin'];
+import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 export function ResourcePoolDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -32,8 +32,9 @@ export function ResourcePoolDetailPage(): JSX.Element {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedPersonId, setSelectedPersonId] = useState('');
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
-  const canManage = principal?.roles.some((r) => RM_ADMIN_ROLES.includes(r)) ?? false;
+  const canManage = hasAnyRole(principal?.roles, RM_MANAGE_ROLES);
   const { setCurrentLabel } = useDrilldown();
 
   useEffect(() => {
@@ -227,7 +228,7 @@ export function ResourcePoolDetailPage(): JSX.Element {
                               <button
                                 className="button button--danger"
                                 disabled={isSubmitting}
-                                onClick={(e) => { e.stopPropagation(); void handleRemoveMember(member.personId); }}
+                                onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(member.personId); }}
                                 type="button"
                               >
                                 Remove
@@ -265,6 +266,13 @@ export function ResourcePoolDetailPage(): JSX.Element {
           </SectionCard>
         </>
       ) : null}
+      <ConfirmDialog
+        open={confirmRemoveId !== null}
+        message="This will remove the member from this resource pool. They will no longer appear in pool capacity calculations."
+        onCancel={() => setConfirmRemoveId(null)}
+        onConfirm={() => { const pid = confirmRemoveId; setConfirmRemoveId(null); if (pid) void handleRemoveMember(pid); }}
+        title="Remove pool member?"
+      />
     </PageContainer>
   );
 }

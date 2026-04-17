@@ -16,17 +16,6 @@ interface ExceptionQueueFiltersProps {
   };
 }
 
-const categoryOptions: Array<{ label: string; value: '' | ExceptionCategory }> = [
-  { label: 'All categories', value: '' },
-  { label: 'Assignment without evidence', value: 'ASSIGNMENT_WITHOUT_EVIDENCE' },
-  { label: 'Work evidence without assignment', value: 'WORK_EVIDENCE_WITHOUT_ASSIGNMENT' },
-  { label: 'Work evidence after assignment end', value: 'WORK_EVIDENCE_AFTER_ASSIGNMENT_END' },
-  { label: 'Project closure conflict', value: 'PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS' },
-  { label: 'Stale assignment approval', value: 'STALE_ASSIGNMENT_APPROVAL' },
-  { label: 'M365 reconciliation anomaly', value: 'M365_RECONCILIATION_ANOMALY' },
-  { label: 'RADIUS reconciliation anomaly', value: 'RADIUS_RECONCILIATION_ANOMALY' },
-];
-
 export function ExceptionQueueFilters({
   isLoading,
   onAsOfChange,
@@ -36,6 +25,12 @@ export function ExceptionQueueFilters({
   onTargetEntityIdChange,
   values,
 }: ExceptionQueueFiltersProps): JSX.Element {
+  const categoryOptions = [
+    { label: 'All categories', value: '' as '' | ExceptionCategory },
+    { label: 'Project closure conflict', value: 'PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS' as '' | ExceptionCategory },
+    { label: 'Stale assignment approval', value: 'STALE_ASSIGNMENT_APPROVAL' as '' | ExceptionCategory },
+  ];
+
   return (
     <>
       <label className="field">
@@ -69,26 +64,12 @@ export function ExceptionQueueFilters({
       </label>
 
       <label className="field">
-        <span className="field__label">Provider</span>
-        <select
-          className="field__control"
-          disabled={isLoading}
-          onChange={(event) => onProviderChange(event.target.value as '' | 'm365' | 'radius')}
-          value={values.provider}
-        >
-          <option value="">All providers</option>
-          <option value="m365">M365</option>
-          <option value="radius">RADIUS</option>
-        </select>
-      </label>
-
-      <label className="field">
         <span className="field__label">Target Entity Id</span>
         <input
           className="field__control"
           disabled={isLoading}
           onChange={(event) => onTargetEntityIdChange(event.target.value)}
-          placeholder="Filter by assignment, project, work evidence, or external id"
+          placeholder="Filter by assignment, project, or external id"
           type="search"
           value={values.targetEntityId}
         />
@@ -117,4 +98,3 @@ function toLocalInputValue(value: string): string {
   const offsetMs = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
-

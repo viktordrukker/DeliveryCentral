@@ -277,10 +277,10 @@ function AdminAccountsSection({
             <table className="dash-compact-table">
               <thead>
                 <tr>
-                  <th>Email</th>
-                  <th>Roles</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Roles</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>

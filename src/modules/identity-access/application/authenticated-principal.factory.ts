@@ -14,7 +14,16 @@ export const PLATFORM_USER_ID_HEADER = 'x-platform-user-id';
 
 @Injectable()
 export class AuthenticatedPrincipalFactory {
-  public constructor(private readonly appConfig: AppConfig) {}
+  public constructor(private readonly appConfig: AppConfig) {
+    if (process.env.NODE_ENV === 'production') {
+      if (this.appConfig.authAllowTestHeaders) {
+        throw new Error('FATAL: AUTH_ALLOW_TEST_HEADERS must not be enabled in production.');
+      }
+      if (this.appConfig.authDevelopmentBootstrapEnabled) {
+        throw new Error('FATAL: AUTH_DEV_BOOTSTRAP_ENABLED must not be enabled in production.');
+      }
+    }
+  }
 
   public createFromRequest(request: {
     header(name: string): string | undefined;

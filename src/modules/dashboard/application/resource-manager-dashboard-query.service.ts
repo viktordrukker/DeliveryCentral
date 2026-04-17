@@ -44,12 +44,24 @@ export class ResourceManagerDashboardQueryService {
     const allPeople = dbPeople;
     const allProjects = dbProjects;
 
+    const orgUnitMap = new Map(dbOrgUnits.map((u) => [u.id, u]));
     const managedTeams = dbResourcePools.filter((pool) => {
-      const orgUnit = dbOrgUnits.find((item) => item.id === pool.orgUnitId);
+      const orgUnit = orgUnitMap.get(pool.orgUnitId ?? '');
       return orgUnit?.managerPersonId === query.personId;
     });
 
     const assignments = await this.projectAssignmentRepository.findAll();
+
+    // Precompute Maps for O(1) lookups
+    const peopleById = new Map(allPeople.map((p) => [p.id, p]));
+    const projectsById = new Map(allProjects.map((p) => [p.id, p]));
+    const assignmentsByPerson = new Map<string, typeof assignments>();
+    for (const a of assignments) {
+      const arr = assignmentsByPerson.get(a.personId);
+      if (arr) arr.push(a);
+      else assignmentsByPerson.set(a.personId, [a]);
+    }
+
     const teamMembers = await Promise.all(
       managedTeams.map(async (team) => ({
         members: (await this.teamQueryService.getTeamMembersAsOf(team.id, asOf))?.items ?? [],
@@ -59,8 +71,8 @@ export class ResourceManagerDashboardQueryService {
 
     const allocationIndicators = teamMembers.flatMap(({ members, team }) =>
       members.map((member) => {
-        const currentAssignments = assignments.filter(
-          (assignment) => assignment.personId === member.id && assignment.isActiveAt(asOf),
+        const currentAssignments = (assignmentsByPerson.get(member.id) ?? []).filter(
+          (assignment) => assignment.isActiveAt(asOf),
         );
         const totalAllocationPercent = currentAssignments.reduce(
           (sum, assignment) => sum + (assignment.allocationPercent?.value ?? 0),
@@ -89,46 +101,33 @@ export class ResourceManagerDashboardQueryService {
       (item) => item.indicator === 'UNASSIGNED',
     );
 
-    const futureAssignmentPipeline = assignments
-      .filter((assignment) => {
-        if (assignment.validFrom <= asOf) {
-          return false;
-        }
+    const managedPersonIds = new Set(allocationIndicators.map((i) => i.personId));
 
-        return allocationIndicators.some((indicator) => indicator.personId === assignment.personId);
-      })
+    const futureAssignmentPipeline = assignments
+      .filter((assignment) => assignment.validFrom > asOf && managedPersonIds.has(assignment.personId))
       .sort((left, right) => left.validFrom.getTime() - right.validFrom.getTime())
       .map((assignment) => ({
         approvalState: assignment.status.value,
         assignmentId: assignment.assignmentId.value,
-        personDisplayName:
-          allPeople.find((personRecord) => personRecord.id === assignment.personId)?.displayName ??
-          assignment.personId,
+        personDisplayName: peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
         personId: assignment.personId,
         projectId: assignment.projectId,
-        projectName:
-          allProjects.find((project) => project.id === assignment.projectId)?.name ??
-          assignment.projectId,
+        projectName: projectsById.get(assignment.projectId)?.name ?? assignment.projectId,
         startDate: assignment.validFrom.toISOString(),
       }));
 
     const pendingAssignmentApprovals = assignments
       .filter(
         (assignment) =>
-          assignment.status.value === 'REQUESTED' &&
-          allocationIndicators.some((indicator) => indicator.personId === assignment.personId),
+          assignment.status.value === 'REQUESTED' && managedPersonIds.has(assignment.personId),
       )
       .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime())
       .map((assignment) => ({
         assignmentId: assignment.assignmentId.value,
-        personDisplayName:
-          allPeople.find((personRecord) => personRecord.id === assignment.personId)?.displayName ??
-          assignment.personId,
+        personDisplayName: peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
         personId: assignment.personId,
         projectId: assignment.projectId,
-        projectName:
-          allProjects.find((project) => project.id === assignment.projectId)?.name ??
-          assignment.projectId,
+        projectName: projectsById.get(assignment.projectId)?.name ?? assignment.projectId,
         requestedAt: assignment.requestedAt.toISOString(),
       }));
 
@@ -158,21 +157,18 @@ export class ResourceManagerDashboardQueryService {
       };
     });
 
+    const teamMemberMap = new Map(teamMembers.map(({ team, members }) => [team.id, members]));
+
     const teamsInMultipleActiveProjects = teamCapacitySummary
       .filter((team) => team.activeProjectCount > 1)
       .map((team) => {
         const memberIds = new Set(
-          teamMembers.find((item) => item.team.id === team.teamId)?.members.map((member) => member.id) ??
-            [],
+          (teamMemberMap.get(team.teamId) ?? []).map((member) => member.id),
         );
         const projectNames = [...new Set(
           assignments
             .filter((assignment) => memberIds.has(assignment.personId) && assignment.isActiveAt(asOf))
-            .map(
-              (assignment) =>
-                allProjects.find((project) => project.id === assignment.projectId)?.name ??
-                assignment.projectId,
-            ),
+            .map((assignment) => projectsById.get(assignment.projectId)?.name ?? assignment.projectId),
         )].sort();
 
         return {

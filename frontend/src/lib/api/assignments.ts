@@ -34,9 +34,13 @@ export interface AssignmentDirectoryQuery {
 export interface CreateAssignmentRequest {
   actorId: string;
   allocationPercent: number;
+  allowOverlapOverride?: boolean;
+  draft?: boolean;
   endDate?: string;
   note?: string;
+  overrideReason?: string;
   personId: string;
+  personValidated?: boolean;
   projectId: string;
   staffingRole: string;
   startDate: string;

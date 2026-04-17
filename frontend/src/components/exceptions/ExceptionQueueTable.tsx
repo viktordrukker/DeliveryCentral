@@ -47,7 +47,6 @@ export function ExceptionQueueTable({
               <span className="audit-record__secondary">
                 {item.personDisplayName ?? item.personId ?? 'No person'} |{' '}
                 {item.projectName ?? item.projectId ?? item.targetEntityId}
-                {item.provider ? ` | ${item.provider.toUpperCase()}` : ''}
               </span>
             </div>
           ),

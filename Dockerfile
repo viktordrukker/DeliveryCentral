@@ -8,8 +8,8 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates wget \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY prisma ./prisma
 RUN npx prisma generate \

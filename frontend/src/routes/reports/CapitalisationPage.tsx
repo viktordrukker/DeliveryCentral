@@ -20,6 +20,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useAuth } from '@/app/auth-context';
+import { ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { exportToXlsx } from '@/lib/export';
 import {
   CapitalisationProjectRow,
@@ -63,7 +64,7 @@ function getDateRange(period: Period): { from: string; to: string } {
 
 export function CapitalisationPage(): JSX.Element {
   const { principal } = useAuth();
-  const isAdmin = principal?.roles.includes('admin') ?? false;
+  const isAdmin = hasAnyRole(principal?.roles, ADMIN_ROLES);
 
   const [period, setPeriod] = useState<Period>('this_month');
   const [customFrom, setCustomFrom] = useState('');

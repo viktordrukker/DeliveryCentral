@@ -65,18 +65,11 @@ export function TeamDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Projects</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="#unassigned"
+            <Link className="kpi-strip__item" to="/people?status=unassigned"
               style={{ borderLeft: `3px solid ${d.peopleWithNoAssignments.length > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
               <TipBalloon tip="Team members without any active assignment." arrow="left" />
               <span className="kpi-strip__value">{d.peopleWithNoAssignments.length}</span>
               <span className="kpi-strip__label">Unassigned</span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="#evidence-gaps"
-              style={{ borderLeft: `3px solid ${d.peopleWithEvidenceAlignmentGaps.length > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="Members with evidence-assignment mismatches." arrow="left" />
-              <span className="kpi-strip__value">{d.peopleWithEvidenceAlignmentGaps.length}</span>
-              <span className="kpi-strip__label">Evidence Gaps</span>
             </Link>
 
             <Link className="kpi-strip__item" to="/exceptions"
@@ -107,9 +100,6 @@ export function TeamDashboardPage(): JSX.Element {
               <tbody>
                 {[
                   { label: 'Open exceptions', count: d.anomalySummary.openExceptionCount, color: d.anomalySummary.openExceptionCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
-                  { label: 'Assignments without evidence', count: d.anomalySummary.assignmentWithoutEvidenceCount, color: d.anomalySummary.assignmentWithoutEvidenceCount > 0 ? 'var(--color-status-warning)' : 'inherit' },
-                  { label: 'Evidence without assignment', count: d.anomalySummary.evidenceWithoutAssignmentCount, color: d.anomalySummary.evidenceWithoutAssignmentCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
-                  { label: 'Evidence after assignment end', count: d.anomalySummary.evidenceAfterAssignmentEndCount, color: d.anomalySummary.evidenceAfterAssignmentEndCount > 0 ? 'var(--color-status-warning)' : 'inherit' },
                   { label: 'Stale approvals', count: d.anomalySummary.staleApprovalCount, color: d.anomalySummary.staleApprovalCount > 0 ? 'var(--color-status-warning)' : 'inherit' },
                   { label: 'Project closure conflicts', count: d.anomalySummary.projectClosureConflictCount, color: d.anomalySummary.projectClosureConflictCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
                 ].map((row) => (
@@ -183,29 +173,6 @@ export function TeamDashboardPage(): JSX.Element {
             )}
           </SectionCard>
 
-          {/* ── Evidence Alignment Gaps ── */}
-          <SectionCard id="evidence-gaps" title={`Evidence Alignment Gaps (${d.peopleWithEvidenceAlignmentGaps.length})`} collapsible>
-            {d.peopleWithEvidenceAlignmentGaps.length === 0 ? (
-              <EmptyState description="No team members currently show evidence-alignment anomalies." title="No evidence gaps" />
-            ) : (
-              <table className="dash-compact-table">
-                <thead><tr><th>Person</th><th>Org Unit</th><th>Email</th><th style={{ width: 80 }}></th></tr></thead>
-                <tbody>
-                  {d.peopleWithEvidenceAlignmentGaps.map((person) => (
-                    <tr key={person.id} style={{ borderLeft: '3px solid var(--color-status-danger)' }}>
-                      <td style={{ fontWeight: 500, color: 'var(--color-status-danger)' }}>{person.displayName}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{person.currentOrgUnitName ?? '\u2014'}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{person.primaryEmail ?? '\u2014'}</td>
-                      <td style={{ display: 'flex', gap: 4 }}>
-                        <Link to={`/people/${person.id}`} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Person</Link>
-                        <Link to="/exceptions" style={{ fontSize: 10, color: 'var(--color-accent)' }}>Exceptions</Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </SectionCard>
         </>
       ) : null}
     </PageContainer>

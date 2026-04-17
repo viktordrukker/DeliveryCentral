@@ -112,12 +112,14 @@ export class InMemoryPersonDirectoryQueryRepository
           displayName: person.displayName,
           dottedLineManagers,
           grade: ('grade' in person ? (person as { grade?: string | null }).grade : null) ?? null,
+          hiredAt: null,
           id: person.id,
           lifecycleStatus: person.employmentStatus ?? 'ACTIVE',
           primaryEmail: person.primaryEmail ?? null,
           resourcePoolIds,
           resourcePools,
           role: ('role' in person ? (person as { role?: string | null }).role : null) ?? null,
+          terminatedAt: null,
         };
       })
       .filter((item) =>

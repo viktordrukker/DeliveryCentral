@@ -1,5 +1,8 @@
 import type { Config } from 'jest';
 
+const configuredMaxWorkers = process.env['JEST_MAX_WORKERS']?.trim();
+const defaultMaxWorkers = process.env['CI'] ? '50%' : '75%';
+
 const config: Config = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
@@ -15,6 +18,7 @@ const config: Config = {
   transformIgnorePatterns: ['node_modules/(?!(@scure/base|@noble/hashes|@otplib/plugin-crypto-noble)/)'],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
+  maxWorkers: configuredMaxWorkers && configuredMaxWorkers.length > 0 ? configuredMaxWorkers : defaultMaxWorkers,
 };
 
 export default config;

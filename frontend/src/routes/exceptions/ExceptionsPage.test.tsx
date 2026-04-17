@@ -29,9 +29,9 @@ describe('ExceptionsPage', () => {
     renderWithRouter('/exceptions');
 
     expect(await screen.findByRole('heading', { name: 'Exception Queue' })).toBeInTheDocument();
-    expect(screen.getByText('Work Evidence Without Assignment')).toBeInTheDocument();
-    expect(screen.getByText('Shadow work detected for Mia Lopez.')).toBeInTheDocument();
-    expect(screen.getByText('Derived from assignments, work evidence, projects, and reconciliation records.')).toBeInTheDocument();
+    expect(screen.getByText('Stale Assignment Approval')).toBeInTheDocument();
+    expect(screen.getByText('Assignment approval for Mia Lopez is still pending.')).toBeInTheDocument();
+    expect(screen.getByText('Derived from assignments, projects, and time compliance records.')).toBeInTheDocument();
   });
 
   it('shows loading and empty states clearly', async () => {
@@ -57,8 +57,8 @@ describe('ExceptionsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/exceptions');
 
-    await screen.findByText('Shadow work detected for Mia Lopez.');
-    await user.click(screen.getByText('Shadow work detected for Mia Lopez.'));
+    await screen.findByText('Assignment approval for Mia Lopez is still pending.');
+    await user.click(screen.getByText('Assignment approval for Mia Lopez is still pending.'));
 
     await waitFor(() => {
       expect(mockedFetchExceptionById).toHaveBeenCalledWith('exc-1', {
@@ -66,7 +66,7 @@ describe('ExceptionsPage', () => {
       });
     });
 
-    expect(await screen.findAllByText('Shadow work detected for Mia Lopez.')).toHaveLength(2);
+    expect(await screen.findAllByText('Assignment approval for Mia Lopez is still pending.')).toHaveLength(2);
     expect(screen.getByText('Mia Lopez')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open person' })).toHaveAttribute('href', '/people/person-1');
     expect(screen.getByRole('link', { name: 'Open project' })).toHaveAttribute('href', '/projects/project-1');
@@ -147,24 +147,24 @@ function buildQueueResponse() {
     asOf: '2025-03-15T00:00:00.000Z',
     items: [
       {
-        category: 'WORK_EVIDENCE_WITHOUT_ASSIGNMENT' as const,
+        category: 'STALE_ASSIGNMENT_APPROVAL' as const,
         id: 'exc-1',
         observedAt: '2026-04-04T10:00:00.000Z',
         personDisplayName: 'Mia Lopez',
         personId: 'person-1',
         projectId: 'project-1',
         projectName: 'Atlas ERP Rollout',
-        sourceContext: 'work_evidence' as const,
+        sourceContext: 'assignment' as const,
         status: 'OPEN' as const,
-        summary: 'Shadow work detected for Mia Lopez.',
-        targetEntityId: 'evidence-1',
-        targetEntityType: 'work_evidence',
-        workEvidenceId: 'evidence-1',
+        summary: 'Assignment approval for Mia Lopez is still pending.',
+        targetEntityId: 'assignment-1',
+        targetEntityType: 'assignment',
+        assignmentId: 'assignment-1',
       },
     ],
     summary: {
       byCategory: {
-        WORK_EVIDENCE_WITHOUT_ASSIGNMENT: 1,
+        STALE_ASSIGNMENT_APPROVAL: 1,
       },
       open: 1,
       total: 1,
@@ -175,10 +175,9 @@ function buildQueueResponse() {
 function buildDetail() {
   return {
     assignmentId: 'assignment-1',
-    category: 'WORK_EVIDENCE_WITHOUT_ASSIGNMENT' as const,
+    category: 'STALE_ASSIGNMENT_APPROVAL' as const,
     details: {
-      observedHours: 6,
-      sourceSystem: 'jira',
+      approvalState: 'REQUESTED',
     },
     id: 'exc-1',
     observedAt: '2026-04-04T10:00:00.000Z',
@@ -186,12 +185,11 @@ function buildDetail() {
     personId: 'person-1',
     projectId: 'project-1',
     projectName: 'Atlas ERP Rollout',
-    sourceContext: 'work_evidence' as const,
+    sourceContext: 'assignment' as const,
     status: 'OPEN' as const,
-    summary: 'Shadow work detected for Mia Lopez.',
-    targetEntityId: 'evidence-1',
-    targetEntityType: 'work_evidence',
-    workEvidenceId: 'evidence-1',
+    summary: 'Assignment approval for Mia Lopez is still pending.',
+    targetEntityId: 'assignment-1',
+    targetEntityType: 'assignment',
   };
 }
 

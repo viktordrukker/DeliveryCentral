@@ -273,7 +273,7 @@ export function InteractiveOrgChart({
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    el.innerHTML = '';
+    el.replaceChildren();
     chartRef.current = null;
 
     if (viewMode === 'people') {

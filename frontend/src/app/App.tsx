@@ -3,31 +3,15 @@ import { RouterProvider } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 
 import { appRouter } from './router';
+import { PlatformSettingsProvider } from './platform-settings-context';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { apiClientConfig } from '@/lib/api/config';
+import { setColorModePreference } from '@/styles/design-tokens';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
-const DARK_MODE_KEY = 'dc:dark-mode';
-
-function getInitialTheme(): 'dark' | 'light' | null {
-  const stored = localStorage.getItem(DARK_MODE_KEY);
-  if (stored === 'dark' || stored === 'light') return stored;
-  return null; // rely on prefers-color-scheme via CSS
-}
-
-function applyTheme(theme: 'dark' | 'light' | null): void {
-  if (theme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  } else if (theme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-}
 
 export function setDarkMode(value: boolean): void {
-  const theme = value ? 'dark' : 'light';
-  localStorage.setItem(DARK_MODE_KEY, theme);
-  applyTheme(theme);
+  setColorModePreference(value ? 'dark' : 'light');
 }
 
 const SHORTCUTS = [
@@ -104,9 +88,6 @@ export function App(): JSX.Element {
   useNotificationStream();
 
   useEffect(() => {
-    applyTheme(getInitialTheme());
-  }, []);
-  useEffect(() => {
     const handler = (): void => {
       toast.warning('Your session will expire in 2 minutes. Save your work.', { duration: 10000 });
     };
@@ -166,7 +147,11 @@ export function App(): JSX.Element {
           Demo Mode — data is read-only and resets periodically
         </div>
       ) : null}
-      <RouterProvider router={appRouter} />
+      <ErrorBoundary>
+        <PlatformSettingsProvider>
+          <RouterProvider router={appRouter} />
+        </PlatformSettingsProvider>
+      </ErrorBoundary>
       <Toaster position="bottom-right" richColors />
       {showShortcuts ? (
         <div

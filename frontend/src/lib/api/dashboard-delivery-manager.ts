@@ -4,14 +4,15 @@ export interface DeliveryManagerDashboardSummary {
   totalActiveProjects: number;
   totalActiveAssignments: number;
   projectsWithNoStaff: number;
-  projectsWithEvidenceAnomalies: number;
-  inactiveEvidenceProjectCount: number;
+  projectsWithTimeVariance: number;
+  projectsMissingApprovedTimeCount: number;
 }
 
-export interface DeliveryManagerReconciliation {
+export interface DeliveryManagerTimeAlignment {
   matchedCount: number;
-  assignedButNoEvidenceCount: number;
-  evidenceWithoutAssignmentCount: number;
+  plannedWithoutApprovedTimeCount: number;
+  approvedTimeWithoutAssignmentCount: number;
+  approvedTimeAfterAssignmentEndCount: number;
 }
 
 export interface ProjectHealthItem {
@@ -20,15 +21,15 @@ export interface ProjectHealthItem {
   name: string;
   status: string;
   staffingCount: number;
-  evidenceCount: number;
+  approvedHours: number;
   anomalyFlags: string[];
 }
 
-export interface InactiveEvidenceProjectItem {
+export interface ProjectMissingApprovedTimeItem {
   projectId: string;
   projectCode: string;
   name: string;
-  lastEvidenceDate: string | null;
+  lastApprovedTimeDate: string | null;
   activeAssignmentCount: number;
 }
 
@@ -53,7 +54,7 @@ export interface OpenRequestsByProjectItem {
 
 export interface BurnRateTrendPoint {
   week: string;
-  evidenceCount: number;
+  approvedEntryCount: number;
   projectCount: number;
 }
 
@@ -61,10 +62,10 @@ export interface DeliveryManagerDashboardResponse {
   asOf: string;
   burnRateTrend: BurnRateTrendPoint[];
   dataSources: string[];
-  inactiveEvidenceProjects: InactiveEvidenceProjectItem[];
+  projectsMissingApprovedTime: ProjectMissingApprovedTimeItem[];
   openRequestsByProject: OpenRequestsByProjectItem[];
   portfolioHealth: ProjectHealthItem[];
-  reconciliation: DeliveryManagerReconciliation;
+  timeAlignment: DeliveryManagerTimeAlignment;
   staffingGaps: StaffingGapItem[];
   summary: DeliveryManagerDashboardSummary;
 }
@@ -72,7 +73,7 @@ export interface DeliveryManagerDashboardResponse {
 export interface ScorecardHistoryPoint {
   weekStart: string;
   staffingPct: number;
-  evidencePct: number;
+  timePct: number;
   timelinePct: number;
 }
 

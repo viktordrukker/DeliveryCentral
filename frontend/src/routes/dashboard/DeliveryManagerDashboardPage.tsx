@@ -15,18 +15,11 @@ import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { TabBar } from '@/components/common/TabBar';
 import { formatDate } from '@/lib/format-date';
 import { PortfolioHealthHeatmap } from '@/components/charts/PortfolioHealthHeatmap';
-import { EvidenceVsAssignmentBars } from '@/components/charts/EvidenceVsAssignmentBars';
 import { BurnRateTrendPoint, fetchScorecardHistory, ProjectHealthItem, ProjectScorecardHistoryItem, StaffingGapItem, OpenRequestsByProjectItem } from '@/lib/api/dashboard-delivery-manager';
 import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
 import { useDeliveryManagerDashboard } from '@/features/dashboard/useDeliveryManagerDashboard';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
-
-const DM_TABS = [
-  { id: 'portfolio', label: 'Portfolio' },
-  { id: 'evidence', label: 'Evidence' },
-  { id: 'scorecard', label: 'Scorecard' },
-];
 
 export function DeliveryManagerDashboardPage(): JSX.Element {
   const state = useDeliveryManagerDashboard();
@@ -34,7 +27,11 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
   const [lastFetch, setLastFetch] = useState(new Date());
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTab = DM_TABS.some((t) => `#${t.id}` === location.hash)
+  const tabs = [
+    { id: 'portfolio', label: 'Portfolio' },
+    { id: 'scorecard', label: 'Scorecard' },
+  ];
+  const activeTab = tabs.some((t) => `#${t.id}` === location.hash)
     ? location.hash.slice(1)
     : 'portfolio';
 
@@ -84,26 +81,17 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
   const activeProjects = d?.summary.totalActiveProjects ?? 0;
   const activeAssignments = d?.summary.totalActiveAssignments ?? 0;
   const noStaff = d?.summary.projectsWithNoStaff ?? 0;
-  const evidenceAnomalies = d?.summary.projectsWithEvidenceAnomalies ?? 0;
-  const inactiveEvidence = d?.summary.inactiveEvidenceProjectCount ?? 0;
-  const issues = noStaff + evidenceAnomalies;
+  const issues = noStaff;
 
   const heatmapData = (d?.portfolioHealth ?? []).map((item) => {
     const flags = item.anomalyFlags.map((f) => f.toLowerCase());
     return {
-      evidence: (flags.some((f) => f.includes('evidence')) ? 'red' : 'green') as 'green' | 'yellow' | 'red',
       name: `${item.projectCode} — ${item.name}`,
       staffing: (item.staffingCount === 0 ? 'red' : flags.some((f) => f.includes('staff')) ? 'yellow' : 'green') as 'green' | 'yellow' | 'red',
+      time: (item.approvedHours === 0 ? 'red' : flags.some((f) => f.includes('time')) ? 'yellow' : 'green') as 'green' | 'yellow' | 'red',
       timeline: (flags.some((f) => f.includes('timeline') || f.includes('overdue')) ? 'red' : 'green') as 'green' | 'yellow' | 'red',
     };
   });
-
-  const evidenceBarsData = (d?.portfolioHealth ?? []).map((item) => ({
-    expected: item.staffingCount * 8,
-    logged: item.evidenceCount,
-    project: item.name.length > 20 ? `${item.name.slice(0, 18)}...` : item.name,
-    projectId: item.projectId,
-  }));
 
   const refetch = (): void => state.setAsOf(new Date().toISOString());
 
@@ -138,24 +126,11 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
               </span>
             </Link>
 
-            <Link className="kpi-strip__item" to="#evidence-anomalies" onClick={(e) => { e.preventDefault(); handleTabChange('evidence'); }}
-              style={{ borderLeft: `3px solid ${evidenceAnomalies > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="Projects where evidence does not match assignments." arrow="left" />
-              <span className="kpi-strip__value">{evidenceAnomalies}</span>
-              <span className="kpi-strip__label">Evidence Anomalies</span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="#inactive-evidence-projects" onClick={(e) => { e.preventDefault(); handleTabChange('evidence'); }}
-              style={{ borderLeft: `3px solid ${inactiveEvidence > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="Staffed active projects with no recent work evidence." arrow="left" />
-              <span className="kpi-strip__value">{inactiveEvidence}</span>
-              <span className="kpi-strip__label">Inactive Evidence</span>
-            </Link>
           </div>
 
           {/* ── TABS ── */}
           <div className="tab-bar-sticky">
-            <TabBar activeTab={activeTab} onTabChange={handleTabChange} tabs={DM_TABS} />
+            <TabBar activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
           </div>
 
           {/* ── Portfolio tab ── */}
@@ -163,7 +138,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
             <>
               {heatmapData.length > 0 && (
                 <div className="dashboard-hero" style={{ position: 'relative' }}>
-                  <TipBalloon tip="Portfolio health heatmap showing staffing, evidence, and timeline status per project." arrow="left" />
+                  <TipBalloon tip="Portfolio health heatmap showing staffing and timeline status per project." arrow="left" />
                   <div className="dashboard-hero__header">
                     <div>
                       <div className="dashboard-hero__title">Portfolio Health Overview</div>
@@ -177,8 +152,8 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
               )}
 
               <SectionCard title="Portfolio Health" collapsible chartExport={{
-                headers: ['Project', 'Code', 'Status', 'Staff', 'Evidence', 'Flags'],
-                rows: (d.portfolioHealth).map((i) => ({ Project: i.name, Code: i.projectCode, Status: i.status, Staff: String(i.staffingCount), Evidence: String(i.evidenceCount), Flags: i.anomalyFlags.join(', ') })),
+                headers: ['Project', 'Code', 'Status', 'Staff', 'Flags'],
+                rows: (d.portfolioHealth).map((i) => ({ Project: i.name, Code: i.projectCode, Status: i.status, Staff: String(i.staffingCount), Flags: i.anomalyFlags.join(', ') })),
               }}>
                 {d.portfolioHealth.length === 0 ? (
                   <EmptyState description="No active projects found for this period." title="No portfolio data" />
@@ -191,7 +166,6 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                           <th style={{ width: 70 }}>Code</th>
                           <th style={{ width: 60 }}>Status</th>
                           <th style={NUM}>Staff</th>
-                          <th style={NUM}>Evidence</th>
                           <th style={{ width: 120 }}>Flags</th>
                           <th style={{ width: 40 }}></th>
                         </tr>
@@ -203,7 +177,6 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                             <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{item.projectCode}</td>
                             <td style={{ fontSize: 11 }}>{item.status}</td>
                             <td style={{ ...NUM, color: item.staffingCount === 0 ? 'var(--color-status-danger)' : 'inherit' }}>{item.staffingCount}</td>
-                            <td style={NUM}>{item.evidenceCount}</td>
                             <td>
                               {item.anomalyFlags.length > 0 ? (
                                 <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>
@@ -233,80 +206,6 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                   <OpenRequestsByProjectTable rows={d.openRequestsByProject ?? []} />
                 </SectionCard>
               )}
-            </>
-          )}
-
-          {/* ── Evidence tab ── */}
-          {activeTab === 'evidence' && (
-            <>
-              {evidenceBarsData.length > 0 && (
-                <div className="dashboard-hero" style={{ position: 'relative' }}>
-                  <TipBalloon tip="Bars show logged evidence vs expected (staff * 8h). Large gaps indicate missing time entries." arrow="left" />
-                  <div className="dashboard-hero__header">
-                    <div>
-                      <div className="dashboard-hero__title">Evidence vs Assignment Coverage</div>
-                      <div className="dashboard-hero__subtitle">Logged evidence entries compared to expected based on headcount</div>
-                    </div>
-                  </div>
-                  <div className="dashboard-hero__chart">
-                    <EvidenceVsAssignmentBars data={evidenceBarsData} />
-                  </div>
-                </div>
-              )}
-
-              {(d.burnRateTrend ?? []).length > 0 && (
-                <SectionCard title="Evidence Burn Rate — Last 8 Weeks" collapsible>
-                  <BurnRateTrendChart data={d.burnRateTrend ?? []} />
-                </SectionCard>
-              )}
-
-              <div className="dashboard-main-grid">
-                <SectionCard id="evidence-anomalies" title="Reconciliation Status" collapsible>
-                  <table className="dash-compact-table">
-                    <thead>
-                      <tr><th>Status</th><th style={NUM}>Count</th><th style={{ width: 120 }}>Action</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: 'var(--color-status-active)' }}>Matched</td>
-                        <td style={NUM}>{d.reconciliation.matchedCount}</td>
-                        <td><Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to="/dashboard/planned-vs-actual">View</Link></td>
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: d.reconciliation.assignedButNoEvidenceCount > 0 ? 'var(--color-status-warning)' : 'inherit' }}>Assigned, no evidence</td>
-                        <td style={{ ...NUM, color: d.reconciliation.assignedButNoEvidenceCount > 0 ? 'var(--color-status-warning)' : 'inherit' }}>{d.reconciliation.assignedButNoEvidenceCount}</td>
-                        <td>{d.reconciliation.assignedButNoEvidenceCount > 0 ? <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to="/work-evidence/new">Log evidence</Link> : null}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ fontWeight: 500, color: d.reconciliation.evidenceWithoutAssignmentCount > 0 ? 'var(--color-status-danger)' : 'inherit' }}>Evidence, no assignment</td>
-                        <td style={{ ...NUM, color: d.reconciliation.evidenceWithoutAssignmentCount > 0 ? 'var(--color-status-danger)' : 'inherit' }}>{d.reconciliation.evidenceWithoutAssignmentCount}</td>
-                        <td>{d.reconciliation.evidenceWithoutAssignmentCount > 0 ? <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to="/assignments/new">Create assignment</Link> : null}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </SectionCard>
-
-                <SectionCard id="inactive-evidence-projects" title="Inactive Evidence Projects" collapsible>
-                  {d.inactiveEvidenceProjects.length === 0 ? (
-                    <EmptyState description="All staffed active projects have recent evidence activity." title="No inactive evidence projects" />
-                  ) : (
-                    <table className="dash-compact-table">
-                      <thead>
-                        <tr><th>Project</th><th style={NUM}>Assignments</th><th style={{ width: 110 }}>Last Evidence</th></tr>
-                      </thead>
-                      <tbody>
-                        {d.inactiveEvidenceProjects.map((item) => (
-                          <tr key={item.projectId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${item.projectId}/dashboard`)}>
-                            <td style={{ fontWeight: 500 }}>{item.projectCode} — {item.name}</td>
-                            <td style={NUM}>{item.activeAssignmentCount}</td>
-                            <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>{item.lastEvidenceDate ? formatDate(item.lastEvidenceDate) : 'Never'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </SectionCard>
-              </div>
             </>
           )}
 
@@ -378,7 +277,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
             <th>Project</th>
             <th style={{ width: 80 }}>Health</th>
             <th style={{ width: 60 }}>Staff</th>
-            <th style={{ width: 60 }}>Evidence</th>
+            <th style={{ width: 60 }}>Time</th>
             <th style={{ width: 60 }}>Timeline</th>
             <th style={{ width: 100 }}></th>
           </tr>
@@ -398,7 +297,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
                   </td>
                   <td>{h ? <ProjectHealthBadge grade={h.grade} score={h.score} size="sm" /> : <span style={{ color: 'var(--color-text-muted)' }}>{'\u2014'}</span>}</td>
                   <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/assignments?projectId=${item.projectId}&status=active`}>{scoreIndicator(h.staffingScore)}</Link> : '\u2014'}</td>
-                  <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/work-evidence?projectId=${item.projectId}`}>{scoreIndicator(h.evidenceScore)}</Link> : '\u2014'}</td>
+                  <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/time-management?tab=compliance`}>{scoreIndicator(h.timeScore)}</Link> : '\u2014'}</td>
                   <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/projects/${item.projectId}`}>{scoreIndicator(h.timelineScore)}</Link> : '\u2014'}</td>
                   <td style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <button
@@ -427,7 +326,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
                               <Tooltip formatter={(v: unknown) => [`${String(v)}%`, '']} />
                               <Legend wrapperStyle={{ fontSize: 11 }} />
                               <Line dataKey="staffingPct" dot={false} name="Staffing" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
-                              <Line dataKey="evidencePct" dot={false} name="Evidence" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
+                              <Line dataKey="timePct" dot={false} name="Time" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
                               <Line dataKey="timelinePct" dot={false} name="Timeline" stroke="var(--color-status-warning)" strokeWidth={2} type="monotone" />
                             </LineChart>
                           </ResponsiveContainer>
@@ -511,7 +410,7 @@ function BurnRateTrendChart({ data }: { data: BurnRateTrendPoint[] }): JSX.Eleme
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Line dataKey="evidenceCount" dot={false} name="Evidence entries" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
+          <Line dataKey="approvedEntryCount" dot={false} name="Time entries" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
           <Line dataKey="projectCount" dot={false} name="Active projects" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
         </LineChart>
       </ResponsiveContainer>

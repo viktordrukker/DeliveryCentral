@@ -1,7 +1,7 @@
 interface PortfolioProject {
-  evidence: 'green' | 'red' | 'yellow';
   name: string;
   staffing: 'green' | 'red' | 'yellow';
+  time: 'green' | 'red' | 'yellow';
   timeline: 'green' | 'red' | 'yellow';
 }
 
@@ -29,7 +29,7 @@ export function PortfolioHealthHeatmap({ projects }: PortfolioHealthHeatmapProps
           <tr>
             <th style={{ padding: '6px 10px', textAlign: 'left' }}>Project</th>
             <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Active assignments covering the project">Staffing</th>
-            <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Recent work evidence submitted against the project">Evidence</th>
+            <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Approved time submitted against the project">Time</th>
             <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Project timeline relative to planned end date">Timeline</th>
           </tr>
         </thead>
@@ -37,7 +37,7 @@ export function PortfolioHealthHeatmap({ projects }: PortfolioHealthHeatmapProps
           {projects.map((p) => (
             <tr key={p.name}>
               <td style={{ padding: '6px 10px' }}>{p.name}</td>
-              {(['staffing', 'evidence', 'timeline'] as const).map((dim) => (
+              {(['staffing', 'time', 'timeline'] as const).map((dim) => (
                 <td key={dim} style={{ padding: '4px 6px', textAlign: 'center' }}>
                   <span
                     style={{

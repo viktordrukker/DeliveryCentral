@@ -28,7 +28,19 @@ import { InMemoryProjectRepository } from './infrastructure/repositories/in-memo
 import { PrismaExternalSyncStateRepository } from './infrastructure/repositories/prisma/prisma-external-sync-state.repository';
 import { PrismaProjectExternalLinkRepository } from './infrastructure/repositories/prisma/prisma-project-external-link.repository';
 import { PrismaProjectRepository } from './infrastructure/repositories/prisma/prisma-project.repository';
+import { ClientService } from './application/client.service';
+import { GenerateStaffingRequestsFromPlanService } from './application/generate-staffing-requests-from-plan.service';
+import { ProjectClosureReadinessService } from './application/project-closure-readiness.service';
+import { ProjectRagService } from './application/project-rag.service';
+import { ProjectRolePlanService } from './application/project-role-plan.service';
+import { ProjectRiskService } from './application/project-risk.service';
+import { VendorService } from './application/vendor.service';
+import { ClientController } from './presentation/client.controller';
 import { ProjectsController } from './presentation/projects.controller';
+import { ProjectRagController } from './presentation/rag.controller';
+import { ProjectRolePlanController } from './presentation/role-plan.controller';
+import { ProjectRiskController } from './presentation/risk.controller';
+import { VendorController, ProjectVendorController } from './presentation/vendor.controller';
 import { WorkEvidenceModule } from '../work-evidence/work-evidence.module';
 import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 
@@ -39,7 +51,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     forwardRef(() => AssignmentsModule),
     NotificationsModule,
   ],
-  controllers: [ProjectsController],
+  controllers: [ProjectsController, ClientController, VendorController, ProjectVendorController, ProjectRolePlanController, ProjectRagController, ProjectRiskController],
   providers: [
     {
       provide: InMemoryProjectRepository,
@@ -196,10 +208,17 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       useFactory: (
         projectRepository: InMemoryProjectRepository,
         projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-        workEvidenceRepository: InMemoryWorkEvidenceRepository,
-      ) => new ProjectHealthQueryService(projectRepository, projectAssignmentRepository, workEvidenceRepository),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, InMemoryWorkEvidenceRepository],
+        prisma: PrismaService,
+      ) => new ProjectHealthQueryService(projectRepository, projectAssignmentRepository, prisma),
+      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, PrismaService],
     },
+    ClientService,
+    VendorService,
+    ProjectRolePlanService,
+    GenerateStaffingRequestsFromPlanService,
+    ProjectClosureReadinessService,
+    ProjectRagService,
+    ProjectRiskService,
   ],
   exports: [
     ActivateProjectService,
@@ -213,6 +232,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     InMemoryExternalSyncStateRepository,
     ProjectDashboardQueryService,
     ProjectHealthQueryService,
+    ProjectRolePlanService,
     UpdateProjectService,
   ],
 })

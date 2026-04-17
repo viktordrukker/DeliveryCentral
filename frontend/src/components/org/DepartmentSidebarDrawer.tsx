@@ -4,9 +4,8 @@ import { Link } from 'react-router-dom';
 import type { OrgPersonEnriched } from '@/features/org-chart/useOrgChart';
 import type { FlatOrgNode } from './InteractiveOrgChart';
 import { useAuth } from '@/app/auth-context';
+import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { humanizeEnum, ORG_UNIT_TYPE_LABELS } from '@/lib/labels';
-
-const ADMIN_ROLES = ['admin', 'hr_manager', 'resource_manager', 'director'];
 const PAGE_SIZE = 15;
 
 interface DepartmentSidebarDrawerProps {
@@ -17,7 +16,7 @@ interface DepartmentSidebarDrawerProps {
 
 export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSidebarDrawerProps): JSX.Element {
   const { principal } = useAuth();
-  const isAdminViewer = principal?.roles.some((r) => ADMIN_ROLES.includes(r)) ?? false;
+  const isAdminViewer = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
   const [memberSearch, setMemberSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
 

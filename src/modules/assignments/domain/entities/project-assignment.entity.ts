@@ -127,6 +127,13 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
     }
   }
 
+  public activate(): void {
+    if (this.props.status.value !== 'APPROVED') {
+      throw new Error(`Assignment cannot transition from ${this.props.status.value} to ACTIVE.`);
+    }
+    this.props.status = ApprovalState.active();
+  }
+
   public approve(approvedAt: Date): void {
     if (this.props.status.value !== 'REQUESTED') {
       throw new Error(`Assignment cannot transition from ${this.props.status.value} to APPROVED.`);

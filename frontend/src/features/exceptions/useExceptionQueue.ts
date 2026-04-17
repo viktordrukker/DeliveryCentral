@@ -39,6 +39,8 @@ interface ExceptionQueueState {
   reload: () => void;
 }
 
+const HIDDEN_CORE_CATEGORIES: ExceptionCategory[] = [];
+
 export function useExceptionQueue(): ExceptionQueueState {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<ExceptionQueueResponse | null>(null);
@@ -83,7 +85,26 @@ export function useExceptionQueue(): ExceptionQueueState {
           return;
         }
 
-        setData(response);
+        const filteredItems = response.items.filter(
+          (item) => !HIDDEN_CORE_CATEGORIES.includes(item.category),
+        );
+        const byCategory = filteredItems.reduce<Partial<Record<ExceptionCategory, number>>>(
+          (acc, item) => {
+            acc[item.category] = (acc[item.category] ?? 0) + 1;
+            return acc;
+          },
+          {},
+        );
+
+        setData({
+          ...response,
+          items: filteredItems,
+          summary: {
+            byCategory,
+            open: filteredItems.filter((item) => item.status === 'OPEN').length,
+            total: filteredItems.length,
+          },
+        });
         setLastUpdated(new Date());
       } catch (reason) {
         if (isCancelled) {

@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, hrManager.email, hrManager.password);
 });
 
-test.describe('HR1 — HR sees headcount by org unit, grade, role', () => {
+test.describe('@full HR1 — HR sees headcount by org unit, grade, role', () => {
   test('HR dashboard renders distributions with labels and counts', async ({ page }) => {
     await page.goto(`/dashboard/hr-manager?personId=${diana}`);
 
@@ -42,7 +42,7 @@ test.describe('HR1 — HR sees headcount by org unit, grade, role', () => {
   });
 });
 
-test.describe('HR2 — HR identifies data quality gaps', () => {
+test.describe('@full HR2 — HR identifies data quality gaps', () => {
   test('HR dashboard shows Data Quality Signals section', async ({ page }) => {
     await page.goto(`/dashboard/hr-manager?personId=${diana}`);
 
@@ -61,7 +61,7 @@ test.describe('HR2 — HR identifies data quality gaps', () => {
   });
 });
 
-test.describe('HR3 — HR creates onboarding case', () => {
+test.describe('@full HR3 — HR creates onboarding case', () => {
   test('create case page loads and renders case type dropdown', async ({ page }) => {
     await page.goto('/cases/new');
 
@@ -93,7 +93,7 @@ test.describe('HR3 — HR creates onboarding case', () => {
   });
 });
 
-test.describe('HR4 — HR views and progresses case steps', () => {
+test.describe('@full HR4 — HR views and progresses case steps', () => {
   test('case list shows created cases', async ({ page }) => {
     await page.goto('/cases');
 
@@ -101,7 +101,7 @@ test.describe('HR4 — HR views and progresses case steps', () => {
   });
 });
 
-test.describe('HR5 — HR sees recent joiner and deactivation activity', () => {
+test.describe('@full HR5 — HR sees recent joiner and deactivation activity', () => {
   test('HR dashboard shows Lifecycle Activity section', async ({ page }) => {
     await page.goto(`/dashboard/hr-manager?personId=${diana}`);
 
@@ -120,7 +120,7 @@ test.describe('HR5 — HR sees recent joiner and deactivation activity', () => {
   });
 });
 
-test.describe('HR6 — HR terminates employee and cascades assignment ends', () => {
+test.describe('@full HR6 — HR terminates employee and cascades assignment ends', () => {
   test('employee details page shows Terminate employee action', async ({ page }) => {
     await page.goto(`/people/${p2.people.zoeTurner}`);
 

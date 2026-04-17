@@ -4,6 +4,7 @@ type ApprovalStateValue =
   | 'ACTIVE'
   | 'APPROVED'
   | 'ARCHIVED'
+  | 'DRAFT'
   | 'ENDED'
   | 'REJECTED'
   | 'REQUESTED'
@@ -12,6 +13,10 @@ type ApprovalStateValue =
 export class ApprovalState extends ValueObject<{ value: ApprovalStateValue }> {
   public static active(): ApprovalState {
     return new ApprovalState({ value: 'ACTIVE' });
+  }
+
+  public static draft(): ApprovalState {
+    return new ApprovalState({ value: 'DRAFT' });
   }
 
   public static approved(): ApprovalState {

@@ -5,12 +5,14 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/app/auth-context';
 import { getDashboardPath } from '@/app/role-routing';
 import { useTitleBarActions } from '@/app/title-bar-context';
+import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { DateRangePreset } from '@/components/common/DateRangePreset';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { Sparkline } from '@/components/charts/Sparkline';
 import {
@@ -35,6 +37,21 @@ const tc = (val: number, warn: number, danger: number, higherIsBad = true): stri
   if (val <= warn) return 'var(--color-status-warning, #f59e0b)';
   return 'var(--color-status-active, #22c55e)';
 };
+
+interface DashboardActionItem {
+  code: string;
+  entity: string;
+  href: string;
+  id: string;
+  impact: string;
+  index: number;
+  portfolioPercent: number;
+  severity: 'High' | 'Med' | 'Low';
+  severityTone: StatusTone;
+  status: string;
+  suggestedAction: string;
+  type: string;
+}
 
 export function DashboardPage(): JSX.Element {
   const { principal } = useAuth();
@@ -88,8 +105,7 @@ export function DashboardPage(): JSX.Element {
   const totalPeople = activeAssignments + unassigned;
   const utilizationPct = totalPeople > 0 ? Math.round((activeAssignments / totalPeople) * 100) : 0;
   const noStaffCount = d?.projectsWithNoStaffCount ?? 0;
-  const evidenceMismatch = d?.projectsWithEvidenceButNoApprovedAssignmentCount ?? 0;
-  const issues = noStaffCount + evidenceMismatch;
+  const issues = noStaffCount;
   const projectsWithNoStaff = d?.projectsWithNoStaff ?? [];
 
   const assignmentSpark = useMemo(() => trendRaw.slice(-12).map((p) => p.activeAssignments), [trendRaw]);
@@ -111,6 +127,131 @@ export function DashboardPage(): JSX.Element {
   }, [trendRaw, totalPeople, rangeFrom, rangeTo]);
 
   const nav = useNavigate();
+
+  const actionItems = useMemo<DashboardActionItem[]>(() => {
+    const items: DashboardActionItem[] = [];
+
+    projectsWithNoStaff.forEach((project) => {
+      items.push({
+        code: project.projectCode,
+        entity: project.name,
+        href: `/projects/${project.id}`,
+        id: `unstaffed-${project.id}`,
+        impact: 'No staff assigned — delivery at risk',
+        index: items.length + 1,
+        portfolioPercent: activeProjects > 0 ? Math.round((1 / activeProjects) * 100) : 0,
+        severity: 'High',
+        severityTone: 'danger',
+        status: 'Open',
+        suggestedAction: 'Create staffing request',
+        type: 'Unstaffed Project',
+      });
+    });
+
+    if (unassigned > 3) {
+      items.push({
+        code: '\u2014',
+        entity: `${unassigned} people`,
+        href: '/people',
+        id: 'idle-workforce',
+        impact: 'Available people not assigned to any project',
+        index: items.length + 1,
+        portfolioPercent: totalPeople > 0 ? Math.round((unassigned / totalPeople) * 100) : 0,
+        severity: 'Low',
+        severityTone: 'info',
+        status: 'Info',
+        suggestedAction: 'Review for assignment',
+        type: 'Idle Workforce',
+      });
+    }
+
+    return items;
+  }, [activeProjects, projectsWithNoStaff, totalPeople, unassigned]);
+
+  const actionColumns = useMemo<DataTableColumn<DashboardActionItem>[]>(() => [
+    {
+      key: 'index',
+      render: (item) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{item.index}</span>,
+      title: '#',
+      width: 28,
+    },
+    {
+      key: 'severity',
+      render: (item) => <StatusBadge label={item.severity} size="small" tone={item.severityTone} variant="dot" />,
+      title: 'Severity',
+      width: 88,
+    },
+    {
+      key: 'type',
+      render: (item) => item.type,
+      title: 'Category',
+      width: 140,
+    },
+    {
+      key: 'entity',
+      render: (item) => <span style={{ fontWeight: 500 }}>{item.entity}</span>,
+      title: 'Entity',
+    },
+    {
+      key: 'code',
+      render: (item) => (
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+          {item.code}
+        </span>
+      ),
+      title: 'Code',
+      width: 72,
+    },
+    {
+      key: 'impact',
+      render: (item) => <span style={{ fontSize: 11 }}>{item.impact}</span>,
+      title: 'Impact',
+      width: 220,
+    },
+    {
+      key: 'portfolioPercent',
+      align: 'right',
+      render: (item) => (
+        <span
+          style={{
+            color: item.severityTone === 'danger' ? 'var(--color-status-danger)' : 'var(--color-text-muted)',
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 600,
+          }}
+        >
+          {item.portfolioPercent}%
+        </span>
+      ),
+      title: 'Portfolio %',
+      width: 90,
+    },
+    {
+      key: 'status',
+      render: (item) => <StatusBadge label={item.status} size="small" tone={item.severityTone} />,
+      title: 'Status',
+      width: 80,
+    },
+    {
+      key: 'suggestedAction',
+      render: (item) => <span style={{ fontSize: 11 }}>{item.suggestedAction}</span>,
+      title: 'Suggested Action',
+      width: 170,
+    },
+    {
+      key: 'go',
+      render: (item) => (
+        <Link
+          onClick={(event) => event.stopPropagation()}
+          style={{ color: 'var(--color-accent)', fontSize: 10 }}
+          to={item.href}
+        >
+          View
+        </Link>
+      ),
+      title: '',
+      width: 40,
+    },
+  ], []);
 
   /* ── Role redirect ─────────────────────────────────────────────── */
   if (principal) {
@@ -163,11 +304,11 @@ export function DashboardPage(): JSX.Element {
             </Link>
 
             <Link className="kpi-strip__item" to="/exceptions" style={{ borderLeft: `3px solid ${tc(issues, 2, 5)}` }}>
-              <TipBalloon tip="Unstaffed projects + evidence mismatches combined. Zero means all clear." arrow="left" />
+              <TipBalloon tip="Unstaffed projects requiring action. Zero means all clear." arrow="left" />
               <span className="kpi-strip__value">{issues}</span>
               <span className="kpi-strip__label">Open Issues</span>
               <span className="kpi-strip__context" style={{ color: issues === 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
-                {issues === 0 ? '\u2713 All clear' : `${noStaffCount} unstaffed \u00B7 ${evidenceMismatch} mismatched`}
+                {issues === 0 ? '\u2713 All clear' : `${noStaffCount} unstaffed`}
               </span>
             </Link>
           </div>
@@ -196,124 +337,38 @@ export function DashboardPage(): JSX.Element {
           </div>
 
           {/* ── ACTION ITEMS ── enriched table ── */}
-          {(noStaffCount > 0 || evidenceMismatch > 0 || unassigned > 0) && (
+          {actionItems.length > 0 && (
             <div className="dash-action-section" style={{ position: 'relative' }}>
               <TipBalloon tip="All items that need attention. Sorted by severity. Impact column shows what fraction of your portfolio is affected. Click any row to act." arrow="left" />
               <div className="dash-action-section__header">
                 <span className="dash-action-section__title">
-                  Action Items ({noStaffCount + (d?.projectsWithEvidenceButNoApprovedAssignment ?? []).length + (unassigned > 3 ? 1 : 0)})
+                  Action Items ({actionItems.length})
                 </span>
               </div>
-              <div style={{ overflow: 'auto' }}>
-              <table className="dash-compact-table" style={{ minWidth: 780 }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: 28 }}>#</th>
-                    <th style={{ width: 70 }}>Severity</th>
-                    <th style={{ width: 120 }}>Category</th>
-                    <th>Entity</th>
-                    <th style={{ width: 72 }}>Code</th>
-                    <th style={{ width: 180 }}>Impact</th>
-                    <th style={{ textAlign: 'right', width: 80 }}>Portfolio %</th>
-                    <th style={{ width: 50 }}>Status</th>
-                    <th style={{ width: 140 }}>Suggested Action</th>
-                    <th style={{ width: 40 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Unstaffed projects — High severity */}
-                  {projectsWithNoStaff.map((p, i) => (
-                    <tr key={`unstaffed-${p.id}`} data-href={`/projects/${p.id}`} onClick={() => nav(`/projects/${p.id}`)}>
-                      <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{i + 1}</td>
-                      <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-danger)', flexShrink: 0 }} />
-                          <span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>High</span>
-                        </span>
-                      </td>
-                      <td>Unstaffed Project</td>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</td>
-                      <td style={{ fontSize: 11 }}>No staff assigned — delivery at risk</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: noStaffCount / Math.max(activeProjects, 1) > 0.2 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
-                        {activeProjects > 0 ? Math.round((1 / activeProjects) * 100) : 0}%
-                      </td>
-                      <td><span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: 'var(--color-status-danger)', color: '#fff' }}>Open</span></td>
-                      <td style={{ fontSize: 11 }}>Create staffing request</td>
-                      <td><Link to={`/projects/${p.id}`} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                    </tr>
-                  ))}
-
-                  {/* Evidence mismatch projects — Medium severity */}
-                  {(d?.projectsWithEvidenceButNoApprovedAssignment ?? []).map((p, i) => (
-                    <tr key={`evidence-${p.id}`} data-href={`/projects/${p.id}`} onClick={() => nav(`/projects/${p.id}`)}>
-                      <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{noStaffCount + i + 1}</td>
-                      <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-warning)', flexShrink: 0 }} />
-                          <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>Med</span>
-                        </span>
-                      </td>
-                      <td>Evidence Mismatch</td>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</td>
-                      <td style={{ fontSize: 11 }}>Work logged without approved assignment</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>
-                        {activeProjects > 0 ? Math.round((1 / activeProjects) * 100) : 0}%
-                      </td>
-                      <td><span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: 'var(--color-status-warning)', color: '#fff' }}>Open</span></td>
-                      <td style={{ fontSize: 11 }}>Approve or create assignment</td>
-                      <td><Link to={`/projects/${p.id}`} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                    </tr>
-                  ))}
-
-                  {/* Idle people — Low severity (only if significant) */}
-                  {unassigned > 3 && (
-                    <tr data-href="/people" onClick={() => nav('/people')}>
-                      <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{noStaffCount + (d?.projectsWithEvidenceButNoApprovedAssignment ?? []).length + 1}</td>
-                      <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-info)', flexShrink: 0 }} />
-                          <span style={{ color: 'var(--color-status-info)', fontWeight: 600, fontSize: 11 }}>Low</span>
-                        </span>
-                      </td>
-                      <td>Idle Workforce</td>
-                      <td style={{ fontWeight: 500 }}>{unassigned} people</td>
-                      <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{'\u2014'}</td>
-                      <td style={{ fontSize: 11 }}>Available people not assigned to any project</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>
-                        {totalPeople > 0 ? Math.round((unassigned / totalPeople) * 100) : 0}%
-                      </td>
-                      <td><span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 3, background: 'var(--color-status-info)', color: '#fff' }}>Info</span></td>
-                      <td style={{ fontSize: 11 }}>Review for assignment</td>
-                      <td><Link to="/people" style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr style={{ fontWeight: 600 }}>
-                    <td></td>
-                    <td colSpan={2} style={{ fontSize: 11 }}>
-                      {noStaffCount + (d?.projectsWithEvidenceButNoApprovedAssignment ?? []).length + (unassigned > 3 ? 1 : 0)} total items
-                    </td>
-                    <td colSpan={3}></td>
-                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
-                      {activeProjects > 0 ? Math.round(((noStaffCount + evidenceMismatch) / activeProjects) * 100) : 0}% affected
-                    </td>
-                    <td colSpan={3}></td>
-                  </tr>
-                </tfoot>
-              </table>
+              <DataTable
+                caption="Workforce action items requiring attention"
+                columns={actionColumns}
+                getRowKey={(item) => item.id}
+                items={actionItems}
+                minWidth={780}
+                onRowClick={(item) => nav(item.href)}
+                variant="compact"
+              />
+              <div className="dash-action-section__summary">
+                <span>{actionItems.length} total items</span>
+                <span>
+                  {activeProjects > 0 ? Math.round((noStaffCount / activeProjects) * 100) : 0}% affected
+                </span>
               </div>
             </div>
           )}
 
           {/* ── System healthy ── */}
-          {noStaffCount === 0 && evidenceMismatch === 0 && unassigned <= 3 && (
+          {noStaffCount === 0 && unassigned <= 3 && (
             <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-status-active)' }}>
               <span style={{ fontSize: 22 }}>{'\u2713'}</span>{' '}
               <span style={{ fontWeight: 600 }}>System healthy</span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginLeft: 8 }}>No staffing gaps or evidence mismatches</span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginLeft: 8 }}>No staffing gaps detected</span>
             </div>
           )}
 

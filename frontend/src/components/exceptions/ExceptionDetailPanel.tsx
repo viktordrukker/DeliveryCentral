@@ -62,10 +62,6 @@ export function ExceptionDetailPanel({
           <dt>Project</dt>
           <dd>{item.projectName ?? item.projectId ?? 'No project linked'}</dd>
         </div>
-        <div>
-          <dt>Provider</dt>
-          <dd>{item.provider ?? 'Not integration-derived'}</dd>
-        </div>
       </dl>
 
       <div className="scope-card__actions">
@@ -82,11 +78,6 @@ export function ExceptionDetailPanel({
         {item.assignmentId ? (
           <Link className="button button--secondary" to={`/assignments/${item.assignmentId}`}>
             Open assignment
-          </Link>
-        ) : null}
-        {item.workEvidenceId ? (
-          <Link className="button button--secondary" to="/work-evidence">
-            Open work evidence
           </Link>
         ) : null}
       </div>

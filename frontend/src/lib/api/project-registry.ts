@@ -5,12 +5,18 @@ export interface ProjectExternalLinkSummary {
   provider: string;
 }
 
+export type EngagementModel = 'TIME_AND_MATERIAL' | 'FIXED_PRICE' | 'MANAGED_SERVICE' | 'INTERNAL';
+export type ProjectPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface ProjectDirectoryItem {
   assignmentCount: number;
+  clientName?: string | null;
+  engagementModel?: EngagementModel | null;
   externalLinksCount: number;
   externalLinksSummary: ProjectExternalLinkSummary[];
   id: string;
   name: string;
+  priority?: ProjectPriority | null;
   projectCode: string;
   status: string;
 }
@@ -29,21 +35,41 @@ export interface ProjectExternalLink {
 }
 
 export interface ProjectDetails extends ProjectDirectoryItem {
+  clientId?: string | null;
+  deliveryManagerDisplayName?: string | null;
+  deliveryManagerId?: string | null;
   description: string | null;
+  domain?: string | null;
+  engagementModel?: EngagementModel | null;
   externalLinks: ProjectExternalLink[];
+  lessonsLearned?: string | null;
+  outcomeRating?: string | null;
   plannedEndDate: string | null;
+  priority?: ProjectPriority | null;
   projectManagerDisplayName: string | null;
   projectManagerId: string | null;
+  projectType?: string | null;
   startDate: string | null;
+  tags?: string[];
+  techStack?: string[];
   version?: number;
+  wouldStaffSameWay?: boolean | null;
 }
 
 export interface CreateProjectRequest {
+  clientId?: string;
+  deliveryManagerId?: string;
   description?: string;
+  domain?: string;
+  engagementModel?: EngagementModel;
   name: string;
   plannedEndDate?: string;
+  priority?: ProjectPriority;
   projectManagerId: string;
+  projectType?: string;
   startDate: string;
+  tags?: string[];
+  techStack?: string[];
 }
 
 export interface ProjectLifecycleRecord {

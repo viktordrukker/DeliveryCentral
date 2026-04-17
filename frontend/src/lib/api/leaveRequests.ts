@@ -1,6 +1,6 @@
 import { httpGet, httpPost } from './http-client';
 
-export type LeaveRequestType = 'ANNUAL' | 'SICK' | 'OTHER';
+export type LeaveRequestType = 'ANNUAL' | 'SICK' | 'OTHER' | 'OT_OFF' | 'PERSONAL' | 'PARENTAL' | 'BEREAVEMENT' | 'STUDY';
 export type LeaveRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface LeaveRequestDto {

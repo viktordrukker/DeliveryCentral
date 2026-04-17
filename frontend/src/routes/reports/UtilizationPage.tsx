@@ -34,11 +34,11 @@ function today(): string {
 }
 
 function utilizationColor(pct: number): string {
-  if (pct <= 50) return 'var(--color-status-active-light, #bbf7d0)';
-  if (pct <= 80) return 'var(--color-status-active, #22c55e)';
-  if (pct <= 100) return 'var(--color-status-warning, #f59e0b)';
-  if (pct <= 120) return 'var(--color-status-warning-dark, #f97316)';
-  return 'var(--color-status-danger, #ef4444)';
+  if (pct <= 50) return 'var(--color-status-active-light)';
+  if (pct <= 80) return 'var(--color-status-active)';
+  if (pct <= 100) return 'var(--color-status-warning)';
+  if (pct <= 120) return 'var(--color-status-warning-dark)';
+  return 'var(--color-status-danger)';
 }
 
 function UtilizationBar({ pct }: { pct: number }): JSX.Element {
@@ -163,11 +163,11 @@ export function UtilizationPage(): JSX.Element {
           </ChartWrapper>
           <div style={{ display: 'flex', fontSize: '11px', gap: '12px', marginTop: '8px' }}>
             {[
-              { color: 'var(--color-status-active-light, #bbf7d0)', label: '0–50% Underutilized' },
-              { color: 'var(--color-status-active, #22c55e)', label: '51–80% Healthy' },
-              { color: 'var(--color-status-warning, #f59e0b)', label: '81–100% Full' },
-              { color: 'var(--color-status-warning-dark, #f97316)', label: '101–120% Warning' },
-              { color: 'var(--color-status-danger, #ef4444)', label: '121%+ Critical' },
+              { color: 'var(--color-status-active-light)', label: '0–50% Underutilized' },
+              { color: 'var(--color-status-active)', label: '51–80% Healthy' },
+              { color: 'var(--color-status-warning)', label: '81–100% Full' },
+              { color: 'var(--color-status-warning-dark)', label: '101–120% Warning' },
+              { color: 'var(--color-status-danger)', label: '121%+ Critical' },
             ].map((item) => (
               <span key={item.label} style={{ alignItems: 'center', display: 'flex', gap: '4px' }}>
                 <span style={{ background: item.color, borderRadius: '2px', display: 'inline-block', height: '10px', width: '10px' }} />

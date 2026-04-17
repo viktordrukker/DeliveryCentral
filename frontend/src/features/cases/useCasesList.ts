@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useFilterParams } from '@/hooks/useFilterParams';
 import { CaseRecord, fetchCases } from '@/lib/api/cases';
 
 interface CaseFilters {
@@ -17,15 +18,9 @@ interface UseCasesListState {
   reload: () => Promise<void>;
 }
 
-const initialFilters: CaseFilters = {
-  caseTypeKey: '',
-  ownerPersonId: '',
-  subjectPersonId: '',
-};
-
 export function useCasesList(): UseCasesListState {
   const [data, setData] = useState<CaseRecord[]>([]);
-  const [filters, setFilters] = useState<CaseFilters>(initialFilters);
+  const [filters, setFilters] = useFilterParams({ caseTypeKey: '', ownerPersonId: '', subjectPersonId: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,22 +50,19 @@ export function useCasesList(): UseCasesListState {
 
   useEffect(() => {
     void loadCases(filters);
-  }, [filters]);
+  }, [filters.caseTypeKey, filters.ownerPersonId, filters.subjectPersonId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return useMemo(
     () => ({
       data,
       error,
       filters,
-      handleFilterChange: (field, value) => {
-        setFilters((current) => ({
-          ...current,
-          [field]: value,
-        }));
+      handleFilterChange: (field: keyof CaseFilters, value: string) => {
+        setFilters({ [field]: value });
       },
       isLoading,
       reload: async () => loadCases(filters),
     }),
-    [data, error, filters, isLoading],
+    [data, error, filters, isLoading], // eslint-disable-line react-hooks/exhaustive-deps
   );
 }

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useDrilldown } from '@/app/drilldown-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -45,12 +47,13 @@ export function StaffingRequestDetailPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [assignedPersonId, setAssignedPersonId] = useState('');
   const [suggestions, setSuggestions] = useState<SuggestionCandidate[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
-  const isRM = principal?.roles.includes('resource_manager') || principal?.roles.includes('admin');
-  const isPM = principal?.roles.includes('project_manager') || principal?.roles.includes('admin');
+  const isRM = hasAnyRole(principal?.roles, RM_MANAGE_ROLES);
+  const isPM = hasAnyRole(principal?.roles, ['project_manager', 'admin']);
   const { setCurrentLabel } = useDrilldown();
 
   useEffect(() => {
@@ -308,11 +311,18 @@ export function StaffingRequestDetailPage(): JSX.Element {
           <button
             className="button button--danger"
             disabled={actionLoading}
-            onClick={() => void handleCancel()}
+            onClick={() => setConfirmCancelOpen(true)}
             type="button"
           >
             Cancel Request
           </button>
+          <ConfirmDialog
+            open={confirmCancelOpen}
+            message="This will cancel the staffing request and remove it from the RM queue. This action cannot be undone."
+            onCancel={() => setConfirmCancelOpen(false)}
+            onConfirm={() => { setConfirmCancelOpen(false); void handleCancel(); }}
+            title="Cancel staffing request?"
+          />
         </SectionCard>
       ) : null}
     </PageContainer>

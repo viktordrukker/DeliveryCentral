@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { ColumnVisibilityMenu } from '@/components/common/ColumnVisibilityMenu';
 import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { ASSIGNMENT_STATUS_LABELS, humanizeEnum } from '@/lib/labels';
@@ -67,7 +68,13 @@ export function AssignmentsTable({
         {
           key: 'approvalState',
           render: (item: AssignmentDirectoryItem) =>
-            humanizeEnum(item.approvalState, ASSIGNMENT_STATUS_LABELS),
+            (
+              <StatusBadge
+                label={humanizeEnum(item.approvalState, ASSIGNMENT_STATUS_LABELS)}
+                status={item.approvalState}
+                variant="dot"
+              />
+            ),
           title: 'Approval State',
         },
       ].filter((col) => isVisible(col.key)),
@@ -75,26 +82,24 @@ export function AssignmentsTable({
   );
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+    <DataTable
+      columns={columns}
+      emptyState={
+        <EmptyState
+          description="No assignments matched the current filters."
+          title="No assignment results"
+        />
+      }
+      getRowKey={(item) => item.id}
+      items={items}
+      onRowClick={onRowClick}
+      toolbar={(
         <ColumnVisibilityMenu
           columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key] }))}
           isVisible={isVisible}
           onToggle={toggleColumn}
         />
-      </div>
-      <DataTable
-        columns={columns}
-        emptyState={
-          <EmptyState
-            description="No assignments matched the current filters."
-            title="No assignment results"
-          />
-        }
-        getRowKey={(item) => item.id}
-        items={items}
-        onRowClick={onRowClick}
-      />
-    </>
+      )}
+    />
   );
 }

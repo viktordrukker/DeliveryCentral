@@ -8,15 +8,26 @@ import { ProjectId } from '@src/modules/project-registry/domain/value-objects/pr
 
 interface PrismaProjectRecord {
   archivedAt: Date | null;
+  clientId?: string | null;
+  deliveryManagerId?: string | null;
   description: string | null;
+  domain?: string | null;
   endsOn: Date | null;
+  engagementModel?: string | null;
   id: string;
+  lessonsLearned?: string | null;
   name: string;
-  projectManagerId: string | null;
+  outcomeRating?: string | null;
+  priority?: string | null;
   projectCode: string;
+  projectManagerId: string | null;
+  projectType?: string | null;
   startsOn: Date | null;
   status: 'ACTIVE' | 'ARCHIVED' | 'CLOSED' | 'COMPLETED' | 'DRAFT' | 'ON_HOLD';
+  tags?: string[];
+  techStack?: string[];
   version?: number | null;
+  wouldStaffSameWay?: boolean | null;
 }
 
 interface PrismaProjectExternalLinkRecord {
@@ -46,16 +57,29 @@ export class ProjectRegistryPrismaMapper {
     const project = Project.create(
       {
         archivedAt: record.archivedAt ?? undefined,
+        clientId: record.clientId ?? undefined,
+        deliveryManagerId: record.deliveryManagerId
+          ? PersonId.from(record.deliveryManagerId)
+          : undefined,
         description: record.description ?? undefined,
+        domain: record.domain ?? undefined,
         endsOn: record.endsOn ?? undefined,
+        engagementModel: (record.engagementModel as any) ?? undefined,
+        lessonsLearned: record.lessonsLearned ?? undefined,
         name: record.name,
+        outcomeRating: record.outcomeRating ?? undefined,
+        priority: (record.priority as any) ?? undefined,
+        projectCode: record.projectCode,
         projectManagerId: record.projectManagerId
           ? PersonId.from(record.projectManagerId)
           : undefined,
-        projectCode: record.projectCode,
+        projectType: record.projectType ?? undefined,
         startsOn: record.startsOn ?? undefined,
         status: record.status,
+        tags: record.tags ?? [],
+        techStack: record.techStack ?? [],
         version: record.version ?? 1,
+        wouldStaffSameWay: record.wouldStaffSameWay ?? undefined,
       },
       ProjectId.from(record.id),
     );

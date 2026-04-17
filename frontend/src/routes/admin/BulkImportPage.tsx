@@ -98,8 +98,8 @@ export function BulkImportPage(): JSX.Element {
             <table className="dash-compact-table" style={{ marginTop: '1rem' }}>
               <thead>
                 <tr>
-                  <th>Email</th>
-                  <th>Reason</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -187,11 +187,11 @@ export function BulkImportPage(): JSX.Element {
                   <table className="dash-compact-table">
                     <thead>
                       <tr>
-                        <th>Given Name</th>
-                        <th>Family Name</th>
-                        <th>Email</th>
-                        <th>Grade</th>
-                        <th>Role</th>
+                        <th scope="col">Given Name</th>
+                        <th scope="col">Family Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Grade</th>
+                        <th scope="col">Role</th>
                       </tr>
                     </thead>
                     <tbody>

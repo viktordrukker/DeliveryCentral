@@ -17,6 +17,7 @@ import { TerminateReportingLineService } from './application/terminate-reporting
 import { CreateTeamService } from './application/create-team.service';
 import { CreateEmployeeService } from './application/create-employee.service';
 import { DeactivateEmployeeService } from './application/deactivate-employee.service';
+import { EmployeeActivityService } from './application/employee-activity.service';
 import { TerminateEmployeeService } from './application/terminate-employee.service';
 import { ManagerScopeQueryService } from './application/manager-scope-query.service';
 import { OrgChartQueryService } from './application/org-chart-query.service';
@@ -232,12 +233,14 @@ import { TeamsController } from './presentation/teams.controller';
         new TerminateReportingLineService(reportingLineRepository),
       inject: [InMemoryReportingLineRepository],
     },
+    EmployeeActivityService,
   ],
   exports: [
     AssignLineManagerService,
     TerminateReportingLineService,
     CreateEmployeeService,
     DeactivateEmployeeService,
+    EmployeeActivityService,
     TerminateEmployeeService,
     InMemoryPersonRepository,
     InMemoryOrgUnitRepository,

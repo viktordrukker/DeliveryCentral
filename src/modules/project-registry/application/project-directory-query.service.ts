@@ -60,10 +60,13 @@ export class ProjectDirectoryQueryService {
 
       items.push({
         assignmentCount: assignmentCountsByProjectId.get(project.id) ?? 0,
+        clientName: (project as any).clientName ?? null,
+        engagementModel: project.engagementModel ?? null,
         externalLinksCount: projectLinks.length,
         externalLinksSummary,
         id: project.id,
         name: project.name,
+        priority: project.priority ?? null,
         projectCode: project.projectCode,
         status: project.status,
         version: project.version,

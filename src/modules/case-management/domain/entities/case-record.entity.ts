@@ -83,6 +83,22 @@ export class CaseRecord extends AggregateRoot<CaseRecordProps> {
     this.props.status = 'OPEN';
   }
 
+  public approve(): void {
+    if (this.props.status !== 'OPEN' && this.props.status !== 'IN_PROGRESS') {
+      throw new Error(`Cannot approve a case with status ${this.props.status}.`);
+    }
+    this.props.status = 'APPROVED';
+    this.props.closedAt = new Date();
+  }
+
+  public reject(reason: string): void {
+    if (this.props.status !== 'OPEN' && this.props.status !== 'IN_PROGRESS') {
+      throw new Error(`Cannot reject a case with status ${this.props.status}.`);
+    }
+    this.props.status = 'REJECTED';
+    this.props.cancelReason = reason;
+  }
+
   public archive(): void {
     if (this.props.status === 'ARCHIVED') {
       return;

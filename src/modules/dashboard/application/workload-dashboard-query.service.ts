@@ -94,19 +94,27 @@ export class WorkloadDashboardQueryService {
       (item) => (item.occurredOn ?? item.recordedAt) >= evidenceCutoff,
     );
 
+    // Precompute assignment lookup for O(1) person:project membership checks
+    const assignmentKeys = new Set(
+      activeAssignments.map((a) => `${a.personId}:${a.projectId}`),
+    );
+
+    // Group recent evidence by project for O(1) per-project access
+    const evidenceByProject = new Map<string, typeof recentEvidenceFiltered>();
+    for (const ev of recentEvidenceFiltered) {
+      if (!ev.projectId) continue;
+      const arr = evidenceByProject.get(ev.projectId);
+      if (arr) arr.push(ev);
+      else evidenceByProject.set(ev.projectId, [ev]);
+    }
+
     const projectsWithEvidenceButNoApprovedAssignment = activeProjects
       .filter((project) => {
-        const evidenceForProject = recentEvidenceFiltered.filter(
-          (evidence) => evidence.projectId === project.projectId.value,
+        const evidenceForProject = evidenceByProject.get(project.projectId.value);
+        if (!evidenceForProject || evidenceForProject.length === 0) return false;
+        return evidenceForProject.some(
+          (ev) => !assignmentKeys.has(`${ev.personId}:${ev.projectId ?? ''}`),
         );
-        if (evidenceForProject.length === 0) return false;
-        return evidenceForProject.some((evidence) => {
-          return !activeAssignments.some(
-            (assignment) =>
-              assignment.projectId === evidence.projectId &&
-              assignment.personId === evidence.personId,
-          );
-        });
       })
       .map<DashboardProjectSummaryDto>((project) => ({
         id: project.projectId.value,

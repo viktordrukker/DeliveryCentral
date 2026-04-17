@@ -37,7 +37,7 @@ describe('ManagerScopePage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
 
     mockedFetchManagerScope.mockResolvedValue({
@@ -54,7 +54,7 @@ describe('ManagerScopePage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       dottedLinePeople: [
@@ -70,7 +70,7 @@ describe('ManagerScopePage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-2'],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       managerId: 'mgr-1',
@@ -117,7 +117,7 @@ describe('ManagerScopePage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
 
     renderWithRouter('/org/managers/mgr-1/scope');

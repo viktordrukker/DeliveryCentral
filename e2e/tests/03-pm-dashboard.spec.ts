@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-05 Project list ───────────────────────────────────────────────────────
 
-test.describe('2d-05 PM — view project list', () => {
+test.describe('@critical 2d-05 PM — view project list', () => {
   test('projects page renders with a list of projects', async ({ page }) => {
     await page.goto('/projects');
 
@@ -46,7 +46,7 @@ test.describe('2d-05 PM — view project list', () => {
 
 // ── 2d-08 PM dashboard ───────────────────────────────────────────────────────
 
-test.describe('2d-08 PM — PM dashboard with nearing-closure section', () => {
+test.describe('@critical 2d-08 PM — PM dashboard with nearing-closure section', () => {
   test('PM dashboard page renders managed projects section', async ({ page }) => {
     await page.goto(`/dashboard/project-manager?personId=${lucas}`);
 

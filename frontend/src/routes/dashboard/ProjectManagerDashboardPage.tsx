@@ -28,7 +28,7 @@ const PM_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'staffing', label: 'Staffing' },
-  { id: 'anomalies', label: 'Anomalies' },
+  { id: 'variance', label: 'Time Variance' },
 ];
 
 export function ProjectManagerDashboardPage(): JSX.Element {
@@ -115,7 +115,6 @@ export function ProjectManagerDashboardPage(): JSX.Element {
   const d = state.data;
   const managedProjects = d?.managedProjects ?? [];
   const staffingGaps = d?.staffingSummary.projectsWithStaffingGapsCount ?? 0;
-  const evidenceAnomalies = d?.staffingSummary.projectsWithEvidenceAnomaliesCount ?? 0;
   const attentionProjects = d?.attentionProjects ?? [];
   const openRequests = d?.openRequests ?? [];
   const recentChanges = d?.recentlyChangedAssignments ?? [];
@@ -151,9 +150,6 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               ...(staffingGaps > 0
                 ? [{ id: 'staffing-gaps', severity: 'high' as const, message: `${staffingGaps} project(s) have staffing gaps`, href: '/staffing-requests' }]
                 : []),
-              ...(evidenceAnomalies > 0
-                ? [{ id: 'evidence-anomalies', severity: 'critical' as const, message: `${evidenceAnomalies} project(s) have evidence anomalies`, href: '/exceptions' }]
-                : []),
             ]}
           />
 
@@ -179,13 +175,6 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               <span className="kpi-strip__context" style={{ color: staffingGaps > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>
                 {staffingGaps === 0 ? 'All covered' : 'needs attention'}
               </span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="/exceptions"
-              style={{ borderLeft: `3px solid ${evidenceAnomalies > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="Projects with evidence mismatches such as unapproved work logs." arrow="left" />
-              <span className="kpi-strip__value">{evidenceAnomalies}</span>
-              <span className="kpi-strip__label">Evidence Anomalies</span>
             </Link>
 
             <Link className="kpi-strip__item" to="/projects?closingInDays=30"
@@ -219,8 +208,8 @@ export function ProjectManagerDashboardPage(): JSX.Element {
                 </div>
               )}
               <SectionCard title="Managed Projects" collapsible chartExport={{
-                headers: ['Project', 'Code', 'Status', 'Staff', 'Evidence'],
-                rows: managedProjects.map((p) => ({ Project: p.name, Code: p.projectCode, Status: p.status, Staff: String(p.staffingCount), Evidence: String(p.evidenceCount) })),
+                headers: ['Project', 'Code', 'Status', 'Staff'],
+                rows: managedProjects.map((p) => ({ Project: p.name, Code: p.projectCode, Status: p.status, Staff: String(p.staffingCount) })),
               }}>
                 {managedProjects.length === 0 ? (
                   <EmptyState description="This project manager does not currently own any projects." title="No managed projects" action={{ label: 'Create project', href: '/projects/new' }} />
@@ -233,8 +222,6 @@ export function ProjectManagerDashboardPage(): JSX.Element {
                           <th style={{ width: 80 }}>Code</th>
                           <th style={{ width: 70 }}>Status</th>
                           <th style={NUM}>Staff</th>
-                          <th style={NUM}>Evidence</th>
-                          <th style={{ width: 80 }}>Coverage</th>
                           <th style={{ width: 40 }}></th>
                         </tr>
                       </thead>
@@ -245,12 +232,6 @@ export function ProjectManagerDashboardPage(): JSX.Element {
                             <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{p.projectCode}</td>
                             <td><span style={{ fontSize: 11, fontWeight: 600 }}>{p.status}</span></td>
                             <td style={NUM}>{p.staffingCount}</td>
-                            <td style={{ ...NUM, color: p.evidenceCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>{p.evidenceCount}</td>
-                            <td>
-                              <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: p.evidenceCount > 0 ? '100%' : '0%', borderRadius: 2, background: p.evidenceCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }} />
-                              </div>
-                            </td>
                             <td><Link to={`/projects/${p.id}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
                           </tr>
                         ))}
@@ -432,11 +413,11 @@ export function ProjectManagerDashboardPage(): JSX.Element {
             </>
           )}
 
-          {/* ── Anomalies tab ── */}
-          {activeTab === 'anomalies' && (
-            <SectionCard title="Anomalies" collapsible>
+          {/* ── Variance tab ── */}
+          {activeTab === 'variance' && (
+            <SectionCard title="Time Variance" collapsible>
               <AnomalyPanel
-                items={(d.projectsWithEvidenceAnomalies ?? []).map((item) => ({
+                items={(d.projectsWithTimeVariance ?? []).map((item) => ({
                   message: item.detail,
                   person: { displayName: d.person.displayName, id: d.person.id },
                   project: { id: item.projectId, name: item.projectName, projectCode: item.projectCode },

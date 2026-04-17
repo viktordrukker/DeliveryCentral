@@ -126,6 +126,8 @@ export class HrManagerDashboardQueryService {
         personId: person.id,
       }));
 
+    const peopleByPersonId = new Map(people.map((p) => [p.personId.value, p]));
+
     const recentDeactivationActivity = this.auditLoggerService
       .list({
         actionType: 'employee.deactivated',
@@ -135,7 +137,7 @@ export class HrManagerDashboardQueryService {
       .items.map((record) => ({
         activityType: 'DEACTIVATED',
         displayName:
-          people.find((person) => person.personId.value === record.targetEntityId)?.displayName ??
+          peopleByPersonId.get(record.targetEntityId ?? '')?.displayName ??
           record.targetEntityId ??
           'Unknown employee',
         occurredAt: record.occurredAt,

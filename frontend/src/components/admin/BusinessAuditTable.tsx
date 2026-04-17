@@ -84,38 +84,36 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
   );
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-        <ColumnVisibilityMenu
-          columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key as keyof typeof COLUMN_LABELS] }))}
-          isVisible={isVisible}
-          onToggle={toggleColumn}
-        />
-      </div>
-      {items.length > VIRTUAL_THRESHOLD ? (
-        <VirtualTable
-          columns={columnDefs}
-          getRowKey={(item, index) =>
-            `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
-          }
-          items={items}
-        />
-      ) : (
-        <DataTable
-          columns={columnDefs}
-          emptyState={
-            <EmptyState
-              description="No business audit records matched the current investigation filters."
-              title="No business audit records"
-            />
-          }
-          getRowKey={(item, index) =>
-            `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
-          }
-          items={items}
-        />
-      )}
-    </>
+    items.length > VIRTUAL_THRESHOLD ? (
+      <VirtualTable
+        columns={columnDefs}
+        getRowKey={(item, index) =>
+          `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
+        }
+        items={items}
+      />
+    ) : (
+      <DataTable
+        columns={columnDefs}
+        emptyState={
+          <EmptyState
+            description="No business audit records matched the current investigation filters."
+            title="No business audit records"
+          />
+        }
+        getRowKey={(item, index) =>
+          `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
+        }
+        items={items}
+        toolbar={(
+          <ColumnVisibilityMenu
+            columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key as keyof typeof COLUMN_LABELS] }))}
+            isVisible={isVisible}
+            onToggle={toggleColumn}
+          />
+        )}
+      />
+    )
   );
 }
 

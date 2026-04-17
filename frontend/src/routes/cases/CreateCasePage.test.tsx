@@ -78,7 +78,7 @@ describe('CreateCasePage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
         {
           currentAssignmentCount: 2,
@@ -92,7 +92,7 @@ describe('CreateCasePage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,

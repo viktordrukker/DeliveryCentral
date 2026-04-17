@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { AppRouteDefinition } from '@/app/navigation';
+import { useEvidenceManagement } from '@/app/platform-settings-context';
 import { DrilldownProvider } from '@/app/drilldown-context';
 import { TitleBarProvider, useTitleBarActions } from '@/app/title-bar-context';
 import { CommandPalette, RecentPage } from '@/components/common/CommandPalette';
@@ -55,23 +56,27 @@ function loadSidebarCollapsed(): boolean {
 export function AppShell({ routes }: AppShellProps): JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
+  const evidenceManagement = useEvidenceManagement();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [demoPanelOpen, setDemoPanelOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<RecentPage[]>(loadRecentPages);
+  const visibleRoutes = useMemo(() => routes.filter((route) => (
+    evidenceManagement.enabled || route.path !== '/work-evidence'
+  )), [routes, evidenceManagement.enabled]);
 
   /** Find the best matching route for a pathname.
    *  1. Exact match wins.
    *  2. Otherwise, the route whose path is the longest prefix of the pathname wins
    *     (only matching on segment boundaries so /teams does not match /timesheets). */
   function findRoute(pathname: string): AppRouteDefinition | undefined {
-    const exact = routes.find((r) => r.path === pathname);
+    const exact = visibleRoutes.find((r) => r.path === pathname);
     if (exact) return exact;
 
     let best: AppRouteDefinition | undefined;
     let bestLen = 0;
-    for (const route of routes) {
+    for (const route of visibleRoutes) {
       if (route.path === '/') continue; // root would match everything
       // Check that pathname starts with the route path and the next char is '/' or end-of-string
       if (
@@ -100,7 +105,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
     if (route) {
       setRecentPages(pushRecentPage({ path: route.path, title: route.title }));
     }
-  }, [location.pathname, routes]);
+  }, [location.pathname, visibleRoutes]);
 
   useEffect(() => {
     function handler(e: KeyboardEvent): void {
@@ -120,7 +125,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, []);
-  const activeRoute = findRoute(location.pathname) ?? routes[0];
+  const activeRoute = findRoute(location.pathname) ?? visibleRoutes[0];
 
   function closeSidebar(): void {
     setSidebarOpen(false);
@@ -180,7 +185,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
       ) : null}
       <aside className={`app-shell__sidebar${sidebarOpen ? ' app-shell__sidebar--open' : ''}`} aria-label="Main navigation">
         <nav>
-          <SidebarNav activePath={location.pathname} collapsed={sidebarCollapsed} onNavigate={closeSidebar} onToggleCollapse={toggleSidebarCollapse} routes={routes} />
+          <SidebarNav activePath={location.pathname} collapsed={sidebarCollapsed} onNavigate={closeSidebar} onToggleCollapse={toggleSidebarCollapse} routes={visibleRoutes} />
         </nav>
       </aside>
       <div className="app-shell__main">

@@ -1,13 +1,27 @@
 import { type Page } from '@playwright/test';
 
-const API_BASE = 'http://127.0.0.1:3000/api';
-const TOKEN_STORAGE_KEY = 'deliverycentral.authToken';
+import {
+  PLAYWRIGHT_API_BASE as API_BASE,
+  TOKEN_STORAGE_KEY,
+  applyStoredAuthState,
+  lookupRoleByCredentials,
+} from '../fixtures/auth-state';
 
 export async function loginAs(
   page: Page,
   email: string,
   password: string,
 ): Promise<void> {
+  const cachedRole = lookupRoleByCredentials(email, password);
+  if (cachedRole) {
+    try {
+      await applyStoredAuthState(page, cachedRole);
+      return;
+    } catch {
+      // Fall back to live login for ad hoc local runs before auth setup has executed.
+    }
+  }
+
   const response = await page.request.post(`${API_BASE}/auth/login`, {
     data: { email, password },
   });

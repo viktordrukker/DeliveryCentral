@@ -15,7 +15,7 @@ const draftProjectId = p2.projects.mercuryInfra;
 
 // ── 2d-06 Activate a draft project ──────────────────────────────────────────
 
-test.describe('2d-06 PM — activate draft project', () => {
+test.describe('@critical 2d-06 PM — activate draft project', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsProjectManager(page);
   });
@@ -48,7 +48,7 @@ test.describe('2d-06 PM — activate draft project', () => {
 
 // ── 2d-07 Close a project ────────────────────────────────────────────────────
 
-test.describe('2d-07 PM — close a project', () => {
+test.describe('@critical 2d-07 PM — close a project', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsProjectManager(page);
   });

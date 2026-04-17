@@ -5,6 +5,7 @@ import { NotificationEventTranslatorService } from '../notifications/application
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { AmendProjectAssignmentService } from './application/amend-project-assignment.service';
+import { ActivateApprovedAssignmentsService } from './application/activate-approved-assignments.service';
 import { ApproveProjectAssignmentService } from './application/approve-project-assignment.service';
 import { BulkCreateProjectAssignmentsService } from './application/bulk-create-project-assignments.service';
 import { CreateProjectAssignmentService } from './application/create-project-assignment.service';
@@ -139,8 +140,15 @@ import { AssignmentsController } from './presentation/assignments.controller';
         new RevokeProjectAssignmentService(repository),
       inject: [InMemoryProjectAssignmentRepository],
     },
+    {
+      provide: ActivateApprovedAssignmentsService,
+      useFactory: (repository: InMemoryProjectAssignmentRepository) =>
+        new ActivateApprovedAssignmentsService(repository),
+      inject: [InMemoryProjectAssignmentRepository],
+    },
   ],
   exports: [
+    ActivateApprovedAssignmentsService,
     CreateProjectAssignmentService,
     BulkCreateProjectAssignmentsService,
     ListAssignmentsService,

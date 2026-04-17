@@ -32,11 +32,17 @@ export interface UpsertEntryInput {
 }
 
 export interface TimeReportData {
-  byProject: Array<{ name: string; hours: number }>;
-  byPerson: Array<{ name: string; hours: number }>;
+  byProject: Array<{ name: string; hours: number; standardHours: number; overtimeHours: number; benchHours: number }>;
+  byPerson: Array<{ name: string; hours: number; standardHours: number; overtimeHours: number; benchHours: number }>;
   byDay: Array<{ date: string; hours: number }>;
+  weeklyTrend: Array<{ week: string; standard: number; overtime: number; bench: number; leave: number }>;
   capexHours: number;
   opexHours: number;
+  standardHours: number;
+  overtimeHours: number;
+  benchHours: number;
+  leaveHours: number;
+  totalHours: number;
 }
 
 export async function fetchMyTimesheetWeek(weekStart: string): Promise<TimesheetWeek> {

@@ -33,10 +33,10 @@ export function MetadataEntryPanel({ dictionary }: MetadataEntryPanelProps): JSX
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Key</th>
-                  <th>Value</th>
-                  <th>Status</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Key</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -63,7 +63,7 @@ export function MetadataEntryPanel({ dictionary }: MetadataEntryPanelProps): JSX
                   {dictionary.relatedCustomFields.map((field) => (
                     <li key={field.id}>
                       <strong>{field.displayName}</strong>
-                      <span>{field.fieldKey} · {field.dataType}</span>
+                      <span>{field.fieldKey} ï¿½ {field.dataType}</span>
                     </li>
                   ))}
                 </ul>
@@ -79,7 +79,7 @@ export function MetadataEntryPanel({ dictionary }: MetadataEntryPanelProps): JSX
                   {dictionary.relatedWorkflows.map((workflow) => (
                     <li key={workflow.id}>
                       <strong>{workflow.displayName}</strong>
-                      <span>{workflow.workflowKey} · v{workflow.version} · {workflow.status}</span>
+                      <span>{workflow.workflowKey} ï¿½ v{workflow.version} ï¿½ {workflow.status}</span>
                     </li>
                   ))}
                 </ul>
@@ -95,7 +95,7 @@ export function MetadataEntryPanel({ dictionary }: MetadataEntryPanelProps): JSX
                   {dictionary.relatedLayouts.map((layout) => (
                     <li key={layout.id}>
                       <strong>{layout.displayName}</strong>
-                      <span>{layout.layoutKey} · v{layout.version}{layout.isDefault ? ' · default' : ''}</span>
+                      <span>{layout.layoutKey} ï¿½ v{layout.version}{layout.isDefault ? ' ï¿½ default' : ''}</span>
                     </li>
                   ))}
                 </ul>

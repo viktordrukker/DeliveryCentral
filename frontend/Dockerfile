@@ -4,8 +4,8 @@ ENV PATH=/app/node_modules/.bin:$PATH
 
 RUN apk update && apk upgrade --no-cache
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 FROM node:20-alpine AS development
 WORKDIR /app
@@ -14,7 +14,7 @@ ENV NODE_ENV=development
 
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
-COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
+COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html ./
 COPY src ./src
 COPY test ./test
 
@@ -28,7 +28,7 @@ ENV NODE_ENV=production
 
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
-COPY tsconfig.json tsconfig.node.json vite.config.ts index.html ./
+COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html ./
 COPY src ./src
 
 RUN npm run build

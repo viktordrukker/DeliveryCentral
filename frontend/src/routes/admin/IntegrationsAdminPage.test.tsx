@@ -61,7 +61,7 @@ describe('IntegrationsAdminPage', () => {
     expect(screen.getByRole('button', { name: /JIRA/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /M365/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /RADIUS/i })).toBeInTheDocument();
-    expect(screen.getAllByText('configured').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/[Cc]onfigured/).length).toBeGreaterThan(0);
     expect(screen.getByText('succeeded')).toBeInTheDocument();
     expect(screen.getAllByText('Created 1, updated 2.').length).toBeGreaterThan(0);
     expect(screen.getByText('Recent Sync Runs')).toBeInTheDocument();

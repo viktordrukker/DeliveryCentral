@@ -95,6 +95,24 @@ export class AppConfig {
       );
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      if (!process.env.AUTH_JWT_SECRET || process.env.AUTH_JWT_SECRET === 'deliverycentral-local-dev-secret') {
+        throw new Error(
+          'AUTH_JWT_SECRET must be set to a strong, unique value in production. ' +
+            'The default development secret is not safe for production use.',
+        );
+      }
+      if (!process.env.SEED_ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD === 'DeliveryCentral@Admin1') {
+        throw new Error(
+          'SEED_ADMIN_PASSWORD must be changed from the default value in production.',
+        );
+      }
+    }
+
+    if (this.port <= 0 || this.port > 65535) {
+      throw new Error(`PORT must be between 1 and 65535, got ${this.port}.`);
+    }
+
     this.authDevelopmentBootstrapEnabled = process.env.AUTH_DEV_BOOTSTRAP_ENABLED === 'true';
     this.authDevelopmentBootstrapUserId = process.env.AUTH_DEV_BOOTSTRAP_USER_ID ?? undefined;
     this.authDevelopmentBootstrapPersonId = process.env.AUTH_DEV_BOOTSTRAP_PERSON_ID ?? undefined;
@@ -110,6 +128,23 @@ export class AppConfig {
     this.authPasswordResetExpiresIn = Number(process.env.AUTH_PASSWORD_RESET_EXPIRES_IN ?? '3600');
     this.authMaxFailedAttempts = Number(process.env.AUTH_MAX_FAILED_ATTEMPTS ?? '5');
     this.authLockoutDurationMinutes = Number(process.env.AUTH_LOCKOUT_DURATION_MINUTES ?? '15');
+
+    if (this.authAccessTokenExpiresIn <= 0) {
+      throw new Error('AUTH_ACCESS_TOKEN_EXPIRES_IN must be a positive number of seconds.');
+    }
+    if (this.authRefreshTokenExpiresIn <= 0) {
+      throw new Error('AUTH_REFRESH_TOKEN_EXPIRES_IN must be a positive number of seconds.');
+    }
+    if (this.authPasswordResetExpiresIn <= 0) {
+      throw new Error('AUTH_PASSWORD_RESET_EXPIRES_IN must be a positive number of seconds.');
+    }
+    if (this.authMaxFailedAttempts <= 0) {
+      throw new Error('AUTH_MAX_FAILED_ATTEMPTS must be a positive integer.');
+    }
+    if (this.authLockoutDurationMinutes <= 0) {
+      throw new Error('AUTH_LOCKOUT_DURATION_MINUTES must be a positive number.');
+    }
+
     this.auth2faEnforceRoles = (process.env.AUTH_2FA_ENFORCE_ROLES ?? '')
       .split(',')
       .map((r) => r.trim().toLowerCase())

@@ -55,7 +55,7 @@ describe('ProjectManagerDashboardPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,
@@ -77,7 +77,7 @@ describe('ProjectManagerDashboardPage', () => {
       dataSources: ['projects', 'assignments', 'planned_vs_actual'],
       managedProjects: [
         {
-          evidenceCount: 4,
+          approvedHours: 32,
           id: 'project-1',
           name: 'Atlas ERP Rollout',
           plannedEndDate: '2025-05-31T00:00:00.000Z',
@@ -92,9 +92,9 @@ describe('ProjectManagerDashboardPage', () => {
         id: '11111111-1111-1111-1111-111111111006',
         primaryEmail: 'sophia@example.com',
       },
-      projectsWithEvidenceAnomalies: [
+      projectsWithTimeVariance: [
         {
-          detail: 'Observed work exists without an approved staffing match.',
+          detail: 'Approved time exists without an approved staffing match.',
           projectCode: 'PRJ-105',
           projectId: 'project-5',
           projectName: 'Shared Services Upgrade',
@@ -124,7 +124,7 @@ describe('ProjectManagerDashboardPage', () => {
       staffingSummary: {
         activeAssignmentCount: 3,
         managedProjectCount: 1,
-        projectsWithEvidenceAnomaliesCount: 1,
+        projectsWithTimeVarianceCount: 1,
         projectsWithStaffingGapsCount: 1,
       },
       openRequestCount: 0,

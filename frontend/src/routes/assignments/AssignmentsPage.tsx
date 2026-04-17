@@ -15,8 +15,7 @@ import { useAssignments } from '@/features/assignments/useAssignments';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { ASSIGNMENT_STATUS_LABELS } from '@/lib/labels';
 import { exportToXlsx } from '@/lib/export';
-
-const ASSIGNMENT_MANAGE_ROLES = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+import { ASSIGNMENT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 export function AssignmentsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -27,7 +26,7 @@ export function AssignmentsPage(): JSX.Element {
   // to the logged-in person's id when the role is employee-only.
   const isEmployeeOnly = !authLoading &&
     (principal?.roles ?? []).length > 0 &&
-    (principal?.roles ?? []).every((r) => !ASSIGNMENT_MANAGE_ROLES.includes(r));
+    !hasAnyRole(principal?.roles, ASSIGNMENT_CREATE_ROLES);
 
   const effectivePersonId = isEmployeeOnly ? (principal?.personId ?? '') : undefined;
   const effectivePerson = isEmployeeOnly

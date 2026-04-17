@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, deliveryManager.email, deliveryManager.password);
 });
 
-test.describe('DM1 — DM sees cross-portfolio project health', () => {
+test.describe('@full DM1 — DM sees cross-portfolio project health', () => {
   test('delivery manager dashboard shows KPI bar with portfolio summary', async ({ page }) => {
     await page.goto(`/dashboard/delivery-manager?personId=${carlos}`);
 
@@ -36,7 +36,7 @@ test.describe('DM1 — DM sees cross-portfolio project health', () => {
   });
 });
 
-test.describe('DM2 — DM sees planned-vs-actual reconciliation', () => {
+test.describe('@full DM2 — DM sees planned-vs-actual reconciliation', () => {
   test('delivery manager dashboard shows Reconciliation section', async ({ page }) => {
     await page.goto(`/dashboard/delivery-manager?personId=${carlos}`);
 
@@ -55,7 +55,7 @@ test.describe('DM2 — DM sees planned-vs-actual reconciliation', () => {
   });
 });
 
-test.describe('DM3 — DM identifies inactive evidence projects', () => {
+test.describe('@full DM3 — DM identifies inactive evidence projects', () => {
   test('delivery manager dashboard shows Inactive Evidence section', async ({ page }) => {
     await page.goto(`/dashboard/delivery-manager?personId=${carlos}`);
 
@@ -63,7 +63,7 @@ test.describe('DM3 — DM identifies inactive evidence projects', () => {
   });
 });
 
-test.describe('DM4 — DM views full assignment history with date range', () => {
+test.describe('@full DM4 — DM views full assignment history with date range', () => {
   test('assignments page supports from/to date filter and shows totalCount', async ({ page }) => {
     await page.goto('/assignments');
 
@@ -85,7 +85,7 @@ test.describe('DM4 — DM views full assignment history with date range', () => 
   });
 });
 
-test.describe('DM5 — DM drills into project dashboard', () => {
+test.describe('@full DM5 — DM drills into project dashboard', () => {
   test('project dashboard page renders for an ACTIVE project', async ({ page }) => {
     await page.goto(`/projects/${p2.projects.deliveryCentral}/dashboard`);
 

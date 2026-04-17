@@ -41,6 +41,7 @@ import { CreateProjectService } from '../application/create-project.service';
 import { GetProjectByIdService } from '../application/get-project-by-id.service';
 import { ProjectDashboardQueryService, ProjectDashboardResponseDto } from '../application/project-dashboard-query.service';
 import { ProjectDirectoryQueryService } from '../application/project-directory-query.service';
+import { ProjectClosureReadinessService } from '../application/project-closure-readiness.service';
 import { ProjectHealthDto, ProjectHealthQueryService } from '../application/project-health-query.service';
 import { ProjectLifecycleConflictError } from '../application/project-lifecycle-conflict.error';
 import { UpdateProjectService } from '../application/update-project.service';
@@ -65,6 +66,7 @@ export class ProjectsController {
     private readonly assignProjectTeamService: AssignProjectTeamService,
     private readonly updateProjectService: UpdateProjectService,
     private readonly projectHealthQueryService: ProjectHealthQueryService,
+    private readonly closureReadinessService: ProjectClosureReadinessService,
   ) {}
 
   @Post()
@@ -280,6 +282,14 @@ export class ProjectsController {
     }
 
     return project;
+  }
+
+  @Get(':id/closure-readiness')
+  @ApiOperation({ summary: 'Check if project is ready to close' })
+  @ApiOkResponse({ description: 'Closure readiness check result.' })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async checkClosureReadiness(@Param('id', ParseUUIDPipe) id: string) {
+    return this.closureReadinessService.checkClosureReadiness(id);
   }
 
   private mapCreatedProjectResponse(project: Project): ProjectCreatedResponseDto {

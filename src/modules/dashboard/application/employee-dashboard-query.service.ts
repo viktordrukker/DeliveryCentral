@@ -3,8 +3,6 @@ import { AssignmentDirectoryItemDto } from '@src/modules/assignments/application
 import { ListAssignmentsService } from '@src/modules/assignments/application/list-assignments.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
-import { ListWorkEvidenceService } from '@src/modules/work-evidence/application/list-work-evidence.service';
-import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 
 import { EmployeeDashboardResponseDto } from './contracts/employee-dashboard.dto';
 
@@ -18,7 +16,6 @@ export class EmployeeDashboardQueryService {
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly listAssignmentsService: ListAssignmentsService,
-    private readonly listWorkEvidenceService: ListWorkEvidenceService,
     private readonly timesheetsService: TimesheetsService,
   ) {}
 
@@ -64,20 +61,6 @@ export class EmployeeDashboardQueryService {
       // Non-critical — silently skip
     }
 
-    const recentEvidenceWindowStart = new Date(asOf);
-    recentEvidenceWindowStart.setUTCDate(recentEvidenceWindowStart.getUTCDate() - 30);
-
-    const evidenceResult = await this.listWorkEvidenceService.execute({
-      dateFrom: recentEvidenceWindowStart.toISOString(),
-      dateTo: asOf.toISOString(),
-      personId: query.personId,
-    });
-    const recentEvidenceItems = [...evidenceResult.items]
-      .sort((left, right) => right.recordedAt.getTime() - left.recordedAt.getTime())
-      .slice(0, 5);
-    const allRecentEvidenceItems = evidenceResult.items.filter(
-      (item) => item.recordedAt <= asOf,
-    );
     const totalAllocationPercent = currentAssignments.reduce(
       (sum, item) => sum + item.allocationPercent,
       0,
@@ -93,7 +76,7 @@ export class EmployeeDashboardQueryService {
         pendingSelfWorkflowItemCount: pendingWorkflowAssignments.length + rejectedTimesheets.length,
         totalAllocationPercent,
       },
-      dataSources: ['person_directory', 'assignments', 'work_evidence', 'notifications_placeholder'],
+      dataSources: ['person_directory', 'assignments', 'timesheets', 'notifications_placeholder'],
       futureAssignments,
       notificationsSummary: {
         note: 'Employee notification inbox summary is not enabled yet.',
@@ -122,21 +105,6 @@ export class EmployeeDashboardQueryService {
         id: person.id,
         primaryEmail: person.primaryEmail,
       },
-      recentWorkEvidenceSummary: {
-        lastActivityDate:
-          allRecentEvidenceItems
-            .map((item) => item.occurredOn ?? item.recordedAt)
-            .sort((left, right) => right.getTime() - left.getTime())[0]
-            ?.toISOString() ?? null,
-        recentEntryCount: allRecentEvidenceItems.length,
-        recentItems: recentEvidenceItems.map((item) => this.mapWorkEvidence(item)),
-        sourceTypes: [...new Set(allRecentEvidenceItems.map((item) => item.source.sourceType))].sort(),
-        totalEffortHours: Number(
-          allRecentEvidenceItems
-            .reduce((sum, item) => sum + (item.durationMinutes ?? 0) / 60, 0)
-            .toFixed(2),
-        ),
-      },
     };
   }
 
@@ -157,21 +125,5 @@ export class EmployeeDashboardQueryService {
     }
 
     return new Date(item.startDate) > asOf;
-  }
-
-  private mapWorkEvidence(item: WorkEvidence) {
-    return {
-      activityDate: (item.occurredOn ?? item.recordedAt).toISOString(),
-      details: item.details,
-      effortHours: item.durationMinutes ? Number((item.durationMinutes / 60).toFixed(2)) : 0,
-      id: item.workEvidenceId.value,
-      personId: item.personId,
-      projectId: item.projectId,
-      recordedAt: item.recordedAt.toISOString(),
-      sourceRecordKey: item.sourceRecordKey,
-      sourceType: item.source.sourceType,
-      summary: item.summary,
-      trace: item.trace,
-    };
   }
 }

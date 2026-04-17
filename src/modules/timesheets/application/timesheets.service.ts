@@ -104,9 +104,19 @@ export class TimesheetsService {
       );
     }
 
+    // Compute overtime fields
+    const totalHours = week.entries.reduce((sum, e) => sum + Number(e.hours), 0);
+    const standardThreshold = 40; // will be overridden by platform settings if available
+    const standardHours = Math.min(totalHours, standardThreshold);
+    const overtimeHours = Math.max(0, totalHours - standardThreshold);
+
     const updated = await this.repo.updateWeek(week.id, {
       status: 'SUBMITTED',
       submittedAt: new Date(),
+      totalHours: new Prisma.Decimal(totalHours.toFixed(2)),
+      standardHours: new Prisma.Decimal(standardHours.toFixed(2)),
+      overtimeHours: new Prisma.Decimal(overtimeHours.toFixed(2)),
+      overtimeThreshold: standardThreshold,
     });
 
     return this.mapWeek(updated);
@@ -127,6 +137,10 @@ export class TimesheetsService {
 
     if (!week) {
       throw new NotFoundException('Timesheet week not found.');
+    }
+
+    if (week.personId === approverId) {
+      throw new BadRequestException('Cannot approve your own timesheet.');
     }
 
     if (week.status !== 'SUBMITTED') {
@@ -200,36 +214,106 @@ export class TimesheetsService {
       query.personId,
     );
 
-    const byProjectMap = new Map<string, number>();
-    const byPersonMap = new Map<string, number>();
+    type Acc = { hours: number; standardHours: number; overtimeHours: number; benchHours: number };
+    const byProjectMap = new Map<string, Acc>();
+    const byPersonMap = new Map<string, Acc>();
     const byDayMap = new Map<string, number>();
+    const weeklyMap = new Map<string, { standard: number; overtime: number; bench: number; leave: number }>();
     let capexHours = 0;
     let opexHours = 0;
+    let totalBench = 0;
+
+    // Group entries by person+week to compute OT per week
+    const personWeekMap = new Map<string, { entries: Array<{ hours: number; isBench: boolean }>; weekStart: string }>();
 
     for (const entry of entries) {
       const hrs = Number(entry.hours);
       const dateStr = toDateStr(entry.date);
       const personId = entry.timesheetWeek.personId;
+      const isBench = Boolean((entry as Record<string, unknown>).benchCategory);
+      const weekStart = toDateStr(entry.timesheetWeek.weekStart ?? entry.date);
 
-      byProjectMap.set(entry.projectId, (byProjectMap.get(entry.projectId) ?? 0) + hrs);
-      byPersonMap.set(personId, (byPersonMap.get(personId) ?? 0) + hrs);
+      // Day map
       byDayMap.set(dateStr, (byDayMap.get(dateStr) ?? 0) + hrs);
 
-      if (entry.capex) {
-        capexHours += hrs;
+      // Capex/Opex
+      if (entry.capex) capexHours += hrs;
+      else opexHours += hrs;
+
+      if (isBench) totalBench += hrs;
+
+      // Person-week grouping for OT calculation
+      const pwKey = `${personId}:${weekStart}`;
+      const pw = personWeekMap.get(pwKey) ?? { entries: [], weekStart };
+      pw.entries.push({ hours: hrs, isBench });
+      personWeekMap.set(pwKey, pw);
+
+      // Project accumulator
+      const projAcc = byProjectMap.get(entry.projectId) ?? { hours: 0, standardHours: 0, overtimeHours: 0, benchHours: 0 };
+      projAcc.hours += hrs;
+      if (isBench) projAcc.benchHours += hrs;
+      byProjectMap.set(entry.projectId, projAcc);
+
+      // Person accumulator
+      const personAcc = byPersonMap.get(personId) ?? { hours: 0, standardHours: 0, overtimeHours: 0, benchHours: 0 };
+      personAcc.hours += hrs;
+      if (isBench) personAcc.benchHours += hrs;
+      byPersonMap.set(personId, personAcc);
+    }
+
+    // Compute OT per person-week, then distribute back
+    let totalStandard = 0;
+    let totalOT = 0;
+    const STD_PER_WEEK = 40;
+
+    for (const [pwKey, pw] of personWeekMap) {
+      const personId = pwKey.split(':')[0];
+      const weekTotal = pw.entries.reduce((s, e) => s + e.hours, 0);
+      const ot = Math.max(0, weekTotal - STD_PER_WEEK);
+      const std = weekTotal - ot;
+      totalStandard += std;
+      totalOT += ot;
+
+      // Update person accumulator
+      const personAcc = byPersonMap.get(personId)!;
+      personAcc.standardHours += std;
+      personAcc.overtimeHours += ot;
+
+      // Weekly trend
+      const wk = weeklyMap.get(pw.weekStart) ?? { standard: 0, overtime: 0, bench: 0, leave: 0 };
+      wk.standard += std;
+      wk.overtime += ot;
+      wk.bench += pw.entries.filter((e) => e.isBench).reduce((s, e) => s + e.hours, 0);
+      weeklyMap.set(pw.weekStart, wk);
+    }
+
+    // Project-level OT: proportional distribution
+    for (const [, projAcc] of byProjectMap) {
+      const total = capexHours + opexHours;
+      if (total > 0) {
+        projAcc.overtimeHours = Math.round((projAcc.hours / total) * totalOT * 100) / 100;
+        projAcc.standardHours = projAcc.hours - projAcc.overtimeHours;
       } else {
-        opexHours += hrs;
+        projAcc.standardHours = projAcc.hours;
       }
     }
 
     return {
-      byProject: Array.from(byProjectMap.entries()).map(([name, hours]) => ({ name, hours })),
-      byPerson: Array.from(byPersonMap.entries()).map(([name, hours]) => ({ name, hours })),
+      byProject: Array.from(byProjectMap.entries()).map(([name, acc]) => ({ name, ...acc })),
+      byPerson: Array.from(byPersonMap.entries()).map(([name, acc]) => ({ name, ...acc })),
       byDay: Array.from(byDayMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, hours]) => ({ date, hours })),
+      weeklyTrend: Array.from(weeklyMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([week, data]) => ({ week, ...data })),
       capexHours,
       opexHours,
+      standardHours: Math.round(totalStandard * 100) / 100,
+      overtimeHours: Math.round(totalOT * 100) / 100,
+      benchHours: Math.round(totalBench * 100) / 100,
+      leaveHours: 0, // leave hours computed separately from leave requests
+      totalHours: Math.round((capexHours + opexHours) * 100) / 100,
     };
   }
 
@@ -243,6 +327,11 @@ export class TimesheetsService {
       approvedBy: string | null;
       approvedAt: Date | null;
       rejectedReason: string | null;
+      totalHours: Prisma.Decimal | null;
+      standardHours: Prisma.Decimal | null;
+      overtimeHours: Prisma.Decimal | null;
+      overtimeApproved: boolean;
+      overtimeThreshold: number | null;
       entries: Array<{
         id: string;
         projectId: string;
@@ -263,6 +352,11 @@ export class TimesheetsService {
       approvedBy: week.approvedBy ?? undefined,
       approvedAt: week.approvedAt ? week.approvedAt.toISOString() : undefined,
       rejectedReason: week.rejectedReason ?? undefined,
+      totalHours: week.totalHours ? Number(week.totalHours) : undefined,
+      standardHours: week.standardHours ? Number(week.standardHours) : undefined,
+      overtimeHours: week.overtimeHours ? Number(week.overtimeHours) : undefined,
+      overtimeApproved: week.overtimeApproved || undefined,
+      overtimeThreshold: week.overtimeThreshold ?? undefined,
       entries: week.entries.map((e) => ({
         id: e.id,
         projectId: e.projectId,

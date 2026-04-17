@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-20 Create and progress case ──────────────────────────────────────────
 
-test.describe('2d-20 HR — create and progress a case', () => {
+test.describe('@critical 2d-20 HR — create and progress a case', () => {
   test('create case page renders form with Case Type dropdown', async ({ page }) => {
     await page.goto('/cases/new');
 

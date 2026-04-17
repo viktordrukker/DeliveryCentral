@@ -16,6 +16,11 @@ import {
   AdminNotificationsResponseDto,
   AdminSettingsResponseDto,
 } from '../application/contracts/admin-config.dto';
+import { CreateWebhookDto } from './dto/create-webhook.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
+import { CreateAccountRequestDto } from '../application/contracts/create-account.request';
+import { ImportPreviewRequestDto } from '../application/contracts/import-preview.request';
+import { ImportConfirmRequestDto } from '../application/contracts/import-confirm.request';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -34,14 +39,7 @@ export class AdminConfigController {
   @ApiCreatedResponse({ description: 'Account created.' })
   @ApiConflictResponse({ description: 'Account already exists for this person or email.' })
   public async createAccount(
-    @Body()
-    body: {
-      displayName: string;
-      email: string;
-      password: string;
-      personId?: string;
-      roles: string[];
-    },
+    @Body() body: CreateAccountRequestDto,
   ): Promise<{ email: string; id: string; personId: string | null; roles: string[] }> {
     try {
       if (body.personId) {
@@ -132,7 +130,7 @@ export class AdminConfigController {
   @ApiOkResponse({ description: 'Account updated.' })
   public async updateAccount(
     @Param('id') id: string,
-    @Body() body: { roles?: string[]; isEnabled?: boolean },
+    @Body() body: UpdateAccountDto,
   ): Promise<{ id: string; email: string; displayName: string; roles: string[]; source: string; isEnabled: boolean }> {
     const existing = await this.prisma.localAccount.findUnique({ where: { id } });
 
@@ -227,7 +225,7 @@ export class AdminConfigController {
   @ApiOperation({ summary: 'Preview bulk people import from CSV text' })
   @ApiOkResponse({ description: 'Preview of valid and invalid rows' })
   public async importPreview(
-    @Body() body: { csvText: string },
+    @Body() body: ImportPreviewRequestDto,
   ): Promise<{ invalid: { errors: string[]; row: number }[]; valid: { email: string; givenName: string; familyName: string; grade?: string; role?: string }[] }> {
     const lines = body.csvText.split('\n').map((l) => l.trim()).filter(Boolean);
     if (lines.length < 2) {
@@ -276,7 +274,7 @@ export class AdminConfigController {
   @ApiOperation({ summary: 'Confirm bulk people import' })
   @ApiOkResponse({ description: 'Import result' })
   public async importConfirm(
-    @Body() body: { rows: { email: string; familyName: string; givenName: string; grade?: string; role?: string }[] },
+    @Body() body: ImportConfirmRequestDto,
   ): Promise<{ created: number; failed: { email: string; reason: string }[]; skipped: number }> {
     const CHUNK_SIZE = 100;
     let created = 0;
@@ -320,11 +318,8 @@ export class AdminConfigController {
   @ApiOperation({ summary: 'Create a webhook subscription' })
   @ApiCreatedResponse({ description: 'Webhook subscription created.' })
   public createWebhook(
-    @Body() body: { url: string; secret: string; eventTypes: string[]; createdByPersonId: string },
+    @Body() body: CreateWebhookDto,
   ): WebhookSubscription {
-    if (!body.url || !body.secret) {
-      throw new BadRequestException('url and secret are required.');
-    }
     return this.webhookService.create(body.url, body.secret, body.eventTypes ?? [], body.createdByPersonId ?? '');
   }
 
@@ -337,16 +332,14 @@ export class AdminConfigController {
   }
 
   @Delete('webhooks/:id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @RequireRoles('admin')
   @ApiOperation({ summary: 'Delete a webhook subscription' })
-  @ApiOkResponse({ description: 'Webhook subscription deleted.' })
-  public deleteWebhook(@Param('id') id: string): { success: boolean } {
+  public deleteWebhook(@Param('id') id: string): void {
     const deleted = this.webhookService.delete(id);
     if (!deleted) {
       throw new NotFoundException('Webhook subscription not found.');
     }
-    return { success: true };
   }
 
   @Post('webhooks/:id/test')

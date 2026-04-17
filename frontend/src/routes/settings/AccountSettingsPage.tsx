@@ -7,8 +7,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useAuth } from '@/app/auth-context';
 import { changePassword } from '@/lib/api/admin';
-
-const DARK_MODE_KEY = 'dc:dark-mode';
+import { readStoredColorModePreference } from '@/styles/design-tokens';
 
 const NOTIF_PREFS_KEY = 'dc:notif_prefs';
 
@@ -37,7 +36,7 @@ export function AccountSettingsPage(): JSX.Element {
 
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadPrefs);
   const [prefsSaved, setPrefsSaved] = useState(false);
-  const [isDark, setIsDark] = useState(() => localStorage.getItem(DARK_MODE_KEY) === 'dark');
+  const [isDark, setIsDark] = useState(() => readStoredColorModePreference() === 'dark');
 
   useEffect(() => {
     localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));

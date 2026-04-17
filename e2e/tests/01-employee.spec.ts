@@ -14,7 +14,7 @@ const ethan = p2.people.ethanBrooks;
 
 // ── 2d-02 Employee dashboard ─────────────────────────────────────────────────
 
-test.describe('2d-02 Employee — own dashboard', () => {
+test.describe('@critical 2d-02 Employee — own dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });
@@ -23,7 +23,7 @@ test.describe('2d-02 Employee — own dashboard', () => {
     await page.goto(`/dashboard/employee?personId=${ethan}`);
 
     // Dashboard heading is visible
-    await expect(page.getByText(/dashboard/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
 
     // Ethan's name appears
     await expect(page.getByText(/Ethan Brooks/i)).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('2d-02 Employee — own dashboard', () => {
 
 // ── 2d-03 Employee — log work evidence ──────────────────────────────────────
 
-test.describe('2d-03 Employee — log work evidence entry', () => {
+test.describe('@critical 2d-03 Employee — log work evidence entry', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });
@@ -79,7 +79,7 @@ test.describe('2d-03 Employee — log work evidence entry', () => {
 
 // ── 2d-04 Employee — view case status ───────────────────────────────────────
 
-test.describe('2d-04 Employee — view case status', () => {
+test.describe('@critical 2d-04 Employee — view case status', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });

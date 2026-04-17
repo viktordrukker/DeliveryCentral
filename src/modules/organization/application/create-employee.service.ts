@@ -29,6 +29,8 @@ export class CreateEmployeeService {
     private readonly orgUnitRepository: OrgUnitRepositoryPort,
     private readonly personOrgMembershipRepository: PersonOrgMembershipRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
+    private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; metadata?: Record<string, unknown> }): Promise<void> },
+    private readonly createLifecycleCase?: (cmd: { caseTypeKey: string; ownerPersonId: string; subjectPersonId: string; summary: string }) => Promise<unknown>,
   ) {}
 
   public async execute(command: CreateEmployeeCommand): Promise<Person> {
@@ -67,8 +69,17 @@ export class CreateEmployeeService {
 
     employee.pullDomainEvents();
 
-    await this.personRepository.save(employee);
-    await this.personOrgMembershipRepository.save(membership);
+    try {
+      await this.personRepository.save(employee);
+      await this.personOrgMembershipRepository.save(membership);
+    } catch (error: unknown) {
+      // If membership save fails, attempt to clean up the orphaned person record
+      const isUniqueViolation = error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002';
+      if (isUniqueViolation) {
+        throw new Error('Employee email already exists.');
+      }
+      throw error;
+    }
     this.auditLogger?.record({
       actionType: 'employee.created',
       actorId: null,
@@ -86,6 +97,21 @@ export class CreateEmployeeService {
       },
       targetEntityId: employee.personId.value,
       targetEntityType: 'EMPLOYEE',
+    });
+
+    void this.employeeActivityService?.record({
+      personId: employee.personId.value,
+      eventType: 'HIRED',
+      summary: `Employee ${command.name} hired. Email: ${command.email}`,
+      metadata: { email: command.email, orgUnitId: command.orgUnitId },
+    });
+
+    // Auto-create onboarding case (20b-08)
+    void this.createLifecycleCase?.({
+      caseTypeKey: 'ONBOARDING',
+      ownerPersonId: employee.personId.value,
+      subjectPersonId: employee.personId.value,
+      summary: `Onboarding for ${command.name}`,
     });
 
     return employee;

@@ -51,10 +51,10 @@ export function BulkAssignmentResults({
               <table>
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Person</th>
-                    <th>Project</th>
-                    <th>Status</th>
+                    <th scope="col">Item</th>
+                    <th scope="col">Person</th>
+                    <th scope="col">Project</th>
+                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -80,11 +80,11 @@ export function BulkAssignmentResults({
               <table>
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Person</th>
-                    <th>Project</th>
-                    <th>Code</th>
-                    <th>Message</th>
+                    <th scope="col">Item</th>
+                    <th scope="col">Person</th>
+                    <th scope="col">Project</th>
+                    <th scope="col">Code</th>
+                    <th scope="col">Message</th>
                   </tr>
                 </thead>
                 <tbody>

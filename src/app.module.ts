@@ -25,8 +25,10 @@ import { PlatformSettingsModule } from './modules/platform-settings/platform-set
 import { PulseModule } from './modules/pulse/pulse.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { StaffingDeskModule } from './modules/staffing-desk/staffing-desk.module';
 import { StaffingRequestsModule } from './modules/staffing-requests/staffing-requests.module';
 import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.module';
+import { OvertimeModule } from './modules/overtime/overtime.module';
 import { WorkloadModule } from './modules/workload/workload.module';
 import { AppConfigModule } from './shared/config/app-config.module';
 import { CorrelationIdMiddleware } from './shared/observability/correlation-id.middleware';
@@ -62,8 +64,10 @@ import { PrismaModule } from './shared/persistence/prisma.module';
     PulseModule,
     PlatformSettingsModule,
     SkillsModule,
+    StaffingDeskModule,
     StaffingRequestsModule,
     LeaveRequestsModule,
+    OvertimeModule,
     ReportsModule,
   ],
   providers: [

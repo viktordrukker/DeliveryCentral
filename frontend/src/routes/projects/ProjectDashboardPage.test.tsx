@@ -3,9 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchProjectDashboard } from '@/lib/api/project-dashboard';
-import { fetchPlannedVsActual } from '@/lib/api/planned-vs-actual';
 import { fetchProjectById } from '@/lib/api/project-registry';
-import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { ProjectDashboardPage } from './ProjectDashboardPage';
 
 vi.mock('@/app/auth-context', () => ({
@@ -24,25 +22,13 @@ vi.mock('@/lib/api/project-dashboard', () => ({
   fetchProjectDashboard: vi.fn(),
 }));
 
-vi.mock('@/lib/api/work-evidence', () => ({
-  fetchWorkEvidence: vi.fn(),
-}));
-
-vi.mock('@/lib/api/planned-vs-actual', () => ({
-  fetchPlannedVsActual: vi.fn(),
-}));
-
 const mockedFetchProjectById = vi.mocked(fetchProjectById);
 const mockedFetchProjectDashboard = vi.mocked(fetchProjectDashboard);
-const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
-const mockedFetchPlannedVsActual = vi.mocked(fetchPlannedVsActual);
 
 describe('ProjectDashboardPage', () => {
   beforeEach(() => {
     mockedFetchProjectById.mockReset();
     mockedFetchProjectDashboard.mockReset();
-    mockedFetchWorkEvidence.mockReset();
-    mockedFetchPlannedVsActual.mockReset();
   });
 
   it('renders aggregated project dashboard data', async () => {
@@ -53,8 +39,8 @@ describe('ProjectDashboardPage', () => {
     expect((await screen.findAllByText('Atlas ERP Rollout')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Assigned People').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Ethan Brooks').length).toBeGreaterThan(0);
-    expect(screen.getByText('Recorded effort')).toBeInTheDocument();
-    expect(screen.getByText('2.5 hours total')).toBeInTheDocument();
+    expect(screen.getByText('Activity by Week (12 wk)')).toBeInTheDocument();
+    expect(screen.getByText('8h')).toBeInTheDocument();
   });
 
   it('shows empty project sections clearly', async () => {
@@ -76,46 +62,23 @@ describe('ProjectDashboardPage', () => {
         },
         staffingSummary: { activeAssignmentCount: 0, totalAssignments: 0, totalEvidenceHoursLast30d: 0 },
       },
-      comparison: {
-        anomalies: [],
-        asOf: '2026-03-30T00:00:00.000Z',
-        assignedButNoEvidence: [],
-        evidenceButNoApprovedAssignment: [],
-        matchedRecords: [],
-      },
-      workEvidence: { items: [] },
     });
 
     renderWithRouter('/projects/prj-1/dashboard');
 
     expect(await screen.findByText('No assignments')).toBeInTheDocument();
-    expect(screen.getByText('No work evidence')).toBeInTheDocument();
-    expect(screen.getByText('No comparison data')).toBeInTheDocument();
+    expect(screen.getByText('No activity data')).toBeInTheDocument();
+    expect(screen.getByText('No allocations')).toBeInTheDocument();
   });
 
-  it('renders anomalies in a separate panel', async () => {
-    mockResponses({
-      comparison: {
-        anomalies: [
-          {
-            message: 'Observed work exists after the planned staffing window.',
-            person: { displayName: 'Ethan Brooks', id: 'person-1' },
-            project: { id: 'prj-1', name: 'Atlas ERP Rollout', projectCode: 'PRJ-102' },
-            type: 'EVIDENCE_AFTER_ASSIGNMENT_END',
-          },
-        ],
-        asOf: '2026-03-30T00:00:00.000Z',
-        assignedButNoEvidence: [],
-        evidenceButNoApprovedAssignment: [],
-        matchedRecords: [],
-      },
-    });
+  it('keeps the project dashboard focused on staffing and activity', async () => {
+    mockResponses();
 
     renderWithRouter('/projects/prj-1/dashboard');
 
-    expect(await screen.findByText('Planned vs Actual Anomalies')).toBeInTheDocument();
-    expect(screen.getByText('Evidence After Assignment End')).toBeInTheDocument();
-    expect(screen.getByText('Observed work exists after the planned staffing window.')).toBeInTheDocument();
+    expect(await screen.findByText('Allocation by Person')).toBeInTheDocument();
+    expect(screen.queryByText('Observed Work Summary')).not.toBeInTheDocument();
+    expect(screen.queryByText('Anomalies')).not.toBeInTheDocument();
   });
 });
 
@@ -155,9 +118,7 @@ const defaultDashboard: Awaited<ReturnType<typeof fetchProjectDashboard>> = {
 function mockResponses(
   overrides: {
     dashboard?: Awaited<ReturnType<typeof fetchProjectDashboard>>;
-    comparison?: Awaited<ReturnType<typeof fetchPlannedVsActual>>;
     project?: Awaited<ReturnType<typeof fetchProjectById>>;
-    workEvidence?: Awaited<ReturnType<typeof fetchWorkEvidence>>;
   } = {},
 ): void {
   mockedFetchProjectById.mockResolvedValue(
@@ -178,42 +139,6 @@ function mockResponses(
     },
   );
   mockedFetchProjectDashboard.mockResolvedValue(overrides.dashboard ?? defaultDashboard);
-  mockedFetchWorkEvidence.mockResolvedValue(
-    overrides.workEvidence ?? {
-      items: [
-        {
-          activityDate: '2026-03-20',
-          effortHours: 2.5,
-          id: 'we-1',
-          personId: 'person-1',
-          projectId: 'prj-1',
-          recordedAt: '2026-03-20T10:00:00.000Z',
-          sourceRecordKey: 'jira-1',
-          sourceType: 'JIRA_WORKLOG',
-          summary: 'Sprint delivery',
-        },
-      ],
-    },
-  );
-  mockedFetchPlannedVsActual.mockResolvedValue(
-    overrides.comparison ?? {
-      anomalies: [],
-      asOf: '2026-03-30T00:00:00.000Z',
-      assignedButNoEvidence: [],
-      evidenceButNoApprovedAssignment: [],
-      matchedRecords: [
-        {
-          allocationPercent: 100,
-          assignmentId: 'asn-1',
-          effortHours: 2.5,
-          person: { displayName: 'Ethan Brooks', id: 'person-1' },
-          project: { id: 'prj-1', name: 'Atlas ERP Rollout', projectCode: 'PRJ-102' },
-          staffingRole: 'Lead Engineer',
-          workEvidenceId: 'we-1',
-        },
-      ],
-    },
-  );
 }
 
 function renderWithRouter(initialEntry: string): void {

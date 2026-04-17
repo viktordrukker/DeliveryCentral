@@ -3,10 +3,8 @@ import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/in
 import { InMemoryOrgUnitRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-org-unit.repository';
 import { InMemoryPersonOrgMembershipRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person-org-membership.repository';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
-import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
-import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
-import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
+import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 
 import { DirectorDashboardResponseDto } from './contracts/director-dashboard.dto';
 
@@ -22,8 +20,6 @@ export class DirectorDashboardQueryService {
     private readonly personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
-    private readonly platformSettingsService: PlatformSettingsService,
   ) {}
 
   public async execute(query: DirectorDashboardQuery): Promise<DirectorDashboardResponseDto> {
@@ -33,33 +29,23 @@ export class DirectorDashboardQueryService {
       throw new Error('Director dashboard asOf is invalid.');
     }
 
-    const settings = await this.platformSettingsService.getAll();
-    const nearingClosureDays = settings.dashboard.nearingClosureDaysThreshold;
-
-    const [allPeople, allOrgUnits, allProjects, allAssignments, recentEvidence] = await Promise.all([
+    const [allPeople, allOrgUnits, allProjects, allAssignments] = await Promise.all([
       this.personRepository.listAll(),
       this.orgUnitRepository.listAll(),
       this.projectRepository.findAll(),
       this.projectAssignmentRepository.findAll(),
-      this.workEvidenceRepository.list({ dateTo: asOf }),
     ]);
 
-    // Active people only (exclude terminated/inactive)
     const activePeople = allPeople.filter(
       (person) => person.status === 'ACTIVE' || (person.status as string) === 'LEAVE',
     );
     const activePersonIds = new Set(activePeople.map((person) => person.personId.value));
-
-    // Active projects
     const activeProjects = allProjects.filter((project) => project.status === 'ACTIVE');
     const activeProjectIds = new Set(activeProjects.map((project) => project.projectId.value));
-
-    // Active assignments covering active projects
     const activeAssignments = allAssignments.filter(
       (assignment) => activeProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
 
-    // Staffed / unstaffed people
     const staffedPersonIds = new Set(
       activeAssignments
         .filter((assignment) => activePersonIds.has(assignment.personId))
@@ -69,68 +55,74 @@ export class DirectorDashboardQueryService {
     const unstaffedActivePersonCount = activePeople.filter(
       (person) => !staffedPersonIds.has(person.personId.value),
     ).length;
-
-    // Evidence coverage rate: % of active assignments that have evidence in last N days
-    const evidenceCutoff = new Date(asOf);
-    evidenceCutoff.setUTCDate(evidenceCutoff.getUTCDate() - nearingClosureDays);
-    const recentEvidenceSet = new Set(
-      recentEvidence
-        .filter((item) => (item.occurredOn ?? item.recordedAt) >= evidenceCutoff)
-        .map((item) => `${item.personId}:${item.projectId}`),
-    );
-    const coveredAssignmentCount = activeAssignments.filter((assignment) =>
-      recentEvidenceSet.has(`${assignment.personId}:${assignment.projectId}`),
-    ).length;
-    const evidenceCoverageRate =
-      activeAssignments.length > 0
-        ? Number(((coveredAssignmentCount / activeAssignments.length) * 100).toFixed(1))
+    const staffingUtilisationRate =
+      activePeople.length > 0
+        ? Number(((staffedPersonCount / activePeople.length) * 100).toFixed(1))
         : 0;
 
-    // Unit utilisation — one entry per active org unit with members
-    const unitUtilisation = (
-      await Promise.all(
+    const allMemberships = await this.personOrgMembershipRepository.findActiveByOrgUnit(
+      undefined as unknown as OrgUnitId,
+      asOf,
+    ).catch(() => [] as Awaited<ReturnType<typeof this.personOrgMembershipRepository.findActiveByOrgUnit>>);
+
+    let membershipsByUnit: Map<string, string[]>;
+    if (allMemberships.length === 0 && allOrgUnits.length > 0) {
+      membershipsByUnit = new Map();
+      const batchResults = await Promise.all(
         allOrgUnits.map(async (unit) => {
           const memberships = await this.personOrgMembershipRepository.findActiveByOrgUnit(
             OrgUnitId.from(unit.orgUnitId.value),
             asOf,
           );
-          const memberCount = memberships.length;
-          if (memberCount === 0) {
-            return null;
-          }
-
-          const memberPersonIds = new Set(
-            memberships.map((membership) => membership.personId.value),
-          );
-          const staffedInUnit = [...memberPersonIds].filter((personId) =>
-            staffedPersonIds.has(personId),
-          ).length;
-          const utilisation = Number(((staffedInUnit / memberCount) * 100).toFixed(1));
-
-          return {
-            memberCount,
-            orgUnitId: unit.orgUnitId.value,
-            orgUnitName: unit.name,
-            staffedCount: staffedInUnit,
-            utilisation,
-          };
+          return { orgUnitId: unit.orgUnitId.value, personIds: memberships.map((m) => m.personId.value) };
         }),
-      )
-    )
+      );
+      for (const { orgUnitId, personIds } of batchResults) {
+        membershipsByUnit.set(orgUnitId, personIds);
+      }
+    } else {
+      membershipsByUnit = new Map();
+      for (const membership of allMemberships) {
+        const unitId = (membership as { orgUnitId?: { value: string } }).orgUnitId?.value ?? '';
+        const personIds = membershipsByUnit.get(unitId);
+        if (personIds) {
+          personIds.push(membership.personId.value);
+        } else {
+          membershipsByUnit.set(unitId, [membership.personId.value]);
+        }
+      }
+    }
+
+    const unitUtilisation = allOrgUnits
+      .map((unit) => {
+        const memberPersonIds = membershipsByUnit.get(unit.orgUnitId.value) ?? [];
+        const memberCount = memberPersonIds.length;
+        if (memberCount === 0) return null;
+
+        const staffedInUnit = memberPersonIds.filter((pid) => staffedPersonIds.has(pid)).length;
+        const utilisation = Number(((staffedInUnit / memberCount) * 100).toFixed(1));
+
+        return {
+          memberCount,
+          orgUnitId: unit.orgUnitId.value,
+          orgUnitName: unit.name,
+          staffedCount: staffedInUnit,
+          utilisation,
+        };
+      })
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((left, right) => left.utilisation - right.utilisation);
 
-    // Weekly trend — last 8 weeks, each Sunday as week start
-    const weeklyTrend = this.buildWeeklyTrend(asOf, allProjects, allAssignments, recentEvidence);
+    const weeklyTrend = this.buildWeeklyTrend(asOf, allProjects, allAssignments, activePeople.length);
 
     return {
       asOf: asOf.toISOString(),
-      dataSources: ['people', 'org_units', 'projects', 'assignments', 'work_evidence'],
+      dataSources: ['people', 'org_units', 'projects', 'assignments', 'timesheets'],
       summary: {
         activeAssignmentCount: activeAssignments.length,
         activeProjectCount: activeProjects.length,
-        evidenceCoverageRate,
         staffedPersonCount,
+        staffingUtilisationRate,
         unstaffedActivePersonCount,
       },
       unitUtilisation,
@@ -142,11 +134,11 @@ export class DirectorDashboardQueryService {
     asOf: Date,
     allProjects: Awaited<ReturnType<typeof this.projectRepository.findAll>>,
     allAssignments: Awaited<ReturnType<typeof this.projectAssignmentRepository.findAll>>,
-    allEvidence: Awaited<ReturnType<typeof this.workEvidenceRepository.list>>,
-  ): { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; evidenceCoverageRate: number }[] {
-    const weeks: { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; evidenceCoverageRate: number }[] = [];
+    activePeopleCount: number,
+  ): { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; staffingUtilisationRate: number }[] {
+    const weeks: { weekStarting: string; activeProjectCount: number; staffedPersonCount: number; staffingUtilisationRate: number }[] = [];
+    const activeProjectCount = allProjects.filter((project) => project.status === 'ACTIVE').length;
 
-    // Calculate the Sunday that starts the current week
     const startOfCurrentWeek = new Date(asOf);
     startOfCurrentWeek.setUTCDate(startOfCurrentWeek.getUTCDate() - startOfCurrentWeek.getUTCDay());
     startOfCurrentWeek.setUTCHours(0, 0, 0, 0);
@@ -157,35 +149,17 @@ export class DirectorDashboardQueryService {
       const weekEnd = new Date(weekStart);
       weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
 
-      const activeProj = allProjects.filter((project) => project.status === 'ACTIVE').length;
-
-      const activeAssign = allAssignments.filter(
-        (assignment) => assignment.isActiveAt(weekEnd),
-      );
-
-      const staffed = new Set(activeAssign.map((a) => a.personId)).size;
-
-      const evidenceInWeek = new Set(
-        allEvidence
-          .filter((item) => {
-            const d = item.occurredOn ?? item.recordedAt;
-            return d >= weekStart && d < weekEnd;
-          })
-          .map((item) => `${item.personId}:${item.projectId}`),
-      );
-
-      const covered = activeAssign.filter((a) =>
-        evidenceInWeek.has(`${a.personId}:${a.projectId}`),
-      ).length;
-
-      const rate = activeAssign.length > 0
-        ? Number(((covered / activeAssign.length) * 100).toFixed(1))
-        : 0;
+      const activeAssignments = allAssignments.filter((assignment) => assignment.isActiveAt(weekEnd));
+      const staffedPersonCount = new Set(activeAssignments.map((assignment) => assignment.personId)).size;
+      const staffingUtilisationRate =
+        activePeopleCount > 0
+          ? Number(((staffedPersonCount / activePeopleCount) * 100).toFixed(1))
+          : 0;
 
       weeks.push({
-        activeProjectCount: activeProj,
-        evidenceCoverageRate: rate,
-        staffedPersonCount: staffed,
+        activeProjectCount,
+        staffedPersonCount,
+        staffingUtilisationRate,
         weekStarting: weekStart.toISOString().split('T')[0],
       });
     }

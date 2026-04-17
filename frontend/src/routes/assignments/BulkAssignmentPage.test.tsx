@@ -8,6 +8,10 @@ import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { renderRoute } from '@test/render-route';
 import { BulkAssignmentPage } from './BulkAssignmentPage';
 
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({ principal: { personId: 'test-actor-id', roles: ['admin'] } }),
+}));
+
 vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: vi.fn(),
 }));
@@ -199,7 +203,7 @@ function buildPeople() {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['team-1'],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     },
     {
       currentAssignmentCount: 0,
@@ -217,7 +221,7 @@ function buildPeople() {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     },
     {
       currentAssignmentCount: 0,
@@ -235,7 +239,7 @@ function buildPeople() {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     },
   ];
 }

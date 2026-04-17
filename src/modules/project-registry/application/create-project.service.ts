@@ -9,12 +9,20 @@ import { Project } from '../domain/entities/project.entity';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 
 interface CreateProjectInput {
+  clientId?: string;
+  deliveryManagerId?: string;
   description?: string;
+  domain?: string;
+  engagementModel?: string;
   name: string;
   plannedEndDate?: string;
+  priority?: string;
   projectCode?: string;
   projectManagerId?: string;
+  projectType?: string;
   startDate?: string;
+  tags?: string[];
+  techStack?: string[];
 }
 
 @Injectable()
@@ -68,15 +76,23 @@ export class CreateProjectService {
     }
 
     const project = Project.create({
+      clientId: input.clientId,
+      deliveryManagerId: input.deliveryManagerId ? PersonId.from(input.deliveryManagerId) : undefined,
       description: input.description,
+      domain: input.domain,
       endsOn: plannedEndDate,
+      engagementModel: input.engagementModel as any,
       name: input.name,
+      priority: (input.priority as any) ?? 'MEDIUM',
       projectCode,
       projectManagerId: input.projectManagerId
         ? PersonId.from(input.projectManagerId)
         : undefined,
+      projectType: input.projectType,
       startsOn: startDate,
       status: 'DRAFT',
+      tags: input.tags,
+      techStack: input.techStack,
     });
 
     await this.projectRepository.save(project);

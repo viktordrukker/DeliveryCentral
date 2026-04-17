@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -35,7 +35,11 @@ const initialValues: FormValues = {
 export function CreateStaffingRequestPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
-  const [values, setValues] = useState<FormValues>(initialValues);
+  const [searchParams] = useSearchParams();
+  const [values, setValues] = useState<FormValues>(() => ({
+    ...initialValues,
+    projectId: searchParams.get('projectId') ?? '',
+  }));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

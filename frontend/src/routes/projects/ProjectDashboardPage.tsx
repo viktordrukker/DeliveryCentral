@@ -1,21 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
+import { PROJECT_DASHBOARD_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useDrilldown } from '@/app/drilldown-context';
-import { AnomalyPanel } from '@/components/projects/AnomalyPanel';
-import { EvidenceSummary } from '@/components/projects/EvidenceSummary';
 import { ProjectSummaryCard } from '@/components/projects/ProjectSummaryCard';
+import { RagTrendTimeline } from '@/components/projects/RagTrendTimeline';
+import { StaffingAlertsList } from '@/components/projects/StaffingAlertsList';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { useProjectDashboard } from '@/features/projects/useProjectDashboard';
 import { formatDate } from '@/lib/format-date';
+import { type ComputedRag, type RagSnapshotDto, type StaffingAlert, fetchComputedRag, fetchRagHistory, fetchStaffingAlerts } from '@/lib/api/project-rag';
+import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -24,12 +28,22 @@ export function ProjectDashboardPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
   const state = useProjectDashboard(id);
-  const canManage = principal?.roles.some((r) =>
-    ['admin', 'project_manager', 'resource_manager', 'director'].includes(r),
-  ) ?? false;
+  const canManage = hasAnyRole(principal?.roles, PROJECT_DASHBOARD_ROLES);
 
   const d = state.data;
   const { setCurrentLabel } = useDrilldown();
+  const [computedRag, setComputedRag] = useState<ComputedRag | null>(null);
+  const [ragHistory, setRagHistory] = useState<RagSnapshotDto[]>([]);
+  const [alerts, setAlerts] = useState<StaffingAlert[]>([]);
+  const [staffingSummary, setStaffingSummary] = useState<StaffingSummary | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    void fetchComputedRag(id).then(setComputedRag).catch(() => undefined);
+    void fetchRagHistory(id).then(setRagHistory).catch(() => undefined);
+    void fetchStaffingAlerts(id).then(setAlerts).catch(() => undefined);
+    void fetchStaffingSummary(id).then(setStaffingSummary).catch(() => undefined);
+  }, [id]);
   const daysRemaining = d?.dashboard.project.endsOn
     ? Math.max(0, Math.ceil((new Date(d.dashboard.project.endsOn).getTime() - Date.now()) / 86400000))
     : null;
@@ -53,7 +67,7 @@ export function ProjectDashboardPage(): JSX.Element {
           </div>
         }
         eyebrow="Projects"
-        subtitle="Project-level staffing, evidence, workload, and comparison signals."
+        subtitle="Project-level staffing, workload, and lifecycle signals."
         title={d?.project.name ?? 'Project Dashboard'}
       />
 
@@ -78,12 +92,6 @@ export function ProjectDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Active Staff</span>
             </Link>
 
-            <Link className="kpi-strip__item" to={`/work-evidence?project=${id ?? ''}`} style={{ borderLeft: '3px solid var(--color-status-active)' }}>
-              <TipBalloon tip="Total evidence hours logged in the last 30 days." arrow="left" />
-              <span className="kpi-strip__value">{d.dashboard.staffingSummary.totalEvidenceHoursLast30d}h</span>
-              <span className="kpi-strip__label">Evidence (30d)</span>
-            </Link>
-
             <Link className="kpi-strip__item" to={`/projects/${id ?? ''}`}
               style={{ borderLeft: `3px solid ${daysRemaining !== null && daysRemaining <= 7 ? 'var(--color-status-danger)' : daysRemaining !== null && daysRemaining <= 30 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
               <TipBalloon tip="Calendar days until planned end date." arrow="left" />
@@ -93,7 +101,44 @@ export function ProjectDashboardPage(): JSX.Element {
                 <span className="kpi-strip__context" style={{ color: 'var(--color-status-danger)' }}>ending soon</span>
               )}
             </Link>
+
+            {staffingSummary && staffingSummary.totalPlanned > 0 ? (
+              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
+                style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
+                <span className="kpi-strip__value">{staffingSummary.fillRate}%</span>
+                <span className="kpi-strip__label">Fill Rate</span>
+              </Link>
+            ) : null}
+
+            {computedRag ? (
+              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=summary`}
+                style={{ borderLeft: `3px solid ${computedRag.overallRag === 'GREEN' ? 'var(--color-status-active)' : computedRag.overallRag === 'AMBER' ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
+                <StatusBadge status={computedRag.overallRag.toLowerCase()} label={computedRag.overallRag} variant="chip" />
+                <span className="kpi-strip__label">Overall RAG</span>
+              </Link>
+            ) : null}
+
+            {alerts.length > 0 ? (
+              <span className="kpi-strip__item" style={{ borderLeft: `3px solid ${alerts.some((a) => a.severity === 'CRITICAL') ? 'var(--color-status-danger)' : 'var(--color-status-warning)'}` }}>
+                <span className="kpi-strip__value">{alerts.length}</span>
+                <span className="kpi-strip__label">Alerts</span>
+              </span>
+            ) : null}
           </div>
+
+          {/* ── Staffing Alerts ── */}
+          {alerts.length > 0 ? (
+            <SectionCard title={`Staffing Alerts (${alerts.length})`} collapsible>
+              <StaffingAlertsList alerts={alerts} />
+            </SectionCard>
+          ) : null}
+
+          {/* ── RAG Trend ── */}
+          {ragHistory.length > 0 ? (
+            <SectionCard title="Status Trend" collapsible>
+              <RagTrendTimeline snapshots={ragHistory} />
+            </SectionCard>
+          ) : null}
 
           {/* ── Project Summary ── */}
           <SectionCard title="Project Summary" collapsible>
@@ -148,12 +193,12 @@ export function ProjectDashboardPage(): JSX.Element {
 
           {/* ── Supporting grid ── */}
           <div className="dashboard-main-grid">
-            <SectionCard title="Evidence by Week (12 wk)" collapsible chartExport={{
+            <SectionCard title="Activity by Week (12 wk)" collapsible chartExport={{
               headers: ['Week', 'Hours'],
               rows: d.dashboard.evidenceByWeek.filter((w) => w.totalHours > 0).map((w) => ({ Week: w.weekStarting, Hours: String(w.totalHours) })),
             }}>
               {d.dashboard.evidenceByWeek.every((w) => w.totalHours === 0) ? (
-                <EmptyState description="No work evidence recorded in the last 12 weeks." title="No evidence data" />
+                <EmptyState description="No time activity was captured in the last 12 weeks." title="No activity data" />
               ) : (
                 <table className="dash-compact-table">
                   <thead>
@@ -208,50 +253,6 @@ export function ProjectDashboardPage(): JSX.Element {
             </SectionCard>
           </div>
 
-          {/* ── Evidence Summary ── */}
-          <SectionCard title="Evidence Summary" collapsible>
-            <EvidenceSummary items={d.workEvidence} />
-          </SectionCard>
-
-          {/* ── Comparison Overview ── */}
-          <SectionCard title="Comparison Overview" collapsible>
-            {d.comparison.matchedRecords.length === 0 &&
-            d.comparison.assignedButNoEvidence.length === 0 &&
-            d.comparison.evidenceButNoApprovedAssignment.length === 0 ? (
-              <EmptyState description="No comparison records are currently available." title="No comparison data" />
-            ) : (
-              <table className="dash-compact-table">
-                <thead>
-                  <tr><th>Category</th><th style={NUM}>Count</th><th style={{ width: 120 }}>Bar</th></tr>
-                </thead>
-                <tbody>
-                  {[
-                    { label: 'Matched Records', count: d.comparison.matchedRecords.length, color: 'var(--color-status-active)' },
-                    { label: 'Assigned, No Evidence', count: d.comparison.assignedButNoEvidence.length, color: 'var(--color-status-warning)' },
-                    { label: 'Evidence, No Approved Match', count: d.comparison.evidenceButNoApprovedAssignment.length, color: 'var(--color-status-danger)' },
-                  ].map((row) => {
-                    const max = Math.max(d.comparison.matchedRecords.length, d.comparison.assignedButNoEvidence.length, d.comparison.evidenceButNoApprovedAssignment.length, 1);
-                    return (
-                      <tr key={row.label}>
-                        <td style={{ fontWeight: 500 }}>{row.label}</td>
-                        <td style={{ ...NUM, fontWeight: 600, color: row.color }}>{row.count}</td>
-                        <td>
-                          <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.round((row.count / max) * 100)}%`, borderRadius: 2, background: row.color }} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </SectionCard>
-
-          {/* ── Anomalies ── */}
-          <SectionCard title="Anomalies" collapsible>
-            <AnomalyPanel items={d.anomalies} />
-          </SectionCard>
         </>
       ) : null}
     </PageContainer>

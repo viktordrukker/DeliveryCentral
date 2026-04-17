@@ -24,6 +24,7 @@ export class TerminateEmployeeService {
     private readonly endProjectAssignmentService: EndProjectAssignmentService,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; occurredAt?: Date; metadata?: Record<string, unknown> }): Promise<void> },
   ) {}
 
   public async execute(command: TerminateEmployeeCommand): Promise<Person> {
@@ -79,6 +80,15 @@ export class TerminateEmployeeService {
     });
 
     void this.notificationEventTranslator?.employeeTerminated({ personId: employee.personId.value });
+
+    void this.employeeActivityService?.record({
+      personId: command.personId,
+      eventType: 'TERMINATED',
+      summary: `Employee terminated. ${assignmentsToEnd.length} assignment(s) ended. Reason: ${command.reason ?? 'Not specified'}`,
+      actorId: command.actorId,
+      occurredAt: terminatedAt,
+      metadata: { assignmentsEnded: assignmentsToEnd.length, reason: command.reason },
+    });
 
     return employee;
   }

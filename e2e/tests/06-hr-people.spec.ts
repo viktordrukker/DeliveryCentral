@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-15 Create employee ────────────────────────────────────────────────────
 
-test.describe('2d-15 HR — create employee', () => {
+test.describe('@critical 2d-15 HR — create employee', () => {
   test('employee directory page is reachable', async ({ page }) => {
     await page.goto('/people');
 
@@ -57,7 +57,7 @@ test.describe('2d-15 HR — create employee', () => {
 
 // ── 2d-16 Deactivate employee ────────────────────────────────────────────────
 
-test.describe('2d-16 HR — deactivate employee', () => {
+test.describe('@critical 2d-16 HR — deactivate employee', () => {
   test('employee details page shows deactivation option', async ({ page }) => {
     await page.goto(`/people/${p2.people.noraBLake}`);
 
@@ -98,7 +98,7 @@ test.describe('2d-16 HR — deactivate employee', () => {
 
 // ── 2d-17 Terminate employee ─────────────────────────────────────────────────
 
-test.describe('2d-17 HR — terminate employee', () => {
+test.describe('@critical 2d-17 HR — terminate employee', () => {
   test('employee details page shows Terminate option for Zoe Turner', async ({ page }) => {
     await page.goto(`/people/${p2.people.zoeTurner}`);
 
@@ -135,13 +135,13 @@ test.describe('2d-17 HR — terminate employee', () => {
 
 // ── 2d-18 Manage reporting lines ─────────────────────────────────────────────
 
-test.describe('2d-18 HR — manage reporting lines', () => {
+test.describe('@critical 2d-18 HR — manage reporting lines', () => {
   test('employee details page shows reporting line info', async ({ page }) => {
     await page.goto(`/people/${p2.people.ethanBrooks}`);
 
     await expect(page.getByTestId('employee-details-page')).toBeVisible();
     // Reporting line or org unit info should appear
-    await expect(page.getByText(/Report|Manager|Org Unit/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Report|Manager/i })).toBeVisible();
   });
 
   test('PATCH reporting line via API updates manager', async ({ page }) => {
@@ -165,7 +165,7 @@ test.describe('2d-18 HR — manage reporting lines', () => {
 
 // ── 2d-19 HR dashboard ───────────────────────────────────────────────────────
 
-test.describe('2d-19 HR — view HR dashboard', () => {
+test.describe('@critical 2d-19 HR — view HR dashboard', () => {
   test('HR dashboard page renders distribution charts', async ({ page }) => {
     await page.goto(`/dashboard/hr-manager?personId=${diana}`);
 

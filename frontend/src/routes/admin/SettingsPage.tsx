@@ -12,7 +12,7 @@ import {
   updatePlatformSetting,
 } from '@/lib/api/platform-settings';
 
-type SettingValue = string | number | boolean;
+type SettingValue = string | number | boolean | string[] | null;
 
 interface FieldDef {
   key: string;
@@ -131,6 +131,17 @@ const SECTIONS: SectionDef[] = [
       { key: 'welcomeMessage', label: 'Welcome Message', type: 'text' },
     ],
   },
+  {
+    id: 'evidenceManagement',
+    title: 'Evidence Management',
+    fields: [
+      { key: 'enabled', label: 'Module Enabled', type: 'boolean' },
+      { key: 'allowManualEntry', label: 'Allow Manual Entry', type: 'boolean' },
+      { key: 'showDiagnosticsInCoreDashboards', label: 'Show Diagnostics In Core Dashboards', type: 'boolean' },
+      { key: 'allowedSources', label: 'Allowed Sources (comma-separated)', type: 'text' },
+      { key: 'retentionDays', label: 'Retention Days (blank = keep)', type: 'text' },
+    ],
+  },
 ];
 
 export function SettingsPage(): JSX.Element {
@@ -206,14 +217,25 @@ function SettingsSection({ section, values, onSave }: SettingsSectionProps): JSX
   const [successes, setSuccesses] = useState<Record<string, boolean>>({});
 
   async function handleSave(field: FieldDef): Promise<void> {
-    const value = localValues[field.key];
+    let value: SettingValue | string[] | null = localValues[field.key];
+    if (section.id === 'evidenceManagement') {
+      if (field.key === 'allowedSources' && typeof value === 'string') {
+        value = value
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+      if (field.key === 'retentionDays' && typeof value === 'string') {
+        value = value.trim() === '' ? null : Number(value);
+      }
+    }
     setSaving((s) => ({ ...s, [field.key]: true }));
     setErrors((e) => ({ ...e, [field.key]: '' }));
     setSuccesses((s) => ({ ...s, [field.key]: false }));
 
     try {
       await updatePlatformSetting(`${section.id}.${field.key}`, value);
-      onSave(field.key, value);
+      onSave(field.key, value as SettingValue);
       toast.success('Setting saved.');
       setSuccesses((s) => ({ ...s, [field.key]: true }));
       setTimeout(() => setSuccesses((s) => ({ ...s, [field.key]: false })), 2000);
@@ -285,7 +307,7 @@ function SettingsSection({ section, values, onSave }: SettingsSectionProps): JSX
                 }
                 style={{ maxWidth: '280px' }}
                 type="text"
-                value={String(localValues[field.key] ?? '')}
+                value={Array.isArray(localValues[field.key]) ? (localValues[field.key] as string[]).join(', ') : String(localValues[field.key] ?? '')}
               />
             )}
 

@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
+import { PLAYWRIGHT_BASE_URL } from '../fixtures/auth-state';
 
-const BASE = 'http://127.0.0.1:5173';
+const BASE = PLAYWRIGHT_BASE_URL;
 
-test.describe('UX Law 9: Every KPI is a Clickable Drilldown', () => {
+test.describe('@full UX Law 9: Every KPI is a Clickable Drilldown', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'lucas.reed@example.com', 'ProjectMgrPass1!');
     await page.goto(`${BASE}/dashboard/project-manager`);

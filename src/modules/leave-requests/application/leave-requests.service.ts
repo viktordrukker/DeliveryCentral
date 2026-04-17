@@ -65,6 +65,23 @@ export class LeaveRequestsService {
     if (record.status !== 'PENDING') {
       throw new ForbiddenException('Only pending requests can be approved');
     }
+
+    // Check for overlapping approved leave requests (20b-11)
+    const overlapping = await this.prisma.leaveRequest.findFirst({
+      where: {
+        personId: record.personId,
+        status: 'APPROVED',
+        id: { not: id },
+        startDate: { lte: record.endDate },
+        endDate: { gte: record.startDate },
+      },
+    });
+    if (overlapping) {
+      throw new ForbiddenException(
+        `Overlapping approved leave exists (${overlapping.startDate.toISOString().slice(0, 10)} – ${overlapping.endDate.toISOString().slice(0, 10)}).`,
+      );
+    }
+
     const updated = await this.prisma.leaveRequest.update({
       data: { reviewedAt: new Date(), reviewedBy: reviewerId, status: 'APPROVED' },
       where: { id },

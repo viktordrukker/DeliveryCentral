@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, admin.email, admin.password);
 });
 
-test.describe('ADM1 — Admin creates local account', () => {
+test.describe('@full ADM1 — Admin creates local account', () => {
   test('admin panel shows User Accounts section with Create Account form', async ({ page }) => {
     await page.goto('/admin');
 
@@ -55,7 +55,7 @@ test.describe('ADM1 — Admin creates local account', () => {
   });
 });
 
-test.describe('ADM2 — Admin manages metadata dictionaries', () => {
+test.describe('@full ADM2 — Admin manages metadata dictionaries', () => {
   test('metadata admin page renders dictionary list with entries', async ({ page }) => {
     await page.goto('/admin/metadata');
 
@@ -92,7 +92,7 @@ test.describe('ADM2 — Admin manages metadata dictionaries', () => {
   });
 });
 
-test.describe('ADM3 — Admin monitors notification queue', () => {
+test.describe('@full ADM3 — Admin monitors notification queue', () => {
   test('notifications admin page renders Notification Queue section', async ({ page }) => {
     await page.goto('/admin/notifications');
 

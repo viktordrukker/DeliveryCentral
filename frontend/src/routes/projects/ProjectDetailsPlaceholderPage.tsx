@@ -13,9 +13,11 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { ProjectHealthBadge } from '@/components/common/ProjectHealthBadge';
 import { SectionCard } from '@/components/common/SectionCard';
 import { AuditTimeline } from '@/components/common/AuditTimeline';
+import { RolePlanBuilder } from '@/components/projects/RolePlanBuilder';
+import { RolePlanComparison } from '@/components/projects/RolePlanComparison';
+import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { TabBar } from '@/components/common/TabBar';
 import { formatDate as formatDateLib, formatDateShort } from '@/lib/format-date';
-import { EvidenceTimelineBar } from '@/components/charts/EvidenceTimelineBar';
 import { BudgetBurnDownChart } from '@/components/charts/BudgetBurnDownChart';
 import { CostBreakdownDonut } from '@/components/charts/CostBreakdownDonut';
 import { ForecastChart } from '@/components/charts/ForecastChart';
@@ -24,6 +26,7 @@ import {
   ProjectTeamAssignmentFormValues,
 } from '@/components/projects/ProjectTeamAssignmentForm';
 import { useAuth } from '@/app/auth-context';
+import { DIRECTOR_ADMIN_ROLES, PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { hasAnyStoredRole } from '@/features/auth/token-claims';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { useProjectDetails } from '@/features/projects/useProjectDetails';
@@ -38,7 +41,6 @@ import {
 } from '@/lib/api/project-registry';
 import { fetchTeams, TeamSummary } from '@/lib/api/teams';
 import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { fetchWorkEvidence, WorkEvidenceItem } from '@/lib/api/work-evidence';
 import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
 import {
@@ -49,13 +51,11 @@ import {
 import { ApiError } from '@/lib/api/http-client';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 
-const PROJECT_MANAGE_ROLES = ['project_manager', 'delivery_manager', 'director', 'admin'];
 
 const TABS = [
   { id: 'summary', label: 'Summary' },
   { id: 'team', label: 'Team' },
   { id: 'timeline', label: 'Timeline' },
-  { id: 'evidence', label: 'Evidence' },
   { id: 'budget', label: 'Budget' },
   { id: 'history', label: 'History' },
 ];
@@ -79,9 +79,8 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
   const activeTab = searchParams.get('tab') ?? 'summary';
 
   const { principal } = useAuth();
-  const canManageProject =
-    principal?.roles.some((r) => PROJECT_MANAGE_ROLES.includes(r)) ?? false;
-  const canManageBudget = principal?.roles.some((r) => ['admin', 'project_manager', 'delivery_manager', 'director'].includes(r)) ?? false;
+  const canManageProject = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
+  const canManageBudget = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const state = useProjectDetails(id);
   const { setCurrentLabel } = useDrilldown();
   const tokenState = useStoredApiToken();
@@ -123,11 +122,8 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
   const [teamAssignments, setTeamAssignments] = useState<AssignmentDirectoryItem[]>([]);
   const [teamAssignmentsLoading, setTeamAssignmentsLoading] = useState(false);
   const [teamAssignmentsError, setTeamAssignmentsError] = useState<string | null>(null);
-
-  // Evidence tab state
-  const [evidenceItems, setEvidenceItems] = useState<WorkEvidenceItem[]>([]);
-  const [evidenceLoading, setEvidenceLoading] = useState(false);
-  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [rolePlanEntries, setRolePlanEntries] = useState<RolePlanEntryDto[]>([]);
+  const [rolePlanComparison, setRolePlanComparison] = useState<RolePlanComparisonResult | null>(null);
 
   // Health state
   const [health, setHealth] = useState<ProjectHealthDto | null>(null);
@@ -212,43 +208,25 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
     setTeamAssignmentsLoading(true);
     setTeamAssignmentsError(null);
 
-    void fetchAssignments({ projectId: id })
-      .then((response) => {
-        if (!active) return;
-        setTeamAssignments(response.items);
-      })
+    void (async () => {
+      const [assignmentResponse, planEntries] = await Promise.all([
+        fetchAssignments({ projectId: id }),
+        fetchRolePlan(id).catch(() => [] as RolePlanEntryDto[]),
+      ]);
+      if (!active) return;
+      setTeamAssignments(assignmentResponse.items);
+      setRolePlanEntries(planEntries);
+      // Fetch comparison AFTER role plan (auto-init may have created entries)
+      const comparison = await fetchRolePlanComparison(id).catch(() => null);
+      if (!active) return;
+      if (comparison) setRolePlanComparison(comparison);
+    })()
       .catch((error: unknown) => {
         if (!active) return;
         setTeamAssignmentsError(error instanceof Error ? error.message : 'Failed to load assignments.');
       })
       .finally(() => {
         if (active) setTeamAssignmentsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [id, activeTab]);
-
-  // Load evidence when Evidence tab is active
-  useEffect(() => {
-    if (!id || activeTab !== 'evidence') return;
-    let active = true;
-
-    setEvidenceLoading(true);
-    setEvidenceError(null);
-
-    void fetchWorkEvidence({ projectId: id })
-      .then((response) => {
-        if (!active) return;
-        setEvidenceItems(response.items);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setEvidenceError(error instanceof Error ? error.message : 'Failed to load evidence.');
-      })
-      .finally(() => {
-        if (active) setEvidenceLoading(false);
       });
 
     return () => {
@@ -328,7 +306,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
 
   const canActivate = state.data?.status === 'DRAFT';
   const canClose = state.data?.status === 'ACTIVE';
-  const canUseProjectOverride = hasAnyStoredRole(tokenState.token, ['director', 'admin']);
+  const canUseProjectOverride = hasAnyStoredRole(tokenState.token, DIRECTOR_ADMIN_ROLES);
   const canShowCloseOverride =
     canUseProjectOverride &&
     projectActionError?.includes('Use the explicit override flow with a reason to close anyway.') ===
@@ -407,7 +385,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
       const response = await closeProject(id);
       setCloseResult(response);
       setProjectActionSuccess(
-        `Project ${response.name} closed with ${response.workspend.totalMandays.toFixed(2)} mandays captured from work evidence.`,
+        `Project ${response.name} closed with ${response.workspend.totalMandays.toFixed(2)} mandays captured from approved project work records.`,
       );
       setOverrideReason('');
       setOverrideReasonError(null);
@@ -456,7 +434,7 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
         `Closure override applied for ${response.name}. The project is closed and the reason is now part of the audit trail.`,
       );
       setProjectActionSuccess(
-        `Project ${response.name} closed by authorized override with ${response.workspend.totalMandays.toFixed(2)} mandays captured from work evidence.`,
+        `Project ${response.name} closed by authorized override with ${response.workspend.totalMandays.toFixed(2)} mandays captured from approved project work records.`,
       );
       setOverrideReason('');
       await state.reload();
@@ -556,18 +534,6 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
       setIsAssigningTeam(false);
     }
   }
-
-  // Evidence chart data: group by activity date
-  const evidenceChartData = useMemo(() => {
-    const byDate = new Map<string, number>();
-    for (const item of evidenceItems) {
-      const date = item.activityDate?.slice(0, 10) ?? item.recordedAt?.slice(0, 10) ?? 'unknown';
-      byDate.set(date, (byDate.get(date) ?? 0) + item.effortHours);
-    }
-    return Array.from(byDate.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, hours]) => ({ date, hours }));
-  }, [evidenceItems]);
 
   // Timeline/Gantt data from assignments
   const ganttData = useMemo(() => {
@@ -850,14 +816,14 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                         : 'Activation is only available while the project is in DRAFT.'}
                     </dd>
                   </div>
-                  <div>
-                    <dt>Close</dt>
-                    <dd>
-                      {canClose
-                        ? 'Closing captures workspend from evidence and preserves project history.'
+                      <div>
+                        <dt>Close</dt>
+                        <dd>
+                          {canClose
+                        ? 'Closing captures approved project work totals and preserves project history.'
                         : 'Closure is only available while the project is ACTIVE.'}
-                    </dd>
-                  </div>
+                        </dd>
+                      </div>
                 </div>
 
                 {!tokenState.hasToken ? (
@@ -958,6 +924,26 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
           {/* ── Team Tab ─────────────────────────────────────────────── */}
           {activeTab === 'team' ? (
             <div className="dashboard-main-grid">
+              {canManageProject && id ? (
+                <SectionCard title="Role Plan" collapsible>
+                  <RolePlanBuilder
+                    projectId={id}
+                    entries={rolePlanEntries}
+                    onUpdate={() => {
+                      if (!id) return;
+                      void fetchRolePlan(id).then(setRolePlanEntries);
+                      void fetchRolePlanComparison(id).then(setRolePlanComparison);
+                    }}
+                  />
+                </SectionCard>
+              ) : null}
+
+              {rolePlanComparison && rolePlanComparison.rows.length > 0 ? (
+                <SectionCard title={`Plan vs Actual (Fill Rate: ${rolePlanComparison.overallFillRate}%)`} collapsible>
+                  <RolePlanComparison data={rolePlanComparison} />
+                </SectionCard>
+              ) : null}
+
               <SectionCard title="Team Assignments">
                 {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
                 {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
@@ -1148,51 +1134,6 @@ export function ProjectDetailsPlaceholderPage(): JSX.Element {
                 )
               ) : null}
             </SectionCard>
-          ) : null}
-
-          {/* ── Evidence Tab ─────────────────────────────────────────── */}
-          {activeTab === 'evidence' ? (
-            <div className="dashboard-main-grid">
-              <SectionCard title="Work Evidence">
-                {evidenceLoading ? <LoadingState label="Loading evidence..." variant="skeleton" skeletonType="detail" /> : null}
-                {evidenceError ? <ErrorState description={evidenceError} /> : null}
-                {!evidenceLoading && !evidenceError ? (
-                  evidenceItems.length === 0 ? (
-                    <EmptyState
-                      description="No work evidence has been logged for this project."
-                      title="No evidence"
-                    />
-                  ) : (
-                    <table className="dash-compact-table">
-                      <thead>
-                        <tr>
-                          <th>Activity Date</th>
-                          <th>Source</th>
-                          <th>Hours</th>
-                          <th>Summary</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {evidenceItems.map((e) => (
-                          <tr key={e.id}>
-                            <td>{e.activityDate ? formatDateShort(e.activityDate) : '—'}</td>
-                            <td>{e.sourceType}</td>
-                            <td>{e.effortHours}</td>
-                            <td>{e.summary ?? '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                ) : null}
-              </SectionCard>
-
-              {evidenceChartData.length > 0 ? (
-                <SectionCard title="Hours per Day">
-                  <EvidenceTimelineBar data={evidenceChartData} />
-                </SectionCard>
-              ) : null}
-            </div>
           ) : null}
 
           {/* ── Budget Tab ─────────────────────────────────────────── */}

@@ -1,4 +1,5 @@
-import { FormEvent, ReactNode } from 'react';
+import { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   CreateAssignmentFormErrors,
@@ -6,13 +7,16 @@ import {
 } from '@/features/assignments/useCreateAssignmentPage';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { STAFFING_ROLES } from '@/lib/staffing-roles';
 
 interface CreateAssignmentFormProps {
   errors: CreateAssignmentFormErrors;
   isSubmitting: boolean;
   onChange: (field: keyof CreateAssignmentFormValues, value: string) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: () => void;
+  onSubmitDraft: () => void;
   people: PersonDirectoryItem[];
+  principalPersonId?: string;
   projects: ProjectDirectoryItem[];
   values: CreateAssignmentFormValues;
 }
@@ -22,12 +26,14 @@ export function CreateAssignmentForm({
   isSubmitting,
   onChange,
   onSubmit,
+  onSubmitDraft,
   people,
+  principalPersonId,
   projects,
   values,
 }: CreateAssignmentFormProps): JSX.Element {
   return (
-    <form className="entity-form" data-testid="create-assignment-form" onSubmit={onSubmit}>
+    <div className="entity-form" data-testid="create-assignment-form">
       <div className="entity-form__grid">
         <Field label="Requested By">
           <select
@@ -40,7 +46,7 @@ export function CreateAssignmentForm({
             <option value="">Select requester</option>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
-                {person.displayName}
+                {person.displayName}{person.id === principalPersonId ? ' (You)' : ''}
               </option>
             ))}
           </select>
@@ -58,7 +64,7 @@ export function CreateAssignmentForm({
             <option value="">Select person</option>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
-                {person.displayName}
+                {person.displayName} — {person.grade ?? 'No grade'} · {person.lifecycleStatus}
               </option>
             ))}
           </select>
@@ -76,7 +82,7 @@ export function CreateAssignmentForm({
             <option value="">Select project</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
-                {project.name}
+                {project.name} ({project.projectCode}) — {project.clientName ?? 'Internal'}
               </option>
             ))}
           </select>
@@ -84,16 +90,36 @@ export function CreateAssignmentForm({
         </Field>
 
         <Field label="Staffing Role">
-          <input
+          <select
             aria-invalid={!!errors.staffingRole}
             className="field__control"
             name="staffingRole"
             onChange={(event) => onChange('staffingRole', event.target.value)}
-            type="text"
             value={values.staffingRole}
-          />
+          >
+            <option value="">Select a role...</option>
+            {STAFFING_ROLES.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+            <option value="__custom__">Other (custom)</option>
+          </select>
           {errors.staffingRole ? <FieldError message={errors.staffingRole} /> : null}
         </Field>
+
+        {values.staffingRole === '__custom__' ? (
+          <Field label="Custom Role">
+            <input
+              aria-invalid={!!errors.customRole}
+              className="field__control"
+              name="customRole"
+              onChange={(event) => onChange('customRole', event.target.value)}
+              placeholder="Enter custom role"
+              type="text"
+              value={values.customRole}
+            />
+            {errors.customRole ? <FieldError message={errors.customRole} /> : null}
+          </Field>
+        ) : null}
 
         <Field label="Allocation Percent">
           <input
@@ -103,6 +129,7 @@ export function CreateAssignmentForm({
             min="1"
             name="allocationPercent"
             onChange={(event) => onChange('allocationPercent', event.target.value)}
+            step="5"
             type="number"
             value={values.allocationPercent}
           />
@@ -139,17 +166,34 @@ export function CreateAssignmentForm({
           className="field__control field__control--textarea"
           name="note"
           onChange={(event) => onChange('note', event.target.value)}
-          rows={4}
+          placeholder="Optional context for this assignment"
+          rows={3}
           value={values.note}
         />
       </Field>
 
-      <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Submitting...' : 'Create Assignment'}
-        </button>
+      <div className="entity-form__actions entity-form__actions--split">
+        <Link className="button button--secondary" to="/assignments">Cancel</Link>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button
+            className="button button--secondary"
+            disabled={isSubmitting}
+            onClick={(e) => { e.preventDefault(); onSubmitDraft(); }}
+            type="button"
+          >
+            {isSubmitting ? 'Saving...' : 'Save Draft'}
+          </button>
+          <button
+            className="button"
+            disabled={isSubmitting}
+            onClick={(e) => { e.preventDefault(); onSubmit(); }}
+            type="button"
+          >
+            {isSubmitting ? 'Creating...' : 'Create & Request'}
+          </button>
+        </div>
       </div>
-    </form>
+    </div>
   );
 }
 

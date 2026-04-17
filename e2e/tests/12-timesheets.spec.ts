@@ -23,7 +23,7 @@ async function getToken(
 
 // ── Employee timesheets ───────────────────────────────────────────────────────
 
-test.describe('Employee — view timesheets', () => {
+test.describe('@full Employee — view timesheets', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });
@@ -32,7 +32,7 @@ test.describe('Employee — view timesheets', () => {
     await page.goto('/timesheets');
 
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
-    await expect(page.getByText(/Timesheet|timesheet|Time Entry/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Timesheet|Time/i })).toBeVisible();
   });
 
   test('employee can see their own timesheets', async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe('Employee — view timesheets', () => {
 
 // ── PM timesheets ─────────────────────────────────────────────────────────────
 
-test.describe('PM — review team timesheets', () => {
+test.describe('@full PM — review team timesheets', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsProjectManager(page);
   });
@@ -77,7 +77,7 @@ test.describe('PM — review team timesheets', () => {
 
 // ── Delivery manager timesheets ──────────────────────────────────────────────
 
-test.describe('Delivery Manager — review project timesheets', () => {
+test.describe('@full Delivery Manager — review project timesheets', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDeliveryManager(page);
   });
@@ -86,7 +86,7 @@ test.describe('Delivery Manager — review project timesheets', () => {
     await page.goto('/timesheets');
 
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
-    await expect(page.getByText(/Timesheet|timesheet|Time/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Timesheet|Time/i })).toBeVisible();
   });
 
   test('timesheets API returns data for project-based filter', async ({ page }) => {

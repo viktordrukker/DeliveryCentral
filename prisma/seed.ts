@@ -106,6 +106,7 @@ import {
   realisticReportingLines,
   realisticResourcePoolMemberships,
   realisticResourcePools,
+  realisticActivityEvents,
   realisticStaffingRequestFulfilments,
   realisticStaffingRequests,
   realisticWorkEvidence,
@@ -117,6 +118,7 @@ const prisma = new PrismaClient();
 const prismaSeed = prisma as any;
 
 interface SeedDataset {
+  activityEvents?: unknown[];
   assignmentApprovals: unknown[];
   assignmentHistory: unknown[];
   assignments: unknown[];
@@ -799,6 +801,7 @@ async function clearExistingData(): Promise<void> {
   await prisma.notificationTemplate.deleteMany();
   await prisma.notificationChannel.deleteMany();
   // Core domain
+  await prisma.employeeActivityEvent.deleteMany();
   await prisma.workEvidenceLink.deleteMany();
   await prisma.workEvidence.deleteMany();
   await prisma.workEvidenceSource.deleteMany();
@@ -1245,6 +1248,9 @@ async function seedDataset(dataset: SeedDataset): Promise<void> {
   await createManyInChunks('workEvidenceSource', dataset.workEvidenceSources);
   await createManyInChunks('workEvidence', dataset.workEvidence);
   await createManyInChunks('workEvidenceLink', dataset.workEvidenceLinks);
+  if (dataset.activityEvents) {
+    await createManyInChunks('employeeActivityEvent', dataset.activityEvents);
+  }
 }
 
 function parseSeedProfile(argv: string[]): string {
@@ -1253,7 +1259,7 @@ function parseSeedProfile(argv: string[]): string {
     return argv[profileFlagIndex + 1];
   }
 
-  return process.env.SEED_PROFILE ?? 'demo';
+  return process.env.SEED_PROFILE ?? 'enterprise';
 }
 
 async function main(): Promise<void> {
@@ -1426,8 +1432,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (profile === 'realistic') {
+  if (profile === 'realistic' || profile === 'enterprise') {
     await seedDataset({
+      activityEvents: realisticActivityEvents,
       assignmentApprovals: realisticAssignmentApprovals,
       assignmentHistory: realisticAssignmentHistory,
       assignments: realisticAssignments,
@@ -1504,7 +1511,7 @@ async function main(): Promise<void> {
     await seedRealisticPersonSkills();
 
     // eslint-disable-next-line no-console
-    console.log('Realistic dataset seeded.', realisticDatasetSummary);
+    console.log(`${profile === 'enterprise' ? 'Enterprise' : 'Realistic'} dataset seeded.`, realisticDatasetSummary);
     console.log(`  Timesheets: ${weeks.length} weeks, ${entries.length} entries`);
     console.log(`  Pulse entries: ${pulseEntries.length}`);
     console.log(`  Notifications: ${notifications.length}`);

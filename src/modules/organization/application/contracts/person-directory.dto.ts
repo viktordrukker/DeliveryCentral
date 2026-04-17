@@ -52,11 +52,17 @@ export class PersonDirectoryItemDto {
   @ApiProperty({ nullable: true })
   public grade!: string | null;
 
+  @ApiProperty({ nullable: true })
+  public hiredAt!: string | null;
+
   @ApiProperty()
   public lifecycleStatus!: string;
 
   @ApiProperty({ nullable: true })
   public role!: string | null;
+
+  @ApiProperty({ nullable: true })
+  public terminatedAt!: string | null;
 
   @ApiProperty({ type: [String] })
   public resourcePoolIds!: string[];

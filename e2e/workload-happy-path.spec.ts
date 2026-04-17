@@ -2,7 +2,7 @@
 
 import { demoIdentifiers } from './fixtures/demo-identifiers';
 
-test.describe('Workload platform happy path', () => {
+test.describe('@full Workload platform happy path', () => {
   test('user browses people and projects, creates and approves an assignment, records evidence, and reviews comparison output', async ({
     page,
   }) => {

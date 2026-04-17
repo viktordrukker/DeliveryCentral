@@ -11,6 +11,8 @@ export class DeactivateEmployeeService {
   public constructor(
     private readonly personRepository: PersonRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
+    private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; metadata?: Record<string, unknown> }): Promise<void> },
+    private readonly createLifecycleCase?: (cmd: { caseTypeKey: string; ownerPersonId: string; subjectPersonId: string; summary: string }) => Promise<unknown>,
   ) {}
 
   public async execute(personId: string): Promise<Person> {
@@ -37,6 +39,20 @@ export class DeactivateEmployeeService {
       },
       targetEntityId: employee.personId.value,
       targetEntityType: 'EMPLOYEE',
+    });
+
+    void this.employeeActivityService?.record({
+      personId,
+      eventType: 'DEACTIVATED',
+      summary: `Employee deactivated.`,
+    });
+
+    // Auto-create offboarding case (20b-09)
+    void this.createLifecycleCase?.({
+      caseTypeKey: 'OFFBOARDING',
+      ownerPersonId: personId,
+      subjectPersonId: personId,
+      summary: `Offboarding for ${employee.displayName}`,
     });
 
     return employee;

@@ -2,7 +2,7 @@
 
 **Version:** 1.1  
 **Created:** 2026-04-05  
-**Updated:** 2026-04-12  
+**Updated:** 2026-04-16  
 **Source backlog:** `docs/planning/DELIVERY_CENTRAL_PRODUCT_BACKLOG.md` v3.0 _(file was never committed to the repo; FR refs below are from the original planning document)_  
 **Phase 4 detail:** `docs/planning/phase4-plan.md`  
 **Priority decomposition:** `docs/planning/decomposition-priority-2026-04.md`
@@ -65,6 +65,18 @@
 | Phase QA-C | Browser QA — Deep Pass (forms, entity pages, security) | — | ✅ Complete (2026-04-07) |
 | Phase QA-D | Exhaustive JTBD Browser QA (107 JTBDs, all roles) | — | ✅ Complete (2026-04-12) |
 | Phase BF | Bug Fixes from QA-D (61 items: 53 bugs + 8 gaps) | — | ✅ Complete (2026-04-12) |
+| Phase 17 | Runtime Optimization, UI Standardization & Release Gates | Epics A–G | ✅ Complete (2026-04-14) |
+| Phase 18 | JTBD Page Standardization & Workflow Renovation | All major route clusters | ✅ Complete (2026-04-14) |
+| Phase 19 | Employee Lifecycle Activity Feed & Data Integrity | — | 🔄 9/10 items (2026-04-14) |
+| Phase 20a | Security Hardening II — Critical & High | — | ✅ Complete (13/13, 2026-04-16) |
+| Phase 20b | Business Logic Integrity & Lifecycle Gaps | — | ✅ Complete (13/15, 2 deferred, 2026-04-16) |
+| Phase 20c | Architecture & Clean Code | — | 🔄 In Progress (2/18, 2026-04-16) |
+| Phase 20d | React Performance & Frontend Quality | — | ✅ Complete (8/11, 2026-04-16) |
+| Phase 20e | Accessibility (WCAG 2.2 AA) | — | ✅ Complete (6/6, 2026-04-16) |
+| Phase 20f | Playwright E2E Test Hardening | — | ✅ Complete (7/8, 2026-04-16) |
+| Phase 20g | UX Laws Compliance | — | ✅ Complete (8/8, 2026-04-16) |
+| Phase 20h | Design System Token Enforcement | — | ✅ Complete (6/7, 2026-04-16) |
+| Phase 20i | Docker, CI/CD & Infrastructure | — | ✅ Complete (6/6, 2026-04-16) |
 
 ---
 
@@ -101,6 +113,149 @@
 
 ### Sprint 8+ — Enterprise Integrations (Phase F)
 `F-01` (SSO) · `F-03` (Jira config UI) · `F-04` (M365 sync) · `G-06` (HRIS) · `G-08a–G-08c` (ABAC) · `G-07` (report builder)
+
+---
+
+## Phase 17 — Runtime Optimization, UI Standardization & Release Gates
+
+> Detailed plan: `docs/planning/phase17-runtime-standardization-plan.md`
+
+- [x] **17-A** Epic A — Test runtime optimization (P0) — split backend test execution into `test:fast`, `test:db`, `test:slow`, add `verify:pr`/`verify:full`, make Jest workers configurable, and reorder CI to fail fast before slower lanes. _(done prior session)_
+- [x] **17-B** Epic B — Playwright performance and stability (P0) — move to role-based `storageState`, worker/env tuning, spec tagging, non-smoke sharding, and smoke-as-gate coverage. _(done prior session)_
+- [x] **17-C** Epic C — UI standardization system (P1) — unify canonical table and badge APIs, migrate dashboard/projects/assignments/people, and add regression coverage. _(done prior session)_
+- [x] **17-D** Epic D — Token/theming unification (P1) — one design-token source for CSS variables and MUI theme plus guardrails against new raw color constants. _(done prior session)_
+- [x] **17-E** Epic E — RBAC/navigation consistency (P1) — shared route manifest for router/sidebar/permissions, mismatch tests, and persona smoke checks.
+- [x] **17-F** Epic F — Dashboard read-model scaling (P1) — precomputed lookup maps, remove in-memory production read dependencies, and add scale benchmarks.
+- [x] **17-G** Epic G — Operability and JTBD release gates (P1/P2) — SLO budgets, CI regression gates, machine-readable JTBD matrix, and CI summary output.
+
+---
+
+## Phase 18 — JTBD Page Standardization & Workflow Renovation
+
+> Primary references:
+> `docs/planning/page-standardization-prompt-pack.md`
+> `docs/planning/planned-vs-actual-dashboard-discovery.md`
+> `docs/planning/persona-jtbds.md`
+> `docs/testing/EXHAUSTIVE_JTBD_LIST.md`
+> `docs/planning/UX_OPERATING_SYSTEM_v2.md`
+>
+> Execution rule:
+> treat each cluster below as a controlled redesign stream. Preserve business logic unless the task explicitly calls for selector/read-model/API improvements. Reuse the shared route manifest, design tokens, canonical `DataTable`, canonical `StatusBadge`, and current title-bar patterns. No raw color literals, no ad hoc table APIs, no new permission model outside `frontend/src/app/route-manifest.ts`.
+
+### 18.0 — Foundation Guardrails Before Any Page Renovation
+
+- [x] **18-0-01** Build a route-to-JTBD audit table — `docs/planning/phase18-route-jtbd-audit.md` covers all 60+ routes with persona, JTBD, trigger, next action, page file, and target grammar.
+- [x] **18-0-02** Define canonical page grammars — `docs/planning/phase18-page-grammars.md` documents 8 grammars (Decision Dashboard, List-Detail, Detail Surface, Create/Edit Form, Operational Queue, Analysis Surface, Admin Control, Auth Form) with structural zones and route assignments.
+- [x] **18-0-03** Do-not-regress shared primitives checklist — Section 1 of `docs/planning/phase18-refactor-standards.md` mandates DataTable, StatusBadge, SectionCard, PageContainer, design-tokens.ts, route-manifest, and token guardrail compliance.
+- [x] **18-0-04** Verification template — Section 2 of `docs/planning/phase18-refactor-standards.md` defines 7-part checklist: route smoke, role visibility, empty/error/loading, filter persistence, JTBD assertion, primitive compliance, and test coverage.
+- [x] **18-0-05** Context continuity requirement — Section 3 of `docs/planning/phase18-refactor-standards.md` defines 5 mandatory behaviors and standing acceptance criteria for all list/detail redesigns.
+
+### 18.A — Dashboard Standardization (all decision surfaces)
+
+> Scope:
+> `/`, `/dashboard/planned-vs-actual`, `/dashboard/employee`, `/dashboard/project-manager`, `/dashboard/resource-manager`, `/dashboard/hr`, `/dashboard/delivery-manager`, `/dashboard/director`
+>
+> Canonical reference:
+> `frontend/src/routes/dashboard/DashboardPage.tsx`
+
+- [x] **18-A-01** Freeze DashboardPage as canonical dashboard reference — structural zones documented in `docs/planning/phase18-page-grammars.md` Grammar 1 (Decision Dashboard): title bar, KPI strip, hero chart, action section, secondary analysis, data freshness.
+- [x] **18-A-02** Rebuild PlannedVsActualPage as decision dashboard — KPI strip (match rate, unapproved work, silent assignments, anomaly flags, variance risk projects), hero chart (project reconciliation via EvidenceVsAssignmentBars), ranked action table with pagination, top mismatched projects/people via DataTable, scatter analysis, detail explorer with category tabs. Selectors in `planned-vs-actual-selectors.ts`. 7 tests pass.
+- [x] **18-A-03** Standardize `frontend/src/routes/dashboard/EmployeeDashboardPage.tsx` around the employee JTBDs in `docs/planning/persona-jtbds.md`: make assignments, manager context, pulse state, and self-service actions the primary story; ensure the page answers “what am I expected to do, what changed, and what needs my attention now?” within one screen — FE
+- [x] **18-A-04** Standardize `frontend/src/routes/dashboard/ProjectManagerDashboardPage.tsx` around PM decision-making: staffing gaps, evidence anomalies, nearing closure, and next project actions; remove any report-first structure that delays action and ensure KPI cards drill directly into the right project/staffing workflows — FE
+- [x] **18-A-05** Standardize `frontend/src/routes/dashboard/ResourceManagerDashboardPage.tsx` around capacity balancing: overloaded people, idle people, pipeline, and reassignment urgency; align the page to the workload-balancing grammar in the UX operating system and make cross-links into workload/staffing-board/resource-pool flows explicit — FE
+- [x] **18-A-06** Standardize `frontend/src/routes/dashboard/HrDashboardPage.tsx` around workforce governance: headcount, distribution, data quality, wellbeing risk, and lifecycle interventions; ensure charts and tables answer “what is structurally wrong with the org and who needs HR action?” rather than only summarizing counts — FE
+- [x] **18-A-07** Standardize `frontend/src/routes/dashboard/DeliveryManagerDashboardPage.tsx` around delivery health and execution risk: portfolio health, evidence coverage, staffing gaps, and open requests; ensure the page escalates from portfolio scan to concrete project/team actions in the same layout idiom as Workload Overview — FE
+- [x] **18-A-08** Standardize `frontend/src/routes/dashboard/DirectorDashboardPage.tsx` as the executive decision surface: top-level KPIs, urgent issues, portfolio health, and immediate drilldowns to projects, staffing, budget, and governance; the page must support scan → prioritize → act with minimal click cost — FE
+- [x] **18-A-09** Add or refresh tests for all dashboard surfaces so each page validates: KPI strip rendering, hero-chart presence, action section behavior, empty/error states, and at least one role-specific JTBD outcome from `docs/testing/EXHAUSTIVE_JTBD_LIST.md` — FE/testing
+
+### 18.B — People, Org, and Team Model Standardization
+
+> Scope:
+> `/people`, `/people/:id`, `/people/new`, `/org`, `/org/managers/:id/scope`, `/teams`, `/teams/:id/dashboard`
+
+- [x] **18-B-01** Standardize the people directory surfaces (`frontend/src/routes/people/PeoplePage.tsx` and supporting employee directory views) so they behave as the canonical workforce list: role-appropriate defaults, strong filtering, context-carrying row navigation, consistent status indicators, and clear entry points into Person 360 and lifecycle actions — FE
+- [x] **18-B-02** Convert `frontend/src/routes/people/EmployeeDetailsPlaceholderPage.tsx` into a standardized Person 360 surface whose primary question is “who is this person operationally?”; the page must unify profile, org placement, skills, workload context, manager/team context, and lifecycle state without forcing unnecessary route hops — FE
+- [x] **18-B-03** Standardize `frontend/src/routes/people/EmployeeLifecycleAdminPage.tsx` so lifecycle actions sit directly beside supporting context (current status, manager, org unit, assignments, cases where relevant); all destructive or state-changing actions must be explicit, auditable, and visually consistent with other admin/governance actions — FE
+- [x] **18-B-04** Standardize `frontend/src/routes/org/OrgPage.tsx` and `frontend/src/routes/org/ManagerScopePage.tsx` so org-structure inspection uses one consistent grammar: structural overview, local drilldown, clear difference between line-management and team models, and preserved navigation context from whichever entry point the user used — FE
+- [x] **18-B-05** Standardize `frontend/src/routes/teams/TeamsPage.tsx` and `frontend/src/routes/teams/TeamDashboardPage.tsx` as the delivery-unit workflow, not a duplicate org chart; team pages must answer “how is this delivery unit staffed, spread, and performing?” and must visually differentiate team membership from formal reporting structure — FE
+- [x] **18-B-06** Add or refresh tests for people/org/team flows covering: directory filtering, detail navigation continuity, lifecycle action visibility by role, team/org conceptual separation, and critical HR/RM JTBDs from the exhaustive JTBD list — FE/testing
+
+### 18.C — Projects and Assignments Workflow Standardization
+
+> Scope:
+> `/projects`, `/projects/new`, `/projects/:id`, `/projects/:id/dashboard`, `/assignments`, `/assignments/new`, `/assignments/bulk`, `/assignments/:id`
+
+- [x] **18-C-01** Standardize `frontend/src/routes/projects/ProjectsPage.tsx` as the canonical project registry: meaningful default sorting/filtering, health/status semantics via shared badges, project-to-dashboard/project-to-staffing drilldowns, and row navigation that preserves context into detail pages — FE
+- [x] **18-C-02** Standardize `frontend/src/routes/projects/CreateProjectPage.tsx` so project creation is framed as a lifecycle action, not a generic form; reduce repetitive input, surface downstream implications (staffing, start state, ownership), and align validation/confirmation patterns with the product’s form standard — FE
+- [x] **18-C-03** Renovate `frontend/src/routes/projects/ProjectDetailsPlaceholderPage.tsx` into a real project decision surface answering “is this project healthy, staffed, and on track?”; staffing, evidence, timeline, budget, and lifecycle actions should be co-located with decision context rather than split into hard-to-follow islands — FE
+- [x] **18-C-04** Standardize `frontend/src/routes/projects/ProjectDashboardPage.tsx` so it complements, rather than duplicates, project detail; clarify whether it is the operational cockpit or a subordinate analytic view and ensure it links clearly back to staffing, evidence, budget, and exceptions — FE
+- [x] **18-C-05** Standardize `frontend/src/routes/assignments/AssignmentsPage.tsx` as the canonical staffing-truth list with role-appropriate filters, lifecycle/status clarity, and strong links into project/person detail and assignment detail; use the canonical table behaviors from the UX operating system — FE
+- [x] **18-C-06** Standardize `frontend/src/routes/assignments/CreateAssignmentPage.tsx` and `frontend/src/routes/assignments/BulkAssignmentPage.tsx` as one cohesive staffing-action system; align field order, confirmation UX, validation messages, and post-submit next actions so PM/RM flows feel consistent whether the user is creating one assignment or many — FE
+- [x] **18-C-07** Standardize `frontend/src/routes/assignments/AssignmentDetailsPlaceholderPage.tsx` so it clearly answers “what changed, what is the current state, and what should happen next?”; history, status transitions, approval/rejection/end actions, and linked project/person context must be visible without scattering the user — FE
+- [x] **18-C-08** Add or refresh tests for project and assignment flows covering: project creation, lifecycle actions, assignment creation/approval/rejection/end, project/assignment navigation continuity, and at least the PM/RM JTBDs already listed in `docs/testing/EXHAUSTIVE_JTBD_LIST.md` — FE/testing
+
+### 18.D — Staffing, Capacity, and Workload Planning Standardization
+
+> Scope:
+> `/staffing-requests`, `/staffing-requests/new`, `/staffing-requests/:id`, `/staffing-board`, `/resource-pools`, `/resource-pools/:id`, `/workload`, `/workload/planning`
+
+- [x] **18-D-01** Standardize `frontend/src/routes/staffing-requests/StaffingRequestsPage.tsx` as the demand queue entry point: prioritize open/high-urgency requests, surface project context directly in-list, and prepare the page for inspector-style triage instead of requiring full-page bouncing between requests and supporting data — FE
+- [x] **18-D-02** Standardize `frontend/src/routes/staffing-requests/CreateStaffingRequestPage.tsx` so it behaves like a fast demand-capture flow with the right defaults, strong project context, and explicit next-step expectations for PMs and delivery managers — FE
+- [x] **18-D-03** Standardize `frontend/src/routes/staffing-requests/StaffingRequestDetailPage.tsx` so candidate evaluation, request context, fulfillment progress, and related staffing/project links live in one decision surface; the page should support detect → understand → propose/fulfill/escalate with minimal context loss — FE
+- [x] **18-D-04** Standardize `frontend/src/routes/staffing-board/StaffingBoardPage.tsx` against the workload-balancing UX grammar: conflict visibility, keyboard/accessibility behavior, contextual actions, and clear relation to workload matrix/planning should all be improved without losing the drag-and-drop interaction model — FE
+- [x] **18-D-05** Standardize `frontend/src/routes/resource-pools/ResourcePoolsPage.tsx` and `frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx` so pools feel like first-class staffing assets, not side lists; member availability, related assignments, and demand matching should be visually and interactionally aligned with staffing-request workflows — FE
+- [x] **18-D-06** Standardize `frontend/src/routes/workload/WorkloadMatrixPage.tsx` and `frontend/src/routes/workload/WorkloadPlanningPage.tsx` so they form one coherent capacity-planning system; clarify the difference between current-state allocation and forward planning, preserve shared visual language, and make overload/underload states immediately actionable — FE
+- [x] **18-D-07** Add or refresh tests for staffing/capacity flows covering: request creation and detail usage, staffing-board interaction basics, workload conflict visibility, resource-pool drilldown behavior, and core RM/PM JTBDs from the exhaustive JTBD list — FE/testing
+
+### 18.E — Time, Work Evidence, and Reporting Surface Standardization
+
+> Scope:
+> `/work-evidence`, `/timesheets`, `/timesheets/approval`, `/leave`, `/reports/time`, `/reports/capitalisation`, `/reports/export`, `/reports/utilization`, `/reports/builder`
+
+- [x] **18-E-01** Standardize `frontend/src/routes/work-evidence/WorkEvidencePage.tsx` as the canonical observed-work ledger: clear filtering, export behavior, relationship to assignments/projects, and readable evidence taxonomy; the page should help users confirm operational truth rather than just browse rows — FE
+- [x] **18-E-02** Standardize `frontend/src/routes/timesheets/TimesheetPage.tsx` around speed and confidence: entry grid ergonomics, default assignment autofill behavior, save/submit clarity, CAPEX/OPEX framing, and explicit next-step feedback must all align with the timesheet UX grammar in `docs/planning/UX_OPERATING_SYSTEM_v2.md` — FE
+- [x] **18-E-03** Standardize `frontend/src/routes/timesheets/TimesheetApprovalPage.tsx` into a queue-first approval experience with strong inline context; approvers should be able to understand the week, anomalies, and required decision without leaving the approval workspace — FE
+- [x] **18-E-04** Standardize `frontend/src/routes/leave/LeaveRequestPage.tsx` so leave self-service and manager review both feel consistent with the rest of the work-management surfaces; ensure request state, current balance/context if available, and next actions are immediately legible — FE
+- [x] **18-E-05** Standardize the report surfaces (`TimeReportPage.tsx`, `CapitalisationPage.tsx`, `ExportCentrePage.tsx`, `UtilizationPage.tsx`, `ReportBuilderPage.tsx`) so they share one analysis grammar: summary KPIs, primary visualization, drilldown table, export affordances, and explicit connection back to operational entities instead of isolated reporting islands — FE
+- [x] **18-E-06** Add or refresh tests for time/evidence/reporting flows covering: timesheet entry and approval, evidence filtering/export, leave request visibility, and at least one critical report-view JTBD per report surface — FE/testing
+
+### 18.F — Cases, Exceptions, and Governance Workflow Standardization
+
+> Scope:
+> `/cases`, `/cases/new`, `/cases/:id`, `/exceptions`, `/integrations`
+
+- [x] **18-F-01** Standardize `frontend/src/routes/cases/CasesPage.tsx` as the operational case queue with meaningful sorting, status semantics, and entry into detail views that preserve filtered context; the list should help HR and operators prioritize work rather than merely browse records — FE
+- [x] **18-F-02** Standardize `frontend/src/routes/cases/CreateCasePage.tsx` as a guided workflow entry surface; clarify case type, subject, owner, participants, and step-generation implications so users understand what kind of process they are initiating — FE
+- [x] **18-F-03** Standardize `frontend/src/routes/cases/CaseDetailsPage.tsx` into a step-progression workspace where SLA state, participants, notes, checklist progress, and close/cancel actions all live next to the case context; the page must support “advance this case now” without dead-end navigation — FE
+- [x] **18-F-04** Standardize `frontend/src/routes/exceptions/ExceptionsPage.tsx` around the exception-handling grammar in the UX operating system: prioritized queue, embedded context, resolution actions beside the evidence, and reduced need to navigate elsewhere just to understand what is broken — FE
+- [x] **18-F-05** Standardize `frontend/src/routes/integrations/IntegrationsPage.tsx` as the user-facing governance/health surface for integrations; clarify what belongs here versus admin integrations pages, and ensure health, sync status, and escalation paths are visually consistent — FE
+- [x] **18-F-06** Add or refresh tests for case and exception workflows covering: case creation/progression/closure, exception prioritization and action visibility, and at least the HR/Director/Admin governance JTBDs from the exhaustive list — FE/testing
+
+### 18.G — Admin and Operator Control Surface Standardization
+
+> Scope:
+> `/admin`, `/admin/dictionaries`, `/admin/audit`, `/admin/notifications`, `/admin/integrations`, `/admin/monitoring`, `/metadata-admin`, `/admin/settings`, `/admin/people/import`, `/admin/webhooks`, `/admin/hris`, `/admin/access-policies`
+
+- [x] **18-G-01** Standardize `frontend/src/routes/admin/AdminPanelPage.tsx` as the root operator control surface; it should act as the coherent gateway into configuration, audit, notifications, integrations, and diagnostics, not a disconnected index page — FE
+- [x] **18-G-02** Standardize the metadata/configuration pages (`DictionariesPage.tsx`, `MetadataAdminPage.tsx`, `SettingsPage.tsx`, `BulkImportPage.tsx`, `AccessPoliciesPage.tsx`) so they share one governed-config grammar: clear sectioning, explicit save/apply behavior, safe edit affordances, and audit-aware language — FE
+- [x] **18-G-03** Standardize the oversight pages (`BusinessAuditPage.tsx`, `NotificationsPage.tsx`, `IntegrationsAdminPage.tsx`, `MonitoringPage.tsx`, `WebhooksAdminPage.tsx`, `HrisConfigPage.tsx`) so technical diagnostics, business audit, and integration operations are visually distinct but structurally consistent — FE
+- [x] **18-G-04** Ensure all admin/operator pages use the same canonical table, badge, token, and section primitives; eliminate any remaining bespoke inline-control clusters or visual one-offs that make operator pages feel separate from the rest of the product — FE
+- [x] **18-G-05** Add or refresh tests for core admin/operator JTBDs covering: account/admin landing clarity, settings save behavior, audit visibility, monitoring/integration status visibility, and access-policy/admin-only route expectations — FE/testing
+
+### 18.H — Authentication and Account Surface Standardization
+
+> Scope:
+> `/login`, `/forgot-password`, `/reset-password`, `/auth/2fa-setup`, `/settings/account`
+
+- [x] **18-H-01** Standardize the authentication entry surfaces (`LoginPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`, `TwoFactorSetupPage.tsx`) so they share one clean, trustworthy form grammar, one error/success language model, and clear next-step guidance for users under stress — FE
+- [x] **18-H-02** Standardize `frontend/src/routes/settings/AccountSettingsPage.tsx` so password change, notification preferences, and appearance/security controls feel like first-class account management rather than a utility page bolted onto the shell — FE
+- [x] **18-H-03** Add or refresh tests for auth/account JTBDs covering: login, password reset/change, 2FA setup flow, and account-setting persistence behavior — FE/testing
+
+### 18.X — Cross-Cutting Verification and Safe Rollout
+
+- [x] **18-X-01** After each cluster above, run a route-and-role verification pass against the affected routes using the shared route manifest; the redesign work must not reintroduce visible-but-forbidden or forbidden-but-visible regressions — FE/testing
+- [x] **18-X-02** After each cluster above, refresh any route-specific tests and add cluster smoke coverage to Playwright where the JTBD is critical enough to merit browser validation; prioritize dashboards, staffing, timesheet approval, exceptions, and admin settings first — FE/testing
+- [x] **18-X-03** Maintain a page-standardization changelog or checklist tied back to the cluster items above so another agent can safely resume midway through the program without re-auditing all routes from scratch — BOTH
 
 ---
 
@@ -1962,3 +2117,158 @@ _The following endpoints were flagged by the scanner but are intentionally open 
 
 - [x] **QA-C-17** `PlannedVsActualPage.tsx` planned hours formula `allocationPercent * 0.4` is already tracked in QA-K3 as needing to use `timesheets.standardHoursPerWeek` from Platform Settings; additionally the formula ignores assignment period duration (a 1-week and 6-month assignment at 100% produce identical planned hours); fix the formula to incorporate the actual assignment date range — FE · Severity: Low · _(K3 fixed formula; `allocationPercent` now included in `MatchedRecordItem` and backend matched records)_
 - [x] **QA-C-18** `TwoFactorSetupPage` calls `POST /api/auth/2fa/setup` on every mount — accidental navigation away and back restarts the setup flow, invalidating the previous QR code; move the `httpPost` call inside a "Start Setup" button click handler, or check whether setup is already in progress before initiating — FE · Severity: Low · _(fixed: 'start' step added; setup only initiates on button click)_
+
+---
+
+## Phase 19 — Employee Lifecycle Activity Feed & Data Integrity
+
+> Critical gap: employee lifecycle events (onboarding, assignment changes, deactivation, termination) are not tracked in a unified activity feed. The person directory API does not expose `terminatedAt` or `hiredAt`. Reconciliation workflows cannot distinguish when an employee was deactivated.
+
+- [x] **19-01** Create `EmployeeActivityEvent` Prisma model — stores: personId, eventType (HIRED, ASSIGNED, UNASSIGNED, DEACTIVATED, TERMINATED, REACTIVATED, ROLE_CHANGED, ORG_UNIT_CHANGED), occurredAt, actorId, metadata JSON, relatedEntityId — BE
+- [x] **19-02** Emit activity events from existing services: CreateProjectAssignment, EndProjectAssignment, TerminateEmployee, DeactivateEmployee, person create, org membership changes — BE
+- [x] **19-03** Add API endpoint `GET /api/person-directory/:id/activity` returning paginated activity events — BE
+- [x] **19-04** Expose `terminatedAt` and `hiredAt` in PersonDirectoryItemDto and frontend PersonDirectoryItem type — BE/FE
+- [x] **19-05** Build `PersonActivityFeed` component showing chronological lifecycle events with icons and context — FE
+- [x] **19-06** Integrate activity feed into EmployeeDetailsPlaceholderPage (Person 360) — FE
+- [x] **19-07** Use `terminatedAt` in the assignment modal timeline (replace proxy with real date) — FE
+- [x] **19-08** Seed phase2 dataset with lifecycle events for all test accounts (hired dates, assignment events, Viktor Drago deactivation) — SEED
+- [x] **19-09** Add inactive employee warning + resolution options to assignment modal using real lifecycle data — FE
+- [ ] **19-10** Add tests for activity feed API, component, and modal inactive flow — FE/BE/testing
+
+---
+
+## Phase 20 — Comprehensive Codebase Audit (Skills-Informed Review, 2026-04-15)
+
+> Generated from 12 parallel audit agents covering: Security, Business Logic, Architecture, Clean Code,
+> React Performance, Accessibility, Playwright E2E, UX Laws, UI Interaction States, Design System,
+> Docker/CI, and TypeScript Quality. All items are review-pending — do not implement until approved.
+
+### Phase 20a — Security Hardening II (Critical & High)
+
+- [x] **20a-01** Protect `/diagnostics` endpoint — currently `@Public()`, exposes DB host/port/version, migration timing, integration configs, notification failure counts to unauthenticated users. Add `@RequireRoles('admin')` — BE · Severity: Critical
+- [x] **20a-02** Validate test-header auth bypass is impossible in production — `AUTH_ALLOW_TEST_HEADERS` and `AUTH_DEV_BOOTSTRAP_ENABLED` must error on startup if `NODE_ENV=production`. Add startup guard in `authenticated-principal.factory.ts` — BE · Severity: Critical
+- [x] **20a-03** Fix IDOR in assignment actorId — `assignments.controller.ts:237,259` uses `request.actorId ?? principal?.personId` fallback; request body can override actorId. Always derive actorId from authenticated principal only — BE · Severity: High
+- [x] **20a-04** Fix insecure 2FA temp token parsing — `auth.service.ts:152-174` manually base64-decodes JWT instead of using `verifyPlatformJwt()`. Use the standard verification path — BE · Severity: High
+- [x] **20a-05** Remove password reset token from logs — `auth.service.ts:252,254` logs full reset link/token in plaintext. Log only email or token hash — BE · Severity: High
+- [x] **20a-06** Add rate limiting to password reset endpoint — `POST /password-reset/request` has no throttle; allows brute-force account enumeration. Add `@Throttle({ default: { limit: 3, ttl: 3600000 } })` — BE · Severity: High
+- [x] **20a-07** Add missing security headers in production — no HSTS, CSP, X-Content-Type-Options, X-Frame-Options in production mode (only set in dev). Apply helmet or manual middleware in `main.ts` — BE · Severity: High
+- [x] **20a-08** Add HSTS and CSP headers to `frontend/nginx.conf` — missing `Strict-Transport-Security` and `Content-Security-Policy` headers — INFRA · Severity: High
+- [x] **20a-09** Replace `$queryRawUnsafe()` with `$queryRaw()` in `health.service.ts:198,211` — hardcoded queries but `Unsafe` variant is discouraged — BE · Severity: Medium
+- [x] **20a-10** Add CSRF protection for state-changing endpoints — no CSRF tokens implemented; cookie-based auth without CSRF protection — BE · Severity: Medium
+- [x] **20a-11** Replace `innerHTML = ''` with `el.replaceChildren()` in `InteractiveOrgChart.tsx:276` — DOM manipulation XSS risk surface — FE · Severity: Medium
+- [x] **20a-12** Validate admin config DTO — `admin-config.controller.ts` account creation/update uses loose inline types without class-validator decorators. Create proper DTOs — BE · Severity: Medium
+- [x] **20a-13** Strengthen password policy — `auth.service.ts:387-389` only validates min length (8). Add complexity requirements (uppercase, lowercase, number, special char) — BE · Severity: Low
+
+### Phase 20b — Business Logic Integrity & Lifecycle Gaps
+
+- [x] **20b-01** Implement assignment APPROVED → ACTIVE transition — assignments stay APPROVED indefinitely; no mechanism to activate when `validFrom` is reached. Impacts all utilization metrics — BE · Severity: Critical
+- [x] **20b-02** Prevent timesheet self-approval — `timesheets.service.ts` `approveWeek()` never validates `approverId !== week.personId`. An employee can approve their own timesheet — BE · Severity: Critical
+- [x] **20b-03** Prevent assignment self-approval — `approve-project-assignment.service.ts` never validates `actorId !== assignment.personId` — BE · Severity: Critical
+- [x] **20b-04** Add project date bound validation for assignments — `create-project-assignment.service.ts` doesn't check that `assignment.validTo <= project.endsOn`. Can assign people past project end date — BE · Severity: High
+- [x] **20b-05** Auto-end assignments on employee termination — _(already done)_ — cascade logic already exists in `terminate-employee.service.ts:47-62` — BE · Severity: High
+- [x] **20b-06** Switch audit log to Prisma persistence — _(already done)_ — `audit-observability.module.ts:22-24` maps `InMemoryAuditLogStore` to `PrismaAuditLogStore` via `useExisting` — BE · Severity: High
+- [x] **20b-07** Implement case approval/rejection workflow — case statuses include APPROVED/REJECTED but no services exist to transition to these states — BE · Severity: High
+- [x] **20b-08** Auto-create onboarding case on employee creation — creating an employee doesn't trigger an ONBOARDING case; HR must remember manually — BE · Severity: Medium
+- [x] **20b-09** Auto-create offboarding case on employee deactivation — `deactivate-employee.service.ts` doesn't create OFFBOARDING case — BE · Severity: Medium
+- [x] **20b-10** Add missing notification events — no notifications for: assignment activated, assignment amended, project staffed, employee deactivated, case approved/rejected, timesheet locked, leave request denied — BE · Severity: Medium
+- [x] **20b-11** Add overlapping leave request detection — can approve overlapping leave requests; no date conflict check — BE · Severity: Medium
+- [x] **20b-12** Store override reason in assignment history — _(already done)_ — override reason persisted in ASSIGNMENT_OVERRIDE_APPLIED history entry — `allowOverlapOverride` bypasses conflict check but `overrideReason` isn't persisted with approval — BE · Severity: Medium
+- [x] **20b-13** Validate person is active at assignment approval time — person could be deactivated between creation and approval — BE · Severity: Medium
+- [x] **20b-14** Add budget approval workflow — budgets can be upserted with no approval state (DRAFT → PENDING → APPROVED) — BE · Severity: Medium
+- [-] **20b-15** Persist report templates to database — report builder templates are in-memory only; lost on restart — BE · Severity: Low
+
+### Phase 20c — Architecture & Clean Code
+
+#### 20c-I: Module Boundary & Repository Pattern
+
+- [ ] **20c-01** Fix cross-module boundary violations — `workload-dashboard-query.service.ts` directly imports in-memory repositories from 5 other modules. Create facade/query services exported from each module — BE · Severity: Critical
+- [ ] **20c-02** Create `LeaveRequestRepository` — `leave-requests.service.ts` directly accesses Prisma for all CRUD; bypasses repository pattern entirely — BE · Severity: High
+- [ ] **20c-03** Rename/refactor `in-memory-staffing-request.service.ts` — named "in-memory" but uses Prisma directly (40+ calls). Rename to `PrismaStaffingRequestService` and add repository abstraction — BE · Severity: High
+- [ ] **20c-04** Move Prisma calls out of `metadata-dictionary-query.service.ts` — direct Prisma calls for customFieldDefinition and workflowDefinition mixed into query service — BE · Severity: High
+- [ ] **20c-05** Add transaction boundaries — multi-step operations in `assign-project-team`, `terminate-employee`, `create-project-assignment` services lack `$transaction()` wrapping. Partial failures leave inconsistent state — BE · Severity: High
+
+#### 20c-II: Service Decomposition
+
+- [ ] **20c-06** Split `AuthService` (498 lines, 16 methods) into: `AuthenticationService`, `TwoFactorService`, `PasswordManagementService`, `AccountManagementService` — BE · Severity: High
+- [ ] **20c-07** Extract controller presentation logic — `cases.controller.ts:365-395` has `loadPeopleMap()` and `mapCase()` data fetching/mapping in controller. Create `CasePresenterService` — BE · Severity: Medium
+- [ ] **20c-08** Resolve circular dependencies — 4 modules use `forwardRef()`: organization ↔ assignments ↔ project-registry ↔ exceptions. Establish clear dependency hierarchy — BE · Severity: Medium
+
+#### 20c-III: DTO & Type Safety
+
+- [ ] **20c-09** Create DTOs for 25+ inline `@Body()` parameters — cases controller (addStep, addParticipant, addComment, updateSla), admin controller (updateAccount, importPreview, createWebhook), staffing controller, metadata controller all use unvalidated inline types — BE · Severity: High
+- [ ] **20c-10** Replace `any` types in 15+ Prisma repository Gateway interfaces — all use `args: any` and `Promise<any>`. Create properly typed Gateway generics — BE · Severity: High
+- [ ] **20c-11** Fix dangerous `as unknown as` type assertions — 12+ instances in cases.controller, hr-dashboard-query, InteractiveOrgChart, SettingsPage. Create proper TypeScript interfaces — BE/FE · Severity: Medium
+- [ ] **20c-12** Add `skip`/`take` pagination to unbounded `findMany()` calls — 4+ notification/project/metadata repositories load entire tables without limits — BE · Severity: Medium
+
+#### 20c-IV: Clean Code & Tech Debt
+
+- [ ] **20c-13** Extract `useDashboardQuery` shared hook — all 6 dashboard hooks duplicate identical fetch+state+cleanup pattern (~200 lines saved) — FE · Severity: High
+- [ ] **20c-14** Extract `fetchDashboard<T>` generic API utility — 6 dashboard-*.ts API modules have identical URLSearchParams + fetch wrapper boilerplate — FE · Severity: High
+- [ ] **20c-15** Split god components — `ProjectManagerDashboardPage` (441 lines), `DirectorDashboardPage` (356 lines), `HrDashboardPage` (400+ lines) each contain fetch logic + 3-6 tabs + charts + tables. Extract tab contents into separate components — FE · Severity: High
+- [ ] **20c-16** Extract `usePersonSelector` hook — identical person-change callback pattern repeated in 4+ dashboard pages — FE · Severity: Medium
+- [x] **20c-17** Add React ErrorBoundary — _(already done)_ — ErrorBoundary exists in components/common/ and wraps routes in router.tsx — no dashboard pages are wrapped in error boundaries; unhandled errors crash entire page — FE · Severity: Medium
+- [ ] **20c-18** Refactor boolean parameters in `CreateProjectAssignmentService` — `allowOverlapOverride`, `draft`, `projectValidated`, `personValidated` flags violate SRP. Use builder pattern or separate services — BE · Severity: Medium
+
+### Phase 20d — React Performance & Frontend Quality
+
+- [x] **20d-01** Extract inline style objects from hot-path table components — `ActionDataTable.tsx` (20+ inline styles), `DataTable.tsx` (7), `AuditTimeline.tsx` (15+) create new objects on every render. Move to CSS classes, constants, or useMemo — FE · Severity: High
+- [x] **20d-02** Extract inline styles from route pages — `WorkloadMatrixPage.tsx` (15+), `ProjectsPage.tsx` (7) have inline style objects in render path. Move to CSS or const — FE · Severity: High
+- [x] **20d-03** Combine waterfall fetches in `WorkloadMatrixPage.tsx:71-92` — three independent useEffects fetch resource pools, org chart, and person directory sequentially. Combine with `Promise.all()` — FE · Severity: Medium
+- [x] **20d-04** Stabilize `ProjectsPage` titlebar dependencies — `healthMap` and `state.visibleItems` cause unnecessary re-renders. Wrap with `useMemo` — FE · Severity: Medium
+- [x] **20d-05** Add disabled button styling — `global.css` buttons with `disabled` attribute lack visual differentiation (no opacity/cursor change). Add `.button:disabled` styles for all variants — FE · Severity: High
+- [x] **20d-06** Add focus-visible styles to interactive table rows — `DataTable.tsx` clickable rows and `.dash-compact-table tr[data-href]` respond to click/keyboard but lack `:focus-visible` outline — FE · Severity: High
+- [x] **20d-07** Add focus-visible styles to KPI strip items — `.kpi-strip__item` links lack `:focus-visible` styling for keyboard navigation — FE · Severity: Medium
+- [x] **20d-08** Add tip balloon keyboard activation — tip balloons only show on `:hover`; add `:focus-within` selector for keyboard users — FE · Severity: Medium
+- [x] **20d-09** Add pagination to `StaffingRequestsPage.tsx` — renders all requests without pagination or virtualization — FE · Severity: Medium
+- [x] **20d-10** Add CSS transition to table row hover — `.data-table__row--interactive:hover td` background changes instantly. Add `transition: background-color 120ms ease` — FE · Severity: Low
+- [x] **20d-11** Add fade-in animation to `ConfirmDialog` — dialog appears instantly without transition — FE · Severity: Low
+
+### Phase 20e — Accessibility (WCAG 2.2 AA)
+
+- [x] **20e-01** Add `prefers-reduced-motion` media queries — skeleton-pulse animation (`global.css:3113`), pulse-dot animation (`global.css:3597`) run without checking motion preferences. Wrap in `@media (prefers-reduced-motion: no-preference)` — FE · Severity: High
+- [x] **20e-02** Replace interactive `<div>` with `<button>` in `NotificationBell.tsx:254-270` — notification item has onClick+tabIndex+role="button" but should use native `<button>` for proper semantics — FE · Severity: High
+- [x] **20e-03** Add `scope="col"` to table headers — `MetadataEntryPanel.tsx:33-52` and `BulkAssignmentResults.tsx:51-102` have `<th>` without scope attributes — FE · Severity: Medium
+- [x] **20e-04** Verify `--color-text-muted` and `--color-text-subtle` contrast ratios — used in ActionDataTable, EmptyState, ErrorState, AuditTimeline, SectionCard. Must meet 4.5:1 for normal text — FE · Severity: Medium
+- [x] **20e-05** Add focus-visible indicator to `ChartWrapper.tsx:20` — has `tabIndex={0}` but no explicit focus styling — FE · Severity: Medium
+- [x] **20e-06** Add descriptive captions to DataTable instances — `caption` prop exists but most tables don't use it — FE · Severity: Low
+
+### Phase 20f — Playwright E2E Test Hardening
+
+- [x] **20f-01** Replace all hardcoded API URLs with config variable — 30+ test files hardcode `http://127.0.0.1:3000/api` and `http://127.0.0.1:5173`. Create shared `API_BASE` constant from `process.env` or playwright config — E2E · Severity: Critical
+- [x] **20f-02** Remove `page.waitForTimeout(2000)` from `08-director.spec.ts:63` — use `expect(locator).toBeVisible()` or `page.waitForURL()` instead — E2E · Severity: Critical
+- [x] **20f-03** Fix port mismatch — ux-laws tests use port 5173 but playwright config uses 4173. Align all tests to config `baseURL` — E2E · Severity: High
+- [x] **20f-04** Replace CSS/XPath selectors with semantic locators — `loading-states.spec.ts`, `kpi-drilldown.spec.ts`, `smoke.spec.ts`, `workload-happy-path.spec.ts` use `.locator('.css-class')` instead of `getByRole()`/`getByTestId()` — E2E · Severity: High
+- [x] **20f-05** Reduce flaky `.first()`/`.nth()` patterns — 20+ locations across test files use `.first()` on broad selectors without sufficient context. Use more specific locators — E2E · Severity: Medium
+- [x] **20f-06** Refactor `10-cross-role.spec.ts` shared state — uses `test.describe.serial()` with module-scope `let` variables (`assignmentId`, `crossProjectId`, `caseId`). Use fixtures or setup hooks instead — E2E · Severity: Medium
+- [x] **20f-07** Increase CI retries from 1 to 2 in `playwright.config.ts:22` and change trace to `'on-first-retry'` — E2E · Severity: Low
+- [x] **20f-08** Add accessibility testing with `@axe-core/playwright` — no E2E tests include a11y assertions. Add `checkA11y(page)` to at least one test per role — E2E · Severity: Medium
+
+### Phase 20g — UX Laws Compliance
+
+- [x] **20g-01** Persist filters via URL in `CasesPage.tsx` — `useCasesList()` hook stores filters (`caseTypeKey`, `ownerPersonId`, `subjectPersonId`) in useState, not URL params. Filters lost on navigation — FE · Law 5 · Severity: High
+- [x] **20g-02** Persist filters via URL in `WorkloadMatrixPage.tsx:55-61` — 5 filter states (`poolId`, `orgUnitId`, `managerId`, `personFilter`, `projectFilter`) use useState. Replace with `useFilterParams` — FE · Law 5 · Severity: High
+- [x] **20g-03** Fix timesheet approval one-screen rule — `TimesheetApprovalPage.tsx:305-347` requires expanding a row to see timesheet detail before clicking Approve/Reject. Full context not visible alongside action buttons — FE · Law 7 · Severity: High
+- [x] **20g-04** Pre-fill `projectId` from URL in `CreateStaffingRequestPage.tsx` and `CreateAssignmentPage.tsx` — forms don't extract `?projectId=` param even though parent pages pass it — FE · Law 6 · Severity: Medium
+- [x] **20g-05** Pre-fill `actorId` from auth context in `BulkAssignmentPage.tsx` — all form fields start empty; actorId should come from `useAuth().principal.personId` — FE · Law 6 · Severity: Medium
+- [x] **20g-06** Add forward actions to error states — `CasesPage.tsx:63` ErrorState has no retry/dashboard/create action. `WorkloadMatrixPage.tsx:237-240` EmptyState has no action buttons — FE · Law 2 · Severity: Medium
+- [x] **20g-07** Persist sort order in URL on `ProjectsPage.tsx:29` — `sortByHealth` uses local state; lost on navigation — FE · Law 10 · Severity: Medium
+- [x] **20g-08** Fix KPI drilldown on `TeamDashboardPage.tsx:68-73` — "Unassigned" KPI links to `#unassigned` hash anchor instead of filtered people list (`/people?unassigned=true`) — FE · Law 9 · Severity: Medium
+
+### Phase 20h — Design System Token Enforcement
+
+- [x] **20h-01** Replace hardcoded hex colors in `global.css` — 15+ instances of `#fff`, `#111a24`, `#f1f5f8`, etc. in sidebar, skip-link, banners (lines 33, 87, 109, 255, 272, 730, 735, 801, 835). Use CSS variables — FE · Severity: High
+- [x] **20h-02** Replace hardcoded `rgba()` values in `global.css` — 20+ instances in scrollbar colors, sidebar states, transitions (lines 54, 59, 181, 195, 224, 225, 242, 243, 296, 301, 340, 351, 375). Tokenize with design variables — FE · Severity: Medium
+- [x] **20h-03** Replace hardcoded `allocColor()` hex returns in `WorkloadMatrixPage.tsx:28-31` — returns `#2e7d32`, `#1b5e20`, `#e65100`, `#b71c1c`. Use `var(--color-status-*)` tokens — FE · Severity: High
+- [x] **20h-04** Replace inline `fontSize: 11`/`fontSize: 12` values — `ProjectsPage.tsx`, `StaffingRequestsPage.tsx`, `SectionCard.tsx`, `ViewportTable.tsx` use hardcoded pixel font sizes in inline styles. Use CSS variables or typography scale — FE · Severity: Medium
+- [x] **20h-05** Replace inline `gap`/`padding`/`margin` px values — `LeaveRequestPage.tsx`, `BulkImportPage.tsx`, `AdminPanelPage.tsx`, `SectionCard.tsx`, `ViewportTable.tsx` use hardcoded spacing instead of `var(--space-*)` tokens — FE · Severity: Medium
+- [x] **20h-06** Replace raw `<table>` with `DataTable` component — `LeaveRequestPage.tsx` (2 tables), `ResourcePoolsPage.tsx`, `StaffingRequestsPage.tsx`, `AdminPanelPage.tsx`, `BulkImportPage.tsx` (2 tables) use raw `<table className="dash-compact-table">` — FE · Severity: Medium
+- [x] **20h-07** Remove hardcoded color fallbacks — `UtilizationPage.tsx:37-41,166-170` uses `'var(--color-status-active-light, #bbf7d0)'` pattern with hex fallbacks that defeat design token consistency — FE · Severity: Low
+
+### Phase 20i — Docker, CI/CD & Infrastructure
+
+- [x] **20i-01** Pin all GitHub Actions to commit SHAs — `ci.yml`, `deploy.yml`, `architecture-check.yml` use semver tags (`@v4`, `@v3`, `@v6`). Pin to full SHA for supply chain security — INFRA · Severity: Critical
+- [x] **20i-02** Add resource limits to all Docker Compose services — no `resources.limits` defined in `docker-compose.yml` or `docker-compose.prod.yml`. Add CPU/memory limits — INFRA · Severity: High
+- [x] **20i-03** Add dependency vulnerability scanning to CI — no `npm audit`, Snyk, or Dependabot step in CI pipeline — INFRA · Severity: Medium
+- [x] **20i-04** Add container image scanning — no Trivy or similar scanner before image push in CI/CD — INFRA · Severity: Medium
+- [x] **20i-05** Add rate limiting to Caddyfile — no request rate limiting or size limits on API reverse proxy — INFRA · Severity: Medium
+- [x] **20i-06** Fix health check compatibility — `docker-compose.yml` health checks use `wget` which may not be available in Alpine images. Use `nc` or shell commands — INFRA · Severity: Low

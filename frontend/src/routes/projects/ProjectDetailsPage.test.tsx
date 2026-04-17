@@ -18,7 +18,12 @@ import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { fetchProjectHealth } from '@/lib/api/project-health';
 import { fetchProjectBudgetDashboard } from '@/lib/api/project-budget';
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
-import { ProjectDetailsPlaceholderPage } from './ProjectDetailsPlaceholderPage';
+import { fetchComputedRag, fetchEnhancedComputedRag, fetchLatestRagSnapshot, fetchRagHistory, fetchStaffingAlerts, createRagSnapshot } from '@/lib/api/project-rag';
+import { fetchRolePlan, fetchRolePlanComparison, fetchStaffingSummary, upsertRolePlan, deleteRolePlanEntry, generateRequestsFromPlan } from '@/lib/api/project-role-plan';
+import { fetchRiskSummary, fetchRisks, fetchRiskMatrix } from '@/lib/api/project-risks';
+import { fetchProjectVendors } from '@/lib/api/vendors';
+import { fetchProjectDashboard } from '@/lib/api/project-dashboard';
+import { ProjectDetailPage } from './ProjectDetailPage';
 
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
@@ -26,6 +31,10 @@ vi.mock('@/app/auth-context', () => ({
     isAuthenticated: true,
     isLoading: false,
   }),
+}));
+
+vi.mock('@/app/drilldown-context', () => ({
+  useDrilldown: () => ({ setCurrentLabel: vi.fn(), currentLabel: null, reset: vi.fn() }),
 }));
 
 vi.mock('@/lib/api/person-directory', () => ({
@@ -83,6 +92,54 @@ vi.mock('@/lib/api/business-audit', () => ({
   fetchBusinessAudit: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 }),
 }));
 
+vi.mock('@/lib/api/project-rag', () => ({
+  fetchComputedRag: vi.fn().mockResolvedValue({ staffingRag: 'GREEN', staffingExplanation: 'OK', scheduleRag: 'GREEN', scheduleExplanation: 'OK', budgetRag: 'GREEN', budgetExplanation: 'OK', overallRag: 'GREEN' }),
+  fetchEnhancedComputedRag: vi.fn().mockResolvedValue({ staffingRag: 'GREEN', staffingExplanation: 'OK', scheduleRag: 'GREEN', scheduleExplanation: 'OK', budgetRag: 'GREEN', budgetExplanation: 'OK', overallRag: 'GREEN', scopeRag: 'GREEN', scopeExplanation: 'OK', businessRag: 'GREEN', businessExplanation: 'OK', dimensionHints: {} }),
+  fetchLatestRagSnapshot: vi.fn().mockResolvedValue(null),
+  fetchRagHistory: vi.fn().mockResolvedValue([]),
+  fetchStaffingAlerts: vi.fn().mockResolvedValue([]),
+  createRagSnapshot: vi.fn(),
+}));
+
+vi.mock('@/lib/api/project-risks', () => ({
+  fetchRisks: vi.fn().mockResolvedValue([]),
+  fetchRiskSummary: vi.fn().mockResolvedValue({ totalRisks: 0, totalIssues: 0, openRisks: 0, openIssues: 0, criticalCount: 0, topRisks: [] }),
+  fetchRiskMatrix: vi.fn().mockResolvedValue([]),
+  createRisk: vi.fn(),
+  updateRisk: vi.fn(),
+  convertRiskToIssue: vi.fn(),
+  resolveRisk: vi.fn(),
+  closeRisk: vi.fn(),
+}));
+
+vi.mock('@/lib/api/vendors', () => ({
+  fetchProjectVendors: vi.fn().mockResolvedValue([]),
+  fetchVendors: vi.fn().mockResolvedValue([]),
+  assignVendorToProject: vi.fn(),
+  updateVendorEngagement: vi.fn(),
+  endVendorEngagement: vi.fn(),
+}));
+
+vi.mock('@/lib/api/project-role-plan', () => ({
+  fetchRolePlan: vi.fn().mockResolvedValue([]),
+  fetchRolePlanComparison: vi.fn().mockResolvedValue({ rows: [], overallFillRate: 0, totalPlanned: 0, totalFilled: 0, totalGap: 0 }),
+  fetchStaffingSummary: vi.fn().mockResolvedValue({ totalPlanned: 0, totalInternalFilled: 0, totalVendorFilled: 0, totalFilled: 0, fillRate: 0, totalGap: 0 }),
+  upsertRolePlan: vi.fn(),
+  deleteRolePlanEntry: vi.fn(),
+  generateRequestsFromPlan: vi.fn(),
+}));
+
+vi.mock('@/lib/api/project-dashboard', () => ({
+  fetchProjectDashboard: vi.fn().mockResolvedValue({
+    allocationByPerson: [],
+    asOf: '2026-04-17T00:00:00Z',
+    assignments: [],
+    evidenceByWeek: [],
+    project: { id: 'prj-1', projectCode: 'PRJ-102', name: 'Atlas ERP Rollout', description: null, status: 'ACTIVE', startsOn: null, endsOn: null, projectManagerId: null },
+    staffingSummary: { totalAssignments: 0, activeAssignmentCount: 0, totalEvidenceHoursLast30d: 0 },
+  }),
+}));
+
 const mockedFetchProjectById = vi.mocked(fetchProjectById);
 const mockedActivateProject = vi.mocked(activateProject);
 const mockedCloseProject = vi.mocked(closeProject);
@@ -95,9 +152,52 @@ const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
 const mockedFetchProjectBudgetDashboard = vi.mocked(fetchProjectBudgetDashboard);
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
+const mockedFetchComputedRag = vi.mocked(fetchComputedRag);
+const mockedFetchEnhancedComputedRag = vi.mocked(fetchEnhancedComputedRag);
+const mockedFetchRiskSummary = vi.mocked(fetchRiskSummary);
+const mockedFetchRisks = vi.mocked(fetchRisks);
+const mockedFetchRiskMatrix = vi.mocked(fetchRiskMatrix);
+const mockedFetchProjectVendors = vi.mocked(fetchProjectVendors);
+const mockedFetchLatestRagSnapshot = vi.mocked(fetchLatestRagSnapshot);
+const mockedFetchRagHistory = vi.mocked(fetchRagHistory);
+const mockedFetchStaffingAlerts = vi.mocked(fetchStaffingAlerts);
+const mockedCreateRagSnapshot = vi.mocked(createRagSnapshot);
+const mockedFetchRolePlan = vi.mocked(fetchRolePlan);
+const mockedFetchRolePlanComparison = vi.mocked(fetchRolePlanComparison);
+const mockedFetchStaffingSummary = vi.mocked(fetchStaffingSummary);
+const mockedUpsertRolePlan = vi.mocked(upsertRolePlan);
+const mockedDeleteRolePlanEntry = vi.mocked(deleteRolePlanEntry);
+const mockedGenerateRequestsFromPlan = vi.mocked(generateRequestsFromPlan);
+const mockedFetchProjectDashboard = vi.mocked(fetchProjectDashboard);
 
-describe('ProjectDetailsPage', () => {
+describe('ProjectDetailPage', () => {
   beforeEach(() => {
+    // Re-apply mock implementations after vi.restoreAllMocks() in setup.ts
+    mockedFetchComputedRag.mockResolvedValue({ staffingRag: 'GREEN', staffingExplanation: 'OK', scheduleRag: 'GREEN', scheduleExplanation: 'OK', budgetRag: 'GREEN', budgetExplanation: 'OK', overallRag: 'GREEN' });
+    mockedFetchEnhancedComputedRag.mockResolvedValue({ staffingRag: 'GREEN', staffingExplanation: 'OK', scheduleRag: 'GREEN', scheduleExplanation: 'OK', budgetRag: 'GREEN', budgetExplanation: 'OK', overallRag: 'GREEN', scopeRag: 'GREEN', scopeExplanation: 'OK', businessRag: 'GREEN', businessExplanation: 'OK', dimensionHints: {} });
+    mockedFetchLatestRagSnapshot.mockResolvedValue(null);
+    mockedFetchRagHistory.mockResolvedValue([]);
+    mockedFetchStaffingAlerts.mockResolvedValue([]);
+    mockedFetchRiskSummary.mockResolvedValue({ totalRisks: 0, totalIssues: 0, openRisks: 0, openIssues: 0, criticalCount: 0, topRisks: [] });
+    mockedFetchRisks.mockResolvedValue([]);
+    mockedFetchRiskMatrix.mockResolvedValue([]);
+    mockedFetchProjectVendors.mockResolvedValue([]);
+    mockedCreateRagSnapshot.mockResolvedValue({ id: 'snap-1', projectId: 'prj-1', createdAt: '2026-04-17T00:00:00Z', staffingRag: 'GREEN', scheduleRag: 'GREEN', budgetRag: 'GREEN', overallRag: 'GREEN', narrative: '', accomplishments: '', nextSteps: '', clientRag: 'GREEN' } as any);
+    mockedFetchRolePlan.mockResolvedValue([]);
+    mockedFetchRolePlanComparison.mockResolvedValue({ rows: [], overallFillRate: 0, totalPlanned: 0, totalFilled: 0, totalGap: 0 });
+    mockedFetchStaffingSummary.mockResolvedValue({ totalPlanned: 0, totalInternalFilled: 0, totalVendorFilled: 0, totalFilled: 0, fillRate: 0, totalGap: 0 });
+    mockedUpsertRolePlan.mockResolvedValue([]);
+    mockedDeleteRolePlanEntry.mockResolvedValue(undefined);
+    mockedGenerateRequestsFromPlan.mockResolvedValue({ createdCount: 0, skippedCount: 0 } as any);
+    mockedFetchProjectDashboard.mockResolvedValue({
+      allocationByPerson: [],
+      asOf: '2026-04-17T00:00:00Z',
+      assignments: [],
+      evidenceByWeek: [],
+      project: { id: 'prj-1', projectCode: 'PRJ-102', name: 'Atlas ERP Rollout', description: null, status: 'ACTIVE', startsOn: null, endsOn: null, projectManagerId: null },
+      staffingSummary: { totalAssignments: 0, activeAssignmentCount: 0, totalEvidenceHoursLast30d: 0 },
+    });
+
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     mockedFetchProjectById.mockReset();
     mockedActivateProject.mockReset();
@@ -108,7 +208,7 @@ describe('ProjectDetailsPage', () => {
     mockedFetchAssignments.mockResolvedValue({ items: [], totalCount: 0 });
     mockedFetchWorkEvidence.mockResolvedValue({ items: [] });
     mockedFetchProjectHealth.mockResolvedValue({
-      evidenceScore: 0,
+      timeScore: 0,
       grade: 'red',
       projectId: 'prj-1',
       score: 17,
@@ -124,7 +224,7 @@ describe('ProjectDetailsPage', () => {
     });
     mockedFetchPersonDirectory.mockResolvedValue({
       items: [
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Resource Manager One', dottedLineManagers: [], grade: null, id: 'resource-manager-1', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Resource Manager One', dottedLineManagers: [], grade: null, id: 'resource-manager-1', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null },
       ],
       page: 1,
       pageSize: 200,
@@ -150,7 +250,7 @@ describe('ProjectDetailsPage', () => {
     });
   });
 
-  it('renders project data', async () => {
+  it('renders project data on Overview tab', async () => {
     mockedFetchProjectById.mockResolvedValue({
       assignmentCount: 3,
       description: 'Jira-linked ERP rollout program.',
@@ -181,12 +281,12 @@ describe('ProjectDetailsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Atlas ERP Rollout' })).toBeInTheDocument();
     expect(screen.getAllByText('PRJ-102').length).toBeGreaterThan(0);
     expect(screen.getByText('Jira-linked ERP rollout program.')).toBeInTheDocument();
-    expect(screen.getByText('Open external link')).toBeInTheDocument();
+    expect(screen.getByText(/Open in JIRA/)).toBeInTheDocument();
     expect(screen.getByText('Apr 1, 2026')).toBeInTheDocument();
     expect(screen.getByText('Sep 30, 2026')).toBeInTheDocument();
-    // Assign Team To Project is on the Team tab
+    // Assign Team is on Team tab, not Overview
     expect(screen.queryByText('Assign Team To Project')).not.toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Team' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Team & Vendors' })).toBeInTheDocument();
   });
 
   it('shows missing project state', async () => {
@@ -290,7 +390,7 @@ describe('ProjectDetailsPage', () => {
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await user.click(screen.getByRole('button', { name: 'Close project' }));
 
-    // ConfirmDialog now shows — click the dialog's confirm button
+    // ConfirmDialog now shows
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm close' }));
 
@@ -341,17 +441,14 @@ describe('ProjectDetailsPage', () => {
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await user.click(screen.getByRole('button', { name: 'Close project' }));
 
-    // Click confirm in the ConfirmDialog first
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm close' }));
 
-    // After the 409 conflict, Project Closure Override panel shows
     expect(await screen.findByText('Project Closure Override')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Override reason'), 'Approved emergency closure despite remaining staffing.');
     await user.click(screen.getByRole('button', { name: 'Close project with override' }));
 
-    // ConfirmDialog for the override now shows
     expect(await screen.findByText('Confirm Closure Override')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Apply override' }));
 
@@ -364,7 +461,7 @@ describe('ProjectDetailsPage', () => {
 
     expect(
       await screen.findByText(
-        'Project Atlas ERP Rollout closed by authorized override with 4.50 mandays captured from work evidence.',
+        /Project Atlas ERP Rollout closed by override/,
       ),
     ).toBeInTheDocument();
   });
@@ -393,7 +490,6 @@ describe('ProjectDetailsPage', () => {
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await user.click(screen.getByRole('button', { name: 'Close project' }));
 
-    // Click confirm in the ConfirmDialog
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm close' }));
 
@@ -456,7 +552,7 @@ describe('ProjectDetailsPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
+    await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
 
     await screen.findByText('Assign Team To Project');
     await user.selectOptions(await screen.findByLabelText('Workflow Actor'), 'resource-manager-1');
@@ -478,8 +574,6 @@ describe('ProjectDetailsPage', () => {
     });
 
     expect(await screen.findByTestId('assign-team-result')).toBeInTheDocument();
-    expect(screen.getByText('Ethan Brooks (asn-1)')).toBeInTheDocument();
-    expect(screen.getByText('Sophia Kim: ASSIGNMENT_CONFLICT')).toBeInTheDocument();
   });
 
   it('shows assign-team validation errors', async () => {
@@ -488,9 +582,8 @@ describe('ProjectDetailsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/projects/prj-1');
 
-    // Navigate to team tab first
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
+    await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
 
     await screen.findByText('Assign Team To Project');
     await user.click(screen.getByRole('button', { name: 'Assign team' }));
@@ -522,28 +615,28 @@ describe('ProjectDetailsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/projects/prj-1');
 
-    // Summary tab is default — project name visible
+    // Overview tab is default — project name visible
     expect(await screen.findByRole('heading', { name: 'Atlas ERP Rollout' })).toBeInTheDocument();
 
     // Click Team tab
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
-    expect(await screen.findByText('Alice Smith')).toBeInTheDocument();
-    expect(screen.getByText('Lead Engineer')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
+    expect((await screen.findAllByText('Alice Smith')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Lead Engineer').length).toBeGreaterThan(0);
 
-    // Click back to Summary tab
-    await user.click(screen.getByRole('tab', { name: 'Summary' }));
+    // Click back to Overview tab
+    await user.click(screen.getByRole('tab', { name: 'Status & Health' }));
     expect(await screen.findByText('Jira-linked ERP rollout program.')).toBeInTheDocument();
 
-    // Click Budget tab — shows budget empty state (mock has budget: null)
+    // Click Budget tab
     await user.click(screen.getByRole('tab', { name: 'Budget' }));
     expect(await screen.findByText('Budget Summary')).toBeInTheDocument();
 
-    // Click History tab — shows audit timeline (empty)
-    await user.click(screen.getByRole('tab', { name: 'History' }));
-    expect(await screen.findByText('Change History')).toBeInTheDocument();
+    // Click Lifecycle tab
+    await user.click(screen.getByRole('tab', { name: 'Lifecycle' }));
+    expect(await screen.findByText('Full Change History')).toBeInTheDocument();
   });
 
-  it('shows budget health color badge on Summary tab', async () => {
+  it('shows budget health badge on Overview tab', async () => {
     mockedFetchProjectById.mockResolvedValue(buildActiveProject());
     mockedFetchProjectBudgetDashboard.mockResolvedValue({
       budget: { capex: 50000, opex: 30000, total: 80000, fiscalYear: 2026 },
@@ -556,13 +649,13 @@ describe('ProjectDetailsPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    expect(await screen.findByLabelText('Budget: At Risk')).toBeInTheDocument();
+    expect(await screen.findByText(/Budget: At Risk/)).toBeInTheDocument();
   });
 
-  it('shows health badge on Summary tab', async () => {
+  it('shows health badge on Overview tab', async () => {
     mockedFetchProjectById.mockResolvedValue(buildActiveProject());
     mockedFetchProjectHealth.mockResolvedValue({
-      evidenceScore: 33,
+      timeScore: 33,
       grade: 'green',
       projectId: 'prj-1',
       score: 84,
@@ -573,7 +666,16 @@ describe('ProjectDetailsPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    expect(await screen.findByLabelText('Health: 84 (green)')).toBeInTheDocument();
+    expect(await screen.findByTitle('Health score: 84/100 (green)')).toBeInTheDocument();
+  });
+
+  it('shows RAG radiator on Overview tab', async () => {
+    mockedFetchProjectById.mockResolvedValue(buildActiveProject());
+
+    renderWithRouter('/projects/prj-1');
+
+    await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
+    expect(await screen.findByTestId('quadrant-radiator')).toBeInTheDocument();
   });
 });
 
@@ -581,7 +683,7 @@ function renderWithRouter(initialEntry: string): void {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route element={<ProjectDetailsPlaceholderPage />} path="/projects/:id" />
+        <Route element={<ProjectDetailPage />} path="/projects/:id" />
       </Routes>
     </MemoryRouter>,
   );

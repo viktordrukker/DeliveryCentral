@@ -10,7 +10,7 @@ import { p2 } from '../fixtures/phase2-identifiers';
 const { employee } = p2.accounts;
 const ethan = p2.people.ethanBrooks;
 
-test.describe('E1 — Employee views current assignments with allocation', () => {
+test.describe('@full E1 — Employee views current assignments with allocation', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, employee.email, employee.password);
   });
@@ -30,7 +30,7 @@ test.describe('E1 — Employee views current assignments with allocation', () =>
   });
 });
 
-test.describe('E2 — Employee sees recent work evidence', () => {
+test.describe('@full E2 — Employee sees recent work evidence', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, employee.email, employee.password);
   });
@@ -40,11 +40,11 @@ test.describe('E2 — Employee sees recent work evidence', () => {
 
     await expect(page.getByText(/Evidence/i)).toBeVisible();
     // Evidence records exist for Ethan in the phase2 seed
-    await expect(page.getByText(/effort|hours|evidence/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /effort|hours|evidence/i })).toBeVisible();
   });
 });
 
-test.describe('E3 — Employee sees pending workflow items', () => {
+test.describe('@full E3 — Employee sees pending workflow items', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, employee.email, employee.password);
   });
@@ -60,7 +60,7 @@ test.describe('E3 — Employee sees pending workflow items', () => {
   });
 });
 
-test.describe('E4 — Employee views assignment detail with approval history', () => {
+test.describe('@full E4 — Employee views assignment detail with approval history', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, employee.email, employee.password);
   });
@@ -79,7 +79,7 @@ test.describe('E4 — Employee views assignment detail with approval history', (
   });
 });
 
-test.describe('E5 — Employee notified on approve/reject (notification queue populated)', () => {
+test.describe('@full E5 — Employee notified on approve/reject (notification queue populated)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, p2.accounts.admin.email, p2.accounts.admin.password);
   });

@@ -1,5 +1,7 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+import { useAuth } from '@/app/auth-context';
 
 import { BulkAssignmentForm } from '@/components/assignments/BulkAssignmentForm';
 import { BulkAssignmentResults } from '@/components/assignments/BulkAssignmentResults';
@@ -26,8 +28,15 @@ const initialValues: BulkAssignmentFormValues = {
 };
 
 export function BulkAssignmentPage(): JSX.Element {
+  const { principal } = useAuth();
   const [values, setValues] = useState<BulkAssignmentFormValues>(initialValues);
   const state = useBulkAssignmentPage();
+
+  useEffect(() => {
+    if (principal?.personId && !values.actorId) {
+      setValues((prev) => ({ ...prev, actorId: principal.personId! }));
+    }
+  }, [principal?.personId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

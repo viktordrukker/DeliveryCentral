@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
+import { PLAYWRIGHT_BASE_URL } from '../fixtures/auth-state';
 
-const BASE = 'http://127.0.0.1:5173';
+const BASE = PLAYWRIGHT_BASE_URL;
 
-test.describe('UX Law 2: No Dead-End Screens', () => {
+test.describe('@full UX Law 2: No Dead-End Screens', () => {
   test('login page has action buttons', async ({ page }) => {
     await page.goto(`${BASE}/login`);
     await page.waitForLoadState('networkidle');

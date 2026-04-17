@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { FinancialRepository } from '../infrastructure/financial.repository';
 import {
   BurnDownPoint,
@@ -50,7 +51,10 @@ function isoWeek(date: Date): string {
 
 @Injectable()
 export class FinancialService {
-  public constructor(private readonly repo: FinancialRepository) {}
+  public constructor(
+    private readonly repo: FinancialRepository,
+    private readonly auditLogger?: AuditLoggerService,
+  ) {}
 
   // ─── Capitalisation ───────────────────────────────────────────────────────
 
@@ -249,6 +253,51 @@ export class FinancialService {
       capexBudget: Number(budget.capexBudget),
       opexBudget: Number(budget.opexBudget),
     };
+  }
+
+  /**
+   * Submit a budget for approval.
+   * NOTE: Full persistence requires adding a `status` column to the ProjectBudget Prisma model.
+   * For now, this records the state transition via audit log.
+   */
+  public async submitBudgetForApproval(
+    projectId: string,
+    fiscalYear: number,
+    actorId: string,
+  ): Promise<void> {
+    const budget = await this.repo.findProjectBudget(projectId, fiscalYear);
+    if (!budget) throw new BadRequestException('Budget not found.');
+
+    this.auditLogger?.record({
+      actionType: 'budget.submitted_for_approval',
+      actorId,
+      category: 'project',
+      changeSummary: `Budget for project ${projectId} FY${fiscalYear} submitted for approval.`,
+      details: { projectId, fiscalYear, capex: Number(budget.capexBudget), opex: Number(budget.opexBudget) },
+      metadata: { projectId, fiscalYear },
+      targetEntityId: budget.id,
+      targetEntityType: 'PROJECT_BUDGET',
+    });
+  }
+
+  public async approveBudget(
+    projectId: string,
+    fiscalYear: number,
+    actorId: string,
+  ): Promise<void> {
+    const budget = await this.repo.findProjectBudget(projectId, fiscalYear);
+    if (!budget) throw new BadRequestException('Budget not found.');
+
+    this.auditLogger?.record({
+      actionType: 'budget.approved',
+      actorId,
+      category: 'approval',
+      changeSummary: `Budget for project ${projectId} FY${fiscalYear} approved.`,
+      details: { projectId, fiscalYear, capex: Number(budget.capexBudget), opex: Number(budget.opexBudget) },
+      metadata: { projectId, fiscalYear },
+      targetEntityId: budget.id,
+      targetEntityType: 'PROJECT_BUDGET',
+    });
   }
 
   // ─── Person Cost Rate ─────────────────────────────────────────────────────

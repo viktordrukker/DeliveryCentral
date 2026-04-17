@@ -21,18 +21,24 @@ async function bootstrap(): Promise<void> {
     origin: appConfig.corsOrigin.split(',').map((origin) => origin.trim()),
     credentials: true,
   });
-  app.use((req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+  app.use((_req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self';",
+    );
     if (process.env.NODE_ENV === 'production') {
-      res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self';",
-      );
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
     next();
   });
 
   app.setGlobalPrefix(appConfig.apiPrefix);
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.enableShutdownHooks();
 
   if (process.env.NODE_ENV !== 'production') {
     const swaggerConfig = new DocumentBuilder()

@@ -14,11 +14,11 @@ const MOOD_EMOJI: Record<number, string> = {
 };
 
 const MOOD_COLORS: Record<number, string> = {
-  1: '#ef4444',
-  2: '#f97316',
-  3: '#eab308',
-  4: '#84cc16',
-  5: '#22c55e',
+  1: 'var(--color-status-danger)',
+  2: 'var(--color-chart-8)',
+  3: 'var(--color-chart-3)',
+  4: 'var(--color-chart-2)',
+  5: 'var(--color-status-active)',
 };
 
 interface DirectReportsMoodTableProps {

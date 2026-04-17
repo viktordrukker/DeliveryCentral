@@ -276,6 +276,43 @@ export class NotificationEventTranslatorService {
     }
   }
 
+  public async employeeDeactivated(payload: { personId: string }): Promise<void> {
+    await this.sendEmail('employee.deactivated', 'employee-deactivated-email', payload);
+  }
+
+  public async assignmentAmended(payload: { assignmentId: string; personId: string }): Promise<void> {
+    await this.sendEmail('assignment.amended', 'assignment-amended-email', payload);
+    void this.inAppNotificationService?.createNotification(
+      payload.personId,
+      'assignment.amended',
+      'Your assignment has been amended',
+      undefined,
+      `/assignments/${payload.assignmentId}`,
+    );
+  }
+
+  public async caseApproved(payload: { caseId: string; subjectPersonId: string }): Promise<void> {
+    await this.sendEmail('case.approved', 'case-approved-email', payload);
+    void this.inAppNotificationService?.createNotification(
+      payload.subjectPersonId,
+      'case.approved',
+      'Your case has been approved',
+      undefined,
+      `/cases/${payload.caseId}`,
+    );
+  }
+
+  public async caseRejected(payload: { caseId: string; subjectPersonId: string; reason: string }): Promise<void> {
+    await this.sendEmail('case.rejected', 'case-rejected-email', payload);
+    void this.inAppNotificationService?.createNotification(
+      payload.subjectPersonId,
+      'case.rejected',
+      `Your case has been rejected: ${payload.reason}`,
+      undefined,
+      `/cases/${payload.caseId}`,
+    );
+  }
+
   private async sendEmail(
     eventName: string,
     templateKey: string,

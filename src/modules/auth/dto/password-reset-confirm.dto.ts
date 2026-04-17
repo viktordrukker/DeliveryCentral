@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class PasswordResetConfirmDto {
   @IsString()
@@ -8,5 +8,6 @@ export class PasswordResetConfirmDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
+  @MaxLength(128)
   public newPassword!: string;
 }

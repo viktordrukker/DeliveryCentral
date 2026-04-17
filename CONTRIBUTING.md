@@ -27,23 +27,20 @@ docker compose down -v --remove-orphans && docker compose up -d
 
 ## Before Submitting a PR
 
-Run all quality checks:
+Run the PR lane locally:
 
 ```bash
-# Backend TypeScript
-node node_modules/typescript/bin/tsc --project tsconfig.build.json --noEmit
-
-# Frontend tests (53 files, 265+ tests)
-npm --prefix frontend run test
-
-# Backend unit tests
-npm run test:unit
-
-# Lint
-npm run lint
+# Fast backend + frontend PR checks
+npm run verify:pr
 ```
 
-All checks must pass. The CI pipeline runs these automatically on every PR.
+Run the full lane before a release cut or when touching test infrastructure:
+
+```bash
+npm run verify:full
+```
+
+All checks must pass. The CI pipeline runs the same lanes in order, with fast checks ahead of DB-coupled and slower suites.
 
 ## Code Standards
 
@@ -70,10 +67,15 @@ Cross-module dependencies are forbidden. Run `npm run architecture:check` to ver
 | Layer | Command | Purpose |
 |-------|---------|---------|
 | Frontend | `npm --prefix frontend run test` | Vitest + React Testing Library |
-| Backend Unit | `npm run test:unit` | Jest unit tests |
-| Backend Integration | `npm run test:integration` | Requires running DB |
+| Backend Fast | `npm run test:fast` | Unit, domain, and contract suites in parallel |
+| Backend DB | `npm run test:db` | Repository and integration suites with serialized DB access |
+| Backend Slow | `npm run test:slow` | Performance and backend Jest e2e suites |
+| Playwright Smoke | `npm run test:e2e:ui:smoke` | Merge-gate browser flow |
+| Playwright Critical | `npm run test:e2e:ui:critical` | Core JTBD browser coverage |
+| Playwright Full | `npm run test:e2e:ui:full` | Broad browser regression coverage |
 | Architecture | `npm run architecture:check` | Dependency-cruiser |
-| All | `npm run test:all` | Full suite |
+| PR lane | `npm run verify:pr` | Default local PR validation |
+| Full lane | `npm run verify:full` | Full verification including Playwright |
 
 ## Seed Data
 

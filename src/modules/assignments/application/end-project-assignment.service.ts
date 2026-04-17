@@ -21,6 +21,7 @@ export class EndProjectAssignmentService {
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; relatedEntityId?: string; metadata?: Record<string, unknown> }): Promise<void> },
   ) {}
 
   public async execute(command: EndProjectAssignmentCommand): Promise<ProjectAssignment> {
@@ -76,6 +77,15 @@ export class EndProjectAssignmentService {
 
     void this.notificationEventTranslator?.assignmentEnded({
       assignmentId: assignment.assignmentId.value,
+    });
+
+    void this.employeeActivityService?.record({
+      personId: assignment.personId,
+      eventType: 'UNASSIGNED',
+      summary: `Assignment ended for project ${assignment.projectId}. Reason: ${command.reason ?? 'Not specified'}`,
+      actorId: command.actorId,
+      relatedEntityId: assignment.assignmentId.value,
+      metadata: { projectId: assignment.projectId, reason: command.reason },
     });
 
     return assignment;

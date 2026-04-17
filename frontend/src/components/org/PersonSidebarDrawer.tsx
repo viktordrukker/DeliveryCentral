@@ -3,13 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { OrgPersonEnriched } from '@/features/org-chart/useOrgChart';
 import { usePersonSidebarData } from '@/features/org-chart/usePersonSidebarData';
 import { useAuth } from '@/app/auth-context';
+import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#00838f', '#558b2f'];
 function avatarBg(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
-
-const ADMIN_ROLES = ['admin', 'hr_manager', 'resource_manager', 'director'];
 
 interface PersonSidebarDrawerProps {
   person: OrgPersonEnriched;
@@ -21,7 +20,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
   const { principal } = useAuth();
   const sidebar = usePersonSidebarData(person.id);
 
-  const isAdminViewer = principal?.roles.some((r) => ADMIN_ROLES.includes(r)) ?? false;
+  const isAdminViewer = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
 
   // Compute alerts
   const alerts: Array<{ level: 'red' | 'orange' | 'yellow'; label: string }> = [];
@@ -30,9 +29,6 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
   }
   if (person.totalAllocation === 0 && person.lifecycleStatus.toUpperCase() === 'ACTIVE') {
     alerts.push({ level: 'yellow', label: 'On bench (0% allocated)' });
-  }
-  if (!sidebar.isLoading && sidebar.recentWorkEvidence.length === 0 && person.assignmentCount > 0) {
-    alerts.push({ level: 'orange', label: 'No work evidence (30 days)' });
   }
   if (!sidebar.isLoading && sidebar.openExceptions.length > 0) {
     alerts.push({ level: 'orange', label: `${sidebar.openExceptions.length} open exception${sidebar.openExceptions.length !== 1 ? 's' : ''}` });

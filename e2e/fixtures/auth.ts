@@ -1,24 +1,17 @@
 /**
  * Auth fixtures for Phase 2d E2E tests.
- * Provides a login() helper that authenticates via the API and injects the
- * token into localStorage so SPA route guards pass immediately.
+ * Prefers precomputed role-based storageState auth and falls back to API login
+ * only when the requested credentials do not map to a cached role.
  */
 import { test as base, type Page } from '@playwright/test';
 
-const API_BASE = process.env['PLAYWRIGHT_API_BASE'] ?? 'http://127.0.0.1:3000/api';
-const TOKEN_KEY = 'deliverycentral.authToken';
-
-// ── Credentials ─────────────────────────────────────────────────────────────
-
-export const CREDENTIALS = {
-  admin:           { email: 'admin@deliverycentral.local',   password: 'DeliveryCentral@Admin1' },
-  director:        { email: 'noah.bennett@example.com',       password: 'DirectorPass1!' },
-  hrManager:       { email: 'diana.walsh@example.com',        password: 'HrManagerPass1!' },
-  resourceManager: { email: 'sophia.kim@example.com',         password: 'ResourceMgrPass1!' },
-  projectManager:  { email: 'lucas.reed@example.com',         password: 'ProjectMgrPass1!' },
-  deliveryManager: { email: 'carlos.vega@example.com',        password: 'DeliveryMgrPass1!' },
-  employee:        { email: 'ethan.brooks@example.com',       password: 'EmployeePass1!' },
-} as const;
+import {
+  PLAYWRIGHT_API_BASE as API_BASE,
+  ROLE_CREDENTIALS as CREDENTIALS,
+  TOKEN_STORAGE_KEY,
+  applyStoredAuthState,
+  lookupRoleByCredentials,
+} from './auth-state';
 
 // ── Core login helper ────────────────────────────────────────────────────────
 
@@ -27,6 +20,16 @@ export const CREDENTIALS = {
  * Call this before the first page.goto() in each test.
  */
 export async function login(page: Page, email: string, password: string): Promise<string> {
+  const cachedRole = lookupRoleByCredentials(email, password);
+  if (cachedRole) {
+    try {
+      await applyStoredAuthState(page, cachedRole);
+      return TOKEN_STORAGE_KEY;
+    } catch {
+      // Fall back to live login for ad hoc local runs before auth setup has executed.
+    }
+  }
+
   const response = await page.request.post(`${API_BASE}/auth/login`, {
     data: { email, password },
   });
@@ -49,7 +52,7 @@ export async function login(page: Page, email: string, password: string): Promis
     ({ key, tok }: { key: string; tok: string }) => {
       localStorage.setItem(key, tok);
     },
-    { key: TOKEN_KEY, tok: token },
+    { key: TOKEN_STORAGE_KEY, tok: token },
   );
 
   return token;

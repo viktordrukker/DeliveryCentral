@@ -16,6 +16,7 @@ interface CreateProjectAssignmentCommand {
   actorId: string;
   allocationPercent: number;
   allowOverlapOverride?: boolean;
+  draft?: boolean;
   endDate?: string;
   note?: string;
   overrideReason?: string;
@@ -34,6 +35,7 @@ export class CreateProjectAssignmentService {
     private readonly assignmentReferenceRepository?: AssignmentReferenceRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; relatedEntityId?: string; metadata?: Record<string, unknown> }): Promise<void> },
   ) {}
 
   public async execute(command: CreateProjectAssignmentCommand): Promise<ProjectAssignment> {
@@ -71,6 +73,13 @@ export class CreateProjectAssignmentService {
         const projectExists = await this.assignmentReferenceRepository.projectExists(command.projectId);
         if (!projectExists) {
           throw new Error('Project does not exist.');
+        }
+
+        if (endDate && this.assignmentReferenceRepository.projectEndDate) {
+          const projectEnd = await this.assignmentReferenceRepository.projectEndDate(command.projectId);
+          if (projectEnd && endDate > projectEnd) {
+            throw new Error('Assignment end date exceeds the project end date.');
+          }
         }
       }
     } else {
@@ -110,7 +119,7 @@ export class CreateProjectAssignmentService {
       requestedAt: new Date(),
       requestedByPersonId: command.actorId,
       staffingRole: command.staffingRole,
-      status: ApprovalState.requested(),
+      status: command.draft ? ApprovalState.draft() : ApprovalState.requested(),
       validFrom: startDate,
       validTo: endDate,
     });
@@ -223,6 +232,15 @@ export class CreateProjectAssignmentService {
       personId: command.personId,
       projectId: command.projectId,
       staffingRole: command.staffingRole,
+    });
+
+    void this.employeeActivityService?.record({
+      personId: command.personId,
+      eventType: 'ASSIGNED',
+      summary: `Assigned to project ${command.projectId} as ${command.staffingRole} at ${command.allocationPercent}%`,
+      actorId: command.actorId,
+      relatedEntityId: assignment.assignmentId.value,
+      metadata: { projectId: command.projectId, staffingRole: command.staffingRole, allocationPercent: command.allocationPercent, status: assignment.status.value },
     });
 
     return assignment;

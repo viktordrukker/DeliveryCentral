@@ -64,7 +64,7 @@ describe('Project manager dashboard query', () => {
     expect(result.person.displayName).toBe('Ava Rowe');
     expect(result.managedProjects).toHaveLength(0);
     expect(result.projectsWithStaffingGaps).toHaveLength(0);
-    expect(result.projectsWithEvidenceAnomalies).toHaveLength(0);
+    expect(result.projectsWithTimeVariance).toHaveLength(0);
   });
 
   it('surfaces anomaly aggregation for managed projects', async () => {
@@ -73,7 +73,7 @@ describe('Project manager dashboard query', () => {
       personId: '11111111-1111-1111-1111-111111111006',
     });
 
-    expect(result.projectsWithEvidenceAnomalies.map((item) => item.projectId)).toContain(
+    expect(result.projectsWithTimeVariance.map((item) => item.projectId)).toContain(
       '33333333-3333-3333-3333-333333333005',
     );
     expect(result.projectsWithStaffingGaps.map((item) => item.projectId)).toContain(
@@ -122,7 +122,7 @@ describe('Project manager dashboard API', () => {
     expect(response.body).toHaveProperty('managedProjects');
     expect(response.body).toHaveProperty('staffingSummary');
     expect(response.body).toHaveProperty('projectsWithStaffingGaps');
-    expect(response.body).toHaveProperty('projectsWithEvidenceAnomalies');
+    expect(response.body).toHaveProperty('projectsWithTimeVariance');
     expect(response.body).toHaveProperty('recentlyChangedAssignments');
   });
 });

@@ -413,6 +413,7 @@ export class PrismaPersonDirectoryQueryRepository
       displayName: string;
       employmentStatus: string;
       grade: string | null;
+      hiredAt: Date | null;
       id: string;
       orgMemberships: Array<{
         isPrimary: boolean;
@@ -423,6 +424,7 @@ export class PrismaPersonDirectoryQueryRepository
         resourcePool: { id: string; name: string } | null;
       }>;
       role: string | null;
+      terminatedAt: Date | null;
       subjectReportingLines: Array<{
         manager: { displayName: string; id: string } | null;
         relationshipType: 'DOTTED_LINE' | 'FUNCTIONAL' | 'PROJECT' | 'SOLID_LINE';
@@ -463,8 +465,10 @@ export class PrismaPersonDirectoryQueryRepository
         }))
         .filter((line) => Boolean(line.id)),
       id: person.id,
+      hiredAt: person.hiredAt?.toISOString() ?? null,
       lifecycleStatus: person.employmentStatus,
       primaryEmail: person.primaryEmail,
+      terminatedAt: person.terminatedAt?.toISOString() ?? null,
       role: person.role,
       resourcePoolIds: person.resourcePoolMemberships
         .map((membership) => membership.resourcePool?.id ?? null)

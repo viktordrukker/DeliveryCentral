@@ -1,9 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { ProjectLifecycleFormValues } from '@/components/projects/ProjectLifecycleForm';
+import { fetchClients } from '@/lib/api/clients';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import {
+  EngagementModel,
   ProjectLifecycleRecord,
+  ProjectPriority,
   createProject,
 } from '@/lib/api/project-registry';
 
@@ -13,6 +16,7 @@ interface SelectOption {
 }
 
 interface ProjectLifecycleAdminState {
+  clientOptions: SelectOption[];
   createdProject: ProjectLifecycleRecord | null;
   error: string | null;
   errors: Partial<Record<keyof ProjectLifecycleFormValues, string>>;
@@ -21,21 +25,33 @@ interface ProjectLifecycleAdminState {
   isLoading: boolean;
   isSubmitting: boolean;
   managerOptions: SelectOption[];
+  step: number;
+  setStep: (step: number) => void;
   successMessage: string | null;
   values: ProjectLifecycleFormValues;
 }
 
 const initialValues: ProjectLifecycleFormValues = {
+  clientId: '',
+  deliveryManagerId: '',
   description: '',
+  domain: '',
+  engagementModel: '',
   name: '',
   plannedEndDate: '',
+  priority: 'MEDIUM',
   projectManagerId: '',
+  projectType: '',
   startDate: '',
+  tags: '',
+  techStack: '',
 };
 
 export function useProjectLifecycleAdmin(): ProjectLifecycleAdminState {
   const [values, setValues] = useState(initialValues);
+  const [step, setStep] = useState(0);
   const [managerOptions, setManagerOptions] = useState<SelectOption[]>([]);
+  const [clientOptions, setClientOptions] = useState<SelectOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,41 +62,37 @@ export function useProjectLifecycleAdmin(): ProjectLifecycleAdminState {
 
   useEffect(() => {
     let active = true;
-
     setIsLoading(true);
     setError(null);
 
-    void fetchPersonDirectory({ page: 1, pageSize: 100 })
-      .then((response) => {
-        if (!active) {
-          return;
-        }
+    Promise.all([
+      fetchPersonDirectory({ page: 1, pageSize: 200 }),
+      fetchClients().catch(() => [] as Array<{ id: string; name: string }>),
+    ])
+      .then(([personResponse, clientsResponse]) => {
+        if (!active) return;
 
         setManagerOptions(
-          response.items
-            .map((person) => ({
-              label: person.displayName,
-              value: person.id,
-            }))
-            .sort((left, right) => left.label.localeCompare(right.label)),
+          personResponse.items
+            .map((p) => ({ label: p.displayName, value: p.id }))
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        );
+
+        const clients = Array.isArray(clientsResponse) ? clientsResponse : [];
+        setClientOptions(
+          clients.map((c) => ({ label: c.name, value: c.id })).sort((a, b) => a.label.localeCompare(b.label)),
         );
       })
       .catch((reason: unknown) => {
         if (active) {
-          setError(
-            reason instanceof Error ? reason.message : 'Failed to load project managers.',
-          );
+          setError(reason instanceof Error ? reason.message : 'Failed to load form data.');
         }
       })
       .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
+        if (active) setIsLoading(false);
       });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -92,6 +104,10 @@ export function useProjectLifecycleAdmin(): ProjectLifecycleAdminState {
     setSuccessMessage(null);
 
     if (Object.keys(nextErrors).length > 0) {
+      // Jump to the first step with an error
+      if (nextErrors.name || nextErrors.projectManagerId || nextErrors.startDate || nextErrors.plannedEndDate) {
+        setStep(0);
+      }
       return;
     }
 
@@ -99,45 +115,49 @@ export function useProjectLifecycleAdmin(): ProjectLifecycleAdminState {
 
     try {
       const created = await createProject({
+        ...(values.clientId ? { clientId: values.clientId } : {}),
+        ...(values.deliveryManagerId ? { deliveryManagerId: values.deliveryManagerId } : {}),
         ...(values.description.trim() ? { description: values.description.trim() } : {}),
+        ...(values.domain ? { domain: values.domain } : {}),
+        ...(values.engagementModel ? { engagementModel: values.engagementModel as EngagementModel } : {}),
         name: values.name.trim(),
         ...(values.plannedEndDate ? { plannedEndDate: toIsoDate(values.plannedEndDate) } : {}),
+        ...(values.priority ? { priority: values.priority as ProjectPriority } : {}),
         projectManagerId: values.projectManagerId,
+        ...(values.projectType.trim() ? { projectType: values.projectType.trim() } : {}),
         startDate: toIsoDate(values.startDate),
+        ...(values.tags.trim() ? { tags: values.tags.split(',').map((t) => t.trim()).filter(Boolean) } : {}),
+        ...(values.techStack.trim() ? { techStack: values.techStack.split(',').map((t) => t.trim()).filter(Boolean) } : {}),
       });
 
       setCreatedProject(created);
       setSuccessMessage(`Created project ${created.name} in ${created.status}.`);
       setValues(initialValues);
       setErrors({});
+      setStep(0);
     } catch (submitError) {
-      setError(
-        submitError instanceof Error ? submitError.message : 'Failed to create project.',
-      );
+      setError(submitError instanceof Error ? submitError.message : 'Failed to create project.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return {
+    clientOptions,
     createdProject,
     error,
     errors,
     handleChange: (field, value) => {
-      setValues((current) => ({
-        ...current,
-        [field]: value,
-      }));
-      setErrors((current) => ({
-        ...current,
-        [field]: undefined,
-      }));
+      setValues((current) => ({ ...current, [field]: value }));
+      setErrors((current) => ({ ...current, [field]: undefined }));
       setSuccessMessage(null);
     },
     handleSubmit,
     isLoading,
     isSubmitting,
     managerOptions,
+    step,
+    setStep,
     successMessage,
     values,
   };
@@ -148,18 +168,9 @@ function validate(
 ): Partial<Record<keyof ProjectLifecycleFormValues, string>> {
   const result: Partial<Record<keyof ProjectLifecycleFormValues, string>> = {};
 
-  if (!values.name.trim()) {
-    result.name = 'Project name is required.';
-  }
-
-  if (!values.projectManagerId) {
-    result.projectManagerId = 'Project manager is required.';
-  }
-
-  if (!values.startDate) {
-    result.startDate = 'Start date is required.';
-  }
-
+  if (!values.name.trim()) result.name = 'Project name is required.';
+  if (!values.projectManagerId) result.projectManagerId = 'Project manager is required.';
+  if (!values.startDate) result.startDate = 'Start date is required.';
   if (values.plannedEndDate && values.startDate && values.plannedEndDate < values.startDate) {
     result.plannedEndDate = 'Planned end date cannot be earlier than start date.';
   }

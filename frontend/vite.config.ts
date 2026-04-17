@@ -30,7 +30,7 @@ export default defineConfig({
         minForks: 1,
       },
     },
-    reporter: process.env.CI ? 'default' : 'dot',
+    reporters: process.env.CI ? ['default'] : ['dot'],
     setupFiles: ['./src/test/setup.ts', './src/test/recharts-mock.ts', './src/test/d3-tree-mock.ts'],
     deps: {
       optimizer: {

@@ -18,6 +18,8 @@ export function ChartWrapper({ ariaLabel, children, description }: ChartWrapperP
       aria-label={ariaLabel}
       role="img"
       tabIndex={0}
+      style={{ outline: 'none' }}
+      className="chart-wrapper"
     >
       {description ? (
         <span className="sr-only">{description}</span>

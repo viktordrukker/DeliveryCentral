@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import { fetchPersonSkills, PersonSkill } from '@/lib/api/skills';
 import { fetchExceptions, ExceptionQueueItem } from '@/lib/api/exceptions';
-import { fetchWorkEvidence, WorkEvidenceItem } from '@/lib/api/work-evidence';
 import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
 
 export interface PersonSidebarData {
   skills: PersonSkill[];
   openExceptions: ExceptionQueueItem[];
-  recentWorkEvidence: WorkEvidenceItem[];
   assignments: AssignmentDirectoryItem[];
   isLoading: boolean;
   error: string | null;
@@ -17,7 +15,6 @@ export interface PersonSidebarData {
 const EMPTY: PersonSidebarData = {
   skills: [],
   openExceptions: [],
-  recentWorkEvidence: [],
   assignments: [],
   isLoading: false,
   error: null,
@@ -55,15 +52,13 @@ export function usePersonSidebarData(personId: string | null): PersonSidebarData
     Promise.all([
       fetchPersonSkills(personId).catch(() => [] as PersonSkill[]),
       fetchExceptions({ targetEntityId: personId, status: 'OPEN', limit: 20 }).catch(() => ({ items: [] as ExceptionQueueItem[] })),
-      fetchWorkEvidence({ personId, dateFrom: thirtyDaysAgo.toISOString().slice(0, 10) }).catch(() => ({ items: [] as WorkEvidenceItem[] })),
       fetchAssignments({ personId, status: 'active', pageSize: 20 }).catch(() => ({ items: [] as AssignmentDirectoryItem[] })),
-    ]).then(([skills, exceptionsRes, evidenceRes, assignmentsRes]) => {
+    ]).then(([skills, exceptionsRes, assignmentsRes]) => {
       if (controller.signal.aborted) return;
 
       const data = {
         skills,
         openExceptions: exceptionsRes.items,
-        recentWorkEvidence: evidenceRes.items,
         assignments: assignmentsRes.items,
       };
 

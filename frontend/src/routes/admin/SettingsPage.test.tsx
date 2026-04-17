@@ -75,6 +75,13 @@ const MOCK_SETTINGS = {
     evidenceInactiveDaysThreshold: 14,
     nearingClosureDaysThreshold: 30,
   },
+  evidenceManagement: {
+    enabled: false,
+    allowManualEntry: true,
+    showDiagnosticsInCoreDashboards: false,
+    allowedSources: ['JIRA_WORKLOG', 'MANUAL'],
+    retentionDays: null,
+  },
 };
 
 function renderPage(): void {
@@ -97,7 +104,7 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Platform Settings')).toBeInTheDocument();
   });
 
-  it('renders all six setting sections', async () => {
+  it('renders the key setting sections including evidence management', async () => {
     mockedFetch.mockResolvedValue(MOCK_SETTINGS);
     renderPage();
 
@@ -109,6 +116,7 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('settings-section-pulse')).toBeInTheDocument();
     expect(screen.getByTestId('settings-section-notifications')).toBeInTheDocument();
     expect(screen.getByTestId('settings-section-security')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-section-evidenceManagement')).toBeInTheDocument();
   });
 
   it('calls updatePlatformSetting when Save is clicked', async () => {

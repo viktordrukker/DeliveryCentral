@@ -84,7 +84,7 @@ describe('EmployeeDetailsPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
         {
           currentAssignmentCount: 0,
@@ -98,7 +98,7 @@ describe('EmployeeDetailsPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,
@@ -124,7 +124,7 @@ describe('EmployeeDetailsPage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
 
     renderWithRouter('/people/p1');
@@ -178,7 +178,7 @@ describe('EmployeeDetailsPage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
     mockedDeactivateEmployee.mockResolvedValue({
       email: 'ethan.brooks@example.com',
@@ -220,7 +220,7 @@ describe('EmployeeDetailsPage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
     mockedCreateReportingLine.mockResolvedValue({
       id: 'line-1',
@@ -266,7 +266,7 @@ describe('EmployeeDetailsPage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['pool-1'],
       resourcePools: [{ id: 'pool-1', name: 'Engineering Pool' }],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
 
     const user = userEvent.setup();
@@ -292,7 +292,7 @@ describe('EmployeeDetailsPage', () => {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     });
 
     mockedFetchPerson360.mockResolvedValue({

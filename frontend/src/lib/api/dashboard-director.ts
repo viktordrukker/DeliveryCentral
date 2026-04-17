@@ -5,7 +5,7 @@ export interface DirectorDashboardSummary {
   activeAssignmentCount: number;
   staffedPersonCount: number;
   unstaffedActivePersonCount: number;
-  evidenceCoverageRate: number;
+  staffingUtilisationRate: number;
 }
 
 export interface UnitUtilisationItem {
@@ -20,7 +20,7 @@ export interface WeeklyTrendPoint {
   weekStarting: string;
   activeProjectCount: number;
   staffedPersonCount: number;
-  evidenceCoverageRate: number;
+  staffingUtilisationRate: number;
 }
 
 export interface DirectorDashboardResponse {

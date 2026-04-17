@@ -14,14 +14,12 @@ import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { formatDate } from '@/lib/format-date';
 import { WorkloadGauge } from '@/components/charts/WorkloadGauge';
 import { WeeklyAllocationArea } from '@/components/charts/WeeklyAllocationArea';
-import { EvidenceTimelineBar } from '@/components/charts/EvidenceTimelineBar';
 import { PulseWidget } from '@/components/common/PulseWidget';
 import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { WorkEvidenceItem } from '@/lib/api/work-evidence';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
-const ELEVATED_ROLES = ['hr_manager', 'director', 'admin'];
+import { HR_DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 function buildWeeks(count: number, asOf: string): string[] {
   const base = new Date(asOf);
@@ -43,26 +41,11 @@ function toAllocationItems(
   }));
 }
 
-function buildEvidenceDayData(items: WorkEvidenceItem[], asOf: string): Array<{ date: string; hours: number }> {
-  const base = new Date(asOf);
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(base);
-    d.setDate(d.getDate() - (13 - i));
-    return d.toISOString().slice(0, 10);
-  });
-  const map = new Map<string, number>();
-  for (const item of items) {
-    const day = item.activityDate?.slice(0, 10) ?? item.recordedAt.slice(0, 10);
-    map.set(day, (map.get(day) ?? 0) + item.effortHours);
-  }
-  return days.map((date) => ({ date, hours: map.get(date) ?? 0 }));
-}
-
 export function EmployeeDashboardPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal } = useAuth();
   const { setActions } = useTitleBarActions();
-  const isElevated = principal?.roles.some((r) => ELEVATED_ROLES.includes(r)) ?? false;
+  const isElevated = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   const [lastFetch, setLastFetch] = useState(new Date());
 
   const ownPersonId = principal?.personId;
@@ -92,8 +75,7 @@ export function EmployeeDashboardPage(): JSX.Element {
             </select>
           </label>
         ) : null}
-        <Link className="button button--secondary button--sm" to="/timesheets">Timesheets</Link>
-        <Link className="button button--secondary button--sm" to="/work-evidence">Evidence</Link>
+        <Link className="button button--secondary button--sm" to="/my-time">My Time</Link>
         <TipTrigger />
       </>
     );
@@ -107,7 +89,6 @@ export function EmployeeDashboardPage(): JSX.Element {
   const d = state.data;
   const weeks = buildWeeks(12, state.asOf);
   const allAssignments = d ? toAllocationItems([...d.currentAssignments, ...d.futureAssignments]) : [];
-  const evidenceDayData = d ? buildEvidenceDayData(d.recentWorkEvidenceSummary.recentItems, state.asOf) : [];
   const allocPct = d?.currentWorkloadSummary.totalAllocationPercent ?? 0;
   const isOverallocated = d?.currentWorkloadSummary.isOverallocated ?? false;
 
@@ -164,12 +145,6 @@ export function EmployeeDashboardPage(): JSX.Element {
               {isOverallocated && <span className="kpi-strip__context" style={{ color: 'var(--color-status-danger)' }}>Overallocated</span>}
             </Link>
 
-            <Link className="kpi-strip__item" to="/work-evidence" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
-              <TipBalloon tip="Total hours of work evidence logged recently." arrow="left" />
-              <span className="kpi-strip__value">{d.recentWorkEvidenceSummary.totalEffortHours}h</span>
-              <span className="kpi-strip__label">Recent Evidence</span>
-            </Link>
-
             {d.pendingWorkflowItems.itemCount > 0 && (
               <Link className="kpi-strip__item" to="#pending-items" style={{ borderLeft: '3px solid var(--color-status-warning)' }}>
                 <TipBalloon tip="Items pending your action — assignment approvals, etc." arrow="left" />
@@ -179,15 +154,9 @@ export function EmployeeDashboardPage(): JSX.Element {
             )}
           </div>
 
-          {/* ── HERO: Workload Gauge + Evidence ── */}
-          <div className="dashboard-main-grid">
-            <SectionCard collapsible id="workload-gauge" title="Workload Gauge">
-              <WorkloadGauge allocationPercent={allocPct} />
-            </SectionCard>
-            <SectionCard collapsible title="Evidence Last 14 Days">
-              <EvidenceTimelineBar data={evidenceDayData} />
-            </SectionCard>
-          </div>
+          <SectionCard collapsible id="workload-gauge" title="Workload Gauge">
+            <WorkloadGauge allocationPercent={allocPct} />
+          </SectionCard>
 
           {/* ── Weekly Allocation ── */}
           {allAssignments.length > 0 && (
@@ -211,39 +180,6 @@ export function EmployeeDashboardPage(): JSX.Element {
               emptyTitle="No future assignments"
               items={d.futureAssignments}
             />
-          </SectionCard>
-
-          {/* ── Evidence table ── */}
-          <SectionCard title="Recent Evidence" collapsible chartExport={{
-            headers: ['Summary', 'Source', 'Hours', 'Date'],
-            rows: d.recentWorkEvidenceSummary.recentItems.map((i) => ({ Summary: i.summary ?? i.sourceRecordKey, Source: i.sourceType, Hours: String(i.effortHours), Date: i.recordedAt.slice(0, 10) })),
-          }}>
-            {effectivePersonId ? (
-              <div style={{ marginBottom: 8 }}>
-                <Link className="button button--secondary button--sm" to={`/work-evidence?personId=${effectivePersonId}`}>View all evidence</Link>
-              </div>
-            ) : null}
-            {d.recentWorkEvidenceSummary.recentItems.length === 0 ? (
-              <EmptyState description="No recent work evidence exists." title="No evidence" />
-            ) : (
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr><th>Summary</th><th style={{ width: 80 }}>Source</th><th style={NUM}>Hours</th><th style={{ width: 90 }}>Date</th></tr>
-                  </thead>
-                  <tbody>
-                    {d.recentWorkEvidenceSummary.recentItems.map((item) => (
-                      <tr key={item.id}>
-                        <td style={{ fontWeight: 500 }}>{item.summary ?? item.sourceRecordKey}</td>
-                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.sourceType}</td>
-                        <td style={NUM}>{item.effortHours}h</td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.recordedAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </SectionCard>
 
           {/* ── Pending Workflow Items ── */}

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
-import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
-import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
+import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
@@ -18,10 +18,10 @@ export class DeliveryManagerDashboardQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
     private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly platformSettingsService: PlatformSettingsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: DeliveryManagerDashboardQuery): Promise<DeliveryManagerDashboardResponseDto> {
@@ -33,7 +33,6 @@ export class DeliveryManagerDashboardQueryService {
 
     const settings = await this.platformSettingsService.getAll();
     const staffingGapDays = settings.dashboard.staffingGapDaysThreshold;
-    const inactiveDays = settings.dashboard.evidenceInactiveDaysThreshold;
 
     const allProjects = await this.projectRepository.findAll();
     const activeProjects = allProjects.filter((project) => project.status === 'ACTIVE');
@@ -44,148 +43,130 @@ export class DeliveryManagerDashboardQueryService {
       (assignment) => activeProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
 
-    const allEvidence = await this.workEvidenceRepository.list({ dateTo: asOf });
-    const activeProjectEvidence = allEvidence.filter(
-      (item) => item.projectId && activeProjectIds.has(item.projectId),
-    );
-
     const comparison = await this.plannedVsActualQueryService.execute({ asOf: asOf.toISOString() });
+    const approvedTimeByProject = await this.readApprovedTimeByProject(activeProjectIds, asOf);
+    const approvedEntryDatesByProject = await this.readLatestApprovedEntryDatesByProject(activeProjectIds, asOf);
 
-    // Projects with no active staffing
-    const staffedProjectIds = new Set(
-      activeAssignments.map((assignment) => assignment.projectId),
-    );
+    const assignmentsByProject = new Map<string, typeof activeAssignments>();
+    for (const assignment of activeAssignments) {
+      const projectAssignments = assignmentsByProject.get(assignment.projectId);
+      if (projectAssignments) {
+        projectAssignments.push(assignment);
+      } else {
+        assignmentsByProject.set(assignment.projectId, [assignment]);
+      }
+    }
+
+    const anomaliesByProject = new Map<string, string[]>();
+    for (const projectId of activeProjectIds) {
+      anomaliesByProject.set(projectId, []);
+    }
+    for (const item of comparison.assignedButNoEvidence) {
+      if (!activeProjectIds.has(item.project.id)) continue;
+      anomaliesByProject.get(item.project.id)?.push('PLANNED_WITHOUT_APPROVED_TIME');
+    }
+    for (const anomaly of comparison.anomalies) {
+      if (!activeProjectIds.has(anomaly.project.id)) continue;
+      anomaliesByProject.get(anomaly.project.id)?.push(
+        anomaly.type === 'EVIDENCE_AFTER_ASSIGNMENT_END'
+          ? 'APPROVED_TIME_AFTER_ASSIGNMENT_END'
+          : 'APPROVED_TIME_WITHOUT_ASSIGNMENT',
+      );
+    }
+
+    const activeProjectMap = new Map(activeProjects.map((project) => [project.projectId.value, project]));
+    const staffedProjectIds = new Set(activeAssignments.map((assignment) => assignment.projectId));
     const projectsWithNoStaff = activeProjects.filter(
       (project) => !staffedProjectIds.has(project.projectId.value),
     ).length;
+    const projectsWithTimeVariance = [...anomaliesByProject.values()].filter((flags) => flags.length > 0).length;
 
-    // Projects with evidence anomalies (from planned-vs-actual comparison)
-    const anomalyProjectIds = new Set(
-      comparison.anomalies
-        .filter((anomaly) => activeProjectIds.has(anomaly.project.id))
-        .map((anomaly) => anomaly.project.id),
-    );
-    const projectsWithEvidenceAnomalies = anomalyProjectIds.size;
-
-    // Inactive evidence: active project, has active staffing, no evidence in last N days
-    const recentEvidenceCutoff = new Date(asOf);
-    recentEvidenceCutoff.setUTCDate(recentEvidenceCutoff.getUTCDate() - inactiveDays);
-
-    const inactiveEvidenceProjects = activeProjects
+    const projectsMissingApprovedTime = activeProjects
       .filter((project) => {
         const projectId = project.projectId.value;
-        const hasActiveStaffing = activeAssignments.some(
-          (assignment) => assignment.projectId === projectId,
-        );
-
-        if (!hasActiveStaffing) {
+        const projectAssignments = assignmentsByProject.get(projectId);
+        if (!projectAssignments || projectAssignments.length === 0) {
           return false;
         }
-
-        const hasRecentEvidence = activeProjectEvidence.some(
-          (item) =>
-            item.projectId === projectId &&
-            (item.occurredOn ?? item.recordedAt) >= recentEvidenceCutoff,
-        );
-
-        return !hasRecentEvidence;
+        return !approvedEntryDatesByProject.has(projectId);
       })
       .map((project) => {
-        const projectEvidence = activeProjectEvidence.filter(
-          (item) => item.projectId === project.projectId.value,
-        );
-        const latestEvidence = projectEvidence
-          .map((item) => item.occurredOn ?? item.recordedAt)
-          .sort((left, right) => right.getTime() - left.getTime())[0];
-
+        const projectId = project.projectId.value;
         return {
-          activeAssignmentCount: activeAssignments.filter(
-            (assignment) => assignment.projectId === project.projectId.value,
-          ).length,
-          lastEvidenceDate: latestEvidence?.toISOString() ?? null,
+          activeAssignmentCount: (assignmentsByProject.get(projectId) ?? []).length,
+          lastApprovedTimeDate: null,
           name: project.name,
           projectCode: project.projectCode,
-          projectId: project.projectId.value,
+          projectId,
         };
       });
 
-    // Portfolio health table — one row per active project
     const portfolioHealth = activeProjects.map((project) => {
       const projectId = project.projectId.value;
-      const staffingCount = activeAssignments.filter(
-        (assignment) => assignment.projectId === projectId,
-      ).length;
-      const evidenceCount = activeProjectEvidence.filter(
-        (item) => item.projectId === projectId,
-      ).length;
-      const anomalyFlags = comparison.anomalies
-        .filter((anomaly) => anomaly.project.id === projectId)
-        .map((anomaly) => anomaly.type);
-
       return {
-        anomalyFlags,
-        evidenceCount,
+        anomalyFlags: anomaliesByProject.get(projectId) ?? [],
+        approvedHours: Number((approvedTimeByProject.get(projectId)?.hours ?? 0).toFixed(2)),
         name: project.name,
         projectCode: project.projectCode,
         projectId,
-        staffingCount,
+        staffingCount: (assignmentsByProject.get(projectId) ?? []).length,
         status: project.status,
       };
     });
 
-    // Reconciliation block (cross-portfolio, no filter)
-    const reconciliation = {
-      assignedButNoEvidenceCount: comparison.assignedButNoEvidence.filter((item) =>
+    const approvedTimeAfterAssignmentEndCount = comparison.anomalies.filter(
+      (item) => activeProjectIds.has(item.project.id) && item.type === 'EVIDENCE_AFTER_ASSIGNMENT_END',
+    ).length;
+
+    const timeAlignment = {
+      approvedTimeAfterAssignmentEndCount,
+      approvedTimeWithoutAssignmentCount: comparison.evidenceButNoApprovedAssignment.filter((item) =>
         activeProjectIds.has(item.project.id),
       ).length,
-      evidenceWithoutAssignmentCount: comparison.evidenceButNoApprovedAssignment.filter((item) =>
-        activeProjectIds.has(item.project.id),
-      ).length,
-      matchedCount: comparison.matchedRecords.filter((item) =>
+      matchedCount: comparison.matchedRecords.filter((item) => activeProjectIds.has(item.project.id)).length,
+      plannedWithoutApprovedTimeCount: comparison.assignedButNoEvidence.filter((item) =>
         activeProjectIds.has(item.project.id),
       ).length,
     };
 
-    // Staffing gaps: active assignments ending within N days (13-B13)
     const gapCutoff = new Date(asOf);
     gapCutoff.setUTCDate(gapCutoff.getUTCDate() + staffingGapDays);
     const staffingGaps = allAssignments
-      .filter((a) => {
-        if (!activeProjectIds.has(a.projectId)) return false;
-        if (!a.isActiveAt(asOf)) return false;
-        const endDate = a.validTo;
+      .filter((assignment) => {
+        if (!activeProjectIds.has(assignment.projectId)) return false;
+        if (!assignment.isActiveAt(asOf)) return false;
+        const endDate = assignment.validTo;
         if (!endDate) return false;
         return endDate >= asOf && endDate <= gapCutoff;
       })
-      .map((a) => {
-        const project = activeProjects.find((p) => p.projectId.value === a.projectId);
-        const endDate = a.validTo!;
+      .map((assignment) => {
+        const project = activeProjectMap.get(assignment.projectId);
+        const endDate = assignment.validTo!;
         const daysUntilEnd = Math.round((endDate.getTime() - asOf.getTime()) / 86400000);
         return {
-          assignmentId: a.assignmentId.value,
+          assignmentId: assignment.assignmentId.value,
           daysUntilEnd,
           endDate: endDate.toISOString().slice(0, 10),
-          personId: a.personId,
-          projectCode: project?.projectCode ?? a.projectId,
-          projectId: a.projectId,
-          projectName: project?.name ?? a.projectId,
+          personId: assignment.personId,
+          projectCode: project?.projectCode ?? assignment.projectId,
+          projectId: assignment.projectId,
+          projectName: project?.name ?? assignment.projectId,
         };
       })
-      .sort((a, b) => a.daysUntilEnd - b.daysUntilEnd);
+      .sort((left, right) => left.daysUntilEnd - right.daysUntilEnd);
 
-    // Open requests by project rollup (13-B14)
     const openRequests = await this.staffingRequestService.list({ status: 'OPEN' });
     const requestsByProjectMap = new Map<string, { count: number; required: number; fulfilled: number }>();
-    for (const req of openRequests) {
-      if (!activeProjectIds.has(req.projectId)) continue;
-      const existing = requestsByProjectMap.get(req.projectId) ?? { count: 0, required: 0, fulfilled: 0 };
+    for (const request of openRequests) {
+      if (!activeProjectIds.has(request.projectId)) continue;
+      const existing = requestsByProjectMap.get(request.projectId) ?? { count: 0, required: 0, fulfilled: 0 };
       existing.count++;
-      existing.required += req.headcountRequired;
-      existing.fulfilled += req.headcountFulfilled;
-      requestsByProjectMap.set(req.projectId, existing);
+      existing.required += request.headcountRequired;
+      existing.fulfilled += request.headcountFulfilled;
+      requestsByProjectMap.set(request.projectId, existing);
     }
     const openRequestsByProject = Array.from(requestsByProjectMap.entries()).map(([projectId, data]) => {
-      const project = activeProjects.find((p) => p.projectId.value === projectId);
+      const project = activeProjectMap.get(projectId);
       return {
         openRequestCount: data.count,
         projectCode: project?.projectCode ?? projectId,
@@ -194,53 +175,144 @@ export class DeliveryManagerDashboardQueryService {
         totalHeadcountFulfilled: data.fulfilled,
         totalHeadcountRequired: data.required,
       };
-    }).sort((a, b) => b.openRequestCount - a.openRequestCount);
+    }).sort((left, right) => right.openRequestCount - left.openRequestCount);
 
-    // Burn rate trend: evidence entries grouped by ISO week for last 8 weeks
-    const burnRateTrend: { week: string; evidenceCount: number; projectCount: number }[] = [];
-    for (let weekOffset = 7; weekOffset >= 0; weekOffset--) {
-      const weekStart = new Date(asOf);
-      // Go to Monday of current week then subtract weekOffset weeks
-      const dayOfWeek = weekStart.getUTCDay(); // 0=Sun
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      weekStart.setUTCDate(weekStart.getUTCDate() - daysToMonday - weekOffset * 7);
-      weekStart.setUTCHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
-
-      // ISO week label: YYYY-Www
-      const jan4 = new Date(Date.UTC(weekStart.getUTCFullYear(), 0, 4));
-      const startOfWeek1 = new Date(jan4);
-      startOfWeek1.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7));
-      const weekNum = Math.round((weekStart.getTime() - startOfWeek1.getTime()) / (7 * 86400000)) + 1;
-      const weekLabel = `${weekStart.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-
-      const weekEvidence = allEvidence.filter((item) => {
-        const d = item.occurredOn ?? item.recordedAt;
-        return d >= weekStart && d < weekEnd;
-      });
-
-      const projectsThisWeek = new Set(weekEvidence.map((item) => item.projectId).filter(Boolean));
-      burnRateTrend.push({ week: weekLabel, evidenceCount: weekEvidence.length, projectCount: projectsThisWeek.size });
-    }
+    const burnRateTrend = await this.buildBurnRateTrend(asOf, activeProjectIds);
 
     return {
       asOf: asOf.toISOString(),
       burnRateTrend,
-      dataSources: ['projects', 'assignments', 'work_evidence', 'planned_vs_actual', 'staffing_requests'],
-      inactiveEvidenceProjects,
+      dataSources: ['projects', 'assignments', 'timesheets', 'planned_vs_actual', 'staffing_requests'],
       openRequestsByProject,
       portfolioHealth,
-      reconciliation,
+      projectsMissingApprovedTime,
       staffingGaps,
       summary: {
-        inactiveEvidenceProjectCount: inactiveEvidenceProjects.length,
-        projectsWithEvidenceAnomalies,
+        projectsMissingApprovedTimeCount: projectsMissingApprovedTime.length,
         projectsWithNoStaff,
+        projectsWithTimeVariance,
         totalActiveAssignments: activeAssignments.length,
         totalActiveProjects: activeProjects.length,
       },
+      timeAlignment,
     };
+  }
+
+  private async readApprovedTimeByProject(
+    projectIds: Set<string>,
+    asOf: Date,
+  ): Promise<Map<string, { entryCount: number; hours: number }>> {
+    if (projectIds.size === 0) {
+      return new Map();
+    }
+
+    const weekStart = this.startOfIsoWeek(asOf);
+    const weekEnd = this.endOfIsoWeek(asOf);
+    const entries = await this.prisma.timesheetEntry.findMany({
+      where: {
+        date: { gte: weekStart, lte: weekEnd },
+        projectId: { in: [...projectIds] },
+        timesheetWeek: { status: 'APPROVED' },
+      },
+      select: {
+        hours: true,
+        projectId: true,
+      },
+    });
+
+    const totals = new Map<string, { entryCount: number; hours: number }>();
+    for (const entry of entries) {
+      const current = totals.get(entry.projectId) ?? { entryCount: 0, hours: 0 };
+      current.entryCount += 1;
+      current.hours += Number(entry.hours ?? 0);
+      totals.set(entry.projectId, current);
+    }
+
+    return totals;
+  }
+
+  private async readLatestApprovedEntryDatesByProject(
+    projectIds: Set<string>,
+    asOf: Date,
+  ): Promise<Map<string, string>> {
+    if (projectIds.size === 0) {
+      return new Map();
+    }
+
+    const entries = await this.prisma.timesheetEntry.findMany({
+      where: {
+        date: { lte: asOf },
+        projectId: { in: [...projectIds] },
+        timesheetWeek: { status: 'APPROVED' },
+      },
+      orderBy: { date: 'desc' },
+      select: {
+        date: true,
+        projectId: true,
+      },
+    });
+
+    const dates = new Map<string, string>();
+    for (const entry of entries) {
+      if (!dates.has(entry.projectId)) {
+        dates.set(entry.projectId, entry.date.toISOString());
+      }
+    }
+    return dates;
+  }
+
+  private async buildBurnRateTrend(
+    asOf: Date,
+    activeProjectIds: Set<string>,
+  ): Promise<{ week: string; approvedEntryCount: number; projectCount: number }[]> {
+    const weekBoundaries: Array<{ label: string; weekStart: Date; weekEnd: Date }> = [];
+
+    for (let weekOffset = 7; weekOffset >= 0; weekOffset--) {
+      const weekStart = this.startOfIsoWeek(new Date(asOf));
+      weekStart.setUTCDate(weekStart.getUTCDate() - weekOffset * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+
+      const jan4 = new Date(Date.UTC(weekStart.getUTCFullYear(), 0, 4));
+      const startOfWeek1 = this.startOfIsoWeek(jan4);
+      const weekNum = Math.round((weekStart.getTime() - startOfWeek1.getTime()) / (7 * 86400000)) + 1;
+      const label = `${weekStart.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+      weekBoundaries.push({ label, weekStart, weekEnd });
+    }
+
+    const entries = await this.prisma.timesheetEntry.findMany({
+      where: {
+        date: { gte: weekBoundaries[0].weekStart, lte: weekBoundaries[weekBoundaries.length - 1].weekEnd },
+        projectId: { in: [...activeProjectIds] },
+        timesheetWeek: { status: 'APPROVED' },
+      },
+      select: {
+        date: true,
+        projectId: true,
+      },
+    });
+
+    const weekBuckets: Array<{ entryCount: number; projects: Set<string> }> = weekBoundaries.map(() => ({
+      entryCount: 0,
+      projects: new Set(),
+    }));
+
+    for (const entry of entries) {
+      for (let index = 0; index < weekBoundaries.length; index++) {
+        if (entry.date >= weekBoundaries[index].weekStart && entry.date < weekBoundaries[index].weekEnd) {
+          weekBuckets[index].entryCount += 1;
+          weekBuckets[index].projects.add(entry.projectId);
+          break;
+        }
+      }
+    }
+
+    return weekBoundaries.map((boundary, index) => ({
+      approvedEntryCount: weekBuckets[index].entryCount,
+      projectCount: weekBuckets[index].projects.size,
+      week: boundary.label,
+    }));
   }
 
   public async getScorecardHistory(query: {
@@ -252,47 +324,88 @@ export class DeliveryManagerDashboardQueryService {
     const weekCount = Math.min(query.weeks ?? 12, 52);
 
     const allProjects = await this.projectRepository.findAll();
-    const activeProjects = allProjects.filter((p) => p.status === 'ACTIVE');
+    const activeProjects = allProjects.filter((project) => project.status === 'ACTIVE');
     const targetProjects = query.projectId
-      ? activeProjects.filter((p) => p.projectId.value === query.projectId)
+      ? activeProjects.filter((project) => project.projectId.value === query.projectId)
       : activeProjects;
 
     const allAssignments = await this.projectAssignmentRepository.findAll();
-    const allEvidence = await this.workEvidenceRepository.list({ dateTo: asOf });
 
-    const results: ProjectScorecardHistoryItemDto[] = targetProjects.map((project) => {
-      const projectId = project.projectId.value;
-      const history: { weekStart: string; staffingPct: number; evidencePct: number; timelinePct: number }[] = [];
+    const weekBoundaries: Array<{ weekStart: Date; weekEnd: Date }> = [];
+    for (let index = weekCount - 1; index >= 0; index--) {
+      const weekStart = this.startOfIsoWeek(new Date(asOf));
+      weekStart.setUTCDate(weekStart.getUTCDate() - index * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+      weekBoundaries.push({ weekStart, weekEnd });
+    }
 
-      for (let i = weekCount - 1; i >= 0; i--) {
-        const weekStart = new Date(asOf);
-        const dayOfWeek = weekStart.getUTCDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        weekStart.setUTCDate(weekStart.getUTCDate() - daysToMonday - i * 7);
-        weekStart.setUTCHours(0, 0, 0, 0);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
-
-        const hasStaff = allAssignments.some(
-          (a) => a.projectId === projectId && a.isActiveAt(weekStart),
-        );
-        const weekEvidenceCount = allEvidence.filter((e) => {
-          if (e.projectId !== projectId) return false;
-          const d = e.occurredOn ?? e.recordedAt;
-          return d >= weekStart && d < weekEnd;
-        }).length;
-
-        history.push({
-          weekStart: weekStart.toISOString().slice(0, 10),
-          staffingPct: hasStaff ? 100 : 0,
-          evidencePct: weekEvidenceCount > 0 ? Math.min(100, weekEvidenceCount * 20) : 0,
-          timelinePct: 100,
-        });
+    const assignmentsByProject = new Map<string, typeof allAssignments>();
+    for (const assignment of allAssignments) {
+      const projectAssignments = assignmentsByProject.get(assignment.projectId);
+      if (projectAssignments) {
+        projectAssignments.push(assignment);
+      } else {
+        assignmentsByProject.set(assignment.projectId, [assignment]);
       }
+    }
+
+    const entries = await this.prisma.timesheetEntry.findMany({
+      where: {
+        date: { gte: weekBoundaries[0].weekStart, lte: weekBoundaries[weekBoundaries.length - 1].weekEnd },
+        projectId: { in: targetProjects.map((project) => project.projectId.value) },
+        timesheetWeek: { status: 'APPROVED' },
+      },
+      select: {
+        date: true,
+        projectId: true,
+      },
+    });
+
+    const approvedEntryCountByProjectWeek = new Map<string, number>();
+    for (const entry of entries) {
+      for (let weekIndex = 0; weekIndex < weekBoundaries.length; weekIndex++) {
+        if (entry.date >= weekBoundaries[weekIndex].weekStart && entry.date < weekBoundaries[weekIndex].weekEnd) {
+          const key = `${entry.projectId}:${weekIndex}`;
+          approvedEntryCountByProjectWeek.set(key, (approvedEntryCountByProjectWeek.get(key) ?? 0) + 1);
+          break;
+        }
+      }
+    }
+
+    return targetProjects.map((project) => {
+      const projectId = project.projectId.value;
+      const projectAssignments = assignmentsByProject.get(projectId) ?? [];
+
+      const history = weekBoundaries.map((boundary, weekIndex) => {
+        const hasStaff = projectAssignments.some((assignment) => assignment.isActiveAt(boundary.weekStart));
+        const approvedEntryCount = approvedEntryCountByProjectWeek.get(`${projectId}:${weekIndex}`) ?? 0;
+
+        return {
+          staffingPct: hasStaff ? 100 : 0,
+          timePct: approvedEntryCount > 0 ? Math.min(100, approvedEntryCount * 20) : 0,
+          timelinePct: 100,
+          weekStart: boundary.weekStart.toISOString().slice(0, 10),
+        };
+      });
 
       return { history, projectId, projectName: project.name };
     });
+  }
 
-    return results;
+  private startOfIsoWeek(date: Date): Date {
+    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const day = start.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    start.setUTCDate(start.getUTCDate() + diff);
+    start.setUTCHours(0, 0, 0, 0);
+    return start;
+  }
+
+  private endOfIsoWeek(date: Date): Date {
+    const end = this.startOfIsoWeek(date);
+    end.setUTCDate(end.getUTCDate() + 6);
+    end.setUTCHours(23, 59, 59, 999);
+    return end;
   }
 }

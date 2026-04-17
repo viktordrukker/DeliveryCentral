@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 
+import { useEvidenceManagement } from '@/app/platform-settings-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { CreateWorkEvidenceForm, CreateWorkEvidenceFormErrors, CreateWorkEvidenceFormValues } from '@/components/work-evidence/CreateWorkEvidenceForm';
 import { exportToXlsx } from '@/lib/export';
@@ -31,6 +32,7 @@ function makeInitialCreateValues(): CreateWorkEvidenceFormValues {
 }
 
 export function WorkEvidencePage(): JSX.Element {
+  const evidenceManagement = useEvidenceManagement();
   const { setActions } = useTitleBarActions();
   const [filters, setFilters] = useFilterParams({ dateFrom: '', dateTo: '', person: '', project: '', source: '' });
   const [createValues, setCreateValues] = useState<CreateWorkEvidenceFormValues>(makeInitialCreateValues);
@@ -132,7 +134,7 @@ export function WorkEvidencePage(): JSX.Element {
         sourceType: createValues.sourceType.trim(),
         ...(createValues.summary.trim() ? { summary: createValues.summary.trim() } : {}),
       });
-      setCreateSuccess('Work evidence recorded.');
+      setCreateSuccess('Observed work recorded.');
       setCreateValues(makeInitialCreateValues());
       state.reload();
     } catch (error) {
@@ -146,31 +148,42 @@ export function WorkEvidencePage(): JSX.Element {
 
   return (
     <PageContainer testId="work-evidence-page">
-      <SectionCard title="Record Manual Work Evidence">
+      <SectionCard title="Add Observed Work">
         {createServerError ? <ErrorState description={createServerError} /> : null}
         {createSuccess ? (
           <div className="success-banner" data-testid="work-evidence-success" role="status">
             {createSuccess}
           </div>
         ) : null}
-        <CreateWorkEvidenceForm
-          errors={createErrors}
-          isSubmitting={isSubmitting}
-          onChange={handleCreateChange}
-          onSubmit={handleCreateSubmit}
-          people={state.people}
-          projects={state.projects}
-          values={createValues}
-        />
+        <p className="placeholder-block__copy" style={{ marginBottom: '0.75rem' }}>
+          Use this optional module to capture observed work from manual or source-system records for audit and reconciliation.
+          It does not create or approve staffing assignments.
+        </p>
+        {evidenceManagement.allowManualEntry ? (
+          <CreateWorkEvidenceForm
+            errors={createErrors}
+            isSubmitting={isSubmitting}
+            onChange={handleCreateChange}
+            onSubmit={handleCreateSubmit}
+            people={state.people}
+            projects={state.projects}
+            values={createValues}
+          />
+        ) : (
+          <EmptyState
+            description="Manual entry is turned off in platform settings. You can still review observed-work records below."
+            title="Manual entry disabled"
+          />
+        )}
       </SectionCard>
 
       <FilterBar>
         <label className="field">
-          <span className="field__label">Person</span>
+          <span className="field__label">Contributor</span>
           <input
             className="field__control"
             onChange={(event) => setFilters({ person: event.target.value })}
-            placeholder="Filter by person name"
+            placeholder="Filter by contributor name"
             type="search"
             value={filters.person}
           />
@@ -224,16 +237,16 @@ export function WorkEvidencePage(): JSX.Element {
             {state.data && state.data.items.length > 0 ? (
               <div className="results-meta">
                 <span>
-                  Showing {state.visibleItems.length} of {state.data.items.length} evidence records
+                  Showing {state.visibleItems.length} of {state.data.items.length} observed-work records
                 </span>
               </div>
             ) : null}
 
             {state.visibleItems.length === 0 ? (
-              <EmptyState
-                action={{ href: '/work-evidence', label: 'Log Evidence' }}
-                description="Observed work is enabled, but no evidence matched the current filters."
-                title="No evidence logged"
+                <EmptyState
+                action={evidenceManagement.allowManualEntry ? { href: '/work-evidence', label: 'Add Observed Work' } : undefined}
+                description="No observed-work records matched the current filters."
+                title="No observed work found"
               />
             ) : (
               <WorkEvidenceTable items={state.visibleItems} onUpdated={state.reload} />

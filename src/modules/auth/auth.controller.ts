@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -18,7 +17,11 @@ import { Public } from '@src/modules/identity-access/application/public.decorato
 import { SkipDemoGuard } from '@src/modules/identity-access/application/skip-demo-guard.decorator';
 
 import { AuthService } from './auth.service';
+import { TokenService } from './token.service';
+import { TwoFactorService } from './two-factor.service';
+import { PasswordService } from './password.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
 import { Disable2faDto, TwoFaLoginDto, Verify2faDto } from './dto/verify-2fa.dto';
@@ -31,6 +34,9 @@ const REFRESH_COOKIE = 'dc_refresh';
 export class AuthController {
   public constructor(
     private readonly authService: AuthService,
+    private readonly tokenService: TokenService,
+    private readonly twoFactorService: TwoFactorService,
+    private readonly passwordService: PasswordService,
     private readonly appConfig: AppConfig,
   ) {}
 
@@ -67,7 +73,7 @@ export class AuthController {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
 
     if (token) {
-      await this.authService.logout(token);
+      await this.tokenService.revokeRefreshToken(token);
     }
 
     res.clearCookie(REFRESH_COOKIE);
@@ -85,7 +91,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token missing.');
     }
 
-    const pair = await this.authService.refresh(token);
+    const pair = await this.tokenService.refresh(token);
 
     setRefreshCookie(res, pair.refreshToken);
 
@@ -93,15 +99,17 @@ export class AuthController {
   }
 
   @Post('password-reset/request')
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   public async requestPasswordReset(@Body() dto: PasswordResetRequestDto): Promise<void> {
-    await this.authService.requestPasswordReset(dto.email);
+    await this.passwordService.requestPasswordReset(dto.email);
   }
 
   @Post('password-reset/confirm')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   public async confirmPasswordReset(@Body() dto: PasswordResetConfirmDto): Promise<void> {
-    await this.authService.confirmPasswordReset(dto.token, dto.newPassword);
+    await this.passwordService.confirmPasswordReset(dto.token, dto.newPassword);
   }
 
   @Post('2fa/setup')
@@ -115,12 +123,13 @@ export class AuthController {
       throw new UnauthorizedException('Authentication required.');
     }
 
-    const result = await this.authService.setup2FA(accountId);
+    const result = await this.twoFactorService.setup(accountId);
 
     return { qrCodeDataUri: result.qrCodeDataUri, backupCodes: result.backupCodes };
   }
 
   @Post('2fa/verify')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   public async verify2fa(
     @Body() dto: Verify2faDto,
@@ -132,7 +141,7 @@ export class AuthController {
       throw new UnauthorizedException('Authentication required.');
     }
 
-    await this.authService.verify2FA(accountId, dto.code);
+    await this.twoFactorService.verify(accountId, dto.code);
   }
 
   @Post('2fa/disable')
@@ -147,17 +156,18 @@ export class AuthController {
       throw new UnauthorizedException('Authentication required.');
     }
 
-    await this.authService.disable2FA(accountId, dto.password);
+    await this.twoFactorService.disable(accountId, dto.password);
   }
 
   @Post('2fa/login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   public async twoFaLogin(
     @Body() dto: TwoFaLoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ accessToken: string }> {
-    const pair = await this.authService.completeTwoFactorLogin(
+    const pair = await this.twoFactorService.completeTwoFactorLogin(
       dto.tempToken,
       dto.code,
       req.headers['user-agent'],
@@ -172,7 +182,7 @@ export class AuthController {
   @Post('password/change')
   @HttpCode(HttpStatus.NO_CONTENT)
   public async changePassword(
-    @Body() dto: { currentPassword: string; newPassword: string },
+    @Body() dto: ChangePasswordDto,
     @Req() req: Request & { principal?: { userId?: string } },
   ): Promise<void> {
     const accountId = req.principal?.userId;
@@ -181,11 +191,7 @@ export class AuthController {
       throw new UnauthorizedException('Authentication required.');
     }
 
-    if (!dto.currentPassword || !dto.newPassword) {
-      throw new BadRequestException('currentPassword and newPassword are required.');
-    }
-
-    await this.authService.changePassword(accountId, dto.currentPassword, dto.newPassword);
+    await this.passwordService.changePassword(accountId, dto.currentPassword, dto.newPassword);
   }
 
   @Get('me')

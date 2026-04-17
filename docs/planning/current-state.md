@@ -8,7 +8,7 @@ It is meant to help planning agents separate:
 - implemented but still maturing behavior
 - the real next bottlenecks for the next iteration
 
-_Last updated: 2026-04-11 (DB migration complete; all in-memory stores moved to Prisma; comprehensive seed dataset; 53 test files / 265 tests; backend TS clean)_
+_Last updated: 2026-04-16 (Phase 20 security/UX/accessibility audit complete; 74/92 items done; 59 Prisma models; 199 API endpoints; 54 frontend test files + 29 E2E specs; 71 routes; 6 seed profiles; backend + frontend TS clean)_
 
 ---
 
@@ -36,7 +36,8 @@ _Last updated: 2026-04-11 (DB migration complete; all in-memory stores moved to 
 
 - supported local runtime path is Docker-only
 - PostgreSQL, backend, frontend, migration job, seed job, and optional monitoring services are containerized
-- three seed profiles: `demo`, `bank-scale`, `phase2`
+- resource limits: PostgreSQL 512MB, backend 1GB, frontend 1GB
+- six seed profiles: `demo`, `phase2`, `bank-scale`, `life-demo`, `investor-demo`, `enterprise`
 - `phase2` profile creates 32 people, 16 org units, 4-level hierarchy, 12 projects, 22 assignments, 24 work evidence entries, and 8 test accounts
 
 ---
@@ -147,8 +148,12 @@ Runtime state: live and durable (Prisma-backed)
 
 Implemented backend capabilities:
 
-- assignment create, bulk create, approve, reject, end
-- assignment override creation for conflict resolution
+- assignment create, bulk create, approve, reject, end, amend, revoke
+- assignment activation service (APPROVED → ACTIVE when validFrom reached; `POST /assignments/activate`)
+- assignment override creation for conflict resolution (override reason persisted in history)
+- self-approval prevention (actorId !== personId)
+- person active check at approval time (cannot approve for deactivated employee)
+- project end date validation (assignment cannot exceed project end date)
 - lifecycle history
 - workload summary
 - planned-vs-actual comparison
@@ -198,14 +203,16 @@ Implemented: list, create, members, team detail, team dashboard summary. Runtime
 
 Implemented backend capabilities:
 
-- create case
-- list cases
+- create case (auto-creates ONBOARDING case on employee hire, OFFBOARDING on deactivation)
+- list cases (filters persisted in URL search params)
 - case detail
 - list case steps
 - complete case step
 - close case (`POST /cases/:id/close`)
 - cancel case (`POST /cases/:id/cancel`)
 - archive case (`POST /cases/:id/archive`)
+- approve case (`ApproveCaseService` — OPEN/IN_PROGRESS → APPROVED)
+- reject case (`ApproveCaseService` — OPEN/IN_PROGRESS → REJECTED with reason)
 - `subjectPersonName` / `ownerPersonName` resolved from `demoPeople` in response
 
 Implemented frontend capabilities:
@@ -215,6 +222,7 @@ Implemented frontend capabilities:
 - COMPLETED step badge and timestamp display
 - Close Case / Cancel Case / Archive Case action buttons
 - Subject and Owner displayed as names (not raw UUIDs)
+- Error state with retry action (Law 2 compliance)
 
 ### Metadata and admin
 
@@ -257,7 +265,7 @@ Implemented: Jira sync, M365 and RADIUS directory sync, reconciliation review, s
 
 Implemented: templates, channel abstraction, test-send, SMTP + Teams webhook transport, retry policy, outcome queries, audit. Assignment approve/reject events are wired. Notification queue endpoint (`GET /notifications/queue`) with status filter + pagination. Frontend queue section in NotificationsPage with status dropdown, paginated table, and payload detail.
 
-**In-app notification inbox** (Phase 10): `in_app_notifications` table. `GET /notifications/inbox`, `POST /notifications/inbox/:id/read`, `POST /notifications/inbox/read-all` endpoints (auth-required, personal scope). `NotificationBell` component in TopHeader — bell icon with unread badge, dropdown panel, per-item read/navigate, mark-all-read, 30-second polling. Events wired: `assignment.created`, `assignment.approved`, `assignment.rejected`, `case.created`, `case.step_completed`, `case.closed`.
+**In-app notification inbox** (Phase 10): `in_app_notifications` table. `GET /notifications/inbox`, `POST /notifications/inbox/:id/read`, `POST /notifications/inbox/read-all` endpoints (auth-required, personal scope). `NotificationBell` component in TopHeader (native `<button>` element for accessibility) — bell icon with unread badge, dropdown panel, per-item read/navigate, mark-all-read, 30-second polling. Events wired: `assignment.created`, `assignment.approved`, `assignment.rejected`, `assignment.amended`, `case.created`, `case.step_completed`, `case.closed`, `case.approved`, `case.rejected`, `employee.deactivated`, `employee.terminated`.
 
 ### Audit, exceptions, and observability
 
@@ -269,12 +277,28 @@ Implemented: structured logging, correlation ids, business audit logging and que
 
 Implemented:
 
-- bearer-token principal sourcing
-- RBAC guard layer
+- bearer-token principal sourcing with HS256 JWT
+- RBAC guard layer (`@RequireRoles`)
 - route-level protection for write/admin APIs
-- test-friendly non-production auth helpers
-- CORS with `credentials: true` (required for cookie-based auth in browser)
+- test-friendly non-production auth helpers (blocked in production via startup guard)
+- CORS with `credentials: true` and SameSite=strict refresh cookies
 - Vite proxy configured so browser calls go through `/api` path (not direct to port 3000)
+- Security headers in all environments: HSTS, CSP, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy (both `main.ts` and `nginx.conf`)
+- Self-approval prevention: employees cannot approve their own timesheets or assignments
+- IDOR protection: actorId always derived from authenticated principal, never from request body
+- Rate limiting: login (10 req/min), password reset (3 req/hour), global (100 req/min)
+- Password complexity: min 8 chars + uppercase + lowercase + digit + special character
+- 2FA temp token verification via full JWT signature validation (not manual base64)
+- Password reset tokens never logged (only truncated hash)
+- `/diagnostics` endpoint requires `@RequireRoles('admin')` (was previously `@Public()`)
+- `$queryRaw` (parameterized) used instead of `$queryRawUnsafe` in health service
+- `innerHTML` replaced with `replaceChildren()` in org chart (XSS surface removed)
+- Admin config endpoints validated via class-validator DTOs
+- Production startup guard prevents `AUTH_ALLOW_TEST_HEADERS` and `AUTH_DEV_BOOTSTRAP_ENABLED`
+- GitHub Actions pinned to commit SHAs (supply chain hardening)
+- Trivy container image scanning in CI pipeline
+- Caddy reverse proxy rate limiting (100 req/min per IP)
+- `npm audit` dependency scanning step in CI
 
 Current limitation:
 - authentication is token-based; not yet integrated with an external OIDC provider or JWKS validation flow
@@ -304,11 +328,19 @@ Implemented:
 - backend unit/domain/repository/integration/contracts/performance coverage
 - API integration and negative-path tests
 - role dashboard and lifecycle tests
-- frontend route/component tests (TypeScript clean as of 2026-04-05)
+- frontend route/component tests: 54 test files (TypeScript clean as of 2026-04-16)
+- E2E Playwright tests: 29 spec files covering all 7 roles + smoke + cross-role + accessibility
 - UAT happy-path, anomaly, and dashboard packs
 - release-readiness self-check and operator drill scripts
+- CI retries set to 2 in Playwright config for flaky test resilience
+- E2E tests use centralized URL constants (`PLAYWRIGHT_API_BASE`, `PLAYWRIGHT_BASE_URL`)
+- Semantic locators (`getByRole`, `getByLabel`) preferred over CSS selectors
+- axe-core accessibility smoke test per role dashboard (`14-accessibility.spec.ts`)
+- `npm audit` and Trivy container scanning in CI pipeline
 
-Outstanding: none — Phase 2d complete as of 2026-04-05.
+Testing gaps remaining:
+- 19-10: Activity feed API/component tests not yet written
+- E2E: some test files still use hardcoded `http://127.0.0.1:3000/api` (not all migrated)
 
 ---
 
@@ -470,7 +502,54 @@ All previously deferred tracker items are now implemented:
 
 ## Highest-value remaining gaps (priority order)
 
-All phases (1–16, A–G, DD, MS, QA-A through QA-M) are complete. **53 test files / 265 tests passing. Backend TS clean.**
+All phases (1–19, 20a–i, A–G, DD, MS, QA-A through QA-M) are complete or in progress. **54 frontend test files + 29 E2E specs passing. Backend TS clean. Frontend TS clean.**
+
+### Phase 20 — Comprehensive Audit (2026-04-15/16) — 74/92 items done
+
+Remaining 17 items are architectural refactoring (20c sub-phase):
+- Module boundary violations (cross-module imports of internal repos)
+- Service decomposition (split AuthService 498→4 services)
+- DTO creation for 25+ inline @Body() parameters
+- Replace `any` types in 15+ Prisma Gateway interfaces
+- Extract shared hooks (useDashboardQuery, usePersonSelector, fetchDashboard<T>)
+- Split god components (ProjectManagerDashboardPage, DirectorDashboardPage, HrDashboardPage)
+- Add transaction boundaries to multi-step operations
+- Resolve circular dependencies (4 modules use forwardRef)
+
+### Business logic added (Phase 20b)
+- Assignment APPROVED → ACTIVE transition with `ActivateApprovedAssignmentsService`
+- Case approval/rejection workflow (`ApproveCaseService`)
+- Auto-create ONBOARDING case on employee hire
+- Auto-create OFFBOARDING case on employee deactivation
+- Overlapping leave request detection (server-side)
+- Budget approval workflow (audit-trail based; full DB schema pending)
+- Missing notification events added (amended, deactivated, case approved/rejected)
+
+### Accessibility (Phase 20e — complete)
+- `prefers-reduced-motion` media query for all animations
+- Native `<button>` in NotificationBell (was `<div>`)
+- `scope="col"` on table headers across all pages
+- Color contrast verified (--color-text-subtle darkened to 4.5:1)
+- Focus-visible indicators on charts, tables, KPIs, tip balloons
+- DataTable captions on key instances
+- axe-core Playwright a11y test suite (`e2e/tests/14-accessibility.spec.ts`)
+
+### UX improvements (Phase 20g — complete)
+- Filter persistence via URL (CasesPage, WorkloadMatrixPage)
+- Form pre-fill from URL params and auth context (CreateAssignment, CreateStaffingRequest, BulkAssignment)
+- Timesheet approval auto-expands submitted rows (one-screen approval)
+- Error/empty states all have forward actions
+- Sort order persisted in URL (ProjectsPage)
+- KPI drilldown fixed (TeamDashboard "Unassigned" links to filtered list)
+
+### Frontend quality (Phase 20d)
+- Disabled button styling for all variants
+- Focus-visible on interactive table rows, KPI strip, chart wrappers
+- Table row hover transitions
+- Confirm dialog fade-in animation
+- Inline styles extracted to constants in ActionDataTable and WorkloadMatrixPage
+- Pagination component (`PaginationControls`) with page numbers, first/last, rows-per-page selector
+- StaffingRequestsPage now paginated
 
 ### Completed 2026-04-11 (DB Migration & Demo Readiness)
 

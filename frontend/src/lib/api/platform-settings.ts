@@ -69,9 +69,18 @@ export interface DashboardSettings {
   nearingClosureDaysThreshold: number;
 }
 
+export interface EvidenceManagementSettings {
+  enabled: boolean;
+  allowManualEntry: boolean;
+  showDiagnosticsInCoreDashboards: boolean;
+  allowedSources: string[];
+  retentionDays: number | null;
+}
+
 export interface PlatformSettingsResponse {
   capitalisation: CapitalisationSettings;
   dashboard: DashboardSettings;
+  evidenceManagement: EvidenceManagementSettings;
   general: GeneralSettings;
   notifications: NotificationsSettings;
   onboarding: OnboardingSettings;
@@ -96,8 +105,11 @@ export async function updatePlatformSetting(
   key: string,
   value: unknown,
 ): Promise<UpdateSettingResponse> {
-  return httpPatch<UpdateSettingResponse, { value: unknown }>(
+  const response = await httpPatch<UpdateSettingResponse, { value: unknown }>(
     `/admin/platform-settings/${encodeURIComponent(key)}`,
     { value },
   );
+
+  window.dispatchEvent(new CustomEvent('platform-settings:updated', { detail: { key, value } }));
+  return response;
 }

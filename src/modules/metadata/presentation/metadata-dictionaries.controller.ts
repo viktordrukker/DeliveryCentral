@@ -31,6 +31,7 @@ import { CreateDictionaryEntryService } from '../application/create-dictionary-e
 import { ToggleDictionaryEntryService } from '../application/toggle-dictionary-entry.service';
 import { MetadataDictionaryQueryDto } from '../application/contracts/metadata-dictionary.query';
 import { MetadataDictionaryQueryService } from '../application/metadata-dictionary-query.service';
+import { ToggleEntryRequestDto } from '../application/contracts/toggle-entry.request';
 
 @ApiTags('metadata')
 @Controller('metadata/dictionaries')
@@ -112,7 +113,7 @@ export class MetadataDictionariesController {
   @RequireRoles('admin', 'hr_manager')
   public async toggleDictionaryEntry(
     @Param('entryId') entryId: string,
-    @Body() body: { isEnabled: boolean },
+    @Body() body: ToggleEntryRequestDto,
   ): Promise<MetadataDictionaryEntryDto> {
     try {
       const entry = await this.toggleDictionaryEntryService.execute({

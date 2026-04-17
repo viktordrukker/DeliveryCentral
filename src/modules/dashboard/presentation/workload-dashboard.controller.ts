@@ -75,10 +75,11 @@ export class WorkloadDashboardController {
   }
 
   @Get('planned-vs-actual')
-  @ApiOperation({ summary: 'Get planned vs actual comparison categories for staffing and evidence' })
+  @ApiOperation({ summary: 'Get planned vs actual comparison with timesheet status breakdown, staffing coverage, and org-unit aggregation' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   @ApiQuery({ name: 'projectId', required: false, type: String })
   @ApiQuery({ name: 'personId', required: false, type: String })
+  @ApiQuery({ name: 'weeks', required: false, type: Number, description: 'ISO weeks to include (1-12, default 4)' })
   @ApiOkResponse({ type: PlannedVsActualResponseDto })
   public async getPlannedVsActual(
     @Query() query: PlannedVsActualQueryDto,

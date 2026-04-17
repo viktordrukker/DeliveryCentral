@@ -21,31 +21,25 @@ import { useReportingLineManagement } from '@/features/people/useReportingLineMa
 import { deactivateEmployee, terminateEmployee } from '@/lib/api/person-directory';
 import { terminateReportingLine } from '@/lib/api/reporting-lines';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
-import { fetchWorkEvidence, WorkEvidenceItem } from '@/lib/api/work-evidence';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 
 import { humanizeEnum, EMPLOYMENT_STATUS_LABELS } from '@/lib/labels';
+import { PersonActivityFeed } from '@/components/people/PersonActivityFeed';
 import { Person360Tab } from '@/components/people/Person360Tab';
-
-const HR_LIFECYCLE_ROLES = ['hr_manager', 'director', 'admin'];
-const THREESIXTY_ROLES = ['hr_manager', 'delivery_manager', 'resource_manager', 'director', 'admin'];
-const SKILL_EDIT_ROLES = ['hr_manager', 'resource_manager', 'delivery_manager', 'director', 'admin', 'employee'];
+import { HR_DIRECTOR_ADMIN_ROLES, THREESIXTY_REVIEW_ROLES, SKILL_EDIT_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal } = useAuth();
-  const canManageLifecycle = principal?.roles.some((r) => HR_LIFECYCLE_ROLES.includes(r)) ?? false;
-  const canView360 = principal?.roles.some((r) => THREESIXTY_ROLES.includes(r)) ?? false;
-  const canEditSkills = principal?.roles.some((r) => SKILL_EDIT_ROLES.includes(r)) ?? false;
+  const canManageLifecycle = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
+  const canView360 = hasAnyRole(principal?.roles, THREESIXTY_REVIEW_ROLES);
+  const canEditSkills = hasAnyRole(principal?.roles, SKILL_EDIT_ROLES);
   const activeTab = searchParams.get('tab') ?? 'overview';
 
   const [personAuditEvents, setPersonAuditEvents] = useState<BusinessAuditRecord[]>([]);
   const [personAuditLoading, setPersonAuditLoading] = useState(false);
   const [personAuditError, setPersonAuditError] = useState<string | null>(null);
-
-  const [workEvidence, setWorkEvidence] = useState<WorkEvidenceItem[]>([]);
-  const [workEvidenceLoading, setWorkEvidenceLoading] = useState(false);
 
   function setTab(tab: string): void {
     setSearchParams((prev) => {
@@ -94,22 +88,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       });
     return () => { active = false; };
   }, [id, activeTab]);
-
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    setWorkEvidenceLoading(true);
-    void fetchWorkEvidence({ personId: id })
-      .then((data) => {
-        if (!active) return;
-        setWorkEvidence([...data.items].sort(
-          (a, b) => new Date(b.activityDate).getTime() - new Date(a.activityDate).getTime(),
-        ));
-      })
-      .catch(() => { if (active) setWorkEvidence([]); })
-      .finally(() => { if (active) setWorkEvidenceLoading(false); });
-    return () => { active = false; };
-  }, [id]);
 
   const [terminateError, setTerminateError] = useState<string | null>(null);
   const [terminateSuccess, setTerminateSuccess] = useState<string | null>(null);
@@ -371,13 +349,18 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       ) : null}
 
       {activeTab === 'history' && id ? (
-        <SectionCard title="Change History">
-          {personAuditLoading ? <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" /> : null}
-          {personAuditError ? <ErrorState description={personAuditError} /> : null}
-          {!personAuditLoading && !personAuditError ? (
-            <AuditTimeline events={personAuditEvents} />
-          ) : null}
-        </SectionCard>
+        <>
+          <SectionCard title="Lifecycle Activity" collapsible>
+            <PersonActivityFeed personId={id} />
+          </SectionCard>
+          <SectionCard title="Change History">
+            {personAuditLoading ? <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" /> : null}
+            {personAuditError ? <ErrorState description={personAuditError} /> : null}
+            {!personAuditLoading && !personAuditError ? (
+              <AuditTimeline events={personAuditEvents} />
+            ) : null}
+          </SectionCard>
+        </>
       ) : null}
 
       {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
@@ -521,43 +504,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                   </div>
                 </dl>
               )}
-            </SectionCard>
-
-            <SectionCard title="Work Evidence Summary">
-              {workEvidenceLoading ? (
-                <LoadingState variant="skeleton" skeletonType="detail" />
-              ) : workEvidence.length === 0 ? (
-                <EmptyState
-                  description="No work evidence records found for this employee."
-                  title="No work evidence records"
-                />
-              ) : (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Source</th>
-                      <th>Summary</th>
-                      <th>Hours</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workEvidence.slice(0, 10).map((ev) => (
-                      <tr key={ev.id}>
-                        <td>{formatDateShort(ev.activityDate)}</td>
-                        <td>{ev.sourceType}</td>
-                        <td>{ev.summary ?? '—'}</td>
-                        <td>{ev.effortHours}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              {workEvidence.length > 10 ? (
-                <p className="placeholder-block__copy" style={{ marginTop: '0.5rem' }}>
-                  Showing 10 of {workEvidence.length} records.
-                </p>
-              ) : null}
             </SectionCard>
 
             <SectionCard title="Current Workload">

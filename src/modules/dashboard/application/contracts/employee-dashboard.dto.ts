@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { AssignmentDirectoryItemDto } from '@src/modules/assignments/application/contracts/assignment-directory.dto';
-import { WorkEvidenceResponseDto } from '@src/modules/work-evidence/application/contracts/work-evidence.response';
 
 class EmployeeDashboardPersonSummaryDto {
   @ApiProperty()
@@ -56,23 +55,6 @@ class EmployeeCurrentWorkloadSummaryDto {
   public isOverallocated!: boolean;
 }
 
-class EmployeeRecentWorkEvidenceSummaryDto {
-  @ApiProperty()
-  public recentEntryCount!: number;
-
-  @ApiProperty()
-  public totalEffortHours!: number;
-
-  @ApiProperty({ nullable: true })
-  public lastActivityDate!: string | null;
-
-  @ApiProperty({ type: [String] })
-  public sourceTypes!: string[];
-
-  @ApiProperty({ type: () => [WorkEvidenceResponseDto] })
-  public recentItems!: WorkEvidenceResponseDto[];
-}
-
 class EmployeePendingWorkflowItemDto {
   @ApiProperty()
   public id!: string;
@@ -118,9 +100,6 @@ export class EmployeeDashboardResponseDto {
 
   @ApiProperty({ type: () => EmployeeCurrentWorkloadSummaryDto })
   public currentWorkloadSummary!: EmployeeCurrentWorkloadSummaryDto;
-
-  @ApiProperty({ type: () => EmployeeRecentWorkEvidenceSummaryDto })
-  public recentWorkEvidenceSummary!: EmployeeRecentWorkEvidenceSummaryDto;
 
   @ApiProperty({ type: () => EmployeePendingWorkflowSummaryDto })
   public pendingWorkflowItems!: EmployeePendingWorkflowSummaryDto;

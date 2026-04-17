@@ -52,6 +52,15 @@ export class ProjectDirectoryItemDto {
 
   @ApiProperty({ type: [ProjectExternalLinkSummaryDto] })
   public externalLinksSummary!: ProjectExternalLinkSummaryDto[];
+
+  @ApiProperty({ required: false, nullable: true })
+  public engagementModel!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public priority!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public clientName!: string | null;
 }
 
 export class ProjectDirectoryResponseDto {
@@ -74,6 +83,27 @@ export class ProjectDetailsDto extends ProjectDirectoryItemDto {
 
   @ApiProperty({ required: false, nullable: true })
   public projectManagerDisplayName!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public deliveryManagerId!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public deliveryManagerDisplayName!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public clientId!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public domain!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public projectType!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  public techStack!: string[];
+
+  @ApiProperty({ required: false, nullable: true })
+  public tags!: string[];
 
   @ApiProperty({ type: [ProjectExternalLinkDto] })
   public externalLinks!: ProjectExternalLinkDto[];

@@ -1,6 +1,7 @@
 {$CADDY_DOMAIN} {
     # Forward API requests to the backend
     handle /api/* {
+        rate_limit {remote.ip} 100r/m
         reverse_proxy backend:3000
     }
 

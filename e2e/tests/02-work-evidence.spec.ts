@@ -12,7 +12,7 @@ import { p2 } from '../fixtures/phase2-identifiers';
 const lucas = p2.people.lucasReed;
 const carlos = p2.people.carlosVega;
 
-test.describe('Work evidence — delivery manager view', () => {
+test.describe('@critical Work evidence — delivery manager view', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDeliveryManager(page);
   });
@@ -27,11 +27,11 @@ test.describe('Work evidence — delivery manager view', () => {
     await page.goto('/work-evidence');
 
     // Phase2 seed has evidence records — section should appear
-    await expect(page.getByText(/Observed Work|Work Evidence/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Observed Work|Work Evidence/i })).toBeVisible();
   });
 });
 
-test.describe('Work evidence — project manager records evidence', () => {
+test.describe('@critical Work evidence — project manager records evidence', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsProjectManager(page);
   });
@@ -61,7 +61,7 @@ test.describe('Work evidence — project manager records evidence', () => {
   });
 });
 
-test.describe('Work evidence — planned vs actual page', () => {
+test.describe('@critical Work evidence — planned vs actual page', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDeliveryManager(page);
   });

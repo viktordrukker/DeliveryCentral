@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
-import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 
 import { InMemoryProjectRepository } from '../infrastructure/repositories/in-memory/in-memory-project.repository';
 
@@ -10,7 +10,7 @@ export interface ProjectHealthDto {
   score: number;
   grade: 'green' | 'yellow' | 'red';
   staffingScore: number;
-  evidenceScore: number;
+  timeScore: number;
   timelineScore: number;
 }
 
@@ -19,7 +19,7 @@ export class ProjectHealthQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(projectId: string): Promise<ProjectHealthDto | null> {
@@ -45,17 +45,17 @@ export class ProjectHealthQueryService {
       staffingScore = avgAllocation >= 80 ? 33 : 33;
     }
 
-    // Evidence score (33 pts max)
-    const allEvidence = await this.workEvidenceRepository.list({ projectId });
-    let evidenceScore = 0;
-    if (allEvidence.length > 0) {
-      const cutoff30d = new Date(now);
-      cutoff30d.setUTCDate(cutoff30d.getUTCDate() - 30);
-      const recentEvidence = allEvidence.filter(
-        (e) => (e.occurredOn ?? e.recordedAt) >= cutoff30d,
-      );
-      evidenceScore = recentEvidence.length > 0 ? 33 : 16;
-    }
+    // Time score (33 pts max) based on approved timesheet activity in the last 30 days.
+    const cutoff30d = new Date(now);
+    cutoff30d.setUTCDate(cutoff30d.getUTCDate() - 30);
+    const approvedEntryCount = await this.prisma.timesheetEntry.count({
+      where: {
+        date: { gte: cutoff30d, lte: now },
+        projectId,
+        timesheetWeek: { status: 'APPROVED' },
+      },
+    });
+    const timeScore = approvedEntryCount > 0 ? 33 : assignmentCount > 0 ? 16 : 0;
 
     // Timeline score (34 pts max)
     let timelineScore: number;
@@ -67,16 +67,16 @@ export class ProjectHealthQueryService {
       timelineScore = 34;
     }
 
-    const score = staffingScore + evidenceScore + timelineScore;
+    const score = staffingScore + timeScore + timelineScore;
     const grade: 'green' | 'yellow' | 'red' =
       score >= 70 ? 'green' : score >= 40 ? 'yellow' : 'red';
 
     return {
-      evidenceScore,
       grade,
       projectId,
       score,
       staffingScore,
+      timeScore,
       timelineScore,
     };
   }

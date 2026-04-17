@@ -25,7 +25,7 @@ async function getToken(
 
 // ── 2d-35 Employee cannot access /admin ─────────────────────────────────────
 
-test.describe('2d-35 Negative path — employee cannot access /admin', () => {
+test.describe('@critical 2d-35 Negative path — employee cannot access /admin', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });
@@ -54,7 +54,7 @@ test.describe('2d-35 Negative path — employee cannot access /admin', () => {
 
 // ── 2d-36 Employee cannot view another role's dashboard ─────────────────────
 
-test.describe('2d-36 Negative path — employee cannot view HR dashboard', () => {
+test.describe('@critical 2d-36 Negative path — employee cannot view HR dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsEmployee(page);
   });
@@ -82,7 +82,7 @@ test.describe('2d-36 Negative path — employee cannot view HR dashboard', () =>
 
 // ── 2d-37 Reject assignment with missing actor ───────────────────────────────
 
-test.describe('2d-37 Negative path — reject assignment without required actor', () => {
+test.describe('@critical 2d-37 Negative path — reject assignment without required actor', () => {
   test('reject API without actorId returns 400 or 422 validation error', async ({ page }) => {
     const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
 
@@ -124,7 +124,7 @@ test.describe('2d-37 Negative path — reject assignment without required actor'
 
 // ── 2d-38 Close project with conflict ───────────────────────────────────────
 
-test.describe('2d-38 Negative path — close project with active assignments (conflict)', () => {
+test.describe('@critical 2d-38 Negative path — close project with active assignments (conflict)', () => {
   test('close ACTIVE project with active assignments returns 409 without override', async ({ page }) => {
     const token = await getToken(page, p2.accounts.projectManager.email, p2.accounts.projectManager.password);
 

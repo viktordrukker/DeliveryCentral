@@ -31,9 +31,11 @@ import {
 } from '../application/contracts/person-directory.dto';
 import { CreateEmployeeService } from '../application/create-employee.service';
 import { DeactivateEmployeeService } from '../application/deactivate-employee.service';
+import { EmployeeActivityService, type EmployeeActivityEventDto } from '../application/employee-activity.service';
 import { TerminateEmployeeService } from '../application/terminate-employee.service';
 import { PersonDirectoryQueryService } from '../application/person-directory-query.service';
 import { Person } from '../domain/entities/person.entity';
+import { TerminatePersonRequestDto } from '../application/contracts/terminate-person.request';
 
 @ApiTags('person-directory')
 @Controller('org/people')
@@ -42,6 +44,7 @@ export class PersonDirectoryController {
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly createEmployeeService: CreateEmployeeService,
     private readonly deactivateEmployeeService: DeactivateEmployeeService,
+    private readonly employeeActivityService: EmployeeActivityService,
     private readonly terminateEmployeeService: TerminateEmployeeService,
   ) {}
 
@@ -80,7 +83,7 @@ export class PersonDirectoryController {
   @RequireRoles('hr_manager', 'director', 'admin')
   public async terminateEmployee(
     @Param('id') id: string,
-    @Body() body: { actorId?: string; reason?: string; terminatedAt?: string },
+    @Body() body: TerminatePersonRequestDto,
   ): Promise<EmployeeResponseDto> {
     return this.mapEmployeeResponse(
       await this.withEmployeeErrors(() =>
@@ -139,6 +142,16 @@ export class PersonDirectoryController {
     }
 
     return person;
+  }
+
+  @Get(':id/activity')
+  @ApiOperation({ summary: 'Get employee activity feed (lifecycle events)' })
+  @ApiOkResponse({ description: 'Activity events for the person.' })
+  public async getPersonActivity(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ): Promise<EmployeeActivityEventDto[]> {
+    return this.employeeActivityService.listByPerson(id, limit ? parseInt(limit, 10) : 50);
   }
 
   private mapEmployeeResponse(person: Person): EmployeeResponseDto {

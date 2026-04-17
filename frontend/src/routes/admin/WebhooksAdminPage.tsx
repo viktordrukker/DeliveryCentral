@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
 import {
   WebhookSubscription,
   WebhookDeliveryAttempt,
@@ -33,6 +37,7 @@ export function WebhooksAdminPage(): JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryAttempt[]>([]);
   const [testResult, setTestResult] = useState<WebhookDeliveryAttempt | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchWebhooks()
@@ -106,11 +111,7 @@ export function WebhooksAdminPage(): JSX.Element {
         title="Webhook Subscriptions"
       />
 
-      {error ? (
-        <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorState description={error} /> : null}
 
       <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', marginBottom: '1.5rem' }}>
         <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 700 }}>Add Subscription</h3>
@@ -163,7 +164,7 @@ export function WebhooksAdminPage(): JSX.Element {
       </div>
 
       {subscriptions.length === 0 ? (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>No webhook subscriptions configured.</p>
+        <SectionCard><EmptyState description="No webhook subscriptions are configured yet." title="No webhooks" /></SectionCard>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
           <thead>
@@ -202,7 +203,7 @@ export function WebhooksAdminPage(): JSX.Element {
                     </button>
                     <button
                       className="button button--danger"
-                      onClick={() => void handleDelete(sub.id)}
+                      onClick={() => setConfirmDeleteId(sub.id)}
                       style={{ fontSize: '0.75rem', padding: '2px 8px' }}
                       type="button"
                     >
@@ -259,6 +260,13 @@ export function WebhooksAdminPage(): JSX.Element {
           </table>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        message="This will permanently delete the webhook subscription. All future events will stop being delivered."
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={() => { const id = confirmDeleteId; setConfirmDeleteId(null); if (id) void handleDelete(id); }}
+        title="Delete webhook?"
+      />
     </PageContainer>
   );
 }

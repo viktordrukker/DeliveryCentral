@@ -1,13 +1,8 @@
 import { httpGet, httpPost } from './http-client';
 
 export type ExceptionCategory =
-  | 'ASSIGNMENT_WITHOUT_EVIDENCE'
-  | 'M365_RECONCILIATION_ANOMALY'
   | 'PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS'
-  | 'RADIUS_RECONCILIATION_ANOMALY'
-  | 'STALE_ASSIGNMENT_APPROVAL'
-  | 'WORK_EVIDENCE_AFTER_ASSIGNMENT_END'
-  | 'WORK_EVIDENCE_WITHOUT_ASSIGNMENT';
+  | 'STALE_ASSIGNMENT_APPROVAL';
 
 export type ExceptionStatus = 'OPEN' | 'RESOLVED' | 'SUPPRESSED';
 
@@ -21,13 +16,11 @@ export interface ExceptionQueueItem {
   personId?: string;
   projectId?: string;
   projectName?: string;
-  provider?: 'm365' | 'radius';
-  sourceContext: 'assignment' | 'integration' | 'project' | 'work_evidence';
+  sourceContext: 'assignment' | 'project';
   status: ExceptionStatus;
   summary: string;
   targetEntityId: string;
   targetEntityType: string;
-  workEvidenceId?: string;
 }
 
 export interface ExceptionResolutionResponse {
@@ -121,4 +114,3 @@ export async function fetchExceptionById(id: string, params?: {
     `/exceptions/${id}${search.size > 0 ? `?${search.toString()}` : ''}`,
   );
 }
-

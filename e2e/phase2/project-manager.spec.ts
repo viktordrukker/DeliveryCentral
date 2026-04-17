@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, projectManager.email, projectManager.password);
 });
 
-test.describe('PM1 — PM sees managed projects with staffing and evidence counts', () => {
+test.describe('@full PM1 — PM sees managed projects with staffing and evidence counts', () => {
   test('PM dashboard renders project list with staffing count and evidence count columns', async ({ page }) => {
     await page.goto(`/dashboard/project-manager?personId=${lucas}`);
 
@@ -29,7 +29,7 @@ test.describe('PM1 — PM sees managed projects with staffing and evidence count
   });
 });
 
-test.describe('PM2 — PM sees staffing gaps', () => {
+test.describe('@full PM2 — PM sees staffing gaps', () => {
   test('staffing gaps section shows Jupiter Client Portal (REQUESTED only — no ACTIVE)', async ({ page }) => {
     await page.goto(`/dashboard/project-manager?personId=${lucas}`);
 
@@ -38,7 +38,7 @@ test.describe('PM2 — PM sees staffing gaps', () => {
   });
 });
 
-test.describe('PM3 — PM requests new assignment', () => {
+test.describe('@full PM3 — PM requests new assignment', () => {
   test('create assignment form accepts all fields and shows success toast', async ({ page }) => {
     await page.goto('/assignments/new');
 
@@ -73,7 +73,7 @@ test.describe('PM3 — PM requests new assignment', () => {
   });
 });
 
-test.describe('PM4 — PM ends an active assignment', () => {
+test.describe('@full PM4 — PM ends an active assignment', () => {
   test('assignment detail page shows End assignment button for APPROVED assignment', async ({ page }) => {
     await page.goto(`/assignments/${p2.assignments.lucasOnDeliveryCentral}`);
 
@@ -81,7 +81,7 @@ test.describe('PM4 — PM ends an active assignment', () => {
   });
 });
 
-test.describe('PM5 — PM sees nearing closure projects', () => {
+test.describe('@full PM5 — PM sees nearing closure projects', () => {
   test('PM dashboard shows attention projects section (nearing closure)', async ({ page }) => {
     await page.goto(`/dashboard/project-manager?personId=${lucas}`);
 

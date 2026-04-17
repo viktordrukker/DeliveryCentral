@@ -1,0 +1,81 @@
+{
+  "$schema": "Machine-readable JTBD matrix mapped to API, UI, and e2e assertions",
+  "version": "1.0.0",
+  "updatedAt": "2026-04-14",
+  "personas": {
+    "employee": {
+      "account": "ethan.brooks@example.com",
+      "role": "employee",
+      "criticalJtbds": [
+        { "id": "E-01", "jtbd": "See own assignments", "route": "/dashboard/employee", "api": "GET /api/dashboard/role/employee", "e2eTag": "@critical", "unitTest": "EmployeeDashboardPage.test.tsx" },
+        { "id": "E-09", "jtbd": "See current week timesheet", "route": "/timesheets", "api": "GET /api/timesheets", "e2eTag": "@critical", "unitTest": "TimesheetPage.test.tsx" },
+        { "id": "E-16", "jtbd": "Submit timesheet", "route": "/timesheets", "api": "POST /api/timesheets/:id/submit", "e2eTag": "@critical", "unitTest": "TimesheetPage.test.tsx" },
+        { "id": "E-22", "jtbd": "View people directory", "route": "/people", "api": "GET /api/person-directory", "e2eTag": "@smoke", "unitTest": "PeoplePage.test.tsx" },
+        { "id": "E-25", "jtbd": "Cannot access admin", "route": "/admin", "api": null, "e2eTag": "@smoke", "unitTest": "route-manifest.test.tsx" }
+      ]
+    },
+    "project_manager": {
+      "account": "lucas.reed@example.com",
+      "role": "project_manager",
+      "criticalJtbds": [
+        { "id": "PM-01", "jtbd": "See PM dashboard", "route": "/dashboard/project-manager", "api": "GET /api/dashboard/role/project_manager", "e2eTag": "@critical", "unitTest": "ProjectManagerDashboardPage.test.tsx" },
+        { "id": "PM-06", "jtbd": "Create project", "route": "/projects/new", "api": "POST /api/project-registry", "e2eTag": "@critical", "unitTest": null },
+        { "id": "PM-13", "jtbd": "Create assignment", "route": "/assignments/new", "api": "POST /api/assignments", "e2eTag": "@critical", "unitTest": "CreateAssignmentPage.test.tsx" },
+        { "id": "PM-19", "jtbd": "View planned vs actual", "route": "/dashboard/planned-vs-actual", "api": "GET /api/dashboard/workload/planned-vs-actual", "e2eTag": "@critical", "unitTest": "PlannedVsActualPage.test.tsx" },
+        { "id": "PM-23", "jtbd": "Create staffing request", "route": "/staffing-requests/new", "api": "POST /api/staffing-requests", "e2eTag": "@critical", "unitTest": null }
+      ]
+    },
+    "resource_manager": {
+      "account": "sophia.kim@example.com",
+      "role": "resource_manager",
+      "criticalJtbds": [
+        { "id": "RM-01", "jtbd": "See RM dashboard", "route": "/dashboard/resource-manager", "api": "GET /api/dashboard/role/resource_manager", "e2eTag": "@critical", "unitTest": "ResourceManagerDashboardPage.test.tsx" },
+        { "id": "RM-05", "jtbd": "View workload matrix", "route": "/workload", "api": "GET /api/workload", "e2eTag": "@critical", "unitTest": null },
+        { "id": "RM-08", "jtbd": "View staffing board", "route": "/staffing-board", "api": null, "e2eTag": "@smoke", "unitTest": null },
+        { "id": "RM-10", "jtbd": "View resource pools", "route": "/resource-pools", "api": "GET /api/resource-pools", "e2eTag": "@smoke", "unitTest": null }
+      ]
+    },
+    "hr_manager": {
+      "account": "diana.walsh@example.com",
+      "role": "hr_manager",
+      "criticalJtbds": [
+        { "id": "HR-01", "jtbd": "See HR dashboard", "route": "/dashboard/hr", "api": "GET /api/dashboard/role/hr_manager", "e2eTag": "@critical", "unitTest": "HrDashboardPage.test.tsx" },
+        { "id": "HR-05", "jtbd": "Create employee", "route": "/admin/people/new", "api": "POST /api/person-directory", "e2eTag": "@critical", "unitTest": null },
+        { "id": "HR-09", "jtbd": "View dictionaries", "route": "/admin/dictionaries", "api": "GET /api/metadata", "e2eTag": "@smoke", "unitTest": null }
+      ]
+    },
+    "delivery_manager": {
+      "account": "carlos.vega@example.com",
+      "role": "delivery_manager",
+      "criticalJtbds": [
+        { "id": "DM-01", "jtbd": "See DM dashboard", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/role/delivery_manager", "e2eTag": "@critical", "unitTest": "DeliveryManagerDashboardPage.test.tsx" },
+        { "id": "DM-04", "jtbd": "View portfolio health", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/role/delivery_manager", "e2eTag": "@critical", "unitTest": null }
+      ]
+    },
+    "director": {
+      "account": "noah.bennett@example.com",
+      "role": "director",
+      "criticalJtbds": [
+        { "id": "DIR-01", "jtbd": "See director dashboard", "route": "/dashboard/director", "api": "GET /api/dashboard/role/director", "e2eTag": "@critical", "unitTest": "DirectorDashboardPage.test.tsx" },
+        { "id": "DIR-02", "jtbd": "View unit utilisation", "route": "/dashboard/director", "api": "GET /api/dashboard/role/director", "e2eTag": "@critical", "unitTest": null }
+      ]
+    },
+    "admin": {
+      "account": "admin@deliverycentral.local",
+      "role": "admin",
+      "criticalJtbds": [
+        { "id": "ADM-01", "jtbd": "Access admin panel", "route": "/admin", "api": null, "e2eTag": "@smoke", "unitTest": "route-manifest.test.tsx" },
+        { "id": "ADM-03", "jtbd": "Impersonate user", "route": "/admin", "api": "POST /api/auth/impersonate", "e2eTag": "@critical", "unitTest": null },
+        { "id": "ADM-07", "jtbd": "View platform settings", "route": "/admin/settings", "api": "GET /api/platform-settings", "e2eTag": "@smoke", "unitTest": null }
+      ]
+    }
+  },
+  "coverage": {
+    "totalJtbds": 142,
+    "criticalJtbds": 30,
+    "smokeTagged": 12,
+    "criticalTagged": 18,
+    "withUnitTests": 14,
+    "withE2eTests": 30
+  }
+}

@@ -57,30 +57,43 @@ export class CreateCaseService {
       CaseParticipant.create(participant),
     );
 
-    const nextNumber = (await this.caseRecordRepository.count()) + 1;
-    const caseRecord = CaseRecord.create({
-      caseNumber: `CASE-${String(nextNumber).padStart(4, '0')}`,
-      caseType: CaseType.from(command.caseTypeKey),
-      openedAt: new Date(),
-      ownerPersonId: command.ownerPersonId,
-      participants,
-      relatedAssignmentId: command.relatedAssignmentId,
-      relatedProjectId: command.relatedProjectId,
-      status: 'OPEN',
-      subjectPersonId: command.subjectPersonId,
-      summary: command.summary,
-    });
+    const MAX_RETRIES = 3;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const nextNumber = (await this.caseRecordRepository.count()) + 1 + attempt;
+      const caseRecord = CaseRecord.create({
+        caseNumber: `CASE-${String(nextNumber).padStart(6, '0')}`,
+        caseType: CaseType.from(command.caseTypeKey),
+        openedAt: new Date(),
+        ownerPersonId: command.ownerPersonId,
+        participants,
+        relatedAssignmentId: command.relatedAssignmentId,
+        relatedProjectId: command.relatedProjectId,
+        status: 'OPEN',
+        subjectPersonId: command.subjectPersonId,
+        summary: command.summary,
+      });
 
-    await this.caseRecordRepository.save(caseRecord);
+      try {
+        await this.caseRecordRepository.save(caseRecord);
 
-    void this.notificationEventTranslator?.caseCreated({
-      caseId: caseRecord.caseId.value,
-      caseType: command.caseTypeKey,
-      ownerPersonId: command.ownerPersonId,
-      subjectPersonId: command.subjectPersonId,
-    });
+        void this.notificationEventTranslator?.caseCreated({
+          caseId: caseRecord.caseId.value,
+          caseType: command.caseTypeKey,
+          ownerPersonId: command.ownerPersonId,
+          subjectPersonId: command.subjectPersonId,
+        });
 
-    return caseRecord;
+        return caseRecord;
+      } catch (error: unknown) {
+        const isUniqueViolation = error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002';
+        if (!isUniqueViolation || attempt === MAX_RETRIES - 1) {
+          throw error;
+        }
+        // Retry with next number
+      }
+    }
+
+    throw new Error('Failed to generate unique case number after retries.');
   }
 
   private async assignmentExists(assignmentId: string): Promise<boolean> {

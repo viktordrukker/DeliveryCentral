@@ -1,12 +1,39 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 
-import { appRoutes } from './navigation';
+import {
+  ALL_ROLES,
+  ADMIN_ROLES,
+  appRoutes,
+  ASSIGNMENT_CREATE_ROLES,
+  CAPITALISATION_ROLES,
+  CASE_CREATE_ROLES,
+  DELIVERY_DASHBOARD_ROLES,
+  DIRECTOR_ADMIN_ROLES,
+  EMPLOYEE_DASHBOARD_ROLES,
+  EVIDENCE_MANAGEMENT_ROLES,
+  EXCEPTIONS_ROLES,
+  EXPORT_CENTRE_ROLES,
+  HR_ADMIN_ROLES,
+  HR_DASHBOARD_ROLES,
+  HR_DIRECTOR_ADMIN_ROLES,
+  MANAGEMENT_ROLES,
+  PM_DASHBOARD_ROLES,
+  PROJECT_CREATE_ROLES,
+  RESOURCE_POOL_ROLES,
+  RM_DASHBOARD_ROLES,
+  STAFFING_BOARD_ROLES,
+  STAFFING_DESK_ROLES,
+  STAFFING_REQUEST_ROLES,
+  TIMESHEET_MANAGER_ROLES,
+  WORKLOAD_ROLES,
+} from './route-manifest';
 import { AuthProvider } from './auth-context';
 import { ImpersonationProvider } from './impersonation-context';
 import { AppShell } from '@/components/layout/AppShell';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
+import { FeatureGuard } from '@/routes/FeatureGuard';
 import { LoginPage } from '@/routes/auth/LoginPage';
 import { ForgotPasswordPage } from '@/routes/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage';
@@ -22,6 +49,7 @@ import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
+import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
 import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
 import { AssignmentsPage } from '@/routes/assignments/AssignmentsPage';
 import { BulkAssignmentPage } from '@/routes/assignments/BulkAssignmentPage';
@@ -40,7 +68,7 @@ import { ManagerScopePage } from '@/routes/org/ManagerScopePage';
 import { EmployeeDetailsPlaceholderPage } from '@/routes/people/EmployeeDetailsPlaceholderPage';
 import { EmployeeLifecycleAdminPage } from '@/routes/people/EmployeeLifecycleAdminPage';
 import { PeoplePage } from '@/routes/people/PeoplePage';
-import { ProjectDetailsPlaceholderPage } from '@/routes/projects/ProjectDetailsPlaceholderPage';
+import { ProjectDetailPage } from '@/routes/projects/ProjectDetailPage';
 import { ProjectsPage } from '@/routes/projects/ProjectsPage';
 import { CreateProjectPage } from '@/routes/projects/CreateProjectPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
@@ -49,9 +77,9 @@ import { ResourcePoolsPage } from '@/routes/resource-pools/ResourcePoolsPage';
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
 import { WorkEvidencePage } from '@/routes/work-evidence/WorkEvidencePage';
-import { TimesheetPage } from '@/routes/timesheets/TimesheetPage';
-import { TimesheetApprovalPage } from '@/routes/timesheets/TimesheetApprovalPage';
 import { LeaveRequestPage } from '@/routes/leave/LeaveRequestPage';
+import { MyTimePage } from '@/routes/my-time/MyTimePage';
+import { TimeManagementPage } from '@/routes/time-management/TimeManagementPage';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -65,9 +93,14 @@ const ProjectManagerDashboardPage = lazy(() => import('@/routes/dashboard/Projec
 const ResourceManagerDashboardPage = lazy(() => import('@/routes/dashboard/ResourceManagerDashboardPage').then(m => ({ default: m.ResourceManagerDashboardPage })));
 const PlannedVsActualPage = lazy(() => import('@/routes/dashboard/PlannedVsActualPage').then(m => ({ default: m.PlannedVsActualPage })));
 const OrgPage = lazy(() => import('@/routes/org/OrgPage').then(m => ({ default: m.OrgPage })));
-const ProjectDashboardPage = lazy(() => import('@/routes/projects/ProjectDashboardPage').then(m => ({ default: m.ProjectDashboardPage })));
+// ProjectDashboardPage merged into ProjectDetailPage — route redirects to ?tab=status
+function ProjectDashboardRedirect(): JSX.Element {
+  const { id } = useParams();
+  return <Navigate to={`/projects/${id ?? ''}?tab=status`} replace />;
+}
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingBoardPage = lazy(() => import('@/routes/staffing-board/StaffingBoardPage').then(m => ({ default: m.StaffingBoardPage })));
+const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
 const ReportBuilderPage = lazy(() => import('@/routes/reports/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
 const TimeReportPage = lazy(() => import('@/routes/reports/TimeReportPage').then(m => ({ default: m.TimeReportPage })));
@@ -80,57 +113,42 @@ function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
   return <Suspense fallback={<LoadingState label="Loading..." />}>{children}</Suspense>;
 }
 
-const ALL_ROLES = ['employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
-const MANAGEMENT_ROLES = ['hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
-const WORKLOAD_ROLES = ['resource_manager', 'director', 'admin'];
-const RESOURCE_POOL_ROLES = ['resource_manager', 'admin', 'director'];
-const ADMIN_ROLES = ['admin'];
-const DIRECTOR_ADMIN = ['director', 'admin'];
-const HR_DIR_ADMIN = ['hr_manager', 'director', 'admin'];
-const EXCEPTIONS_ROLES = ['project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin'];
-const ASSIGNMENT_CREATE_ROLES = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
-const PROJECT_CREATE_ROLES = ['project_manager', 'delivery_manager', 'director', 'admin'];
-const CASE_CREATE_ROLES = ['hr_manager', 'director', 'admin'];
-const TIMESHEET_MANAGER_ROLES = ['project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin'];
-const CAPITALISATION_ROLES = ['director', 'admin', 'delivery_manager'];
-const EXPORT_CENTRE_ROLES = ['director', 'admin', 'delivery_manager', 'hr_manager'];
-
 const dashboardChildren = [
   { element: <DashboardPage />, path: '/' },
   { element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><LazyPage><PlannedVsActualPage /></LazyPage></RoleGuard>, path: 'dashboard/planned-vs-actual' },
   {
-    element: <RoleGuard allowedRoles={['employee', 'hr_manager', 'director', 'admin']}><LazyPage><EmployeeDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><LazyPage><EmployeeDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/employee',
   },
   {
-    element: <RoleGuard allowedRoles={['project_manager', 'director', 'admin']}><LazyPage><ProjectManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={PM_DASHBOARD_ROLES}><LazyPage><ProjectManagerDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/project-manager',
   },
   {
-    element: <RoleGuard allowedRoles={['resource_manager', 'director', 'admin']}><LazyPage><ResourceManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={RM_DASHBOARD_ROLES}><LazyPage><ResourceManagerDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/resource-manager',
   },
   {
-    element: <RoleGuard allowedRoles={['hr_manager', 'director', 'admin']}><LazyPage><HrDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DASHBOARD_ROLES}><LazyPage><HrDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/hr',
   },
   {
-    element: <RoleGuard allowedRoles={['delivery_manager', 'director', 'admin']}><LazyPage><DeliveryManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><LazyPage><DeliveryManagerDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/delivery-manager',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/director',
   },
   { element: <LazyPage><OrgPage /></LazyPage>, path: 'org' },
   { element: <ManagerScopePage />, path: 'org/managers/:id/scope' },
   {
-    element: <RoleGuard allowedRoles={['hr_manager', 'admin']}><EmployeeLifecycleAdminPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_ADMIN_ROLES}><EmployeeLifecycleAdminPage /></RoleGuard>,
     path: 'admin/people/new',
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PeoplePage /></RoleGuard>, path: 'people' },
   {
-    element: <RoleGuard allowedRoles={['hr_manager', 'admin']}><EmployeeLifecycleAdminPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_ADMIN_ROLES}><EmployeeLifecycleAdminPage /></RoleGuard>,
     path: 'people/new',
   },
   {
@@ -145,8 +163,8 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={PROJECT_CREATE_ROLES}><CreateProjectPage /></RoleGuard>,
     path: 'projects/new',
   },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDetailsPlaceholderPage /></RoleGuard>, path: 'projects/:id' },
-  { element: <LazyPage><ProjectDashboardPage /></LazyPage>, path: 'projects/:id/dashboard' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDetailPage /></RoleGuard>, path: 'projects/:id' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDashboardRedirect /></RoleGuard>, path: 'projects/:id/dashboard' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentsPage /></RoleGuard>, path: 'assignments' },
   {
     element: <RoleGuard allowedRoles={ASSIGNMENT_CREATE_ROLES}><CreateAssignmentPage /></RoleGuard>,
@@ -167,20 +185,31 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><ResourcePoolDetailPage /></RoleGuard>,
     path: 'resource-pools/:id',
   },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><WorkEvidencePage /></RoleGuard>, path: 'work-evidence' },
   {
-    element: <RoleGuard allowedRoles={WORKLOAD_ROLES}><LazyPage><WorkloadMatrixPage /></LazyPage></RoleGuard>,
+    element: (
+      <RoleGuard allowedRoles={EVIDENCE_MANAGEMENT_ROLES}>
+        <FeatureGuard feature="evidenceManagement">
+          <WorkEvidencePage />
+        </FeatureGuard>
+      </RoleGuard>
+    ),
+    path: 'work-evidence',
+  },
+  {
+    element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />,
     path: 'workload',
   },
   {
-    element: <RoleGuard allowedRoles={WORKLOAD_ROLES}><LazyPage><WorkloadPlanningPage /></LazyPage></RoleGuard>,
+    element: <Navigate to="/staffing-desk?view=timeline" replace />,
     path: 'workload/planning',
   },
-  { element: <TimesheetPage />, path: 'timesheets' },
+  { element: <MyTimePage />, path: 'my-time' },
   {
-    element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><TimesheetApprovalPage /></RoleGuard>,
-    path: 'timesheets/approval',
+    element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><TimeManagementPage /></RoleGuard>,
+    path: 'time-management',
   },
+  { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
+  { element: <Navigate to="/time-management" replace />, path: 'timesheets/approval' },
   { element: <LeaveRequestPage />, path: 'leave' },
   {
     element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><LazyPage><TimeReportPage /></LazyPage></RoleGuard>,
@@ -195,21 +224,25 @@ const dashboardChildren = [
     path: 'reports/export',
   },
   {
-    element: <RoleGuard allowedRoles={['project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin']}><LazyPage><UtilizationPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={EXCEPTIONS_ROLES}><LazyPage><UtilizationPage /></LazyPage></RoleGuard>,
     path: 'reports/utilization',
   },
   {
-    element: <RoleGuard allowedRoles={['project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin']}><LazyPage><ReportBuilderPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={EXCEPTIONS_ROLES}><LazyPage><ReportBuilderPage /></LazyPage></RoleGuard>,
     path: 'reports/builder',
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
   { element: <StaffingRequestsPage />, path: 'staffing-requests' },
   {
-    element: <RoleGuard allowedRoles={['resource_manager', 'delivery_manager', 'director', 'admin']}><LazyPage><StaffingBoardPage /></LazyPage></RoleGuard>,
+    element: <Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace />,
     path: 'staffing-board',
   },
   {
-    element: <RoleGuard allowedRoles={['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin']}><CreateStaffingRequestPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><StaffingDeskPage /></LazyPage></RoleGuard>,
+    path: 'staffing-desk',
+  },
+  {
+    element: <RoleGuard allowedRoles={STAFFING_REQUEST_ROLES}><CreateStaffingRequestPage /></RoleGuard>,
     path: 'staffing-requests/new',
   },
   { element: <StaffingRequestDetailPage />, path: 'staffing-requests/:id' },
@@ -223,27 +256,27 @@ const dashboardChildren = [
     path: 'admin',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DIR_ADMIN}><DictionariesPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><DictionariesPage /></RoleGuard>,
     path: 'admin/dictionaries',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DIR_ADMIN}><BusinessAuditPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><BusinessAuditPage /></RoleGuard>,
     path: 'admin/audit',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN}><NotificationsPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><NotificationsPage /></RoleGuard>,
     path: 'admin/notifications',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN}><IntegrationsAdminPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><IntegrationsAdminPage /></RoleGuard>,
     path: 'admin/integrations',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN}><MonitoringPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><MonitoringPage /></RoleGuard>,
     path: 'admin/monitoring',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN}><IntegrationsPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><IntegrationsPage /></RoleGuard>,
     path: 'integrations',
   },
   {
@@ -255,7 +288,7 @@ const dashboardChildren = [
     path: 'admin/settings',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DIR_ADMIN}><BulkImportPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><BulkImportPage /></RoleGuard>,
     path: 'admin/people/import',
   },
   {
@@ -265,6 +298,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><HrisConfigPage /></RoleGuard>,
     path: 'admin/hris',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><VendorRegistryPage /></RoleGuard>,
+    path: 'admin/vendors',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><AccessPoliciesPage /></RoleGuard>,

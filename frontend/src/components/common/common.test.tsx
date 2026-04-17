@@ -19,9 +19,11 @@ vi.mock('@/lib/api/project-registry', () => ({
 }));
 
 import { ConfirmDialog } from './ConfirmDialog';
+import { DataTable } from './DataTable';
 import { Skeleton, TableSkeleton, CardSkeleton, ChartSkeleton } from './Skeleton';
 import { EmptyState } from './EmptyState';
 import { CommandPalette } from './CommandPalette';
+import { StatusBadge } from './StatusBadge';
 
 describe('ConfirmDialog', () => {
   it('renders nothing when closed', () => {
@@ -188,5 +190,52 @@ describe('CommandPalette', () => {
     );
     fireEvent.keyDown(screen.getByLabelText('Search commands'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('DataTable', () => {
+  it('renders toolbar content above the table', () => {
+    render(
+      <DataTable
+        columns={[{ key: 'name', render: (item: { name: string }) => item.name, title: 'Name' }]}
+        items={[{ name: 'Alpha' }]}
+        toolbar={<button type="button">Columns</button>}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Columns' })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('virtualizes rows when requested', () => {
+    render(
+      <DataTable
+        columns={[{ key: 'name', render: (item: { name: string }) => item.name, title: 'Name' }]}
+        items={Array.from({ length: 50 }, (_, index) => ({ name: `Row ${index + 1}` }))}
+        rowHeight={32}
+        virtualize={true}
+        visibleRows={5}
+      />,
+    );
+
+    expect(screen.getByText('Row 1')).toBeInTheDocument();
+    expect(screen.queryByText('Row 40')).not.toBeInTheDocument();
+  });
+});
+
+describe('StatusBadge', () => {
+  it('renders a score variant for design-system health states', () => {
+    render(
+      <StatusBadge
+        label="91"
+        score={91}
+        title="Health score: 91/100 (green)"
+        tone="active"
+        variant="score"
+      />,
+    );
+
+    expect(screen.getByLabelText('Health score: 91/100 (green)')).toBeInTheDocument();
+    expect(screen.getByText('91')).toBeInTheDocument();
   });
 });

@@ -332,7 +332,7 @@ export function TimesheetApprovalPage(): JSX.Element {
                     )}
                   </td>
                 </tr>
-                {expandedId === week.id && (
+                {(expandedId === week.id || week.status === 'SUBMITTED') && (
                   <tr key={`${week.id}-expanded`}>
                     <td colSpan={6}>
                       <TimesheetReadOnlyGrid week={week} />

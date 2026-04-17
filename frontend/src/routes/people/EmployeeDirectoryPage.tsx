@@ -15,15 +15,14 @@ import { useEmployeeDirectory } from '@/features/people/useEmployeeDirectory';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
-
-const PEOPLE_MANAGE_ROLES = ['hr_manager', 'resource_manager', 'director', 'admin'];
+import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 const defaultPageSize = 25;
 
 export function EmployeeDirectoryPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
-  const canManagePeople = principal?.roles.some((r) => PEOPLE_MANAGE_ROLES.includes(r)) ?? false;
+  const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
   const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);

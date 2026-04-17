@@ -1,19 +1,11 @@
-const ROLE_PRIORITY: string[] = [
-  'admin',
-  'director',
-  'hr_manager',
-  'resource_manager',
-  'project_manager',
-  'delivery_manager',
-  'employee',
-];
+import { ROLE_PRIORITY } from '@/app/route-manifest';
 
 export function getDashboardPath(roles: string[]): string {
   const top = ROLE_PRIORITY.find((r) => roles.includes(r));
 
   switch (top) {
     case 'admin':
-      return '/admin';
+      return '/dashboard/director';
     case 'director':
       return '/dashboard/director';
     case 'hr_manager':

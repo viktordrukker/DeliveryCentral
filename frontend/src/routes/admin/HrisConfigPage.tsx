@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 
+import { ErrorState } from '@/components/common/ErrorState';
+import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
 import { HrisConfig, HrisSyncResult, fetchHrisConfig, updateHrisConfig, triggerHrisSync } from '@/lib/api/hris';
 
 export function HrisConfigPage(): JSX.Element {
@@ -47,7 +50,7 @@ export function HrisConfigPage(): JSX.Element {
     return (
       <PageContainer viewport>
         <PageHeader eyebrow="Admin" title="HRIS Integration" subtitle="Configure BambooHR or Workday integration." />
-        {error ? <p style={{ color: 'var(--color-status-danger)' }}>{error}</p> : <p>Loading…</p>}
+        {error ? <ErrorState description={error} /> : <LoadingState label="Loading HRIS configuration..." />}
       </PageContainer>
     );
   }
@@ -60,11 +63,7 @@ export function HrisConfigPage(): JSX.Element {
         title="HRIS Integration"
       />
 
-      {error ? (
-        <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.875rem' }}>
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorState description={error} /> : null}
 
       <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <label className="field">

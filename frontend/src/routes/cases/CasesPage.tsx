@@ -60,7 +60,7 @@ export function CasesPage(): JSX.Element {
 
       <SectionCard title="Case List">
         {state.isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
-        {state.error ? <ErrorState description={state.error} /> : null}
+        {state.error ? <ErrorState description={state.error} onRetry={() => void state.reload()} /> : null}
 
         {!state.isLoading && !state.error ? (
           state.data.length === 0 ? (

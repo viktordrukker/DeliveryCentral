@@ -8,9 +8,10 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { PLAYWRIGHT_API_BASE } from '../fixtures/auth-state';
 import { p2 } from '../fixtures/phase2-identifiers';
 
-const API = 'http://127.0.0.1:3000/api';
+const API = PLAYWRIGHT_API_BASE;
 
 async function getToken(
   page: import('@playwright/test').Page,
@@ -27,7 +28,7 @@ async function getToken(
 // Shared state within the serial block
 let assignmentId: string;
 
-test.describe.serial('2d-32 Cross-role — assignment lifecycle', () => {
+test.describe.serial('@full 2d-32 Cross-role — assignment lifecycle', () => {
   test('RM creates assignment (REQUESTED)', async ({ page }) => {
     const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
 
@@ -95,7 +96,7 @@ test.describe.serial('2d-32 Cross-role — assignment lifecycle', () => {
 
 let crossProjectId: string;
 
-test.describe.serial('2d-33 Cross-role — project lifecycle', () => {
+test.describe.serial('@full 2d-33 Cross-role — project lifecycle', () => {
   test('PM creates a DRAFT project', async ({ page }) => {
     const token = await getToken(page, p2.accounts.projectManager.email, p2.accounts.projectManager.password);
 
@@ -147,7 +148,7 @@ test.describe.serial('2d-33 Cross-role — project lifecycle', () => {
 
 let caseId: string;
 
-test.describe.serial('2d-34 Cross-role — case lifecycle', () => {
+test.describe.serial('@full 2d-34 Cross-role — case lifecycle', () => {
   test('HR creates a case (DRAFT)', async ({ page }) => {
     const token = await getToken(page, p2.accounts.hrManager.email, p2.accounts.hrManager.password);
 

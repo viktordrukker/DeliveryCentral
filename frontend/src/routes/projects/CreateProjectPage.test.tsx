@@ -52,7 +52,7 @@ describe('CreateProjectPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,

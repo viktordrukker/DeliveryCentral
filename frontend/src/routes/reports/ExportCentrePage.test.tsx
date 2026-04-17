@@ -81,7 +81,7 @@ describe('ExportCentrePage', () => {
           primaryEmail: 'alice@example.com',
           resourcePoolIds: [],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,

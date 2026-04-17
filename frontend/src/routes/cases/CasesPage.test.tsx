@@ -19,8 +19,8 @@ vi.mock('@/lib/api/cases', async () => {
 vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: vi.fn().mockResolvedValue({
     items: [
-      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
-      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
+      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null },
+      { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null },
     ],
     page: 1,
     pageSize: 200,
@@ -36,8 +36,8 @@ describe('CasesPage', () => {
     mockedFetchCases.mockReset();
     mockedFetchPersonDirectory.mockResolvedValue({
       items: [
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
-        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Owner Two', dottedLineManagers: [], grade: null, id: 'owner-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null },
+        { currentAssignmentCount: 0, currentLineManager: null, currentOrgUnit: null, displayName: 'Subject Two', dottedLineManagers: [], grade: null, id: 'subject-2', lifecycleStatus: 'ACTIVE', primaryEmail: null, resourcePoolIds: [], resourcePools: [], role: null, hiredAt: null, terminatedAt: null },
       ],
       page: 1,
       pageSize: 200,

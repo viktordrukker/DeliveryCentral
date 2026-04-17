@@ -1,6 +1,5 @@
 import { AssignmentDirectoryItem } from './assignments';
 import { httpGet } from './http-client';
-import { WorkEvidenceItem } from './work-evidence';
 
 export interface EmployeeDashboardPersonSummary {
   currentLineManager: {
@@ -23,14 +22,6 @@ export interface EmployeeCurrentWorkloadSummary {
   isOverallocated: boolean;
   pendingSelfWorkflowItemCount: number;
   totalAllocationPercent: number;
-}
-
-export interface EmployeeRecentWorkEvidenceSummary {
-  lastActivityDate: string | null;
-  recentEntryCount: number;
-  recentItems: WorkEvidenceItem[];
-  sourceTypes: string[];
-  totalEffortHours: number;
 }
 
 export interface EmployeePendingWorkflowItems {
@@ -57,7 +48,6 @@ export interface EmployeeDashboardResponse {
   notificationsSummary: EmployeeNotificationsSummary;
   pendingWorkflowItems: EmployeePendingWorkflowItems;
   person: EmployeeDashboardPersonSummary;
-  recentWorkEvidenceSummary: EmployeeRecentWorkEvidenceSummary;
 }
 
 export async function fetchEmployeeDashboard(

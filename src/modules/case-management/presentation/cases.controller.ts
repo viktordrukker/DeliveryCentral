@@ -37,6 +37,10 @@ import { ReopenCaseService } from '../application/reopen-case.service';
 import { CaseRecord } from '../domain/entities/case-record.entity';
 import { PrismaCaseCommentService, CaseCommentDto } from '../infrastructure/services/prisma-case-comment.service';
 import { InMemoryCaseSlaService } from '../infrastructure/services/in-memory-case-sla.service';
+import { AddCaseStepRequestDto } from '../application/contracts/add-case-step.request';
+import { AddCaseParticipantRequestDto } from '../application/contracts/add-case-participant.request';
+import { AddCaseNoteRequestDto } from '../application/contracts/add-case-note.request';
+import { UpdateSlaConfigRequestDto } from '../application/contracts/update-sla-config.request';
 
 @ApiTags('cases')
 @Controller('cases')
@@ -227,7 +231,7 @@ export class CasesController {
   @RequireRoles('hr_manager', 'director', 'admin')
   public async addCaseStep(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { displayName: string; stepKey?: string },
+    @Body() body: AddCaseStepRequestDto,
   ): Promise<CaseStepDto> {
     try {
       const svc = this.completeCaseStepService as unknown as { addStep(caseId: string, displayName: string, stepKey?: string): Promise<CaseStepDto> };
@@ -268,7 +272,7 @@ export class CasesController {
   @RequireRoles('hr_manager', 'director', 'admin')
   public async addParticipant(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { personId: string; role: string },
+    @Body() body: AddCaseParticipantRequestDto,
   ): Promise<{ id: string; participants: Array<{ personId: string; role: string }> }> {
     const caseRecord = await this.getCaseByIdService.execute(id);
     if (!caseRecord) {
@@ -319,7 +323,7 @@ export class CasesController {
   @RequireRoles('employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
   public async addCaseComment(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { authorPersonId: string; body: string },
+    @Body() body: AddCaseNoteRequestDto,
   ): Promise<CaseCommentDto> {
     try {
       return await this.caseCommentService.addComment(id, body.authorPersonId, body.body);
@@ -357,7 +361,7 @@ export class CasesController {
   @ApiOperation({ summary: 'Update SLA hours for a case type' })
   @ApiOkResponse({ description: 'Updated SLA config' })
   @RequireRoles('admin')
-  public updateSlaConfig(@Body() body: { caseType: string; hours: number }): Record<string, number> {
+  public updateSlaConfig(@Body() body: UpdateSlaConfigRequestDto): Record<string, number> {
     this.caseSlaService.updateSlaHours(body.caseType, body.hours);
     return this.caseSlaService.getSlaConfig();
   }

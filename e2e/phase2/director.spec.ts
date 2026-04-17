@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await loginAs(page, director.email, director.password);
 });
 
-test.describe('DIR1 — Director sees org-wide executive summary', () => {
+test.describe('@full DIR1 — Director sees org-wide executive summary', () => {
   test('director dashboard page renders KPI bar with 5 executive metrics', async ({ page }) => {
     await page.goto('/dashboard/director');
 
@@ -40,7 +40,7 @@ test.describe('DIR1 — Director sees org-wide executive summary', () => {
   });
 });
 
-test.describe('DIR2 — Director sees utilisation by org unit', () => {
+test.describe('@full DIR2 — Director sees utilisation by org unit', () => {
   test('director API returns unitUtilisation sorted ascending', async ({ page }) => {
     const token = await getToken(page, director.email, director.password);
     const res = await page.request.get(
@@ -63,7 +63,7 @@ test.describe('DIR2 — Director sees utilisation by org unit', () => {
   });
 });
 
-test.describe('DIR3 — Director reviews business audit log with date filter and pagination', () => {
+test.describe('@full DIR3 — Director reviews business audit log with date filter and pagination', () => {
   test('business audit page renders with investigation filters', async ({ page }) => {
     await page.goto('/admin/audit');
 

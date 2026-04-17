@@ -14,8 +14,7 @@ import {
   initialResourcePoolFormValues,
   useResourcePools,
 } from '@/features/resource-pools/useResourcePools';
-
-const RM_ADMIN_ROLES = ['resource_manager', 'admin'];
+import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 export function ResourcePoolsPage(): JSX.Element {
   const { principal } = useAuth();
@@ -25,7 +24,7 @@ export function ResourcePoolsPage(): JSX.Element {
   const [formValues, setFormValues] = useState<ResourcePoolFormValues>(initialResourcePoolFormValues);
   const [formErrors, setFormErrors] = useState<Partial<ResourcePoolFormValues>>({});
 
-  const canManage = principal?.roles.some((r) => RM_ADMIN_ROLES.includes(r)) ?? false;
+  const canManage = hasAnyRole(principal?.roles, RM_MANAGE_ROLES);
 
   const filteredPools = state.pools.filter(
     (pool) =>
@@ -161,8 +160,8 @@ export function ResourcePoolsPage(): JSX.Element {
               <table className="dash-compact-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Code</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Code</th>
                     <th style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Members</th>
                     <th style={{ textAlign: 'right' }}></th>
                   </tr>

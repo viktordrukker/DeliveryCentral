@@ -131,6 +131,23 @@ export class DashboardSettingsDto {
   public nearingClosureDaysThreshold!: number;
 }
 
+export class EvidenceManagementSettingsDto {
+  @ApiProperty()
+  public enabled!: boolean;
+
+  @ApiProperty()
+  public allowManualEntry!: boolean;
+
+  @ApiProperty()
+  public showDiagnosticsInCoreDashboards!: boolean;
+
+  @ApiProperty({ type: [String] })
+  public allowedSources!: string[];
+
+  @ApiPropertyOptional({ nullable: true })
+  public retentionDays!: number | null;
+}
+
 export class OnboardingSettingsDto {
   @ApiProperty()
   public tourEnabled!: boolean;
@@ -143,6 +160,63 @@ export class OnboardingSettingsDto {
 
   @ApiProperty()
   public welcomeMessage!: string;
+}
+
+export class LeaveSettingsDto {
+  @ApiProperty()
+  public annualEntitlementDays!: number;
+
+  @ApiProperty()
+  public sickAutoApprove!: boolean;
+
+  @ApiProperty()
+  public sickCertificateRequiredDays!: number;
+
+  @ApiProperty()
+  public overtimeOffEnabled!: boolean;
+
+  @ApiProperty()
+  public personalRequiresComment!: boolean;
+
+  @ApiProperty()
+  public bereavementAutoApprove!: boolean;
+}
+
+export class TimeEntrySettingsDto {
+  @ApiProperty()
+  public benchEnabled!: boolean;
+
+  @ApiProperty({ type: [String] })
+  public benchCategories!: string[];
+
+  @ApiProperty()
+  public copyPreviousEnabled!: boolean;
+
+  @ApiProperty()
+  public autoFillFromAssignments!: boolean;
+
+  @ApiProperty()
+  public gapDetectionEnabled!: boolean;
+
+  @ApiProperty()
+  public standardHoursPerDay!: number;
+}
+
+export class OvertimeSettingsDto {
+  @ApiProperty()
+  public enabled!: boolean;
+
+  @ApiProperty()
+  public defaultMaxOvertimePerWeek!: number;
+
+  @ApiProperty()
+  public requireApproval!: boolean;
+
+  @ApiProperty()
+  public warningThresholdPercent!: number;
+
+  @ApiProperty()
+  public autoFlagOnSubmit!: boolean;
 }
 
 export class SettingsResponseDto {
@@ -172,6 +246,18 @@ export class SettingsResponseDto {
 
   @ApiProperty({ type: DashboardSettingsDto })
   public dashboard!: DashboardSettingsDto;
+
+  @ApiProperty({ type: EvidenceManagementSettingsDto })
+  public evidenceManagement!: EvidenceManagementSettingsDto;
+
+  @ApiProperty({ type: OvertimeSettingsDto })
+  public overtime!: OvertimeSettingsDto;
+
+  @ApiProperty({ type: LeaveSettingsDto })
+  public leave!: LeaveSettingsDto;
+
+  @ApiProperty({ type: TimeEntrySettingsDto })
+  public timeEntry!: TimeEntrySettingsDto;
 }
 
 export class UpdateSettingDto {

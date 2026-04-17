@@ -1,9 +1,8 @@
-import * as XLSX from 'xlsx';
-
-export function exportToXlsx(
+export async function exportToXlsx(
   rows: Record<string, unknown>[],
   filename: string,
-): void {
+): Promise<void> {
+  const XLSX = await import('xlsx');
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Data');

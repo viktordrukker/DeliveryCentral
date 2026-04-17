@@ -58,7 +58,7 @@ describe('EmployeeDashboardPage', () => {
           lifecycleStatus: 'ACTIVE',
           resourcePoolIds: ['pool-1'],
           resourcePools: [],
-          role: null,
+          role: null, hiredAt: null, terminatedAt: null,
         },
       ],
       page: 1,
@@ -87,7 +87,7 @@ describe('EmployeeDashboardPage', () => {
         pendingSelfWorkflowItemCount: 0,
         totalAllocationPercent: 50,
       },
-      dataSources: ['person_directory', 'assignments', 'work_evidence'],
+      dataSources: ['person_directory', 'assignments', 'timesheets'],
       futureAssignments: [
         {
           allocationPercent: 25,
@@ -116,25 +116,6 @@ describe('EmployeeDashboardPage', () => {
         id: '11111111-1111-1111-1111-111111111008',
         primaryEmail: 'ethan@example.com',
       },
-      recentWorkEvidenceSummary: {
-        lastActivityDate: '2025-03-10T18:00:00.000Z',
-        recentEntryCount: 1,
-        recentItems: [
-          {
-            activityDate: '2025-03-10T00:00:00.000Z',
-            effortHours: 3,
-            id: 'we-1',
-            personId: '11111111-1111-1111-1111-111111111008',
-            projectId: 'project-1',
-            recordedAt: '2025-03-10T18:00:00.000Z',
-            sourceRecordKey: 'TS-1',
-            sourceType: 'TIMESHEET',
-            summary: 'Incident support work.',
-          },
-        ],
-        sourceTypes: ['TIMESHEET'],
-        totalEffortHours: 3,
-      },
     });
 
     renderWithRouter();
@@ -143,7 +124,8 @@ describe('EmployeeDashboardPage', () => {
     expect(screen.getByText('Atlas ERP Rollout')).toBeInTheDocument();
     expect(screen.getByText('Internal Bench Planning')).toBeInTheDocument();
     expect(screen.getAllByText('50%').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Incident support work.')).toBeInTheDocument();
+    expect(screen.queryByText('Incident support work.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Observed Work')).not.toBeInTheDocument();
     // Pulse widget is embedded
     expect(await screen.findByTestId('pulse-widget')).toBeInTheDocument();
   });

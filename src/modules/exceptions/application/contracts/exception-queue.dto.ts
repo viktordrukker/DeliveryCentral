@@ -1,13 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export type ExceptionQueueCategory =
-  | 'ASSIGNMENT_WITHOUT_EVIDENCE'
-  | 'M365_RECONCILIATION_ANOMALY'
   | 'PROJECT_CLOSURE_WITH_ACTIVE_ASSIGNMENTS'
-  | 'RADIUS_RECONCILIATION_ANOMALY'
-  | 'STALE_ASSIGNMENT_APPROVAL'
-  | 'WORK_EVIDENCE_AFTER_ASSIGNMENT_END'
-  | 'WORK_EVIDENCE_WITHOUT_ASSIGNMENT';
+  | 'STALE_ASSIGNMENT_APPROVAL';
 
 export type ExceptionQueueStatus = 'OPEN' | 'RESOLVED' | 'SUPPRESSED';
 
@@ -22,7 +17,7 @@ export class ExceptionQueueItemDto {
   public status!: ExceptionQueueStatus;
 
   @ApiProperty()
-  public sourceContext!: 'assignment' | 'integration' | 'project' | 'work_evidence';
+  public sourceContext!: 'assignment' | 'project';
 
   @ApiProperty()
   public summary!: string;
@@ -43,13 +38,7 @@ export class ExceptionQueueItemDto {
   public personId?: string;
 
   @ApiPropertyOptional()
-  public provider?: 'm365' | 'radius';
-
-  @ApiPropertyOptional()
   public assignmentId?: string;
-
-  @ApiPropertyOptional()
-  public workEvidenceId?: string;
 
   @ApiPropertyOptional()
   public projectName?: string;
@@ -82,4 +71,3 @@ export class ExceptionQueueResponseDto {
   @ApiProperty({ type: ExceptionQueueSummaryDto })
   public summary!: ExceptionQueueSummaryDto;
 }
-

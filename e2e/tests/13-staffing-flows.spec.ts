@@ -33,12 +33,12 @@ async function apiLogin(
 
 // ── 13-E3: PM creates → RM reviews → fulfils ────────────────────────────────
 
-test.describe('13-E3: staffing request lifecycle — PM → RM → fulfilled', () => {
+test.describe('@critical 13-E3: staffing request lifecycle — PM → RM → fulfilled', () => {
   test('PM can navigate to create staffing request page', async ({ page }) => {
     await loginAsProjectManager(page);
     await page.goto('/staffing-requests');
 
-    await expect(page.getByText(/Staffing Requests/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Staffing/i })).toBeVisible();
     await page.getByRole('button', { name: /Create request/i }).click();
 
     await expect(page.getByText(/Create Staffing Request/i)).toBeVisible();
@@ -106,7 +106,7 @@ test.describe('13-E3: staffing request lifecycle — PM → RM → fulfilled', (
     await page.goto('/staffing-requests');
 
     // Page loads without error
-    await expect(page.getByText(/Staffing Requests/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Staffing/i })).toBeVisible();
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
   });
 
@@ -123,13 +123,13 @@ test.describe('13-E3: staffing request lifecycle — PM → RM → fulfilled', (
 
 // ── 13-E4: HR at-risk panel ─────────────────────────────────────────────────
 
-test.describe('13-E4: HR dashboard at-risk employees panel', () => {
+test.describe('@critical 13-E4: HR dashboard at-risk employees panel', () => {
   test('HR dashboard loads without error', async ({ page }) => {
     await loginAsHrManager(page);
     await page.goto(`/dashboard/hr?personId=${p2.people.dianaWalsh}`);
 
     await expect(page.locator('body')).not.toContainText(/500|Internal Server Error/);
-    await expect(page.getByText(/HR Manager Dashboard|Headcount/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /HR|Headcount/i })).toBeVisible();
   });
 
   test('HR dashboard API returns atRiskEmployees field', async ({ page }) => {
@@ -189,7 +189,7 @@ test.describe('13-E4: HR dashboard at-risk employees panel', () => {
 
 // ── 13-E5: DM staffing gaps ─────────────────────────────────────────────────
 
-test.describe('13-E5: DM dashboard staffing gaps', () => {
+test.describe('@critical 13-E5: DM dashboard staffing gaps', () => {
   test('DM dashboard loads without error', async ({ page }) => {
     await loginAsDeliveryManager(page);
     await page.goto('/dashboard/delivery-manager');

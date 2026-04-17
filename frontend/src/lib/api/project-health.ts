@@ -5,7 +5,7 @@ export interface ProjectHealthDto {
   score: number;
   grade: 'green' | 'yellow' | 'red';
   staffingScore: number;
-  evidenceScore: number;
+  timeScore: number;
   timelineScore: number;
 }
 

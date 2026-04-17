@@ -42,8 +42,8 @@ const DASHBOARD_DATA = {
   summary: {
     activeAssignmentCount: 45,
     activeProjectCount: 12,
-    evidenceCoverageRate: 85,
     staffedPersonCount: 30,
+    staffingUtilisationRate: 90,
     unstaffedActivePersonCount: 3,
   },
   unitUtilisation: [
@@ -56,7 +56,7 @@ const DASHBOARD_DATA = {
     },
   ],
   weeklyTrend: [
-    { activeProjectCount: 12, evidenceCoverageRate: 85, staffedPersonCount: 30, weekStarting: '2026-03-30' },
+    { activeProjectCount: 12, staffingUtilisationRate: 90, staffedPersonCount: 30, weekStarting: '2026-03-30' },
   ],
 };
 
@@ -129,7 +129,7 @@ describe('DirectorDashboardPage', () => {
       ],
     });
     mockedFetchProjectHealth.mockResolvedValue({
-      evidenceScore: 80,
+      timeScore: 80,
       grade: 'green',
       projectId: 'project-alpha',
       score: 85,

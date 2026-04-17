@@ -3,7 +3,6 @@ import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/in
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
-import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
@@ -22,7 +21,6 @@ export class ProjectManagerDashboardQueryService {
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-    private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
     private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly platformSettingsService: PlatformSettingsService,
@@ -45,32 +43,36 @@ export class ProjectManagerDashboardQueryService {
     }
 
     const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
-    const allPeople = dbPeople;
+    const peopleById = new Map(dbPeople.map((dbPerson) => [dbPerson.id, dbPerson]));
 
     const allProjects = await this.projectRepository.findAll();
     const managedProjects = allProjects
       .filter((project) => project.projectManagerId?.value === query.personId)
       .sort((left, right) => left.projectCode.localeCompare(right.projectCode));
     const managedProjectIds = new Set(managedProjects.map((project) => project.projectId.value));
+
     const assignments = await this.projectAssignmentRepository.findAll();
     const activeAssignments = assignments.filter(
-      (assignment) =>
-        managedProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
-    );
-    const allEvidence = await this.workEvidenceRepository.list({ dateTo: asOf });
-    const managedProjectEvidence = allEvidence.filter(
-      (item) => item.projectId && managedProjectIds.has(item.projectId),
+      (assignment) => managedProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
     const comparison = await this.plannedVsActualQueryService.execute({ asOf: asOf.toISOString() });
+    const approvedHoursByProject = await this.readApprovedHoursByProject(managedProjectIds, asOf);
+
+    const assignmentsByProject = new Map<string, typeof activeAssignments>();
+    for (const assignment of activeAssignments) {
+      const projectAssignments = assignmentsByProject.get(assignment.projectId);
+      if (projectAssignments) {
+        projectAssignments.push(assignment);
+      } else {
+        assignmentsByProject.set(assignment.projectId, [assignment]);
+      }
+    }
+
+    const managedProjectMap = new Map(managedProjects.map((project) => [project.projectId.value, project]));
 
     const projectsWithStaffingGaps = this.groupProjectAttentionItems([
       ...managedProjects
-        .filter(
-          (project) =>
-            !activeAssignments.some(
-              (assignment) => assignment.projectId === project.projectId.value,
-            ),
-        )
+        .filter((project) => !(assignmentsByProject.get(project.projectId.value)?.length))
         .map((project) => ({
           detail: 'No active staffing assignments are currently covering this project.',
           projectCode: project.projectCode,
@@ -81,15 +83,15 @@ export class ProjectManagerDashboardQueryService {
       ...comparison.assignedButNoEvidence
         .filter((item) => managedProjectIds.has(item.project.id))
         .map((item) => ({
-          detail: 'Assignments exist, but no observed work evidence is currently matching them.',
+          detail: 'Approved assignments exist, but no approved time has been submitted in the current reporting week.',
           projectCode: item.project.projectCode,
           projectId: item.project.id,
           projectName: item.project.name,
-          reason: 'ASSIGNED_BUT_NO_EVIDENCE',
+          reason: 'PLANNED_WITHOUT_APPROVED_TIME',
         })),
     ]);
 
-    const projectsWithEvidenceAnomalies = this.groupProjectAttentionItems(
+    const projectsWithTimeVariance = this.groupProjectAttentionItems(
       comparison.anomalies
         .filter((item) => managedProjectIds.has(item.project.id))
         .map((item) => ({
@@ -97,33 +99,33 @@ export class ProjectManagerDashboardQueryService {
           projectCode: item.project.projectCode,
           projectId: item.project.id,
           projectName: item.project.name,
-          reason: item.type,
+          reason:
+            item.type === 'EVIDENCE_AFTER_ASSIGNMENT_END'
+              ? 'APPROVED_TIME_AFTER_ASSIGNMENT_END'
+              : 'APPROVED_TIME_WITHOUT_ASSIGNMENT',
         })),
     );
 
+    const managedAssignments = assignments.filter((assignment) => managedProjectIds.has(assignment.projectId));
     const recentlyChangedAssignments = (
       await Promise.all(
-        assignments
-          .filter((assignment) => managedProjectIds.has(assignment.projectId))
-          .map(async (assignment) => {
-            const history = await this.projectAssignmentRepository.findHistoryByAssignmentId(
-              assignment.assignmentId,
-            );
+        managedAssignments.map(async (assignment) => {
+          const history = await this.projectAssignmentRepository.findHistoryByAssignmentId(
+            assignment.assignmentId,
+          );
 
-            return history.map((item) => ({
-              assignmentId: assignment.assignmentId.value,
-              changedAt: item.occurredAt.toISOString(),
-              changeType: item.changeType,
-              personDisplayName:
-                allPeople.find((personRecord) => personRecord.id === assignment.personId)
-                  ?.displayName ?? assignment.personId,
-              personId: assignment.personId,
-              projectId: assignment.projectId,
-              projectName:
-                managedProjects.find((project) => project.projectId.value === assignment.projectId)
-                  ?.name ?? assignment.projectId,
-            }));
-          }),
+          return history.map((item) => ({
+            assignmentId: assignment.assignmentId.value,
+            changedAt: item.occurredAt.toISOString(),
+            changeType: item.changeType,
+            personDisplayName:
+              peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
+            personId: assignment.personId,
+            projectId: assignment.projectId,
+            projectName:
+              managedProjectMap.get(assignment.projectId)?.name ?? assignment.projectId,
+          }));
+        }),
       )
     )
       .flat()
@@ -140,62 +142,85 @@ export class ProjectManagerDashboardQueryService {
           projectName: project.name,
           reason: 'NEARING_CLOSURE',
         })),
-      ...managedProjects
-        .filter((project) => this.hasInactiveEvidencePattern(project.projectId.value, activeAssignments, managedProjectEvidence, asOf))
-        .map((project) => ({
-          detail: 'Active staffing exists but no recent work evidence has been observed in the last 14 days.',
-          projectCode: project.projectCode,
-          projectId: project.projectId.value,
-          projectName: project.name,
-          reason: 'INACTIVE_EVIDENCE_PATTERN',
-        })),
     ]);
 
-    // Open staffing requests for PM's projects
     const allRequests = await this.staffingRequestService.list({ status: 'OPEN' });
     const openRequests = allRequests
-      .filter((r) => managedProjectIds.has(r.projectId))
-      .map((r) => ({
-        headcountFulfilled: r.headcountFulfilled,
-        headcountRequired: r.headcountRequired,
-        id: r.id,
-        priority: r.priority,
-        projectId: r.projectId,
-        role: r.role,
-        startDate: r.startDate,
+      .filter((request) => managedProjectIds.has(request.projectId))
+      .map((request) => ({
+        headcountFulfilled: request.headcountFulfilled,
+        headcountRequired: request.headcountRequired,
+        id: request.id,
+        priority: request.priority,
+        projectId: request.projectId,
+        role: request.role,
+        startDate: request.startDate,
       }));
 
     return {
       asOf: asOf.toISOString(),
       attentionProjects,
-      dataSources: ['person_directory', 'projects', 'assignments', 'planned_vs_actual', 'work_evidence', 'staffing_requests'],
+      dataSources: ['person_directory', 'projects', 'assignments', 'planned_vs_actual', 'timesheets', 'staffing_requests'],
+      managedProjects: managedProjects.map((project) => {
+        const projectId = project.projectId.value;
+        return {
+          approvedHours: Number((approvedHoursByProject.get(projectId) ?? 0).toFixed(2)),
+          id: projectId,
+          name: project.name,
+          plannedEndDate: project.endsOn?.toISOString() ?? null,
+          plannedStartDate: project.startsOn?.toISOString() ?? null,
+          projectCode: project.projectCode,
+          staffingCount: (assignmentsByProject.get(projectId) ?? []).length,
+          status: project.status,
+        };
+      }),
       openRequestCount: openRequests.length,
       openRequests,
-      managedProjects: managedProjects.map((project) => ({
-        evidenceCount: managedProjectEvidence.filter((item) => item.projectId === project.projectId.value).length,
-        id: project.projectId.value,
-        name: project.name,
-        plannedEndDate: project.endsOn?.toISOString() ?? null,
-        plannedStartDate: project.startsOn?.toISOString() ?? null,
-        projectCode: project.projectCode,
-        staffingCount: activeAssignments.filter((assignment) => assignment.projectId === project.projectId.value).length,
-        status: project.status,
-      })),
       person: {
         displayName: person.displayName,
         id: person.id,
         primaryEmail: person.primaryEmail,
       },
-      projectsWithEvidenceAnomalies,
       projectsWithStaffingGaps,
+      projectsWithTimeVariance,
       recentlyChangedAssignments,
       staffingSummary: {
         activeAssignmentCount: activeAssignments.length,
         managedProjectCount: managedProjects.length,
-        projectsWithEvidenceAnomaliesCount: projectsWithEvidenceAnomalies.length,
         projectsWithStaffingGapsCount: projectsWithStaffingGaps.length,
+        projectsWithTimeVarianceCount: projectsWithTimeVariance.length,
       },
     };
+  }
+
+  private async readApprovedHoursByProject(
+    projectIds: Set<string>,
+    asOf: Date,
+  ): Promise<Map<string, number>> {
+    if (projectIds.size === 0) {
+      return new Map();
+    }
+
+    const windowStart = this.startOfIsoWeek(asOf);
+    const windowEnd = this.endOfIsoWeek(asOf);
+    const entries = await this.prisma.timesheetEntry.findMany({
+      where: {
+        date: { gte: windowStart, lte: windowEnd },
+        projectId: { in: [...projectIds] },
+        timesheetWeek: { status: 'APPROVED' },
+      },
+      select: {
+        hours: true,
+        projectId: true,
+      },
+    });
+
+    const totals = new Map<string, number>();
+    for (const entry of entries) {
+      totals.set(entry.projectId, (totals.get(entry.projectId) ?? 0) + Number(entry.hours ?? 0));
+    }
+
+    return totals;
   }
 
   private groupProjectAttentionItems<
@@ -219,27 +244,6 @@ export class ProjectManagerDashboardQueryService {
     ).map(([, value]) => value);
   }
 
-  private hasInactiveEvidencePattern(
-    projectId: string,
-    activeAssignments: Awaited<ReturnType<InMemoryProjectAssignmentRepository['findAll']>>,
-    evidence: Awaited<ReturnType<InMemoryWorkEvidenceRepository['list']>>,
-    asOf: Date,
-  ): boolean {
-    const hasActiveStaffing = activeAssignments.some((assignment) => assignment.projectId === projectId);
-    if (!hasActiveStaffing) {
-      return false;
-    }
-
-    const recentEvidenceCutoff = new Date(asOf);
-    recentEvidenceCutoff.setUTCDate(recentEvidenceCutoff.getUTCDate() - 14);
-
-    return !evidence.some(
-      (item) =>
-        item.projectId === projectId &&
-        (item.occurredOn ?? item.recordedAt) >= recentEvidenceCutoff,
-    );
-  }
-
   private isNearingClosure(endsOn: Date | undefined, asOf: Date, thresholdDays: number): boolean {
     if (!endsOn) {
       return false;
@@ -249,5 +253,21 @@ export class ProjectManagerDashboardQueryService {
     threshold.setUTCDate(threshold.getUTCDate() + thresholdDays);
 
     return endsOn >= asOf && endsOn <= threshold;
+  }
+
+  private startOfIsoWeek(date: Date): Date {
+    const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const day = start.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    start.setUTCDate(start.getUTCDate() + diff);
+    start.setUTCHours(0, 0, 0, 0);
+    return start;
+  }
+
+  private endOfIsoWeek(date: Date): Date {
+    const end = this.startOfIsoWeek(date);
+    end.setUTCDate(end.getUTCDate() + 6);
+    end.setUTCHours(23, 59, 59, 999);
+    return end;
   }
 }

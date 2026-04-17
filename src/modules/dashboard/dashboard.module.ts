@@ -22,13 +22,16 @@ import { ProjectManagerDashboardQueryService } from './application/project-manag
 import { ResourceManagerDashboardQueryService } from './application/resource-manager-dashboard-query.service';
 import { RoleDashboardQueryService } from './application/role-dashboard-query.service';
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
+import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
+import { PortfolioDashboardController } from './presentation/portfolio-dashboard.controller';
 import { RoleDashboardController } from './presentation/role-dashboard.controller';
 import { WorkloadDashboardController } from './presentation/workload-dashboard.controller';
 
 @Module({
   imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
-  controllers: [WorkloadDashboardController, RoleDashboardController],
+  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController],
   providers: [
+    PortfolioDashboardService,
     DeliveryManagerDashboardQueryService,
     DirectorDashboardQueryService,
     EmployeeDashboardQueryService,

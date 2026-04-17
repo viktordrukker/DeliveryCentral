@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-09 Create assignment ──────────────────────────────────────────────────
 
-test.describe('2d-09 RM — create assignment', () => {
+test.describe('@critical 2d-09 RM — create assignment', () => {
   test('create assignment page renders the form', async ({ page }) => {
     await page.goto('/assignments/new');
 
@@ -49,7 +49,7 @@ test.describe('2d-09 RM — create assignment', () => {
 
 // ── 2d-10 Approve assignment ─────────────────────────────────────────────────
 
-test.describe('2d-10 RM — approve assignment', () => {
+test.describe('@critical 2d-10 RM — approve assignment', () => {
   test('REQUESTED assignment detail shows Approve button', async ({ page }) => {
     await page.goto(`/assignments/${p2.assignments.rajOnJupiterRequested}`);
 
@@ -77,7 +77,7 @@ test.describe('2d-10 RM — approve assignment', () => {
 
 // ── 2d-11 Reject assignment ──────────────────────────────────────────────────
 
-test.describe('2d-11 RM — reject assignment', () => {
+test.describe('@critical 2d-11 RM — reject assignment', () => {
   test('REQUESTED assignment detail shows Reject button', async ({ page }) => {
     await page.goto(`/assignments/${p2.assignments.rajOnJupiterRequested}`);
 
@@ -117,7 +117,7 @@ test.describe('2d-11 RM — reject assignment', () => {
 
 // ── 2d-12 End assignment ─────────────────────────────────────────────────────
 
-test.describe('2d-12 RM — end assignment', () => {
+test.describe('@critical 2d-12 RM — end assignment', () => {
   test('APPROVED assignment shows End assignment button', async ({ page }) => {
     await page.goto(`/assignments/${p2.assignments.ethanOnDeliveryCentral}`);
 
@@ -162,7 +162,7 @@ test.describe('2d-12 RM — end assignment', () => {
 
 // ── 2d-13 Bulk assign team ───────────────────────────────────────────────────
 
-test.describe('2d-13 RM — bulk assign team', () => {
+test.describe('@critical 2d-13 RM — bulk assign team', () => {
   test('bulk assignment page renders with form', async ({ page }) => {
     await page.goto('/assignments/bulk');
 
@@ -172,13 +172,13 @@ test.describe('2d-13 RM — bulk assign team', () => {
   test('bulk assignment page has project selector', async ({ page }) => {
     await page.goto('/assignments/bulk');
 
-    await expect(page.getByLabel(/Project/i).first()).toBeVisible();
+    await expect(page.getByLabel(/Project/i)).toBeVisible();
   });
 });
 
 // ── 2d-14 RM dashboard ───────────────────────────────────────────────────────
 
-test.describe('2d-14 RM — view RM dashboard', () => {
+test.describe('@critical 2d-14 RM — view RM dashboard', () => {
   test('RM dashboard renders allocation indicators', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
@@ -188,20 +188,20 @@ test.describe('2d-14 RM — view RM dashboard', () => {
   test('RM dashboard shows Ethan Brooks as OVERALLOCATED', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
-    await expect(page.getByText(/Ethan Brooks/).first()).toBeVisible();
-    await expect(page.getByText(/OVERALLOCATED/i).first()).toBeVisible();
+    await expect(page.getByText(/Ethan Brooks/)).toBeVisible();
+    await expect(page.getByText(/OVERALLOCATED/i)).toBeVisible();
   });
 
   test('RM dashboard shows Capacity section', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
-    await expect(page.getByText(/Capacity/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Capacity/i })).toBeVisible();
   });
 
   test('RM dashboard shows Pipeline / Future section', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
 
-    await expect(page.getByText(/Pipeline|Future/i).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Pipeline|Future/i })).toBeVisible();
   });
 });
 

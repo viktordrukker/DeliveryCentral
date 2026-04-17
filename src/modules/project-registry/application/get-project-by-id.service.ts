@@ -62,6 +62,26 @@ export class GetProjectByIdService {
             where: { id: project.projectManagerId.value },
           }))?.displayName ?? null
         : null,
+      deliveryManagerId: project.deliveryManagerId?.value ?? null,
+      deliveryManagerDisplayName: project.deliveryManagerId?.value
+        ? (await this.prisma.person.findFirst({
+            select: { displayName: true },
+            where: { id: project.deliveryManagerId.value },
+          }))?.displayName ?? null
+        : null,
+      clientId: project.clientId ?? null,
+      clientName: project.clientId
+        ? (await this.prisma.client.findFirst({
+            select: { name: true },
+            where: { id: project.clientId },
+          }))?.name ?? null
+        : null,
+      domain: project.domain ?? null,
+      engagementModel: project.engagementModel ?? null,
+      priority: project.priority ?? null,
+      projectType: project.projectType ?? null,
+      tags: project.tags,
+      techStack: project.techStack,
       startDate: project.startsOn?.toISOString() ?? null,
       status: project.status,
       version: project.version,

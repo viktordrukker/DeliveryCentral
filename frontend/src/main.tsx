@@ -4,6 +4,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 
 import { App } from './app/App';
 import { useAppTheme } from './app/theme';
+import { bootstrapDesignTokens } from './styles/design-tokens';
 import './styles/global.css';
 
 function Root(): JSX.Element {
@@ -15,6 +16,8 @@ function Root(): JSX.Element {
     </ThemeProvider>
   );
 }
+
+bootstrapDesignTokens();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

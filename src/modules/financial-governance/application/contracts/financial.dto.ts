@@ -52,12 +52,15 @@ export class CreatePeriodLockDto {
 
 // ─── Project Budget ───────────────────────────────────────────────────────────
 
+export type BudgetStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+
 export interface ProjectBudgetDto {
   id: string;
   projectId: string;
   fiscalYear: number;
   capexBudget: number;
   opexBudget: number;
+  status?: BudgetStatus;
 }
 
 export class UpsertProjectBudgetDto {

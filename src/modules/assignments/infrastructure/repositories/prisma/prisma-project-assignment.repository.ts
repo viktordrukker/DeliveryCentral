@@ -33,7 +33,14 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
   ) {}
 
   public async delete(id: string): Promise<void> {
-    await this.gateway.delete({ where: { id } });
+    try {
+      await this.gateway.delete({ where: { id } });
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2003') {
+        throw new Error('Cannot delete assignment: it has linked approval or history records. Archive it instead.');
+      }
+      throw error;
+    }
   }
 
   public async appendApproval(approval: AssignmentApproval): Promise<void> {

@@ -195,9 +195,7 @@ export class HealthService {
 
     const connectivityStartedAt = Date.now();
     try {
-      const connectivityResult = (await this.prisma.$queryRawUnsafe(
-        'SELECT version() as version, NOW()::text as server_time',
-      )) as Array<{ server_time: string; version: string }>;
+      const connectivityResult = (await this.prisma.$queryRaw`SELECT version() as version, NOW()::text as server_time`) as Array<{ server_time: string; version: string }>;
       database.connected = true;
       database.latencyMs = Date.now() - connectivityStartedAt;
       database.serverTime = connectivityResult[0]?.server_time;
@@ -208,9 +206,7 @@ export class HealthService {
     }
 
     try {
-      const migrationRows = (await this.prisma.$queryRawUnsafe(
-        'SELECT finished_at FROM "_prisma_migrations" WHERE finished_at IS NOT NULL ORDER BY finished_at DESC',
-      )) as Array<{ finished_at: Date }>;
+      const migrationRows = (await this.prisma.$queryRaw`SELECT finished_at FROM "_prisma_migrations" WHERE finished_at IS NOT NULL ORDER BY finished_at DESC`) as Array<{ finished_at: Date }>;
 
       migrations.appliedCount = migrationRows.length;
       migrations.latestAppliedAt = migrationRows[0]?.finished_at?.toISOString() ?? null;

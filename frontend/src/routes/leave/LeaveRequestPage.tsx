@@ -17,11 +17,17 @@ import {
   rejectLeaveRequest,
 } from '@/lib/api/leaveRequests';
 import { useAuth } from '@/app/auth-context';
+import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 const LEAVE_TYPE_LABELS: Record<LeaveRequestType, string> = {
   ANNUAL: 'Annual Leave',
-  OTHER: 'Other',
   SICK: 'Sick Leave',
+  OT_OFF: 'Overtime Off',
+  PERSONAL: 'Personal',
+  PARENTAL: 'Parental Leave',
+  BEREAVEMENT: 'Bereavement',
+  STUDY: 'Study Leave',
+  OTHER: 'Other',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -32,10 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function LeaveRequestPage(): JSX.Element {
   const { principal } = useAuth();
-  const isManager =
-    principal?.roles.some((r) =>
-      ['hr_manager', 'admin', 'director', 'resource_manager'].includes(r),
-    ) ?? false;
+  const isManager = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
 
   const [myRequests, setMyRequests] = useState<LeaveRequestDto[]>([]);
   const [pendingRequests, setPendingRequests] = useState<LeaveRequestDto[]>([]);
@@ -215,13 +218,14 @@ export function LeaveRequestPage(): JSX.Element {
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="dash-compact-table">
+              <caption className="sr-only">My leave requests</caption>
               <thead>
                 <tr>
-                  <th>Type</th>
-                  <th>Dates</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                  <th>Submitted</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Dates</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Notes</th>
+                  <th scope="col">Submitted</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,14 +270,15 @@ export function LeaveRequestPage(): JSX.Element {
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table className="dash-compact-table">
+                <caption className="sr-only">Pending leave requests for approval</caption>
                 <thead>
                   <tr>
-                    <th>Person</th>
-                    <th>Type</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Notes</th>
-                    <th>Actions</th>
+                    <th scope="col">Person</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Start</th>
+                    <th scope="col">End</th>
+                    <th scope="col">Notes</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

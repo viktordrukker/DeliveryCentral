@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 
 interface ProjectRegistryTableProps {
@@ -27,7 +28,7 @@ export function ProjectRegistryTable({
       },
       {
         key: 'status',
-        render: (item: ProjectDirectoryItem) => item.status,
+        render: (item: ProjectDirectoryItem) => <StatusBadge status={item.status} variant="dot" />,
         title: 'Status',
       },
       {

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { ColumnVisibilityMenu } from '@/components/common/ColumnVisibilityMenu';
 import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 
@@ -61,27 +62,9 @@ export function EmployeeDirectoryTable({
         },
         {
           key: 'status',
-          render: (item: PersonDirectoryItem) => {
-            const s = item.lifecycleStatus;
-            const color =
-              s === 'ACTIVE' ? 'var(--color-status-active)' : s === 'INACTIVE' ? 'var(--color-status-warning)' : 'var(--color-text-muted)';
-            return (
-              <span
-                style={{
-                  background: `${color}22`,
-                  border: `1px solid ${color}`,
-                  borderRadius: '4px',
-                  color,
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '2px 6px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {s}
-              </span>
-            );
-          },
+          render: (item: PersonDirectoryItem) => (
+            <StatusBadge label={item.lifecycleStatus} size="small" status={item.lifecycleStatus} uppercase={true} />
+          ),
           title: 'Status',
         },
       ].filter((col) => isVisible(col.key)),
@@ -89,26 +72,24 @@ export function EmployeeDirectoryTable({
   );
 
   return (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+    <DataTable
+      columns={columns}
+      emptyState={
+        <EmptyState
+          description="No employees matched the current query."
+          title="No directory results"
+        />
+      }
+      getRowKey={(item) => item.id}
+      items={items}
+      onRowClick={onRowClick}
+      toolbar={(
         <ColumnVisibilityMenu
           columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key] }))}
           isVisible={isVisible}
           onToggle={toggleColumn}
         />
-      </div>
-      <DataTable
-        columns={columns}
-        emptyState={
-          <EmptyState
-            description="No employees matched the current query."
-            title="No directory results"
-          />
-        }
-        getRowKey={(item) => item.id}
-        items={items}
-        onRowClick={onRowClick}
-      />
-    </>
+      )}
+    />
   );
 }

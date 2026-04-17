@@ -54,4 +54,17 @@ export class CreateProjectAssignmentRequestDto {
   @IsOptional()
   @IsString()
   public note?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  public draft?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  public allowOverlapOverride?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  public overrideReason?: string;
 }

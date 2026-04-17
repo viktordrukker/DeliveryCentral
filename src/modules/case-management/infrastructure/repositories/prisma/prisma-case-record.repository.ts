@@ -13,7 +13,14 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
   }
 
   public async delete(id: string): Promise<void> {
-    await this.prisma.caseRecord.delete({ where: { id } });
+    try {
+      await this.prisma.caseRecord.delete({ where: { id } });
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2003') {
+        throw new Error('Cannot delete case: it has linked steps or participants. Archive it instead.');
+      }
+      throw error;
+    }
   }
 
   public async findByCaseId(caseId: CaseId): Promise<CaseRecord | null> {

@@ -1,19 +1,39 @@
-import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
-import { AppModule } from '@src/app.module';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+import { InMemoryMetadataDictionaryRepository } from '@src/modules/metadata/infrastructure/repositories/in-memory/in-memory-metadata-dictionary.repository';
+import { InMemoryMetadataEntryRepository } from '@src/modules/metadata/infrastructure/repositories/in-memory/in-memory-metadata-entry.repository';
+import { createSeededInMemoryMetadataDictionaryRepository } from '@src/modules/metadata/infrastructure/repositories/in-memory/create-seeded-in-memory-metadata-dictionary.repository';
+import { createSeededInMemoryMetadataEntryRepository } from '@src/modules/metadata/infrastructure/repositories/in-memory/create-seeded-in-memory-metadata-entry.repository';
+import { roleHeaders } from '../helpers/api/auth-headers';
+import { createApiTestApp } from '../helpers/api/create-api-test-app';
 
 describe('metadata dictionary API contract', () => {
   it('returns stable dictionary list fields required by the admin UI', async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    const app = moduleRef.createNestApplication();
-    await app.init();
+    const app = await createApiTestApp((builder) =>
+      builder
+        .overrideProvider(InMemoryMetadataDictionaryRepository)
+        .useValue(createSeededInMemoryMetadataDictionaryRepository())
+        .overrideProvider(InMemoryMetadataEntryRepository)
+        .useValue(createSeededInMemoryMetadataEntryRepository())
+        .overrideProvider(PrismaService)
+        .useValue({
+          customFieldDefinition: {
+            count: async () => 0,
+          },
+          entityLayoutDefinition: {
+            findMany: async () => [],
+          },
+          workflowDefinition: {
+            count: async () => 0,
+            findMany: async () => [],
+          },
+        } as unknown as PrismaService),
+    );
 
     const response = await request(app.getHttpServer())
       .get('/metadata/dictionaries')
+      .set(roleHeaders('admin'))
       .expect(200);
 
     expect(Array.isArray(response.body.items)).toBe(true);
@@ -29,5 +49,5 @@ describe('metadata dictionary API contract', () => {
     );
 
     await app.close();
-  });
+  }, 15_000);
 });

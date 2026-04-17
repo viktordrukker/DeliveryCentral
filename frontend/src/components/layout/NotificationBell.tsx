@@ -251,22 +251,22 @@ export function NotificationBell(): JSX.Element {
                     borderBottom: '1px solid var(--color-border)',
                   }}
                 >
-                  <div
+                  <button
+                    type="button"
                     style={{
                       display: 'flex',
                       gap: '10px',
                       padding: '10px 12px',
                       cursor: notification.link ? 'pointer' : 'default',
                       alignItems: 'flex-start',
+                      background: 'none',
+                      border: 'none',
+                      width: '100%',
+                      textAlign: 'left',
+                      font: 'inherit',
+                      color: 'inherit',
                     }}
                     onClick={() => void handleNotificationClick(notification)}
-                    role={notification.link ? 'button' : undefined}
-                    tabIndex={notification.link ? 0 : undefined}
-                    onKeyDown={(e) => {
-                      if (notification.link && (e.key === 'Enter' || e.key === ' ')) {
-                        void handleNotificationClick(notification);
-                      }
-                    }}
                   >
                     <span style={{ fontSize: '18px', flexShrink: 0 }}>
                       {eventIcon(notification.eventType)}
@@ -323,7 +323,7 @@ export function NotificationBell(): JSX.Element {
                         ×
                       </button>
                     )}
-                  </div>
+                  </button>
                 </li>
               ))}
                 </li>

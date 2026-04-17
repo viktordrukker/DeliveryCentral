@@ -16,7 +16,7 @@ const ADMIN_PAGES = ['/admin', '/admin/dictionaries', '/admin/monitoring', '/adm
 const ELEVATED_PAGES = ['/', '/projects', '/assignments', '/people', '/workload'];
 const EMPLOYEE_PAGES = ['/dashboard/employee'];
 
-test.describe('16-03 Viewport no-scroll — admin pages', () => {
+test.describe('@full 16-03 Viewport no-scroll — admin pages', () => {
   for (const { width, height, label } of VIEWPORT_SIZES) {
     test(`${label}: admin pages have no body scroll`, async ({ page }) => {
       await page.setViewportSize({ width, height });
@@ -31,7 +31,7 @@ test.describe('16-03 Viewport no-scroll — admin pages', () => {
   }
 });
 
-test.describe('16-03 Viewport no-scroll — elevated role pages', () => {
+test.describe('@full 16-03 Viewport no-scroll — elevated role pages', () => {
   for (const { width, height, label } of VIEWPORT_SIZES) {
     test(`${label}: elevated pages have no body scroll`, async ({ page }) => {
       await page.setViewportSize({ width, height });
@@ -46,7 +46,7 @@ test.describe('16-03 Viewport no-scroll — elevated role pages', () => {
   }
 });
 
-test.describe('16-03 Viewport no-scroll — employee dashboard', () => {
+test.describe('@full 16-03 Viewport no-scroll — employee dashboard', () => {
   for (const { width, height, label } of VIEWPORT_SIZES) {
     test(`${label}: employee dashboard has no body scroll`, async ({ page }) => {
       await page.setViewportSize({ width, height });

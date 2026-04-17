@@ -158,7 +158,7 @@ export class TimesheetRepository {
   ): Promise<
     Array<
       Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
-        timesheetWeek: { personId: string };
+        timesheetWeek: { personId: string; weekStart: Date };
       }
     >
   > {
@@ -191,12 +191,12 @@ export class TimesheetRepository {
 
     return this.prisma.timesheetEntry.findMany({
       where: entryWhere,
-      include: { timesheetWeek: { select: { personId: true } } },
+      include: { timesheetWeek: { select: { personId: true, weekStart: true } } },
       orderBy: { date: 'asc' },
-    }) as Promise<
+    }) as unknown as Promise<
       Array<
         Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
-          timesheetWeek: { personId: string };
+          timesheetWeek: { personId: string; weekStart: Date };
         }
       >
     >;

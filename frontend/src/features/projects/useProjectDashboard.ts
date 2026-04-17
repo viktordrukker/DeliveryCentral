@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  ComparisonAnomalyItem,
-  PlannedVsActualResponse,
-  fetchPlannedVsActual,
-} from '@/lib/api/planned-vs-actual';
 import { ProjectDetails, fetchProjectById } from '@/lib/api/project-registry';
-import { WorkEvidenceItem, fetchWorkEvidence } from '@/lib/api/work-evidence';
 import {
   ProjectDashboardResponse,
   fetchProjectDashboard,
@@ -14,11 +8,8 @@ import {
 import { ApiError } from '@/lib/api/http-client';
 
 export interface ProjectDashboardData {
-  anomalies: ComparisonAnomalyItem[];
-  comparison: PlannedVsActualResponse;
   dashboard: ProjectDashboardResponse;
   project: ProjectDetails;
-  workEvidence: WorkEvidenceItem[];
 }
 
 interface ProjectDashboardState {
@@ -56,21 +47,16 @@ export function useProjectDashboard(id?: string): ProjectDashboardState {
     void Promise.all([
       fetchProjectById(id),
       fetchProjectDashboard(id),
-      fetchWorkEvidence({ projectId: id }),
-      fetchPlannedVsActual({ projectId: id }),
     ])
-      .then(([project, dashboard, workEvidence, comparison]) => {
+      .then(([project, dashboard]) => {
         if (!active) {
           return;
         }
 
         setState({
           data: {
-            anomalies: comparison.anomalies,
-            comparison,
             dashboard,
             project,
-            workEvidence: workEvidence.items,
           },
           isLoading: false,
           notFound: false,

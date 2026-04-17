@@ -74,14 +74,12 @@ export class ReportsController {
   }
 
   @Delete('templates/:id')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a report template' })
-  @ApiOkResponse({ description: 'Template deleted.' })
-  public deleteTemplate(@Param('id') id: string): { success: boolean } {
+  public deleteTemplate(@Param('id') id: string): void {
     const deleted = this.reportBuilderService.deleteTemplate(id);
     if (!deleted) {
       throw new NotFoundException('Report template not found.');
     }
-    return { success: true };
   }
 }

@@ -18,6 +18,7 @@ import { ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, A
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
 import { ApproveProjectAssignmentService } from '../application/approve-project-assignment.service';
 import { BulkCreateProjectAssignmentsService } from '../application/bulk-create-project-assignments.service';
 import { AssignmentDecisionRequestDto } from '../application/contracts/assignment-decision.request';
@@ -61,6 +62,7 @@ class RevokeAssignmentRequestDto {
 @Controller('assignments')
 export class AssignmentsController {
   public constructor(
+    private readonly activateApprovedAssignmentsService: ActivateApprovedAssignmentsService,
     private readonly createProjectAssignmentService: CreateProjectAssignmentService,
     private readonly bulkCreateProjectAssignmentsService: BulkCreateProjectAssignmentsService,
     private readonly approveProjectAssignmentService: ApproveProjectAssignmentService,
@@ -71,6 +73,16 @@ export class AssignmentsController {
     private readonly amendProjectAssignmentService: AmendProjectAssignmentService,
     private readonly revokeProjectAssignmentService: RevokeProjectAssignmentService,
   ) {}
+
+  @Post('activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Activate all approved assignments that have reached their start date' })
+  @ApiOkResponse({ description: 'Number of assignments activated.' })
+  @RequireRoles('admin', 'resource_manager', 'director')
+  public async activateApproved(): Promise<{ activated: number }> {
+    const activated = await this.activateApprovedAssignmentsService.execute();
+    return { activated };
+  }
 
   @Get()
   @ApiOperation({ summary: 'List authoritative internal project assignments' })
@@ -212,7 +224,7 @@ export class AssignmentsController {
     @Body() request: AssignmentDecisionRequestDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = request.actorId ?? httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
     return this.mapAssignmentResponse(
       await this.withAssignmentErrors(() =>
         this.approveProjectAssignmentService.execute({
@@ -234,7 +246,7 @@ export class AssignmentsController {
     @Body() request: AssignmentDecisionRequestDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = request.actorId ?? httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
     return this.mapAssignmentResponse(
       await this.withAssignmentErrors(() =>
         this.rejectProjectAssignmentService.execute({
@@ -256,7 +268,7 @@ export class AssignmentsController {
     @Body() request: EndProjectAssignmentRequestDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = request.actorId ?? httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
     return this.mapAssignmentResponse(
       await this.withAssignmentErrors(() =>
         this.endProjectAssignmentService.execute({

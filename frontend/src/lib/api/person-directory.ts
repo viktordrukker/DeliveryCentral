@@ -18,12 +18,14 @@ export interface PersonDirectoryItem {
   displayName: string;
   dottedLineManagers: PersonSummary[];
   grade: string | null;
+  hiredAt: string | null;
   id: string;
   lifecycleStatus: string;
   primaryEmail: string | null;
   resourcePoolIds: string[];
   resourcePools: Array<{ id: string; name: string }>;
   role: string | null;
+  terminatedAt: string | null;
 }
 
 export interface PersonDirectoryResponse {

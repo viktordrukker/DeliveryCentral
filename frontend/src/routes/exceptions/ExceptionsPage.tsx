@@ -89,9 +89,9 @@ export function ExceptionsPage(): JSX.Element {
                 <span>
                   {state.data.summary.total} open exception
                   {state.data.summary.total === 1 ? '' : 's'}
-                  {' '}<TipBalloon tip="Exceptions surface anomalies from assignments, work evidence, projects, and reconciliation." arrow="left" />
+                  {' '}<TipBalloon tip="Exceptions surface anomalies from assignments, projects, and time compliance." arrow="left" />
                 </span>
-                <span>Derived from assignments, work evidence, projects, and reconciliation records.</span>
+                <span>Derived from assignments, projects, and time compliance records.</span>
               </div>
 
               {state.data.items.length === 0 ? (

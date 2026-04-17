@@ -214,7 +214,7 @@ function buildPeopleResponse() {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: ['team-1'],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     },
     {
       currentAssignmentCount: 0,
@@ -232,7 +232,7 @@ function buildPeopleResponse() {
       lifecycleStatus: 'ACTIVE',
       resourcePoolIds: [],
       resourcePools: [],
-      role: null,
+      role: null, hiredAt: null, terminatedAt: null,
     },
   ];
 }

@@ -1,0 +1,101 @@
+{
+  "$schema": "SLO budget definitions for critical API and UI flows",
+  "version": "1.0.0",
+  "updatedAt": "2026-04-14",
+  "budgets": {
+    "api": {
+      "dashboard/workload": {
+        "endpoint": "GET /api/dashboard/workload/summary",
+        "p95LatencyMs": 2000,
+        "p99LatencyMs": 5000,
+        "errorRateThreshold": 0.01,
+        "description": "Workload overview dashboard summary"
+      },
+      "dashboard/planned-vs-actual": {
+        "endpoint": "GET /api/dashboard/workload/planned-vs-actual",
+        "p95LatencyMs": 3000,
+        "p99LatencyMs": 8000,
+        "errorRateThreshold": 0.01,
+        "description": "Planned vs actual reconciliation"
+      },
+      "dashboard/role": {
+        "endpoint": "GET /api/dashboard/role/:role",
+        "p95LatencyMs": 2000,
+        "p99LatencyMs": 5000,
+        "errorRateThreshold": 0.01,
+        "description": "Role-specific dashboard (employee, PM, RM, HR, DM, Director)"
+      },
+      "person-directory/list": {
+        "endpoint": "GET /api/person-directory",
+        "p95LatencyMs": 500,
+        "p99LatencyMs": 1500,
+        "errorRateThreshold": 0.005,
+        "description": "People directory listing"
+      },
+      "project-registry/list": {
+        "endpoint": "GET /api/project-registry",
+        "p95LatencyMs": 500,
+        "p99LatencyMs": 1500,
+        "errorRateThreshold": 0.005,
+        "description": "Project registry listing"
+      },
+      "assignments/list": {
+        "endpoint": "GET /api/assignments",
+        "p95LatencyMs": 500,
+        "p99LatencyMs": 1500,
+        "errorRateThreshold": 0.005,
+        "description": "Assignment directory listing"
+      },
+      "timesheets/submit": {
+        "endpoint": "POST /api/timesheets/:id/submit",
+        "p95LatencyMs": 1000,
+        "p99LatencyMs": 3000,
+        "errorRateThreshold": 0.005,
+        "description": "Timesheet submission"
+      },
+      "auth/login": {
+        "endpoint": "POST /api/auth/login",
+        "p95LatencyMs": 500,
+        "p99LatencyMs": 2000,
+        "errorRateThreshold": 0.01,
+        "description": "Authentication login"
+      }
+    },
+    "ui": {
+      "dashboardLoad": {
+        "route": "/",
+        "metricName": "LCP",
+        "budgetMs": 3000,
+        "description": "Workload overview dashboard largest contentful paint"
+      },
+      "peopleListLoad": {
+        "route": "/people",
+        "metricName": "LCP",
+        "budgetMs": 2000,
+        "description": "People directory initial render"
+      },
+      "projectListLoad": {
+        "route": "/projects",
+        "metricName": "LCP",
+        "budgetMs": 2000,
+        "description": "Project registry initial render"
+      },
+      "timesheetLoad": {
+        "route": "/timesheets",
+        "metricName": "LCP",
+        "budgetMs": 2500,
+        "description": "Timesheet grid initial render"
+      }
+    },
+    "e2e": {
+      "smokePassRate": {
+        "threshold": 1.0,
+        "description": "All @smoke tests must pass for merge"
+      },
+      "criticalPassRate": {
+        "threshold": 0.95,
+        "description": "95%+ of @critical tests must pass"
+      }
+    }
+  }
+}

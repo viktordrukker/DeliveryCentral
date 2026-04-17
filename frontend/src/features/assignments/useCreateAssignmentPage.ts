@@ -14,6 +14,7 @@ import { ProjectDirectoryItem, fetchProjectDirectory } from '@/lib/api/project-r
 export interface CreateAssignmentFormValues {
   actorId: string;
   allocationPercent: string;
+  customRole: string;
   endDate: string;
   note: string;
   personId: string;
@@ -25,11 +26,17 @@ export interface CreateAssignmentFormValues {
 export interface CreateAssignmentFormErrors {
   actorId?: string;
   allocationPercent?: string;
+  customRole?: string;
   endDate?: string;
   personId?: string;
   projectId?: string;
   staffingRole?: string;
   startDate?: string;
+}
+
+interface SubmitOptions {
+  draft?: boolean;
+  personValidated?: boolean;
 }
 
 interface CreateAssignmentPageState {
@@ -42,10 +49,17 @@ interface CreateAssignmentPageState {
   overrideSuccess?: ProjectAssignmentResponse;
   people: PersonDirectoryItem[];
   projects: ProjectDirectoryItem[];
+  selectedPerson: PersonDirectoryItem | null;
+  selectedProject: ProjectDirectoryItem | null;
   serverError?: string;
   success?: ProjectAssignmentResponse;
-  submit: (values: CreateAssignmentFormValues) => Promise<ProjectAssignmentResponse | null>;
+  submit: (values: CreateAssignmentFormValues, options?: SubmitOptions) => Promise<ProjectAssignmentResponse | null>;
   submitOverride: (reason: string) => Promise<ProjectAssignmentResponse | null>;
+}
+
+function resolveStaffingRole(values: CreateAssignmentFormValues): string {
+  if (values.staffingRole === '__custom__') return values.customRole.trim();
+  return values.staffingRole.trim();
 }
 
 function validate(values: CreateAssignmentFormValues): CreateAssignmentFormErrors {
@@ -63,8 +77,10 @@ function validate(values: CreateAssignmentFormValues): CreateAssignmentFormError
     errors.projectId = 'Project is required.';
   }
 
-  if (!values.staffingRole.trim()) {
+  if (!values.staffingRole) {
     errors.staffingRole = 'Staffing role is required.';
+  } else if (values.staffingRole === '__custom__' && !values.customRole.trim()) {
+    errors.customRole = 'Custom role is required.';
   }
 
   const allocation = Number(values.allocationPercent);
@@ -86,7 +102,7 @@ function validate(values: CreateAssignmentFormValues): CreateAssignmentFormError
   return errors;
 }
 
-export function useCreateAssignmentPage(): CreateAssignmentPageState {
+export function useCreateAssignmentPage(personId?: string, projectId?: string): CreateAssignmentPageState {
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
@@ -98,6 +114,16 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
   const [overrideCandidate, setOverrideCandidate] = useState<CreateAssignmentOverrideRequest>();
   const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
 
+  const selectedPerson = useMemo(
+    () => (personId ? people.find((p) => p.id === personId) ?? null : null),
+    [people, personId],
+  );
+
+  const selectedProject = useMemo(
+    () => (projectId ? projects.find((p) => p.id === projectId) ?? null : null),
+    [projects, projectId],
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -105,7 +131,7 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
     setServerError(undefined);
 
     void Promise.all([
-      fetchPersonDirectory({ page: 1, pageSize: 100 }),
+      fetchPersonDirectory({ page: 1, pageSize: 200 }),
       fetchProjectDirectory(),
     ])
       .then(([peopleResponse, projectsResponse]) => {
@@ -134,7 +160,7 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
   }, []);
 
   const submit = useMemo(
-    () => async (values: CreateAssignmentFormValues): Promise<ProjectAssignmentResponse | null> => {
+    () => async (values: CreateAssignmentFormValues, options?: SubmitOptions): Promise<ProjectAssignmentResponse | null> => {
       const nextErrors = validate(values);
       setErrors(nextErrors);
       setServerError(undefined);
@@ -147,16 +173,20 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
 
       setIsSubmitting(true);
 
+      const effectiveRole = resolveStaffingRole(values);
+
       try {
         const request: CreateAssignmentRequest = {
           actorId: values.actorId,
           allocationPercent: Number(values.allocationPercent),
           personId: values.personId,
           projectId: values.projectId,
-          staffingRole: values.staffingRole.trim(),
+          staffingRole: effectiveRole,
           startDate: values.startDate,
           ...(values.endDate ? { endDate: values.endDate } : {}),
           ...(values.note.trim() ? { note: values.note.trim() } : {}),
+          ...(options?.draft ? { draft: true } : {}),
+          ...(options?.personValidated ? { personValidated: true } : {}),
         };
 
         const response = await createAssignment(request);
@@ -179,7 +209,7 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
             personId: values.personId,
             projectId: values.projectId,
             reason: '',
-            staffingRole: values.staffingRole.trim(),
+            staffingRole: effectiveRole,
             startDate: values.startDate,
           });
         } else {
@@ -236,6 +266,8 @@ export function useCreateAssignmentPage(): CreateAssignmentPageState {
     overrideSuccess,
     people,
     projects,
+    selectedPerson,
+    selectedProject,
     serverError,
     submit,
     submitOverride,

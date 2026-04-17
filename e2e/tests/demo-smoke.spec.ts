@@ -33,7 +33,7 @@ const EMPTY_STATE_PATTERNS = [
 const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-/i;
 
 for (const { role, email, password, dashboardPath } of DEMO_CREDENTIALS) {
-  test.describe(`Demo smoke — ${role}`, () => {
+  test.describe(`@full Demo smoke — ${role}`, () => {
     test.beforeEach(async ({ page }) => {
       await login(page, email, password);
     });

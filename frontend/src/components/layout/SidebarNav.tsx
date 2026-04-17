@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
-import { AppRouteDefinition } from '@/app/navigation';
+import { AppRouteDefinition, canAccessRoute } from '@/app/navigation';
 import { markSidebarNavigation } from '@/app/drilldown-context';
 import { useAuth } from '@/app/auth-context';
 import { NavIcon, getIconKey } from '@/components/common/NavIcon';
@@ -35,6 +35,7 @@ const GROUP_LABELS: Record<AppRouteDefinition['group'], string> = {
   'people-org': 'People & Org',
   work: 'Work',
   governance: 'Governance',
+  evidence: 'Evidence Management',
   admin: 'Admin',
 };
 
@@ -43,6 +44,7 @@ const GROUP_ORDER: AppRouteDefinition['group'][] = [
   'people-org',
   'work',
   'governance',
+  'evidence',
   'admin',
 ];
 
@@ -66,11 +68,7 @@ export function SidebarNav({
     });
   }
 
-  const visibleRoutes = routes.filter((route) => {
-    if (!route.allowedRoles) return true;
-
-    return route.allowedRoles.some((r) => principal?.roles.includes(r));
-  });
+  const visibleRoutes = routes.filter((route) => canAccessRoute(route.path, principal?.roles));
 
   const byGroup = GROUP_ORDER.reduce<Record<string, AppRouteDefinition[]>>(
     (acc, group) => {
@@ -82,8 +80,7 @@ export function SidebarNav({
   );
 
   // Only show "My Dashboard" (employee dashboard) to roles that can access it
-  const employeeDashRoles = ['employee', 'hr_manager', 'director', 'admin'];
-  const canSeeEmployeeDash = principal?.roles.some((r) => employeeDashRoles.includes(r)) ?? false;
+  const canSeeEmployeeDash = canAccessRoute('/dashboard/employee', principal?.roles);
   const myWorkItems = [
     ...(canSeeEmployeeDash ? [{ description: 'Your personal dashboard and overview.', path: '/dashboard/employee', title: 'My Dashboard' }] : []),
     { description: 'Update your password and account details.', path: '/settings/account', title: 'Account Settings' },

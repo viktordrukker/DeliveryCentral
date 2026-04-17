@@ -11,21 +11,24 @@ class DeliveryManagerDashboardSummaryDto {
   public projectsWithNoStaff!: number;
 
   @ApiProperty()
-  public projectsWithEvidenceAnomalies!: number;
+  public projectsWithTimeVariance!: number;
 
   @ApiProperty()
-  public inactiveEvidenceProjectCount!: number;
+  public projectsMissingApprovedTimeCount!: number;
 }
 
-class DeliveryManagerReconciliationDto {
+class DeliveryManagerTimeAlignmentDto {
   @ApiProperty()
   public matchedCount!: number;
 
   @ApiProperty()
-  public assignedButNoEvidenceCount!: number;
+  public plannedWithoutApprovedTimeCount!: number;
 
   @ApiProperty()
-  public evidenceWithoutAssignmentCount!: number;
+  public approvedTimeWithoutAssignmentCount!: number;
+
+  @ApiProperty()
+  public approvedTimeAfterAssignmentEndCount!: number;
 }
 
 class ProjectHealthItemDto {
@@ -45,13 +48,13 @@ class ProjectHealthItemDto {
   public staffingCount!: number;
 
   @ApiProperty()
-  public evidenceCount!: number;
+  public approvedHours!: number;
 
   @ApiProperty({ type: [String] })
   public anomalyFlags!: string[];
 }
 
-class InactiveEvidenceProjectItemDto {
+class ProjectMissingApprovedTimeItemDto {
   @ApiProperty()
   public projectId!: string;
 
@@ -62,7 +65,7 @@ class InactiveEvidenceProjectItemDto {
   public name!: string;
 
   @ApiProperty({ nullable: true })
-  public lastEvidenceDate!: string | null;
+  public lastApprovedTimeDate!: string | null;
 
   @ApiProperty()
   public activeAssignmentCount!: number;
@@ -116,7 +119,7 @@ class BurnRateTrendPointDto {
   public week!: string;
 
   @ApiProperty()
-  public evidenceCount!: number;
+  public approvedEntryCount!: number;
 
   @ApiProperty()
   public projectCount!: number;
@@ -130,7 +133,7 @@ class ScorecardHistoryPointDto {
   public staffingPct!: number;
 
   @ApiProperty()
-  public evidencePct!: number;
+  public timePct!: number;
 
   @ApiProperty()
   public timelinePct!: number;
@@ -154,14 +157,14 @@ export class DeliveryManagerDashboardResponseDto {
   @ApiProperty({ type: () => DeliveryManagerDashboardSummaryDto })
   public summary!: DeliveryManagerDashboardSummaryDto;
 
-  @ApiProperty({ type: () => DeliveryManagerReconciliationDto })
-  public reconciliation!: DeliveryManagerReconciliationDto;
+  @ApiProperty({ type: () => DeliveryManagerTimeAlignmentDto })
+  public timeAlignment!: DeliveryManagerTimeAlignmentDto;
 
   @ApiProperty({ type: () => [ProjectHealthItemDto] })
   public portfolioHealth!: ProjectHealthItemDto[];
 
-  @ApiProperty({ type: () => [InactiveEvidenceProjectItemDto] })
-  public inactiveEvidenceProjects!: InactiveEvidenceProjectItemDto[];
+  @ApiProperty({ type: () => [ProjectMissingApprovedTimeItemDto] })
+  public projectsMissingApprovedTime!: ProjectMissingApprovedTimeItemDto[];
 
   @ApiProperty({ type: () => [StaffingGapItemDto] })
   public staffingGaps!: StaffingGapItemDto[];

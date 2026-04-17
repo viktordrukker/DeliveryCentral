@@ -13,4 +13,5 @@ prisma/dev.db
 tmp/
 test-results/
 playwright-report/
+playwright/.auth/
 frontend/dist/

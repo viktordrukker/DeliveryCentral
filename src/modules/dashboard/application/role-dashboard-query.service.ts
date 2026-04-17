@@ -50,7 +50,7 @@ export class RoleDashboardQueryService {
               title: item.person.displayName,
             })),
             key: 'matchedRecords',
-            title: 'Matched Work And Staffing',
+            title: 'Aligned Time And Assignments',
           },
           {
             itemCount: plannedVsActual.anomalies.length,
@@ -61,7 +61,7 @@ export class RoleDashboardQueryService {
               title: item.person.displayName,
             })),
             key: 'anomalies',
-            title: 'Observed Work Anomalies',
+            title: 'Time Variance Alerts',
           },
         ],
         summaryCards: [
@@ -99,7 +99,7 @@ export class RoleDashboardQueryService {
               title: item.project.name,
             })),
             key: 'assignedButNoEvidence',
-            title: 'Assigned But No Evidence',
+            title: 'Planned Without Approved Time',
           },
           {
             itemCount: workloadSummary.projectsWithEvidenceButNoApprovedAssignment.length,
@@ -109,7 +109,7 @@ export class RoleDashboardQueryService {
               title: item.name,
             })),
             key: 'projectsWithEvidenceButNoApprovedAssignment',
-            title: 'Projects With Evidence But No Approved Match',
+            title: 'Projects With Unplanned Approved Time',
           },
           {
             itemCount: plannedVsActual.matchedRecords.length,
@@ -120,7 +120,7 @@ export class RoleDashboardQueryService {
               title: item.project.name,
             })),
             key: 'matchedRecords',
-            title: 'Matched Delivery Records',
+            title: 'Aligned Delivery Time',
           },
         ],
         summaryCards: [
@@ -136,7 +136,7 @@ export class RoleDashboardQueryService {
           },
           {
             key: 'evidenceWithoutApprovedAssignmentProjects',
-            label: 'Projects With Evidence Gaps',
+            label: 'Projects With Time Gaps',
             value: workloadSummary.projectsWithEvidenceButNoApprovedAssignmentCount,
           },
         ],
@@ -177,7 +177,7 @@ export class RoleDashboardQueryService {
               title: item.person.displayName,
             })),
             key: 'assignedButNoEvidence',
-            title: 'Assignments Needing Follow-up',
+            title: 'Assignments Needing Time Follow-up',
           },
         ],
         summaryCards: [
@@ -249,7 +249,7 @@ export class RoleDashboardQueryService {
         },
         {
           key: 'anomalies',
-          label: 'Observed Anomalies',
+          label: 'Time Variance Alerts',
           value: plannedVsActual.anomalies.length,
         },
       ],

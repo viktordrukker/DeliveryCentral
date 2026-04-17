@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 
 // ── 2d-21 Director dashboard ─────────────────────────────────────────────────
 
-test.describe('2d-21 Director — view director dashboard', () => {
+test.describe('@critical 2d-21 Director — view director dashboard', () => {
   test('director dashboard renders with executive KPIs', async ({ page }) => {
     await page.goto('/dashboard/director');
 
@@ -49,7 +49,7 @@ test.describe('2d-21 Director — view director dashboard', () => {
 
 // ── 2d-22 Org chart ──────────────────────────────────────────────────────────
 
-test.describe('2d-22 Director — view org chart', () => {
+test.describe('@critical 2d-22 Director — view org chart', () => {
   test('org chart page is reachable', async ({ page }) => {
     await page.goto('/org');
 
@@ -59,8 +59,8 @@ test.describe('2d-22 Director — view org chart', () => {
   test('org chart renders SVG tree (react-d3-tree)', async ({ page }) => {
     await page.goto('/org');
 
-    // Wait for the chart to render
-    await page.waitForTimeout(2000);
+    // Wait for the chart to render — either SVG or tree node text appears
+    await expect(page.locator('svg').first().or(page.getByText(/Bennett|Noah|Olivia|Director/i).first())).toBeVisible({ timeout: 5000 });
 
     // The tree renders as SVG nodes
     const svg = page.locator('svg').first();
@@ -73,7 +73,7 @@ test.describe('2d-22 Director — view org chart', () => {
 
 // ── 2d-23 Delivery dashboard ─────────────────────────────────────────────────
 
-test.describe('2d-23 Director — view delivery dashboard', () => {
+test.describe('@critical 2d-23 Director — view delivery dashboard', () => {
   test('delivery manager dashboard is accessible to director', async ({ page }) => {
     await page.goto(`/dashboard/delivery-manager?personId=${p2.people.carlosVega}`);
 
@@ -95,7 +95,7 @@ test.describe('2d-23 Director — view delivery dashboard', () => {
 
 // ── 2d-24 Project close override ────────────────────────────────────────────
 
-test.describe('2d-24 Director — project close override', () => {
+test.describe('@critical 2d-24 Director — project close override', () => {
   test('close project with active assignments returns 409 conflict without override', async ({ page }) => {
     const token = await getToken(page, p2.accounts.director.email, p2.accounts.director.password);
 

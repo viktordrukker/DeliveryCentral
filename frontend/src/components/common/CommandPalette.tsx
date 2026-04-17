@@ -113,9 +113,9 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       group: 'Actions',
       id: 'action-log-hours',
       label: 'Log Hours',
-      sublabel: 'Record manual work evidence',
+      sublabel: 'Open timesheets and report your time',
       onSelect: () => {
-        navigate('/work-evidence');
+        navigate('/timesheets');
         onClose();
       },
     },
