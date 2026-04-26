@@ -127,7 +127,7 @@ jobs:
           GH_ACTOR: ${{ github.actor }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
-          ssh -o StrictHostKeyChecking=accept-new "$STAGING_USER@$STAGING_HOST" bash <<EOF
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral-staging
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
@@ -251,7 +251,7 @@ jobs:
           GH_ACTOR: ${{ github.actor }}
           DEPLOY_SHA: ${{ github.sha }}
         run: |
-          ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" bash <<EOF
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$PROD_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
