@@ -68,4 +68,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=20s \
   CMD wget -q -O - http://127.0.0.1:3000/api/health > /dev/null 2>&1 || exit 1
 
-CMD ["node", "dist/main.js"]
+# tsconfig.json `include` covers `src/**/*.ts` AND `prisma/**/*.ts` (so seeds
+# are buildable for `prisma db seed`). With both rootDirs in scope, TypeScript
+# preserves the directory prefix in `dist/` — output is `dist/src/main.js` and
+# `dist/prisma/seed.js`. Do NOT change to `dist/main.js` without first
+# excluding `prisma/**/*.ts` from tsconfig.build.json (which breaks seeding).
+CMD ["node", "dist/src/main.js"]

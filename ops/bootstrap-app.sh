@@ -14,18 +14,21 @@
 #
 # What it does (idempotent — safe to re-run):
 #   - Prompts for: domain, GHCR creds, admin email
-#   - Generates per-env .env files with random secrets
-#   - Renders the data-stack compose + Caddyfile from templates
-#   - Brings up the data stack (postgres + caddy)
-#   - Pulls latest GHCR images
-#   - Brings up prod + staging app stacks
-#   - Installs the daily backup cron
-#   - Verifies health endpoints, prints summary
+#   - Generates per-env .env files with random secrets (preserved on re-run)
+#   - Auto-generates monitor bcrypt password (preserved on re-run)
+#   - Renders data-stack compose + Caddyfile + Postgres init
+#   - Brings up the data stack
+#   - On fresh DBs: applies baseline schema + marks 92 migrations as applied
+#     (workaround for migration history bit-rot — DM-R-11 / repo memory)
+#   - Pulls GHCR images, brings up prod + staging app stacks
+#   - On empty DBs: runs the phase2 seed
+#   - Installs daily backup cron, verifies health, prints summary
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TEMPLATES="$REPO_ROOT/ops/templates"
+BASELINE="$REPO_ROOT/prisma/migrations/.baseline-schema.sql"
 DATA_DIR=/opt/deliverycentral-data
 PROD_DIR=/opt/deliverycentral
 STAGING_DIR=/opt/deliverycentral-staging
@@ -38,16 +41,25 @@ die()  { printf "    ${C_RED}✗ %s${C_OFF}\n" "$*" >&2; exit 1; }
 
 [ "$(id -un)" = "deploy" ] || die "must run as the 'deploy' user (try: sudo -u deploy bash $0)"
 [ -d "$TEMPLATES" ] || die "templates directory not found at $TEMPLATES — clone the repo into $REPO_ROOT first"
+[ -f "$BASELINE" ] || die "baseline schema missing at $BASELINE — repo not fully checked out?"
 groups | grep -q '\bdocker\b' || die "deploy user is not in the docker group — log out and back in, then re-run"
 
-# -----------------------------------------------------------------------------
 gen_secret() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 48; }
+gen_pw()     { openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24; }
+read_or_gen() {
+    local file="$1" key="$2" gen_fn="${3:-gen_secret}"
+    if [ -f "$file" ] && grep -q "^${key}=" "$file"; then
+        # Strip surrounding single-quotes if present (we quote the bcrypt hash).
+        grep "^${key}=" "$file" | head -1 | cut -d= -f2- | sed -e "s/^'//;s/'\$//"
+    else
+        $gen_fn
+    fi
+}
 
 # -----------------------------------------------------------------------------
-step "1/9  Collect inputs"
+step "1/10  Collect inputs"
 
-# Re-load previous answers if this is a re-run.
-ANS_FILE=/opt/deliverycentral-data/.bootstrap-answers
+ANS_FILE=$DATA_DIR/.bootstrap-answers
 if [ -f "$ANS_FILE" ]; then
     # shellcheck source=/dev/null
     source "$ANS_FILE"
@@ -85,15 +97,15 @@ if [ -z "${GHCR_PAT:-}" ]; then
     [ -n "$GHCR_PAT" ] || die "GHCR PAT required"
 fi
 
-# Persist non-secret answers for re-runs.
-sudo install -o deploy -g deploy -m 600 /dev/null "$ANS_FILE" 2>/dev/null || true
+mkdir -p "$DATA_DIR"
+# Quote ADMIN_NAME — it can contain spaces and is bash-sourced on re-runs.
 cat > "$ANS_FILE" <<EOF
 PROD_DOMAIN=$PROD_DOMAIN
 STAGING_DOMAIN=$STAGING_DOMAIN
 MONITOR_DOMAIN=$MONITOR_DOMAIN
 LOGS_DOMAIN=$LOGS_DOMAIN
 ADMIN_EMAIL=$ADMIN_EMAIL
-ADMIN_NAME=$ADMIN_NAME
+ADMIN_NAME="$ADMIN_NAME"
 GHCR_OWNER=$GHCR_OWNER
 GHCR_USER=$GHCR_USER
 EOF
@@ -101,33 +113,40 @@ chmod 600 "$ANS_FILE"
 ok "answers saved to $ANS_FILE"
 
 # -----------------------------------------------------------------------------
-step "2/9  Generate / preserve secrets"
+step "2/10  Generate / preserve secrets + monitor bcrypt"
 
-ENV_DATA="$DATA_DIR/.env"
-ENV_PROD="$PROD_DIR/.env"
-ENV_STAGING="$STAGING_DIR/.env"
+ENV_DATA=$DATA_DIR/.env
+ENV_PROD=$PROD_DIR/.env
+ENV_STAGING=$STAGING_DIR/.env
 
-read_or_gen() {
-    local file="$1" key="$2"
-    if [ -f "$file" ] && grep -q "^${key}=" "$file"; then
-        grep "^${key}=" "$file" | head -1 | cut -d= -f2-
-    else
-        gen_secret
-    fi
-}
+POSTGRES_SUPERUSER_PASSWORD=$(read_or_gen "$ENV_DATA" POSTGRES_SUPERUSER_PASSWORD)
+PROD_DB_PASSWORD=$(read_or_gen "$ENV_DATA" PROD_DB_PASSWORD)
+STAGING_DB_PASSWORD=$(read_or_gen "$ENV_DATA" STAGING_DB_PASSWORD)
+PROD_AUTH_JWT=$(read_or_gen "$ENV_PROD" AUTH_JWT_SECRET)
+STAGING_AUTH_JWT=$(read_or_gen "$ENV_STAGING" AUTH_JWT_SECRET)
+PROD_ADMIN_PW=$(read_or_gen "$ENV_PROD" SEED_ADMIN_PASSWORD)
+STAGING_ADMIN_PW=$(read_or_gen "$ENV_STAGING" SEED_ADMIN_PASSWORD)
 
-POSTGRES_SUPERUSER_PASSWORD="$(read_or_gen "$ENV_DATA" POSTGRES_SUPERUSER_PASSWORD)"
-PROD_DB_PASSWORD="$(read_or_gen "$ENV_DATA" PROD_DB_PASSWORD)"
-STAGING_DB_PASSWORD="$(read_or_gen "$ENV_DATA" STAGING_DB_PASSWORD)"
-PROD_AUTH_JWT="$(read_or_gen "$ENV_PROD" AUTH_JWT_SECRET)"
-STAGING_AUTH_JWT="$(read_or_gen "$ENV_STAGING" AUTH_JWT_SECRET)"
-PROD_ADMIN_PW="$(read_or_gen "$ENV_PROD" SEED_ADMIN_PASSWORD)"
-STAGING_ADMIN_PW="$(read_or_gen "$ENV_STAGING" SEED_ADMIN_PASSWORD)"
+# Monitor password: 24 chars random, bcrypted via Caddy itself.
+MONITOR_PW=$(read_or_gen "$ENV_DATA" CADDY_BASIC_AUTH_PLAINTEXT gen_pw)
+EXISTING_HASH=""
+if [ -f "$ENV_DATA" ]; then
+    EXISTING_HASH=$(grep '^CADDY_BASIC_AUTH_HASH=' "$ENV_DATA" 2>/dev/null | head -1 | cut -d= -f2-)
+    EXISTING_HASH="${EXISTING_HASH#\'}"
+    EXISTING_HASH="${EXISTING_HASH%\'}"
+fi
+if [ -n "$EXISTING_HASH" ]; then
+    CADDY_BASIC_AUTH_HASH="$EXISTING_HASH"
+    ok "monitor bcrypt hash preserved from existing .env"
+else
+    CADDY_BASIC_AUTH_HASH=$(docker run --rm caddy:2.9-alpine caddy hash-password --plaintext "$MONITOR_PW")
+    ok "generated new monitor bcrypt hash"
+fi
 
 ok "secrets ready (preserved on re-run if files exist)"
 
 # -----------------------------------------------------------------------------
-step "3/9  Render data-stack files into $DATA_DIR"
+step "3/10  Render data-stack files into $DATA_DIR"
 
 mkdir -p "$DATA_DIR/caddy"
 cp "$TEMPLATES/caddy/Dockerfile"       "$DATA_DIR/caddy/Dockerfile"
@@ -136,6 +155,9 @@ cp "$TEMPLATES/data-stack.Caddyfile"   "$DATA_DIR/Caddyfile"
 cp "$TEMPLATES/init-db.sh"             "$DATA_DIR/init-db.sh"
 chmod +x "$DATA_DIR/init-db.sh"
 
+# CADDY_BASIC_AUTH_HASH MUST be quoted — bcrypt hashes contain $2a$ which bash
+# treats as variable expansion under `set -u`.
+# We also keep the plaintext password in the file so re-runs preserve it.
 cat > "$ENV_DATA" <<EOF
 POSTGRES_SUPERUSER_PASSWORD=$POSTGRES_SUPERUSER_PASSWORD
 PROD_DB_PASSWORD=$PROD_DB_PASSWORD
@@ -145,16 +167,17 @@ STAGING_DOMAIN=$STAGING_DOMAIN
 MONITOR_DOMAIN=$MONITOR_DOMAIN
 LOGS_DOMAIN=$LOGS_DOMAIN
 CADDY_BASIC_AUTH_USER=admin
-CADDY_BASIC_AUTH_HASH=
+CADDY_BASIC_AUTH_PLAINTEXT='$MONITOR_PW'
+CADDY_BASIC_AUTH_HASH='$CADDY_BASIC_AUTH_HASH'
 EOF
 chmod 600 "$ENV_DATA"
 ok "wrote $ENV_DATA + Caddyfile + docker-compose.yml + init-db.sh"
 
 # -----------------------------------------------------------------------------
-step "4/9  Render per-stack .env files"
+step "4/10  Render per-stack .env files"
 
 render_env() {
-    local template="$1" out="$2" jwt="$3" admin_pw="$4" db_pw="$5" domain="$6"
+    local template="$1" out="$2" jwt="$3" admin_pw="$4"
     sed \
         -e "s|__GHCR_OWNER__|$GHCR_OWNER|g" \
         -e "s|__PROD_DOMAIN__|$PROD_DOMAIN|g" \
@@ -164,8 +187,6 @@ render_env() {
         -e "s|__ADMIN_EMAIL__|$ADMIN_EMAIL|g" \
         -e "s|__ADMIN_DISPLAY_NAME__|$ADMIN_NAME|g" \
         "$template" > "$out"
-    # __GENERATED__ markers are env-specific. Replace just the AUTH_JWT and
-    # SEED_ADMIN_PASSWORD ones (in that order — only two left after sed above).
     awk -v jwt="$jwt" -v pw="$admin_pw" '
         BEGIN { count = 0 }
         /__GENERATED__/ {
@@ -178,11 +199,10 @@ render_env() {
     chmod 600 "$out"
 }
 
-render_env "$TEMPLATES/env.prod.example"    "$ENV_PROD"    "$PROD_AUTH_JWT"    "$PROD_ADMIN_PW"    "$PROD_DB_PASSWORD"    "$PROD_DOMAIN"
-render_env "$TEMPLATES/env.staging.example" "$ENV_STAGING" "$STAGING_AUTH_JWT" "$STAGING_ADMIN_PW" "$STAGING_DB_PASSWORD" "$STAGING_DOMAIN"
+render_env "$TEMPLATES/env.prod.example"    "$ENV_PROD"    "$PROD_AUTH_JWT"    "$PROD_ADMIN_PW"
+render_env "$TEMPLATES/env.staging.example" "$ENV_STAGING" "$STAGING_AUTH_JWT" "$STAGING_ADMIN_PW"
 ok "wrote $ENV_PROD + $ENV_STAGING (chmod 600)"
 
-# Mirror the repo into the staging directory so it has the same compose file.
 if [ ! -d "$STAGING_DIR/.git" ]; then
     git clone "$REPO_ROOT" "$STAGING_DIR" >/dev/null 2>&1 || warn "could not clone repo into $STAGING_DIR — copying instead"
     [ -d "$STAGING_DIR/.git" ] || cp -r "$REPO_ROOT/." "$STAGING_DIR/"
@@ -192,15 +212,14 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-step "5/9  Login to GHCR"
+step "5/10  Login to GHCR"
 echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
 ok "logged in to ghcr.io as $GHCR_USER"
 
 # -----------------------------------------------------------------------------
-step "6/9  Bring up the data stack (Postgres + Caddy)"
+step "6/10  Bring up the data stack (Postgres + Caddy)"
 cd "$DATA_DIR"
 docker compose --env-file .env up -d --build
-# Wait for Postgres to be healthy.
 for i in $(seq 1 30); do
     if docker exec dc-data-postgres-1 pg_isready -U postgres >/dev/null 2>&1; then
         ok "postgres healthy"
@@ -212,12 +231,124 @@ done
 ok "data stack up — postgres + caddy running"
 
 # -----------------------------------------------------------------------------
-step "7/9  Bring up prod + staging app stacks"
+# DM-R-11 / migration-history-bit-rot workaround:
+# `prisma migrate deploy` from scratch fails because some migrations reference
+# tables created by later migrations (out-of-order FK + a retroactive edit).
+# The repo ships prisma/migrations/.baseline-schema.sql — a pg_dump of the
+# v1.3 schema. We apply that to fresh DBs and mark all 92 migrations as
+# already applied. Future deploys add only NEW migrations on top.
+#
+# Idempotent: skips if the DB already has rows in _prisma_migrations.
+step "7/10  Initialize fresh DBs with baseline schema (if empty)"
+
+psql_super() {
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" "$@" \
+        dc-data-postgres-1 psql -U postgres -v ON_ERROR_STOP=1
+}
+
+db_initialized() {
+    local db="$1"
+    local count
+    count=$(docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -tAc \
+        "SELECT count(*) FROM _prisma_migrations" 2>/dev/null || echo 0)
+    [ "${count:-0}" -gt 0 ]
+}
+
+apply_baseline() {
+    local db="$1" user="$2"
+    echo "    -> applying baseline to $db (owner=$user)"
+    # Clean slate (idempotent)
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -v ON_ERROR_STOP=1 \
+        -c "DROP SCHEMA IF EXISTS read_models CASCADE" >/dev/null
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -v ON_ERROR_STOP=1 \
+        -c "DROP SCHEMA IF EXISTS public CASCADE" >/dev/null
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -v ON_ERROR_STOP=1 \
+        -c "CREATE SCHEMA public" >/dev/null
+
+    # Apply baseline as superuser (CREATE EXTENSION pg_stat_statements + pg_trgm
+    # need superuser; can't be done as the per-env user).
+    docker exec -i -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -v ON_ERROR_STOP=1 < "$BASELINE" \
+        > /tmp/baseline-$db.log 2>&1 \
+        || { echo "baseline FAILED:"; tail -10 /tmp/baseline-$db.log; return 1; }
+
+    # Reassign + grant so the per-env user can read/write.
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -c "REASSIGN OWNED BY postgres TO ${user}" >/dev/null 2>&1 || true
+    for stmt in \
+        "GRANT ALL ON SCHEMA public TO ${user}" \
+        "GRANT ALL ON SCHEMA read_models TO ${user}" \
+        "GRANT ALL ON ALL TABLES    IN SCHEMA public      TO ${user}" \
+        "GRANT ALL ON ALL SEQUENCES IN SCHEMA public      TO ${user}" \
+        "GRANT ALL ON ALL FUNCTIONS IN SCHEMA public      TO ${user}" \
+        "GRANT ALL ON ALL TABLES    IN SCHEMA read_models TO ${user}" \
+        "GRANT ALL ON ALL SEQUENCES IN SCHEMA read_models TO ${user}" \
+        "ALTER DEFAULT PRIVILEGES IN SCHEMA public      GRANT ALL ON TABLES    TO ${user}" \
+        "ALTER DEFAULT PRIVILEGES IN SCHEMA public      GRANT ALL ON SEQUENCES TO ${user}" \
+        "ALTER DEFAULT PRIVILEGES IN SCHEMA read_models GRANT ALL ON TABLES    TO ${user}"; do
+        docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+            psql -U postgres -d "$db" -v ON_ERROR_STOP=1 -c "$stmt" >/dev/null
+    done
+
+    # Schema-vs-code drift workaround: schema.prisma declares Skill.name as
+    # @unique (single col) but later migrations replaced it with a composite
+    # @@unique([tenantId, name]) — the seed's prisma.skill.upsert({where:{name}})
+    # needs the single-col constraint back. Add it idempotently as superuser
+    # (DM-R-21 trigger blocks DDL from app users).
+    docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -c \
+        "DO \$\$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='skills_name_key') THEN
+                ALTER TABLE skills ADD CONSTRAINT skills_name_key UNIQUE (name);
+            END IF;
+        END \$\$" >/dev/null
+}
+
+mark_migrations_applied() {
+    local env_file="$1" label="$2"
+    echo "    -> marking 92 migrations as applied in $label"
+    docker run --rm --network dc-shared --env-file "$env_file" \
+        -v "$REPO_ROOT/prisma:/app/prisma:ro" \
+        "ghcr.io/$GHCR_OWNER/deliverycentral-backend:latest" \
+        sh -c '
+            cd /app
+            for m in $(ls prisma/migrations | grep -v "^\." | sort); do
+                node_modules/.bin/prisma migrate resolve --applied "$m" >/dev/null 2>&1 || true
+            done
+        '
+}
+
+for spec in "workload_tracking_prod:prod_user:$ENV_PROD:dc-prod" \
+            "workload_tracking_staging:staging_user:$ENV_STAGING:dc-staging"; do
+    db=$(echo "$spec" | cut -d: -f1)
+    user=$(echo "$spec" | cut -d: -f2)
+    env_file=$(echo "$spec" | cut -d: -f3)
+    label=$(echo "$spec" | cut -d: -f4)
+    if db_initialized "$db"; then
+        ok "$db already initialized — skipping baseline"
+    else
+        apply_baseline "$db" "$user" || die "baseline application failed for $db"
+        mark_migrations_applied "$env_file" "$label"
+        ok "$db: baseline applied + migrations marked"
+    fi
+done
+
+# -----------------------------------------------------------------------------
+step "8/10  Bring up prod + staging app stacks"
 
 deploy_stack() {
     local dir="$1" project="$2" env_file="$3"
     cd "$dir"
-    set -a; source "$env_file"; set +a
+    # Extract image vars via grep — sourcing .env files trips on values with
+    # spaces or shell metachars (e.g. bcrypt hashes contain $).
+    local BACKEND_IMAGE FRONTEND_IMAGE
+    BACKEND_IMAGE=$(grep '^BACKEND_IMAGE='  "$env_file" | head -1 | cut -d= -f2- | tr -d '"')
+    FRONTEND_IMAGE=$(grep '^FRONTEND_IMAGE=' "$env_file" | head -1 | cut -d= -f2- | tr -d '"')
+    export BACKEND_IMAGE FRONTEND_IMAGE
     docker pull "$BACKEND_IMAGE"
     docker pull "$FRONTEND_IMAGE"
     docker compose -p "$project" -f docker-compose.prod.yml --env-file "$env_file" up -d migrate
@@ -230,12 +361,41 @@ deploy_stack() {
 deploy_stack "$PROD_DIR"    dc-prod    "$ENV_PROD"
 deploy_stack "$STAGING_DIR" dc-staging "$ENV_STAGING"
 
-# Restart Caddy so it (re)resolves the now-existing upstream containers.
 docker restart dc-data-caddy-1 >/dev/null
 ok "caddy restarted to discover upstreams"
 
 # -----------------------------------------------------------------------------
-step "8/9  Install daily backup cron"
+step "9/10  Seed phase2 dataset (if DBs are empty)"
+
+# Wait for backend to become healthy before seeding (Prisma client startup).
+for project in dc-prod dc-staging; do
+    for i in $(seq 1 30); do
+        h=$(docker inspect "${project}-backend-1" --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+        [ "$h" = "healthy" ] && break
+        [ "$i" -eq 30 ] && die "${project}-backend never became healthy"
+        sleep 2
+    done
+done
+
+seed_if_empty() {
+    local container="$1" db="$2" label="$3"
+    local n
+    n=$(docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
+        psql -U postgres -d "$db" -tAc "SELECT count(*) FROM \"Person\"" 2>/dev/null || echo 0)
+    if [ "${n:-0}" -gt 0 ]; then
+        ok "$label already has $n persons — skipping seed"
+    else
+        echo "    -> seeding $label (this takes ~30s)"
+        docker exec -e SEED_PROFILE=phase2 "$container" node dist/prisma/seed.js 2>&1 | tail -5 \
+            && ok "$label seeded"
+    fi
+}
+
+seed_if_empty dc-prod-backend-1    workload_tracking_prod    "dc-prod"
+seed_if_empty dc-staging-backend-1 workload_tracking_staging "dc-staging"
+
+# -----------------------------------------------------------------------------
+step "10/10  Backup cron + health verification"
 cp "$REPO_ROOT/ops/backup.sh" /opt/backups/backup.sh
 chmod +x /opt/backups/backup.sh
 ( crontab -l 2>/dev/null | grep -v 'deliverycentral-backup'; \
@@ -245,18 +405,16 @@ sudo touch /var/log/dc-backup.log
 sudo chown deploy:deploy /var/log/dc-backup.log
 ok "daily backup cron installed (03:00 UTC) → /var/log/dc-backup.log"
 
-# -----------------------------------------------------------------------------
-step "9/9  Health verification"
-sleep 30
+sleep 20
 verify() {
     local url="$1" expect="$2"
-    if curl -sf "$url" | grep -q "$expect"; then ok "$url OK"
-    else warn "$url did NOT match $expect (check logs)"; fi
+    if curl -sf "$url" | grep -q "$expect"; then ok "$url"
+    else warn "$url did NOT match $expect — check logs"; fi
 }
-verify "https://$PROD_DOMAIN/api/health" '"status":"ok"'
-verify "https://$PROD_DOMAIN/api/health/deep" '"status":"ready"'
-verify "https://$STAGING_DOMAIN/api/health" '"status":"ok"'
-verify "https://$STAGING_DOMAIN/api/health/deep" '"status":"ready"'
+verify "https://$PROD_DOMAIN/api/health"          '"status":"ok"'
+verify "https://$PROD_DOMAIN/api/health/deep"     '"status":"ready"'
+verify "https://$STAGING_DOMAIN/api/health"       '"status":"ok"'
+verify "https://$STAGING_DOMAIN/api/health/deep"  '"status":"ready"'
 
 # -----------------------------------------------------------------------------
 echo
@@ -273,10 +431,23 @@ echo "  Admin login (STAGING):"
 echo "    email:    $ADMIN_EMAIL"
 echo "    password: $STAGING_ADMIN_PW"
 echo
+echo "  Phase2 seed accounts (same passwords as docs):"
+echo "    director:        noah.bennett@example.com   / DirectorPass1!"
+echo "    hr_manager:      diana.walsh@example.com    / HrManagerPass1!"
+echo "    resource_mgr:    sophia.kim@example.com     / ResourceMgrPass1!"
+echo "    project_mgr:     lucas.reed@example.com     / ProjectMgrPass1!"
+echo "    delivery_mgr:    carlos.vega@example.com    / DeliveryMgrPass1!"
+echo "    employee:        ethan.brooks@example.com   / EmployeePass1!"
+echo
+echo "  Monitor / Logs basic auth (when --profile monitoring is up):"
+echo "    user: admin"
+echo "    pass: $MONITOR_PW"
+echo "    URLs: https://$MONITOR_DOMAIN  https://$LOGS_DOMAIN"
+echo
 echo "  Backups: /opt/backups/  (daily at 03:00 UTC, log: /var/log/dc-backup.log)"
 echo "  Restore drill: bash ops/restore-from-backup.sh --file /opt/backups/prod-<date>.sql.gz --target-db restore_test"
 echo
-warn "Save the admin passwords to a password manager NOW. They are not stored anywhere else"
-warn "  (the .env files contain them but you should rotate before opening to users)."
+warn "Save the admin + monitor passwords to a password manager NOW. They are also"
+warn "  in /opt/deliverycentral{,-staging,-data}/.env (chmod 600) but not anywhere else."
 echo
 printf "${C_GRN}${C_BOLD}First deploy complete.${C_OFF}\n"

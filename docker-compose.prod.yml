@@ -51,8 +51,20 @@ services:
       AUTH_AZURE_AD_REDIRECT_URI: ${AUTH_AZURE_AD_REDIRECT_URI:-}
       AUTH_ACCESS_TOKEN_EXPIRES_IN: ${AUTH_ACCESS_TOKEN_EXPIRES_IN:-900}
       AUTH_REFRESH_TOKEN_EXPIRES_IN: ${AUTH_REFRESH_TOKEN_EXPIRES_IN:-604800}
-      AUTH_2FA_ENFORCE_ROLES: ${AUTH_2FA_ENFORCE_ROLES:-admin,director,hr_manager,resource_manager,project_manager,delivery_manager}
+      # No default — must be set explicitly in .env. Compose's --env-file
+      # treats `KEY=` as "unset", so a default fallback would silently
+      # override the operator's intent to disable 2FA. With no default the
+      # value comes through as empty (= 2FA off, the .env-template intent).
+      # Operators who want 2FA: set AUTH_2FA_ENFORCE_ROLES=admin,director,...
+      # in .env.
+      AUTH_2FA_ENFORCE_ROLES: ${AUTH_2FA_ENFORCE_ROLES-}
       AUTH_2FA_TOTP_ISSUER: ${AUTH_2FA_TOTP_ISSUER:-DeliveryCentral}
+      # Seed admin credentials — read at app boot by AppConfig validator (rejects
+      # default value in production) and by `dist/prisma/seed.js` when seeding.
+      SEED_PROFILE: ${SEED_PROFILE:-phase2}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_ADMIN_DISPLAY_NAME: ${SEED_ADMIN_DISPLAY_NAME}
       SMTP_ENABLED: ${SMTP_ENABLED:-false}
       NOTIFICATIONS_SMTP_HOST: ${NOTIFICATIONS_SMTP_HOST:-}
       NOTIFICATIONS_SMTP_PORT: ${NOTIFICATIONS_SMTP_PORT:-587}
