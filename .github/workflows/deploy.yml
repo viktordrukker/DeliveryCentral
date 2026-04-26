@@ -130,6 +130,17 @@ jobs:
           ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral-staging
+
+            # Sync compose/Dockerfile/scripts/etc. with the latest commit. Without
+            # this the VM keeps using whatever was cloned at first bootstrap and
+            # ignores any subsequent fixes to compose env passthrough, healthcheck
+            # commands, etc. .env + .previous-* files are untracked, preserved.
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Clean up the v1.3 deploy workaround (now baked into v1.3.1+ image).
+            rm -f docker-compose.override.yml
+
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
             CURRENT_BACKEND=\$(docker inspect dc-staging-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
@@ -254,6 +265,12 @@ jobs:
           ssh -o StrictHostKeyChecking=accept-new -l deploy "$PROD_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral
+
+            # Sync compose/Dockerfile/scripts/etc. with the latest commit.
+            git fetch origin main
+            git reset --hard origin/main
+            rm -f docker-compose.override.yml
+
             echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
             CURRENT_BACKEND=\$(docker inspect dc-prod-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
