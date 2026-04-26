@@ -39,7 +39,12 @@ printf "${C_BOLD}Pushing to GitHub repo: %s${C_OFF}\n" "$REPO"
 
 set_secret() {
     local name="$1" value="$2"
-    printf '%s' "$value" | gh secret set "$name" --body -
+    # CRITICAL: do NOT pass `--body -` thinking `-` means stdin marker.
+    # gh's CLI parser treats `-` as the literal value `-`. The correct
+    # idioms for stdin are: `printf %s VAL | gh secret set NAME`  (no
+    # --body flag at all) OR `gh secret set NAME < file` (stdin redirect).
+    # See ops/templates/v1.3-deploy-followups.md DEP-3.
+    printf '%s' "$value" | gh secret set "$name"
     ok "secret  $name"
 }
 
@@ -52,12 +57,14 @@ set_var() {
 # Secrets ---------------------------------------------------------------
 set_secret VPS_HOST              "$VPS_HOST"
 set_secret VPS_USER              "deploy"
-set_secret VPS_SSH_KEY           "$(cat "$KEY_FILE")"
 set_secret STAGING_VPS_HOST      "$VPS_HOST"
 set_secret STAGING_VPS_USER      "deploy"
-set_secret STAGING_VPS_SSH_KEY   "$(cat "$KEY_FILE")"
 set_secret CADDY_DOMAIN          "$PROD_DOMAIN"
 set_secret STAGING_CADDY_DOMAIN  "$STAGING_DOMAIN"
+
+# SSH key: use stdin redirect (multi-line content; safer than var-as-arg).
+gh secret set VPS_SSH_KEY         < "$KEY_FILE" && ok "secret  VPS_SSH_KEY"
+gh secret set STAGING_VPS_SSH_KEY < "$KEY_FILE" && ok "secret  STAGING_VPS_SSH_KEY"
 
 # Variables -------------------------------------------------------------
 set_var STAGING_DEPLOY_ENABLED    true

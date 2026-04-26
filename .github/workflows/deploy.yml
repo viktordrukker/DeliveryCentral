@@ -112,16 +112,16 @@ jobs:
           ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
 
       - name: Add VM host key
-        # Host + domain hardcoded (recoverable via DNS anyway). GH Secrets
-        # round-trip kept introducing whitespace/junk on values.
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H 91.99.212.124 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy via SSH (staging)
         env:
-          STAGING_HOST: 91.99.212.124
-          STAGING_DOMAIN: deliverit-test.agentic.uz
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_CADDY_DOMAIN }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           GHCR_OWNER: ${{ github.repository_owner }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -248,14 +248,16 @@ jobs:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
       - name: Add VM host key
+        env:
+          PROD_HOST: ${{ secrets.VPS_HOST }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H 91.99.212.124 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy via SSH (production)
         env:
-          PROD_HOST: 91.99.212.124
-          PROD_DOMAIN: deliverit.agentic.uz
+          PROD_HOST: ${{ secrets.VPS_HOST }}
+          PROD_DOMAIN: ${{ secrets.CADDY_DOMAIN }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           GHCR_OWNER: ${{ github.repository_owner }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
