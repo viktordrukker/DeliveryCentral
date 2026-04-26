@@ -15,6 +15,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { Sparkline } from '@/components/charts/Sparkline';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import {
   WorkforceOverviewChart,
   type WorkforceWeekData,
@@ -254,9 +255,13 @@ export function DashboardPage(): JSX.Element {
   ], []);
 
   /* ── Role redirect ─────────────────────────────────────────────── */
-  if (principal) {
+  // This page is the Workload Overview landing at `/`. Admins (and directors,
+  // who share the director dashboard) stay here. Every other role bounces to
+  // their role-specific dashboard. Previously compared to `/admin` which never
+  // matched what `getDashboardPath` returned, so admins always redirected away.
+  if (principal && !principal.roles.includes('admin') && !principal.roles.includes('director')) {
     const home = getDashboardPath(principal.roles);
-    if (home !== '/admin') return <Navigate replace to={home} />;
+    return <Navigate replace to={home} />;
   }
 
   return (
@@ -266,6 +271,7 @@ export function DashboardPage(): JSX.Element {
 
       {d ? (
         <>
+          <OnboardingChecklist />
           {/* ── KPI STRIP ── */}
           <div className="kpi-strip" aria-label="Key metrics">
             <Link className="kpi-strip__item" to="/workload"

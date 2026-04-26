@@ -5,7 +5,7 @@ ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
 
 RUN apt-get update \
   && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends openssl ca-certificates wget \
+  && apt-get install -y --no-install-recommends openssl ca-certificates wget procps \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./

@@ -77,12 +77,11 @@ async function fetchMe(): Promise<AuthPrincipal | null> {
 
 async function attemptRefresh(): Promise<string | null> {
   try {
-    const result = await httpPost<{ accessToken: string }, Record<string, never>>(
+    const result = await httpPost<{ accessToken: string } | undefined, Record<string, never>>(
       '/auth/refresh',
       {},
     );
-
-    return result.accessToken;
+    return result?.accessToken ?? null;
   } catch {
     return null;
   }
@@ -100,25 +99,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
     initDone.current = true;
 
     void (async () => {
-      let me = await fetchMe();
+      const existingToken =
+        localStorage.getItem(apiClientConfig.authTokenStorageKey) ??
+        sessionStorage.getItem(apiClientConfig.authTokenStorageKey);
+
+      // With no access token on hand there's nothing for /auth/me to validate —
+      // skip it to avoid a guaranteed 401 in the browser console. Still attempt
+      // /auth/refresh since an HttpOnly refresh cookie may still be valid.
+      let me = existingToken ? await fetchMe() : null;
 
       if (!me) {
-        // Try refresh
         const newToken = await attemptRefresh();
-
         if (newToken) {
           storeToken(newToken);
           scheduleExpiryWarning(newToken, warningTimerRef);
           me = await fetchMe();
+          if (me) window.dispatchEvent(new Event('auth:login-success'));
         }
-      } else {
-        // Schedule expiry warning for the existing token
-        const existingToken =
-          localStorage.getItem(apiClientConfig.authTokenStorageKey) ??
-          sessionStorage.getItem(apiClientConfig.authTokenStorageKey);
-        if (existingToken) {
-          scheduleExpiryWarning(existingToken, warningTimerRef);
-        }
+      } else if (existingToken) {
+        scheduleExpiryWarning(existingToken, warningTimerRef);
       }
 
       setPrincipal(me);
@@ -142,6 +141,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
     return () => window.removeEventListener('auth:session-expired', handler);
   }, []);
 
+  // Cross-tab logout detection: if another tab removes the auth token from
+  // localStorage (logout, session expiry), reflect that state change in this tab.
+  useEffect(() => {
+    const storageHandler = (event: StorageEvent): void => {
+      if (event.key !== apiClientConfig.authTokenStorageKey) return;
+      if (!initComplete.current) return;
+      // newValue is null when the key is removed (logout in another tab)
+      if (event.newValue === null && principal !== null) {
+        setPrincipal(null);
+      }
+    };
+
+    window.addEventListener('storage', storageHandler);
+
+    return () => window.removeEventListener('storage', storageHandler);
+  }, [principal]);
+
   const login = useCallback(async (email: string, password: string): Promise<LoginOutcome> => {
     try {
       const result = await httpPost<
@@ -157,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       scheduleExpiryWarning(result.accessToken, warningTimerRef);
       const me = await fetchMe();
       setPrincipal(me);
+      window.dispatchEvent(new Event('auth:login-success'));
 
       return { status: 'success' };
     } catch (err) {
@@ -180,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       storeToken(result.accessToken);
       const me = await fetchMe();
       setPrincipal(me);
+      window.dispatchEvent(new Event('auth:login-success'));
     },
     [],
   );

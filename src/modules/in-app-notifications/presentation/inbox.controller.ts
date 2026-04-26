@@ -14,7 +14,7 @@ import {
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
-import { Observable, interval, startWith, switchMap, from } from 'rxjs';
+import { Observable, Subject, interval, startWith, switchMap, from, takeUntil } from 'rxjs';
 
 import { InAppNotificationDto } from '../application/contracts/in-app-notification.dto';
 import { InAppNotificationService } from '../application/in-app-notification.service';
@@ -99,7 +99,7 @@ export class InboxController {
   @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Server-sent events stream for real-time notification count updates' })
   public streamNotifications(
-    @Req() req: { principal?: RequestPrincipal },
+    @Req() req: { principal?: RequestPrincipal; on?: (event: string, handler: () => void) => void },
   ): Observable<MessageEvent> {
     const personId = req.principal?.personId;
 
@@ -110,6 +110,13 @@ export class InboxController {
         observer.complete();
       });
     }
+
+    // Stop polling when the client disconnects to prevent memory leaks from orphaned subscriptions.
+    const close$ = new Subject<void>();
+    req.on?.('close', () => {
+      close$.next();
+      close$.complete();
+    });
 
     // Emit immediately and then every 30 seconds
     return interval(30_000).pipe(
@@ -124,6 +131,7 @@ export class InboxController {
             .catch(() => ({ data: { unreadCount: 0, connected: true } })),
         ),
       ),
+      takeUntil(close$),
     );
   }
 }

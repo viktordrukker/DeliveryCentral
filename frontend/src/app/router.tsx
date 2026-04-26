@@ -71,6 +71,9 @@ import { PeoplePage } from '@/routes/people/PeoplePage';
 import { ProjectDetailPage } from '@/routes/projects/ProjectDetailPage';
 import { ProjectsPage } from '@/routes/projects/ProjectsPage';
 import { CreateProjectPage } from '@/routes/projects/CreateProjectPage';
+import { PortfolioRadiatorPage } from '@/routes/dashboard/PortfolioRadiatorPage';
+import { OrganizationConfigPage } from '@/routes/admin/OrganizationConfigPage';
+import { RadiatorThresholdsPage } from '@/routes/admin/RadiatorThresholdsPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
 import { ResourcePoolDetailPage } from '@/routes/resource-pools/ResourcePoolDetailPage';
 import { ResourcePoolsPage } from '@/routes/resource-pools/ResourcePoolsPage';
@@ -93,10 +96,10 @@ const ProjectManagerDashboardPage = lazy(() => import('@/routes/dashboard/Projec
 const ResourceManagerDashboardPage = lazy(() => import('@/routes/dashboard/ResourceManagerDashboardPage').then(m => ({ default: m.ResourceManagerDashboardPage })));
 const PlannedVsActualPage = lazy(() => import('@/routes/dashboard/PlannedVsActualPage').then(m => ({ default: m.PlannedVsActualPage })));
 const OrgPage = lazy(() => import('@/routes/org/OrgPage').then(m => ({ default: m.OrgPage })));
-// ProjectDashboardPage merged into ProjectDetailPage — route redirects to ?tab=status
+// ProjectDashboardPage merged into ProjectDetailPage — route redirects to ?tab=radiator
 function ProjectDashboardRedirect(): JSX.Element {
   const { id } = useParams();
-  return <Navigate to={`/projects/${id ?? ''}?tab=status`} replace />;
+  return <Navigate to={`/projects/${id ?? ''}?tab=radiator`} replace />;
 }
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingBoardPage = lazy(() => import('@/routes/staffing-board/StaffingBoardPage').then(m => ({ default: m.StaffingBoardPage })));
@@ -139,6 +142,18 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/director',
+  },
+  {
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><PortfolioRadiatorPage /></RoleGuard>,
+    path: 'dashboards/portfolio-radiator',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><RadiatorThresholdsPage /></RoleGuard>,
+    path: 'admin/radiator-thresholds',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><OrganizationConfigPage /></RoleGuard>,
+    path: 'admin/organization-config',
   },
   { element: <LazyPage><OrgPage /></LazyPage>, path: 'org' },
   { element: <ManagerScopePage />, path: 'org/managers/:id/scope' },
@@ -196,11 +211,11 @@ const dashboardChildren = [
     path: 'work-evidence',
   },
   {
-    element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />,
+    element: <RoleGuard allowedRoles={WORKLOAD_ROLES}><Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'workload',
   },
   {
-    element: <Navigate to="/staffing-desk?view=timeline" replace />,
+    element: <RoleGuard allowedRoles={WORKLOAD_ROLES}><Navigate to="/staffing-desk?view=timeline" replace /></RoleGuard>,
     path: 'workload/planning',
   },
   { element: <MyTimePage />, path: 'my-time' },
@@ -209,7 +224,7 @@ const dashboardChildren = [
     path: 'time-management',
   },
   { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
-  { element: <Navigate to="/time-management" replace />, path: 'timesheets/approval' },
+  { element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><Navigate to="/time-management" replace /></RoleGuard>, path: 'timesheets/approval' },
   { element: <LeaveRequestPage />, path: 'leave' },
   {
     element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><LazyPage><TimeReportPage /></LazyPage></RoleGuard>,
@@ -234,7 +249,7 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
   { element: <StaffingRequestsPage />, path: 'staffing-requests' },
   {
-    element: <Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace />,
+    element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'staffing-board',
   },
   {
@@ -350,4 +365,8 @@ export const appRouter = createBrowserRouter([
     ),
     path: '/',
   },
-]);
+], {
+  future: {
+    v7_relativeSplatPath: true,
+  },
+});

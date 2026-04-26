@@ -129,8 +129,9 @@ describe('ProjectsPage', () => {
 
     // Health column header present
     expect(await screen.findByText(/Health/)).toBeInTheDocument();
-    // Health badge rendered after data loads
-    expect(await screen.findByLabelText('Health: 84 (green)')).toBeInTheDocument();
+    // Health badge rendered after data loads. ProjectHealthBadge uses title
+    // attribute: "Health score: 84/100 (green)".
+    expect(await screen.findByTitle('Health score: 84/100 (green)')).toBeInTheDocument();
   });
 });
 

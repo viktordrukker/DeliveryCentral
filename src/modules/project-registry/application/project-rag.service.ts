@@ -198,7 +198,7 @@ export class ProjectRagService {
   ): Promise<{ rag: RagRating; explanation: string; avgMood: number | null }> {
     // Get person IDs assigned to this project
     const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['ACTIVE', 'APPROVED'] } },
+      where: { projectId, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
       select: { personId: true },
     });
     const personIds = assignments.map((a) => a.personId);
@@ -345,7 +345,7 @@ export class ProjectRagService {
     const endingSoon = await this.prisma.projectAssignment.findMany({
       where: {
         projectId,
-        status: { in: ['ACTIVE', 'APPROVED'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validTo: { lte: twoWeeksFromNow, gte: now },
       },
       include: { person: { select: { displayName: true } } },

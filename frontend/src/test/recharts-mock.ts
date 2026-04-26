@@ -19,6 +19,7 @@ vi.mock('recharts', () => {
     PieChart: PassThrough,
     PolarAngleAxis: Noop,
     PolarGrid: Noop,
+    PolarRadiusAxis: Noop,
     Radar: Noop,
     RadarChart: Noop,
     RadialBar: Noop,

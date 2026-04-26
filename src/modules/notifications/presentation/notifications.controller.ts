@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Query, ValidationPipe } from '@nestjs/common';
 import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -6,6 +6,7 @@ import { RequireRoles } from '@src/modules/identity-access/application/roles.dec
 import { NotificationTemplateDto } from '../application/contracts/notification-template.dto';
 import { NotificationOutcomeDto } from '../application/contracts/notification-outcome.dto';
 import { NotificationQueueResponseDto } from '../application/contracts/notification-queue.dto';
+import { NudgeRequestDto } from '../application/contracts/nudge.dto';
 import { NotificationOutcomeQueryService } from '../application/notification-outcome-query.service';
 import { NotificationQueueQueryService } from '../application/notification-queue-query.service';
 import { RequeueNotificationService } from '../application/requeue-notification.service';
@@ -13,6 +14,7 @@ import { NotificationTestSendRequestDto } from '../application/contracts/notific
 import { NotificationTestSendResponseDto } from '../application/contracts/notification-test-send.response';
 import { NotificationTemplateQueryService } from '../application/notification-template-query.service';
 import { NotificationTestSendService } from '../application/notification-test-send.service';
+import { NudgeService } from '../application/nudge.service';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -23,7 +25,18 @@ export class NotificationsController {
     private readonly notificationQueueQueryService: NotificationQueueQueryService,
     private readonly requeueNotificationService: RequeueNotificationService,
     private readonly notificationTestSendService: NotificationTestSendService,
+    private readonly nudgeService: NudgeService,
   ) {}
+
+  @Post('nudge')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @ApiOperation({ summary: 'Send a nudge reminder to a pending approver (rate-limited 1/24h per requestId+approver).' })
+  public async nudge(
+    @Body(new ValidationPipe({ whitelist: true })) body: NudgeRequestDto,
+  ): Promise<{ status: string; notificationRequestId: string }> {
+    return this.nudgeService.send(body);
+  }
 
   @Get('templates')
   @RequireRoles('admin')

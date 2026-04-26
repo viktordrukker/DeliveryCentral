@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -14,18 +15,32 @@ export interface WorkloadPlanningFilters {
   poolId?: string;
 }
 
+export type MatrixAssignmentRow = Prisma.ProjectAssignmentGetPayload<{
+  include: {
+    person: { select: { id: true; displayName: true } };
+    project: { select: { id: true; name: true; projectCode: true } };
+  };
+}>;
+
+export type PlanningAssignmentRow = Prisma.ProjectAssignmentGetPayload<{
+  include: {
+    person: { select: { id: true; displayName: true } };
+    project: { select: { id: true; name: true } };
+  };
+}>;
+
 @Injectable()
 export class WorkloadRepository {
   public constructor(private readonly prisma: PrismaService) {}
 
-  public async getMatrixAssignments(filters: WorkloadMatrixFilters) {
+  public async getMatrixAssignments(filters: WorkloadMatrixFilters): Promise<MatrixAssignmentRow[]> {
     const now = new Date();
 
     const personIdFilters: string[] | undefined = await this.resolvePersonIdFilters(filters);
 
     return this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: now },
         OR: [{ validTo: null }, { validTo: { gte: now } }],
         ...(personIdFilters !== undefined ? { personId: { in: personIdFilters } } : {}),
@@ -51,7 +66,7 @@ export class WorkloadRepository {
     const overlapping = await this.prisma.projectAssignment.findMany({
       where: {
         personId: params.personId,
-        status: { in: ['REQUESTED', 'APPROVED', 'ACTIVE'] },
+        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: end },
         OR: [{ validTo: null }, { validTo: { gte: start } }],
         ...(params.excludeAssignmentId ? { NOT: { id: params.excludeAssignmentId } } : {}),
@@ -72,7 +87,7 @@ export class WorkloadRepository {
     };
   }
 
-  public async getPlanningAssignments(filters: WorkloadPlanningFilters) {
+  public async getPlanningAssignments(filters: WorkloadPlanningFilters): Promise<PlanningAssignmentRow[]> {
     const now = new Date();
     const fromDate = filters.from ? new Date(filters.from) : now;
     const toDate = filters.to
@@ -96,7 +111,7 @@ export class WorkloadRepository {
 
     return this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'REQUESTED'] },
+        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: toDate },
         OR: [{ validTo: null }, { validTo: { gte: fromDate } }],
         ...(personIdFilter !== undefined ? { personId: personIdFilter } : {}),
@@ -134,7 +149,7 @@ export class WorkloadRepository {
     // Fetch all relevant active assignments in the forecast window
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: endOfForecast },
         OR: [{ validTo: null }, { validTo: { gte: monday } }],
       },

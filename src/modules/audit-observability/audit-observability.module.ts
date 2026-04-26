@@ -5,6 +5,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { InMemoryAuditLogStore } from './application/in-memory-audit-log.store';
 import { AuditLoggerService } from './application/audit-logger.service';
 import { BusinessAuditQueryService } from './application/business-audit-query.service';
+import { DomainEventService } from './application/domain-event.service';
 import { PrismaAuditLogStore } from './infrastructure/prisma-audit-log.store';
 import { BusinessAuditController } from './presentation/business-audit.controller';
 
@@ -24,7 +25,14 @@ import { BusinessAuditController } from './presentation/business-audit.controlle
     },
     AuditLoggerService,
     BusinessAuditQueryService,
+    DomainEventService,
   ],
-  exports: [InMemoryAuditLogStore, PrismaAuditLogStore, AuditLoggerService, BusinessAuditQueryService],
+  exports: [
+    InMemoryAuditLogStore,
+    PrismaAuditLogStore,
+    AuditLoggerService,
+    BusinessAuditQueryService,
+    DomainEventService,
+  ],
 })
 export class AuditObservabilityModule {}

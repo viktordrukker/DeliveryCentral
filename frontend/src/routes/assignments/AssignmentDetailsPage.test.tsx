@@ -1,13 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import {
-  approveAssignment,
   endAssignment,
   fetchAssignmentById,
-  rejectAssignment,
+  transitionAssignment,
 } from '@/lib/api/assignments';
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import { AssignmentDetailsPlaceholderPage } from './AssignmentDetailsPlaceholderPage';
@@ -20,6 +19,7 @@ vi.mock('@/lib/api/assignments', async () => {
     endAssignment: vi.fn(),
     fetchAssignmentById: vi.fn(),
     rejectAssignment: vi.fn(),
+    transitionAssignment: vi.fn(),
   };
 });
 
@@ -36,54 +36,52 @@ vi.mock('@/lib/api/business-audit', () => ({
 }));
 
 const mockedFetchAssignmentById = vi.mocked(fetchAssignmentById);
-const mockedApproveAssignment = vi.mocked(approveAssignment);
 const mockedEndAssignment = vi.mocked(endAssignment);
-const mockedRejectAssignment = vi.mocked(rejectAssignment);
+const mockedTransitionAssignment = vi.mocked(transitionAssignment);
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
 
 describe('AssignmentDetailsPage', () => {
   beforeEach(() => {
     mockedFetchAssignmentById.mockReset();
-    mockedApproveAssignment.mockReset();
     mockedEndAssignment.mockReset();
-    mockedRejectAssignment.mockReset();
+    mockedTransitionAssignment.mockReset();
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
-  it('renders action buttons in a valid state', async () => {
+  it('renders dynamic transition buttons for the current status', async () => {
     mockedFetchAssignmentById.mockResolvedValue(buildAssignmentDetails());
 
     renderWithRouter('/assignments/asn-1');
 
-    expect((await screen.findAllByText('REQUESTED')).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Approve assignment' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reject assignment' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'End assignment' })).toBeInTheDocument();
+    // PROPOSED state → Book, Reject, Cancel are available to project_manager
+    expect((await screen.findAllByText('PROPOSED')).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('transition-booked')).toBeInTheDocument();
+    expect(screen.getByTestId('transition-rejected')).toBeInTheDocument();
+    expect(screen.getByTestId('transition-cancelled')).toBeInTheDocument();
     expect(screen.getByText('Lifecycle History')).toBeInTheDocument();
-    expect(screen.getByText('Assignment Created')).toBeInTheDocument();
   });
 
-  it('runs approve flow and revalidates', async () => {
+  it('runs book transition and revalidates', async () => {
     mockedFetchAssignmentById
       .mockResolvedValueOnce(buildAssignmentDetails())
       .mockResolvedValueOnce(
         buildAssignmentDetails({
-          approvalState: 'APPROVED',
+          approvalState: 'BOOKED',
           canApprove: false,
           canEnd: true,
           canReject: false,
           history: [
-            buildHistoryItem('ASSIGNMENT_APPROVED', {
-              changeReason: 'Approved for rollout.',
+            buildHistoryItem('STATUS_BOOKED', {
+              changeReason: undefined,
               changedByPersonId: 'manager-1',
               id: 'hist-2',
             }),
-            buildHistoryItem('ASSIGNMENT_CREATED'),
+            buildHistoryItem('STATUS_PROPOSED'),
           ],
         }),
       );
-    mockedApproveAssignment.mockResolvedValue({
+    mockedTransitionAssignment.mockResolvedValue({
       allocationPercent: 50,
       id: 'asn-1',
       personId: 'person-1',
@@ -91,32 +89,27 @@ describe('AssignmentDetailsPage', () => {
       requestedAt: '2025-03-10T10:00:00.000Z',
       staffingRole: 'Lead Engineer',
       startDate: '2025-02-01T00:00:00.000Z',
-      status: 'APPROVED',
+      status: 'BOOKED',
     });
 
     const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
-    expect((await screen.findAllByText('REQUESTED')).length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText('Approval Comment'), 'Approved for rollout.');
-    await user.click(screen.getByRole('button', { name: 'Approve assignment' }));
-
-    // ConfirmDialog now shows — click Approve
-    expect(await screen.findByText('Approve Assignment')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Approve' }));
+    await user.click(await screen.findByTestId('transition-booked'));
+    const bookDialog = await screen.findByRole('dialog');
+    await user.click(within(bookDialog).getByRole('button', { name: 'Book' }));
 
     await waitFor(() => {
-      expect(mockedApproveAssignment).toHaveBeenCalledWith('asn-1', {
-        actorId: 'manager-1',
-        comment: 'Approved for rollout.',
+      expect(mockedTransitionAssignment).toHaveBeenCalledWith('asn-1', 'BOOKED', {
+        reason: undefined,
       });
     });
 
-    expect(await screen.findByText('Assignment approved successfully.')).toBeInTheDocument();
-    expect(screen.getAllByText('APPROVED').length).toBeGreaterThan(0);
+    expect(await screen.findByText(/Assignment moved to booked\./)).toBeInTheDocument();
+    expect(screen.getAllByText('BOOKED').length).toBeGreaterThan(0);
   });
 
-  it('runs reject flow and revalidates', async () => {
+  it('runs reject transition with a required reason', async () => {
     mockedFetchAssignmentById
       .mockResolvedValueOnce(buildAssignmentDetails())
       .mockResolvedValueOnce(
@@ -126,16 +119,16 @@ describe('AssignmentDetailsPage', () => {
           canEnd: false,
           canReject: false,
           history: [
-            buildHistoryItem('ASSIGNMENT_REJECTED', {
+            buildHistoryItem('STATUS_REJECTED', {
               changeReason: 'Capacity unavailable.',
               changedByPersonId: 'manager-1',
               id: 'hist-2',
             }),
-            buildHistoryItem('ASSIGNMENT_CREATED'),
+            buildHistoryItem('STATUS_PROPOSED'),
           ],
         }),
       );
-    mockedRejectAssignment.mockResolvedValue({
+    mockedTransitionAssignment.mockResolvedValue({
       allocationPercent: 50,
       id: 'asn-1',
       personId: 'person-1',
@@ -149,102 +142,50 @@ describe('AssignmentDetailsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
-    expect((await screen.findAllByText('REQUESTED')).length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText('Rejection Reason'), 'Capacity unavailable.');
-    await user.click(screen.getByRole('button', { name: 'Reject assignment' }));
-
-    // ConfirmDialog now shows — click Reject
-    expect(await screen.findByText('Reject Assignment')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    await user.click(await screen.findByTestId('transition-rejected'));
+    const rejectDialog = await screen.findByRole('dialog');
+    await user.type(within(rejectDialog).getByLabelText('Reason'), 'Capacity unavailable.');
+    await user.click(within(rejectDialog).getByRole('button', { name: 'Reject' }));
 
     await waitFor(() => {
-      expect(mockedRejectAssignment).toHaveBeenCalledWith('asn-1', {
-        actorId: 'manager-1',
+      expect(mockedTransitionAssignment).toHaveBeenCalledWith('asn-1', 'REJECTED', {
         reason: 'Capacity unavailable.',
       });
     });
 
-    expect(await screen.findByText('Assignment rejected successfully.')).toBeInTheDocument();
+    expect(await screen.findByText(/Assignment moved to rejected\./)).toBeInTheDocument();
     expect(screen.getAllByText('REJECTED').length).toBeGreaterThan(0);
   });
 
-  it('runs end flow and refreshes lifecycle history', async () => {
-    mockedFetchAssignmentById
-      .mockResolvedValueOnce(
-        buildAssignmentDetails({
-          approvalState: 'APPROVED',
-          canApprove: false,
-          canEnd: true,
-          canReject: false,
-          history: [
-            buildHistoryItem('ASSIGNMENT_APPROVED', {
-              changeReason: 'Approved for rollout.',
-              changedByPersonId: 'manager-1',
-              id: 'hist-2',
-            }),
-            buildHistoryItem('ASSIGNMENT_CREATED'),
-          ],
-        }),
-      )
-      .mockResolvedValueOnce(
-        buildAssignmentDetails({
-          approvalState: 'ENDED',
-          canApprove: false,
-          canEnd: false,
-          canReject: false,
-          endDate: '2025-03-31T00:00:00.000Z',
-          history: [
-            buildHistoryItem('ASSIGNMENT_ENDED', {
-              changeReason: 'Rolled off cleanly.',
-              changedByPersonId: 'manager-1',
-              id: 'hist-3',
-              newSnapshot: { status: 'ENDED', validTo: '2025-03-31T00:00:00.000Z' },
-              occurredAt: '2025-03-31T12:00:00.000Z',
-              previousSnapshot: { status: 'APPROVED', validTo: '2025-04-30T23:59:59.999Z' },
-            }),
-            buildHistoryItem('ASSIGNMENT_APPROVED', {
-              changeReason: 'Approved for rollout.',
-              changedByPersonId: 'manager-1',
-              id: 'hist-2',
-            }),
-            buildHistoryItem('ASSIGNMENT_CREATED'),
-          ],
-        }),
-      );
-    mockedEndAssignment.mockResolvedValue({
-      allocationPercent: 50,
-      endDate: '2025-03-31T00:00:00.000Z',
-      id: 'asn-1',
-      personId: 'person-1',
-      projectId: 'project-1',
-      requestedAt: '2025-03-10T10:00:00.000Z',
-      staffingRole: 'Lead Engineer',
-      startDate: '2025-02-01T00:00:00.000Z',
-      status: 'ENDED',
-    });
+  it('renders completed history and no further transitions when completed', async () => {
+    mockedFetchAssignmentById.mockResolvedValueOnce(
+      buildAssignmentDetails({
+        approvalState: 'COMPLETED',
+        canApprove: false,
+        canEnd: false,
+        canReject: false,
+        endDate: '2025-03-31T00:00:00.000Z',
+        history: [
+          buildHistoryItem('STATUS_COMPLETED', {
+            changeReason: 'Rolled off cleanly.',
+            changedByPersonId: 'manager-1',
+            id: 'hist-3',
+            newSnapshot: { status: 'COMPLETED', validTo: '2025-03-31T00:00:00.000Z' },
+            occurredAt: '2025-03-31T12:00:00.000Z',
+            previousSnapshot: { status: 'ASSIGNED', validTo: '2025-04-30T23:59:59.999Z' },
+          }),
+          buildHistoryItem('STATUS_ASSIGNED'),
+          buildHistoryItem('STATUS_PROPOSED'),
+        ],
+      }),
+    );
 
-    const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
-    expect((await screen.findAllByText('APPROVED')).length).toBeGreaterThan(0);
-    await user.type(screen.getByLabelText('End Date'), '2025-03-31');
-    await user.type(screen.getByLabelText('End Reason'), 'Rolled off cleanly.');
-    await user.click(screen.getByRole('button', { name: 'End assignment' }));
-
-    // ConfirmDialog now shows — click confirm
-    expect(await screen.findByText('End Assignment')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Confirm end' }));
-
-    await waitFor(() => {
-      expect(mockedEndAssignment).toHaveBeenCalledWith('asn-1', {
-        actorId: 'manager-1',
-        endDate: '2025-03-31T00:00:00.000Z',
-        reason: 'Rolled off cleanly.',
-      });
-    });
-
-    expect(await screen.findByText('Assignment ended successfully.')).toBeInTheDocument();
-    expect(screen.getByText('Assignment Ended')).toBeInTheDocument();
+    expect((await screen.findAllByText('COMPLETED')).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('transition-booked')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('transition-rejected')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('transition-cancelled')).not.toBeInTheDocument();
     expect(screen.getAllByText('Rolled off cleanly.').length).toBeGreaterThan(0);
   });
 });
@@ -254,13 +195,13 @@ function buildAssignmentDetails(
 ) {
   return {
     allocationPercent: 50,
-    approvalState: 'REQUESTED',
+    approvalState: 'PROPOSED',
     approvals: [],
     canApprove: true,
     canEnd: false,
     canReject: true,
     endDate: '2025-04-30T23:59:59.999Z',
-    history: [buildHistoryItem('ASSIGNMENT_CREATED')],
+    history: [buildHistoryItem('STATUS_PROPOSED')],
     id: 'asn-1',
     note: 'Needs approval.',
     person: { displayName: 'Ethan Brooks', id: 'person-1' },
@@ -279,7 +220,7 @@ function buildHistoryItem(changeType: string, overrides: Record<string, unknown>
     changeType,
     changedByPersonId: 'manager-1',
     id: 'hist-1',
-    newSnapshot: { status: 'REQUESTED' },
+    newSnapshot: { status: 'PROPOSED' },
     occurredAt: '2025-03-10T10:00:00.000Z',
     previousSnapshot: undefined,
     ...overrides,

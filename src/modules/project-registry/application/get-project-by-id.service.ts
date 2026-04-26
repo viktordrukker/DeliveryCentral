@@ -23,9 +23,10 @@ export class GetProjectByIdService {
       return null;
     }
 
-    const [projectLinks, assignments] = await Promise.all([
+    const [projectLinks, assignments, prismaProject] = await Promise.all([
       this.projectExternalLinkRepository.findByProjectId(project.projectId),
       this.projectAssignmentRepository.findAll(),
+      this.prisma.project.findUnique({ where: { id: project.id }, select: { shape: true, hasLiveSpcRates: true } }),
     ]);
     const externalLinksSummary = Array.from(
       projectLinks.reduce((map, link) => {
@@ -84,6 +85,8 @@ export class GetProjectByIdService {
       techStack: project.techStack,
       startDate: project.startsOn?.toISOString() ?? null,
       status: project.status,
+      shape: prismaProject?.shape ?? null,
+      hasLiveSpcRates: prismaProject?.hasLiveSpcRates ?? false,
       version: project.version,
     };
   }

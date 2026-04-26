@@ -8,6 +8,8 @@ import { ProjectTimelineService } from './application/project-timeline.service';
 import { StaffingDeskService } from './application/staffing-desk.service';
 import { SupplyProfileService } from './application/supply-profile.service';
 import { TeamBuilderService } from './application/team-builder.service';
+import { PlannerScenarioService } from './application/planner-scenario.service';
+import { WorkforcePlannerService } from './application/workforce-planner.service';
 import { StaffingDeskController } from './presentation/staffing-desk.controller';
 
 @Module({
@@ -41,6 +43,16 @@ import { StaffingDeskController } from './presentation/staffing-desk.controller'
     {
       provide: TeamBuilderService,
       useFactory: (prisma: PrismaService) => new TeamBuilderService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: WorkforcePlannerService,
+      useFactory: (prisma: PrismaService) => new WorkforcePlannerService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: PlannerScenarioService,
+      useFactory: (prisma: PrismaService) => new PlannerScenarioService(prisma),
       inject: [PrismaService],
     },
   ],

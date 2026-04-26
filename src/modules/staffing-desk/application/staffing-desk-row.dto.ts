@@ -44,14 +44,14 @@ export interface StaffingDeskRowDto {
   summary: string | null;
 }
 
-const ACTIVE_STATUSES = new Set(['APPROVED', 'ACTIVE']);
-const PENDING_STATUSES = new Set(['REQUESTED', 'OPEN', 'IN_REVIEW']);
-const DONE_STATUSES = new Set(['ENDED', 'FULFILLED', 'ARCHIVED']);
-const CANCELLED_STATUSES = new Set(['REJECTED', 'REVOKED', 'CANCELLED']);
+const ACTIVE_STATUSES = new Set(['BOOKED', 'ASSIGNED']);
+const PENDING_STATUSES = new Set(['PROPOSED', 'ONBOARDING', 'ON_HOLD', 'OPEN', 'IN_REVIEW']);
+const DONE_STATUSES = new Set(['COMPLETED', 'FULFILLED', 'ARCHIVED']);
+const CANCELLED_STATUSES = new Set(['REJECTED', 'CANCELLED']);
 
 export function resolveStatusGroup(status: string): StatusGroup {
   const upper = status.toUpperCase();
-  if (upper === 'DRAFT') return 'draft';
+  if (upper === 'DRAFT' || upper === 'CREATED') return 'draft';
   if (ACTIVE_STATUSES.has(upper)) return 'active';
   if (PENDING_STATUSES.has(upper)) return 'pending';
   if (DONE_STATUSES.has(upper)) return 'done';

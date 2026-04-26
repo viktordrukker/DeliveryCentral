@@ -10,6 +10,14 @@ export class FetchTeamsWebhookTransport implements TeamsWebhookTransport {
     webhookUrl: string,
     payload: TeamsMessagePayload,
   ): Promise<{ messageId?: string }> {
+    if (!webhookUrl.startsWith('https://')) {
+      throw new NotificationDeliveryFailure(
+        'Teams webhook URL must use HTTPS.',
+        false,
+        'TEAMS_WEBHOOK_INVALID_SCHEME',
+      );
+    }
+
     const response = await fetch(webhookUrl, {
       body: JSON.stringify(payload),
       headers: {

@@ -13,7 +13,9 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { ApiError } from '@/lib/api/http-client';
 import { formatDateShort } from '@/lib/format-date';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import {
+  DerivedStaffingRequestStatus,
   StaffingRequest,
   SuggestionCandidate,
   cancelStaffingRequest,
@@ -23,12 +25,15 @@ import {
   reviewStaffingRequest,
 } from '@/lib/api/staffing-requests';
 
-const STATUS_LABELS: Record<string, string> = {
-  CANCELLED: 'Cancelled',
-  DRAFT: 'Draft',
-  FULFILLED: 'Fulfilled',
-  IN_REVIEW: 'In Review',
-  OPEN: 'Open',
+const DERIVED_STATUS_TONE: Record<
+  DerivedStaffingRequestStatus,
+  'info' | 'pending' | 'active' | 'neutral' | 'danger'
+> = {
+  Open: 'info',
+  'In progress': 'pending',
+  Filled: 'active',
+  Closed: 'neutral',
+  Cancelled: 'danger',
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -154,9 +159,11 @@ export function StaffingRequestDetailPage(): JSX.Element {
         <dl className="detail-list">
           <dt>Status</dt>
           <dd>
-            <span className={`badge badge--${request.status.toLowerCase().replace('_', '-')}`}>
-              {STATUS_LABELS[request.status] ?? request.status}
-            </span>
+            <StatusBadge
+              label={request.derivedStatus}
+              tone={DERIVED_STATUS_TONE[request.derivedStatus]}
+              variant="chip"
+            />
           </dd>
           <dt>Priority</dt>
           <dd>{PRIORITY_LABELS[request.priority] ?? request.priority}</dd>
@@ -186,6 +193,46 @@ export function StaffingRequestDetailPage(): JSX.Element {
           ) : null}
         </dl>
       </SectionCard>
+
+      {request.assignmentSummary.totalAssignments > 0 ? (
+        <SectionCard title="Assignment pipeline">
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 'var(--space-2)',
+              fontSize: 12,
+            }}
+          >
+            {Object.entries({
+              Created: request.assignmentSummary.created,
+              Proposed: request.assignmentSummary.proposed,
+              Booked: request.assignmentSummary.booked,
+              Onboarding: request.assignmentSummary.onboarding,
+              Assigned: request.assignmentSummary.assigned,
+              'On-hold': request.assignmentSummary.onHold,
+              Rejected: request.assignmentSummary.rejected,
+              Completed: request.assignmentSummary.completed,
+              Cancelled: request.assignmentSummary.cancelled,
+            })
+              .filter(([, count]) => (count as number) > 0)
+              .map(([label, count]) => (
+                <div
+                  key={label}
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    background: 'var(--color-surface-alt)',
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{String(count)}</span>{' '}
+                  <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                </div>
+              ))}
+          </div>
+        </SectionCard>
+      ) : null}
 
       {request.fulfilments.length > 0 ? (
         <SectionCard title="Fulfilments">

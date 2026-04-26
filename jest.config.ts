@@ -19,6 +19,11 @@ const config: Config = {
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
   maxWorkers: configuredMaxWorkers && configuredMaxWorkers.length > 0 ? configuredMaxWorkers : defaultMaxWorkers,
+  // Default Jest testTimeout is 5000 ms, which is too short for the NestJS
+  // integration-test bootstrap (AppModule.compile() + Prisma $connect typically
+  // takes 7–15 s in CI/Docker). Bump to 30 s globally; fast unit tests will
+  // never approach this ceiling.
+  testTimeout: 30000,
 };
 
 export default config;

@@ -83,7 +83,7 @@ export class SupplyProfileService {
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId: { in: people.map((p) => p.id) },
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       },
       select: { personId: true, allocationPercent: true },
     });

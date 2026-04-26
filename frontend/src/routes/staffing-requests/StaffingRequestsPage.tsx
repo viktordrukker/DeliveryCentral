@@ -10,16 +10,31 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { LoadingState } from '@/components/common/LoadingState';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { ExportButton } from '@/components/common/ExportButton';
+import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { formatDateShort } from '@/lib/format-date';
-import { StaffingRequest, StaffingRequestStatus, fetchStaffingRequests } from '@/lib/api/staffing-requests';
+import {
+  DerivedStaffingRequestStatus,
+  StaffingRequest,
+  fetchStaffingRequests,
+} from '@/lib/api/staffing-requests';
+import { getAgingDays, getAgingTone, getAgingTooltip } from '@/features/staffing-desk/aging';
 
-const STATUS_LABELS: Record<StaffingRequestStatus, string> = {
-  CANCELLED: 'Cancelled',
-  DRAFT: 'Draft',
-  FULFILLED: 'Fulfilled',
-  IN_REVIEW: 'In Review',
-  OPEN: 'Open',
+const DERIVED_STATUSES: DerivedStaffingRequestStatus[] = [
+  'Open',
+  'In progress',
+  'Filled',
+  'Closed',
+  'Cancelled',
+];
+
+const DERIVED_STATUS_TONE: Record<DerivedStaffingRequestStatus, string> = {
+  Open: 'info',
+  'In progress': 'pending',
+  Filled: 'active',
+  Closed: 'neutral',
+  Cancelled: 'danger',
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -49,10 +64,27 @@ export function StaffingRequestsPage(): JSX.Element {
           style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
         >
           <option value="">All statuses</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {DERIVED_STATUSES.map((s) => (
+            <option key={s} value={s}>{s}</option>
           ))}
         </select>
+        <ExportButton
+          data={requests}
+          columns={[
+            { key: 'projectName', label: 'Project', accessor: (r) => r.projectName ?? r.projectId },
+            { key: 'role', label: 'Role' },
+            { key: 'priority', label: 'Priority' },
+            { key: 'allocationPercent', label: 'Alloc %' },
+            { key: 'startDate', label: 'Start' },
+            { key: 'endDate', label: 'End' },
+            { key: 'status', label: 'Status' },
+            { key: 'headcountFulfilled', label: 'Headcount Fulfilled' },
+            { key: 'headcountRequired', label: 'Headcount Required' },
+            { key: 'createdAt', label: 'Created' },
+          ]}
+          filename="staffing_requests"
+        />
+        <CopyLinkButton />
         <button className="button button--sm" onClick={() => navigate('/staffing-requests/new')} type="button">
           Create request
         </button>
@@ -60,28 +92,32 @@ export function StaffingRequestsPage(): JSX.Element {
       </>
     );
     return () => setActions(null);
-  }, [setActions, filters.status, setFilters, navigate]);
+  }, [setActions, filters.status, setFilters, navigate, requests]);
 
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    fetchStaffingRequests(filters.status ? { status: filters.status as StaffingRequestStatus } : undefined)
+    fetchStaffingRequests()
       .then((data) => setRequests(data))
       .catch(() => setError('Failed to load staffing requests.'))
       .finally(() => setIsLoading(false));
-  }, [filters.status]);
+  }, []);
+
+  const filteredRequests = filters.status
+    ? requests.filter((r) => r.derivedStatus === filters.status)
+    : requests;
 
   return (
     <PageContainer viewport>
       <SectionCard title="Staffing Requests">
         {isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
         {error ? <ErrorState description={error} /> : null}
-        {!isLoading && !error && requests.length === 0 ? (
+        {!isLoading && !error && filteredRequests.length === 0 ? (
           <EmptyState description="No staffing requests match the current filter." title="No requests" />
         ) : null}
-        {!isLoading && !error && requests.length > 0 ? (() => {
-          const totalPages = Math.max(1, Math.ceil(requests.length / pageSize));
-          const pagedItems = requests.slice((page - 1) * pageSize, page * pageSize);
+        {!isLoading && !error && filteredRequests.length > 0 ? (() => {
+          const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+          const pagedItems = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
           return (
             <>
               <div style={{ overflow: 'auto' }}>
@@ -93,6 +129,7 @@ export function StaffingRequestsPage(): JSX.Element {
                       <th style={{ width: 70 }}>Priority</th>
                       <th style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 60 }}>Alloc %</th>
                       <th style={{ width: 140 }}>Dates</th>
+                      <th style={{ width: 72 }}>Age</th>
                       <th style={{ width: 80 }}>Status</th>
                       <th style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 80 }}>
                         HC <TipBalloon tip="Shows fulfilled vs required headcount for this request." arrow="bottom" />
@@ -110,7 +147,7 @@ export function StaffingRequestsPage(): JSX.Element {
                         <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
                           {formatDateShort(r.startDate)} {'\u2192'} {formatDateShort(r.endDate)}
                         </td>
-                        <td><StatusBadge status={r.status} variant="dot" /></td>
+                        <td><StatusBadge label={r.derivedStatus} tone={DERIVED_STATUS_TONE[r.derivedStatus] as never} variant="dot" /></td>
                         <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{r.headcountFulfilled}/{r.headcountRequired}</td>
                         <td><Link to={`/staffing-requests/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
                       </tr>
@@ -121,7 +158,7 @@ export function StaffingRequestsPage(): JSX.Element {
               <PaginationControls
                 page={page}
                 pageSize={pageSize}
-                totalItems={requests.length}
+                totalItems={filteredRequests.length}
                 onPageChange={setPage}
                 onPageSizeChange={setPageSize}
                 itemLabel="requests"

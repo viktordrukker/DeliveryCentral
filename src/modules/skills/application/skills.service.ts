@@ -14,31 +14,50 @@ export class SkillsService {
 
   public async listSkills(): Promise<SkillDto[]> {
     const skills = await this.prisma.skill.findMany({ orderBy: { name: 'asc' } });
-    return skills.map((s) => ({
-      id: s.id,
-      name: s.name,
-      category: s.category ?? null,
-      createdAt: s.createdAt.toISOString(),
-    }));
+    return skills.map((s) => this.toSkillDto(s));
   }
 
   public async createSkill(dto: CreateSkillDto): Promise<SkillDto> {
     const skill = await this.prisma.skill.create({
       data: { name: dto.name, category: dto.category ?? null },
     });
+    return this.toSkillDto(skill);
+  }
+
+  public async deleteSkill(idOrPublicId: string): Promise<void> {
+    const skill = await this.findSkillByIdOrPublicId(idOrPublicId);
+    if (!skill) throw new NotFoundException(`Skill ${idOrPublicId} not found`);
+    await this.prisma.personSkill.deleteMany({ where: { skillId: skill.id } });
+    await this.prisma.skill.delete({ where: { id: skill.id } });
+  }
+
+  /**
+   * Transitional helper for DM-2.5-8 (template §3). Accepts either the internal
+   * uuid or the `skl_…` publicId and returns the full row. Removed in DM-2.5-11
+   * once all callers are on publicId.
+   */
+  private async findSkillByIdOrPublicId(idOrPublicId: string) {
+    if (/^skl_[A-Za-z0-9]{10,}$/.test(idOrPublicId)) {
+      return this.prisma.skill.findUnique({ where: { publicId: idOrPublicId } });
+    }
+    return this.prisma.skill.findUnique({ where: { id: idOrPublicId } });
+  }
+
+  private toSkillDto(skill: {
+    id: string;
+    publicId: string | null;
+    name: string;
+    category: string | null;
+    createdAt: Date;
+  }): SkillDto {
+    const effectivePublicId = skill.publicId ?? skill.id;
     return {
-      id: skill.id,
+      id: effectivePublicId,
+      publicId: effectivePublicId,
       name: skill.name,
       category: skill.category ?? null,
       createdAt: skill.createdAt.toISOString(),
     };
-  }
-
-  public async deleteSkill(id: string): Promise<void> {
-    const skill = await this.prisma.skill.findUnique({ where: { id } });
-    if (!skill) throw new NotFoundException(`Skill ${id} not found`);
-    await this.prisma.personSkill.deleteMany({ where: { skillId: id } });
-    await this.prisma.skill.delete({ where: { id } });
   }
 
   public async getPersonSkills(personId: string): Promise<PersonSkillDto[]> {
@@ -50,7 +69,7 @@ export class SkillsService {
     return rows.map((r) => ({
       id: r.id,
       personId: r.personId,
-      skillId: r.skillId,
+      skillId: r.skill.publicId ?? r.skillId,
       skillName: r.skill.name,
       skillCategory: r.skill.category ?? null,
       proficiency: r.proficiency,
@@ -66,10 +85,20 @@ export class SkillsService {
     await this.prisma.personSkill.deleteMany({ where: { personId } });
 
     if (items.length > 0) {
+      // Resolve each item.skillId — which may be a publicId (skl_…) or a uuid —
+      // to the internal Skill.id before writing. DM-2.5-11 removes uuid acceptance.
+      const resolvedSkillIds = await Promise.all(
+        items.map(async (item) => {
+          const skill = await this.findSkillByIdOrPublicId(item.skillId);
+          if (!skill) throw new NotFoundException(`Skill ${item.skillId} not found`);
+          return skill.id;
+        }),
+      );
+
       await this.prisma.personSkill.createMany({
-        data: items.map((item) => ({
+        data: items.map((item, index) => ({
           personId,
-          skillId: item.skillId,
+          skillId: resolvedSkillIds[index],
           proficiency: item.proficiency,
           certified: item.certified,
         })),
@@ -117,7 +146,7 @@ export class SkillsService {
     const activeAssignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId: { in: matchingPersonIds },
-        status: { in: ['ACTIVE', 'APPROVED'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: today },
         OR: [{ validTo: null }, { validTo: { gte: today } }],
         ...(projectId ? { NOT: { projectId } } : {}),

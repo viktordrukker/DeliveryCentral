@@ -14,7 +14,13 @@ import {
 } from 'class-validator';
 
 export class SkillDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Public-facing identifier (skl_…). See DMD-026.' })
+  public publicId!: string;
+
+  @ApiProperty({
+    description:
+      'Identifier for this skill. After DM-2.5-8 completes, this field holds the `publicId`; during the transition window it may hold the internal uuid. Clients should prefer reading `publicId` directly.',
+  })
   public id!: string;
 
   @ApiProperty()
@@ -66,8 +72,11 @@ export class PersonSkillDto {
 }
 
 export class UpsertPersonSkillItemDto {
-  @ApiProperty()
-  @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+  @ApiProperty({
+    description:
+      'Skill identifier. Accepts either the uuid (legacy) or the `skl_…` publicId (DMD-026). UUID acceptance is removed in DM-2.5-11.',
+  })
+  @Matches(/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|skl_[A-Za-z0-9]{10,})$/i)
   @IsNotEmpty()
   public skillId!: string;
 

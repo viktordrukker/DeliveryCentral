@@ -6,7 +6,9 @@ import {
   AmendAssignmentRequest,
   AssignmentDetails,
   AssignmentDecisionRequest,
+  AssignmentStatusValue,
   RevokeAssignmentRequest,
+  TransitionAssignmentRequest,
   amendAssignment,
   approveAssignment,
   endAssignment,
@@ -14,6 +16,7 @@ import {
   fetchAssignmentById,
   rejectAssignment,
   revokeAssignment,
+  transitionAssignment,
 } from '@/lib/api/assignments';
 
 interface AssignmentDetailsState {
@@ -29,6 +32,10 @@ interface AssignmentDetailsState {
   ) => Promise<boolean>;
   runEndAssignment: (request: EndAssignmentRequest) => Promise<boolean>;
   runRevokeAssignment: (request: RevokeAssignmentRequest) => Promise<boolean>;
+  runTransition: (
+    target: AssignmentStatusValue,
+    request?: TransitionAssignmentRequest,
+  ) => Promise<boolean>;
   successMessage?: string;
 }
 
@@ -151,6 +158,33 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     }
   }
 
+  async function runTransition(
+    target: AssignmentStatusValue,
+    request: TransitionAssignmentRequest = {},
+  ): Promise<boolean> {
+    if (!id) {
+      setError('Assignment not found.');
+      return false;
+    }
+
+    setIsSubmitting(true);
+    setError(undefined);
+    setSuccessMessage(undefined);
+
+    try {
+      await transitionAssignment(id, target, request);
+      setSuccessMessage(`Assignment moved to ${target.replace('_', ' ').toLowerCase()}.`);
+      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+      await loadAssignment(id);
+      return true;
+    } catch (transitionError) {
+      setError(transitionError instanceof Error ? transitionError.message : 'Transition failed.');
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function runRevokeAssignment(request: RevokeAssignmentRequest): Promise<boolean> {
     if (!id) {
       setError('Assignment not found.');
@@ -185,6 +219,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     runDecision,
     runEndAssignment,
     runRevokeAssignment,
+    runTransition,
     successMessage,
   };
 }

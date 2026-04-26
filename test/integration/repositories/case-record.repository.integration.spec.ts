@@ -18,14 +18,13 @@ describe('Prisma case repository', () => {
 
   beforeAll(() => {
     prisma = createTestPrismaClient();
+    // The repository calls `this.prisma.caseRecord.X` and `this.prisma.caseType.X`
+    // (standard Prisma access), so hand it a minimal shim that exposes those two
+    // delegates directly rather than the flattened shape used previously.
     repository = new PrismaCaseRecordRepository(
       {
+        caseRecord: prisma.caseRecord,
         caseType: prisma.caseType,
-        count: prisma.caseRecord.count.bind(prisma.caseRecord),
-        delete: prisma.caseRecord.delete.bind(prisma.caseRecord),
-        findFirst: prisma.caseRecord.findFirst.bind(prisma.caseRecord),
-        findMany: prisma.caseRecord.findMany.bind(prisma.caseRecord),
-        upsert: prisma.caseRecord.upsert.bind(prisma.caseRecord),
       } as unknown as ConstructorParameters<typeof PrismaCaseRecordRepository>[0],
     );
   });

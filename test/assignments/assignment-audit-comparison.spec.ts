@@ -3,6 +3,7 @@ import { AssignmentApproval } from '@src/modules/assignments/domain/entities/ass
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
 import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
@@ -23,7 +24,7 @@ describe('Assignment and evidence comparison', () => {
       projectId,
       requestedAt: new Date('2024-12-20T00:00:00.000Z'),
       staffingRole: 'Analyst',
-      status: ApprovalState.approved(),
+      status: AssignmentStatus.booked(),
       validFrom: new Date('2025-01-01T00:00:00.000Z'),
       validTo: new Date('2025-01-31T23:59:59.999Z'),
     },
@@ -116,7 +117,7 @@ describe('Assignment and evidence comparison', () => {
     });
 
     const persistedAssignment = await assignmentRepository.findByAssignmentId(assignment.assignmentId);
-    expect(persistedAssignment?.status.equals(ApprovalState.approved())).toBe(true);
+    expect(persistedAssignment?.status.equals(AssignmentStatus.booked())).toBe(true);
     expect(persistedAssignment?.allocationPercent?.value).toBe(50);
   });
 

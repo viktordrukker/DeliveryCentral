@@ -785,47 +785,47 @@ interface AssignmentDef {
 const assignments: AssignmentDef[] = [];
 
 // PRJ-100 Atlas ERP: 3 engineers + 1 consultant
-assignments.push({ id: asgid(), personId: engIcIds[0], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-001', staffingRole: 'Lead Engineer', status: 'ACTIVE', allocationPercent: 80, validFrom: monthsAgo(5), validTo: monthsAgo(-3), notes: 'Lead full-stack development', approvedAt: monthsAgo(5) });
-assignments.push({ id: asgid(), personId: engIcIds[1], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-002', staffingRole: 'Software Engineer', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(5), validTo: monthsAgo(-3), notes: 'Backend API development', approvedAt: monthsAgo(5) });
-assignments.push({ id: asgid(), personId: engIcIds[4], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-003', staffingRole: 'DevOps Engineer', status: 'ACTIVE', allocationPercent: 40, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'CI/CD and deployment', approvedAt: monthsAgo(4) });
-assignments.push({ id: asgid(), personId: conIcIds[0], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-004', staffingRole: 'Senior Consultant', status: 'ACTIVE', allocationPercent: 50, validFrom: monthsAgo(5), validTo: monthsAgo(-1), notes: 'Client liaison and change management', approvedAt: monthsAgo(5) });
+assignments.push({ id: asgid(), personId: engIcIds[0], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-001', staffingRole: 'Lead Engineer', status: 'ASSIGNED', allocationPercent: 80, validFrom: monthsAgo(5), validTo: monthsAgo(-3), notes: 'Lead full-stack development', approvedAt: monthsAgo(5) });
+assignments.push({ id: asgid(), personId: engIcIds[1], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-002', staffingRole: 'Software Engineer', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(5), validTo: monthsAgo(-3), notes: 'Backend API development', approvedAt: monthsAgo(5) });
+assignments.push({ id: asgid(), personId: engIcIds[4], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-003', staffingRole: 'DevOps Engineer', status: 'ASSIGNED', allocationPercent: 40, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'CI/CD and deployment', approvedAt: monthsAgo(4) });
+assignments.push({ id: asgid(), personId: conIcIds[0], projectId: projects[0].id, requestedByPersonId: pmId, assignmentCode: 'ASG-004', staffingRole: 'Senior Consultant', status: 'ASSIGNED', allocationPercent: 50, validFrom: monthsAgo(5), validTo: monthsAgo(-1), notes: 'Client liaison and change management', approvedAt: monthsAgo(5) });
 
 // PRJ-101 DeliveryCentral: 2 engineers
-assignments.push({ id: asgid(), personId: engIcIds[0], projectId: projects[1].id, requestedByPersonId: pmId, assignmentCode: 'ASG-005', staffingRole: 'Lead Engineer', status: 'ACTIVE', allocationPercent: 20, validFrom: monthsAgo(6), validTo: null, notes: 'Technical architecture', approvedAt: monthsAgo(6) });
-assignments.push({ id: asgid(), personId: engIcIds[5], projectId: projects[1].id, requestedByPersonId: pmId, assignmentCode: 'ASG-006', staffingRole: 'Platform Engineer', status: 'ACTIVE', allocationPercent: 80, validFrom: monthsAgo(6), validTo: null, notes: 'Infrastructure and platform', approvedAt: monthsAgo(6) });
+assignments.push({ id: asgid(), personId: engIcIds[0], projectId: projects[1].id, requestedByPersonId: pmId, assignmentCode: 'ASG-005', staffingRole: 'Lead Engineer', status: 'ASSIGNED', allocationPercent: 20, validFrom: monthsAgo(6), validTo: null, notes: 'Technical architecture', approvedAt: monthsAgo(6) });
+assignments.push({ id: asgid(), personId: engIcIds[5], projectId: projects[1].id, requestedByPersonId: pmId, assignmentCode: 'ASG-006', staffingRole: 'Platform Engineer', status: 'ASSIGNED', allocationPercent: 80, validFrom: monthsAgo(6), validTo: null, notes: 'Infrastructure and platform', approvedAt: monthsAgo(6) });
 
 // PRJ-102 Beacon Mobile: 2 engineers
-assignments.push({ id: asgid(), personId: engIcIds[2], projectId: projects[2].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-007', staffingRole: 'Mobile Engineer', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'React Native development', approvedAt: monthsAgo(4) });
-assignments.push({ id: asgid(), personId: engIcIds[3], projectId: projects[2].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-008', staffingRole: 'Junior Engineer', status: 'ACTIVE', allocationPercent: 80, validFrom: monthsAgo(3), validTo: monthsAgo(-2), notes: 'UI component development', approvedAt: monthsAgo(3) });
+assignments.push({ id: asgid(), personId: engIcIds[2], projectId: projects[2].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-007', staffingRole: 'Mobile Engineer', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'React Native development', approvedAt: monthsAgo(4) });
+assignments.push({ id: asgid(), personId: engIcIds[3], projectId: projects[2].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-008', staffingRole: 'Junior Engineer', status: 'ASSIGNED', allocationPercent: 80, validFrom: monthsAgo(3), validTo: monthsAgo(-2), notes: 'UI component development', approvedAt: monthsAgo(3) });
 
 // PRJ-103 Nova Analytics: data team
-assignments.push({ id: asgid(), personId: dataIcIds[0], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-009', staffingRole: 'Lead Data Engineer', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-1), notes: 'Snowflake migration lead', approvedAt: monthsAgo(3) });
-assignments.push({ id: asgid(), personId: dataIcIds[1], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-010', staffingRole: 'Data Engineer', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-1), notes: 'ETL pipeline development', approvedAt: monthsAgo(3) });
-assignments.push({ id: asgid(), personId: dataIcIds[2], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-011', staffingRole: 'Junior Data Engineer', status: 'ACTIVE', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-1), notes: 'Data quality validation', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: dataIcIds[0], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-009', staffingRole: 'Lead Data Engineer', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-1), notes: 'Snowflake migration lead', approvedAt: monthsAgo(3) });
+assignments.push({ id: asgid(), personId: dataIcIds[1], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-010', staffingRole: 'Data Engineer', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-1), notes: 'ETL pipeline development', approvedAt: monthsAgo(3) });
+assignments.push({ id: asgid(), personId: dataIcIds[2], projectId: projects[3].id, requestedByPersonId: pmId, assignmentCode: 'ASG-011', staffingRole: 'Junior Data Engineer', status: 'ASSIGNED', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-1), notes: 'Data quality validation', approvedAt: monthsAgo(2) });
 
 // PRJ-104 Polaris Security: 1 engineer + 1 advisor
-assignments.push({ id: asgid(), personId: engIcIds[4], projectId: projects[4].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-012', staffingRole: 'Security Engineer', status: 'ACTIVE', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'Zero-trust implementation', approvedAt: monthsAgo(2) });
-assignments.push({ id: asgid(), personId: advIcIds[2], projectId: projects[4].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-013', staffingRole: 'Compliance Advisor', status: 'ACTIVE', allocationPercent: 40, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'Regulatory compliance review', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: engIcIds[4], projectId: projects[4].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-012', staffingRole: 'Security Engineer', status: 'ASSIGNED', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'Zero-trust implementation', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: advIcIds[2], projectId: projects[4].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-013', staffingRole: 'Compliance Advisor', status: 'ASSIGNED', allocationPercent: 40, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'Regulatory compliance review', approvedAt: monthsAgo(2) });
 
 // PRJ-105 Bench: people on bench
-assignments.push({ id: asgid(), personId: conIcIds[3], projectId: projects[5].id, requestedByPersonId: rmId, assignmentCode: 'ASG-014', staffingRole: 'Bench (Training)', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(2), validTo: null, notes: 'Upskilling during bench period', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: conIcIds[3], projectId: projects[5].id, requestedByPersonId: rmId, assignmentCode: 'ASG-014', staffingRole: 'Bench (Training)', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(2), validTo: null, notes: 'Upskilling during bench period', approvedAt: monthsAgo(2) });
 
 // PRJ-106 Titan CRM: consultants
-assignments.push({ id: asgid(), personId: conIcIds[1], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-015', staffingRole: 'Consultant', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-3), notes: 'CRM process mapping', approvedAt: monthsAgo(3) });
-assignments.push({ id: asgid(), personId: conIcIds[2], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-016', staffingRole: 'Business Analyst', status: 'ACTIVE', allocationPercent: 80, validFrom: monthsAgo(3), validTo: monthsAgo(-3), notes: 'Requirements gathering', approvedAt: monthsAgo(3) });
-assignments.push({ id: asgid(), personId: conIcIds[4], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-017', staffingRole: 'Senior Consultant', status: 'ACTIVE', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-3), notes: 'Strategy advisory', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: conIcIds[1], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-015', staffingRole: 'Consultant', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(3), validTo: monthsAgo(-3), notes: 'CRM process mapping', approvedAt: monthsAgo(3) });
+assignments.push({ id: asgid(), personId: conIcIds[2], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-016', staffingRole: 'Business Analyst', status: 'ASSIGNED', allocationPercent: 80, validFrom: monthsAgo(3), validTo: monthsAgo(-3), notes: 'Requirements gathering', approvedAt: monthsAgo(3) });
+assignments.push({ id: asgid(), personId: conIcIds[4], projectId: projects[6].id, requestedByPersonId: pmIcIds[0], assignmentCode: 'ASG-017', staffingRole: 'Senior Consultant', status: 'ASSIGNED', allocationPercent: 60, validFrom: monthsAgo(2), validTo: monthsAgo(-3), notes: 'Strategy advisory', approvedAt: monthsAgo(2) });
 
 // PRJ-107 Compass Cloud: engineers
-assignments.push({ id: asgid(), personId: engIcIds[5], projectId: projects[7].id, requestedByPersonId: pmId, assignmentCode: 'ASG-018', staffingRole: 'Cloud Architect', status: 'ACTIVE', allocationPercent: 20, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'Architecture design and review', approvedAt: monthsAgo(4) });
-assignments.push({ id: asgid(), personId: engIcIds[2], projectId: projects[7].id, requestedByPersonId: pmId, assignmentCode: 'ASG-019', staffingRole: 'Infrastructure Engineer', status: 'REQUESTED', allocationPercent: 40, validFrom: monthsAgo(1), validTo: monthsAgo(-2), notes: 'Pending resource allocation', approvedAt: null });
+assignments.push({ id: asgid(), personId: engIcIds[5], projectId: projects[7].id, requestedByPersonId: pmId, assignmentCode: 'ASG-018', staffingRole: 'Cloud Architect', status: 'ASSIGNED', allocationPercent: 20, validFrom: monthsAgo(4), validTo: monthsAgo(-2), notes: 'Architecture design and review', approvedAt: monthsAgo(4) });
+assignments.push({ id: asgid(), personId: engIcIds[2], projectId: projects[7].id, requestedByPersonId: pmId, assignmentCode: 'ASG-019', staffingRole: 'Infrastructure Engineer', status: 'PROPOSED', allocationPercent: 40, validFrom: monthsAgo(1), validTo: monthsAgo(-2), notes: 'Pending resource allocation', approvedAt: null });
 
 // PRJ-108 Zenith Data: data team
-assignments.push({ id: asgid(), personId: dataIcIds[3], projectId: projects[8].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-020', staffingRole: 'ML Engineer', status: 'ACTIVE', allocationPercent: 100, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'ML pipeline development', approvedAt: monthsAgo(2) });
+assignments.push({ id: asgid(), personId: dataIcIds[3], projectId: projects[8].id, requestedByPersonId: pmIcIds[1], assignmentCode: 'ASG-020', staffingRole: 'ML Engineer', status: 'ASSIGNED', allocationPercent: 100, validFrom: monthsAgo(2), validTo: monthsAgo(-4), notes: 'ML pipeline development', approvedAt: monthsAgo(2) });
 
 // PRJ-109 Orion (closed): advisors (ended)
-assignments.push({ id: asgid(), personId: advIcIds[0], projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-021', staffingRole: 'Governance Lead', status: 'ENDED', allocationPercent: 100, validFrom: monthsAgo(6), validTo: monthsAgo(1), notes: 'Regulatory reporting automation', approvedAt: monthsAgo(6) });
-assignments.push({ id: asgid(), personId: advIcIds[1], projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-022', staffingRole: 'Risk Advisor', status: 'ENDED', allocationPercent: 60, validFrom: monthsAgo(6), validTo: monthsAgo(1), notes: 'Risk assessment and mitigation', approvedAt: monthsAgo(6) });
-assignments.push({ id: asgid(), personId: terminatedId, projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-023', staffingRole: 'Consultant', status: 'ENDED', allocationPercent: 100, validFrom: monthsAgo(6), validTo: monthsAgo(2), notes: 'Regulatory research', approvedAt: monthsAgo(6) });
+assignments.push({ id: asgid(), personId: advIcIds[0], projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-021', staffingRole: 'Governance Lead', status: 'COMPLETED', allocationPercent: 100, validFrom: monthsAgo(6), validTo: monthsAgo(1), notes: 'Regulatory reporting automation', approvedAt: monthsAgo(6) });
+assignments.push({ id: asgid(), personId: advIcIds[1], projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-022', staffingRole: 'Risk Advisor', status: 'COMPLETED', allocationPercent: 60, validFrom: monthsAgo(6), validTo: monthsAgo(1), notes: 'Risk assessment and mitigation', approvedAt: monthsAgo(6) });
+assignments.push({ id: asgid(), personId: terminatedId, projectId: projects[9].id, requestedByPersonId: pmId, assignmentCode: 'ASG-023', staffingRole: 'Consultant', status: 'COMPLETED', allocationPercent: 100, validFrom: monthsAgo(6), validTo: monthsAgo(2), notes: 'Regulatory research', approvedAt: monthsAgo(6) });
 
 // ---------------------------------------------------------------------------
 // ASSIGNMENT APPROVALS — one per assignment
@@ -855,18 +855,18 @@ const assignmentHistory: Array<Record<string, unknown>> = [];
 assignments.forEach(a => {
   assignmentHistory.push({
     id: ahiid(), assignmentId: a.id, changedByPersonId: a.requestedByPersonId,
-    changeType: 'ASSIGNMENT_CREATED', changeReason: 'Staffing request', occurredAt: a.validFrom,
+    changeType: 'STATUS_PROPOSED', changeReason: 'Staffing request', occurredAt: a.validFrom,
   });
   if (a.approvedAt) {
     assignmentHistory.push({
       id: ahiid(), assignmentId: a.id, changedByPersonId: rmId,
-      changeType: 'ASSIGNMENT_APPROVED', changeReason: 'Resource available', occurredAt: a.approvedAt,
+      changeType: 'STATUS_BOOKED', changeReason: 'Resource available', occurredAt: a.approvedAt,
     });
   }
   if (a.status === 'ENDED') {
     assignmentHistory.push({
       id: ahiid(), assignmentId: a.id, changedByPersonId: rmId,
-      changeType: 'ASSIGNMENT_ENDED', changeReason: 'Project completed', occurredAt: a.validTo!,
+      changeType: 'STATUS_COMPLETED', changeReason: 'Project completed', occurredAt: a.validTo!,
     });
   }
 });

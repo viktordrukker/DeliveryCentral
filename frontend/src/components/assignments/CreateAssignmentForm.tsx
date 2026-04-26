@@ -129,7 +129,7 @@ export function CreateAssignmentForm({
             min="1"
             name="allocationPercent"
             onChange={(event) => onChange('allocationPercent', event.target.value)}
-            step="5"
+            step="any"
             type="number"
             value={values.allocationPercent}
           />

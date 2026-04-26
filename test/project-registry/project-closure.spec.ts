@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
 import { AppModule } from '@src/app.module';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { ActivateProjectService } from '@src/modules/project-registry/application/activate-project.service';
@@ -197,7 +197,7 @@ describe('Close project', () => {
         requestedAt: new Date('2025-06-01T00:00:00.000Z'),
         requestedByPersonId: 'director-1',
         staffingRole: 'Engineer',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-06-01T00:00:00.000Z'),
       }),
     ]);

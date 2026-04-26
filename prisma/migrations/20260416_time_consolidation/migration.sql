@@ -1,9 +1,13 @@
 -- AlterEnum
-ALTER TYPE "LeaveRequestType" ADD VALUE 'OT_OFF';
-ALTER TYPE "LeaveRequestType" ADD VALUE 'PERSONAL';
-ALTER TYPE "LeaveRequestType" ADD VALUE 'PARENTAL';
-ALTER TYPE "LeaveRequestType" ADD VALUE 'BEREAVEMENT';
-ALTER TYPE "LeaveRequestType" ADD VALUE 'STUDY';
+-- DM-R-11 (2026-04-18): these are IF NOT EXISTS because an earlier migration
+-- (20260408_leave_requests) was retroactively edited to pre-include PARENTAL
+-- in its CREATE TYPE. Fresh-DB replay would fail on duplicate enum label
+-- without this idempotence. The applied DB state is unchanged.
+ALTER TYPE "LeaveRequestType" ADD VALUE IF NOT EXISTS 'OT_OFF';
+ALTER TYPE "LeaveRequestType" ADD VALUE IF NOT EXISTS 'PERSONAL';
+ALTER TYPE "LeaveRequestType" ADD VALUE IF NOT EXISTS 'PARENTAL';
+ALTER TYPE "LeaveRequestType" ADD VALUE IF NOT EXISTS 'BEREAVEMENT';
+ALTER TYPE "LeaveRequestType" ADD VALUE IF NOT EXISTS 'STUDY';
 
 -- AlterTable
 ALTER TABLE "timesheet_entries" ADD COLUMN     "benchCategory" TEXT;

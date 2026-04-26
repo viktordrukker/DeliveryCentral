@@ -1,9 +1,21 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+import { apiClientConfig } from '@/lib/api/config';
 import {
   type PlatformSettingsResponse,
   fetchPlatformSettings,
 } from '@/lib/api/platform-settings';
+
+function hasAuthToken(): boolean {
+  try {
+    return Boolean(
+      window.localStorage.getItem(apiClientConfig.authTokenStorageKey) ??
+        window.sessionStorage.getItem(apiClientConfig.authTokenStorageKey),
+    );
+  } catch {
+    return false;
+  }
+}
 
 interface PlatformSettingsContextValue {
   isLoading: boolean;
@@ -33,16 +45,30 @@ export function PlatformSettingsProvider({ children }: { children: React.ReactNo
   }
 
   useEffect(() => {
-    void load();
+    // Don't fetch admin-scoped settings before login — the endpoint requires auth,
+    // and a 401 here just pollutes the console. A login-success listener triggers
+    // the real fetch below.
+    if (hasAuthToken()) {
+      void load();
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     function handleSettingsUpdated(): void {
       void load();
     }
+    function handleLogin(): void {
+      void load();
+    }
 
     window.addEventListener('platform-settings:updated', handleSettingsUpdated);
-    return () => window.removeEventListener('platform-settings:updated', handleSettingsUpdated);
+    window.addEventListener('auth:login-success', handleLogin);
+    return () => {
+      window.removeEventListener('platform-settings:updated', handleSettingsUpdated);
+      window.removeEventListener('auth:login-success', handleLogin);
+    };
   }, []);
 
   const value = useMemo<PlatformSettingsContextValue>(

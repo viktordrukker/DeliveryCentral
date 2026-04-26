@@ -15,6 +15,7 @@ import { NotificationTemplateResolver } from './application/notification-templat
 import { NotificationQueueQueryService } from './application/notification-queue-query.service';
 import { RequeueNotificationService } from './application/requeue-notification.service';
 import { NotificationTestSendService } from './application/notification-test-send.service';
+import { NudgeService } from './application/nudge.service';
 import { EmailNotificationChannelAdapter } from './infrastructure/adapters/email-notification-channel.adapter';
 import { FetchTeamsWebhookTransport } from './infrastructure/adapters/fetch-teams-webhook.transport';
 import { InMemoryGenericNotificationChannelAdapter } from './infrastructure/adapters/in-memory-generic-notification-channel.adapter';
@@ -170,6 +171,7 @@ import { NotificationsController } from './presentation/notifications.controller
         new NotificationTestSendService(dispatchService),
       inject: [NotificationDispatchService],
     },
+    NudgeService,
     {
       provide: NotificationEventTranslatorService,
       useFactory: (
@@ -187,6 +189,7 @@ import { NotificationsController } from './presentation/notifications.controller
     NotificationQueueQueryService,
     NotificationTemplateQueryService,
     NotificationTestSendService,
+    NudgeService,
     RequeueNotificationService,
     PrismaNotificationChannelRepository,
     PrismaNotificationTemplateRepository,

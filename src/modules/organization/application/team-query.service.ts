@@ -156,7 +156,7 @@ export class TeamQueryService {
     });
     const staleApprovalCount = allAssignmentsForMembers.filter(
       (assignment) =>
-        assignment.status.value === 'REQUESTED' &&
+        assignment.status.value === 'PROPOSED' &&
         this.isOlderThanConfiguredThreshold(assignment.requestedAt, asOf),
     ).length;
     const projectClosureConflictCount = projectsInvolved.filter((project) => {

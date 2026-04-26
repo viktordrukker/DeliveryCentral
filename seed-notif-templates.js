@@ -45,6 +45,13 @@ async function main() {
       subjectTemplate: 'Staffing request cancelled',
       bodyTemplate: 'Staffing request {{requestId}} has been cancelled.',
     },
+    {
+      templateKey: 'approval-pending-nudge-email',
+      eventName: 'approval.pending.nudge',
+      displayName: 'Approval Pending Nudge',
+      subjectTemplate: 'Reminder: pending approval on {{requestId}}',
+      bodyTemplate: 'You have a pending approval on request {{requestId}}. The requester is asking for a status update. View it in the inbox to approve, reject, or comment.',
+    },
   ];
 
   for (const tmpl of templates) {

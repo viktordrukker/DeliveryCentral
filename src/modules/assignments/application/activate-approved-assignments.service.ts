@@ -3,9 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ProjectAssignmentRepositoryPort } from '../domain/repositories/project-assignment-repository.port';
 
 /**
- * Activates all APPROVED assignments whose validFrom date has been reached.
+ * Activates all BOOKED/ONBOARDING assignments whose validFrom date has been reached.
  * Should be called periodically (e.g., on dashboard load or via cron)
- * to ensure assignments transition APPROVED → ACTIVE on time.
+ * to ensure assignments transition BOOKED → ASSIGNED on time.
  */
 @Injectable()
 export class ActivateApprovedAssignmentsService {
@@ -22,7 +22,7 @@ export class ActivateApprovedAssignmentsService {
 
     for (const assignment of all) {
       if (
-        assignment.status.value === 'APPROVED' &&
+        (assignment.status.value === 'BOOKED' || assignment.status.value === 'ONBOARDING') &&
         assignment.validFrom <= now
       ) {
         try {

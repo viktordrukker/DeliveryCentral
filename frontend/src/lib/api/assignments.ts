@@ -277,3 +277,105 @@ export async function revokeAssignment(
     request,
   );
 }
+
+export type AssignmentStatusValue =
+  | 'ASSIGNED'
+  | 'BOOKED'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'CREATED'
+  | 'ONBOARDING'
+  | 'ON_HOLD'
+  | 'PROPOSED'
+  | 'REJECTED';
+
+export interface TransitionAssignmentRequest {
+  caseId?: string;
+  reason?: string;
+}
+
+const TRANSITION_PATH: Record<AssignmentStatusValue, string> = {
+  CREATED: 'propose',
+  PROPOSED: 'propose',
+  REJECTED: 'reject',
+  BOOKED: 'book',
+  ONBOARDING: 'onboarding',
+  ASSIGNED: 'assign',
+  ON_HOLD: 'hold',
+  COMPLETED: 'complete',
+  CANCELLED: 'cancel',
+};
+
+export async function transitionAssignment(
+  id: string,
+  target: AssignmentStatusValue,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  const path = TRANSITION_PATH[target];
+  return httpPost<ProjectAssignmentResponse, TransitionAssignmentRequest>(
+    `/assignments/${id}/${path}`,
+    request,
+  );
+}
+
+export async function proposeAssignment(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'PROPOSED', request);
+}
+
+export async function bookAssignment(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'BOOKED', request);
+}
+
+export async function moveAssignmentToOnboarding(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'ONBOARDING', request);
+}
+
+export async function markAssignmentAssigned(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'ASSIGNED', request);
+}
+
+export async function holdAssignment(
+  id: string,
+  request: TransitionAssignmentRequest,
+): Promise<ProjectAssignmentResponse> {
+  return httpPost<ProjectAssignmentResponse, TransitionAssignmentRequest>(
+    `/assignments/${id}/hold`,
+    request,
+  );
+}
+
+export async function releaseAssignment(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return httpPost<ProjectAssignmentResponse, TransitionAssignmentRequest>(
+    `/assignments/${id}/release`,
+    request,
+  );
+}
+
+export async function completeAssignment(
+  id: string,
+  request: TransitionAssignmentRequest = {},
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'COMPLETED', request);
+}
+
+export async function cancelAssignment(
+  id: string,
+  request: TransitionAssignmentRequest,
+): Promise<ProjectAssignmentResponse> {
+  return transitionAssignment(id, 'CANCELLED', request);
+}

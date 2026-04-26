@@ -1,0 +1,90 @@
+name: DM-R-11 rollback round-trip
+
+# Weekly bit-rot detection: every REVERSIBLE migration's rollback.sql must,
+# starting from an "all migrations applied" DB, cleanly rollback AND
+# re-apply, and produce an identical schema hash. Catches the failure mode
+# where a rollback.sql runs cleanly but silently corrupts the schema.
+#
+# Runs weekly (Mondays 03:00 UTC) + on manual dispatch + when the
+# migrations directory changes on main.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'prisma/migrations/**'
+      - 'scripts/test-rollback-roundtrip.sh'
+      - '.github/workflows/rollback-roundtrip.yml'
+
+jobs:
+  roundtrip:
+    name: REVERSIBLE migration round-trip
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: roundtrip
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/roundtrip?schema=public
+      ROUNDTRIP_ALLOW_ANY_DB: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # pg_dump version MUST match server (pg_dump < server version errors out).
+      - name: Install postgresql-client-16 (matches service version)
+        run: |
+          sudo apt-get install -y --no-install-recommends curl ca-certificates gnupg lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+          pg_dump --version
+
+      # Restore the committed baseline schema into the ephemeral DB.
+      # Why not `prisma migrate deploy`? The migration history has latent
+      # bit-rot (tables with no CREATE statement, enum collisions from
+      # retroactive edits). Fresh-replay currently fails. The baseline
+      # sidesteps bit-rot and gives us a verified "all migrations
+      # applied" starting point. Bit-rot cleanup tracked as a separate
+      # follow-up; DM-R-11 detects rollback bit-rot, not history bit-rot.
+      - name: Restore baseline schema
+        run: |
+          if [ ! -s prisma/migrations/.baseline-schema.sql ]; then
+            echo "::error::prisma/migrations/.baseline-schema.sql missing or empty. Run scripts/refresh-baseline-schema.sh locally."
+            exit 1
+          fi
+          PGPASSWORD=postgres psql -h localhost -U postgres -d roundtrip \
+            -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d roundtrip \
+            -v ON_ERROR_STOP=1 -f prisma/migrations/.baseline-schema.sql
+
+      - name: Round-trip every REVERSIBLE migration
+        run: bash scripts/test-rollback-roundtrip.sh
+
+      - name: Summarize pass/fail
+        if: always()
+        run: |
+          echo "See the 'Round-trip every REVERSIBLE migration' step for per-migration pass/fail."

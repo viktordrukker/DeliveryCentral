@@ -136,30 +136,30 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
   ).length;
 
   return (
-    <div data-testid="risks-issues-tab">
+    <div data-testid="risks-issues-tab" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {/* KPI mini-strip */}
-      <div className="kpi-strip" aria-label="Risk metrics">
-        <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-warning)' }}>
+      <div className="kpi-strip kpi-strip--compact" aria-label="Risk metrics">
+        <span className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-warning)' }}>
           <span className="kpi-strip__value">{summary?.openRisks ?? 0}</span>
           <span className="kpi-strip__label">Open Risks</span>
-        </div>
-        <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-danger)' }}>
+        </span>
+        <span className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-danger)' }}>
           <span className="kpi-strip__value">{summary?.openIssues ?? 0}</span>
           <span className="kpi-strip__label">Open Issues</span>
-        </div>
-        <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${(summary?.criticalCount ?? 0) > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
+        </span>
+        <span className="kpi-strip__item" style={{ borderLeft: `3px solid ${(summary?.criticalCount ?? 0) > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
           <span className="kpi-strip__value">{summary?.criticalCount ?? 0}</span>
           <span className="kpi-strip__label">Critical (15+)</span>
-        </div>
-        <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${overdueCount > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
+        </span>
+        <span className="kpi-strip__item" style={{ borderLeft: `3px solid ${overdueCount > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
           <span className="kpi-strip__value">{overdueCount}</span>
           <span className="kpi-strip__label">Overdue</span>
-        </div>
+        </span>
       </div>
 
       {/* Create Risk button / form */}
       {!showCreate ? (
-        <div style={{ marginBottom: 'var(--space-4)' }}>
+        <div>
           <button className="button button--primary button--sm" type="button" onClick={() => setShowCreate(true)}>
             + New Risk
           </button>
@@ -204,7 +204,7 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
       )}
 
       {/* Two-column: Register + Heat map */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-4)', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)', gap: 'var(--space-4)', alignItems: 'start' }}>
         <SectionCard title={`Risk Register (${risks.length})`}>
           <RiskRegister
             risks={risks}

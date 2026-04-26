@@ -30,17 +30,42 @@ import { PrismaProjectExternalLinkRepository } from './infrastructure/repositori
 import { PrismaProjectRepository } from './infrastructure/repositories/prisma/prisma-project.repository';
 import { ClientService } from './application/client.service';
 import { GenerateStaffingRequestsFromPlanService } from './application/generate-staffing-requests-from-plan.service';
+import { PortfolioRadiatorService } from './application/portfolio-radiator.service';
+import { ProjectChangeRequestService } from './application/project-change-request.service';
+import { OrgConfigService } from './application/org-config.service';
+import { ProjectExceptionsService } from './application/project-exceptions.service';
+import { ProjectPulseService } from './application/project-pulse.service';
+import { PulseReportService } from './application/pulse-report.service';
+import { SpcService } from './application/spc.service';
 import { ProjectClosureReadinessService } from './application/project-closure-readiness.service';
+import { ProjectMilestoneService } from './application/project-milestone.service';
 import { ProjectRagService } from './application/project-rag.service';
 import { ProjectRolePlanService } from './application/project-role-plan.service';
 import { ProjectRiskService } from './application/project-risk.service';
+import { RadiatorNotificationService } from './application/radiator-notification.service';
+import { RadiatorOverrideService } from './application/radiator-override.service';
+import { RadiatorScoringService } from './application/radiator-scoring.service';
+import { RadiatorSignalCollectorService } from './application/radiator-signal-collector.service';
+import { RadiatorThresholdService } from './application/radiator-threshold.service';
 import { VendorService } from './application/vendor.service';
+import { ChangeRequestController } from './presentation/change-request.controller';
 import { ClientController } from './presentation/client.controller';
+import { MilestoneController } from './presentation/milestone.controller';
+import { PortfolioRadiatorController } from './presentation/portfolio-radiator.controller';
+import { OrgConfigController } from './presentation/org-config.controller';
+import { ProjectExceptionsController } from './presentation/project-exceptions.controller';
+import { ProjectPulseController } from './presentation/project-pulse.controller';
+import { PulseReportController } from './presentation/pulse-report.controller';
+import { SpcController } from './presentation/spc.controller';
 import { ProjectsController } from './presentation/projects.controller';
 import { ProjectRagController } from './presentation/rag.controller';
 import { ProjectRolePlanController } from './presentation/role-plan.controller';
 import { ProjectRiskController } from './presentation/risk.controller';
+import { RadiatorController } from './presentation/radiator.controller';
+import { RadiatorThresholdController } from './presentation/radiator-threshold.controller';
 import { VendorController, ProjectVendorController } from './presentation/vendor.controller';
+import { InAppNotificationsModule } from '../in-app-notifications/in-app-notifications.module';
+import { PulseModule } from '../pulse/pulse.module';
 import { WorkEvidenceModule } from '../work-evidence/work-evidence.module';
 import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 
@@ -50,8 +75,28 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     WorkEvidenceModule,
     forwardRef(() => AssignmentsModule),
     NotificationsModule,
+    PulseModule,
+    InAppNotificationsModule,
   ],
-  controllers: [ProjectsController, ClientController, VendorController, ProjectVendorController, ProjectRolePlanController, ProjectRagController, ProjectRiskController],
+  controllers: [
+    ProjectsController,
+    ClientController,
+    VendorController,
+    ProjectVendorController,
+    ProjectRolePlanController,
+    ProjectRagController,
+    ProjectRiskController,
+    RadiatorController,
+    PortfolioRadiatorController,
+    RadiatorThresholdController,
+    MilestoneController,
+    ChangeRequestController,
+    ProjectPulseController,
+    ProjectExceptionsController,
+    SpcController,
+    OrgConfigController,
+    PulseReportController,
+  ],
   providers: [
     {
       provide: InMemoryProjectRepository,
@@ -199,9 +244,12 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     },
     {
       provide: UpdateProjectService,
-      useFactory: (projectRepository: InMemoryProjectRepository) =>
-        new UpdateProjectService(projectRepository),
-      inject: [InMemoryProjectRepository],
+      useFactory: (
+        projectRepository: InMemoryProjectRepository,
+        prisma: PrismaService,
+        auditLogger: AuditLoggerService,
+      ) => new UpdateProjectService(projectRepository, prisma, auditLogger),
+      inject: [InMemoryProjectRepository, PrismaService, AuditLoggerService],
     },
     {
       provide: ProjectHealthQueryService,
@@ -219,6 +267,19 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     ProjectClosureReadinessService,
     ProjectRagService,
     ProjectRiskService,
+    ProjectMilestoneService,
+    ProjectChangeRequestService,
+    RadiatorSignalCollectorService,
+    RadiatorThresholdService,
+    RadiatorScoringService,
+    RadiatorNotificationService,
+    RadiatorOverrideService,
+    PortfolioRadiatorService,
+    ProjectPulseService,
+    ProjectExceptionsService,
+    SpcService,
+    OrgConfigService,
+    PulseReportService,
   ],
   exports: [
     ActivateProjectService,

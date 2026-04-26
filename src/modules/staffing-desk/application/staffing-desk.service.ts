@@ -97,7 +97,7 @@ export class StaffingDeskService {
       projectId: r.projectId,
       projectName: projectsById.get(r.projectId) ?? r.projectId,
       role: r.role,
-      allocationPercent: r.allocationPercent,
+      allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
       startDate: r.startDate.toISOString(),
       endDate: r.endDate.toISOString(),
       status: r.status,
@@ -165,9 +165,26 @@ export class StaffingDeskService {
     allocMax: number | undefined,
     personScope: Set<string> | null,
   ) {
-    const assignmentStatuses = statusList.length
-      ? statusList.filter((s) => ['DRAFT', 'REQUESTED', 'APPROVED', 'REJECTED', 'ACTIVE', 'ENDED', 'REVOKED', 'ARCHIVED'].includes(s))
-      : undefined;
+    // Legacy status vocabulary (DRAFT/REQUESTED/APPROVED/ACTIVE/ENDED/REVOKED) maps to the
+    // current AssignmentStatus enum. Both sets are accepted for back-compat with existing
+    // frontend links (/workload, /staffing-board) that still use the legacy names.
+    const LEGACY_TO_ENUM: Record<string, string> = {
+      DRAFT: 'CREATED',
+      REQUESTED: 'PROPOSED',
+      APPROVED: 'BOOKED',
+      ACTIVE: 'ASSIGNED',
+      ENDED: 'COMPLETED',
+      REVOKED: 'CANCELLED',
+      ARCHIVED: 'COMPLETED',
+    };
+    const VALID_ENUM = new Set([
+      'CREATED', 'PROPOSED', 'REJECTED', 'BOOKED',
+      'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED', 'CANCELLED',
+    ]);
+    const mapped = statusList
+      .map((s) => LEGACY_TO_ENUM[s] ?? s)
+      .filter((s) => VALID_ENUM.has(s));
+    const assignmentStatuses = mapped.length ? mapped : undefined;
 
     const where: Record<string, unknown> = {};
     if (assignmentStatuses?.length) where.status = { in: assignmentStatuses };
@@ -350,7 +367,7 @@ export class StaffingDeskService {
     const personAllocations = new Map<string, number>();
 
     for (const row of rows) {
-      if (row.kind === 'assignment' && (row.status === 'APPROVED' || row.status === 'ACTIVE')) {
+      if (row.kind === 'assignment' && (['BOOKED','ONBOARDING','ASSIGNED','ON_HOLD'].includes(row.status))) {
         activeAssignments++;
         if (row.personId) {
           personAllocations.set(row.personId, (personAllocations.get(row.personId) ?? 0) + row.allocationPercent);
@@ -385,7 +402,7 @@ export class StaffingDeskService {
     // Supply: people with active/approved assignments
     const activeAssignments = await this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         ...(personScope ? { personId: { in: [...personScope] } } : {}),
       },
       select: { personId: true, allocationPercent: true },

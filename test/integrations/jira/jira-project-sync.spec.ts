@@ -15,7 +15,7 @@ import { InMemoryExternalSyncStateRepository } from '@src/modules/project-regist
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 
 const jiraRecord = (overrides: Partial<JiraProjectRecord> = {}): JiraProjectRecord => ({
@@ -167,7 +167,7 @@ describe('Jira project sync', () => {
         projectId: 'existing-project',
         requestedAt: new Date('2024-12-20T00:00:00.000Z'),
         staffingRole: 'Engineer',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-01-01T00:00:00.000Z'),
       },
       AssignmentId.from('80000000-0000-0000-0000-000000000001'),
@@ -184,7 +184,7 @@ describe('Jira project sync', () => {
     const persistedAssignment = await assignmentRepository.findByAssignmentId(assignment.assignmentId);
 
     expect(persistedAssignment?.assignmentId.equals(assignment.assignmentId)).toBe(true);
-    expect(persistedAssignment?.status.equals(ApprovalState.approved())).toBe(true);
+    expect(persistedAssignment?.status.equals(AssignmentStatus.booked())).toBe(true);
   });
 });
 

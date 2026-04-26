@@ -80,21 +80,21 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @HttpCode(HttpStatus.OK)
   public async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ accessToken: string } | undefined> {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
 
+    // Missing cookie is "no session to refresh", not an auth rejection — return
+    // 204 so clients can probe without polluting the browser console with 401s.
     if (!token) {
-      throw new UnauthorizedException('Refresh token missing.');
+      res.status(HttpStatus.NO_CONTENT);
+      return undefined;
     }
 
     const pair = await this.tokenService.refresh(token);
-
     setRefreshCookie(res, pair.refreshToken);
-
     return { accessToken: pair.accessToken };
   }
 

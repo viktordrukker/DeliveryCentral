@@ -88,4 +88,15 @@ export class PulseService {
 
     return { entries, frequency: this.frequency };
   }
+
+  public async avgMoodForPeople(personIds: string[], from: Date, to: Date): Promise<number | null> {
+    if (personIds.length === 0) return null;
+    const entries = await this.prisma.pulseEntry.findMany({
+      where: { personId: { in: personIds }, weekStart: { gte: from, lte: to } },
+      select: { mood: true },
+    });
+    if (entries.length === 0) return null;
+    const sum = entries.reduce((s, e) => s + e.mood, 0);
+    return sum / entries.length;
+  }
 }

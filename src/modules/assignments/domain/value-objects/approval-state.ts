@@ -1,6 +1,6 @@
 import { ValueObject } from '@src/shared/domain/value-object';
 
-type ApprovalStateValue =
+export type ApprovalStateValue =
   | 'ACTIVE'
   | 'APPROVED'
   | 'ARCHIVED'

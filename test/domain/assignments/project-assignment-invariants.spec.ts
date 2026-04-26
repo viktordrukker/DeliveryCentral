@@ -1,7 +1,7 @@
 import { AssignmentAuditComparisonService } from '@src/modules/assignments/application/assignment-audit-comparison.service';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
@@ -18,7 +18,7 @@ describe('assignment domain invariants', () => {
         projectId: 'project-1',
         requestedAt: new Date('2025-01-01T00:00:00.000Z'),
         staffingRole: 'Engineer',
-        status: ApprovalState.requested(),
+        status: AssignmentStatus.created(),
         validFrom: new Date('2025-02-01T00:00:00.000Z'),
       },
       AssignmentId.from('assignment-1'),
@@ -44,18 +44,18 @@ describe('assignment domain invariants', () => {
         projectId: 'project-1',
         requestedAt: new Date('2025-01-01T00:00:00.000Z'),
         staffingRole: 'Engineer',
-        status: ApprovalState.requested(),
+        status: AssignmentStatus.proposed(),
         validFrom: new Date('2025-02-01T00:00:00.000Z'),
       },
       AssignmentId.from('assignment-2'),
     );
 
     assignment.approve(new Date('2025-01-02T00:00:00.000Z'));
-    expect(assignment.status.value).toBe('APPROVED');
+    expect(assignment.status.value).toBe('BOOKED');
 
     await expectDomainError(
       () => assignment.reject(),
-      'Assignment cannot transition from APPROVED to REJECTED.',
+      'Assignment cannot transition from BOOKED to REJECTED.',
     );
   });
 
@@ -67,7 +67,7 @@ describe('assignment domain invariants', () => {
         projectId: 'project-1',
         requestedAt: new Date('2025-01-01T00:00:00.000Z'),
         staffingRole: 'Engineer',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-02-01T00:00:00.000Z'),
       },
       AssignmentId.from('assignment-3'),

@@ -3,20 +3,29 @@ import { AssignmentHistory } from '@src/modules/assignments/domain/entities/assi
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
 import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import {
+  AssignmentStatus,
+  AssignmentStatusValue,
+} from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 
 interface PrismaProjectAssignmentRecord {
   allocationPercent: string | null;
   approvedAt: Date | null;
   archivedAt: Date | null;
+  cancellationReason: string | null;
   id: string;
   notes: string | null;
+  onHoldCaseId: string | null;
+  onHoldReason: string | null;
   personId: string;
   projectId: string;
+  rejectionReason: string | null;
   requestedAt: Date;
   requestedByPersonId: string | null;
+  staffingRequestId: string | null;
   staffingRole: string;
-  status: 'ACTIVE' | 'APPROVED' | 'ARCHIVED' | 'ENDED' | 'REJECTED' | 'REQUESTED' | 'REVOKED';
+  status: AssignmentStatusValue;
   validFrom: Date;
   validTo: Date | null;
   version: number;
@@ -43,19 +52,51 @@ interface PrismaAssignmentHistoryRecord {
   previousSnapshot: Record<string, unknown> | null;
 }
 
-function mapApprovalState(value: string): ApprovalState {
+const VALID_STATUS_VALUES = new Set<AssignmentStatusValue>([
+  'CREATED',
+  'PROPOSED',
+  'REJECTED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+  'ON_HOLD',
+  'COMPLETED',
+  'CANCELLED',
+]);
+
+function mapAssignmentStatus(value: string): AssignmentStatus {
+  if ((VALID_STATUS_VALUES as Set<string>).has(value)) {
+    return AssignmentStatus.from(value as AssignmentStatusValue);
+  }
+  // Defensive fallback: legacy values map to the canonical equivalents.
   switch (value) {
-    case 'ACTIVE':
-    case 'APPROVED':
-    case 'ARCHIVED':
-    case 'ENDED':
-    case 'REJECTED':
+    case 'DRAFT':
     case 'REQUESTED':
+      return AssignmentStatus.created();
+    case 'APPROVED':
+      return AssignmentStatus.booked();
+    case 'ACTIVE':
+      return AssignmentStatus.assigned();
+    case 'ENDED':
+      return AssignmentStatus.completed();
     case 'REVOKED':
-      return ApprovalState.from(value);
+    case 'ARCHIVED':
+      return AssignmentStatus.cancelled();
+    default:
+      return AssignmentStatus.created();
+  }
+}
+
+function mapApprovalDecision(value: string): ApprovalState {
+  switch (value) {
+    case 'APPROVED':
+      return ApprovalState.approved();
+    case 'REJECTED':
+      return ApprovalState.rejected();
     case 'CANCELLED':
-      return ApprovalState.revoked();
+      return ApprovalState.from('REVOKED');
     case 'PENDING':
+    case 'REQUESTED':
       return ApprovalState.requested();
     default:
       return ApprovalState.requested();
@@ -71,13 +112,18 @@ export class AssignmentsPrismaMapper {
           : undefined,
         approvedAt: record.approvedAt ?? undefined,
         archivedAt: record.archivedAt ?? undefined,
+        cancellationReason: record.cancellationReason ?? undefined,
         notes: record.notes ?? undefined,
+        onHoldCaseId: record.onHoldCaseId ?? undefined,
+        onHoldReason: record.onHoldReason ?? undefined,
         personId: record.personId,
         projectId: record.projectId,
+        rejectionReason: record.rejectionReason ?? undefined,
         requestedAt: record.requestedAt,
         requestedByPersonId: record.requestedByPersonId ?? undefined,
+        staffingRequestId: record.staffingRequestId ?? undefined,
         staffingRole: record.staffingRole,
-        status: mapApprovalState(record.status),
+        status: mapAssignmentStatus(record.status),
         validFrom: record.validFrom,
         validTo: record.validTo ?? undefined,
         version: record.version,
@@ -92,7 +138,7 @@ export class AssignmentsPrismaMapper {
         assignmentId: AssignmentId.from(record.assignmentId),
         decisionAt: record.decisionAt ?? undefined,
         decisionReason: record.decisionReason ?? undefined,
-        decisionState: mapApprovalState(record.decision),
+        decisionState: mapApprovalDecision(record.decision),
         decidedByPersonId: record.decidedByPersonId ?? undefined,
         sequenceNumber: record.sequenceNumber,
       },

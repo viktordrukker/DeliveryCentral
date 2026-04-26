@@ -34,6 +34,7 @@ const sharedTokens: TokenMap = {
   '--font-size-h2': 'clamp(16px, 1.2vw, 22px)',
   '--font-size-kpi': 'clamp(20px, 2vw, 40px)',
   '--spacing-card': 'clamp(8px, 0.8vw, 16px)',
+  '--spacing-card--compact': '10px',
   '--spacing-section': 'clamp(8px, 1vw, 24px)',
 };
 
@@ -61,6 +62,7 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-status-pending': '#3b82f6',
     '--color-status-warning': '#f59e0b',
     '--color-status-danger': '#ef4444',
+    '--color-status-critical': '#7B0A0A',
     '--color-status-info': '#06b6d4',
     '--color-status-neutral': '#94a3b8',
     '--color-util-critical': '#ef4444',
@@ -103,6 +105,7 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-status-pending': '#60a5fa',
     '--color-status-warning': '#fbbf24',
     '--color-status-danger': '#f87171',
+    '--color-status-critical': '#8B1A1A',
     '--color-status-info': '#22d3ee',
     '--color-status-neutral': '#94a3b8',
     '--color-util-critical': '#f87171',

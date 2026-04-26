@@ -84,7 +84,7 @@ export class StaffingSuggestionsService {
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId: { in: personIds },
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: to },
         OR: [{ validTo: null }, { validTo: { gte: from } }],
       },

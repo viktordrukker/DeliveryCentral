@@ -13,6 +13,7 @@ import {
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { SkillsService } from '../application/skills.service';
 import {
   CreateSkillDto,
@@ -45,10 +46,16 @@ export class AdminSkillsController {
   @Delete(':id')
   @RequireRoles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a skill and all person associations' })
+  @ApiOperation({
+    summary: 'Delete a skill and all person associations',
+    description:
+      'Accepts either the internal uuid (legacy) or the `skl_…` publicId (DMD-026). UUID acceptance is removed in DM-2.5-11.',
+  })
   @ApiNoContentResponse()
-  public async remove(@Param('id') id: string): Promise<void> {
-    return this.service.deleteSkill(id);
+  public async remove(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.Skill)) idOrPublicId: string,
+  ): Promise<void> {
+    return this.service.deleteSkill(idOrPublicId);
   }
 }
 

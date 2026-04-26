@@ -5,7 +5,7 @@ import { ExceptionQueueQueryService } from '@src/modules/exceptions/application/
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
@@ -130,7 +130,7 @@ describe('Exception queue', () => {
         projectId: closedProject.projectId.value,
         requestedAt: new Date('2025-02-08T00:00:00.000Z'),
         staffingRole: 'Consultant',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-02-10T00:00:00.000Z'),
       }),
     );
@@ -142,7 +142,7 @@ describe('Exception queue', () => {
         projectId: closedProject.projectId.value,
         requestedAt: new Date('2025-02-20T00:00:00.000Z'),
         staffingRole: 'Reviewer',
-        status: ApprovalState.requested(),
+        status: AssignmentStatus.created(),
         validFrom: new Date('2025-02-20T00:00:00.000Z'),
       }),
     );

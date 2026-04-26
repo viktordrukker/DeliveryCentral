@@ -9,6 +9,7 @@ import { ProjectAssignment } from '../domain/entities/project-assignment.entity'
 import { ProjectAssignmentRepositoryPort } from '../domain/repositories/project-assignment-repository.port';
 import { AllocationPercent } from '../domain/value-objects/allocation-percent';
 import { ApprovalState } from '../domain/value-objects/approval-state';
+import { AssignmentStatus } from '../domain/value-objects/assignment-status';
 import { ProjectAssignmentCreatedEvent } from '../domain/events/project-assignment-created.event';
 import { AssignmentReferenceRepositoryPort } from './ports/assignment-reference.repository.port';
 
@@ -119,7 +120,7 @@ export class CreateProjectAssignmentService {
       requestedAt: new Date(),
       requestedByPersonId: command.actorId,
       staffingRole: command.staffingRole,
-      status: command.draft ? ApprovalState.draft() : ApprovalState.requested(),
+      status: AssignmentStatus.proposed(),
       validFrom: startDate,
       validTo: endDate,
     });
@@ -135,7 +136,7 @@ export class CreateProjectAssignmentService {
     const historyEntry = AssignmentHistory.create({
       assignmentId: assignment.assignmentId,
       changeReason: 'Initial assignment request created.',
-      changeType: 'ASSIGNMENT_REQUESTED',
+      changeType: 'STATUS_PROPOSED',
       changedByPersonId: command.actorId,
       newSnapshot: {
         allocationPercent: command.allocationPercent,

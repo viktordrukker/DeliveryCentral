@@ -45,9 +45,13 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
     ownerPersonId?: string;
     subjectPersonId?: string;
   }): Promise<CaseRecord[]> {
+    // DM-4-2: CaseType.key is an enum at the DB level. Cast via `as any`
+    // to keep the call signature `caseTypeKey?: string` in the domain
+    // query while Prisma wants a CaseTypeKey enum value. Invalid values
+    // throw a P2009 — same failure mode as before with a tighter type.
     const records = await this.prisma.caseRecord.findMany({
       where: {
-        caseType: query.caseTypeKey ? { key: query.caseTypeKey } : undefined,
+        caseType: query.caseTypeKey ? { key: query.caseTypeKey as never } : undefined,
         ownerPersonId: query.ownerPersonId,
         subjectPersonId: query.subjectPersonId,
       },
@@ -97,8 +101,9 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         ownerPersonId: aggregate.ownerPersonId,
         participants: {
           createMany: {
+            // Prisma infers `caseRecordId` from the parent CaseRecord in this
+            // nested update; passing it explicitly raises `Unknown argument`.
             data: aggregate.participants.map((participant) => ({
-              caseRecordId: aggregate.id,
               id: participant.id,
               personId: participant.personId,
               role: participant.role,

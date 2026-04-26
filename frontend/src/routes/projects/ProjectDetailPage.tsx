@@ -19,26 +19,34 @@ import { type ComputedRag, fetchComputedRag } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 
-import { StatusHealthTab } from './tabs/StatusHealthTab';
+import { RadiatorTab } from './tabs/RadiatorTab';
+import { MilestonesTab } from './tabs/MilestonesTab';
+import { ChangeRequestsTab } from './tabs/ChangeRequestsTab';
 import { RisksIssuesTab } from './tabs/RisksIssuesTab';
 import { TeamVendorsTab } from './tabs/TeamVendorsTab';
 import { BudgetTab } from './tabs/BudgetTab';
 import { LifecycleTab } from './tabs/LifecycleTab';
-import { ReportTab } from './tabs/ReportTab';
 
 const TABS = [
-  { id: 'status', label: 'Status & Health' },
+  { id: 'radiator', label: 'Radiator' },
+  { id: 'milestones', label: 'Milestones' },
+  { id: 'change-requests', label: 'Change Requests' },
   { id: 'risks', label: 'Risks & Issues' },
   { id: 'team', label: 'Team & Vendors' },
   { id: 'budget', label: 'Budget' },
   { id: 'lifecycle', label: 'Lifecycle' },
-  { id: 'report', label: 'Report' },
 ];
+
+const LEGACY_TAB_REDIRECTS: Record<string, string> = {
+  status: 'radiator',
+  report: 'radiator',
+};
 
 export function ProjectDetailPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') ?? 'status';
+  const rawTab = searchParams.get('tab') ?? 'radiator';
+  const activeTab = LEGACY_TAB_REDIRECTS[rawTab] ?? rawTab;
   const { principal } = useAuth();
   const canManage = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const state = useProjectDetails(id);
@@ -90,8 +98,8 @@ export function ProjectDetailPage(): JSX.Element {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {canManage ? (
                 <>
-                  <Link className="button button--secondary button--sm" to={`/staffing-requests/new?projectId=${id}`}>Staffing request</Link>
-                  <Link className="button button--secondary button--sm" to={`/assignments/new?projectId=${id}`}>Quick assign</Link>
+                  <Link className="button--project-detail" to={`/staffing-requests/new?projectId=${id}`}>Staffing request</Link>
+                  <Link className="button--project-detail" to={`/assignments/new?projectId=${id}`}>Quick assign</Link>
                 </>
               ) : null}
             </div>
@@ -112,7 +120,7 @@ export function ProjectDetailPage(): JSX.Element {
         <>
           {/* ── KPI Strip ── */}
           <div className="kpi-strip" aria-label="Key metrics">
-            <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=status`}
+            <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
               style={{ borderLeft: '3px solid var(--color-accent)' }}>
               <span className="kpi-strip__value">{humanizeEnum(project.status, PROJECT_STATUS_LABELS)}</span>
               <span className="kpi-strip__label">Status</span>
@@ -134,7 +142,7 @@ export function ProjectDetailPage(): JSX.Element {
             ) : null}
 
             {computedRag ? (
-              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=status`}
+              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
                 style={{ borderLeft: `3px solid ${computedRag.overallRag === 'GREEN' ? 'var(--color-status-active)' : computedRag.overallRag === 'AMBER' ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
                 <StatusBadge status={computedRag.overallRag.toLowerCase()} label={computedRag.overallRag} variant="chip" />
                 <span className="kpi-strip__label">Overall RAG</span>
@@ -156,12 +164,24 @@ export function ProjectDetailPage(): JSX.Element {
           <TabBar activeTab={activeTab} onTabChange={setTab} tabs={TABS} />
 
           {/* ── Tab Content ── */}
-          {activeTab === 'status' ? <StatusHealthTab project={project} projectId={id!} reload={state.reload} /> : null}
+          {activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
+          {activeTab === 'milestones' ? <MilestonesTab projectId={id!} shape={state.data?.shape} /> : null}
+          {activeTab === 'change-requests' ? <ChangeRequestsTab projectId={id!} /> : null}
           {activeTab === 'risks' ? <RisksIssuesTab projectId={id!} /> : null}
           {activeTab === 'team' ? <TeamVendorsTab project={project} projectId={id!} reload={state.reload} /> : null}
           {activeTab === 'budget' ? <BudgetTab projectId={id!} /> : null}
-          {activeTab === 'lifecycle' ? <LifecycleTab projectId={id!} /> : null}
-          {activeTab === 'report' ? <ReportTab project={project} projectId={id!} /> : null}
+          {activeTab === 'lifecycle' ? (
+            <LifecycleTab
+              canManageProject={canManage}
+              onReload={state.reload}
+              project={project}
+              projectId={id!}
+            />
+          ) : null}
+
+          <div className="print-footer print-only">
+            {project.projectCode} {'\u00B7'} Printed {new Date().toLocaleDateString()}
+          </div>
         </>
       ) : null}
     </PageContainer>

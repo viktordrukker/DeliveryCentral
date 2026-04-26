@@ -36,6 +36,26 @@ export class HealthController {
     return this.healthService.getReadiness();
   }
 
+  @Get('health/deep')
+  @Public()
+  @ApiOperation({
+    summary: 'DM-R-8 deep health — exercises every aggregate root via the repository layer',
+  })
+  @ApiOkResponse({ description: 'Per-aggregate probe results.' })
+  public async getDeepHealth(): Promise<{
+    aggregates: Array<{
+      name: string;
+      status: 'ready' | 'degraded';
+      latencyMs: number;
+      count: number | null;
+      error?: string;
+    }>;
+    status: 'ready' | 'degraded';
+    timestamp: string;
+  }> {
+    return this.healthService.getDeepHealth();
+  }
+
   @Get('diagnostics')
   @RequireRoles('admin')
   @ApiOperation({ summary: 'Operational diagnostics surface' })

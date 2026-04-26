@@ -44,7 +44,7 @@ export class EndProjectAssignmentService {
     const history = AssignmentHistory.create({
       assignmentId: assignment.assignmentId,
       changeReason: command.reason,
-      changeType: 'ASSIGNMENT_ENDED',
+      changeType: 'STATUS_COMPLETED',
       changedByPersonId: command.actorId,
       newSnapshot: {
         status: assignment.status.value,

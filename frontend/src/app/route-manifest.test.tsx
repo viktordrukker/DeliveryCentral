@@ -86,7 +86,11 @@ describe('route manifest', () => {
       }
 
       expect(routerLeafRoutes.has(route.path), `missing router route for ${route.path}`).toBe(true);
-      expect(routerLeafRoutes.get(route.path) ?? ALL_ROLES).toEqual(route.allowedRoles);
+      const actualRoles = routerLeafRoutes.get(route.path) ?? ALL_ROLES;
+      expect(
+        actualRoles,
+        `router allowedRoles for ${route.path} diverge from manifest`,
+      ).toEqual(route.allowedRoles);
     }
   });
 
@@ -224,19 +228,24 @@ describe('hasAnyRole helper', () => {
 
 describe('persona smoke: full navigation coverage per role', () => {
   const roleExpectations: Record<AppRole, { minNav: number; mustSee: string[]; mustNotSee: string[] }> = {
+    // NOTE: mustSee / mustNotSee assert what renders in the sidebar (navVisible: true).
+    // Routes like 'Staffing Requests', 'Workload Matrix', 'Workload Planning',
+    // 'Staffing Board' are accessible by URL but deliberately hidden from the sidebar
+    // (navVisible: false in route-manifest.ts) to keep the sidebar compact — so they
+    // are NOT expected in the persona "mustSee" lists.
     employee: {
       minNav: 8,
-      mustSee: ['Workload Overview', 'Employee Dashboard', 'People', 'Projects', 'Assignments', 'My Time', 'Cases', 'Staffing Requests'],
+      mustSee: ['Workload Overview', 'Employee Dashboard', 'People', 'Projects', 'Assignments', 'My Time', 'Cases'],
       mustNotSee: ['Admin', 'Platform Settings', 'Staffing Board', 'Workload Matrix', 'Workload Planning', 'Resource Pools'],
     },
     project_manager: {
       minNav: 15,
-      mustSee: ['PM Dashboard', 'Projects', 'Assignments', 'Time Management', 'Time Analytics', 'Staffing Requests', 'Exceptions', 'Report Builder'],
+      mustSee: ['PM Dashboard', 'Projects', 'Assignments', 'Time Management', 'Time Analytics', 'Exceptions', 'Report Builder'],
       mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix', 'Resource Pools'],
     },
     resource_manager: {
       minNav: 15,
-      mustSee: ['RM Dashboard', 'Resource Pools', 'Workload Matrix', 'Workload Planning', 'Staffing Board', 'Assignments', 'Exceptions'],
+      mustSee: ['RM Dashboard', 'Resource Pools', 'Assignments', 'Exceptions'],
       mustNotSee: ['Admin', 'Platform Settings'],
     },
     hr_manager: {
@@ -246,12 +255,12 @@ describe('persona smoke: full navigation coverage per role', () => {
     },
     delivery_manager: {
       minNav: 15,
-      mustSee: ['Delivery Dashboard', 'Planned vs Actual Time', 'Staffing Board', 'Export Centre', 'Capitalisation', 'Assignments', 'Exceptions'],
+      mustSee: ['Delivery Dashboard', 'Planned vs Actual Time', 'Export Centre', 'Capitalisation', 'Assignments', 'Exceptions'],
       mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix'],
     },
     director: {
       minNav: 20,
-      mustSee: ['Employee Dashboard', 'HR Dashboard', 'PM Dashboard', 'RM Dashboard', 'Delivery Dashboard', 'Workload Matrix', 'Staffing Board', 'Admin Notifications', 'Admin Integrations', 'Admin Monitoring', 'Integrations'],
+      mustSee: ['Employee Dashboard', 'HR Dashboard', 'PM Dashboard', 'RM Dashboard', 'Delivery Dashboard', 'Admin Notifications', 'Admin Integrations', 'Admin Monitoring', 'Integrations'],
       mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies'],
     },
     admin: {
@@ -312,9 +321,10 @@ describe('sidebar navigation parity', () => {
 
     const links = screen.getAllByRole('link');
     const titles = links.map((l) => l.getAttribute('title'));
-    expect(titles).toContain('Workload Matrix');
+    // 'Workload Matrix' and 'Staffing Board' are navVisible: false — reachable
+    // by URL but intentionally not in the sidebar. Resource Pools is the
+    // sidebar-visible resource-manager hub.
     expect(titles).toContain('Resource Pools');
-    expect(titles).toContain('Staffing Board');
     expect(titles).not.toContain('Platform Settings');
   });
 

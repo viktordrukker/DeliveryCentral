@@ -313,7 +313,7 @@ export class PrismaPersonDirectoryQueryRepository
           in: personIds,
         },
         status: {
-          in: ['APPROVED', 'ACTIVE'],
+          in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'],
         },
         validFrom: {
           lte: asOf,

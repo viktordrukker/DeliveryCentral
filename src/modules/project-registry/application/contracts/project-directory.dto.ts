@@ -107,4 +107,10 @@ export class ProjectDetailsDto extends ProjectDirectoryItemDto {
 
   @ApiProperty({ type: [ProjectExternalLinkDto] })
   public externalLinks!: ProjectExternalLinkDto[];
+
+  @ApiProperty({ required: false, nullable: true, enum: ['SMALL', 'STANDARD', 'ENTERPRISE', 'PROGRAM'] })
+  public shape?: 'SMALL' | 'STANDARD' | 'ENTERPRISE' | 'PROGRAM' | null;
+
+  @ApiProperty({ required: false })
+  public hasLiveSpcRates?: boolean;
 }

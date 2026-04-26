@@ -93,7 +93,7 @@ export class InMemoryProjectAssignmentRepository implements ProjectAssignmentRep
       (item) =>
         item.personId === personId &&
         item.projectId === projectId &&
-        ['REQUESTED', 'APPROVED', 'ACTIVE'].includes(item.status.value) &&
+        ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(item.status.value) &&
         item.overlaps({ end, start }),
     ).map((item) => this.cloneAssignment(item));
   }
@@ -122,11 +122,16 @@ export class InMemoryProjectAssignmentRepository implements ProjectAssignmentRep
         allocationPercent: assignment.allocationPercent,
         approvedAt: assignment.approvedAt,
         archivedAt: assignment.archivedAt,
+        cancellationReason: assignment.cancellationReason,
         notes: assignment.notes,
+        onHoldCaseId: assignment.onHoldCaseId,
+        onHoldReason: assignment.onHoldReason,
         personId: assignment.personId,
         projectId: assignment.projectId,
+        rejectionReason: assignment.rejectionReason,
         requestedAt: assignment.requestedAt,
         requestedByPersonId: assignment.requestedByPersonId,
+        staffingRequestId: assignment.staffingRequestId,
         staffingRole: assignment.staffingRole,
         status: assignment.status,
         validFrom: assignment.validFrom,

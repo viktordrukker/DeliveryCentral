@@ -5,9 +5,7 @@ interface Props {
 
 const VIEWS = [
   { key: 'table', label: 'Table' },
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'board', label: 'Board' },
-  { key: 'bench', label: 'Bench' },
+  { key: 'planner', label: 'Planner' },
 ] as const;
 
 export function StaffingDeskViewSwitcher({ value, onChange }: Props): JSX.Element {

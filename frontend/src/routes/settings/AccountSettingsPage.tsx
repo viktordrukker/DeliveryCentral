@@ -7,9 +7,18 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useAuth } from '@/app/auth-context';
 import { changePassword } from '@/lib/api/admin';
+import {
+  fetchMyNotificationPrefs,
+  updateMyNotificationPrefs,
+  type NotificationPreference,
+} from '@/lib/api/notification-prefs';
 import { readStoredColorModePreference } from '@/styles/design-tokens';
 
-const NOTIF_PREFS_KEY = 'dc:notif_prefs';
+const LEGACY_NOTIF_PREFS_KEY = 'dc:notif_prefs';
+
+const CHANNEL_EMAIL = 'email';
+const CHANNEL_IN_APP = 'in_app';
+const CHANNEL_TEAMS = 'teams';
 
 interface NotifPrefs {
   emailEnabled: boolean;
@@ -17,12 +26,32 @@ interface NotifPrefs {
   teamsEnabled: boolean;
 }
 
-function loadPrefs(): NotifPrefs {
+const DEFAULT_PREFS: NotifPrefs = { emailEnabled: true, inAppEnabled: true, teamsEnabled: false };
+
+function readLegacyLocalStorage(): NotifPrefs | null {
   try {
-    const stored = localStorage.getItem(NOTIF_PREFS_KEY);
-    if (stored) return JSON.parse(stored) as NotifPrefs;
-  } catch { /* ignore */ }
-  return { emailEnabled: true, inAppEnabled: true, teamsEnabled: false };
+    const raw = localStorage.getItem(LEGACY_NOTIF_PREFS_KEY);
+    return raw ? (JSON.parse(raw) as NotifPrefs) : null;
+  } catch {
+    return null;
+  }
+}
+
+function fromApi(records: NotificationPreference[]): NotifPrefs {
+  const map = new Map(records.map((r) => [r.channelKey, r.enabled]));
+  return {
+    emailEnabled: map.get(CHANNEL_EMAIL) ?? DEFAULT_PREFS.emailEnabled,
+    inAppEnabled: map.get(CHANNEL_IN_APP) ?? DEFAULT_PREFS.inAppEnabled,
+    teamsEnabled: map.get(CHANNEL_TEAMS) ?? DEFAULT_PREFS.teamsEnabled,
+  };
+}
+
+function toApi(prefs: NotifPrefs): NotificationPreference[] {
+  return [
+    { channelKey: CHANNEL_EMAIL, enabled: prefs.emailEnabled },
+    { channelKey: CHANNEL_IN_APP, enabled: prefs.inAppEnabled },
+    { channelKey: CHANNEL_TEAMS, enabled: prefs.teamsEnabled },
+  ];
 }
 
 export function AccountSettingsPage(): JSX.Element {
@@ -34,18 +63,45 @@ export function AccountSettingsPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(loadPrefs);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [isDark, setIsDark] = useState(() => readStoredColorModePreference() === 'dark');
 
   useEffect(() => {
-    localStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(notifPrefs));
-  }, [notifPrefs]);
+    let active = true;
+    fetchMyNotificationPrefs()
+      .then(async (records) => {
+        if (!active) return;
+        const legacy = readLegacyLocalStorage();
+        if (records.length === 0 && legacy) {
+          // First-time migration: push legacy localStorage prefs to API, then clear.
+          const migrated = await updateMyNotificationPrefs(toApi(legacy));
+          if (!active) return;
+          setNotifPrefs(fromApi(migrated));
+          localStorage.removeItem(LEGACY_NOTIF_PREFS_KEY);
+        } else {
+          setNotifPrefs(fromApi(records));
+        }
+      })
+      .catch(() => {
+        if (active) setNotifPrefs(readLegacyLocalStorage() ?? DEFAULT_PREFS);
+      })
+      .finally(() => {
+        if (active) setPrefsLoaded(true);
+      });
+    return () => { active = false; };
+  }, []);
 
   function handlePrefsChange(key: keyof NotifPrefs, value: boolean): void {
-    setNotifPrefs((prev) => ({ ...prev, [key]: value }));
-    setPrefsSaved(true);
-    setTimeout(() => setPrefsSaved(false), 2000);
+    const next = { ...notifPrefs, [key]: value };
+    setNotifPrefs(next);
+    void updateMyNotificationPrefs(toApi(next))
+      .then(() => {
+        setPrefsSaved(true);
+        setTimeout(() => setPrefsSaved(false), 2000);
+      })
+      .catch(() => undefined);
   }
 
   function validate(): string | null {

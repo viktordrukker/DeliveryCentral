@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { ExportButton } from '@/components/common/ExportButton';
 import {
   ResourcePoolFormValues,
   initialResourcePoolFormValues,
@@ -63,19 +64,31 @@ export function ResourcePoolsPage(): JSX.Element {
     <PageContainer testId="resource-pools-page">
       <PageHeader
         actions={
-          canManage ? (
-            <button
-              className="button"
-              onClick={() => {
-                setShowCreate((prev) => !prev);
-                setFormErrors({});
-                setFormValues(initialResourcePoolFormValues);
-              }}
-              type="button"
-            >
-              {showCreate ? 'Cancel' : 'Create pool'}
-            </button>
-          ) : undefined
+          <>
+            <ExportButton
+              data={filteredPools}
+              columns={[
+                { key: 'code', label: 'Code' },
+                { key: 'name', label: 'Name' },
+                { key: 'description', label: 'Description' },
+                { key: 'memberCount', label: 'Members' },
+              ]}
+              filename="resource_pools"
+            />
+            {canManage ? (
+              <button
+                className="button"
+                onClick={() => {
+                  setShowCreate((prev) => !prev);
+                  setFormErrors({});
+                  setFormValues(initialResourcePoolFormValues);
+                }}
+                type="button"
+              >
+                {showCreate ? 'Cancel' : 'Create pool'}
+              </button>
+            ) : null}
+          </>
         }
         eyebrow="Resource Management"
         subtitle="Named pools of people available for staffing allocation across projects."

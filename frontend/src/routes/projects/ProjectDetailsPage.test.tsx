@@ -23,6 +23,7 @@ import { fetchRolePlan, fetchRolePlanComparison, fetchStaffingSummary, upsertRol
 import { fetchRiskSummary, fetchRisks, fetchRiskMatrix } from '@/lib/api/project-risks';
 import { fetchProjectVendors } from '@/lib/api/vendors';
 import { fetchProjectDashboard } from '@/lib/api/project-dashboard';
+import { fetchRadiator, fetchRadiatorHistory, fetchRadiatorSnapshotByWeek, applyRadiatorOverride } from '@/lib/api/project-radiator';
 import { ProjectDetailPage } from './ProjectDetailPage';
 
 vi.mock('@/app/auth-context', () => ({
@@ -90,6 +91,13 @@ vi.mock('@/lib/api/project-budget', () => ({
 
 vi.mock('@/lib/api/business-audit', () => ({
   fetchBusinessAudit: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 }),
+}));
+
+vi.mock('@/lib/api/project-radiator', () => ({
+  fetchRadiator: vi.fn().mockRejectedValue(new Error('radiator not implemented in test')),
+  fetchRadiatorHistory: vi.fn().mockResolvedValue([]),
+  fetchRadiatorSnapshotByWeek: vi.fn().mockResolvedValue(null),
+  applyRadiatorOverride: vi.fn(),
 }));
 
 vi.mock('@/lib/api/project-rag', () => ({
@@ -169,6 +177,10 @@ const mockedUpsertRolePlan = vi.mocked(upsertRolePlan);
 const mockedDeleteRolePlanEntry = vi.mocked(deleteRolePlanEntry);
 const mockedGenerateRequestsFromPlan = vi.mocked(generateRequestsFromPlan);
 const mockedFetchProjectDashboard = vi.mocked(fetchProjectDashboard);
+const mockedFetchRadiator = vi.mocked(fetchRadiator);
+const mockedFetchRadiatorHistory = vi.mocked(fetchRadiatorHistory);
+const mockedFetchRadiatorSnapshotByWeek = vi.mocked(fetchRadiatorSnapshotByWeek);
+const mockedApplyRadiatorOverride = vi.mocked(applyRadiatorOverride);
 
 describe('ProjectDetailPage', () => {
   beforeEach(() => {
@@ -199,6 +211,10 @@ describe('ProjectDetailPage', () => {
     });
 
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
+    mockedFetchRadiator.mockRejectedValue(new Error('radiator not implemented in test'));
+    mockedFetchRadiatorHistory.mockResolvedValue([]);
+    mockedFetchRadiatorSnapshotByWeek.mockResolvedValue(null);
+    mockedApplyRadiatorOverride.mockResolvedValue({} as never);
     mockedFetchProjectById.mockReset();
     mockedActivateProject.mockReset();
     mockedCloseProject.mockReset();
@@ -276,17 +292,20 @@ describe('ProjectDetailPage', () => {
       status: 'ACTIVE',
     });
 
+    const user = userEvent.setup();
     renderWithRouter('/projects/prj-1');
 
+    // Hero + KPI strip visible above the fold
     expect(await screen.findByRole('heading', { name: 'Atlas ERP Rollout' })).toBeInTheDocument();
-    expect(screen.getAllByText('PRJ-102').length).toBeGreaterThan(0);
-    expect(screen.getByText('Jira-linked ERP rollout program.')).toBeInTheDocument();
-    expect(screen.getByText(/Open in JIRA/)).toBeInTheDocument();
-    expect(screen.getByText('Apr 1, 2026')).toBeInTheDocument();
-    expect(screen.getByText('Sep 30, 2026')).toBeInTheDocument();
-    // Assign Team is on Team tab, not Overview
-    expect(screen.queryByText('Assign Team To Project')).not.toBeInTheDocument();
+    expect(screen.getByTestId('radiator-tab')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Team & Vendors' })).toBeInTheDocument();
+
+    // Expand collapsed Project Summary to check detail content
+    await expandSection('Project Summary');
+    expect(await screen.findByText('Jira-linked ERP rollout program.')).toBeInTheDocument();
+
+    // Assign Team is on Team tab, not Radiator
+    expect(screen.queryByText('Assign Team To Project')).not.toBeInTheDocument();
   });
 
   it('shows missing project state', async () => {
@@ -353,7 +372,9 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Northstar Modernization' });
-    await user.click(screen.getByRole('button', { name: 'Activate project' }));
+    // Expand Lifecycle Controls (collapsed by default)
+    await expandSection('Lifecycle Controls');
+    await user.click(await screen.findByRole('button', { name: 'Activate project' }));
 
     await waitFor(() => {
       expect(mockedActivateProject).toHaveBeenCalledWith('prj-1');
@@ -388,7 +409,8 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    await user.click(screen.getByRole('button', { name: 'Close project' }));
+    await expandSection('Lifecycle Controls');
+    await user.click(await screen.findByRole('button', { name: 'Close project' }));
 
     // ConfirmDialog now shows
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
@@ -439,7 +461,8 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    await user.click(screen.getByRole('button', { name: 'Close project' }));
+    await expandSection('Lifecycle Controls');
+    await user.click(await screen.findByRole('button', { name: 'Close project' }));
 
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm close' }));
@@ -488,7 +511,8 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    await user.click(screen.getByRole('button', { name: 'Close project' }));
+    await expandSection('Lifecycle Controls');
+    await user.click(await screen.findByRole('button', { name: 'Close project' }));
 
     expect(await screen.findByText('Close Project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm close' }));
@@ -510,6 +534,7 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
+    await expandSection('Lifecycle Controls');
     expect(screen.queryByText('Project Closure Override')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Close project with override' }),
@@ -554,7 +579,9 @@ describe('ProjectDetailPage', () => {
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
 
+    // Expand collapsed Assign Team section
     await screen.findByText('Assign Team To Project');
+    await expandSection('Assign Team To Project');
     await user.selectOptions(await screen.findByLabelText('Workflow Actor'), 'resource-manager-1');
     await user.selectOptions(screen.getByLabelText('Team'), 'team-1');
     await user.type(screen.getByLabelText('Staffing Role'), 'Delivery Lead');
@@ -586,7 +613,8 @@ describe('ProjectDetailPage', () => {
     await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
 
     await screen.findByText('Assign Team To Project');
-    await user.click(screen.getByRole('button', { name: 'Assign team' }));
+    await expandSection('Assign Team To Project');
+    await user.click(await screen.findByRole('button', { name: 'Assign team' }));
 
     expect(screen.getByText('Workflow actor is required.')).toBeInTheDocument();
     expect(screen.getByText('Team selection is required.')).toBeInTheDocument();
@@ -623,13 +651,13 @@ describe('ProjectDetailPage', () => {
     expect((await screen.findAllByText('Alice Smith')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Lead Engineer').length).toBeGreaterThan(0);
 
-    // Click back to Overview tab
-    await user.click(screen.getByRole('tab', { name: 'Status & Health' }));
-    expect(await screen.findByText('Jira-linked ERP rollout program.')).toBeInTheDocument();
+    // Click back to Radiator tab
+    await user.click(screen.getByRole('tab', { name: 'Radiator' }));
+    expect(await screen.findByTestId('radiator-tab')).toBeInTheDocument();
 
-    // Click Budget tab
+    // Click Budget tab — hero shows CAPEX/OPEX overview
     await user.click(screen.getByRole('tab', { name: 'Budget' }));
-    expect(await screen.findByText('Budget Summary')).toBeInTheDocument();
+    expect(await screen.findByText('CAPEX / OPEX Overview')).toBeInTheDocument();
 
     // Click Lifecycle tab
     await user.click(screen.getByRole('tab', { name: 'Lifecycle' }));
@@ -675,7 +703,7 @@ describe('ProjectDetailPage', () => {
     renderWithRouter('/projects/prj-1');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
-    expect(await screen.findByTestId('quadrant-radiator')).toBeInTheDocument();
+    expect(await screen.findByTestId('radiator-tab')).toBeInTheDocument();
   });
 });
 
@@ -687,6 +715,15 @@ function renderWithRouter(initialEntry: string): void {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+async function expandSection(sectionTitle: string): Promise<void> {
+  const heading = screen.getByText(sectionTitle);
+  const expandBtn = heading.closest('.section-card')?.querySelector('button[aria-label="Expand section"]') as HTMLElement | null;
+  if (expandBtn) {
+    const user = userEvent.setup();
+    await user.click(expandBtn);
+  }
 }
 
 function buildActiveProject() {

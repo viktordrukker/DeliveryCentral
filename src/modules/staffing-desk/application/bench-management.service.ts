@@ -115,7 +115,7 @@ export class BenchManagementService {
     // Current allocations
     const activeAssignments = await this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         ...(personScope ? { personId: { in: [...personScope] } } : {}),
       },
       select: { personId: true, projectId: true, allocationPercent: true, validFrom: true, validTo: true },
@@ -132,7 +132,7 @@ export class BenchManagementService {
     const endedAssignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId: { in: benchPersonIds },
-        status: { in: ['ENDED', 'ARCHIVED', 'APPROVED', 'ACTIVE'] },
+        status: { in: ['COMPLETED', 'CANCELLED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validTo: { not: null, lt: now },
       },
       select: { personId: true, validTo: true, projectId: true },
@@ -256,7 +256,7 @@ export class BenchManagementService {
     rollOffDate.setUTCDate(rollOffDate.getUTCDate() + weeksAhead * 7);
     const rollingOff = await this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validTo: { gte: now, lte: rollOffDate },
         ...(personScope ? { personId: { in: [...personScope] } } : {}),
       },
@@ -269,7 +269,7 @@ export class BenchManagementService {
     const followOns = await this.prisma.projectAssignment.findMany({
       where: {
         personId: { in: rollOffPersonIds },
-        status: { in: ['APPROVED', 'ACTIVE', 'REQUESTED'] },
+        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { gte: now },
       },
       select: { personId: true, validFrom: true },

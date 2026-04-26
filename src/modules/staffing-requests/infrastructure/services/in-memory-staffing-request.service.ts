@@ -21,7 +21,14 @@ export interface StaffingRequest {
   fulfilments: StaffingRequestFulfilment[];
   headcountFulfilled: number;
   headcountRequired: number;
+  /**
+   * External identifier (DMD-026). During the DM-2.5 transition window this
+   * field holds the publicId (`stf_…`) if the row has one, or falls back to
+   * the internal uuid for rows created before the DM-2 expand migration
+   * populated the publicId column. New clients should prefer `publicId` below.
+   */
   id: string;
+  publicId: string;
   priority: StaffingRequestPriority;
   projectId: string;
   projectName?: string;
@@ -54,8 +61,12 @@ export interface ListStaffingRequestsQuery {
   status?: StaffingRequestStatus;
 }
 
+// Prisma maps `@db.Decimal(5, 2)` to the runtime Decimal class (imported
+// from @prisma/client/runtime/library); expose it as `any` here to
+// avoid cross-cutting type wiring at this transitional point. Callers
+// convert via `.toNumber()`.
 type PrismaRecord = {
-  allocationPercent: number;
+  allocationPercent: { toNumber(): number };
   cancelledAt: Date | null;
   createdAt: Date;
   endDate: Date;
@@ -63,6 +74,7 @@ type PrismaRecord = {
   headcountFulfilled: number;
   headcountRequired: number;
   id: string;
+  publicId: string | null;
   priority: string;
   projectId: string;
   requestedByPersonId: string;
@@ -96,7 +108,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(command.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
   public async list(query: ListStaffingRequestsQuery = {}): Promise<StaffingRequest[]> {
@@ -114,20 +126,32 @@ export class InMemoryStaffingRequestService {
     const projectIds = [...new Set(records.map((r) => r.projectId))];
     const projectNameMap = await this.resolveProjectNames(projectIds);
 
-    return records.map((r) => this.toResponse(r as PrismaRecord, projectNameMap[r.projectId]));
+    return records.map((r) => this.toResponse(r as unknown as PrismaRecord, projectNameMap[r.projectId]));
   }
 
-  public async getById(id: string): Promise<StaffingRequest | undefined> {
+  // DM-2.5-8-staffing Sub-B: resolve the input id (uuid or `stf_…`) to
+  // the internal uuid before every Prisma write. Returns null if no
+  // match so callers can surface NotFound.
+  private async resolveInternalId(idOrPublicId: string): Promise<string | null> {
+    const row = await this.findRecordByIdOrPublicId(idOrPublicId);
+    return row ? row.id : null;
+  }
+
+  public async getById(idOrPublicId: string): Promise<StaffingRequest | undefined> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) return undefined;
     const record = await this.prisma.staffingRequest.findUnique({
       where: { id },
       include: { fulfilments: true },
     });
     if (!record) return undefined;
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
-  public async submit(id: string): Promise<StaffingRequest> {
+  public async submit(idOrPublicId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
     if (!existing) throw new Error('Staffing request not found.');
     if (existing.status !== 'DRAFT') throw new Error(`Cannot submit from status ${existing.status}.`);
@@ -137,10 +161,12 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
-  public async review(id: string): Promise<StaffingRequest> {
+  public async review(idOrPublicId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
     if (!existing) throw new Error('Staffing request not found.');
     if (existing.status !== 'OPEN') throw new Error(`Cannot review from status ${existing.status}.`);
@@ -150,10 +176,12 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
-  public async release(id: string): Promise<StaffingRequest> {
+  public async release(idOrPublicId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
     if (!existing) throw new Error('Staffing request not found.');
     if (existing.status !== 'IN_REVIEW') throw new Error(`Cannot release from status ${existing.status}.`);
@@ -163,10 +191,12 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
-  public async fulfil(id: string, proposedByPersonId: string, assignedPersonId: string): Promise<StaffingRequest> {
+  public async fulfil(idOrPublicId: string, proposedByPersonId: string, assignedPersonId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({
       where: { id },
       select: { status: true, headcountRequired: true, headcountFulfilled: true },
@@ -194,10 +224,12 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
-  public async cancel(id: string): Promise<StaffingRequest> {
+  public async cancel(idOrPublicId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
     if (!existing) throw new Error('Staffing request not found.');
     if (existing.status === 'FULFILLED' || existing.status === 'CANCELLED') {
@@ -209,13 +241,15 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
   public async update(
-    id: string,
+    idOrPublicId: string,
     updates: Partial<Pick<StaffingRequest, 'allocationPercent' | 'endDate' | 'headcountRequired' | 'priority' | 'role' | 'skills' | 'startDate' | 'summary'>>,
   ): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new Error('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
     if (!existing) throw new Error('Staffing request not found.');
     if (existing.status !== 'DRAFT') throw new Error('Can only update DRAFT requests.');
@@ -236,12 +270,16 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as PrismaRecord, projectName);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
   private toResponse(record: PrismaRecord, projectName: string | undefined): StaffingRequest {
+    // DMD-026: every response surface exposes the publicId as the `id` field.
+    // Rows created before the DM-2 expand migration fell back to the internal uuid;
+    // the `?? record.id` keeps those rows addressable while the rollout lands.
+    const effectivePublicId = record.publicId ?? record.id;
     return {
-      allocationPercent: record.allocationPercent,
+      allocationPercent: record.allocationPercent.toNumber(),
       cancelledAt: record.cancelledAt ? record.cancelledAt.toISOString() : undefined,
       createdAt: record.createdAt.toISOString(),
       endDate: record.endDate.toISOString().slice(0, 10),
@@ -253,7 +291,8 @@ export class InMemoryStaffingRequestService {
       })),
       headcountFulfilled: record.headcountFulfilled,
       headcountRequired: record.headcountRequired,
-      id: record.id,
+      id: effectivePublicId,
+      publicId: effectivePublicId,
       priority: record.priority as StaffingRequestPriority,
       projectId: record.projectId,
       projectName,
@@ -265,6 +304,19 @@ export class InMemoryStaffingRequestService {
       summary: record.summary ?? undefined,
       updatedAt: record.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * Transitional helper (DM-2.5-8 template §3). Accepts either the internal uuid
+   * or the `stf_…` publicId and returns the matching row, or `null` if no match.
+   * Removed in DM-2.5-11 when uuid acceptance is dropped and controllers flip to
+   * strict `ParsePublicId(AggregateType.StaffingRequest)`.
+   */
+  private findRecordByIdOrPublicId(idOrPublicId: string) {
+    if (/^stf_[A-Za-z0-9]{10,}$/.test(idOrPublicId)) {
+      return this.prisma.staffingRequest.findUnique({ where: { publicId: idOrPublicId } });
+    }
+    return this.prisma.staffingRequest.findUnique({ where: { id: idOrPublicId } });
   }
 
   private async resolveProjectName(projectId: string): Promise<string | undefined> {

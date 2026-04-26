@@ -142,29 +142,11 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
   }
 
   return (
-    <div data-testid="team-vendors-tab">
+    <div data-testid="team-vendors-tab" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {actionError ? <ErrorState description={actionError} /> : null}
       {actionSuccess ? <div className="success-banner">{actionSuccess}</div> : null}
 
-      {canManageProject ? (
-        <SectionCard title="Role Plan" collapsible>
-          <RolePlanBuilder
-            projectId={projectId}
-            entries={rolePlanEntries}
-            onUpdate={() => {
-              void fetchRolePlan(projectId).then(setRolePlanEntries);
-              void fetchRolePlanComparison(projectId).then(setRolePlanComparison);
-            }}
-          />
-        </SectionCard>
-      ) : null}
-
-      {rolePlanComparison && rolePlanComparison.rows.length > 0 ? (
-        <SectionCard title={`Plan vs Actual (Fill Rate: ${rolePlanComparison.overallFillRate}%)`} collapsible>
-          <RolePlanComparison data={rolePlanComparison} />
-        </SectionCard>
-      ) : null}
-
+      {/* 1. Team Assignments (read-first, always expanded) */}
       <SectionCard title="Team Assignments">
         {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
@@ -193,42 +175,73 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
         ) : null}
       </SectionCard>
 
-      {/* Staffing Timeline */}
-      <SectionCard title="Staffing Timeline" collapsible>
-        {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." variant="skeleton" skeletonType="detail" /> : (
-          teamAssignments.length === 0 ? (
-            <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
-          ) : (
-            <StaffingSwimLaneGantt assignments={teamAssignments} />
-          )
-        )}
-      </SectionCard>
+      {/* 2. Two-column grid: Staffing Timeline | Allocation by Person */}
+      <div className="dashboard-main-grid">
+        <SectionCard title="Staffing Timeline">
+          {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." variant="skeleton" skeletonType="detail" /> : (
+            teamAssignments.length === 0 ? (
+              <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+            ) : (
+              <StaffingSwimLaneGantt assignments={teamAssignments} />
+            )
+          )}
+        </SectionCard>
 
-      {/* Allocation by Person */}
-      {dashboard && dashboard.allocationByPerson.length > 0 ? (
-        <SectionCard title="Allocation by Person" collapsible>
-          <table className="dash-compact-table">
-            <thead><tr><th>Person</th><th style={NUM}>Alloc %</th><th style={{ width: 120 }}>Bar</th></tr></thead>
-            <tbody>
-              {dashboard.allocationByPerson.map((item) => (
-                <tr key={item.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
-                  <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                  <td style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</td>
-                  <td>
-                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {dashboard && dashboard.allocationByPerson.length > 0 ? (
+          <SectionCard title="Allocation by Person">
+            <table className="dash-compact-table">
+              <thead><tr><th>Person</th><th style={NUM}>Alloc %</th><th style={{ width: 120 }}>Bar</th></tr></thead>
+              <tbody>
+                {dashboard.allocationByPerson.map((item) => (
+                  <tr key={item.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
+                    <td style={{ fontWeight: 500 }}>{item.displayName}</td>
+                    <td style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</td>
+                    <td>
+                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </SectionCard>
+        ) : (
+          <SectionCard title="Allocation by Person">
+            <EmptyState description="No allocation data available." title="No data" />
+          </SectionCard>
+        )}
+      </div>
+
+      {/* 3. Plan vs Actual (collapsible, expanded by default) */}
+      {rolePlanComparison && rolePlanComparison.rows.length > 0 ? (
+        <SectionCard title={`Plan vs Actual (Fill Rate: ${rolePlanComparison.overallFillRate}%)`} collapsible>
+          <RolePlanComparison data={rolePlanComparison} />
         </SectionCard>
       ) : null}
 
-      {/* Activity by Week */}
+      {/* 4. Role Plan Builder (collapsible, defaultCollapsed) */}
+      {canManageProject ? (
+        <SectionCard title="Role Plan" collapsible defaultCollapsed>
+          <RolePlanBuilder
+            projectId={projectId}
+            entries={rolePlanEntries}
+            onUpdate={() => {
+              void fetchRolePlan(projectId).then(setRolePlanEntries);
+              void fetchRolePlanComparison(projectId).then(setRolePlanComparison);
+            }}
+          />
+        </SectionCard>
+      ) : null}
+
+      {/* 5. Vendor Engagements (collapsible, defaultCollapsed) */}
+      <SectionCard title={`Vendor Engagements (${vendorEngagements.length})`} collapsible defaultCollapsed>
+        <VendorEngagementPanel engagements={vendorEngagements} />
+      </SectionCard>
+
+      {/* 6. Activity by Week (collapsible, defaultCollapsed) */}
       {dashboard && dashboard.evidenceByWeek.some((w) => w.totalHours > 0) ? (
-        <SectionCard title="Activity by Week (12 wk)" collapsible>
+        <SectionCard title="Activity by Week (12 wk)" collapsible defaultCollapsed>
           <table className="dash-compact-table">
             <thead><tr><th>Week</th><th style={NUM}>Hours</th><th style={{ width: 120 }}>Bar</th></tr></thead>
             <tbody>
@@ -251,14 +264,9 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
         </SectionCard>
       ) : null}
 
-      {/* Vendor Engagements */}
-      <SectionCard title={`Vendor Engagements (${vendorEngagements.length})`} collapsible>
-        <VendorEngagementPanel engagements={vendorEngagements} />
-      </SectionCard>
-
-      {/* Assign Team */}
+      {/* 7. Assign Team (collapsible, defaultCollapsed) */}
       {canManageProject ? (
-        <SectionCard title="Assign Team To Project" collapsible>
+        <SectionCard title="Assign Team To Project" collapsible defaultCollapsed>
           <p className="dictionary-editor__copy">Team expansion creates person-level assignments for staffing traceability.</p>
           {!tokenState.hasToken ? (
             <AuthTokenField hasToken={tokenState.hasToken} onClear={tokenState.clearToken} onSave={tokenState.saveToken} token={tokenState.token} />

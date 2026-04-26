@@ -90,7 +90,7 @@ export class ProjectRolePlanService {
     createdAt: Date; updatedAt: Date;
   }>> {
     const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['ACTIVE', 'APPROVED', 'REQUESTED'] } },
+      where: { projectId, status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
     });
     const vendorEngagements = await this.prisma.projectVendorEngagement.findMany({
       where: { projectId, status: 'ACTIVE' },
@@ -197,7 +197,7 @@ export class ProjectRolePlanService {
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
         projectId,
-        status: { in: ['ACTIVE', 'APPROVED'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       },
     });
     const vendorEngagements = await this.prisma.projectVendorEngagement.findMany({

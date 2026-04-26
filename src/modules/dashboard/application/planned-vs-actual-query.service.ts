@@ -44,7 +44,7 @@ export class PlannedVsActualQueryService {
 
     // ── Fetch assignments ──
     const assignmentWhere: Record<string, unknown> = {
-      status: { in: ['APPROVED', 'ACTIVE'] },
+      status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       validFrom: { lte: windowEnd },
       OR: [{ validTo: null }, { validTo: { gte: windowStart } }],
     };

@@ -1,0 +1,51 @@
+# ============================================================================
+# CODEOWNERS — file-level gate for high-blast-radius code paths (DM-R-2).
+# ============================================================================
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Every PR that modifies a path below requires review from the listed owner(s).
+# CODEOWNERS is ONLY enforced when "Require review from Code Owners" is enabled
+# under Settings → Branches → Branch protection rules. Without that setting,
+# this file is documentation, not a gate.
+#
+# Pair with:
+#   - npm run migrations:verify    (DM-R-1 runtime barrier)
+#   - .github/workflows/ci.yml     (DM-R-2 CI drift check)
+# ============================================================================
+
+# ---- Default owner — anything not claimed below. --------------------------
+*                                    @viktordrukker
+
+# ---- Schema + migrations — highest blast radius. --------------------------
+# Drift between schema.prisma, migrations, and the live DB is the 2026-04-18
+# failure vector. Only schema-owners may alter this surface.
+/prisma/schema.prisma                @viktordrukker
+/prisma/migrations/                  @viktordrukker
+/prisma/seed.ts                      @viktordrukker
+/prisma/seeds/                       @viktordrukker
+
+# ---- Public-ID layer (DMD-026) — security-critical. -----------------------
+# UUIDs must never leave the API boundary. Every change here is reviewable.
+/src/infrastructure/public-id/       @viktordrukker
+
+# ---- Resilience tooling — anyone who weakens these owes the team dinner. --
+/scripts/prestart-verify-migrations.sh @viktordrukker
+/scripts/verify-migrations-deep.cjs    @viktordrukker
+/scripts/check-schema-conventions.cjs  @viktordrukker
+/scripts/check-public-id-leak.cjs      @viktordrukker
+/scripts/find-orphans.ts               @viktordrukker
+
+# ---- CI + release plumbing — keep gates honest. ---------------------------
+/.github/workflows/                  @viktordrukker
+/.github/CODEOWNERS                  @viktordrukker
+/Dockerfile                          @viktordrukker
+/docker-compose.yml                  @viktordrukker
+/docker-compose.prod.yml             @viktordrukker
+/package.json                        @viktordrukker
+
+# ---- Strategic planning docs — decisions are durable. ---------------------
+/docs/planning/schema-conventions.md       @viktordrukker
+/docs/planning/aggregate-map.md            @viktordrukker
+/docs/planning/data-model-decisions.md     @viktordrukker
+/docs/planning/dm2-expand-contract-runbook.md        @viktordrukker
+/docs/planning/dm2.5-controller-migration-template.md @viktordrukker

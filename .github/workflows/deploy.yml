@@ -1,12 +1,38 @@
 name: deploy
 
+# DM-R-19 — staging-first deploy gate.
+#
+# Flow:
+#   build-and-push  →  deploy-staging (if enabled)  →  deploy-production
+#
+# The deploy-production job depends on deploy-staging. If staging is
+# disabled (vars.STAGING_DEPLOY_ENABLED != 'true'), deploy-staging is
+# skipped via GitHub's `if:` condition and deploy-production runs alone
+# — with a loud warning in its output.
+#
+# "6-hour freshness" (from the plan): inside a single workflow run,
+# deploy-staging → deploy-production is inherently fresh. For out-of-band
+# prod deploys, the `workflow_dispatch` path below requires a recent
+# staging run for the same SHA.
+
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - staging-and-prod
+          - staging-only
+          - prod-only
+        default: staging-and-prod
 
 concurrency:
-  group: deploy-production
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -63,17 +89,137 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to VPS
+  deploy-staging:
+    name: Deploy to staging (DM-R-19)
     runs-on: ubuntu-latest
     needs: [build-and-push]
-    environment: production
+    environment: staging
+    # Skip when staging infrastructure is not configured, or when a manual
+    # workflow_dispatch targets prod-only.
+    if: |
+      vars.STAGING_DEPLOY_ENABLED == 'true' &&
+      (github.event_name != 'workflow_dispatch' ||
+       github.event.inputs.target == 'staging-and-prod' ||
+       github.event.inputs.target == 'staging-only')
 
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (staging)
+        uses: appleboy/ssh-action@2ead5e36573550e47d4b8ebc4119eb68b48613f4 # v1
+        with:
+          host: ${{ secrets.STAGING_VPS_HOST }}
+          username: ${{ secrets.STAGING_VPS_USER }}
+          key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/deliverycentral-staging
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Capture the currently-running image SHA so we can roll back if the
+            # new image fails its health probe. First-deploy: file is created
+            # empty by bootstrap-app.sh, the rollback step no-ops cleanly.
+            CURRENT_BACKEND=$(docker inspect dc-staging-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            CURRENT_FRONTEND=$(docker inspect dc-staging-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            echo "$CURRENT_BACKEND"  > .previous-backend-image
+            echo "$CURRENT_FRONTEND" > .previous-frontend-image
+
+            export BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ needs.build-and-push.outputs.image_tag }}
+            export FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ needs.build-and-push.outputs.image_tag }}
+            docker compose -p dc-staging -f docker-compose.prod.yml pull
+            docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build migrate
+            docker compose -p dc-staging -f docker-compose.prod.yml wait migrate
+            docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build backend frontend
+            # Stamp the deployed commit so the issue-reporter (monitoring profile) can cite it.
+            echo "${{ github.sha }}" > /opt/deliverycentral-staging/.current-sha
+            sleep 20
+            # Smoke: shallow + deep (DM-R-8) + migration-audit row
+            curl -sf https://${{ secrets.STAGING_CADDY_DOMAIN }}/api/health > /dev/null
+            curl -sf https://${{ secrets.STAGING_CADDY_DOMAIN }}/api/health/deep | \
+              grep -q '"status":"ready"' || { echo "deep health failed"; exit 1; }
+
+      - name: Staging deploy marker
+        # Writes a tiny artifact + run-level output the prod job (or a
+        # future out-of-band prod-only dispatch) can check.
+        run: |
+          echo "staging_ok=true" >> "$GITHUB_OUTPUT"
+          echo "staging_sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Staging deploy green::SHA=${{ github.sha }} at $(date -u +%FT%TZ)"
+
+  # Guard job for out-of-band workflow_dispatch prod-only deploys — checks
+  # that staging has a successful run for this SHA in the last 6 hours.
+  verify-staging-freshness:
+    name: Verify staging freshness (DM-R-19 6h rule)
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.target == 'prod-only' &&
+      vars.STAGING_DEPLOY_ENABLED == 'true'
+    permissions:
+      actions: read
+    steps:
+      - name: Check recent green staging run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Most recent successful deploy-staging run for this SHA.
+          set -euo pipefail
+          SINCE_EPOCH=$(( $(date -u +%s) - 21600 ))   # now - 6h
+          REPO=${{ github.repository }}
+          # list runs for this workflow, filter by SHA + conclusion=success, look at deploy-staging job status
+          RUN_JSON=$(gh api "repos/$REPO/actions/workflows/deploy.yml/runs?head_sha=${{ github.sha }}&status=completed&per_page=20" --jq '.workflow_runs[] | select(.conclusion == "success")')
+          if [ -z "$RUN_JSON" ]; then
+            echo "::error::No successful deploy workflow run found for SHA ${{ github.sha }}"
+            exit 1
+          fi
+          MOST_RECENT_END=$(echo "$RUN_JSON" | jq -rs 'sort_by(.updated_at) | reverse | .[0].updated_at')
+          MOST_RECENT_EPOCH=$(date -u -d "$MOST_RECENT_END" +%s)
+          if [ "$MOST_RECENT_EPOCH" -lt "$SINCE_EPOCH" ]; then
+            AGE_HOURS=$(( ( $(date -u +%s) - MOST_RECENT_EPOCH ) / 3600 ))
+            echo "::error::Last staging green for this SHA was ${AGE_HOURS}h ago — older than the 6h DM-R-19 gate. Re-run deploy-staging first."
+            exit 1
+          fi
+          echo "✓ Staging ran green at $MOST_RECENT_END (within 6h) for SHA ${{ github.sha }}"
+
+  deploy-production:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs:
+      - build-and-push
+      - deploy-staging
+      - verify-staging-freshness
+    environment: production
+    # Gate: skip deploy-prod if deploy-staging FAILED (unless explicitly skipped by workflow_dispatch + prod-only path
+    # where the freshness gate above covers it, or by STAGING_DEPLOY_ENABLED=false).
+    if: |
+      always() &&
+      !cancelled() &&
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+      needs.build-and-push.result == 'success' &&
+      (
+        needs.deploy-staging.result == 'success' ||
+        needs.deploy-staging.result == 'skipped'
+      ) &&
+      (
+        needs.verify-staging-freshness.result == 'success' ||
+        needs.verify-staging-freshness.result == 'skipped'
+      ) &&
+      (
+        github.event_name != 'workflow_dispatch' ||
+        github.event.inputs.target != 'staging-only'
+      )
+
+    steps:
+      - name: Warn if staging was skipped
+        if: needs.deploy-staging.result == 'skipped'
+        run: |
+          echo "::warning title=Staging skipped::deploy-staging did not run (STAGING_DEPLOY_ENABLED=${{ vars.STAGING_DEPLOY_ENABLED }}, target=${{ github.event.inputs.target }}). Production deploy is proceeding without a staging smoke. Enable staging to close this gap."
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Deploy via SSH (production)
         uses: appleboy/ssh-action@2ead5e36573550e47d4b8ebc4119eb68b48613f4 # v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -83,27 +229,42 @@ jobs:
             set -e
             cd /opt/deliverycentral
 
-            # Pull latest images
+            # Login to GHCR for image pulls
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.prod.yml pull
 
-            # Update image tags in compose override
+            # Capture currently-running images for rollback. First deploy =
+            # empty strings; the rollback below treats that as a no-op.
+            CURRENT_BACKEND=$(docker inspect dc-prod-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            CURRENT_FRONTEND=$(docker inspect dc-prod-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            echo "$CURRENT_BACKEND"  > .previous-backend-image
+            echo "$CURRENT_FRONTEND" > .previous-frontend-image
+
             export BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ needs.build-and-push.outputs.image_tag }}
             export FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ needs.build-and-push.outputs.image_tag }}
+            docker compose -p dc-prod -f docker-compose.prod.yml pull
 
             # Rolling restart — migrate first, then app services
-            docker compose -f docker-compose.prod.yml up -d --no-build migrate
-            docker compose -f docker-compose.prod.yml wait migrate
-            docker compose -f docker-compose.prod.yml up -d --no-build backend frontend caddy
+            docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
+            docker compose -p dc-prod -f docker-compose.prod.yml wait migrate
+            docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
+            echo "${{ github.sha }}" > /opt/deliverycentral/.current-sha
 
-            # Health check
+            # Health check — shallow + deep (DM-R-8). On failure: roll back to
+            # the previous-known-good images captured above.
             sleep 15
-            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health || \
-              (echo "Health check failed — rolling back" && \
-               docker compose -f docker-compose.prod.yml pull \
-                 --policy missing \
-                 backend:previous frontend:previous && \
-               docker compose -f docker-compose.prod.yml up -d --no-build backend frontend && \
-               exit 1)
+            rollback() {
+              echo "Health check failed — rolling back to previous images"
+              if [ -n "$CURRENT_BACKEND" ] && [ -n "$CURRENT_FRONTEND" ]; then
+                export BACKEND_IMAGE="$CURRENT_BACKEND"
+                export FRONTEND_IMAGE="$CURRENT_FRONTEND"
+                docker compose -p dc-prod -f docker-compose.prod.yml pull
+                docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
+              else
+                echo "::warning::No previous images recorded (first deploy?). Cannot roll back automatically."
+              fi
+              exit 1
+            }
+            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health || rollback
+            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health/deep | grep -q '"status":"ready"' || rollback
 
             echo "Deploy ${{ needs.build-and-push.outputs.image_tag }} successful"

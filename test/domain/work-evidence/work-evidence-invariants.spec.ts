@@ -1,6 +1,6 @@
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 import { WorkEvidenceLink } from '@src/modules/work-evidence/domain/entities/work-evidence-link.entity';
@@ -15,7 +15,7 @@ describe('work evidence domain invariants', () => {
         projectId: 'project-1',
         requestedAt: new Date('2025-01-01T00:00:00.000Z'),
         staffingRole: 'Consultant',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-02-01T00:00:00.000Z'),
       },
       AssignmentId.from('assignment-1'),

@@ -15,6 +15,7 @@ import { Sparkline } from '@/components/charts/Sparkline';
 import { TeamCapacityHeatmap } from '@/components/charts/TeamCapacityHeatmap';
 import { ResourcePoolUtilizationDonut } from '@/components/charts/ResourcePoolUtilizationDonut';
 import { DemandPipelineChart } from '@/components/charts/DemandPipelineChart';
+import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useResourceManagerDashboard } from '@/features/dashboard/useResourceManagerDashboard';
 import { createAssignment } from '@/lib/api/assignments';
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
@@ -592,6 +593,8 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               </div>
             </SectionCard>
           )}
+
+          <RecentActivityRail role="rm" />
 
           {/* ── DATA FRESHNESS ── */}
           <div className="data-freshness">

@@ -3,6 +3,10 @@ import { AssignmentHistory } from '@src/modules/assignments/domain/entities/assi
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
 import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import {
+  AssignmentStatus,
+  AssignmentStatusValue,
+} from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 
 import {
@@ -12,7 +16,36 @@ import {
 } from '../../../../../../prisma/seeds/demo-dataset';
 import { InMemoryProjectAssignmentRepository } from './in-memory-project-assignment.repository';
 
-function mapApprovalState(value: string): ApprovalState {
+function mapAssignmentStatus(value: string): AssignmentStatus {
+  switch (value) {
+    case 'CREATED':
+    case 'PROPOSED':
+    case 'REJECTED':
+    case 'BOOKED':
+    case 'ONBOARDING':
+    case 'ASSIGNED':
+    case 'ON_HOLD':
+    case 'COMPLETED':
+    case 'CANCELLED':
+      return AssignmentStatus.from(value as AssignmentStatusValue);
+    case 'DRAFT':
+    case 'REQUESTED':
+      return AssignmentStatus.created();
+    case 'APPROVED':
+      return AssignmentStatus.booked();
+    case 'ACTIVE':
+      return AssignmentStatus.assigned();
+    case 'ENDED':
+      return AssignmentStatus.completed();
+    case 'REVOKED':
+    case 'ARCHIVED':
+      return AssignmentStatus.cancelled();
+    default:
+      return AssignmentStatus.created();
+  }
+}
+
+function mapApprovalDecisionLegacy(value: string): ApprovalState {
   switch (value) {
     case 'ACTIVE':
     case 'APPROVED':
@@ -21,6 +54,7 @@ function mapApprovalState(value: string): ApprovalState {
     case 'REJECTED':
     case 'REQUESTED':
     case 'REVOKED':
+    case 'DRAFT':
       return ApprovalState.from(value);
     case 'CANCELLED':
       return ApprovalState.revoked();
@@ -43,7 +77,7 @@ export function createSeededInMemoryProjectAssignmentRepository(): InMemoryProje
         requestedAt: assignment.requestedAt,
         requestedByPersonId: assignment.requestedByPersonId,
         staffingRole: assignment.staffingRole,
-        status: mapApprovalState(assignment.status),
+        status: mapAssignmentStatus(assignment.status),
         validFrom: assignment.validFrom,
         validTo: assignment.validTo ?? undefined,
       },
@@ -57,7 +91,7 @@ export function createSeededInMemoryProjectAssignmentRepository(): InMemoryProje
         assignmentId: AssignmentId.from(approval.assignmentId),
         decisionAt: approval.decisionAt ?? undefined,
         decisionReason: approval.decisionReason ?? undefined,
-        decisionState: mapApprovalState(approval.decision),
+        decisionState: mapApprovalDecisionLegacy(approval.decision),
         decidedByPersonId: approval.decidedByPersonId ?? undefined,
         sequenceNumber: approval.sequenceNumber,
       },

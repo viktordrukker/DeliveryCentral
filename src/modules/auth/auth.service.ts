@@ -9,6 +9,10 @@ import { TokenService } from './token.service';
 import type { TokenPair } from './token.service';
 import type { MeDto } from './dto/me.dto';
 
+// Pre-computed bcrypt hash of a dummy password — used for constant-time login to prevent email enumeration.
+// Actual hash value doesn't matter; it just needs the same cost factor (12) as real password hashes.
+const DUMMY_PASSWORD_HASH = '$2b$12$0000000000000000000000000000000000000000000000000000';
+
 export type LoginResult =
   | { accessToken: string; refreshToken: string }
   | { requires2FA: true; tempToken: string };
@@ -29,6 +33,10 @@ export class AuthService {
   ): Promise<{ id: string; email: string } | null> {
     const account = await this.prisma.localAccount.findUnique({ where: { email } });
 
+    // Constant-time behavior: always run bcrypt.compare to prevent timing-based email enumeration.
+    const passwordHash = account?.passwordHash ?? DUMMY_PASSWORD_HASH;
+    const valid = await bcrypt.compare(password, passwordHash);
+
     if (!account) {
       return null;
     }
@@ -38,8 +46,6 @@ export class AuthService {
         `Account locked until ${account.lockedUntil.toISOString()}`,
       );
     }
-
-    const valid = await bcrypt.compare(password, account.passwordHash);
 
     if (!valid) {
       const newFailCount = account.failedLoginAttempts + 1;
@@ -73,15 +79,17 @@ export class AuthService {
     userAgent?: string,
     ip?: string,
   ): Promise<LoginResult> {
-    const account = await this.prisma.localAccount.findUnique({ where: { email } });
-
-    if (!account) {
-      throw new UnauthorizedException('Invalid credentials.');
-    }
-
+    // validateLocalCredentials runs bcrypt.compare in constant time regardless of whether the account exists.
     const valid = await this.validateLocalCredentials(email, password);
 
     if (!valid) {
+      throw new UnauthorizedException('Invalid credentials.');
+    }
+
+    const account = await this.prisma.localAccount.findUnique({ where: { email } });
+
+    if (!account) {
+      // Should not occur after a successful validate, but guards against race with account deletion.
       throw new UnauthorizedException('Invalid credentials.');
     }
 

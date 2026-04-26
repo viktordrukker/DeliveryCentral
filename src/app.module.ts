@@ -35,12 +35,14 @@ import { CorrelationIdMiddleware } from './shared/observability/correlation-id.m
 import { RequestLoggingMiddleware } from './shared/observability/request-logging.middleware';
 import { ObservabilityModule } from './shared/observability/observability.module';
 import { PrismaModule } from './shared/persistence/prisma.module';
+import { PublicIdModule } from './infrastructure/public-id';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     AppConfigModule,
     PrismaModule,
+    PublicIdModule,
     ObservabilityModule,
     AdminModule,
     HealthModule,

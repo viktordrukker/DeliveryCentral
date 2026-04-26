@@ -9,6 +9,42 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # DM-R-25 — WAL archive destination. Bind-mounted to ./.wal-archive
+      # so off-host replication (DM-R-27) can ship it without touching
+      # Postgres internals.
+      - ./.wal-archive:/wal-archive
+    # DM-R-25 — Continuous PITR configuration. Archive mode on, WAL files
+    # copied into /wal-archive (persisted across container restarts).
+    # `wal_level=replica` is the default in PG 16 but re-asserted here so
+    # the config is explicit. Archive-timeout forces a WAL rotation every
+    # 60s so a quiet DB still produces at least one archive per minute
+    # (recovery RPO ≤ 60s).
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /wal-archive/%f && cp %p /wal-archive/%f
+      - -c
+      - archive_timeout=60
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=3
+      # DM-8-9 — query observability. pg_stat_statements records the top
+      # queries by total time; auto_explain logs slow-query plans.
+      # `shared_preload_libraries` must be set at server start (not via
+      # ALTER SYSTEM); that's what docker-compose `command` gives us.
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - auto_explain.log_min_duration=500ms
+      - -c
+      - auto_explain.log_analyze=true
+      - -c
+      - auto_explain.log_buffers=true
     restart: unless-stopped
     deploy:
       resources:
@@ -33,8 +69,15 @@ services:
       PORT: ${BACKEND_PORT:-3000}
       API_PREFIX: ${API_PREFIX:-api}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public
+      # DM-R-20: migrate service uses the app_migrator role when configured;
+      # otherwise falls back to the superuser URL for back-compat.
+      DATABASE_URL: ${MIGRATE_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public}
       PRISMA_CLI_BINARY_TARGETS: debian-openssl-3.0.x
+      # DM-4-4 — every app container runs UTC so the DM-4-5 timestamptz
+      # conversion interprets historical `timestamp without time zone`
+      # values correctly. The CI gate in prestart-verify-migrations.sh
+      # asserts this before boot.
+      TZ: UTC
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,9 +96,22 @@ services:
       PORT: ${BACKEND_PORT:-3000}
       API_PREFIX: ${API_PREFIX:-api}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public
+      # DM-R-20: runtime connection is the DML-only app_runtime role in
+      # environments where DATABASE_URL has been flipped over. Default
+      # remains the superuser URL for back-compat.
+      DATABASE_URL: ${RUNTIME_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public}
       PRISMA_CLI_BINARY_TARGETS: debian-openssl-3.0.x
-      CHOKIDAR_USEPOLLING: 'true'
+      # DM-4-4 — every app container runs UTC so the DM-4-5 timestamptz
+      # conversion interprets historical `timestamp without time zone`
+      # values correctly. The CI gate in prestart-verify-migrations.sh
+      # asserts this before boot.
+      TZ: UTC
+      NODE_OPTIONS: '--max-old-space-size=1536'
+      # DM-R-26: agent provenance — stamped into Postgres application_name
+      # so every statement, connection, and ddl_audit row can be traced
+      # back to the actor. Default `human` when unset.
+      AGENT_ID: ${AGENT_ID:-human}
+      SERVICE_NAME: backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,7 +126,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
     command: sh -c "npm run db:generate && npm run start:dev"
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:${BACKEND_PORT:-3000}/${API_PREFIX:-api}/health >/dev/null 2>&1 || exit 1']
@@ -91,8 +147,15 @@ services:
       NODE_ENV: development
       PORT: ${BACKEND_PORT:-3000}
       API_PREFIX: ${API_PREFIX:-api}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public
+      # DM-R-20: seeding touches audit tables; requires app_migrator (or
+      # the superuser fallback).
+      DATABASE_URL: ${MIGRATE_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public}
       PRISMA_CLI_BINARY_TARGETS: debian-openssl-3.0.x
+      # DM-4-4 — every app container runs UTC so the DM-4-5 timestamptz
+      # conversion interprets historical `timestamp without time zone`
+      # values correctly. The CI gate in prestart-verify-migrations.sh
+      # asserts this before boot.
+      TZ: UTC
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,8 +205,14 @@ services:
       - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public
+      # DM-R-20: same as seed service — needs app_migrator for full DML + DDL.
+      DATABASE_URL: ${MIGRATE_DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-workload_tracking}?schema=public}
       PRISMA_CLI_BINARY_TARGETS: debian-openssl-3.0.x
+      # DM-4-4 — every app container runs UTC so the DM-4-5 timestamptz
+      # conversion interprets historical `timestamp without time zone`
+      # values correctly. The CI gate in prestart-verify-migrations.sh
+      # asserts this before boot.
+      TZ: UTC
       SEED_PROFILE: realistic
     depends_on:
       postgres:

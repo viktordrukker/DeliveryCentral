@@ -13,6 +13,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { ProjectHealthBadge } from '@/components/common/ProjectHealthBadge';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
@@ -94,6 +95,7 @@ export function ProjectsPage(): JSX.Element {
       {canCreateProject ? (
         <Link className="button button--sm" to="/projects/new">Create project</Link>
       ) : null}
+      <CopyLinkButton />
       <TipTrigger />
     </>
   ), [filters.search, filters.engagement, filters.priority, hasItems, state.isLoading, state.visibleItems, healthMap, canCreateProject, setFilters]);

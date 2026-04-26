@@ -2,6 +2,25 @@ import { httpGet, httpPatch, httpPost } from './http-client';
 
 export type StaffingRequestStatus = 'CANCELLED' | 'DRAFT' | 'FULFILLED' | 'IN_REVIEW' | 'OPEN';
 export type StaffingRequestPriority = 'HIGH' | 'LOW' | 'MEDIUM' | 'URGENT';
+export type DerivedStaffingRequestStatus =
+  | 'Open'
+  | 'In progress'
+  | 'Filled'
+  | 'Closed'
+  | 'Cancelled';
+
+export interface StaffingAssignmentSummary {
+  assigned: number;
+  booked: number;
+  cancelled: number;
+  completed: number;
+  created: number;
+  onHold: number;
+  onboarding: number;
+  proposed: number;
+  rejected: number;
+  totalAssignments: number;
+}
 
 export interface StaffingRequestFulfilment {
   assignedPersonId: string;
@@ -12,8 +31,10 @@ export interface StaffingRequestFulfilment {
 
 export interface StaffingRequest {
   allocationPercent: number;
+  assignmentSummary: StaffingAssignmentSummary;
   cancelledAt?: string;
   createdAt: string;
+  derivedStatus: DerivedStaffingRequestStatus;
   endDate: string;
   fulfilments: StaffingRequestFulfilment[];
   headcountFulfilled: number;

@@ -7,6 +7,7 @@ export interface ProjectExternalLinkSummary {
 
 export type EngagementModel = 'TIME_AND_MATERIAL' | 'FIXED_PRICE' | 'MANAGED_SERVICE' | 'INTERNAL';
 export type ProjectPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type ProjectShape = 'SMALL' | 'STANDARD' | 'ENTERPRISE' | 'PROGRAM';
 
 export interface ProjectDirectoryItem {
   assignmentCount: number;
@@ -42,6 +43,8 @@ export interface ProjectDetails extends ProjectDirectoryItem {
   domain?: string | null;
   engagementModel?: EngagementModel | null;
   externalLinks: ProjectExternalLink[];
+  shape?: ProjectShape | null;
+  hasLiveSpcRates?: boolean;
   lessonsLearned?: string | null;
   outcomeRating?: string | null;
   plannedEndDate: string | null;
@@ -214,6 +217,8 @@ export interface UpdateProjectRequest {
   description?: string;
   name?: string;
   status?: string;
+  projectManagerId?: string;
+  deliveryManagerId?: string;
 }
 
 export async function updateProject(

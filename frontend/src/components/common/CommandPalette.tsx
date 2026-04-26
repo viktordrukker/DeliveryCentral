@@ -6,6 +6,8 @@ import { markSidebarNavigation } from '@/app/drilldown-context';
 import { appRoutes } from '@/app/navigation';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { fetchCases, CaseRecord } from '@/lib/api/cases';
 
 export interface RecentPage {
   path: string;
@@ -47,6 +49,8 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentDirectoryItem[]>([]);
+  const [cases, setCases] = useState<CaseRecord[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,6 +60,8 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       setQuery('');
       setPeople([]);
       setProjects([]);
+      setAssignments([]);
+      setCases([]);
       setActiveIndex(0);
       setTimeout(() => inputRef.current?.focus(), 10);
     }
@@ -66,19 +72,41 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
 
     debounceRef.current = setTimeout(() => {
       if (query.length >= 1) {
+        const q = query.toLowerCase();
         void fetchPersonDirectory({ pageSize: 5 }).then((r) => {
-          setPeople(
-            r.items.filter((p) =>
-              p.displayName.toLowerCase().includes(query.toLowerCase()),
-            ).slice(0, 5),
-          );
+          setPeople(r.items.filter((p) => p.displayName.toLowerCase().includes(q)).slice(0, 5));
         });
         void fetchProjectDirectory({ search: query }).then((r) => {
           setProjects(r.items.slice(0, 5));
         });
+        void fetchAssignments({ status: 'ACTIVE', pageSize: 15 }).then((r) => {
+          setAssignments(
+            r.items
+              .filter((a) =>
+                a.person.displayName.toLowerCase().includes(q) ||
+                a.project.displayName.toLowerCase().includes(q) ||
+                a.staffingRole.toLowerCase().includes(q),
+              )
+              .slice(0, 5),
+          );
+        });
+        void fetchCases({}).then((r) => {
+          setCases(
+            r.items
+              .filter((c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS')
+              .filter((c) =>
+                c.caseNumber.toLowerCase().includes(q) ||
+                (c.summary ?? '').toLowerCase().includes(q) ||
+                (c.subjectPersonName ?? '').toLowerCase().includes(q),
+              )
+              .slice(0, 5),
+          );
+        });
       } else {
         setPeople([]);
         setProjects([]);
+        setAssignments([]);
+        setCases([]);
       }
     }, 250);
 
@@ -206,6 +234,28 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     },
   }));
 
+  const assignmentItems: CommandItem[] = assignments.map((assignment) => ({
+    group: 'Assignments',
+    id: `assignment-${assignment.id}`,
+    label: `${assignment.person.displayName} · ${assignment.project.displayName}`,
+    sublabel: `${assignment.staffingRole} · ${assignment.allocationPercent}%`,
+    onSelect: () => {
+      navigate(`/assignments/${assignment.id}`);
+      onClose();
+    },
+  }));
+
+  const caseItems: CommandItem[] = cases.map((c) => ({
+    group: 'Cases',
+    id: `case-${c.id}`,
+    label: `${c.caseNumber} · ${c.subjectPersonName ?? c.subjectPersonId}`,
+    sublabel: c.summary ?? c.caseTypeDisplayName,
+    onSelect: () => {
+      navigate(`/cases/${c.id}`);
+      onClose();
+    },
+  }));
+
   const recentItems: CommandItem[] = !query
     ? recentPages.map((page) => ({
         group: 'Recent',
@@ -219,7 +269,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       }))
     : [];
 
-  const allItems = [...recentItems, ...peopleItems, ...projectItems, ...pageItems, ...actionItems];
+  const allItems = [...recentItems, ...peopleItems, ...projectItems, ...assignmentItems, ...caseItems, ...pageItems, ...actionItems];
 
   function handleKeyDown(e: React.KeyboardEvent): void {
     if (e.key === 'ArrowDown') {

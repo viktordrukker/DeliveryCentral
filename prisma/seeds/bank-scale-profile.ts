@@ -514,23 +514,23 @@ function createBankScaleDataset(): SeedDataset {
         projectManagerIds[personIndex % projectManagerIds.length];
       const primaryStartDate = addDays(new Date('2025-01-01T00:00:00.000Z'), personIndex % 330);
       const startDate = addDays(primaryStartDate, slot * 45);
-      let status: 'REQUESTED' | 'APPROVED' | 'ACTIVE' | 'ENDED' = 'ACTIVE';
+      let status: 'PROPOSED' | 'BOOKED' | 'ASSIGNED' | 'COMPLETED' = 'ASSIGNED';
       let validTo: Date | undefined;
       let approvedAt: Date | undefined;
       let requestedAt = addDays(startDate, -7);
 
       if (slot === 1 && personIndex % 10 === 0) {
-        status = 'REQUESTED';
+        status = 'PROPOSED';
         requestedAt = addDays(AS_OF, -30 - (personIndex % 60));
       } else if (slot === 2 && personIndex % 6 === 0) {
-        status = 'ENDED';
+        status = 'COMPLETED';
         validTo = addDays(startDate, 35);
         approvedAt = addDays(startDate, -2);
       } else if (slot === 2 || (slot === 1 && personIndex % 5 === 0)) {
-        status = 'APPROVED';
+        status = 'BOOKED';
         approvedAt = addDays(startDate, -3);
       } else {
-        status = 'ACTIVE';
+        status = 'ASSIGNED';
         approvedAt = addDays(startDate, -4);
       }
 
@@ -555,38 +555,38 @@ function createBankScaleDataset(): SeedDataset {
       assignmentApprovals.push({
         id: deterministicUuid(0x35000001, assignmentSequence),
         assignmentId,
-        decidedByPersonId: status === 'REQUESTED' ? undefined : requestedByPersonId,
+        decidedByPersonId: status === 'PROPOSED' ? undefined : requestedByPersonId,
         sequenceNumber: 1,
-        decision: status === 'REQUESTED' ? 'PENDING' : 'APPROVED',
+        decision: status === 'PROPOSED' ? 'PENDING' : 'APPROVED',
         decisionReason:
-          status === 'REQUESTED' ? undefined : 'Approved by generated performance profile.',
-        decisionAt: status === 'REQUESTED' ? undefined : approvedAt,
+          status === 'PROPOSED' ? undefined : 'Approved by generated performance profile.',
+        decisionAt: status === 'PROPOSED' ? undefined : approvedAt,
       });
 
       assignmentHistory.push({
         id: deterministicUuid(0x36000001, assignmentSequence * 10),
         assignmentId,
         changedByPersonId: requestedByPersonId,
-        changeType: 'ASSIGNMENT_CREATED',
+        changeType: 'STATUS_PROPOSED',
         changeReason: 'Generated performance pack seed.',
         previousSnapshot: null,
         newSnapshot: {
           personId: person.id,
           projectId,
-          status: 'REQUESTED',
+          status: 'PROPOSED',
         },
         occurredAt: requestedAt,
       });
 
-      if (status !== 'REQUESTED') {
+      if (status !== 'PROPOSED') {
         assignmentHistory.push({
           id: deterministicUuid(0x36000001, assignmentSequence * 10 + 1),
           assignmentId,
           changedByPersonId: requestedByPersonId,
-          changeType: 'ASSIGNMENT_APPROVED',
+          changeType: 'STATUS_BOOKED',
           changeReason: 'Generated approval event.',
           previousSnapshot: {
-            status: 'REQUESTED',
+            status: 'PROPOSED',
           },
           newSnapshot: {
             status,
@@ -595,18 +595,18 @@ function createBankScaleDataset(): SeedDataset {
         });
       }
 
-      if (status === 'ENDED') {
+      if (status === 'COMPLETED') {
         assignmentHistory.push({
           id: deterministicUuid(0x36000001, assignmentSequence * 10 + 2),
           assignmentId,
           changedByPersonId: requestedByPersonId,
-          changeType: 'ASSIGNMENT_ENDED',
+          changeType: 'STATUS_COMPLETED',
           changeReason: 'Generated ended assignment for lifecycle coverage.',
           previousSnapshot: {
-            status: 'ACTIVE',
+            status: 'ASSIGNED',
           },
           newSnapshot: {
-            status: 'ENDED',
+            status: 'COMPLETED',
             validTo: validTo?.toISOString(),
           },
           occurredAt: validTo ?? addDays(startDate, 35),
@@ -617,7 +617,7 @@ function createBankScaleDataset(): SeedDataset {
 
   let workEvidenceSequence = demoWorkEvidence.length;
   assignments
-    .filter((assignment) => ['ACTIVE', 'APPROVED'].includes(assignment.status) && assignment.validFrom <= AS_OF)
+    .filter((assignment) => ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(assignment.status) && assignment.validFrom <= AS_OF)
     .forEach((assignment, index) => {
       if (index % 6 === 0) {
         return;
@@ -697,7 +697,7 @@ function createBankScaleDataset(): SeedDataset {
   const summary = {
     profile: 'bank-scale' as const,
     counts: {
-      activeAssignments: assignments.filter((assignment) => assignment.status === 'ACTIVE').length,
+      activeAssignments: assignments.filter((assignment) => assignment.status === 'ASSIGNED').length,
       assignments: assignments.length,
       orgUnits: orgUnits.length,
       people: people.length,

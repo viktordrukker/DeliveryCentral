@@ -9,6 +9,27 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends ApiError {
+  public constructor(message = 'Unable to reach the server. Check your connection and try again.') {
+    super(message, 0);
+    this.name = 'NetworkError';
+  }
+}
+
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    // fetch() throws on network failure (offline, DNS, CORS, timeout before response)
+    const message = err instanceof Error ? err.message : '';
+    throw new NetworkError(
+      message === 'Failed to fetch' || message.includes('NetworkError')
+        ? 'Unable to reach the server. Check your connection and try again.'
+        : `Network request failed: ${message}`,
+    );
+  }
+}
+
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -18,7 +39,7 @@ async function attemptTokenRefresh(): Promise<string | null> {
   }
 
   isRefreshing = true;
-  refreshPromise = fetch(`${apiClientConfig.baseUrl}/auth/refresh`, {
+  refreshPromise = safeFetch(`${apiClientConfig.baseUrl}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -26,8 +47,8 @@ async function attemptTokenRefresh(): Promise<string | null> {
   })
     .then(async (r) => {
       if (!r.ok) return null;
+      if (r.status === 204) return null; // No session to refresh
       const data = (await r.json()) as { accessToken?: string };
-
       return data.accessToken ?? null;
     })
     .catch(() => null)
@@ -45,7 +66,7 @@ async function requestJson<TResponse>(
 ): Promise<TResponse> {
   const authToken = readStoredAuthToken();
 
-  const response = await fetch(`${apiClientConfig.baseUrl}${path}`, {
+  const response = await safeFetch(`${apiClientConfig.baseUrl}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
@@ -67,7 +88,7 @@ async function requestJson<TResponse>(
       }
 
       // Retry with new token
-      const retryResponse = await fetch(`${apiClientConfig.baseUrl}${path}`, {
+      const retryResponse = await safeFetch(`${apiClientConfig.baseUrl}${path}`, {
         ...init,
         credentials: 'include',
         headers: {
@@ -108,6 +129,8 @@ async function requestJson<TResponse>(
     throw new ApiError(message, response.status);
   }
 
+  // 204 No Content and empty 200 responses have no body to parse.
+  if (response.status === 204) return undefined as unknown as TResponse;
   return (await response.json()) as TResponse;
 }
 

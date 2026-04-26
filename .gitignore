@@ -15,3 +15,12 @@ test-results/
 playwright-report/
 playwright/.auth/
 frontend/dist/
+
+# DM-R-3 pre-migration snapshots — local only, auto-rotated, never committed.
+.snapshots/
+
+# DM-R-25 continuous PITR WAL archive — never committed.
+.wal-archive/
+
+# DM-R-25 weekly base backups — local only.
+.basebackups/

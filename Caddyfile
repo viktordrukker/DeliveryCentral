@@ -1,3 +1,15 @@
+# DEPLOYED CADDYFILE LIVES AT /opt/deliverycentral-data/Caddyfile (rendered
+# from ops/templates/data-stack.Caddyfile by ops/bootstrap-app.sh).
+#
+# This file is kept as a reference for single-stack standalone use only.
+# The deployed copy serves both prod and staging from one Caddy container
+# via two site blocks. To regenerate the deployed copy, re-run
+# `bash ops/bootstrap-app.sh --refresh-caddy`.
+#
+# `rate_limit` requires the mholt/caddy-ratelimit module — the data-stack
+# Dockerfile builds Caddy with it via xcaddy. The base caddy:2.9-alpine
+# image does NOT include this module, so this file alone will not start.
+
 {$CADDY_DOMAIN} {
     # Forward API requests to the backend
     handle /api/* {
@@ -11,6 +23,32 @@
     }
 
     # Structured JSON access log
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Uptime Kuma — external health probes + dashboard.
+# Basic auth via CADDY_BASIC_AUTH_USER / CADDY_BASIC_AUTH_HASH (bcrypt, produced
+# by `caddy hash-password`). Served only when the monitoring profile is up.
+monitor.{$CADDY_DOMAIN} {
+    basic_auth {
+        {$CADDY_BASIC_AUTH_USER} {$CADDY_BASIC_AUTH_HASH}
+    }
+    reverse_proxy uptime-kuma:3001
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Dozzle — live container log viewer. Same basic-auth credential set.
+logs.{$CADDY_DOMAIN} {
+    basic_auth {
+        {$CADDY_BASIC_AUTH_USER} {$CADDY_BASIC_AUTH_HASH}
+    }
+    reverse_proxy dozzle:8080
     log {
         output stdout
         format json

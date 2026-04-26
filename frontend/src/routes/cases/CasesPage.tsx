@@ -11,6 +11,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipTrigger } from '@/components/common/TipBalloon';
+import { ExportButton } from '@/components/common/ExportButton';
 import { useCasesList } from '@/features/cases/useCasesList';
 
 export function CasesPage(): JSX.Element {
@@ -21,6 +22,20 @@ export function CasesPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
+        <ExportButton
+          data={state.data}
+          columns={[
+            { key: 'caseNumber', label: 'Case #' },
+            { key: 'caseTypeDisplayName', label: 'Type' },
+            { key: 'subjectPersonName', label: 'Subject' },
+            { key: 'ownerPersonName', label: 'Owner' },
+            { key: 'status', label: 'Status' },
+            { key: 'summary', label: 'Summary' },
+            { key: 'openedAt', label: 'Opened' },
+            { key: 'closedAt', label: 'Closed' },
+          ]}
+          filename="cases"
+        />
         <button className="button" onClick={() => navigate('/cases/new')} type="button">
           Create case
         </button>
@@ -28,7 +43,7 @@ export function CasesPage(): JSX.Element {
       </>
     );
     return () => setActions(null);
-  }, [setActions, navigate]);
+  }, [setActions, navigate, state.data]);
 
   return (
     <PageContainer testId="cases-page" viewport>

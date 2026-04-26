@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const backendPort = 3000;
-const frontendPort = 4173;
+const frontendPort = Number(process.env['PLAYWRIGHT_FRONTEND_PORT'] ?? 4173);
+const backendHealthPath = process.env['PLAYWRIGHT_BACKEND_HEALTH_PATH'] ?? '/health';
 const smokeOnly = process.env['PLAYWRIGHT_SMOKE_ONLY'] === 'true';
 const configuredWorkers = process.env['PLAYWRIGHT_WORKERS'];
 
@@ -26,7 +27,7 @@ export default defineConfig({
       command: 'npm run start:dev',
       reuseExistingServer: !process.env['CI'],
       timeout: 120_000,
-      url: `http://127.0.0.1:${backendPort}/health`,
+      url: `http://127.0.0.1:${backendPort}${backendHealthPath}`,
     },
     {
       command: 'npm --prefix frontend run dev -- --host 127.0.0.1 --port 4173',

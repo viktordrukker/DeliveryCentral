@@ -43,12 +43,12 @@ export class TerminateEmployeeService {
     employee.terminate(terminatedAt);
     await this.personRepository.save(employee);
 
-    // End all active/approved assignments
+    // End all in-flight assignments (BOOKED, ONBOARDING, ASSIGNED, ON_HOLD).
     const allAssignments = await this.projectAssignmentRepository.findAll();
     const assignmentsToEnd = allAssignments.filter(
       (a) =>
         a.personId === command.personId &&
-        (a.status.value === 'ACTIVE' || a.status.value === 'APPROVED'),
+        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value),
     );
 
     const endDateStr = terminatedAt.toISOString().slice(0, 10);

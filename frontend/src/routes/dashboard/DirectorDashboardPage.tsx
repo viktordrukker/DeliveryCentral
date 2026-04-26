@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { PortfolioStaffingHeatmap } from '@/components/dashboard/PortfolioStaffingHeatmap';
+import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -358,6 +359,9 @@ export function DirectorDashboardPage(): JSX.Element {
           </div>
 
           {/* Charts section moved above heatmap */}
+
+          {/* ═══ RECENT ACTIVITY RAIL ═══ */}
+          <RecentActivityRail role="director" />
 
           {/* ═══ DATA FRESHNESS ═══ */}
           <div className="data-freshness">

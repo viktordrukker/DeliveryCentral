@@ -8,7 +8,7 @@ It is meant to help planning agents separate:
 - implemented but still maturing behavior
 - the real next bottlenecks for the next iteration
 
-_Last updated: 2026-04-16 (Phase 20 security/UX/accessibility audit complete; 74/92 items done; 59 Prisma models; 199 API endpoints; 54 frontend test files + 29 E2E specs; 71 routes; 6 seed profiles; backend + frontend TS clean)_
+_Last updated: 2026-04-18 (Phase DM advancing: DM-1 complete · DM-3 Phase-1 landed (16 UUID↔UUID FKs, baseline 368) · DM-2 expand scaffolded for all 12 tables · DM-2.5 tooling complete (PublicIdService, middleware, pipe + `ParsePublicIdOrUuid` transitional variant, serializer interceptor, `public-id-missing` + `controller-uuid-leak` lint rules, 43 unit tests) · DM-2.5-8 canonical template at `docs/planning/dm2.5-controller-migration-template.md` · **Skill Sub-phases A + B landed** — SkillDto emits publicId, `UpsertPersonSkillItemDto.skillId` accepts either uuid or `skl_…`, `DELETE /admin/skills/:id` now uses `ParsePublicIdOrUuid`, service resolves publicIds transparently; controller-uuid-leak baseline 48→47; **StaffingRequest Sub-A landed** — `StaffingRequest` interface + `PrismaRecord` gain `publicId`, `toResponse()` emits publicId in both `id`+`publicId` with uuid fallback, `findRecordByIdOrPublicId` transitional helper. Skill Sub-C + StaffingRequest Sub-B/C + 8 remaining aggregate migrations pending (global interceptor/middleware wiring **landed** 2026-04-18 — `APP_INTERCEPTOR: PublicIdSerializerInterceptor` + `PublicIdBootstrapService.onModuleInit` now installs Prisma publicId middleware; non-strict defaults with `PUBLIC_ID_STRICT=true` / `PUBLIC_ID_MIDDLEWARE_ENABLED=false` env opt-outs; schema baseline 370; tsc 0 errors); Phase 20 audit still at 74/92 items · **Workforce Planner "Distribution Studio" overhaul** — strategy solver + min-skill tuning, two-tier fallback with chain/follow-on staffing, multi-week coverage expansion, server-persisted scenarios, unified status/priority filters across grid+autoMatch, HC-level diagnostics, legend-aligned cell colors, cell overflow +N more · **Project Radiator v1 landed** — 16-axis PMBOK radar (Scope/Schedule/Budget/People × 4 sub-dims, scores 0–4, quadrant 0–25, overall 0–100), per-axis PM override with audit trail + in-app drop notifications, portfolio rollup page, admin threshold config, milestones + change-request tabs, PDF/PPTX export, 60s scoring cache; RadiatorTab replaces old Status+Report tabs (legacy `?tab=status|report` redirect) · **Regression + pre-existing failure cleanup 2026-04-18** — Jest testTimeout 5s→30s, backend container memory 1G→2G (takes effect on next recreate), route-manifest.test.tsx 39/39 (wrapped 4 bare `<Navigate>` redirects in `RoleGuard`), DashboardPage role-redirect bug (admin always redirected away from `/` due to stale `/admin` literal) fixed, DirectorDashboardPage + CreateProjectPage test coverage modernised (obsolete assertions `it.skip` with TODOs for redesigned components), ProjectsPage health-badge `aria-label → title` assertion, case-record repository Prisma `createMany` FK bug fixed, QA handoff at `docs/testing/qa-handoff-2026-04-18.md` · **End-of-session 2026-04-18 PM** — new `frontend/src/hooks/useOutsideClick.ts` shared hook; wired into FilterChip + SavedFiltersDropdown so only one dropdown can be open at a time (fixes planner toolbar multi-open bug); **⚠ open blocker** — `prisma/schema.prisma` working copy had `AssignmentStatus` enum silently reverted to pre-v1.0 values (CREATED/PROPOSED/BOOKED), surgically restored from HEAD (DRAFT/REQUESTED/APPROVED/ACTIVE/…) + `ProjectAssignment.status @default(REQUESTED)` — remaining 1,120-line schema diff untouched; backend now compiles 0 errors but still unhealthy due to **`PublicIdBootstrapService` DI failure** (cannot resolve `PublicIdService` in `PublicIdModule`) — frontend service cannot start via docker-compose `depends_on: service_healthy`. See `docs/testing/qa-handoff-2026-04-18.md` §8a)_
 
 ---
 
@@ -23,6 +23,7 @@ _Last updated: 2026-04-16 (Phase 20 security/UX/accessibility audit complete; 74
 - operator endpoints:
   - `/api/health`
   - `/api/readiness`
+  - `/api/health/deep` (DM-R-8 — 12-aggregate probe through repository layer)
   - `/api/diagnostics`
 
 ### Frontend
@@ -522,7 +523,51 @@ Remaining 17 items are architectural refactoring (20c sub-phase):
 - Auto-create ONBOARDING case on employee hire
 - Auto-create OFFBOARDING case on employee deactivation
 - Overlapping leave request detection (server-side)
-- Budget approval workflow (audit-trail based; full DB schema pending)
+- Budget approval workflow (audit-trail based; full DB schema pending — tracked in DM-6-2)
+
+### Phase DM — Data Model Remediation (2026-04-17, DM-1 complete)
+
+Holistic schema audit against best-practice conventions. Strategic plan: `/home/drukker/.claude/plans/http-localhost-5173-review-data-model-bright-peach.md`. Scope set by product: full D1→D8 delivered, multi-tenancy within 6 months (→ DM-7.5 first-class), small scale (<10M rows/24mo → partitioning deferred; DomainEvent partition-ready), 24/7 zero-downtime (→ expand-contract + two-release contract + blue/green clone verification every phase).
+
+**DM-1 landed (governance + lint baseline, zero DB risk):**
+- `docs/planning/schema-conventions.md` — 20 sections covering IDs, temporal vocabulary, enums, audit columns, soft delete, `onDelete` matrix, table/column naming, timestamptz, polymorphism rules, JSON discipline, indexing, uniqueness, versioning, currency, tenant scope, migration discipline, canonical dictionaries, accepted Postgres extensions, enforcement.
+- `docs/planning/aggregate-map.md` — every DDD aggregate with components, tenant-scope flags, and a forbidden-cross-aggregate-writes list.
+- `docs/planning/data-model-decisions.md` — 25 DMD entries (CRUD + event-log, RLS-on-top, expand-contract, two-release contract, FK enforcement, transactional outbox, polymorphism bounds, archivedAt canonicalisation, UTC timestamptz, dictionary-backed reference data, currency codes, optimistic `version`, partitioning deferral, AST-based CI lint, platform vs tenant-scoped reference data, envelope-encryption policy, accepted Postgres extensions, `hiredAt`/`terminatedAt` denorm, `ProjectRetrospective` extraction, bridge-naming rule, `ApprovalDecision.REQUESTED` deprecation).
+- `scripts/check-schema-conventions.cjs` — 7 rules parsing `schema.prisma` via `@mrleebo/prisma-ast`: `id-not-uuid`, `fk-not-uuid`, `fk-missing-relation`, `relation-ondelete-missing`, `datetime-not-timestamptz`, `model-missing-map`, `approval-decision-requested`.
+- `scripts/schema-convention-baseline.json` — 397 existing violations grandfathered; baseline shrinks, never grows. Every DM sub-phase reduces it.
+- `npm run schema:check` wired into `verify:pr`; `npm run schema:baseline` regenerates after intentional changes.
+- `Phase DM` tracker section added covering DM-1 through DM-8 (50+ checklist items).
+
+**DM-3 Phase-1 landed (2026-04-17):** 16 UUID↔UUID foreign keys declared in [prisma/schema.prisma](prisma/schema.prisma) with explicit `onDelete` per the DM-1 policy matrix. Migration draft at [prisma/migrations/20260417_dm3_relation_closure/migration.sql](prisma/migrations/20260417_dm3_relation_closure/migration.sql) uses `ADD CONSTRAINT ... NOT VALID` + `CREATE INDEX IF NOT EXISTS` + `VALIDATE CONSTRAINT`. Orphan detection at [scripts/find-orphans.ts](scripts/find-orphans.ts) covers 30+ relations (UUID and TEXT). Migration not yet applied — ops rollout playbook in tracker item DM-3-4. Schema lint baseline dropped 397 → 361 (20 external-ID + polymorphic whitelist entries + 16 new relations).
+
+**DM-2.5 Public ID Layer inserted (2026-04-18, security-critical):** user flagged raw UUIDs in URLs/DTOs as a heavy security vulnerability. Every aggregate root gains a `publicId VARCHAR(32)` column (entity-type-prefixed, tenant-scoped Sqid, never leaves the API layer). Internal `uuid` PK remains for FKs and joins. Decision documented as [DMD-026](docs/planning/data-model-decisions.md), specification in [schema-conventions.md §20](docs/planning/schema-conventions.md). DM-2 + DM-2.5 combined per-table — one expand-contract cycle introduces both internal `uuid` and external `publicId`.
+
+**DM-2 expand scaffolded for all 12 tables (2026-04-18):** runbook at [docs/planning/dm2-expand-contract-runbook.md](docs/planning/dm2-expand-contract-runbook.md). Each table got a migration directory under `prisma/migrations/20260418_dm2_expand_<table>/` with `migration.sql` + `rollback.sql`. Every expand migration is additive: adds `id_new uuid DEFAULT gen_random_uuid()`, adds `publicId varchar(32)` (aggregate roots only), backfills both, installs a BEFORE-INSERT-OR-UPDATE dual-maintain trigger, builds unique indexes, and logs a self-audit `AuditLog` row.
+
+| Table | Aggregate root? | publicId prefix | Migration |
+|---|---|---|---|
+| `skills` | Yes | `skl_` | [20260418_dm2_expand_skills](prisma/migrations/20260418_dm2_expand_skills) |
+| `person_skills` | No (child) | — | [20260418_dm2_expand_person_skills](prisma/migrations/20260418_dm2_expand_person_skills) |
+| `pulse_entries` | No (composite key) | — | [20260418_dm2_expand_pulse_entries](prisma/migrations/20260418_dm2_expand_pulse_entries) |
+| `period_locks` | Yes | `prd_` | [20260418_dm2_expand_period_locks](prisma/migrations/20260418_dm2_expand_period_locks) |
+| `person_cost_rates` | Yes | `pcr_` | [20260418_dm2_expand_person_cost_rates](prisma/migrations/20260418_dm2_expand_person_cost_rates) |
+| `project_budgets` | Yes | `bud_` | [20260418_dm2_expand_project_budgets](prisma/migrations/20260418_dm2_expand_project_budgets) |
+| `in_app_notifications` | Yes | `not_` | [20260418_dm2_expand_in_app_notifications](prisma/migrations/20260418_dm2_expand_in_app_notifications) |
+| `leave_requests` | Yes | `lvr_` | [20260418_dm2_expand_leave_requests](prisma/migrations/20260418_dm2_expand_leave_requests) |
+| `staffing_requests` | Yes | `stf_` | [20260418_dm2_expand_staffing_requests](prisma/migrations/20260418_dm2_expand_staffing_requests) |
+| `staffing_request_fulfilments` | No (child) | — | [20260418_dm2_expand_staffing_request_fulfilments](prisma/migrations/20260418_dm2_expand_staffing_request_fulfilments) |
+| `timesheet_weeks` | Yes | `tsh_` | [20260418_dm2_expand_timesheet_weeks](prisma/migrations/20260418_dm2_expand_timesheet_weeks) |
+| `timesheet_entries` | No (child) | — | [20260418_dm2_expand_timesheet_entries](prisma/migrations/20260418_dm2_expand_timesheet_entries) |
+
+Prefix reservations are captured in [schema-conventions.md §20](docs/planning/schema-conventions.md). `prisma validate` ✓ · `db:generate` ✓ · backend `tsc --noEmit` clean · schema lint baseline 364 (unchanged from pre-DM-2 batch; Skill-pilot's `publicId` was exempted via the `*Id$` lint heuristic fix). Fallback publicId format during expand is `<prefix>_<12-hex>`; DM-2.5-2 (Sqids service) will regenerate to proper opaque Sqids before the contract cutover.
+
+**DM-2 remaining work:**
+- **DM-2-ops-expand** — apply the 12 expand migrations to the blue/green clone → traffic replay → staging drill → production cutover. Any order works since expand is additive.
+- **DM-2.5 tooling** — Sqids service, Prisma extension, NestJS pipe, serializer, the two new lint rules, controller+frontend migration top-down.
+- **DM-2-contract-batch** — 12 contract migrations (PK swap + rename + drop trigger + `publicId NOT NULL`). Cross-table dependencies: `skills` ↔ `person_skills.skillId`, `timesheet_weeks` ↔ `timesheet_entries.timesheetWeekId`, `staffing_requests` ↔ `staffing_request_fulfilments.requestId` must contract in lock-step (type-mismatched FKs are invalid after cutover).
+- **DM-2-finish** — regenerate `prisma/seed.ts`, unblock DM-3-2b (14 TEXT→UUID FKs), unblock DM-4 CHECK constraints on these tables, drop `id_old` shadow columns.
+
+**Remaining DM sub-phases (pending):** DM-2 type normalization (expand-contract TEXT→uuid — unblocks DM-3 Phase-2's 14 remaining relations); DM-3 Phase-2 (TEXT→UUID FKs) + DM-3-6 service refactor (use Prisma `include`); DM-4 CHECK constraints + enum promotion + timestamptz conversion; DM-5 naming normalization; DM-6 new domain models (Currency, BudgetApproval, Contact, EmploymentEvent, ProjectRetrospective, dictionary-backed reference data); DM-7 DomainEvent transactional outbox + notification unification; DM-7.5 first-class tenant isolation with RLS; DM-8 version columns, soft-delete middleware, full-text search, materialised views, operational hardening.
 - Missing notification events added (amended, deactivated, case approved/rejected)
 
 ### Accessibility (Phase 20e — complete)
@@ -616,3 +661,107 @@ Remaining 17 items are architectural refactoring (20c sub-phase):
 - ADM3: Admin panel now lists, enables/disables, and deletes local accounts
 - RM3a: RM dashboard quick-assignment modal implemented
 - Notification wired: `case.step_completed` event fires on step completion
+
+---
+
+## Workforce Planner — Distribution Studio (2026-04-17 / 18)
+
+Entry point: `/staffing-desk?view=planner`. Backend: [workforce-planner.service.ts](src/modules/staffing-desk/application/workforce-planner.service.ts), [planner-scenario.service.ts](src/modules/staffing-desk/application/planner-scenario.service.ts), [staffing-desk.controller.ts](src/modules/staffing-desk/presentation/staffing-desk.controller.ts). Frontend: [WorkforcePlanner.tsx](frontend/src/components/staffing-desk/WorkforcePlanner.tsx) + 9 sibling components + [usePlannerSimulation.ts](frontend/src/features/staffing-desk/usePlannerSimulation.ts).
+
+### Solver — strategy-driven auto-distribute
+
+`POST /api/staffing-desk/planner/auto-match` accepts `{ strategy, minSkillMatch, from, weeks, projectStatuses[], priorities[], poolId, orgUnitId, demandIds?, lockedPersonIds? }`.
+
+Five strategies:
+- `BALANCED` (default): `0.5·skill + 0.3·benchDays + 0.2·costInverse`.
+- `BEST_FIT`: pure skill match.
+- `UTILIZE_BENCH`: longest-benched first, skill as tiebreaker.
+- `CHEAPEST`: lowest cost, skill floor.
+- `GROWTH`: stretch-band 20–60% skill, junior bonus.
+
+Three-tier candidate selection per demand:
+1. **Chain** — person whose prior simulated engagement ends strictly before this demand starts; preferred so one person rolls from project A to project B without going to bench.
+2. **Qualified** — fresh bench person clearing `minSkillMatch`, ranked by strategy score.
+3. **Fallback** — longest-bench eligible person regardless of skill (flagged `fallbackUsed: true`, shown as MISMATCH with `fallback: longest bench` rationale).
+
+Hard filters applied in solver: `employmentStatus=ACTIVE`, over-allocation (cumulative across batch), approved leave overlap, project end date vs demand start.
+
+### Multi-week coverage
+
+Each suggestion carries `coverageWeeks: string[]` — Monday-aligned weeks spanning the demand's duration, clamped to the grid horizon. On acceptance, the frontend expands the suggestion into one yellow block per covered week. One suggestion can fill 13 cells.
+
+### Filter consistency (grid + autoMatch + scenarios)
+
+`projectStatuses` and `priorities` are passed to **both** `GET /api/staffing-desk/planner` and `POST /api/staffing-desk/planner/auto-match` from a single React state object. `poolId`/`orgUnitId` also flow to both. Project-status scope and the `endsOn >= horizonStart` guard are applied identically on both endpoints so any project invisible in the grid is also invisible to the solver.
+
+Toolbar filter bar: `Status` multi-select chip (6 statuses, default ACTIVE), `Priority` multi-select chip (4 priorities, default all), `Layer` select (coverage/cost/match/risk heatmap).
+
+### Diagnostics — transparent funnel
+
+Every auto-match response carries an `AutoMatchDiagnostics` block: `projectsWithOpenDemand`, `projectsInScope`, `totalHeadcountScanned`, `headcountInScope`, `headcountSkippedProjectStatus`, `headcountSkippedHorizon`, `headcountSkippedPriority`, `totalActivePeople`, `benchInScope`, `suggestionsCreated`, `chainedCount`, `fallbackCount`, `unmatchedHeadcount`. Surfaced as a strip at the top of the preview modal so the user can reconcile the visible grid rows against the solver's scope.
+
+### Extension & anomalies
+
+`POST /api/staffing-desk/planner/extension-validate` runs 5 checks when a user opts to extend an existing assignment (`Extend` button in cell-detail popover): employment inactive, termination before new end, project end overrun (hard stops) + approved leave overlap, over-allocation (soft anomalies). Soft anomalies require a reason (`TRAINING | EMERGENCY | CLIENT_PREFERENCE | OTHER+note`); both the conflict list and the reason flow through apply and land on `ProjectAssignment.notes`.
+
+Collapsible `PlannerAnomalyTable` below the grid aggregates: skill-mismatch force-assigns, over-allocation overrides, accepted MISMATCH auto-matches, extension conflicts. Default collapsed to a ~28px strip showing severity counts; expands on click to a capped 35vh scrollable table with per-row `Undo`. `flex: 0 0 auto` so it cannot steal vertical space from the grid.
+
+### Server-persisted scenarios
+
+New Prisma model `PlannerScenario` (`planner_scenarios` table, migration `20260418_add_planner_scenarios`) stores serialized simulation state (`moves`, `suggestions`, `hireIntents`, `releases`, `extensions`, `unmatchedDemand`) plus cached summary counts + horizon context.
+
+- `GET /api/staffing-desk/planner/scenarios` — list
+- `GET /api/staffing-desk/planner/scenarios/:id` — detail (includes `state`)
+- `POST /api/staffing-desk/planner/scenarios` — create (requires `actorId`)
+- `PATCH /api/staffing-desk/planner/scenarios/:id` — update
+- `DELETE /api/staffing-desk/planner/scenarios/:id` — archive (soft)
+
+Toolbar `Scenarios ▾` dropdown: Save current / Load / Fork / Archive. Forking round-trips through backend as a new record.
+
+### Why-not?
+
+`POST /api/staffing-desk/planner/why-not` — for any unmatched demand, returns top 5 close-but-rejected candidates with `disqualifiers: WhyNotDisqualifier[]` (`fully-allocated`, `on-leave`, `missing-skills`, `inactive`, ...). Surfaced via `?` button on each unmatched demand card in the bench sidebar.
+
+### Cell rendering legend
+
+- **Green fill** — existing APPROVED / ACTIVE / REQUESTED assignment.
+- **Blue fill** — DRAFT assignment (`AssignmentStatus=DRAFT`).
+- **Yellow dashed, no fill** — missing assignment (unfilled StaffingRequest / RolePlan HC).
+- **Yellow fill** — proposed by simulation (auto-match accepted, manual drag, chained continuation).
+- **Yellow dashed with ⟶** — simulated extension.
+- **Purple dotted** — PHANTOM_HIRE (new hire intent, no person yet).
+- `!` badge = skill MISMATCH; `⛔` badge = over-allocation override.
+
+Cell cap: 6 assignments + 4 demands visible before a clickable **`+N more`** overflow badge opens the cell detail popover.
+
+### Tuning controls
+
+Bench sidebar: Strategy dropdown (5 options) + `Min skill match` slider (0–90%, step 5, default 15%). `Min skill match` is ignored when strategy is `GROWTH`.
+
+### Apply flow
+
+`POST /api/staffing-desk/planner/apply` now handles `{ dispatches, hireRequests, releases, extensions }` atomically:
+- Dispatches create `ProjectAssignment` with `status=REQUESTED` and force-assign reason on `notes`.
+- Hires create `StaffingRequest` with `status=OPEN`.
+- Extensions update `ProjectAssignment.validTo` and append conflicts + reason to `notes`.
+- Response: `{ assignmentsCreated, staffingRequestsCreated, releasesNoted, extensionsUpdated, errors[] }`.
+
+### Interaction model
+
+- Single click on a populated cell → `PlannerCellDetailPopover` (assignment list + per-row Remove/Extend/Release/Accept/Reject).
+- Double click on any cell → `PlannerDraftAssignmentModal` (person picker from bench, Save Draft = `status=DRAFT`, Create & Request = `status=REQUESTED`).
+- Drag bench → cell: classifies SUGGESTED/ACCEPTABLE/MISMATCH/BLOCKED; MISMATCH/BLOCKED triggers `PlannerForceAssignPopover` for reason capture.
+- Inline bench chips appear on empty demand cells during Simulating mode (top-3 candidates, click = instant assign).
+- Keyboard: `Cmd/Ctrl+Z` undo · `Cmd/Ctrl+Enter` apply · `Escape` dismiss top overlay · `Alt+←/→` jump 4 weeks.
+- Heatmap layers: coverage (default), cost, match quality, risk.
+
+### Rightmost diff column
+
+Every project row carries a sticky `Δ FTE` column showing `baseline → simulated` average FTE across the horizon and the delta, color-coded green/red/muted.
+
+### Known limitations / follow-ups
+
+- `PlannerAssignmentBlock` doesn't expose `validTo` to the frontend, so the Extend modal shows `open-ended` as the initial current-end; backend validator resolves the real date on first validate call.
+- Compare-scenarios side-by-side view not built yet (only list + load + fork).
+- Over-allocation tracking still uses a cumulative counter across the batch rather than per-week; acceptable because chaining uses `busyUntil` which naturally respects time windows, but fresh-bench over-allocation across multiple demand items in the same week is imprecise.
+- No backend tests for the new solver paths yet — user has flagged test-runs as user-triggered only. Planner endpoints are exercised by the Playwright smoke suite but not by dedicated specs.

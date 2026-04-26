@@ -54,9 +54,11 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
     return () => { active = false; };
   }, [id]);
 
-  const amendableStatuses = ['APPROVED', 'ACTIVE', 'REQUESTED'];
+  const amendableStatuses = ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED'];
   const canAmend = state.data ? amendableStatuses.includes(state.data.approvalState) : false;
-  const canRevoke = state.data ? amendableStatuses.includes(state.data.approvalState) : false;
+  const canRevoke = state.data
+    ? !['REJECTED', 'COMPLETED', 'CANCELLED'].includes(state.data.approvalState)
+    : false;
 
   async function handleAmendSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -172,21 +174,12 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
               </div>
 
               <AssignmentWorkflowActions
-                canApprove={state.data.canApprove}
-                canReject={state.data.canReject}
+                currentStatus={state.data.approvalState}
                 isSubmitting={state.isSubmitting}
-                onApprove={async (comment) => {
-                  await state.runDecision('approve', {
-                    ...(actorId ? { actorId } : {}),
-                    comment: comment || undefined,
-                  });
+                onTransition={async (target, options) => {
+                  await state.runTransition(target, options);
                 }}
-                onReject={async (reason) => {
-                  await state.runDecision('reject', {
-                    ...(actorId ? { actorId } : {}),
-                    reason: reason || undefined,
-                  });
-                }}
+                userRoles={principal?.roles ?? []}
               />
 
               <AssignmentEndActions

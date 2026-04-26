@@ -1,121 +1,159 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { screen, within } from '@testing-library/react';
+import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import { fetchAssignments } from '@/lib/api/assignments';
+import { fetchStaffingDesk } from '@/lib/api/staffing-desk';
+import type { StaffingDeskRow, StaffingDeskResponse } from '@/lib/api/staffing-desk';
+import { renderRoute } from '@test/render-route';
 import { AssignmentsPage } from './AssignmentsPage';
 
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
+    principal: { personId: 'person-1', roles: ['project_manager'] },
     isAuthenticated: true,
     isLoading: false,
-    principal: { personId: 'user-1', roles: ['resource_manager'] },
   }),
 }));
 
-vi.mock('@/lib/api/assignments', () => ({
-  fetchAssignments: vi.fn(),
+vi.mock('@/lib/api/staffing-desk', () => ({
+  fetchStaffingDesk: vi.fn(),
 }));
 
-const mockedFetchAssignments = vi.mocked(fetchAssignments);
+const mockedFetch = vi.mocked(fetchStaffingDesk);
+
+function buildRow(overrides: Partial<StaffingDeskRow>): StaffingDeskRow {
+  return {
+    id: 'row-1',
+    kind: 'assignment',
+    projectId: 'proj-1',
+    projectName: 'Atlas ERP',
+    role: 'Lead Engineer',
+    allocationPercent: 100,
+    startDate: '2025-04-01T00:00:00.000Z',
+    endDate: null,
+    status: 'ASSIGNED',
+    statusGroup: 'active',
+    createdAt: '2025-03-10T00:00:00.000Z',
+    priority: null,
+    personId: 'person-1',
+    personName: 'Ethan Brooks',
+    assignmentCode: 'ASN-001',
+    personAssignments: [],
+    personGrade: null,
+    personRole: null,
+    personEmail: null,
+    personOrgUnit: null,
+    personManager: null,
+    personPool: null,
+    personSkills: [],
+    personEmploymentStatus: 'ACTIVE',
+    headcountRequired: null,
+    headcountFulfilled: null,
+    skills: [],
+    requestedByName: null,
+    summary: null,
+    ...overrides,
+  };
+}
+
+function buildResponse(items: StaffingDeskRow[]): StaffingDeskResponse {
+  return {
+    items,
+    page: 1,
+    pageSize: 50,
+    totalCount: items.length,
+    kpis: { activeAssignments: 0, openRequests: 0, avgAllocationPercent: 0, overallocatedPeople: 0 },
+    supplyDemand: { totalPeople: 0, availableFte: 0, benchCount: 0, totalHeadcountRequired: 0, headcountFulfilled: 0, headcountOpen: 0, gapHc: 0, fillRatePercent: 100, avgDaysToFulfil: 0 },
+  };
+}
 
 describe('AssignmentsPage', () => {
   beforeEach(() => {
-    mockedFetchAssignments.mockReset();
+    mockedFetch.mockReset();
+    window.localStorage.clear();
   });
 
-  it('shows loading state', () => {
-    mockedFetchAssignments.mockReturnValue(new Promise(() => undefined));
+  it('renders both tabs with correct counts', async () => {
+    mockedFetch.mockResolvedValue(buildResponse([
+      buildRow({ id: 'a1', kind: 'assignment', status: 'ASSIGNED' }),
+      buildRow({ id: 'a2', kind: 'assignment', status: 'PROPOSED' }),
+      buildRow({ id: 'r1', kind: 'request', status: 'OPEN', personId: null, personName: null }),
+    ]));
 
     renderWithRouter();
 
-    expect(screen.getByTestId('skeleton-table')).toBeInTheDocument();
+    const assignmentsTab = await screen.findByTestId('tab-assignments');
+    expect(assignmentsTab).toHaveTextContent('Assignments (2)');
+
+    const positionsTab = screen.getByTestId('tab-positions');
+    expect(positionsTab).toHaveTextContent('Positions (1)');
   });
 
-  it('shows empty state', async () => {
-    mockedFetchAssignments.mockResolvedValue({
-      items: [],
-      totalCount: 0,
-    });
+  it('shows Next Step column for assignments', async () => {
+    mockedFetch.mockResolvedValue(buildResponse([
+      buildRow({ id: 'a1', status: 'PROPOSED' }),
+      buildRow({ id: 'a2', status: 'ASSIGNED' }),
+    ]));
 
     renderWithRouter();
 
-    expect(await screen.findByText('No assignments yet')).toBeInTheDocument();
+    expect(await screen.findByText(/Pending approval/)).toBeInTheDocument();
+    expect(screen.getByText(/In progress/)).toBeInTheDocument();
   });
 
-  it('renders assignment data', async () => {
-    mockedFetchAssignments.mockResolvedValue({
-      items: [
-        {
-          allocationPercent: 50,
-          approvalState: 'APPROVED',
-          endDate: '2025-04-30T23:59:59.999Z',
-          id: 'asn-1',
-          person: { displayName: 'Ethan Brooks', id: 'person-1' },
-          project: { displayName: 'Atlas ERP Rollout', id: 'project-1' },
-          staffingRole: 'Lead Engineer',
-          startDate: '2025-02-01T00:00:00.000Z',
-        },
-      ],
-      totalCount: 1,
-    });
+  it('shows Next Step column for positions', async () => {
+    mockedFetch.mockResolvedValue(buildResponse([
+      buildRow({ id: 'r1', kind: 'request', status: 'OPEN', personId: null, personName: null }),
+      buildRow({ id: 'r2', kind: 'request', status: 'IN_REVIEW', personId: null, personName: null }),
+    ]));
+
+    renderWithRouter('/assignments?tab=positions');
+
+    expect(await screen.findByText(/Review candidates/)).toBeInTheDocument();
+    expect(screen.getByText(/Assign person/)).toBeInTheDocument();
+  });
+
+  it('navigates to assignment detail on row click', async () => {
+    mockedFetch.mockResolvedValue(buildResponse([
+      buildRow({ id: 'assignment-123', status: 'ASSIGNED', personName: 'Ethan Brooks' }),
+    ]));
+
+    const { user } = renderWithRouter();
+
+    await screen.findByText('Ethan Brooks');
+    const table = screen.getByTestId('workflow-table');
+    const row = within(table).getByText('Ethan Brooks').closest('tr')!;
+    await user.click(row);
+
+    expect(await screen.findByText('Assignment Detail View')).toBeInTheDocument();
+  });
+
+  it('shows empty state when no data', async () => {
+    mockedFetch.mockResolvedValue(buildResponse([]));
 
     renderWithRouter();
 
-    expect(await screen.findByText('Ethan Brooks')).toBeInTheDocument();
-    expect(screen.getByText('Atlas ERP Rollout')).toBeInTheDocument();
-    expect(screen.getByText('Lead Engineer')).toBeInTheDocument();
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getAllByText('Approved').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByText('Nothing here yet')).toBeInTheDocument();
   });
 
-  it('shows API error state', async () => {
-    mockedFetchAssignments.mockRejectedValue(new Error('Assignments unavailable'));
+  it('shows error state on API failure', async () => {
+    mockedFetch.mockRejectedValue(new Error('Network error'));
 
     renderWithRouter();
 
-    expect(await screen.findByText('Assignments unavailable')).toBeInTheDocument();
-  });
-
-  it('navigates to assignment details placeholder on row click', async () => {
-    mockedFetchAssignments.mockResolvedValue({
-      items: [
-        {
-          allocationPercent: 50,
-          approvalState: 'APPROVED',
-          endDate: '2025-04-30T23:59:59.999Z',
-          id: 'asn-1',
-          person: { displayName: 'Ethan Brooks', id: 'person-1' },
-          project: { displayName: 'Atlas ERP Rollout', id: 'project-1' },
-          staffingRole: 'Lead Engineer',
-          startDate: '2025-02-01T00:00:00.000Z',
-        },
-      ],
-      totalCount: 1,
-    });
-
-    const user = userEvent.setup();
-    renderWithRouter();
-
-    await user.click(await screen.findByText('Ethan Brooks'));
-
-    await waitFor(() => {
-      expect(screen.getByText('Assignment Details')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Network error')).toBeInTheDocument();
   });
 });
 
-function renderWithRouter(): void {
-  render(
-    <MemoryRouter initialEntries={['/assignments']}>
-      <Routes>
-        <Route element={<AssignmentsPage />} path="/assignments" />
-        <Route
-          element={<div>Assignment Details</div>}
-          path="/assignments/:id"
-        />
-      </Routes>
-    </MemoryRouter>,
+function renderWithRouter(initialPath = '/assignments') {
+  return renderRoute(
+    <Routes>
+      <Route element={<AssignmentsPage />} path="/assignments" />
+      <Route element={<div>Assignment Detail View</div>} path="/assignments/:id" />
+      <Route element={<div>Position Detail View</div>} path="/staffing-requests/:id" />
+    </Routes>,
+    {
+      initialEntries: [initialPath],
+    },
   );
 }

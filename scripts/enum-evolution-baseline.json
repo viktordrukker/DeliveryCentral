@@ -1,0 +1,11 @@
+{
+  "_description": "DM-R-6 baseline. Lists historical single-step enum renames that pre-date the playbook. New violations MUST NOT be added to this file; fix them with the 4-migration pattern instead.",
+  "_policy": "Append-only is NOT allowed — every entry is a documented historical exception, reviewed in PR.",
+  "exempt": [
+    {
+      "migration": "20260418_canonical_assignment_status",
+      "type": "AssignmentStatus",
+      "reason": "Pre-dates DM-R-6 (2026-04-18). This migration IS the empirical basis of the enum-evolution-playbook (caused the 45-min outage). Cannot be rewritten retroactively — already applied in dev+prod. Documented in docs/planning/enum-evolution-playbook.md."
+    }
+  ]
+}

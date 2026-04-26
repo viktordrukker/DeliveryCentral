@@ -1,45 +1,39 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 5s
-    restart: unless-stopped
+# Per-stack production compose. Used twice on the VM:
+#   /opt/deliverycentral/           (project: dc-prod,    .env: prod)
+#   /opt/deliverycentral-staging/   (project: dc-staging, .env: staging)
+#
+# Postgres + Caddy live in a separate "data" stack at /opt/deliverycentral-data/
+# so they can be shared across both environments (saves ~700 MB on the 8 GB VM).
+# This compose joins the external `dc-shared` network created by the data stack.
+#
+# CI exports BACKEND_IMAGE / FRONTEND_IMAGE per deploy. Defaults let an operator
+# bring the stack up by hand without any CI run (`:latest` is rebuilt on every
+# main push).
 
+services:
   migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: ${BACKEND_IMAGE:-ghcr.io/local/deliverycentral-backend:latest}
+    pull_policy: always
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: sh -c "node_modules/.bin/prisma migrate deploy"
+      DATABASE_URL: ${DATABASE_URL}
+    networks: [dc-shared]
+    # Wait for the shared postgres (in the data stack) to accept connections,
+    # then run idempotent migrate deploy. `restart: no` ensures we don't loop
+    # forever if a migration fails — the deploy script catches that.
+    command: >
+      sh -c "until node -e \"require('net').createConnection({host:'postgres',port:5432}).on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))\" 2>/dev/null; do echo waiting for postgres; sleep 2; done && node_modules/.bin/prisma migrate deploy"
     restart: 'no'
 
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
+    image: ${BACKEND_IMAGE:-ghcr.io/local/deliverycentral-backend:latest}
+    pull_policy: always
     environment:
       NODE_ENV: production
       PORT: 3000
       API_PREFIX: ${API_PREFIX:-api}
       CORS_ORIGIN: ${CORS_ORIGIN}
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       AUTH_ISSUER: ${AUTH_ISSUER}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
@@ -67,29 +61,33 @@ services:
       NOTIFICATIONS_SMTP_PASSWORD: ${NOTIFICATIONS_SMTP_PASSWORD:-}
       NOTIFICATIONS_EMAIL_FROM_ADDRESS: ${NOTIFICATIONS_EMAIL_FROM_ADDRESS}
       NOTIFICATIONS_EMAIL_FROM_NAME: ${NOTIFICATIONS_EMAIL_FROM_NAME:-DeliveryCentral}
-      SERVICE_NAME: ${SERVICE_NAME:-workload-tracking-platform}
+      SERVICE_NAME: ${SERVICE_NAME:-deliverycentral}
       LOG_LEVEL: ${LOG_LEVEL:-log,warn,error}
     depends_on:
-      postgres:
-        condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    networks: [dc-shared]
+    # DM-R-8 — deep probe exercises every aggregate root through Prisma.
+    # The container is only marked healthy when /api/health/deep returns
+    # "status":"ready" — a half-applied migration or a broken aggregate
+    # keeps the orchestrator from routing traffic to a wounded backend.
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3000/api/health > /dev/null 2>&1 || exit 1']
+      test:
+        - 'CMD-SHELL'
+        - 'wget -q -O - http://127.0.0.1:3000/api/health/deep 2>&1 | grep -q "\"status\":\"ready\"" || exit 1'
       interval: 10s
-      timeout: 5s
+      timeout: 8s
       retries: 20
-      start_period: 20s
+      start_period: 30s
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+    image: ${FRONTEND_IMAGE:-ghcr.io/local/deliverycentral-frontend:latest}
+    pull_policy: always
     depends_on:
       backend:
         condition: service_healthy
+    networks: [dc-shared]
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:80/ > /dev/null 2>&1 || exit 1']
       interval: 10s
@@ -98,24 +96,31 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2.9-alpine
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp'
+  # --- monitoring profile (opt-in via --profile monitoring) ---------------
+  # uptime-kuma, dozzle, and Caddy live in the data stack (one instance for
+  # both prod and staging). issue-reporter stays here because it is
+  # environment-aware (different repo / labels per stack).
+  issue-reporter:
+    profiles: ['monitoring']
+    build:
+      context: ./ops/issue-reporter
+    container_name: ${COMPOSE_PROJECT_NAME:-dc}-issue-reporter
+    environment:
+      ISSUE_REPORTER_GITHUB_TOKEN: ${ISSUE_REPORTER_GITHUB_TOKEN:-}
+      ISSUE_REPORTER_GITHUB_REPO: ${ISSUE_REPORTER_GITHUB_REPO:-}
+      ISSUE_REPORTER_ENVIRONMENT: ${ISSUE_REPORTER_ENVIRONMENT:-prod}
+      ISSUE_REPORTER_LOG_LINES: ${ISSUE_REPORTER_LOG_LINES:-200}
+      ISSUE_REPORTER_OWN_CONTAINER: ${COMPOSE_PROJECT_NAME:-dc}-issue-reporter
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./.current-sha:/host/current-sha:ro
+    networks: [dc-shared]
     restart: unless-stopped
 
-volumes:
-  postgres-data:
-  caddy-data:
-  caddy-config:
+# Joined to the shared network created by /opt/deliverycentral-data/docker-compose.yml.
+# `external: true` means this stack does NOT create the network — it expects it
+# to exist. The data stack must be brought up first.
+networks:
+  dc-shared:
+    name: dc-shared
+    external: true

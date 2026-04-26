@@ -7,6 +7,172 @@ on:
   pull_request:
 
 jobs:
+  schema-drift-check:
+    name: Schema drift check (DM-R-2)
+    runs-on: ubuntu-latest
+    # Ephemeral Postgres so `prisma migrate diff` and pg_dump can verify that
+    # applying all migrations in the repo produces a schema byte-compatible with
+    # the committed baseline hash. This is the gate that would have stopped the
+    # 2026-04-18 split-brain (schema.prisma reverted but migration shipped).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: drift_check
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/drift_check?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Apply every migration in this branch to the ephemeral DB
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Generate Prisma Client from schema.prisma
+        run: npm run db:generate
+
+      # The core check: `prisma migrate diff` from the committed schema.prisma
+      # to the live DB (after `migrate deploy`). Any non-empty diff means that
+      # the schema would have drifted if the backend booted — exactly the
+      # 2026-04-18 failure mode.
+      - name: Prisma migrate diff — schema.prisma vs applied migrations
+        run: |
+          npx prisma migrate diff \
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code
+        # Exit code 0 = no diff (expected). Non-zero = drift present.
+
+      # Belt-and-braces: Prisma migrate diff at the abstract layer misses raw
+      # SQL changes (CHECK constraints, triggers, comments, collation). A
+      # byte-level schema hash baseline catches those too.
+      - name: pg_dump schema → sha256 → compare to committed baseline
+        run: |
+          pg_dump --schema-only --no-owner --no-privileges \
+            --no-comments --no-publications --no-subscriptions \
+            "$DATABASE_URL" \
+            | grep -v "^-- " \
+            | grep -v "^SET " \
+            | grep -v "^SELECT pg_catalog" \
+            | sed '/^$/d' \
+            > /tmp/current-schema.sql
+          CURRENT_HASH=$(sha256sum /tmp/current-schema.sql | awk '{print $1}')
+          BASELINE_FILE=prisma/migrations/.schema-hash
+          if [ ! -f "$BASELINE_FILE" ]; then
+            echo "::warning::No $BASELINE_FILE baseline committed yet. Treating current hash as baseline."
+            echo "$CURRENT_HASH  $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$BASELINE_FILE"
+            exit 0
+          fi
+          BASELINE_HASH=$(awk '{print $1}' "$BASELINE_FILE")
+          if [ "$CURRENT_HASH" != "$BASELINE_HASH" ]; then
+            echo "::error::Schema hash drift. Expected $BASELINE_HASH, got $CURRENT_HASH."
+            echo "If this drift is intentional (new migration lands), update $BASELINE_FILE in the same PR:"
+            echo "  echo '$CURRENT_HASH  \$(date -u +%Y-%m-%dT%H:%M:%SZ)' > $BASELINE_FILE"
+            diff <(cat /tmp/current-schema.sql) <(git show HEAD:$BASELINE_FILE 2>/dev/null || echo "") | head -80
+            exit 1
+          fi
+          echo "✓ Schema hash matches committed baseline."
+
+      - name: prisma migrate status
+        run: npx prisma migrate status --schema=prisma/schema.prisma
+
+      # DM-R-4 — every migration directory must declare its rollback posture.
+      # Fails if any migration lacks REVERSIBLE.md + rollback.sql OR
+      # FORWARD_ONLY.md with restore docs. Fake rollbacks are explicitly
+      # rejected (FORWARD_ONLY + rollback.sql simultaneously = fail).
+      - name: Migration classification (DM-R-4)
+        run: npm run migrations:check
+
+      # DM-R-6 — reject single-step enum renames. Any migration that both
+      # ADDS and REMOVES values of the same enum in one file is the
+      # 2026-04-18 outage pattern. Forces the 4-migration split documented
+      # in docs/planning/enum-evolution-playbook.md.
+      - name: Enum evolution lint (DM-R-6)
+        run: npm run enum:check
+
+      # DM-R-13 — the auto-generated per-migration contract spec must be
+      # in sync with the migrations on disk. A PR that edits a migration
+      # (or adds/removes one) but forgets to regenerate fails here with
+      # an actionable message.
+      - name: Migration contracts up-to-date (DM-R-13)
+        run: npm run test:migrations:check
+
+      # Regeneration drift — the generated Prisma client in node_modules must
+      # match what `prisma generate` would produce from the current schema.
+      # A PR that edits schema.prisma but forgets to re-run db:generate fails.
+      - name: Verify Prisma Client generation is up-to-date
+        run: |
+          npm run db:generate
+          if ! git diff --exit-code node_modules/.prisma/client/schema.prisma 2>/dev/null; then
+            echo "::error::Generated Prisma Client is out of sync with schema.prisma."
+            echo "Run 'npm run db:generate' locally and commit the result."
+            exit 1
+          fi
+
+  agent-ownership-check:
+    name: Agent ownership (DM-R-12)
+    runs-on: ubuntu-latest
+    # Only inspect PRs — push events to main post-merge are noise.
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout (with full history for base/head diff)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: Agent ownership check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-agent-ownership.cjs
+
+  forward-only-approvals:
+    name: Two-person rule for FORWARD_ONLY (DM-R-29)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: FORWARD_ONLY approvals check
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-forward-only-approvals.cjs
+
   backend-fast:
     name: Backend fast checks
     runs-on: ubuntu-latest

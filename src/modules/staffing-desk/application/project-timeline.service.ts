@@ -83,7 +83,7 @@ export class ProjectTimelineService {
 
     // Fetch assignments overlapping the window
     const assignmentWhere: Record<string, unknown> = {
-      status: { in: ['APPROVED', 'ACTIVE', 'REQUESTED'] },
+      status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       validFrom: { lte: endDate },
       OR: [
         { validTo: { gte: new Date(from) } },
@@ -194,7 +194,7 @@ export class ProjectTimelineService {
       const block: TimelineRequestBlock = {
         requestId: r.id,
         role: r.role,
-        allocationPercent: r.allocationPercent,
+        allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
         priority: r.priority,
         headcountOpen: openHc,
       };
@@ -204,7 +204,8 @@ export class ProjectTimelineService {
         const we = this.addDays(ws, 6);
         if (rStart <= we && rEnd >= ws) {
           row.weekData[i].requests.push(block);
-          row.weekData[i].totalDemandPercent += r.allocationPercent * openHc;
+          // DM-4-3: StaffingRequest.allocationPercent is Decimal(5,2) after 2026-04-22.
+          row.weekData[i].totalDemandPercent += (r.allocationPercent as unknown as { toNumber(): number }).toNumber() * openHc;
         }
       }
     }
@@ -212,7 +213,7 @@ export class ProjectTimelineService {
     // Compute bench: people with <20% total allocation
     const personAlloc = new Map<string, number>();
     for (const a of assignments) {
-      if (a.status === 'APPROVED' || a.status === 'ACTIVE') {
+      if (['BOOKED','ONBOARDING','ASSIGNED','ON_HOLD'].includes(a.status)) {
         personAlloc.set(a.personId, (personAlloc.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
       }
     }

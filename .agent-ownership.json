@@ -1,0 +1,49 @@
+{
+  "_description": "DM-R-12 — agent-level ownership registry. Agents declare themselves via the `Agent-Id:` commit trailer; the DM-R-12 checker (scripts/check-agent-ownership.cjs) rejects PRs where a declared agent touches paths owned by another agent. CODEOWNERS gates humans at file level; this gates agents at commit level.",
+  "_policy": "An entry 'owns' a minimatch-style glob. A path with multiple matching entries belongs to the LAST-declared owner (most specific). Paths with zero matches are un-owned — any agent may modify. Register a new agent BEFORE that agent makes its first commit.",
+  "_how_to_use": "Every agent run that commits to this repo MUST append a `Agent-Id: <id>` trailer to its commit messages (e.g., `git commit -m \"...\\n\\nAgent-Id: claude-code\"`). Missing trailer = treated as a human commit (check-agent-ownership passes).",
+  "_trailer_format": "Agent-Id: <lowercase-id>",
+  "agents": {
+    "claude-code": {
+      "description": "Primary DM (data-model) programme + DM-R resilience hardening agent. Owns schema, migrations, resilience tooling, publicId layer, planning docs.",
+      "owns": [
+        "prisma/**",
+        "scripts/check-schema-conventions.cjs",
+        "scripts/check-migration-classification.cjs",
+        "scripts/check-enum-evolution.cjs",
+        "scripts/check-public-id-leak.cjs",
+        "scripts/check-schema-migration-pairing.cjs",
+        "scripts/check-agent-ownership.cjs",
+        "scripts/check-design-tokens.cjs",
+        "scripts/db-snapshot.sh",
+        "scripts/db-restore.sh",
+        "scripts/db-migrate-safe.sh",
+        "scripts/db-reset-safe.sh",
+        "scripts/prestart-verify-migrations.sh",
+        "scripts/verify-migrations-deep.cjs",
+        "scripts/verify-seed.cjs",
+        "scripts/find-orphans.ts",
+        "scripts/record-migration-audit.sh",
+        "scripts/test-rollback-roundtrip.sh",
+        "scripts/refresh-baseline-schema.sh",
+        "scripts/schema-convention-baseline.json",
+        "scripts/public-id-leak-baseline.json",
+        "scripts/enum-evolution-baseline.json",
+        "scripts/seed-manifest.json",
+        "src/infrastructure/public-id/**",
+        "src/modules/health/**",
+        ".husky/**",
+        ".github/workflows/rollback-roundtrip.yml",
+        ".github/workflows/ci.yml",
+        ".github/CODEOWNERS",
+        "docs/planning/schema-conventions.md",
+        "docs/planning/aggregate-map.md",
+        "docs/planning/data-model-decisions.md",
+        "docs/planning/enum-evolution-playbook.md",
+        "docs/planning/dm2-expand-contract-runbook.md",
+        "docs/planning/dm2.5-controller-migration-template.md",
+        "docs/planning/MASTER_TRACKER.md"
+      ]
+    }
+  }
+}

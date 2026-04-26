@@ -127,7 +127,7 @@ export class MonthlyTimesheetService {
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId,
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: monthEnd },
         OR: [{ validTo: null }, { validTo: { gte: monthStart } }],
       },
@@ -307,7 +307,7 @@ export class MonthlyTimesheetService {
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
         personId,
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: monthEnd },
         OR: [{ validTo: null }, { validTo: { gte: monthStart } }],
       },

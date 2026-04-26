@@ -85,7 +85,7 @@ export class DemandProfileService {
         requestId: r.id,
         projectName: projectNameMap.get(r.projectId) ?? r.projectId,
         role: r.role,
-        allocationPercent: r.allocationPercent,
+        allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
         priority: prio,
         skills: r.skills,
         headcountRequired: r.headcountRequired,
@@ -113,7 +113,7 @@ export class DemandProfileService {
       // Get active allocations
       const personIds = [...new Set(personSkills.map((ps) => ps.personId))];
       const assignments = await this.prisma.projectAssignment.findMany({
-        where: { personId: { in: personIds }, status: { in: ['APPROVED', 'ACTIVE'] } },
+        where: { personId: { in: personIds }, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
         select: { personId: true, allocationPercent: true },
       });
       const allocByPerson = new Map<string, number>();

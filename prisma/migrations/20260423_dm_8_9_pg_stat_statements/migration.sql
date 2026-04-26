@@ -1,0 +1,26 @@
+-- DM-8-9 — enable pg_stat_statements + auto_explain.
+--
+-- `shared_preload_libraries` is set at server boot in
+-- docker-compose.yml (`pg_stat_statements,auto_explain`). This
+-- migration only creates the extension so the catalog views exist.
+--
+-- auto_explain has no catalog extension — it's purely a loadable
+-- module that intercepts EXPLAIN; its log_min_duration=500ms is set
+-- in compose.
+--
+-- Operator usage (post-apply):
+--   -- Top 10 queries by total time
+--   SELECT query, calls, total_exec_time, mean_exec_time
+--   FROM pg_stat_statements
+--   ORDER BY total_exec_time DESC LIMIT 10;
+--
+--   -- Reset stats (e.g. after a load test)
+--   SELECT pg_stat_statements_reset();
+--
+-- Per-endpoint query budget is documented in
+-- docs/testing/slo-budgets.json; this migration lets us measure against
+-- that budget in production.
+--
+-- Classification: REVERSIBLE.
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;

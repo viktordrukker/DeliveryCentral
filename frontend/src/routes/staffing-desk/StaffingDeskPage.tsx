@@ -8,15 +8,12 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
-import { BenchDashboard } from '@/components/staffing-desk/BenchDashboard';
-import { StaffingDeskBoard } from '@/components/staffing-desk/StaffingDeskBoard';
+import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
 import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDropdown';
 import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
-import { TeamBuilderModal } from '@/components/staffing-desk/TeamBuilderModal';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
-import { ProjectTimeline } from '@/components/staffing-desk/ProjectTimeline';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
@@ -52,7 +49,6 @@ export function StaffingDeskPage(): JSX.Element {
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
-  const [teamBuilderOpen, setTeamBuilderOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [timelinePopup, setTimelinePopup] = useState<{ personId: string; personName: string } | null>(null);
 
@@ -134,16 +130,8 @@ export function StaffingDeskPage(): JSX.Element {
         />
       )}
 
-      {!state.isLoading && !state.error && filters.view === 'timeline' && (
-        <ProjectTimeline filters={{ poolId: filters.poolId, projectId: filters.project }} />
-      )}
-
-      {!state.isLoading && !state.error && filters.view === 'board' && (
-        <StaffingDeskBoard items={state.items} onCardClick={setSelectedRow} />
-      )}
-
-      {filters.view === 'bench' && (
-        <BenchDashboard poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
+      {filters.view === 'planner' && (
+        <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
       )}
 
       {/* Pagination — includes "X of Y records" */}
@@ -194,7 +182,6 @@ export function StaffingDeskPage(): JSX.Element {
       <StaffingDeskDetailDrawer actions={deskActions} onClose={closeDrawer} row={selectedRow} />
       <SupplyDrillDown open={supplyOpen} onClose={() => setSupplyOpen(false)} poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
       <DemandDrillDown open={demandOpen} onClose={() => setDemandOpen(false)} projectId={filters.project} />
-      <TeamBuilderModal open={teamBuilderOpen} onClose={() => setTeamBuilderOpen(false)} />
     </PageContainer>
   );
 }

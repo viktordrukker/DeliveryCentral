@@ -14,6 +14,7 @@ import { GetAssignmentByIdService } from './application/get-assignment-by-id.ser
 import { ListAssignmentsService } from './application/list-assignments.service';
 import { RejectProjectAssignmentService } from './application/reject-project-assignment.service';
 import { RevokeProjectAssignmentService } from './application/revoke-project-assignment.service';
+import { TransitionProjectAssignmentService } from './application/transition-project-assignment.service';
 import { InMemoryAssignmentReferenceRepository } from './infrastructure/repositories/in-memory/in-memory-assignment-reference.repository';
 import { InMemoryProjectAssignmentRepository } from './infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryPersonRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person.repository';
@@ -146,6 +147,24 @@ import { AssignmentsController } from './presentation/assignments.controller';
         new ActivateApprovedAssignmentsService(repository),
       inject: [InMemoryProjectAssignmentRepository],
     },
+    {
+      provide: TransitionProjectAssignmentService,
+      useFactory: (
+        repository: InMemoryProjectAssignmentRepository,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+      ) =>
+        new TransitionProjectAssignmentService(
+          repository,
+          auditLogger,
+          notificationEventTranslator,
+        ),
+      inject: [
+        InMemoryProjectAssignmentRepository,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+      ],
+    },
   ],
   exports: [
     ActivateApprovedAssignmentsService,
@@ -158,6 +177,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
     EndProjectAssignmentService,
     AmendProjectAssignmentService,
     RevokeProjectAssignmentService,
+    TransitionProjectAssignmentService,
     InMemoryProjectAssignmentRepository,
   ],
 })

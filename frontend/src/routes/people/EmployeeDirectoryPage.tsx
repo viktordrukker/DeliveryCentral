@@ -9,6 +9,7 @@ import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { ViewportTable } from '@/components/layout/ViewportTable';
 import { EmployeeDirectoryTable } from '@/components/people/EmployeeDirectoryTable';
 import { useEmployeeDirectory } from '@/features/people/useEmployeeDirectory';
@@ -74,6 +75,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
             Create employee
           </button>
         ) : null}
+        <CopyLinkButton />
         <TipTrigger />
       </>
     );

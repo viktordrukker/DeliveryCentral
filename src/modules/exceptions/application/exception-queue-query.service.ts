@@ -145,7 +145,7 @@ export class ExceptionQueueQueryService {
     const thresholdMs = this.appConfig.exceptionsStaleApprovalDays * 24 * 60 * 60 * 1000;
 
     return assignments
-      .filter((assignment) => assignment.status.value === 'REQUESTED')
+      .filter((assignment) => assignment.status.value === 'PROPOSED')
       .filter((assignment) => asOf.getTime() - assignment.requestedAt.getTime() >= thresholdMs)
       .map((assignment) => ({
         assignmentId: assignment.assignmentId.value,

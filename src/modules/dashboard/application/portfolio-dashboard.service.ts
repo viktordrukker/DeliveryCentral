@@ -87,6 +87,21 @@ export class PortfolioDashboardService {
     let greenCount = 0, amberCount = 0, redCount = 0;
     let totalPlannedHC = 0, totalFilledHC = 0;
 
+    // Batch fetch all assignments for all active projects in a single query (eliminates N+1)
+    const projectIds = activeProjects.map((p) => p.id);
+    const allAssignments = projectIds.length > 0
+      ? await this.prisma.projectAssignment.findMany({
+          where: { projectId: { in: projectIds }, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+          select: { projectId: true, validTo: true },
+        })
+      : [];
+    const assignmentsByProject = new Map<string, Array<{ validTo: Date | null }>>();
+    for (const a of allAssignments) {
+      const list = assignmentsByProject.get(a.projectId) ?? [];
+      list.push({ validTo: a.validTo });
+      assignmentsByProject.set(a.projectId, list);
+    }
+
     for (const project of activeProjects) {
       // Ensure role plan is auto-initialized from assignments before comparing
       await this.rolePlanService.getRolePlan(project.id);
@@ -98,11 +113,7 @@ export class PortfolioDashboardService {
       totalPlannedHC += comparison.totalPlanned;
       totalFilledHC += comparison.totalFilled;
 
-      // Project future weeks — check for assignments ending
-      const assignments = await this.prisma.projectAssignment.findMany({
-        where: { projectId: project.id, status: { in: ['ACTIVE', 'APPROVED'] } },
-        select: { validTo: true },
-      });
+      const assignments = assignmentsByProject.get(project.id) ?? [];
 
       const weekColumns = weekHeaders.map((weekStart) => {
         const weekDate = new Date(weekStart);
@@ -195,7 +206,7 @@ export class PortfolioDashboardService {
     });
 
     const activeAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['ACTIVE', 'APPROVED'] } },
+      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
       select: { personId: true, allocationPercent: true, validTo: true },
     });
 

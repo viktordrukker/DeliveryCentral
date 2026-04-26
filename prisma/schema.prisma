@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -32,6 +32,20 @@ enum ReportingAuthority {
   APPROVER
   REVIEWER
   VIEWER
+}
+
+enum ProjectShape {
+  SMALL
+  STANDARD
+  ENTERPRISE
+  PROGRAM
+}
+
+enum RiskReviewCadence {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
 }
 
 enum ProjectStatus {
@@ -113,14 +127,15 @@ enum RolePlanSource {
 }
 
 enum AssignmentStatus {
-  DRAFT
-  REQUESTED
-  APPROVED
+  CREATED
+  PROPOSED
   REJECTED
-  ACTIVE
-  ENDED
-  REVOKED
-  ARCHIVED
+  BOOKED
+  ONBOARDING
+  ASSIGNED
+  ON_HOLD
+  COMPLETED
+  CANCELLED
 }
 
 enum ApprovalDecision {
@@ -198,207 +213,251 @@ enum NotificationDeliveryStatus {
 }
 
 model Person {
-  id                       String                         @id @default(uuid()) @db.Uuid
-  personNumber             String?                        @unique
-  givenName                String
-  familyName               String
-  displayName              String
-  primaryEmail             String?                        @unique
-  grade                    String?
-  role                     String?
-  location                 String?
-  timezone                 String?
-  skillsets                String[]                       @default([])
-  employmentStatus         PersonEmploymentStatus         @default(ACTIVE)
-  hiredAt                  DateTime?
-  terminatedAt             DateTime?
-  createdAt                DateTime                       @default(now())
-  updatedAt                DateTime                       @updatedAt
-  archivedAt               DateTime?
-  deletedAt                DateTime?
-  positionsHeld            Position[]                     @relation("PositionOccupant")
-  orgMemberships           PersonOrgMembership[]
-  managerReportingLines    ReportingLine[]                @relation("ReportingLineManager")
-  subjectReportingLines    ReportingLine[]                @relation("ReportingLineSubject")
-  resourcePoolMemberships  PersonResourcePoolMembership[]
-  requestedAssignments     ProjectAssignment[]            @relation("AssignmentRequestedBy")
-  projectAssignments       ProjectAssignment[]            @relation("AssignmentPerson")
-  assignmentApprovalsMade  AssignmentApproval[]           @relation("AssignmentApprovalDecidedBy")
-  assignmentHistoryEntries AssignmentHistory[]            @relation("AssignmentHistoryChangedBy")
-  workEvidenceRecords      WorkEvidence[]
-  caseRecords              CaseRecord[]                   @relation("CaseSubjectPerson")
-  ownedCaseRecords         CaseRecord[]                   @relation("CaseOwnerPerson")
-  caseStepsAssigned        CaseStep[]                     @relation("CaseStepAssignedTo")
-  caseParticipants         CaseParticipant[]
-  managedOrgUnits          OrgUnit[]                      @relation("OrgUnitManager")
-  managedProjects          Project[]                      @relation("ProjectManager")
-  deliveryManagedProjects  Project[]                      @relation("DeliveryManager")
-  managedClientAccounts    Client[]                       @relation("ClientAccountManager")
-  externalIdentityLinks    PersonExternalIdentityLink[]
-  externalAccountLinks     ExternalAccountLink[]
-  activityEvents           EmployeeActivityEvent[]
-  overtimePoliciesSet      OvertimePolicy[]               @relation("OvertimePolicySetBy")
-  overtimeExceptions       OvertimeException[]
-  leaveBalances            LeaveBalance[]
+  id                                     String                              @id @default(uuid()) @db.Uuid
+  personNumber                           String?                             @unique
+  givenName                              String
+  familyName                             String
+  displayName                            String
+  primaryEmail                           String?                             @unique
+  grade                                  String?
+  role                                   String?
+  location                               String?
+  timezone                               String?
+  skillsets                              String[]                            @default([])
+  employmentStatus                       PersonEmploymentStatus              @default(ACTIVE)
+  hiredAt                                DateTime? @db.Timestamptz(3)
+  terminatedAt                           DateTime? @db.Timestamptz(3)
+  createdAt                              DateTime                            @default(now()) @db.Timestamptz(3)
+  updatedAt                              DateTime                            @updatedAt @db.Timestamptz(3)
+  archivedAt                             DateTime? @db.Timestamptz(3)
+  deletedAt                              DateTime? @db.Timestamptz(3)
+  positionsHeld                          Position[]                          @relation("PositionOccupant")
+  orgMemberships                         PersonOrgMembership[]
+  managerReportingLines                  ReportingLine[]                     @relation("ReportingLineManager")
+  subjectReportingLines                  ReportingLine[]                     @relation("ReportingLineSubject")
+  resourcePoolMemberships                PersonResourcePoolMembership[]
+  requestedAssignments                   ProjectAssignment[]                 @relation("AssignmentRequestedBy")
+  projectAssignments                     ProjectAssignment[]                 @relation("AssignmentPerson")
+  assignmentApprovalsMade                AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
+  assignmentHistoryEntries               AssignmentHistory[]                 @relation("AssignmentHistoryChangedBy")
+  workEvidenceRecords                    WorkEvidence[]
+  caseRecords                            CaseRecord[]                        @relation("CaseSubjectPerson")
+  ownedCaseRecords                       CaseRecord[]                        @relation("CaseOwnerPerson")
+  caseStepsAssigned                      CaseStep[]                          @relation("CaseStepAssignedTo")
+  caseParticipants                       CaseParticipant[]
+  managedOrgUnits                        OrgUnit[]                           @relation("OrgUnitManager")
+  managedProjects                        Project[]                           @relation("ProjectManager")
+  deliveryManagedProjects                Project[]                           @relation("DeliveryManager")
+  managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
+  externalIdentityLinks                  PersonExternalIdentityLink[]
+  externalAccountLinks                   ExternalAccountLink[]
+  activityEvents                         EmployeeActivityEvent[]
+  overtimePoliciesSet                    OvertimePolicy[]                    @relation("OvertimePolicySetBy")
+  overtimeExceptions                     OvertimeException[]
+  leaveBalances                          LeaveBalance[]
+  auditLogsAsActor                       AuditLog[]                          @relation("AuditLogActor")
+  activityEventsAsActor                  EmployeeActivityEvent[]             @relation("EmployeeActivityEventActor")
+  localAccount                           LocalAccount?
+  m365ReconciliationRecordsAsSubject     M365DirectoryReconciliationRecord[] @relation("M365ReconciliationSubject")
+  m365ReconciliationRecordsAsManager     M365DirectoryReconciliationRecord[] @relation("M365ReconciliationResolvedManager")
+  externalIdentityLinksAsResolvedManager PersonExternalIdentityLink[]        @relation("PersonExternalIdentityResolvedManager")
+  projectChangeRequestsRequested         ProjectChangeRequest[]              @relation("ProjectChangeRequestRequester")
+  projectChangeRequestsDecided           ProjectChangeRequest[]              @relation("ProjectChangeRequestDecider")
+  radiatorOverridesMade                  ProjectRadiatorOverride[]
+  ragSnapshotsRecorded                   ProjectRagSnapshot[]
+  risksOwned                             ProjectRisk[]                       @relation("ProjectRiskOwner")
+  risksAssigned                          ProjectRisk[]                       @relation("ProjectRiskAssignee")
+  radiatorThresholdUpdates               RadiatorThresholdConfig[]
+  radiusReconciliationRecords            RadiusReconciliationRecord[]
+  plannerScenarios                       PlannerScenario[]                   @relation("PlannerScenarioCreator")
+  notificationPreferences                PersonNotificationPreference[]
+  undoActionsRegistered                  UndoAction[]                        @relation("UndoActionActor")
+  budgetApprovalsRequested               BudgetApproval[]                    @relation("BudgetApproval_requestedBy")
+  budgetApprovalsDecided                 BudgetApproval[]                    @relation("BudgetApproval_decidedBy")
+  contacts                               Contact[]
+  employmentEvents                       EmploymentEvent[]                   @relation("EmploymentEvent_person")
+  employmentEventsRecorded               EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
+  projectRetrospectivesFacilitated       ProjectRetrospective[]
+  version              Int                                 @default(1)
 
   @@index([employmentStatus, archivedAt])
   @@index([familyName, givenName])
+
+  @@map("Person")
 }
 
 model PersonExternalIdentityLink {
-  id                     String   @id @default(uuid()) @db.Uuid
-  personId               String   @db.Uuid
-  provider               String
-  externalUserId         String
-  externalPrincipalName  String?
-  matchedByStrategy      String
-  sourceDepartment       String?
-  sourceJobTitle         String?
-  sourceAccountEnabled   Boolean?
-  externalManagerUserId  String?
-  resolvedManagerPersonId String? @db.Uuid
-  sourceUpdatedAt        DateTime?
-  lastSeenAt             DateTime?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  archivedAt             DateTime?
-  person                 Person   @relation(fields: [personId], references: [id])
+  id                      String    @id @default(uuid()) @db.Uuid
+  personId                String    @db.Uuid
+  provider                String
+  externalUserId          String
+  externalPrincipalName   String?
+  matchedByStrategy       String
+  sourceDepartment        String?
+  sourceJobTitle          String?
+  sourceAccountEnabled    Boolean?
+  externalManagerUserId   String?
+  resolvedManagerPersonId String?   @db.Uuid
+  sourceUpdatedAt         DateTime? @db.Timestamptz(3)
+  lastSeenAt              DateTime? @db.Timestamptz(3)
+  createdAt               DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt              DateTime? @db.Timestamptz(3)
+  person                  Person    @relation(fields: [personId], references: [id])
+  resolvedManager         Person?   @relation("PersonExternalIdentityResolvedManager", fields: [resolvedManagerPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalUserId])
   @@unique([provider, personId])
   @@index([personId])
   @@index([externalPrincipalName])
   @@index([resolvedManagerPersonId])
+
+  @@map("PersonExternalIdentityLink")
 }
 
 model M365DirectoryReconciliationRecord {
-  id                     String   @id @default(uuid()) @db.Uuid
-  provider               String
-  externalUserId         String
-  externalPrincipalName  String?
-  externalEmail          String?
-  externalDisplayName    String?
-  personId               String?  @db.Uuid
-  matchedByStrategy      String?
-  category               String
-  summary                String
-  candidatePersonIds     String[] @default([])
-  resolvedManagerPersonId String? @db.Uuid
-  sourceDepartment       String?
-  sourceJobTitle         String?
-  sourceAccountEnabled   Boolean?
-  sourceUpdatedAt        DateTime?
-  lastSeenAt             DateTime?
-  lastEvaluatedAt        DateTime
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                      String    @id @default(uuid()) @db.Uuid
+  provider                String
+  externalUserId          String
+  externalPrincipalName   String?
+  externalEmail           String?
+  externalDisplayName     String?
+  personId                String?   @db.Uuid
+  matchedByStrategy       String?
+  category                String
+  summary                 String
+  candidatePersonIds      String[]  @default([])
+  resolvedManagerPersonId String?   @db.Uuid
+  sourceDepartment        String?
+  sourceJobTitle          String?
+  sourceAccountEnabled    Boolean?
+  sourceUpdatedAt         DateTime? @db.Timestamptz(3)
+  lastSeenAt              DateTime? @db.Timestamptz(3)
+  lastEvaluatedAt         DateTime @db.Timestamptz(3)
+  createdAt               DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
+  person                  Person?   @relation("M365ReconciliationSubject", fields: [personId], references: [id], onDelete: SetNull)
+  resolvedManager         Person?   @relation("M365ReconciliationResolvedManager", fields: [resolvedManagerPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalUserId])
   @@index([provider, category])
   @@index([personId])
   @@index([lastEvaluatedAt])
+  @@index([resolvedManagerPersonId])
+
+  @@map("M365DirectoryReconciliationRecord")
 }
 
 model ExternalAccountLink {
-  id                   String   @id @default(uuid()) @db.Uuid
-  personId             String?  @db.Uuid
+  id                   String    @id @default(uuid()) @db.Uuid
+  personId             String?   @db.Uuid
   provider             String
-  sourceType           String
+  sourceType           ExternalAccountSourceType
   externalAccountId    String
   externalUsername     String?
   externalDisplayName  String?
   externalEmail        String?
   matchedByStrategy    String?
-  accountPresenceState String?
-  sourceUpdatedAt      DateTime?
-  lastSeenAt           DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  archivedAt           DateTime?
-  person               Person?  @relation(fields: [personId], references: [id])
+  accountPresenceState ExternalAccountPresenceState?
+  sourceUpdatedAt      DateTime? @db.Timestamptz(3)
+  lastSeenAt           DateTime? @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
+  person               Person?   @relation(fields: [personId], references: [id])
 
   @@unique([provider, externalAccountId])
   @@index([provider, personId])
   @@index([externalUsername])
   @@index([externalEmail])
+
+  @@map("ExternalAccountLink")
 }
 
 model RadiusReconciliationRecord {
-  id                   String   @id @default(uuid()) @db.Uuid
+  id                   String    @id @default(uuid()) @db.Uuid
   provider             String
   externalAccountId    String
   externalUsername     String?
   externalDisplayName  String?
   externalEmail        String?
-  personId             String?  @db.Uuid
+  personId             String?   @db.Uuid
   matchedByStrategy    String?
   category             String
   summary              String
-  candidatePersonIds   String[] @default([])
+  candidatePersonIds   String[]  @default([])
   accountPresenceState String?
   sourceType           String
-  sourceUpdatedAt      DateTime?
-  lastSeenAt           DateTime?
-  lastEvaluatedAt      DateTime
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  sourceUpdatedAt      DateTime? @db.Timestamptz(3)
+  lastSeenAt           DateTime? @db.Timestamptz(3)
+  lastEvaluatedAt      DateTime @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+  person               Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalAccountId])
   @@index([provider, category])
   @@index([personId])
   @@index([lastEvaluatedAt])
+
+  @@map("RadiusReconciliationRecord")
 }
 
 model OrgUnit {
-  id                   String                   @id @default(uuid()) @db.Uuid
-  code                 String                   @unique
-  name                 String
-  description          String?
-  status               OrgUnitStatus            @default(ACTIVE)
-  parentOrgUnitId      String?                  @db.Uuid
-  managerPersonId      String?                  @db.Uuid
-  validFrom            DateTime                 @default(now())
-  validTo              DateTime?
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  archivedAt           DateTime?
-  deletedAt            DateTime?
-  parentOrgUnit        OrgUnit?                 @relation("OrgUnitHierarchy", fields: [parentOrgUnitId], references: [id])
-  childOrgUnits        OrgUnit[]                @relation("OrgUnitHierarchy")
-  manager              Person?                  @relation("OrgUnitManager", fields: [managerPersonId], references: [id])
-  positions            Position[]
-  memberships          PersonOrgMembership[]
-  resourcePools        ResourcePool[]
-  metadataDictionaries MetadataDictionary[]
+  id                     String                   @id @default(uuid()) @db.Uuid
+  code                   String                   @unique
+  name                   String
+  description            String?
+  status                 OrgUnitStatus            @default(ACTIVE)
+  parentOrgUnitId        String?                  @db.Uuid
+  managerPersonId        String?                  @db.Uuid
+  validFrom              DateTime                 @default(now()) @db.Timestamptz(3)
+  validTo                DateTime? @db.Timestamptz(3)
+  createdAt              DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                 @updatedAt @db.Timestamptz(3)
+  archivedAt             DateTime? @db.Timestamptz(3)
+  deletedAt              DateTime? @db.Timestamptz(3)
+  parentOrgUnit          OrgUnit?                 @relation("OrgUnitHierarchy", fields: [parentOrgUnitId], references: [id])
+  childOrgUnits          OrgUnit[]                @relation("OrgUnitHierarchy")
+  manager                Person?                  @relation("OrgUnitManager", fields: [managerPersonId], references: [id])
+  positions              Position[]
+  memberships            PersonOrgMembership[]
+  resourcePools          ResourcePool[]
+  metadataDictionaries   MetadataDictionary[]
   customFieldDefinitions CustomFieldDefinition[]
-  entityLayouts        EntityLayoutDefinition[]
-  overtimePolicies     OvertimePolicy[]
+  entityLayouts          EntityLayoutDefinition[]
+  overtimePolicies       OvertimePolicy[]
+  version              Int                                 @default(1)
 
   @@index([parentOrgUnitId])
   @@index([managerPersonId])
   @@index([status, archivedAt])
+
+  @@map("OrgUnit")
 }
 
 model Position {
-  id               String    @id @default(uuid()) @db.Uuid
-  orgUnitId        String    @db.Uuid
-  occupantPersonId String?   @db.Uuid
-  code             String?
-  title            String
-  description      String?
-  isManagerial     Boolean   @default(false)
-  validFrom        DateTime  @default(now())
-  validTo          DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  archivedAt       DateTime?
-  orgUnit          OrgUnit   @relation(fields: [orgUnitId], references: [id])
-  occupant         Person?   @relation("PositionOccupant", fields: [occupantPersonId], references: [id])
+  id                   String                @id @default(uuid()) @db.Uuid
+  orgUnitId            String                @db.Uuid
+  occupantPersonId     String?               @db.Uuid
+  code                 String?
+  title                String
+  description          String?
+  isManagerial         Boolean               @default(false)
+  validFrom            DateTime              @default(now()) @db.Timestamptz(3)
+  validTo              DateTime? @db.Timestamptz(3)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
+  orgUnit              OrgUnit               @relation(fields: [orgUnitId], references: [id])
+  occupant             Person?               @relation("PositionOccupant", fields: [occupantPersonId], references: [id])
   personOrgMemberships PersonOrgMembership[]
 
   @@unique([orgUnitId, code])
   @@index([occupantPersonId])
   @@index([orgUnitId, validFrom, validTo])
+
+  @@map("Position")
 }
 
 model PersonOrgMembership {
@@ -407,11 +466,11 @@ model PersonOrgMembership {
   orgUnitId  String    @db.Uuid
   positionId String?   @db.Uuid
   isPrimary  Boolean   @default(false)
-  validFrom  DateTime
-  validTo    DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  archivedAt DateTime?
+  validFrom  DateTime @db.Timestamptz(3)
+  validTo    DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt DateTime? @db.Timestamptz(3)
   person     Person    @relation(fields: [personId], references: [id])
   orgUnit    OrgUnit   @relation(fields: [orgUnitId], references: [id])
   position   Position? @relation(fields: [positionId], references: [id])
@@ -420,6 +479,8 @@ model PersonOrgMembership {
   @@index([personId, validFrom, validTo])
   @@index([orgUnitId, validFrom, validTo])
   @@index([positionId])
+
+  @@map("PersonOrgMembership")
 }
 
 model ReportingLine {
@@ -429,11 +490,11 @@ model ReportingLine {
   relationshipType ReportingLineType
   authority        ReportingAuthority @default(VIEWER)
   isPrimary        Boolean            @default(false)
-  validFrom        DateTime
-  validTo          DateTime?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  archivedAt       DateTime?
+  validFrom        DateTime @db.Timestamptz(3)
+  validTo          DateTime? @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
+  archivedAt       DateTime? @db.Timestamptz(3)
   manager          Person             @relation("ReportingLineManager", fields: [managerPersonId], references: [id])
   subject          Person             @relation("ReportingLineSubject", fields: [subjectPersonId], references: [id])
 
@@ -441,6 +502,8 @@ model ReportingLine {
   @@index([subjectPersonId, relationshipType, validFrom, validTo])
   @@index([managerPersonId, relationshipType, validFrom, validTo])
   @@index([isPrimary, validTo])
+
+  @@map("ReportingLine")
 }
 
 model ResourcePool {
@@ -449,77 +512,100 @@ model ResourcePool {
   code              String                         @unique
   name              String
   description       String?
-  createdAt         DateTime                       @default(now())
-  updatedAt         DateTime                       @updatedAt
-  archivedAt        DateTime?
+  createdAt         DateTime                       @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                       @updatedAt @db.Timestamptz(3)
+  archivedAt        DateTime? @db.Timestamptz(3)
   orgUnit           OrgUnit?                       @relation(fields: [orgUnitId], references: [id])
   personMemberships PersonResourcePoolMembership[]
   overtimePolicies  OvertimePolicy[]
 
   @@index([orgUnitId])
   @@index([archivedAt])
+
+  @@map("ResourcePool")
 }
 
 model PersonResourcePoolMembership {
   id             String       @id @default(uuid()) @db.Uuid
   personId       String       @db.Uuid
   resourcePoolId String       @db.Uuid
-  validFrom      DateTime
-  validTo        DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  archivedAt     DateTime?
+  validFrom      DateTime @db.Timestamptz(3)
+  validTo        DateTime? @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  archivedAt     DateTime? @db.Timestamptz(3)
   person         Person       @relation(fields: [personId], references: [id])
   resourcePool   ResourcePool @relation(fields: [resourcePoolId], references: [id])
 
   @@unique([personId, resourcePoolId, validFrom])
   @@index([personId, validFrom, validTo])
   @@index([resourcePoolId, validFrom, validTo])
+
+  @@map("PersonResourcePoolMembership")
 }
 
 // Project is the canonical internal identity. External links remain separate.
 model Project {
-  id                   String                     @id @default(uuid()) @db.Uuid
-  projectCode          String                     @unique
-  name                 String
-  description          String?
-  projectManagerId     String?                    @db.Uuid
-  deliveryManagerId    String?                    @db.Uuid
-  clientId             String?                    @db.Uuid
-  engagementModel      EngagementModel?
-  projectType          String?
-  priority             ProjectPriority?           @default(MEDIUM)
-  domain               String?
-  techStack            String[]                   @default([])
-  tags                 String[]                   @default([])
-  outcomeRating        String?
-  lessonsLearned       String?
-  wouldStaffSameWay    Boolean?
-  status               ProjectStatus              @default(DRAFT)
-  startsOn             DateTime?
-  endsOn               DateTime?
-  version              Int                        @default(1)
-  createdAt            DateTime                   @default(now())
-  updatedAt            DateTime                   @updatedAt
-  archivedAt           DateTime?
-  deletedAt            DateTime?
-  projectManager       Person?                    @relation("ProjectManager", fields: [projectManagerId], references: [id])
-  deliveryManager      Person?                    @relation("DeliveryManager", fields: [deliveryManagerId], references: [id])
-  client               Client?                    @relation(fields: [clientId], references: [id])
-  externalLinks        ProjectExternalLink[]
-  assignments          ProjectAssignment[]
-  workEvidenceRecords  WorkEvidence[]
-  caseRecords          CaseRecord[]
-  rolePlans            ProjectRolePlan[]
-  ragSnapshots         ProjectRagSnapshot[]
-  vendorEngagements    ProjectVendorEngagement[]
-  risks                ProjectRisk[]
+  id                    String                    @id @default(uuid()) @db.Uuid
+  projectCode           String                    @unique
+  name                  String
+  description           String?
+  projectManagerId      String?                   @db.Uuid
+  deliveryManagerId     String?                   @db.Uuid
+  clientId              String?                   @db.Uuid
+  engagementModel       EngagementModel?
+  projectType           String?
+  priority              ProjectPriority?          @default(MEDIUM)
+  domain                String?
+  techStack             String[]                  @default([])
+  tags                  String[]                  @default([])
+  outcomeRating         String?
+  lessonsLearned        String?
+  wouldStaffSameWay     Boolean?
+  status                ProjectStatus             @default(DRAFT)
+  shape                 ProjectShape              @default(STANDARD)
+  programId             String?                   @db.Uuid
+  leadPmPersonId        String?                   @db.Uuid
+  settingsOverride      Json                      @default("{}")
+  hasLiveSpcRates       Boolean                   @default(false)
+  startsOn              DateTime? @db.Timestamptz(3)
+  endsOn                DateTime? @db.Timestamptz(3)
+  baselineEndsOn        DateTime? @db.Timestamptz(3)
+  forecastEndsOn        DateTime? @db.Timestamptz(3)
+  criticalPathFloatDays Int?
+  baselineRequirements  Int?
+  version               Int                       @default(1)
+  createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                  @updatedAt @db.Timestamptz(3)
+  archivedAt            DateTime? @db.Timestamptz(3)
+  deletedAt             DateTime? @db.Timestamptz(3)
+  projectManager        Person?                   @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  deliveryManager       Person?                   @relation("DeliveryManager", fields: [deliveryManagerId], references: [id])
+  client                Client?                   @relation(fields: [clientId], references: [id])
+  externalLinks         ProjectExternalLink[]
+  assignments           ProjectAssignment[]
+  workEvidenceRecords   WorkEvidence[]
+  caseRecords           CaseRecord[]
+  rolePlans             ProjectRolePlan[]
+  ragSnapshots          ProjectRagSnapshot[]
+  vendorEngagements     ProjectVendorEngagement[]
+  risks                 ProjectRisk[]
+  milestones            ProjectMilestone[]
+  changeRequests        ProjectChangeRequest[]
+  workstreams           ProjectWorkstream[]
+  retrospective         ProjectRetrospective?
+  technologies          ProjectTechnology[]
+  tagList               ProjectTag[]
 
   @@index([status, archivedAt])
   @@index([name])
   @@index([projectManagerId])
   @@index([deliveryManagerId])
   @@index([clientId])
+  @@index([shape])
+  @@index([programId])
+
+  @@map("Project")
 }
 
 model ProjectExternalLink {
@@ -531,95 +617,113 @@ model ProjectExternalLink {
   externalProjectName String?
   externalUrl         String?
   providerEnvironment String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  archivedAt          DateTime?
-  lastSeenAt          DateTime?
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+  archivedAt          DateTime? @db.Timestamptz(3)
+  lastSeenAt          DateTime? @db.Timestamptz(3)
   project             Project            @relation(fields: [projectId], references: [id])
   syncState           ExternalSyncState?
 
   @@unique([provider, externalProjectKey])
   @@index([projectId])
   @@index([provider, archivedAt])
+
+  @@map("ProjectExternalLink")
 }
 
 model ExternalSyncState {
   id                     String              @id @default(uuid()) @db.Uuid
   projectExternalLinkId  String              @unique @db.Uuid
   syncStatus             SyncStatus          @default(IDLE)
-  lastSyncedAt           DateTime?
-  lastSuccessfulSyncedAt DateTime?
+  lastSyncedAt           DateTime? @db.Timestamptz(3)
+  lastSuccessfulSyncedAt DateTime? @db.Timestamptz(3)
   lastError              String?
   lastPayloadFingerprint String?
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  createdAt              DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime            @updatedAt @db.Timestamptz(3)
   projectExternalLink    ProjectExternalLink @relation(fields: [projectExternalLinkId], references: [id], onDelete: Cascade)
+
+  @@map("ExternalSyncState")
 }
 
 // Assignment is planned staffing truth and intentionally independent from work evidence.
 model ProjectAssignment {
-  id                String             @id @default(uuid()) @db.Uuid
-  personId          String             @db.Uuid
-  projectId         String             @db.Uuid
-  requestedByPersonId String?          @db.Uuid
-  assignmentCode    String?            @unique
-  staffingRole      String
-  status            AssignmentStatus   @default(REQUESTED)
-  allocationPercent Decimal?           @db.Decimal(5, 2)
-  requestedAt       DateTime           @default(now())
-  approvedAt        DateTime?
-  validFrom         DateTime
-  validTo           DateTime?
-  notes             String?
-  version           Int                @default(1)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  archivedAt        DateTime?
-  person            Person             @relation("AssignmentPerson", fields: [personId], references: [id])
-  project           Project            @relation(fields: [projectId], references: [id])
-  requestedBy       Person?            @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
-  approvals         AssignmentApproval[]
-  historyEntries    AssignmentHistory[]
-  caseRecords       CaseRecord[]
+  id                  String               @id @default(uuid()) @db.Uuid
+  personId            String               @db.Uuid
+  projectId           String               @db.Uuid
+  workstreamId        String?              @db.Uuid
+  staffingRequestId   String?
+  requestedByPersonId String?              @db.Uuid
+  assignmentCode      String?              @unique
+  staffingRole        String
+  status              AssignmentStatus     @default(CREATED)
+  allocationPercent   Decimal?             @db.Decimal(5, 2)
+  requestedAt         DateTime             @default(now()) @db.Timestamptz(3)
+  approvedAt          DateTime? @db.Timestamptz(3)
+  validFrom           DateTime @db.Timestamptz(3)
+  validTo             DateTime? @db.Timestamptz(3)
+  notes               String?
+  rejectionReason     String?
+  cancellationReason  String?
+  onHoldReason        String?
+  onHoldCaseId        String?              @db.Uuid
+  version             Int                  @default(1)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
+  archivedAt          DateTime? @db.Timestamptz(3)
+  person              Person               @relation("AssignmentPerson", fields: [personId], references: [id])
+  project             Project              @relation(fields: [projectId], references: [id])
+  staffingRequest     StaffingRequest?     @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
+  requestedBy         Person?              @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
+  approvals           AssignmentApproval[]
+  historyEntries      AssignmentHistory[]
+  caseRecords         CaseRecord[]
 
   @@unique([personId, projectId, validFrom])
   @@index([personId, status, validFrom, validTo])
   @@index([projectId, status, validFrom, validTo])
+  @@index([staffingRequestId])
   @@index([requestedByPersonId])
+
+  @@map("ProjectAssignment")
 }
 
 model AssignmentApproval {
-  id               String           @id @default(uuid()) @db.Uuid
-  assignmentId     String           @db.Uuid
-  decidedByPersonId String?         @db.Uuid
-  sequenceNumber   Int              @default(1)
-  decision         ApprovalDecision @default(PENDING)
-  decisionReason   String?
-  decisionAt       DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  assignment       ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  decidedBy        Person?          @relation("AssignmentApprovalDecidedBy", fields: [decidedByPersonId], references: [id])
+  id                String            @id @default(uuid()) @db.Uuid
+  assignmentId      String            @db.Uuid
+  decidedByPersonId String?           @db.Uuid
+  sequenceNumber    Int               @default(1)
+  decision          ApprovalDecision  @default(PENDING)
+  decisionReason    String?
+  decisionAt        DateTime? @db.Timestamptz(3)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
+  assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  decidedBy         Person?           @relation("AssignmentApprovalDecidedBy", fields: [decidedByPersonId], references: [id])
 
   @@unique([assignmentId, sequenceNumber])
   @@index([assignmentId, decision])
   @@index([decidedByPersonId])
+
+  @@map("AssignmentApproval")
 }
 
 model AssignmentHistory {
-  id               String            @id @default(uuid()) @db.Uuid
-  assignmentId     String            @db.Uuid
-  changedByPersonId String?          @db.Uuid
-  changeType       String
-  changeReason     String?
-  previousSnapshot Json?
-  newSnapshot      Json?
-  occurredAt       DateTime          @default(now())
-  assignment       ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  changedBy        Person?           @relation("AssignmentHistoryChangedBy", fields: [changedByPersonId], references: [id])
+  id                String            @id @default(uuid()) @db.Uuid
+  assignmentId      String            @db.Uuid
+  changedByPersonId String?           @db.Uuid
+  changeType        String
+  changeReason      String?
+  previousSnapshot  Json?
+  newSnapshot       Json?
+  occurredAt        DateTime          @default(now()) @db.Timestamptz(3)
+  assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  changedBy         Person?           @relation("AssignmentHistoryChangedBy", fields: [changedByPersonId], references: [id])
 
   @@index([assignmentId, occurredAt])
   @@index([changedByPersonId])
+
+  @@map("AssignmentHistory")
 }
 
 model WorkEvidenceSource {
@@ -628,13 +732,15 @@ model WorkEvidenceSource {
   sourceType          String
   connectionKey       String?
   displayName         String
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  archivedAt          DateTime?
+  createdAt           DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
+  archivedAt          DateTime? @db.Timestamptz(3)
   workEvidenceRecords WorkEvidence[]
 
   @@unique([provider, sourceType, connectionKey])
   @@index([provider, archivedAt])
+
+  @@map("WorkEvidenceSource")
 }
 
 // Work evidence is observational and may exist without any assignment.
@@ -644,28 +750,31 @@ model WorkEvidence {
   personId             String?            @db.Uuid
   projectId            String?            @db.Uuid
   sourceRecordKey      String
-  evidenceType         String
-  recordedAt           DateTime
-  occurredOn           DateTime?
+  evidenceType         WorkEvidenceType
+  recordedAt           DateTime @db.Timestamptz(3)
+  occurredOn           DateTime? @db.Timestamptz(3)
   durationMinutes      Int?
   status               WorkEvidenceStatus @default(CAPTURED)
   capex                Boolean            @default(false)
   summary              String?
   details              Json?
   trace                Json?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  archivedAt           DateTime?
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
   person               Person?            @relation(fields: [personId], references: [id])
   project              Project?           @relation(fields: [projectId], references: [id])
   workEvidenceSource   WorkEvidenceSource @relation(fields: [workEvidenceSourceId], references: [id])
   links                WorkEvidenceLink[]
+  version              Int                                 @default(1)
 
   @@unique([workEvidenceSourceId, sourceRecordKey])
   @@index([personId, recordedAt])
   @@index([projectId, recordedAt])
   @@index([workEvidenceSourceId, recordedAt])
   @@index([status, archivedAt])
+
+  @@map("WorkEvidence")
 }
 
 model WorkEvidenceLink {
@@ -674,83 +783,94 @@ model WorkEvidenceLink {
   provider       String
   externalKey    String
   externalUrl    String?
-  linkType       String
-  createdAt      DateTime     @default(now())
+  linkType       WorkEvidenceLinkType
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   workEvidence   WorkEvidence @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
 
   @@unique([workEvidenceId, provider, externalKey])
   @@index([provider, externalKey])
+
+  @@map("WorkEvidenceLink")
 }
 
 model CaseType {
   id                   String              @id @default(uuid()) @db.Uuid
-  key                  String              @unique
+  key                  CaseTypeKey         @unique
   displayName          String
   description          String?
   workflowDefinitionId String?             @db.Uuid
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  archivedAt           DateTime?
+  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
   caseRecords          CaseRecord[]
   workflowDefinition   WorkflowDefinition? @relation(fields: [workflowDefinitionId], references: [id])
 
   @@index([archivedAt])
+
+  @@map("CaseType")
 }
 
 model CaseRecord {
-  id                  String            @id @default(uuid()) @db.Uuid
-  caseNumber          String            @unique
-  caseTypeId          String            @db.Uuid
-  subjectPersonId     String            @db.Uuid
-  ownerPersonId       String            @db.Uuid
-  relatedProjectId    String?           @db.Uuid
-  relatedAssignmentId String?           @db.Uuid
-  status              CaseStatus        @default(OPEN)
-  openedAt            DateTime          @default(now())
-  dueAt               DateTime?
-  closedAt            DateTime?
-  summary             String?
-  payload             Json?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  archivedAt          DateTime?
-  caseType            CaseType          @relation(fields: [caseTypeId], references: [id])
-  subjectPerson       Person            @relation("CaseSubjectPerson", fields: [subjectPersonId], references: [id])
-  ownerPerson         Person            @relation("CaseOwnerPerson", fields: [ownerPersonId], references: [id])
-  relatedProject      Project?          @relation(fields: [relatedProjectId], references: [id])
-  relatedAssignment   ProjectAssignment? @relation(fields: [relatedAssignmentId], references: [id])
-  steps               CaseStep[]
-  participants        CaseParticipant[]
-  overtimeExceptions  OvertimeException[]
+  id                      String              @id @default(uuid()) @db.Uuid
+  caseNumber              String              @unique
+  caseTypeId              String              @db.Uuid
+  subjectPersonId         String              @db.Uuid
+  ownerPersonId           String              @db.Uuid
+  relatedProjectId        String?             @db.Uuid
+  relatedAssignmentId     String?             @db.Uuid
+  status                  CaseStatus          @default(OPEN)
+  openedAt                DateTime            @default(now()) @db.Timestamptz(3)
+  dueAt                   DateTime? @db.Timestamptz(3)
+  closedAt                DateTime? @db.Timestamptz(3)
+  summary                 String?
+  payload                 Json?
+  createdAt               DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
+  archivedAt              DateTime? @db.Timestamptz(3)
+  caseType                CaseType            @relation(fields: [caseTypeId], references: [id])
+  subjectPerson           Person              @relation("CaseSubjectPerson", fields: [subjectPersonId], references: [id])
+  ownerPerson             Person              @relation("CaseOwnerPerson", fields: [ownerPersonId], references: [id])
+  relatedProject          Project?            @relation(fields: [relatedProjectId], references: [id])
+  relatedAssignment       ProjectAssignment?  @relation(fields: [relatedAssignmentId], references: [id])
+  steps                   CaseStep[]
+  participants            CaseParticipant[]
+  overtimeExceptions      OvertimeException[]
+  overtimePolicyApprovals OvertimePolicy[]    @relation("OvertimePolicyApprovalCase")
+  relatedProjectRisks     ProjectRisk[]       @relation("ProjectRiskRelatedCase")
+  version              Int                                 @default(1)
 
   @@index([caseTypeId, status])
   @@index([subjectPersonId, status])
   @@index([ownerPersonId, status])
   @@index([relatedProjectId])
   @@index([relatedAssignmentId])
+
+  @@map("CaseRecord")
 }
 
 model CaseStep {
-  id                        String                  @id @default(uuid()) @db.Uuid
-  caseRecordId              String                  @db.Uuid
-  workflowStateDefinitionId String?                 @db.Uuid
+  id                        String                   @id @default(uuid()) @db.Uuid
+  caseRecordId              String                   @db.Uuid
+  workflowStateDefinitionId String?                  @db.Uuid
   stepKey                   String
   displayName               String
-  status                    CaseStatus              @default(OPEN)
-  assignedToPersonId        String?                 @db.Uuid
-  dueAt                     DateTime?
-  completedAt               DateTime?
+  status                    CaseStatus               @default(OPEN)
+  assignedToPersonId        String?                  @db.Uuid
+  dueAt                     DateTime? @db.Timestamptz(3)
+  completedAt               DateTime? @db.Timestamptz(3)
   payload                   Json?
-  createdAt                 DateTime                @default(now())
-  updatedAt                 DateTime                @updatedAt
-  caseRecord                CaseRecord              @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
+  createdAt                 DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime                 @updatedAt @db.Timestamptz(3)
+  caseRecord                CaseRecord               @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
   workflowStateDefinition   WorkflowStateDefinition? @relation(fields: [workflowStateDefinitionId], references: [id])
-  assignedTo                Person?                 @relation("CaseStepAssignedTo", fields: [assignedToPersonId], references: [id])
+  assignedTo                Person?                  @relation("CaseStepAssignedTo", fields: [assignedToPersonId], references: [id])
 
   @@unique([caseRecordId, stepKey])
   @@index([caseRecordId])
   @@index([assignedToPersonId, status])
   @@index([workflowStateDefinitionId])
+
+  @@map("CaseStep")
 }
 
 model CaseParticipant {
@@ -758,12 +878,14 @@ model CaseParticipant {
   caseRecordId String              @db.Uuid
   personId     String              @db.Uuid
   role         CaseParticipantRole
-  createdAt    DateTime            @default(now())
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
   caseRecord   CaseRecord          @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
   person       Person              @relation(fields: [personId], references: [id])
 
   @@unique([caseRecordId, personId, role])
   @@index([personId, role])
+
+  @@map("CaseParticipant")
 }
 
 model MetadataDictionary {
@@ -774,9 +896,9 @@ model MetadataDictionary {
   description            String?
   scopeOrgUnitId         String?                 @db.Uuid
   isSystemManaged        Boolean                 @default(false)
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
-  archivedAt             DateTime?
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime                @updatedAt @db.Timestamptz(3)
+  archivedAt             DateTime? @db.Timestamptz(3)
   scopeOrgUnit           OrgUnit?                @relation(fields: [scopeOrgUnitId], references: [id])
   entries                MetadataEntry[]
   customFieldDefinitions CustomFieldDefinition[]
@@ -784,6 +906,8 @@ model MetadataDictionary {
   @@unique([entityType, dictionaryKey, scopeOrgUnitId])
   @@index([entityType, archivedAt])
   @@index([scopeOrgUnitId])
+
+  @@map("MetadataDictionary")
 }
 
 model MetadataEntry {
@@ -794,13 +918,15 @@ model MetadataEntry {
   displayName          String
   sortOrder            Int                @default(0)
   isEnabled            Boolean            @default(true)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  archivedAt           DateTime?
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
   metadataDictionary   MetadataDictionary @relation(fields: [metadataDictionaryId], references: [id], onDelete: Cascade)
 
   @@unique([metadataDictionaryId, entryKey])
   @@index([metadataDictionaryId, isEnabled, archivedAt])
+
+  @@map("MetadataEntry")
 }
 
 model CustomFieldDefinition {
@@ -816,9 +942,9 @@ model CustomFieldDefinition {
   defaultValue         Json?
   isRequired           Boolean             @default(false)
   isEnabled            Boolean             @default(true)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  archivedAt           DateTime?
+  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
   metadataDictionary   MetadataDictionary? @relation(fields: [metadataDictionaryId], references: [id])
   scopeOrgUnit         OrgUnit?            @relation(fields: [scopeOrgUnitId], references: [id])
   customFieldValues    CustomFieldValue[]
@@ -827,6 +953,8 @@ model CustomFieldDefinition {
   @@index([entityType, isEnabled, archivedAt])
   @@index([metadataDictionaryId])
   @@index([scopeOrgUnitId])
+
+  @@map("CustomFieldDefinition")
 }
 
 model CustomFieldValue {
@@ -835,32 +963,36 @@ model CustomFieldValue {
   entityId                String                @db.Uuid
   customFieldDefinitionId String                @db.Uuid
   value                   Json
-  createdAt               DateTime              @default(now())
-  updatedAt               DateTime              @updatedAt
-  archivedAt              DateTime?
+  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
+  archivedAt              DateTime? @db.Timestamptz(3)
   customFieldDefinition   CustomFieldDefinition @relation(fields: [customFieldDefinitionId], references: [id], onDelete: Cascade)
 
   @@unique([entityType, entityId, customFieldDefinitionId])
   @@index([entityType, entityId, archivedAt])
   @@index([customFieldDefinitionId])
+
+  @@map("CustomFieldValue")
 }
 
 model WorkflowDefinition {
-  id          String                   @id @default(uuid()) @db.Uuid
+  id          String                    @id @default(uuid()) @db.Uuid
   entityType  String
   workflowKey String
   displayName String
-  version     Int                      @default(1)
-  status      WorkflowDefinitionStatus @default(DRAFT)
+  version     Int                       @default(1)
+  status      WorkflowDefinitionStatus  @default(DRAFT)
   definition  Json?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  archivedAt  DateTime?
+  createdAt   DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                  @updatedAt @db.Timestamptz(3)
+  archivedAt  DateTime? @db.Timestamptz(3)
   caseTypes   CaseType[]
   states      WorkflowStateDefinition[]
 
   @@unique([entityType, workflowKey, version])
   @@index([entityType, status, archivedAt])
+
+  @@map("WorkflowDefinition")
 }
 
 model WorkflowStateDefinition {
@@ -872,13 +1004,15 @@ model WorkflowStateDefinition {
   isInitial            Boolean            @default(false)
   isTerminal           Boolean            @default(false)
   validationSchema     Json?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
   workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
   caseSteps            CaseStep[]
 
   @@unique([workflowDefinitionId, stateKey])
   @@index([workflowDefinitionId, sequenceNumber])
+
+  @@map("WorkflowStateDefinition")
 }
 
 model EntityLayoutDefinition {
@@ -890,31 +1024,37 @@ model EntityLayoutDefinition {
   version        Int       @default(1)
   isDefault      Boolean   @default(false)
   layoutSchema   Json
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  archivedAt     DateTime?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt     DateTime? @db.Timestamptz(3)
   scopeOrgUnit   OrgUnit?  @relation(fields: [scopeOrgUnitId], references: [id])
 
   @@unique([entityType, layoutKey, version, scopeOrgUnitId])
   @@index([entityType, isDefault, archivedAt])
   @@index([scopeOrgUnitId])
+
+  @@map("EntityLayoutDefinition")
 }
 
 model EmployeeActivityEvent {
   id              String   @id @default(uuid()) @db.Uuid
   personId        String   @db.Uuid
-  eventType       String   // HIRED, ASSIGNED, UNASSIGNED, DEACTIVATED, TERMINATED, REACTIVATED, ROLE_CHANGED, ORG_UNIT_CHANGED, ASSIGNMENT_APPROVED, ASSIGNMENT_ENDED
-  occurredAt      DateTime @default(now())
+  eventType       String // HIRED, ASSIGNED, UNASSIGNED, DEACTIVATED, TERMINATED, REACTIVATED, ROLE_CHANGED, ORG_UNIT_CHANGED, ASSIGNMENT_APPROVED, ASSIGNMENT_ENDED
+  occurredAt      DateTime @default(now()) @db.Timestamptz(3)
   actorId         String?  @db.Uuid
-  summary         String   // Human-readable description
+  summary         String // Human-readable description
   relatedEntityId String?  @db.Uuid
   metadata        Json?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
 
-  person          Person   @relation(fields: [personId], references: [id])
+  person Person  @relation(fields: [personId], references: [id])
+  actor  Person? @relation("EmployeeActivityEventActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([personId, occurredAt])
   @@index([eventType])
+  @@index([actorId])
+
+  @@map("EmployeeActivityEvent")
 }
 
 model AuditLog {
@@ -925,29 +1065,35 @@ model AuditLog {
   actorId       String?  @db.Uuid
   correlationId String?
   payload       Json
-  createdAt     DateTime @default(now())
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  actor         Person?  @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([aggregateType, aggregateId])
   @@index([createdAt])
   @@index([correlationId])
+  @@index([actorId])
+
+  @@map("AuditLog")
 }
 
 model OutboxEvent {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
   topic         String
   eventName     String
   aggregateType String
-  aggregateId   String   @db.Uuid
+  aggregateId   String    @db.Uuid
   correlationId String?
   payload       Json
-  status        String   @default("pending")
-  availableAt   DateTime @default(now())
-  publishedAt   DateTime?
-  createdAt     DateTime @default(now())
+  status        OutboxEventStatus @default(PENDING)
+  availableAt   DateTime  @default(now()) @db.Timestamptz(3)
+  publishedAt   DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([status, availableAt])
   @@index([aggregateType, aggregateId])
   @@index([createdAt])
+
+  @@map("OutboxEvent")
 }
 
 // Technical sync cursor/state across provider resources and scopes.
@@ -957,99 +1103,109 @@ model IntegrationSyncState {
   resourceType String
   scopeKey     String
   lastCursor   String?
-  lastSyncedAt DateTime?
+  lastSyncedAt DateTime? @db.Timestamptz(3)
   lastStatus   SyncStatus @default(IDLE)
   lastError    String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
 
   @@unique([provider, resourceType, scopeKey])
   @@index([provider, resourceType, lastStatus])
+
+  @@map("IntegrationSyncState")
 }
 
 model NotificationChannel {
-  id          String                @id @default(uuid()) @db.Uuid
-  channelKey  String                @unique
+  id          String                 @id @default(uuid()) @db.Uuid
+  channelKey  String                 @unique
   displayName String
   kind        String
-  isEnabled   Boolean               @default(true)
+  isEnabled   Boolean                @default(true)
   config      Json?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
   templates   NotificationTemplate[]
   requests    NotificationRequest[]
   deliveries  NotificationDelivery[]
 
   @@index([kind, isEnabled])
+
+  @@map("NotificationChannel")
 }
 
 model NotificationTemplate {
-  id                    String                @id @default(uuid()) @db.Uuid
-  templateKey           String                @unique
-  eventName             String
-  displayName           String
-  channelId             String                @db.Uuid
-  subjectTemplate       String?
-  bodyTemplate          String
-  isSystemManaged       Boolean               @default(true)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  archivedAt            DateTime?
-  channel               NotificationChannel   @relation(fields: [channelId], references: [id])
-  notificationRequests  NotificationRequest[]
+  id                   String                @id @default(uuid()) @db.Uuid
+  templateKey          String                @unique
+  eventName            String
+  displayName          String
+  channelId            String                @db.Uuid
+  subjectTemplate      String?
+  bodyTemplate         String
+  isSystemManaged      Boolean               @default(true)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime? @db.Timestamptz(3)
+  channel              NotificationChannel   @relation(fields: [channelId], references: [id])
+  notificationRequests NotificationRequest[]
 
   @@index([eventName, archivedAt])
   @@index([channelId, archivedAt])
+
+  @@map("NotificationTemplate")
 }
 
 model NotificationRequest {
-  id               String                    @id @default(uuid()) @db.Uuid
-  eventName        String
-  templateId       String                    @db.Uuid
-  channelId        String                    @db.Uuid
-  recipient        String
-  payload          Json
-  status           NotificationRequestStatus @default(QUEUED)
-  attemptCount     Int                       @default(0)
-  maxAttempts      Int                       @default(1)
-  failureReason    String?
-  requestedAt      DateTime                  @default(now())
-  deliveredAt      DateTime?
-  nextAttemptAt    DateTime?
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  channel          NotificationChannel       @relation(fields: [channelId], references: [id])
-  template         NotificationTemplate      @relation(fields: [templateId], references: [id])
-  deliveries       NotificationDelivery[]
+  id            String                    @id @default(uuid()) @db.Uuid
+  eventName     String
+  templateId    String                    @db.Uuid
+  channelId     String                    @db.Uuid
+  recipient     String
+  payload       Json
+  status        NotificationRequestStatus @default(QUEUED)
+  attemptCount  Int                       @default(0)
+  maxAttempts   Int                       @default(1)
+  failureReason String?
+  requestedAt   DateTime                  @default(now()) @db.Timestamptz(3)
+  deliveredAt   DateTime? @db.Timestamptz(3)
+  nextAttemptAt DateTime? @db.Timestamptz(3)
+  createdAt     DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime                  @updatedAt @db.Timestamptz(3)
+  channel       NotificationChannel       @relation(fields: [channelId], references: [id])
+  template      NotificationTemplate      @relation(fields: [templateId], references: [id])
+  deliveries    NotificationDelivery[]
 
   @@index([eventName, status, requestedAt])
   @@index([status, nextAttemptAt])
   @@index([recipient, requestedAt])
   @@index([templateId])
+
+  @@map("NotificationRequest")
 }
 
 model NotificationDelivery {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  notificationRequestId String                  @db.Uuid
-  channelId          String                     @db.Uuid
-  recipient          String
-  attemptNumber      Int                        @default(1)
-  status             NotificationDeliveryStatus @default(PENDING)
-  renderedSubject    String?
-  renderedBody       String
-  providerMessageId  String?
-  failureReason      String?
-  attemptedAt        DateTime                   @default(now())
-  nextAttemptAt      DateTime?
-  createdAt          DateTime                   @default(now())
-  updatedAt          DateTime                   @updatedAt
-  notificationRequest NotificationRequest       @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
-  channel            NotificationChannel        @relation(fields: [channelId], references: [id])
+  id                    String                     @id @default(uuid()) @db.Uuid
+  notificationRequestId String                     @db.Uuid
+  channelId             String                     @db.Uuid
+  recipient             String
+  attemptNumber         Int                        @default(1)
+  status                NotificationDeliveryStatus @default(PENDING)
+  renderedSubject       String?
+  renderedBody          String
+  providerMessageId     String?
+  failureReason         String?
+  attemptedAt           DateTime                   @default(now()) @db.Timestamptz(3)
+  nextAttemptAt         DateTime? @db.Timestamptz(3)
+  createdAt             DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                   @updatedAt @db.Timestamptz(3)
+  notificationRequest   NotificationRequest        @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
+  channel               NotificationChannel        @relation(fields: [channelId], references: [id])
 
   @@index([notificationRequestId, attemptedAt])
   @@index([status, attemptedAt])
   @@index([status, nextAttemptAt])
   @@index([channelId])
+
+  @@map("NotificationDelivery")
 }
 
 // =============================================================================
@@ -1065,12 +1221,14 @@ enum TimesheetStatus {
 
 model TimesheetWeek {
   id                String           @id @default(uuid())
+  idNew             String           @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId          String?          @unique @db.VarChar(32)
   personId          String
   weekStart         DateTime         @db.Date
   status            TimesheetStatus  @default(DRAFT)
-  submittedAt       DateTime?
+  submittedAt       DateTime? @db.Timestamptz(3)
   approvedBy        String?
-  approvedAt        DateTime?
+  approvedAt        DateTime? @db.Timestamptz(3)
   rejectedReason    String?
   totalHours        Decimal?         @db.Decimal(5, 2)
   standardHours     Decimal?         @db.Decimal(5, 2)
@@ -1078,8 +1236,8 @@ model TimesheetWeek {
   overtimeApproved  Boolean          @default(false)
   overtimeThreshold Int?
   version           Int              @default(1)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
   entries           TimesheetEntry[]
 
   @@unique([personId, weekStart])
@@ -1089,6 +1247,7 @@ model TimesheetWeek {
 
 model TimesheetEntry {
   id              String        @id @default(uuid())
+  idNew           String        @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
   timesheetWeekId String
   timesheetWeek   TimesheetWeek @relation(fields: [timesheetWeekId], references: [id], onDelete: Cascade)
   projectId       String
@@ -1098,8 +1257,8 @@ model TimesheetEntry {
   capex           Boolean       @default(false)
   benchCategory   String?
   description     String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
   @@unique([timesheetWeekId, projectId, date])
   @@map("timesheet_entries")
@@ -1116,53 +1275,60 @@ model LocalAccount {
   displayName         String
   passwordHash        String
   roles               String[]  @default([])
-  source              String    @default("local")
+  source              LocalAccountSource @default(local)
   twoFactorEnabled    Boolean   @default(false)
   twoFactorSecret     String?
   backupCodesHash     String[]
   failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
-  lastLoginAt         DateTime?
+  lockedUntil         DateTime? @db.Timestamptz(3)
+  lastLoginAt         DateTime? @db.Timestamptz(3)
   mustChangePw        Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
 
-  refreshTokens    RefreshToken[]
-  passwordResets   PasswordResetToken[]
+  refreshTokens  RefreshToken[]
+  passwordResets PasswordResetToken[]
+  person         Person?              @relation(fields: [personId], references: [id], onDelete: SetNull)
 
   @@index([email])
   @@index([personId])
+
+  @@map("LocalAccount")
 }
 
 model RefreshToken {
-  id          String    @id @default(uuid()) @db.Uuid
-  accountId   String    @db.Uuid
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  userAgent   String?
-  ipAddress   String?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid()) @db.Uuid
+  accountId String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
-  account     LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId])
   @@index([tokenHash])
   @@index([expiresAt])
+
+  @@map("RefreshToken")
 }
 
 model PasswordResetToken {
-  id          String    @id @default(uuid()) @db.Uuid
-  accountId   String    @db.Uuid
-  tokenHash   String    @unique
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid()) @db.Uuid
+  accountId String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
-  account     LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account LocalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([tokenHash])
   @@index([accountId])
+
+  @@map("PasswordResetToken")
 }
 
 // =============================================================================
@@ -1171,44 +1337,66 @@ model PasswordResetToken {
 
 model PeriodLock {
   id         String   @id @default(uuid())
+  idNew      String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId   String?  @unique @db.VarChar(32)
   periodFrom DateTime @db.Date
   periodTo   DateTime @db.Date
   lockedBy   String
-  lockedAt   DateTime @default(now())
+  lockedAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@map("period_locks")
 }
 
 model ProjectBudget {
-  id          String   @id @default(uuid())
-  projectId   String
-  fiscalYear  Int
-  capexBudget Decimal  @db.Decimal(15, 2) @default(0)
-  opexBudget  Decimal  @db.Decimal(15, 2) @default(0)
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  idNew           String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId        String?  @unique @db.VarChar(32)
+  projectId       String
+  workstreamId    String?  @db.Uuid
+  fiscalYear      Int
+  capexBudget     Decimal  @default(0) @db.Decimal(15, 2)
+  opexBudget      Decimal  @default(0) @db.Decimal(15, 2)
+  vendorBudget    Decimal? @db.Decimal(15, 2)
+  earnedValue     Decimal? @db.Decimal(15, 2)
+  actualCost      Decimal? @db.Decimal(15, 2)
+  plannedToDate   Decimal? @db.Decimal(15, 2)
+  eac             Decimal? @db.Decimal(15, 2)
+  capexCorrectPct Decimal? @db.Decimal(5, 4)
+  currencyCode    String?  @db.VarChar(3)
+  currency        Currency? @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  approvals       BudgetApproval[]
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  version              Int                                 @default(1)
 
   @@unique([projectId, fiscalYear])
+  @@index([currencyCode])
   @@map("project_budgets")
 }
 
 model PersonCostRate {
   id            String   @id @default(uuid())
+  idNew         String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId      String?  @unique @db.VarChar(32)
   personId      String
   effectiveFrom DateTime @db.Date
   hourlyRate    Decimal  @db.Decimal(10, 2)
-  rateType      String   @default("INTERNAL")
-  createdAt     DateTime @default(now())
+  rateType      PersonCostRateType @default(INTERNAL)
+  currencyCode  String?  @db.VarChar(3)
+  currency      Currency? @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
 
+  @@index([currencyCode])
   @@map("person_cost_rates")
 }
 
 model PulseEntry {
   id          String   @id @default(uuid())
+  idNew       String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
   personId    String
   weekStart   DateTime @db.Date
   mood        Int
   note        String?
-  submittedAt DateTime @default(now())
+  submittedAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([personId, weekStart])
   @@index([personId, weekStart])
@@ -1217,13 +1405,15 @@ model PulseEntry {
 
 model InAppNotification {
   id                String    @id @default(uuid())
+  idNew             String    @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId          String?   @unique @db.VarChar(32)
   recipientPersonId String
   eventType         String
   title             String
   body              String?
   link              String?
-  readAt            DateTime?
-  createdAt         DateTime  @default(now())
+  readAt            DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([recipientPersonId, createdAt])
   @@index([recipientPersonId, readAt])
@@ -1238,7 +1428,7 @@ model PlatformSetting {
   key       String   @id
   value     Json
   updatedBy String?
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("platform_settings")
 }
@@ -1249,9 +1439,11 @@ model PlatformSetting {
 
 model Skill {
   id           String        @id @default(uuid())
+  idNew        String        @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId     String?       @unique @db.VarChar(32)
   name         String        @unique
   category     String?
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   personSkills PersonSkill[]
 
   @@map("skills")
@@ -1259,12 +1451,13 @@ model Skill {
 
 model PersonSkill {
   id          String   @id @default(uuid())
+  idNew       String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
   personId    String
   skillId     String
   skill       Skill    @relation(fields: [skillId], references: [id])
   proficiency Int
   certified   Boolean  @default(false)
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([personId, skillId])
   @@index([personId])
@@ -1291,23 +1484,27 @@ enum StaffingRequestPriority {
 }
 
 model StaffingRequest {
-  id                    String                    @id @default(uuid())
-  projectId             String
-  requestedByPersonId   String
-  role                  String
-  skills                String[]
-  summary               String?
-  allocationPercent     Int
-  headcountRequired     Int                       @default(1)
-  headcountFulfilled    Int                       @default(0)
-  priority              StaffingRequestPriority   @default(MEDIUM)
-  status                StaffingRequestStatus     @default(DRAFT)
-  startDate             DateTime                  @db.Date
-  endDate               DateTime                  @db.Date
-  cancelledAt           DateTime?
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  fulfilments           StaffingRequestFulfilment[]
+  id                  String                      @id @default(uuid())
+  idNew               String                      @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId            String?                     @unique @db.VarChar(32)
+  projectId           String
+  requestedByPersonId String
+  role                String
+  skills              String[]
+  summary             String?
+  allocationPercent   Decimal                     @db.Decimal(5, 2)
+  headcountRequired   Int                         @default(1)
+  headcountFulfilled  Int                         @default(0)
+  priority            StaffingRequestPriority     @default(MEDIUM)
+  status              StaffingRequestStatus       @default(DRAFT)
+  startDate           DateTime                    @db.Date
+  endDate             DateTime                    @db.Date
+  cancelledAt         DateTime? @db.Timestamptz(3)
+  createdAt           DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                    @updatedAt @db.Timestamptz(3)
+  fulfilments         StaffingRequestFulfilment[]
+  assignments         ProjectAssignment[]         @relation("StaffingRequestAssignments")
+  version              Int                                 @default(1)
 
   @@index([projectId, status])
   @@index([requestedByPersonId, status])
@@ -1316,12 +1513,13 @@ model StaffingRequest {
 }
 
 model StaffingRequestFulfilment {
-  id                  String          @id @default(uuid())
-  requestId           String
-  assignedPersonId    String
-  proposedByPersonId  String
-  fulfilledAt         DateTime        @default(now())
-  request             StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  id                 String          @id @default(uuid())
+  idNew              String          @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  requestId          String
+  assignedPersonId   String
+  proposedByPersonId String
+  fulfilledAt        DateTime        @default(now()) @db.Timestamptz(3)
+  request            StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([requestId])
   @@index([assignedPersonId])
@@ -1347,6 +1545,8 @@ enum LeaveRequestStatus {
 
 model LeaveRequest {
   id         String             @id @default(uuid())
+  idNew      String             @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId   String?            @unique @db.VarChar(32)
   personId   String
   type       LeaveRequestType
   startDate  DateTime           @db.Date
@@ -1354,9 +1554,10 @@ model LeaveRequest {
   notes      String?
   status     LeaveRequestStatus @default(PENDING)
   reviewedBy String?
-  reviewedAt DateTime?
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  reviewedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime           @updatedAt @db.Timestamptz(3)
+  version              Int                                 @default(1)
 
   @@index([personId, status])
   @@index([status])
@@ -1368,41 +1569,43 @@ model LeaveRequest {
 // =============================================================================
 
 model OvertimePolicy {
-  id                      String        @id @default(uuid()) @db.Uuid
-  orgUnitId               String?       @db.Uuid
-  resourcePoolId          String?       @db.Uuid
+  id                      String    @id @default(uuid()) @db.Uuid
+  orgUnitId               String?   @db.Uuid
+  resourcePoolId          String?   @db.Uuid
   standardHoursPerWeek    Int
   maxOvertimeHoursPerWeek Int
-  setByPersonId           String        @db.Uuid
-  approvalCaseId          String?       @db.Uuid
-  approvalStatus          String        @default("ACTIVE")   // ACTIVE, PENDING_APPROVAL, REJECTED
-  effectiveFrom           DateTime      @default(now())
-  effectiveTo             DateTime?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  setByPersonId           String    @db.Uuid
+  approvalCaseId          String?   @db.Uuid
+  approvalStatus          String    @default("ACTIVE") // ACTIVE, PENDING_APPROVAL, REJECTED
+  effectiveFrom           DateTime  @default(now()) @db.Timestamptz(3)
+  effectiveTo             DateTime? @db.Timestamptz(3)
+  createdAt               DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
 
-  orgUnit                 OrgUnit?      @relation(fields: [orgUnitId], references: [id])
-  resourcePool            ResourcePool? @relation(fields: [resourcePoolId], references: [id])
-  setBy                   Person        @relation("OvertimePolicySetBy", fields: [setByPersonId], references: [id])
+  orgUnit      OrgUnit?      @relation(fields: [orgUnitId], references: [id])
+  resourcePool ResourcePool? @relation(fields: [resourcePoolId], references: [id])
+  setBy        Person        @relation("OvertimePolicySetBy", fields: [setByPersonId], references: [id])
+  approvalCase CaseRecord?   @relation("OvertimePolicyApprovalCase", fields: [approvalCaseId], references: [id], onDelete: SetNull)
 
   @@index([orgUnitId, effectiveFrom])
   @@index([resourcePoolId, effectiveFrom])
+  @@index([approvalCaseId])
   @@map("overtime_policies")
 }
 
 model OvertimeException {
-  id                      String     @id @default(uuid()) @db.Uuid
-  personId                String     @db.Uuid
-  caseRecordId            String     @db.Uuid
+  id                      String   @id @default(uuid()) @db.Uuid
+  personId                String   @db.Uuid
+  caseRecordId            String   @db.Uuid
   maxOvertimeHoursPerWeek Int
   reason                  String
-  effectiveFrom           DateTime
-  effectiveTo             DateTime
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
+  effectiveFrom           DateTime @db.Timestamptz(3)
+  effectiveTo             DateTime @db.Timestamptz(3)
+  createdAt               DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
 
-  person                  Person     @relation(fields: [personId], references: [id])
-  caseRecord              CaseRecord @relation(fields: [caseRecordId], references: [id])
+  person     Person     @relation(fields: [personId], references: [id])
+  caseRecord CaseRecord @relation(fields: [caseRecordId], references: [id])
 
   @@index([personId, effectiveFrom, effectiveTo])
   @@map("overtime_exceptions")
@@ -1418,12 +1621,12 @@ model LeaveBalance {
   year        Int
   leaveType   LeaveRequestType
   entitlement Decimal          @db.Decimal(5, 1)
-  used        Decimal          @db.Decimal(5, 1) @default(0)
-  pending     Decimal          @db.Decimal(5, 1) @default(0)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  used        Decimal          @default(0) @db.Decimal(5, 1)
+  pending     Decimal          @default(0) @db.Decimal(5, 1)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
 
-  person      Person           @relation(fields: [personId], references: [id])
+  person Person @relation(fields: [personId], references: [id])
 
   @@unique([personId, year, leaveType])
   @@index([personId, year])
@@ -1435,7 +1638,7 @@ model PublicHoliday {
   date        DateTime @db.Date
   name        String
   countryCode String   @default("AU")
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([date, countryCode])
   @@index([countryCode, date])
@@ -1451,8 +1654,8 @@ model Client {
   accountManagerPersonId String?   @db.Uuid
   notes                  String?
   isActive               Boolean   @default(true)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
   accountManager         Person?   @relation("ClientAccountManager", fields: [accountManagerPersonId], references: [id])
   projects               Project[]
 
@@ -1461,62 +1664,67 @@ model Client {
 }
 
 model Vendor {
-  id           String             @id @default(uuid()) @db.Uuid
-  name         String             @unique
+  id           String                    @id @default(uuid()) @db.Uuid
+  name         String                    @unique
   contactName  String?
   contactEmail String?
-  contractType VendorContractType @default(STAFF_AUGMENTATION)
-  skillAreas   String[]           @default([])
+  contractType VendorContractType        @default(STAFF_AUGMENTATION)
+  skillAreas   String[]                  @default([])
   notes        String?
-  isActive     Boolean            @default(true)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  isActive     Boolean                   @default(true)
+  createdAt    DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                  @updatedAt @db.Timestamptz(3)
   engagements  ProjectVendorEngagement[]
+  skillAreasList VendorSkillArea[]
 
   @@index([isActive])
   @@map("vendors")
 }
 
 model ProjectVendorEngagement {
-  id              String                  @id @default(uuid()) @db.Uuid
-  projectId       String                  @db.Uuid
-  vendorId        String                  @db.Uuid
-  roleSummary     String
-  headcount       Int                     @default(1)
-  monthlyRate     Decimal?                @db.Decimal(12, 2)
-  blendedDayRate  Decimal?                @db.Decimal(10, 2)
-  startDate       DateTime?
-  endDate         DateTime?
-  status          VendorEngagementStatus  @default(ACTIVE)
-  notes           String?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  project         Project                 @relation(fields: [projectId], references: [id])
-  vendor          Vendor                  @relation(fields: [vendorId], references: [id])
+  id             String                 @id @default(uuid()) @db.Uuid
+  projectId      String                 @db.Uuid
+  vendorId       String                 @db.Uuid
+  roleSummary    String
+  headcount      Int                    @default(1)
+  monthlyRate    Decimal?               @db.Decimal(12, 2)
+  blendedDayRate Decimal?               @db.Decimal(10, 2)
+  currencyCode   String?                @db.VarChar(3)
+  currency       Currency?              @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  startDate      DateTime? @db.Timestamptz(3)
+  endDate        DateTime? @db.Timestamptz(3)
+  status         VendorEngagementStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(3)
+  project        Project                @relation(fields: [projectId], references: [id])
+  vendor         Vendor                 @relation(fields: [vendorId], references: [id])
 
   @@unique([projectId, vendorId])
   @@index([projectId, status])
   @@index([vendorId])
+  @@index([currencyCode])
   @@map("project_vendor_engagements")
 }
 
 // ── Role Plan (Phase 2) ───────────────────────────────────────────────────────
 
 model ProjectRolePlan {
-  id               String          @id @default(uuid()) @db.Uuid
-  projectId        String          @db.Uuid
-  roleName         String
-  seniorityLevel   String?
-  headcount        Int             @default(1)
-  allocationPercent Decimal?       @db.Decimal(5, 2)
-  plannedStartDate DateTime?
-  plannedEndDate   DateTime?
-  requiredSkillIds String[]        @default([])
-  source           RolePlanSource  @default(INTERNAL)
-  notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  project          Project         @relation(fields: [projectId], references: [id])
+  id                 String         @id @default(uuid()) @db.Uuid
+  projectId          String         @db.Uuid
+  roleName           String
+  seniorityLevel     String?
+  headcount          Int            @default(1)
+  allocationPercent  Decimal?       @db.Decimal(5, 2)
+  plannedStartDate   DateTime? @db.Timestamptz(3)
+  plannedEndDate     DateTime? @db.Timestamptz(3)
+  requiredSkillIds   String[]       @default([])
+  source             RolePlanSource @default(INTERNAL)
+  standardHourlyRate Decimal?       @db.Decimal(10, 2)
+  notes              String?
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime       @updatedAt @db.Timestamptz(3)
+  project            Project        @relation(fields: [projectId], references: [id])
 
   @@unique([projectId, roleName, seniorityLevel])
   @@index([projectId])
@@ -1526,62 +1734,556 @@ model ProjectRolePlan {
 // ── RAG Snapshots (Phase 3) ───────────────────────────────────────────────────
 
 model ProjectRagSnapshot {
-  id                   String    @id @default(uuid()) @db.Uuid
-  projectId            String    @db.Uuid
-  weekStarting         DateTime  @db.Date
-  staffingRag          RagRating
-  scheduleRag          RagRating
-  budgetRag            RagRating
-  clientRag            RagRating?
-  scopeRag             RagRating?
-  businessRag          RagRating?
-  overallRag           RagRating
-  autoComputedOverall  RagRating?
-  isOverridden         Boolean   @default(false)
-  overrideReason       String?
-  narrative            String?
-  accomplishments      String?
-  nextSteps            String?
-  dimensionDetails     Json?
-  riskSummary          String?
-  recordedByPersonId   String    @db.Uuid
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  project              Project   @relation(fields: [projectId], references: [id])
+  id                  String                    @id @default(uuid()) @db.Uuid
+  projectId           String                    @db.Uuid
+  weekStarting        DateTime                  @db.Date
+  staffingRag         RagRating
+  scheduleRag         RagRating
+  budgetRag           RagRating
+  clientRag           RagRating?
+  scopeRag            RagRating?
+  peopleRag           RagRating?
+  overallRag          RagRating
+  autoComputedOverall RagRating?
+  isOverridden        Boolean                   @default(false)
+  overrideReason      String?
+  narrative           String?
+  accomplishments     String?
+  nextSteps           String?
+  dimensionDetails    Json?
+  riskSummary         String?
+  scopeScore          Int?
+  scheduleScore       Int?
+  budgetScore         Int?
+  peopleScore         Int?
+  overallScore        Int?
+  recordedByPersonId  String                    @db.Uuid
+  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
+  project             Project                   @relation(fields: [projectId], references: [id])
+  overrides           ProjectRadiatorOverride[]
+  recordedBy          Person                    @relation(fields: [recordedByPersonId], references: [id], onDelete: Restrict)
 
   @@unique([projectId, weekStarting])
   @@index([projectId, weekStarting])
+  @@index([recordedByPersonId])
   @@map("project_rag_snapshots")
 }
 
+enum MilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  HIT
+  MISSED
+}
+
+enum ChangeRequestStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ChangeRequestSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ThresholdDirection {
+  HIGHER_IS_BETTER
+  LOWER_IS_BETTER
+}
+
+// DM-4-2 pilot — promoted from `WorkEvidence.evidenceType: String`.
+enum WorkEvidenceType {
+  JIRA_WORKLOG
+  MANUAL_ENTRY
+  TIMESHEET_ENTRY
+}
+
+// DM-4-2 batch 2 — promoted from `WorkEvidenceLink.linkType: String`.
+enum WorkEvidenceLinkType {
+  ISSUE
+}
+
+// DM-4-2 batch 2 — REVERTED 2026-04-23 in migration
+// `20260423_dm_4_2_enum_revert_mismatched` because code writes
+// `'projects'` (jira integration) which was not in the enum.
+// `IntegrationSyncState.resourceType` stays `String` until product
+// codifies the label set.
+
+// DM-4-2 batch 2 — promoted from `CaseType.key: String`.
+// DM-4-2b (2026-04-23): OVERTIME_EXCEPTION added to cover
+// overtime-summary.service's dangling reference.
+enum CaseTypeKey {
+  OFFBOARDING
+  ONBOARDING
+  PERFORMANCE
+  TRANSFER
+  OVERTIME_EXCEPTION
+}
+
+// DM-4-2 batch 3 — promoted from `PersonCostRate.rateType: String`.
+// Product may extend with CONTRACTOR / VENDOR / PLACEMENT via
+// ADD VALUE IF NOT EXISTS when needed.
+enum PersonCostRateType {
+  INTERNAL
+}
+
+// DM-4-2 batch 4 — promoted from `LocalAccount.source: String`.
+enum LocalAccountSource {
+  local
+  ldap
+  azure_ad
+  google
+  okta
+}
+
+// DM-4-2 batch 4 — promoted from `OutboxEvent.status: String`.
+enum OutboxEventStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  RETRY
+}
+
+// DM-4-2 batch 4 — promoted from `ExternalAccountLink.sourceType: String`.
+enum ExternalAccountSourceType {
+  LDAP
+  AZURE_AD
+  GOOGLE_WORKSPACE
+  RADIUS
+  MANUAL
+}
+
+// DM-4-2 batch 4 — promoted from `ExternalAccountLink.accountPresenceState: String`.
+enum ExternalAccountPresenceState {
+  PRESENT
+  ABSENT
+  SUSPENDED
+  UNKNOWN
+}
+
+/// DM-6a-1 — ISO 4217 currency dictionary. Every monetary column
+/// (ProjectBudget.capexBudget/opexBudget, PersonCostRate.hourlyRate,
+/// ProjectVendorEngagement.monthlyRate/blendedDayRate) references a
+/// currency code here. The dev default is AUD; multi-tenant deploys
+/// override via `isDefault`. Minor units drive display precision.
+model Currency {
+  code        String   @id @db.VarChar(3)
+  name        String
+  minorUnit   Int      @default(2)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  projectBudgets              ProjectBudget[]
+  personCostRates             PersonCostRate[]
+  projectVendorEngagements    ProjectVendorEngagement[]
+
+  @@map("Currency")
+}
+
+// DM-6a-2 — queryable BudgetApproval state per ProjectBudget change.
+enum BudgetApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BudgetApproval {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectBudgetId     String
+  status              BudgetApprovalStatus  @default(PENDING)
+  requestedByPersonId String                @db.Uuid
+  decidedByPersonId   String?               @db.Uuid
+  decisionAt          DateTime?             @db.Timestamptz(3)
+  decisionReason      String?
+  requestedAt         DateTime              @default(now()) @db.Timestamptz(3)
+  requestedChange     Json?
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+
+  projectBudget       ProjectBudget         @relation(fields: [projectBudgetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requestedByPerson   Person                @relation("BudgetApproval_requestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  decidedByPerson     Person?               @relation("BudgetApproval_decidedBy", fields: [decidedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectBudgetId])
+  @@index([status])
+  @@index([requestedByPersonId])
+  @@map("budget_approvals")
+}
+
+// DM-6a-4 — per-Person contact records (phone/address/alt-email).
+enum ContactKind {
+  EMAIL
+  PHONE
+  ADDRESS
+}
+
+model Contact {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId  String      @db.Uuid
+  kind      ContactKind
+  label     String
+  value     String
+  isPrimary Boolean     @default(false)
+  verified  Boolean     @default(false)
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+
+  person    Person      @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([personId])
+  @@index([kind])
+  @@map("contacts")
+}
+
+// DM-6a-5 — EmploymentEvent (hire/terminate/leave/rehire). Current
+// `Person.hiredAt` / `Person.terminatedAt` stay as denormalized
+// convenience scalars populated from the most-recent event in a
+// future follow-up.
+enum EmploymentEventKind {
+  HIRE
+  TERMINATE
+  LEAVE_START
+  LEAVE_END
+  REHIRE
+}
+
+model EmploymentEvent {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId           String              @db.Uuid
+  kind               EmploymentEventKind
+  occurredOn         DateTime            @db.Date
+  reason             String?
+  recordedByPersonId String?             @db.Uuid
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+
+  person             Person              @relation("EmploymentEvent_person", fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  recordedByPerson   Person?             @relation("EmploymentEvent_recordedBy", fields: [recordedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([personId, occurredOn])
+  @@index([kind])
+  @@map("employment_events")
+}
+
+// DM-7-1 — DomainEvent: durable transactional outbox. One row per
+// business mutation, written inside the same Prisma $transaction as
+// the aggregate write. The outbox relay consumes rows where
+// `publishedAt IS NULL` and marks them. Declarative-partitioned by
+// (createdAt) with a default partition; retro-split into monthly
+// partitions via ATTACH PARTITION once a partition crosses the 5M
+// watermark.
+//
+// Intentionally NOT modelled in Prisma: declarative partitioning +
+// composite PK including the partition key confuses Prisma's migrate
+// engine. DomainEvent is written via `$queryRawUnsafe` from
+// `DomainEventGateway` (DM-7-2). The table structure is stable and
+// payloads are Zod-validated at the service boundary (DM-7-7).
+
+// DM-6a-7 — join tables replacing `Project.techStack`, `Project.tags`,
+// `Vendor.skillAreas` (all text[] denormalized). Zero rows populate
+// the text[] columns currently; DM-6b-1 drops them.
+model ProjectTechnology {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  technology  String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([projectId, technology])
+  @@index([technology])
+  @@map("project_technologies")
+}
+
+model ProjectTag {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId  String   @db.Uuid
+  tag        String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([projectId, tag])
+  @@index([tag])
+  @@map("project_tags")
+}
+
+model VendorSkillArea {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId   String   @db.Uuid
+  skillArea  String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([vendorId, skillArea])
+  @@index([skillArea])
+  @@map("vendor_skill_areas")
+}
+
+// DM-6a-6 — ProjectRetrospective (1:1 with Project). Extracts
+// outcomeRating/lessonsLearned/wouldStaffSameWay from the Project
+// table; those columns remain for the transition release and are
+// dropped in DM-6b-1.
+model ProjectRetrospective {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId               String   @unique @db.Uuid
+  outcomeRating           String?
+  lessonsLearned          String?
+  wouldStaffSameWay       Boolean?
+  retrospectiveDate       DateTime? @db.Date
+  facilitatedByPersonId   String?  @db.Uuid
+  createdAt               DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
+
+  project                 Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  facilitatedByPerson     Person?  @relation(fields: [facilitatedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([projectId])
+  @@map("project_retrospectives")
+}
+
+model ProjectMilestone {
+  id                    String          @id @default(uuid()) @db.Uuid
+  projectId             String          @db.Uuid
+  workstreamId          String?         @db.Uuid
+  name                  String
+  description           String?
+  plannedDate           DateTime        @db.Date
+  actualDate            DateTime?       @db.Date
+  status                MilestoneStatus @default(PLANNED)
+  progressPct           Int             @default(0)
+  dependsOnMilestoneIds String[]        @default([])
+  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  project               Project         @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, plannedDate])
+  @@index([projectId, status])
+  @@map("project_milestones")
+}
+
+model ProjectChangeRequest {
+  id                String                @id @default(uuid()) @db.Uuid
+  projectId         String                @db.Uuid
+  workstreamId      String?               @db.Uuid
+  title             String
+  description       String?
+  status            ChangeRequestStatus   @default(PROPOSED)
+  severity          ChangeRequestSeverity @default(MEDIUM)
+  outOfBaseline     Boolean               @default(false)
+  impactScope       String?
+  impactSchedule    String?
+  impactBudget      String?
+  requesterPersonId String?               @db.Uuid
+  decidedByPersonId String?               @db.Uuid
+  decidedAt         DateTime? @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
+  project           Project               @relation(fields: [projectId], references: [id])
+  requester         Person?               @relation("ProjectChangeRequestRequester", fields: [requesterPersonId], references: [id], onDelete: SetNull)
+  decidedBy         Person?               @relation("ProjectChangeRequestDecider", fields: [decidedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([projectId, createdAt])
+  @@index([requesterPersonId])
+  @@index([decidedByPersonId])
+  @@map("project_change_requests")
+}
+
+model ProjectRadiatorOverride {
+  id                   String             @id @default(uuid()) @db.Uuid
+  snapshotId           String             @db.Uuid
+  subDimensionKey      String
+  autoScore            Int?
+  overrideScore        Int
+  reason               String
+  overriddenByPersonId String             @db.Uuid
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  snapshot             ProjectRagSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  overriddenBy         Person             @relation(fields: [overriddenByPersonId], references: [id], onDelete: Restrict)
+
+  @@index([snapshotId])
+  @@index([overriddenByPersonId])
+  @@map("project_radiator_overrides")
+}
+
+model RadiatorThresholdConfig {
+  id                String             @id @default(uuid()) @db.Uuid
+  subDimensionKey   String             @unique
+  thresholdScore4   Float
+  thresholdScore3   Float
+  thresholdScore2   Float
+  thresholdScore1   Float
+  direction         ThresholdDirection @default(HIGHER_IS_BETTER)
+  updatedByPersonId String?            @db.Uuid
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+  updatedBy         Person?            @relation(fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByPersonId])
+  @@map("radiator_threshold_configs")
+}
+
 model ProjectRisk {
-  id                  String        @id @default(uuid()) @db.Uuid
-  projectId           String        @db.Uuid
+  id                  String             @id @default(uuid()) @db.Uuid
+  projectId           String             @db.Uuid
+  workstreamId        String?            @db.Uuid
   title               String
   description         String?
   category            RiskCategory
-  riskType            RiskType      @default(RISK)
-  probability         Int           @default(3)
-  impact              Int           @default(3)
+  riskType            RiskType           @default(RISK)
+  probability         Int                @default(3)
+  impact              Int                @default(3)
   strategy            RiskStrategy?
   strategyDescription String?
   damageControlPlan   String?
-  status              RiskStatus    @default(IDENTIFIED)
-  ownerPersonId       String?       @db.Uuid
-  assigneePersonId    String?       @db.Uuid
-  raisedAt            DateTime      @default(now())
-  dueDate             DateTime?
-  resolvedAt          DateTime?
-  convertedFromRiskId String?       @db.Uuid
-  relatedCaseId       String?       @db.Uuid
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  project             Project       @relation(fields: [projectId], references: [id])
-  convertedFromRisk   ProjectRisk?  @relation("RiskConversion", fields: [convertedFromRiskId], references: [id])
-  convertedToIssues   ProjectRisk[] @relation("RiskConversion")
+  status              RiskStatus         @default(IDENTIFIED)
+  ownerPersonId       String?            @db.Uuid
+  assigneePersonId    String?            @db.Uuid
+  raisedAt            DateTime           @default(now()) @db.Timestamptz(3)
+  dueDate             DateTime? @db.Timestamptz(3)
+  resolvedAt          DateTime? @db.Timestamptz(3)
+  lastReviewedAt      DateTime? @db.Timestamptz(3)
+  reviewCadence       RiskReviewCadence?
+  convertedFromRiskId String?            @db.Uuid
+  relatedCaseId       String?            @db.Uuid
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+  project             Project            @relation(fields: [projectId], references: [id])
+  convertedFromRisk   ProjectRisk?       @relation("RiskConversion", fields: [convertedFromRiskId], references: [id])
+  convertedToIssues   ProjectRisk[]      @relation("RiskConversion")
+  owner               Person?            @relation("ProjectRiskOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
+  assignee            Person?            @relation("ProjectRiskAssignee", fields: [assigneePersonId], references: [id], onDelete: SetNull)
+  relatedCase         CaseRecord?        @relation("ProjectRiskRelatedCase", fields: [relatedCaseId], references: [id], onDelete: SetNull)
+  version              Int                                 @default(1)
 
   @@index([projectId, status])
   @@index([projectId, riskType])
   @@index([ownerPersonId])
+  @@index([assigneePersonId])
+  @@index([relatedCaseId])
   @@map("project_risks")
+}
+
+// =============================================================================
+// Planner Scenarios — saved snapshots of simulation state for compare/restore
+// =============================================================================
+
+model PlannerScenario {
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String
+  description        String?
+  createdByPersonId  String    @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt         DateTime? @db.Timestamptz(3)
+  state              Json
+  summaryAssignments Int       @default(0)
+  summaryHires       Int       @default(0)
+  summaryReleases    Int       @default(0)
+  summaryExtensions  Int       @default(0)
+  summaryAnomalies   Int       @default(0)
+  horizonFrom        DateTime? @db.Date
+  horizonWeeks       Int?
+
+  createdBy Person @relation("PlannerScenarioCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+
+  @@index([createdByPersonId])
+  @@index([archivedAt])
+  @@map("planner_scenarios")
+}
+
+// Phase 21-07 — server-side notification preferences (one row per person × channel)
+model PersonNotificationPreference {
+  id         String   @id @default(uuid()) @db.Uuid
+  personId   String   @db.Uuid
+  channelKey String
+  enabled    Boolean  @default(true)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, channelKey])
+  @@index([personId])
+  @@map("person_notification_preferences")
+}
+
+// Phase 21-11 — server-side undo support for reversible destructive actions
+model UndoAction {
+  id             String    @id @default(uuid()) @db.Uuid
+  actorId        String    @db.Uuid
+  actionType     String
+  entityId       String    @db.Uuid
+  inversePayload Json
+  expiresAt      DateTime @db.Timestamptz(3)
+  consumedAt     DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  actor Person @relation("UndoActionActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, expiresAt])
+  @@index([entityId])
+  @@map("undo_actions")
+}
+
+// ── V2-0 Foundation: Workstreams (stub — unused in v2 UI), OrganizationConfig ──
+
+model ProjectWorkstream {
+  id                 String    @id @default(uuid()) @db.Uuid
+  projectId          String    @db.Uuid
+  name               String
+  streamLeadPersonId String?   @db.Uuid
+  budgetShare        Decimal?  @db.Decimal(5, 4)
+  startDate          DateTime  @db.Date
+  endDate            DateTime? @db.Date
+  status             String    @default("ACTIVE")
+  displayOrder       Int       @default(0)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  project            Project   @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@map("project_workstreams")
+}
+
+model OrganizationConfig {
+  id                        String   @id @default("default")
+  reportingCadence          String   @default("WEEKLY")
+  tierLabels                Json     @default("{\"A\":\"General\",\"B\":\"Quadrant\"}")
+  exceptionAxisThreshold    Int      @default(1)
+  riskCadenceMap            Json     @default("{}")
+  crStaleThresholdDays      Int      @default(7)
+  milestoneSlippedGraceDays Int      @default(0)
+  timesheetGapDays          Int      @default(14)
+  pmReassignmentPolicy      String   @default("pm-or-director-or-admin")
+  defaultShapeForNewProject String   @default("STANDARD")
+  defaultHourlyRate         Decimal? @db.Decimal(10, 2)
+  ragThresholdCritical      Decimal  @default(1.0) @db.Decimal(3, 2)
+  ragThresholdRed           Decimal  @default(2.0) @db.Decimal(3, 2)
+  ragThresholdAmber         Decimal  @default(3.0) @db.Decimal(3, 2)
+  colourBlindMode           Boolean  @default(false)
+  updatedByPersonId         String?  @db.Uuid
+  updatedAt                 DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("organization_configs")
+}
+
+model PulseReport {
+  id                  String    @id @default(uuid()) @db.Uuid
+  projectId           String    @db.Uuid
+  weekStarting        DateTime  @db.Date
+  dimensions          Json      @default("{}")
+  overallNarrative    String?
+  submittedByPersonId String?   @db.Uuid
+  submittedAt         DateTime? @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, weekStarting])
+  @@index([projectId])
+  @@map("pulse_reports")
 }

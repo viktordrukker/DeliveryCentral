@@ -149,7 +149,7 @@ export function App(): JSX.Element {
       ) : null}
       <ErrorBoundary>
         <PlatformSettingsProvider>
-          <RouterProvider router={appRouter} />
+          <RouterProvider router={appRouter} future={{ v7_startTransition: true }} />
         </PlatformSettingsProvider>
       </ErrorBoundary>
       <Toaster position="bottom-right" richColors />

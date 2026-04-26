@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+# DM-R-5 — pre-commit guardrails.
+#
+# Fast, local gates that stop obvious mistakes before they reach CI. These
+# are defense-in-depth — DM-R-1 (startup barrier), DM-R-2 (CI drift check),
+# and DM-R-4 (migration classification CI gate) are the agent-proof gates.
+# Pre-commit can be bypassed by a human with `--no-verify`; do not rely on
+# it as the only guard for anything.
+#
+# Escape hatch: if a hook is blocking legitimate work, the right move is to
+# fix the cause; bypass with `--no-verify` only in emergencies and document
+# why in the commit message.
+
+set -e
+
+# 1. Schema convention lint — prevent new TEXT IDs, missing @@map, etc.
+echo "🔎 husky: npm run schema:check"
+npm run --silent schema:check
+
+# 2. PublicId leak lint — prevent new DTO fields named "id: string" that are
+#    raw UUIDs sent to the browser.
+echo "🔎 husky: npm run publicid:check"
+npm run --silent publicid:check
+
+# 3. Migration classification — every migration dir has REVERSIBLE.md or
+#    FORWARD_ONLY.md.
+echo "🔎 husky: npm run migrations:check"
+npm run --silent migrations:check
+
+# 4. Enum evolution — reject single-step enum renames (DM-R-6).
+echo "🔎 husky: npm run enum:check"
+npm run --silent enum:check
+
+# 5. Pairing — schema.prisma edited ⇒ new migration dir staged.
+echo "🔎 husky: schema.prisma ↔ migration pairing"
+node scripts/check-schema-migration-pairing.cjs

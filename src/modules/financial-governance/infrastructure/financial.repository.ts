@@ -71,7 +71,7 @@ export class FinancialRepository {
     return this.prisma.projectAssignment.findMany({
       where: {
         projectId: { in: projectIds },
-        status: 'APPROVED',
+        status: 'BOOKED',
         validTo: null,
       },
       select: { projectId: true, allocationPercent: true },
@@ -165,7 +165,12 @@ export class FinancialRepository {
     rateType: string;
     createdAt: Date;
   }> {
-    return this.prisma.personCostRate.create({ data });
+    // DM-4-2: rateType is now `PersonCostRateType` enum; cast the
+    // string input via `as never` to keep the repo signature string-
+    // typed for callers.
+    return this.prisma.personCostRate.create({
+      data: { ...data, rateType: data.rateType as never },
+    });
   }
 
   public async findEffectiveCostRates(
@@ -239,7 +244,7 @@ export class FinancialRepository {
     projectId: string,
   ): Promise<Array<{ personId: string; staffingRole: string; allocationPercent: Prisma.Decimal | null }>> {
     return this.prisma.projectAssignment.findMany({
-      where: { projectId, status: 'APPROVED' },
+      where: { projectId, status: 'BOOKED' },
       select: {
         personId: true,
         staffingRole: true,

@@ -49,7 +49,7 @@ export class InMemoryPersonDirectoryQueryRepository
     );
     const activeAssignments = demoAssignments.filter(
       (assignment) =>
-        ['APPROVED', 'ACTIVE'].includes(assignment.status) &&
+        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(assignment.status) &&
         assignment.validFrom <= asOf &&
         (!assignment.validTo || assignment.validTo >= asOf),
     );

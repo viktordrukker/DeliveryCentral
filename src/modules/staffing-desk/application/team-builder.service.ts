@@ -56,7 +56,7 @@ export class TeamBuilderService {
 
     // Get current allocations
     const assignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['APPROVED', 'ACTIVE'] } },
+      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
       select: { personId: true, allocationPercent: true },
     });
 

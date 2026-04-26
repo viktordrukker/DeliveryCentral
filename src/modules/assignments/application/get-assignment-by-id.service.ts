@@ -51,9 +51,9 @@ export class GetAssignmentByIdService {
           id: approval.id,
           sequenceNumber: approval.sequenceNumber,
         })),
-      canApprove: assignment.status.value === 'REQUESTED',
-      canEnd: ['APPROVED', 'ACTIVE'].includes(assignment.status.value),
-      canReject: assignment.status.value === 'REQUESTED',
+      canApprove: assignment.status.value === 'PROPOSED',
+      canEnd: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(assignment.status.value),
+      canReject: assignment.status.value === 'PROPOSED',
       endDate: assignment.validTo?.toISOString() ?? null,
       history: historyEntries
         .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())

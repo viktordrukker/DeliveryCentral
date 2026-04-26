@@ -1,109 +1,103 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import type { AssignmentStatusValue } from '@/lib/api/assignments';
+import {
+  type AssignmentTransitionRule,
+  availableTransitions,
+} from '@/lib/assignment-transitions';
 
-interface AssignmentWorkflowActionsProps {
-  canApprove: boolean;
-  canReject: boolean;
+export interface AssignmentWorkflowActionsProps {
+  currentStatus: string;
   isSubmitting: boolean;
-  onApprove: (comment: string) => Promise<void>;
-  onReject: (reason: string) => Promise<void>;
+  onTransition: (target: AssignmentStatusValue, options: { reason?: string }) => Promise<void>;
+  userRoles: readonly string[];
+}
+
+type DialogState = {
+  open: boolean;
+  rule?: AssignmentTransitionRule;
+};
+
+function toneToButtonClass(tone: AssignmentTransitionRule['tone']): string {
+  switch (tone) {
+    case 'primary':
+      return 'button';
+    case 'danger':
+      return 'button button--danger';
+    case 'warning':
+      return 'button button--secondary';
+    case 'secondary':
+    default:
+      return 'button button--secondary';
+  }
+}
+
+function humanTarget(target: AssignmentStatusValue): string {
+  return target.replace('_', ' ').toLowerCase();
 }
 
 export function AssignmentWorkflowActions({
-  canApprove,
-  canReject,
+  currentStatus,
   isSubmitting,
-  onApprove,
-  onReject,
-}: AssignmentWorkflowActionsProps): JSX.Element {
-  const [comment, setComment] = useState('');
-  const [reason, setReason] = useState('');
-  const [confirmApproveOpen, setConfirmApproveOpen] = useState(false);
-  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  onTransition,
+  userRoles,
+}: AssignmentWorkflowActionsProps): JSX.Element | null {
+  const rules = useMemo(
+    () => availableTransitions(currentStatus, userRoles),
+    [currentStatus, userRoles],
+  );
+  const [dialog, setDialog] = useState<DialogState>({ open: false });
 
-  function handleApprove(): void {
-    setConfirmApproveOpen(true);
+  if (rules.length === 0) {
+    return null;
   }
 
-  function handleReject(): void {
-    setConfirmRejectOpen(true);
+  function openDialog(rule: AssignmentTransitionRule): void {
+    setDialog({ open: true, rule });
   }
+
+  function closeDialog(): void {
+    setDialog({ open: false });
+  }
+
+  const activeRule = dialog.rule;
 
   return (
-    <div className="workflow-panel">
-      <ConfirmDialog
-        confirmLabel="Approve"
-        message="Approve this assignment request?"
-        onCancel={() => setConfirmApproveOpen(false)}
-        onConfirm={() => {
-          setConfirmApproveOpen(false);
-          void onApprove(comment);
-        }}
-        open={confirmApproveOpen}
-        title="Approve Assignment"
-      />
-      <ConfirmDialog
-        confirmLabel="Reject"
-        message="Reject this assignment request?"
-        onCancel={() => setConfirmRejectOpen(false)}
-        onConfirm={() => {
-          setConfirmRejectOpen(false);
-          void onReject(reason);
-        }}
-        open={confirmRejectOpen}
-        title="Reject Assignment"
-      />
-
-      {canApprove ? (
-        <>
-          <label className="field">
-            <span className="field__label">Approval Comment</span>
-            <textarea
-              className="field__control field__control--textarea"
-              onChange={(event) => setComment(event.target.value)}
-              rows={3}
-              value={comment}
-            />
-          </label>
-
-          <div className="workflow-panel__actions">
-            <button
-              className="button"
-              disabled={isSubmitting}
-              onClick={handleApprove}
-              type="button"
-            >
-              {isSubmitting ? 'Submitting...' : 'Approve assignment'}
-            </button>
-          </div>
-        </>
+    <div className="workflow-panel" data-testid="assignment-workflow-actions">
+      {activeRule ? (
+        <ConfirmDialog
+          confirmLabel={activeRule.label}
+          message={
+            activeRule.requiresReason
+              ? `A reason is required to transition to ${humanTarget(activeRule.to)}.`
+              : `Confirm transition to ${humanTarget(activeRule.to)}?`
+          }
+          onCancel={closeDialog}
+          onConfirm={(reason?: string) => {
+            closeDialog();
+            void onTransition(activeRule.to, { reason });
+          }}
+          open={dialog.open}
+          requireReason={activeRule.requiresReason ?? false}
+          title={activeRule.label}
+        />
       ) : null}
 
-      {canReject ? (
-        <>
-          <label className="field">
-            <span className="field__label">Rejection Reason</span>
-            <textarea
-              className="field__control field__control--textarea"
-              onChange={(event) => setReason(event.target.value)}
-              rows={3}
-              value={reason}
-            />
-          </label>
-
-          <div className="workflow-panel__actions">
-            <button
-              className="button button--secondary"
-              disabled={isSubmitting}
-              onClick={handleReject}
-              type="button"
-            >
-              {isSubmitting ? 'Submitting...' : 'Reject assignment'}
-            </button>
-          </div>
-        </>
-      ) : null}
+      <div className="workflow-panel__actions" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+        {rules.map((rule) => (
+          <button
+            className={toneToButtonClass(rule.tone)}
+            data-testid={`transition-${rule.to.toLowerCase()}`}
+            disabled={isSubmitting}
+            key={rule.to}
+            onClick={() => openDialog(rule)}
+            type="button"
+          >
+            {isSubmitting ? 'Submitting...' : rule.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   type ProjectAssignmentResponse,
 } from '@/lib/api/assignments';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
+import { UtilisationPeek } from '@/components/assignments/UtilisationPeek';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 
 export interface AssignmentModalPreFill {
@@ -202,7 +203,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
             <label className="field">
               <span className="field__label">Allocation % *</span>
-              <input className="field__control" type="number" min={0} max={100} step={5}
+              <input className="field__control" type="number" min={0} max={100} step="any"
                 value={allocInput}
                 onChange={(e) => setAllocInput(e.target.value)}
                 onBlur={() => {
@@ -225,6 +226,13 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
             </label>
             <div />
           </div>
+
+          <UtilisationPeek
+            personId={preFill.personId}
+            startDate={startDate}
+            endDate={endDate}
+            allocationPercent={allocationPercent}
+          />
           <label className="field">
             <span className="field__label">Note</span>
             <textarea className="field__control" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional context" />

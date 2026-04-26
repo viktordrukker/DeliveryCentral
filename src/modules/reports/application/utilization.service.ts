@@ -49,7 +49,7 @@ export class UtilizationService {
     // Find active assignments in the period
     const assignments = await this.prisma.projectAssignment.findMany({
       where: {
-        status: { in: ['APPROVED', 'ACTIVE'] },
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         validFrom: { lte: toDate },
         OR: [{ validTo: null }, { validTo: { gte: fromDate } }],
         ...(params.personId ? { personId: params.personId } : {}),

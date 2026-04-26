@@ -5,6 +5,8 @@ import { ChartCsvData, ChartExportMenu } from './ChartExportMenu';
 interface SectionCardProps {
   chartExport?: ChartCsvData;
   collapsible?: boolean;
+  compact?: boolean;
+  defaultCollapsed?: boolean;
   id?: string;
   title?: ReactNode;
 }
@@ -13,14 +15,18 @@ export function SectionCard({
   chartExport,
   children,
   collapsible = false,
+  compact = false,
+  defaultCollapsed = false,
   id,
   title,
 }: PropsWithChildren<SectionCardProps>): JSX.Element {
   const titleStr = typeof title === 'string' ? title : '';
   const storageKey = collapsible && titleStr ? `section-card-collapsed:${titleStr}` : null;
   const [collapsed, setCollapsed] = useState(() => {
-    if (!storageKey) return false;
-    return localStorage.getItem(storageKey) === 'true';
+    if (!storageKey) return defaultCollapsed;
+    const stored = localStorage.getItem(storageKey);
+    if (stored !== null) return stored === 'true';
+    return defaultCollapsed;
   });
 
   function toggleCollapse(): void {
@@ -30,9 +36,9 @@ export function SectionCard({
   }
 
   return (
-    <section className="section-card" id={id}>
+    <section className={`section-card${compact ? ' section-card--compact' : ''}`} id={id}>
       {title ? (
-        <div style={{ alignItems: 'center', display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
+        <div style={{ alignItems: 'center', display: 'flex', gap: '8px', justifyContent: 'space-between', marginBottom: compact ? '6px' : undefined }}>
           <h3 className="section-card__title" style={{ margin: 0 }}>{title}</h3>
           <div style={{ alignItems: 'center', display: 'flex', gap: '4px' }}>
             {chartExport ? (

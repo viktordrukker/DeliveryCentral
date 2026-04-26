@@ -21,6 +21,15 @@ import {
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import {
+  AggregateType,
+  ParsePublicIdOrUuid,
+} from '@src/infrastructure/public-id';
+
+import {
+  DeriveStaffingRequestStatusService,
+  DerivedStaffingRequestResult,
+} from '../application/derive-staffing-request-status.service';
+import {
   SuggestionCandidate,
   SkillRequirement,
   StaffingSuggestionsService,
@@ -31,6 +40,11 @@ import {
   StaffingRequestPriority,
   StaffingRequestStatus,
 } from '../infrastructure/services/in-memory-staffing-request.service';
+
+export interface StaffingRequestWithDerived extends StaffingRequest {
+  derivedStatus: DerivedStaffingRequestResult['derivedStatus'];
+  assignmentSummary: DerivedStaffingRequestResult['summary'];
+}
 
 interface CreateStaffingRequestBody {
   allocationPercent: number;
@@ -68,15 +82,55 @@ export class StaffingRequestsController {
   public constructor(
     private readonly service: InMemoryStaffingRequestService,
     private readonly suggestionsService: StaffingSuggestionsService,
+    private readonly deriveStatusService: DeriveStaffingRequestStatusService,
   ) {}
+
+  private async enrich(request: StaffingRequest): Promise<StaffingRequestWithDerived> {
+    const derived = await this.deriveStatusService.deriveForRequest(
+      request.id,
+      request.headcountRequired ?? 1,
+    );
+    return {
+      ...request,
+      assignmentSummary: derived.summary,
+      derivedStatus: derived.derivedStatus,
+    };
+  }
+
+  private async enrichMany(requests: StaffingRequest[]): Promise<StaffingRequestWithDerived[]> {
+    if (requests.length === 0) return [];
+    const ids = requests.map((request) => request.id);
+    const derivedByRequest = await this.deriveStatusService.deriveForRequests(ids);
+    return requests.map((request) => {
+      const derived = derivedByRequest.get(request.id);
+      return {
+        ...request,
+        assignmentSummary:
+          derived?.summary ?? {
+            assigned: 0,
+            booked: 0,
+            cancelled: 0,
+            completed: 0,
+            created: 0,
+            onHold: 0,
+            onboarding: 0,
+            proposed: 0,
+            rejected: 0,
+            totalAssignments: 0,
+          },
+        derivedStatus: derived?.derivedStatus ?? 'Open',
+      };
+    });
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a staffing request' })
   @ApiCreatedResponse({ description: 'Staffing request created' })
-  public async create(@Body() body: CreateStaffingRequestBody): Promise<StaffingRequest> {
+  public async create(@Body() body: CreateStaffingRequestBody): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.create(body);
+      const created = await this.service.create(body);
+      return this.enrich(created);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Creation failed.');
     }
@@ -90,8 +144,9 @@ export class StaffingRequestsController {
     @Query('projectId') projectId?: string,
     @Query('priority') priority?: StaffingRequestPriority,
     @Query('requestedByPersonId') requestedByPersonId?: string,
-  ): Promise<StaffingRequest[]> {
-    return this.service.list({ priority, projectId, requestedByPersonId, status });
+  ): Promise<StaffingRequestWithDerived[]> {
+    const rows = await this.service.list({ priority, projectId, requestedByPersonId, status });
+    return this.enrichMany(rows);
   }
 
   @Get('suggestions')
@@ -141,25 +196,32 @@ export class StaffingRequestsController {
     });
   }
 
+  // DM-2.5-8-staffing Sub-B: every :id param accepts either uuid (legacy)
+  // or `stf_…` publicId via the transitional pipe. The service layer's
+  // `findRecordByIdOrPublicId` resolves both shapes. Flip to strict
+  // `ParsePublicId` in Sub-C once frontend routes stop emitting UUIDs.
   @Get(':id')
-  @ApiOperation({ summary: 'Get staffing request by id' })
+  @ApiOperation({ summary: 'Get staffing request by id or publicId' })
   @ApiOkResponse({ description: 'Staffing request' })
   @ApiNotFoundResponse({ description: 'Not found.' })
-  public async getById(@Param('id') id: string): Promise<StaffingRequest> {
+  public async getById(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
     const request = await this.service.getById(id);
     if (!request) throw new NotFoundException('Staffing request not found.');
-    return request;
+    return this.enrich(request);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a DRAFT staffing request' })
   @ApiOkResponse({ description: 'Updated' })
   public async update(
-    @Param('id') id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
     @Body() body: UpdateStaffingRequestBody,
-  ): Promise<StaffingRequest> {
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.update(id, body);
+      const updated = await this.service.update(id, body);
+      return this.enrich(updated);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Update failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
@@ -171,9 +233,12 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a DRAFT request (→ OPEN)' })
   @ApiOkResponse({ description: 'Submitted' })
-  public async submit(@Param('id') id: string): Promise<StaffingRequest> {
+  public async submit(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.submit(id);
+      const result = await this.service.submit(id);
+      return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Submit failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
@@ -185,9 +250,12 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Take an OPEN request into IN_REVIEW' })
   @ApiOkResponse({ description: 'Under review' })
-  public async review(@Param('id') id: string): Promise<StaffingRequest> {
+  public async review(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.review(id);
+      const result = await this.service.review(id);
+      return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Review failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
@@ -199,9 +267,12 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Release an IN_REVIEW request back to OPEN' })
   @ApiOkResponse({ description: 'Released' })
-  public async release(@Param('id') id: string): Promise<StaffingRequest> {
+  public async release(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.release(id);
+      const result = await this.service.release(id);
+      return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Release failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
@@ -213,9 +284,13 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Fulfil a staffing request by assigning a person' })
   @ApiOkResponse({ description: 'Fulfilment recorded' })
-  public async fulfil(@Param('id') id: string, @Body() body: FulfilBody): Promise<StaffingRequest> {
+  public async fulfil(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Body() body: FulfilBody,
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.fulfil(id, body.proposedByPersonId, body.assignedPersonId);
+      const result = await this.service.fulfil(id, body.proposedByPersonId, body.assignedPersonId);
+      return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Fulfilment failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
@@ -227,9 +302,12 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel a staffing request' })
   @ApiOkResponse({ description: 'Cancelled' })
-  public async cancel(@Param('id') id: string): Promise<StaffingRequest> {
+  public async cancel(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
     try {
-      return await this.service.cancel(id);
+      const result = await this.service.cancel(id);
+      return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Cancel failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);

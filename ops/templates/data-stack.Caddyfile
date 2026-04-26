@@ -1,0 +1,74 @@
+# Dual-site Caddyfile — serves prod + staging from one Caddy container.
+# Auto-HTTPS via Let's Encrypt (no config needed; DNS A records must resolve).
+#
+# Upstream service names follow Compose project conventions:
+#   dc-prod-backend-1       (project: dc-prod,    service: backend)
+#   dc-prod-frontend-1      (project: dc-prod,    service: frontend)
+#   dc-staging-backend-1    (project: dc-staging, service: backend)
+#   dc-staging-frontend-1   (project: dc-staging, service: frontend)
+#
+# All upstreams resolve via the shared `dc-shared` Docker bridge network.
+
+{$PROD_DOMAIN} {
+    handle /api/* {
+        rate_limit {
+            zone api_prod {
+                key {remote_host}
+                events 100
+                window 1m
+            }
+        }
+        reverse_proxy dc-prod-backend-1:3000
+    }
+    handle {
+        reverse_proxy dc-prod-frontend-1:80
+    }
+    log {
+        output stdout
+        format json
+    }
+}
+
+{$STAGING_DOMAIN} {
+    handle /api/* {
+        rate_limit {
+            zone api_staging {
+                key {remote_host}
+                events 100
+                window 1m
+            }
+        }
+        reverse_proxy dc-staging-backend-1:3000
+    }
+    handle {
+        reverse_proxy dc-staging-frontend-1:80
+    }
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Uptime Kuma — only resolves when --profile monitoring is up.
+{$MONITOR_DOMAIN} {
+    basic_auth {
+        {$CADDY_BASIC_AUTH_USER} {$CADDY_BASIC_AUTH_HASH}
+    }
+    reverse_proxy dc-data-uptime-kuma-1:3001
+    log {
+        output stdout
+        format json
+    }
+}
+
+# Dozzle — same.
+{$LOGS_DOMAIN} {
+    basic_auth {
+        {$CADDY_BASIC_AUTH_USER} {$CADDY_BASIC_AUTH_HASH}
+    }
+    reverse_proxy dc-data-dozzle-1:8080
+    log {
+        output stdout
+        format json
+    }
+}

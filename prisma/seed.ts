@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcrypt';
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 import {
   demoAssignmentApprovals,
@@ -254,6 +254,14 @@ async function seedMetadata(): Promise<void> {
       entityType: 'Person',
       isSystemManaged: false,
     },
+    {
+      id: '42222222-0000-0000-0000-000000000201',
+      dictionaryKey: 'timesheet-rejection-reasons',
+      displayName: 'Timesheet Rejection Reasons',
+      description: 'Reasons an approver may cite when rejecting a submitted timesheet.',
+      entityType: 'TimesheetWeek',
+      isSystemManaged: false,
+    },
   ];
 
   for (const dict of dictionaries) {
@@ -304,6 +312,11 @@ async function seedMetadata(): Promise<void> {
     { id: '43333333-0000-0000-0000-000000000303', metadataDictionaryId: '42222222-0000-0000-0000-000000000103', entryKey: 'data',     entryValue: 'DATA',     displayName: 'Data',     sortOrder: 3, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000304', metadataDictionaryId: '42222222-0000-0000-0000-000000000103', entryKey: 'devops',   entryValue: 'DEVOPS',   displayName: 'DevOps',   sortOrder: 4, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000305', metadataDictionaryId: '42222222-0000-0000-0000-000000000103', entryKey: 'cloud',    entryValue: 'CLOUD',    displayName: 'Cloud',    sortOrder: 5, isEnabled: true },
+    // Timesheet rejection reasons
+    { id: '43333333-0000-0000-0000-000000000401', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'INCORRECT_HOURS', entryValue: 'INCORRECT_HOURS', displayName: 'Incorrect Hours', sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000402', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'WRONG_PROJECT',   entryValue: 'WRONG_PROJECT',   displayName: 'Wrong Project',   sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000403', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'MISSING_EVIDENCE', entryValue: 'MISSING_EVIDENCE', displayName: 'Missing Evidence', sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000404', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'OTHER',           entryValue: 'OTHER',           displayName: 'Other',           sortOrder: 4, isEnabled: true },
   ];
 
   for (const entry of entries) {
@@ -445,6 +458,7 @@ async function seedPlatformSettings(): Promise<void> {
     'dashboard.staffingGapDaysThreshold': 28,
     'dashboard.evidenceInactiveDaysThreshold': 14,
     'dashboard.nearingClosureDaysThreshold': 30,
+    'budgetSimulation.enabled': true,
   };
 
   for (const [key, value] of Object.entries(defaults)) {
@@ -812,6 +826,15 @@ async function clearExistingData(): Promise<void> {
   await prisma.projectExternalLink.deleteMany();
   await prisma.staffingRequestFulfilment.deleteMany();
   await prisma.staffingRequest.deleteMany();
+  await prisma.projectRadiatorOverride.deleteMany();
+  await prisma.projectRisk.deleteMany();
+  await prisma.projectRolePlan.deleteMany();
+  await prisma.projectRagSnapshot.deleteMany();
+  await prisma.projectVendorEngagement.deleteMany();
+  await prisma.projectBudget.deleteMany();
+  await prisma.projectMilestone.deleteMany();
+  await prisma.projectChangeRequest.deleteMany();
+  await prisma.radiatorThresholdConfig.deleteMany();
   await prisma.project.deleteMany();
   await prisma.personResourcePoolMembership.deleteMany();
   await prisma.resourcePool.deleteMany();
@@ -823,6 +846,11 @@ async function clearExistingData(): Promise<void> {
   await prismaSeed.caseStep.deleteMany();
   await prismaSeed.caseRecord.deleteMany();
   await prismaSeed.caseType.deleteMany();
+  await prisma.leaveRequest.deleteMany();
+  await prisma.leaveBalance.deleteMany();
+  await prisma.overtimeException.deleteMany();
+  await prisma.overtimePolicy.deleteMany();
+  await prisma.personCostRate.deleteMany();
   await prisma.person.deleteMany();
   await prisma.passwordResetToken.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -844,6 +872,405 @@ async function seedCaseTypes(): Promise<void> {
       update: { displayName: t.displayName },
     });
   }
+}
+
+async function seedPlannerData(): Promise<void> {
+  // Skill ID shortcuts
+  const SK = {
+    TS: '55555555-5c00-0000-0000-000000000001',      // TypeScript
+    JS: '55555555-5c00-0000-0000-000000000002',      // JavaScript
+    PY: '55555555-5c00-0000-0000-000000000003',      // Python
+    JAVA: '55555555-5c00-0000-0000-000000000004',    // Java
+    REACT: '55555555-5c00-0000-0000-000000000007',   // React
+    NESTJS: '55555555-5c00-0000-0000-000000000010',  // NestJS
+    SPRING: '55555555-5c00-0000-0000-000000000011',  // Spring Boot
+    PG: '55555555-5c00-0000-0000-000000000012',      // PostgreSQL
+    AWS: '55555555-5c00-0000-0000-000000000015',     // AWS
+    DOCKER: '55555555-5c00-0000-0000-000000000018',  // Docker
+    K8S: '55555555-5c00-0000-0000-000000000019',     // Kubernetes
+    TERRAFORM: '55555555-5c00-0000-0000-000000000020', // Terraform
+    CICD: '55555555-5c00-0000-0000-000000000021',    // CI/CD
+    AGILE: '55555555-5c00-0000-0000-000000000022',   // Agile/Scrum
+    PM: '55555555-5c00-0000-0000-000000000023',      // Project Management
+  };
+
+  // ProjectRolePlan — defines staffing requirements per project WITH skill IDs
+  const rolePlans = [
+    // Delivery Central Platform (PRJ-101) — needs 3 roles
+    { id: 'aaaa0001-0001-0001-0001-000000000001', projectId: '33333333-3333-3333-3333-333333333002', roleName: 'Lead Engineer', seniorityLevel: 'Senior', headcount: 2, allocationPercent: 100, plannedStartDate: new Date('2025-01-15'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.TS, SK.REACT, SK.NESTJS, SK.PG], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000002', projectId: '33333333-3333-3333-3333-333333333002', roleName: 'Backend Developer', seniorityLevel: 'Mid', headcount: 3, allocationPercent: 100, plannedStartDate: new Date('2025-02-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.TS, SK.NESTJS, SK.PG], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000003', projectId: '33333333-3333-3333-3333-333333333002', roleName: 'QA Engineer', seniorityLevel: 'Mid', headcount: 1, allocationPercent: 80, plannedStartDate: new Date('2025-03-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.TS, SK.JS], source: 'INTERNAL' },
+    // Atlas ERP Rollout (PRJ-102) — closing soon
+    { id: 'aaaa0001-0001-0001-0001-000000000004', projectId: '33333333-3333-3333-3333-333333333003', roleName: 'Business Analyst', seniorityLevel: 'Senior', headcount: 1, allocationPercent: 80, plannedStartDate: new Date('2025-02-01'), plannedEndDate: new Date('2026-04-30'), requiredSkillIds: [SK.AGILE, SK.PM], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000005', projectId: '33333333-3333-3333-3333-333333333003', roleName: 'Project Coordinator', seniorityLevel: 'Mid', headcount: 2, allocationPercent: 100, plannedStartDate: new Date('2025-02-01'), plannedEndDate: new Date('2026-04-30'), requiredSkillIds: [SK.PM, SK.AGILE], source: 'INTERNAL' },
+    // Mercury Infrastructure (PRJ-106) — DRAFT project
+    { id: 'aaaa0001-0001-0001-0001-000000000006', projectId: '33333333-3333-3333-2222-000000000001', roleName: 'DevOps Engineer', seniorityLevel: 'Senior', headcount: 2, allocationPercent: 100, plannedStartDate: new Date('2026-05-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.AWS, SK.DOCKER, SK.K8S, SK.TERRAFORM], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000007', projectId: '33333333-3333-3333-2222-000000000001', roleName: 'Cloud Architect', seniorityLevel: 'Senior', headcount: 1, allocationPercent: 100, plannedStartDate: new Date('2026-05-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.AWS, SK.TERRAFORM, SK.K8S], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000008', projectId: '33333333-3333-3333-2222-000000000001', roleName: 'Backend Developer', seniorityLevel: 'Mid', headcount: 3, allocationPercent: 100, plannedStartDate: new Date('2026-06-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.JAVA, SK.SPRING, SK.PG], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000009', projectId: '33333333-3333-3333-2222-000000000001', roleName: 'QA Engineer', seniorityLevel: 'Mid', headcount: 2, allocationPercent: 80, plannedStartDate: new Date('2026-07-01'), plannedEndDate: new Date('2026-12-31'), requiredSkillIds: [SK.JS, SK.TS], source: 'INTERNAL' },
+    // Jupiter Client Portal (PRJ-107) — understaffed
+    { id: 'aaaa0001-0001-0001-0001-000000000010', projectId: '33333333-3333-3333-2222-000000000002', roleName: 'Frontend Engineer', seniorityLevel: 'Senior', headcount: 2, allocationPercent: 80, plannedStartDate: new Date('2026-01-15'), plannedEndDate: new Date('2026-10-31'), requiredSkillIds: [SK.REACT, SK.TS, SK.JS], source: 'INTERNAL' },
+    { id: 'aaaa0001-0001-0001-0001-000000000011', projectId: '33333333-3333-3333-2222-000000000002', roleName: 'Backend Developer', seniorityLevel: 'Mid', headcount: 2, allocationPercent: 100, plannedStartDate: new Date('2026-01-15'), plannedEndDate: new Date('2026-10-31'), requiredSkillIds: [SK.NESTJS, SK.TS, SK.PG], source: 'INTERNAL' },
+    // Polaris Security Hardening (PRJ-105)
+    { id: 'aaaa0001-0001-0001-0001-000000000012', projectId: '33333333-3333-3333-3333-333333333006', roleName: 'Security Analyst', seniorityLevel: 'Senior', headcount: 2, allocationPercent: 60, plannedStartDate: new Date('2025-03-01'), plannedEndDate: new Date('2026-09-30'), requiredSkillIds: [SK.AWS, SK.DOCKER, SK.K8S], source: 'INTERNAL' },
+  ];
+  await createManyInChunks('projectRolePlan', rolePlans);
+
+  // PersonCostRate — hourly cost rates for all phase2 people
+  const costRates = [
+    { id: 'bbbb0001-0001-0001-0001-000000000001', personId: '11111111-1111-1111-1111-111111111001', effectiveFrom: new Date('2025-01-01'), hourlyRate: 65,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000002', personId: '11111111-1111-1111-1111-111111111002', effectiveFrom: new Date('2025-01-01'), hourlyRate: 145, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000003', personId: '11111111-1111-1111-1111-111111111003', effectiveFrom: new Date('2025-01-01'), hourlyRate: 140, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000004', personId: '11111111-1111-1111-1111-111111111004', effectiveFrom: new Date('2025-01-01'), hourlyRate: 125, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000005', personId: '11111111-1111-1111-1111-111111111005', effectiveFrom: new Date('2025-01-01'), hourlyRate: 110, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000006', personId: '11111111-1111-1111-1111-111111111006', effectiveFrom: new Date('2025-01-01'), hourlyRate: 105, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000007', personId: '11111111-1111-1111-1111-111111111007', effectiveFrom: new Date('2025-01-01'), hourlyRate: 100, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000008', personId: '11111111-1111-1111-1111-111111111008', effectiveFrom: new Date('2025-01-01'), hourlyRate: 95,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000009', personId: '11111111-1111-1111-1111-111111111009', effectiveFrom: new Date('2025-01-01'), hourlyRate: 90,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000010', personId: '11111111-1111-1111-1111-111111111010', effectiveFrom: new Date('2025-01-01'), hourlyRate: 115, rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000011', personId: '11111111-1111-1111-1111-111111111011', effectiveFrom: new Date('2025-01-01'), hourlyRate: 85,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000012', personId: '11111111-1111-1111-1111-111111111012', effectiveFrom: new Date('2025-01-01'), hourlyRate: 80,  rateType: 'INTERNAL' },
+    // Phase2 extended people
+    { id: 'bbbb0001-0001-0001-0001-000000000013', personId: '11111111-1111-1111-2222-000000000004', effectiveFrom: new Date('2025-01-01'), hourlyRate: 75,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000014', personId: '11111111-1111-1111-2222-000000000005', effectiveFrom: new Date('2025-01-01'), hourlyRate: 70,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000015', personId: '11111111-1111-1111-2222-000000000006', effectiveFrom: new Date('2025-01-01'), hourlyRate: 65,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000016', personId: '11111111-1111-1111-2222-000000000007', effectiveFrom: new Date('2025-01-01'), hourlyRate: 90,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000017', personId: '11111111-1111-1111-2222-000000000009', effectiveFrom: new Date('2025-01-01'), hourlyRate: 85,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000018', personId: '11111111-1111-1111-2222-000000000010', effectiveFrom: new Date('2025-01-01'), hourlyRate: 78,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000019', personId: '11111111-1111-1111-2222-000000000011', effectiveFrom: new Date('2025-01-01'), hourlyRate: 72,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000020', personId: '11111111-1111-1111-2222-000000000013', effectiveFrom: new Date('2025-01-01'), hourlyRate: 68,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000021', personId: '11111111-1111-1111-2222-000000000014', effectiveFrom: new Date('2025-01-01'), hourlyRate: 82,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000022', personId: '11111111-1111-1111-2222-000000000015', effectiveFrom: new Date('2025-01-01'), hourlyRate: 88,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000023', personId: '11111111-1111-1111-2222-000000000016', effectiveFrom: new Date('2025-01-01'), hourlyRate: 76,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000024', personId: '11111111-1111-1111-2222-000000000017', effectiveFrom: new Date('2025-01-01'), hourlyRate: 92,  rateType: 'INTERNAL' },
+    { id: 'bbbb0001-0001-0001-0001-000000000025', personId: '11111111-1111-1111-2222-000000000018', effectiveFrom: new Date('2025-01-01'), hourlyRate: 74,  rateType: 'INTERNAL' },
+  ];
+  await createManyInChunks('personCostRate', costRates);
+
+  // ProjectBudget — CAPEX/OPEX per fiscal year
+  const budgets = [
+    { id: 'cccc0001-0001-0001-0001-000000000001', projectId: '33333333-3333-3333-3333-333333333002', fiscalYear: 2026, capexBudget: 480000, opexBudget: 120000 },
+    { id: 'cccc0001-0001-0001-0001-000000000002', projectId: '33333333-3333-3333-3333-333333333003', fiscalYear: 2026, capexBudget: 250000, opexBudget: 80000 },
+    { id: 'cccc0001-0001-0001-0001-000000000003', projectId: '33333333-3333-3333-3333-333333333004', fiscalYear: 2026, capexBudget: 320000, opexBudget: 95000 },
+    { id: 'cccc0001-0001-0001-0001-000000000004', projectId: '33333333-3333-3333-3333-333333333006', fiscalYear: 2026, capexBudget: 180000, opexBudget: 60000 },
+    { id: 'cccc0001-0001-0001-0001-000000000005', projectId: '33333333-3333-3333-2222-000000000001', fiscalYear: 2026, capexBudget: 600000, opexBudget: 150000 },
+    { id: 'cccc0001-0001-0001-0001-000000000006', projectId: '33333333-3333-3333-2222-000000000002', fiscalYear: 2026, capexBudget: 350000, opexBudget: 100000 },
+  ];
+  await createManyInChunks('projectBudget', budgets);
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded planner data: ${rolePlans.length} role plans, ${costRates.length} cost rates, ${budgets.length} budgets.`);
+}
+
+async function seedProjectRisks(): Promise<void> {
+  const now = new Date();
+  const risks = [
+    // Delivery Central Platform (PRJ-101)
+    { id: 'dd000001-0001-0001-0001-000000000001', projectId: '33333333-3333-3333-3333-333333333002', title: 'Key developer departure risk', description: 'Lead engineer may leave due to competing offer. Knowledge concentration in one person.', category: 'SCOPE' as const, riskType: 'RISK' as const, probability: 3, impact: 4, strategy: 'MITIGATE' as const, strategyDescription: 'Cross-train second engineer, document architecture decisions.', damageControlPlan: 'Engage contractor via vendor for 3-month backfill if departure confirmed.', status: 'ASSESSED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111010', raisedAt: new Date(now.getTime() - 14 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000002', projectId: '33333333-3333-3333-3333-333333333002', title: 'Scope creep from stakeholder requests', description: 'Multiple unplanned feature requests arriving weekly from business stakeholders.', category: 'SCOPE' as const, riskType: 'ISSUE' as const, probability: 5, impact: 3, strategy: 'MITIGATE' as const, strategyDescription: 'Implement formal change request process. Weekly prioritization meeting with steering committee.', status: 'MITIGATING' as const, ownerPersonId: '11111111-1111-1111-1111-111111111010', assigneePersonId: '11111111-1111-1111-1111-111111111010', raisedAt: new Date(now.getTime() - 21 * 86400000), dueDate: new Date(now.getTime() + 7 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000003', projectId: '33333333-3333-3333-3333-333333333002', title: 'Database performance degradation', description: 'Query response times increasing as data volume grows beyond initial estimates.', category: 'TECHNICAL' as const, riskType: 'RISK' as const, probability: 4, impact: 4, strategy: 'MITIGATE' as const, strategyDescription: 'Plan index optimization sprint and evaluate read replica setup.', status: 'IDENTIFIED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111008', raisedAt: new Date(now.getTime() - 7 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000004', projectId: '33333333-3333-3333-3333-333333333002', title: 'Budget overrun on cloud infrastructure', description: 'AWS costs 18% above forecast due to unoptimized container orchestration.', category: 'BUDGET' as const, riskType: 'RISK' as const, probability: 3, impact: 3, strategy: 'ACCEPT' as const, strategyDescription: 'Monitor monthly. Acceptable variance within contingency reserve.', status: 'ASSESSED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111010', raisedAt: new Date(now.getTime() - 10 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000005', projectId: '33333333-3333-3333-3333-333333333002', title: 'Client satisfaction declining', description: 'Latest CSAT survey shows drop from 4.2 to 3.6 due to delayed deliverables.', category: 'BUSINESS' as const, riskType: 'ISSUE' as const, probability: 4, impact: 5, strategy: 'ESCALATE' as const, strategyDescription: 'Schedule executive review with client. Prepare recovery plan with accelerated timeline.', damageControlPlan: 'If CSAT drops below 3.0, escalate to director for intervention.', status: 'MITIGATING' as const, ownerPersonId: '11111111-1111-1111-1111-111111111010', assigneePersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 5 * 86400000), dueDate: new Date(now.getTime() + 3 * 86400000) },
+
+    // Atlas ERP Rollout (PRJ-102)
+    { id: 'dd000001-0001-0001-0001-000000000006', projectId: '33333333-3333-3333-3333-333333333003', title: 'Vendor delivery delay', description: 'ERP vendor behind schedule on API integration module by 3 weeks.', category: 'SCHEDULE' as const, riskType: 'ISSUE' as const, probability: 5, impact: 4, strategy: 'TRANSFER' as const, strategyDescription: 'Invoke contractual SLA penalties. Request vendor acceleration team.', damageControlPlan: 'Parallel development of workaround adapter if vendor misses revised deadline.', status: 'MITIGATING' as const, ownerPersonId: '11111111-1111-1111-1111-111111111006', assigneePersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 18 * 86400000), dueDate: new Date(now.getTime() - 2 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000007', projectId: '33333333-3333-3333-3333-333333333003', title: 'Data migration quality risk', description: 'Legacy data has 12% records with validation errors that may block go-live.', category: 'SCOPE' as const, riskType: 'RISK' as const, probability: 4, impact: 5, strategy: 'MITIGATE' as const, strategyDescription: 'Dedicated data cleansing sprint with business SME validation.', status: 'ASSESSED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 12 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000008', projectId: '33333333-3333-3333-3333-333333333003', title: 'Regulatory compliance gap', description: 'New GDPR requirements may affect data retention module design.', category: 'BUSINESS' as const, riskType: 'RISK' as const, probability: 2, impact: 5, strategy: 'AVOID' as const, strategyDescription: 'Engage legal counsel before architecture finalization. Design for compliance from day one.', status: 'IDENTIFIED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 3 * 86400000) },
+
+    // Beacon Mobile Revamp (PRJ-103)
+    { id: 'dd000001-0001-0001-0001-000000000009', projectId: '33333333-3333-3333-3333-333333333004', title: 'Mobile platform fragmentation', description: 'Supporting both iOS 14+ and Android 10+ increases QA effort by 40%.', category: 'TECHNICAL' as const, riskType: 'RISK' as const, probability: 3, impact: 3, strategy: 'ACCEPT' as const, strategyDescription: 'Accepted. Using React Native cross-platform framework to minimize divergence.', status: 'ASSESSED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 25 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000010', projectId: '33333333-3333-3333-3333-333333333004', title: 'App store review delays', description: 'Apple review process taking 7-14 days per submission, blocking release cadence.', category: 'SCHEDULE' as const, riskType: 'RISK' as const, probability: 4, impact: 2, strategy: 'MITIGATE' as const, strategyDescription: 'Submit releases 2 weeks before target date. Use TestFlight for internal distribution.', status: 'RESOLVED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111006', raisedAt: new Date(now.getTime() - 30 * 86400000), resolvedAt: new Date(now.getTime() - 5 * 86400000) },
+
+    // Internal Bench Planning (PRJ-100)
+    { id: 'dd000001-0001-0001-0001-000000000011', projectId: '33333333-3333-3333-3333-333333333001', title: 'Bench utilization below target', description: 'Current bench rate at 22% vs 15% target. Need to accelerate placement velocity.', category: 'OPERATIONAL' as const, riskType: 'ISSUE' as const, probability: 5, impact: 3, strategy: 'MITIGATE' as const, strategyDescription: 'Weekly pipeline review with all delivery managers. Proactive skill matching initiative.', status: 'MITIGATING' as const, ownerPersonId: '11111111-1111-1111-1111-111111111005', assigneePersonId: '11111111-1111-1111-1111-111111111005', raisedAt: new Date(now.getTime() - 20 * 86400000) },
+    { id: 'dd000001-0001-0001-0001-000000000012', projectId: '33333333-3333-3333-3333-333333333001', title: 'Skill gap in cloud engineering', description: 'Only 3 of 12 bench engineers have AWS/Azure certifications needed by incoming projects.', category: 'SCOPE' as const, riskType: 'RISK' as const, probability: 4, impact: 3, strategy: 'MITIGATE' as const, strategyDescription: 'Launch cloud certification program. Partner with training vendor.', status: 'ASSESSED' as const, ownerPersonId: '11111111-1111-1111-1111-111111111005', raisedAt: new Date(now.getTime() - 15 * 86400000) },
+  ];
+
+  for (const risk of risks) {
+    await prisma.projectRisk.upsert({
+      where: { id: risk.id },
+      update: {},
+      create: { ...risk, updatedAt: new Date() },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${risks.length} project risks.`);
+}
+
+async function seedRagSnapshots(): Promise<void> {
+  const now = new Date();
+  const snapshots = [];
+
+  // Generate 12 weeks of snapshots for key projects
+  const projects = [
+    { projectId: '33333333-3333-3333-3333-333333333002', recordedByPersonId: '11111111-1111-1111-1111-111111111010', pattern: 'stable' },   // Delivery Central
+    { projectId: '33333333-3333-3333-3333-333333333003', recordedByPersonId: '11111111-1111-1111-1111-111111111006', pattern: 'declining' }, // Atlas ERP
+    { projectId: '33333333-3333-3333-3333-333333333001', recordedByPersonId: '11111111-1111-1111-1111-111111111005', pattern: 'improving' }, // Bench Planning
+  ];
+
+  for (const proj of projects) {
+    for (let week = 11; week >= 0; week--) {
+      const weekStart = new Date(now.getTime() - week * 7 * 86400000);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+      const weekStr = weekStart.toISOString().slice(0, 10);
+
+      let scopeRag: 'GREEN' | 'AMBER' | 'RED';
+      let scheduleRag: 'GREEN' | 'AMBER' | 'RED';
+      let budgetRag: 'GREEN' | 'AMBER' | 'RED';
+      let peopleRag: 'GREEN' | 'AMBER' | 'RED';
+
+      if (proj.pattern === 'stable') {
+        scopeRag = week > 8 ? 'AMBER' : 'GREEN';
+        scheduleRag = 'GREEN';
+        budgetRag = week > 6 ? 'GREEN' : week > 3 ? 'AMBER' : 'GREEN';
+        peopleRag = 'GREEN';
+      } else if (proj.pattern === 'declining') {
+        scopeRag = week > 6 ? 'GREEN' : week > 3 ? 'AMBER' : 'RED';
+        scheduleRag = week > 8 ? 'GREEN' : week > 4 ? 'AMBER' : 'RED';
+        budgetRag = week > 5 ? 'GREEN' : 'AMBER';
+        peopleRag = week > 7 ? 'GREEN' : week > 2 ? 'AMBER' : 'RED';
+      } else {
+        scopeRag = week > 8 ? 'RED' : week > 4 ? 'AMBER' : 'GREEN';
+        scheduleRag = week > 7 ? 'AMBER' : 'GREEN';
+        budgetRag = week > 9 ? 'RED' : week > 5 ? 'AMBER' : 'GREEN';
+        peopleRag = week > 6 ? 'AMBER' : 'GREEN';
+      }
+
+      const dims = [scopeRag, scheduleRag, budgetRag, peopleRag];
+      const overallRag: 'GREEN' | 'AMBER' | 'RED' = dims.includes('RED') ? 'RED' : dims.includes('AMBER') ? 'AMBER' : 'GREEN';
+
+      // Map RAG → 0-25 quadrant score (numeric representation of the band midpoint)
+      const ragToScore = (r: 'GREEN' | 'AMBER' | 'RED'): number => r === 'GREEN' ? 22 : r === 'AMBER' ? 14 : 6;
+      const scopeScore = ragToScore(scopeRag);
+      const scheduleScore = ragToScore(scheduleRag);
+      const budgetScore = ragToScore(budgetRag);
+      const peopleScore = ragToScore(peopleRag);
+      const overallScoreValue = scopeScore + scheduleScore + budgetScore + peopleScore;
+
+      const narrative = week === 0
+        ? (proj.pattern === 'stable' ? 'On track. Minor scope adjustments handled through change board.'
+          : proj.pattern === 'declining' ? 'Critical path at risk. Vendor delay compounding schedule issues. Escalation in progress.'
+          : 'Improving steadily. Cloud certification program showing results. Bench utilization trending down.')
+        : null;
+
+      snapshots.push({
+        id: `ee000001-${String(proj.projectId.slice(-4))}-0001-0001-${String(week).padStart(12, '0')}`,
+        projectId: proj.projectId,
+        weekStarting: new Date(weekStr),
+        staffingRag: scopeRag,
+        scheduleRag,
+        budgetRag,
+        clientRag: peopleRag,
+        scopeRag,
+        peopleRag,
+        overallRag,
+        scopeScore,
+        scheduleScore,
+        budgetScore,
+        peopleScore,
+        overallScore: overallScoreValue,
+        narrative,
+        accomplishments: week === 0 ? 'Completed sprint deliverables. Resolved 3 blockers.' : null,
+        nextSteps: week === 0 ? 'Focus on critical path items. Review vendor SLA compliance.' : null,
+        recordedByPersonId: proj.recordedByPersonId,
+        dimensionDetails: week === 0 ? {
+          scope: { staffingFill: { rating: 4, auto: true }, requirementsStability: { rating: 3 }, scopeCreep: { rating: 2, note: 'Multiple change requests' }, deliverableAcceptance: { rating: 4 } },
+          schedule: { milestoneAdherence: { rating: proj.pattern === 'declining' ? 2 : 4 }, velocity: { rating: 3 }, timelineDeviation: { rating: proj.pattern === 'declining' ? 1 : 4, auto: true } },
+          budget: { spendRate: { rating: 3, auto: true }, forecastAccuracy: { rating: 4 }, capexCompliance: { rating: 4, auto: true } },
+          people: { clientSatisfaction: { rating: proj.pattern === 'declining' ? 2 : 4 }, stakeholderEngagement: { rating: 3 }, teamMood: { rating: 4, auto: true } },
+        } : Prisma.JsonNull,
+        riskSummary: week === 0 ? '2 open risks, 1 critical issue under mitigation' : null,
+      });
+    }
+  }
+
+  for (const snap of snapshots) {
+    await prisma.projectRagSnapshot.upsert({
+      where: {
+        projectId_weekStarting: {
+          projectId: snap.projectId,
+          weekStarting: snap.weekStarting,
+        },
+      },
+      update: {},
+      create: { ...snap, updatedAt: new Date() },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${snapshots.length} RAG snapshots.`);
+}
+
+async function seedProjectMilestones(): Promise<void> {
+  const now = new Date();
+  const day = 86400000;
+  const milestones = [
+    // Delivery Central (PRJ-101)
+    { id: 'f1000001-0001-0001-0001-000000000001', projectId: '33333333-3333-3333-3333-333333333002', name: 'Phase 1: Architecture sign-off',    plannedDate: new Date(now.getTime() - 120 * day), actualDate: new Date(now.getTime() - 122 * day), status: 'HIT' as const,         description: 'Architecture document reviewed and signed by CTO.' },
+    { id: 'f1000001-0001-0001-0001-000000000002', projectId: '33333333-3333-3333-3333-333333333002', name: 'Phase 2: MVP delivery',             plannedDate: new Date(now.getTime() - 60 * day),  actualDate: new Date(now.getTime() - 55 * day),  status: 'HIT' as const,         description: 'Core platform MVP released for stakeholder review.' },
+    { id: 'f1000001-0001-0001-0001-000000000003', projectId: '33333333-3333-3333-3333-333333333002', name: 'Phase 3: Beta launch',              plannedDate: new Date(now.getTime() + 14 * day),  actualDate: null, status: 'IN_PROGRESS' as const, description: 'Internal beta rollout to pilot teams.' },
+    { id: 'f1000001-0001-0001-0001-000000000004', projectId: '33333333-3333-3333-3333-333333333002', name: 'Phase 4: GA release',               plannedDate: new Date(now.getTime() + 90 * day),  actualDate: null, status: 'PLANNED' as const,     description: 'General availability release to all users.' },
+    // Atlas ERP (PRJ-102) — declining
+    { id: 'f1000001-0001-0001-0001-000000000005', projectId: '33333333-3333-3333-3333-333333333003', name: 'Data migration sign-off',           plannedDate: new Date(now.getTime() - 30 * day),  actualDate: null, status: 'MISSED' as const,      description: 'Legacy data cleansing and migration — missed due to data quality issues.' },
+    { id: 'f1000001-0001-0001-0001-000000000006', projectId: '33333333-3333-3333-3333-333333333003', name: 'Integration testing complete',      plannedDate: new Date(now.getTime() - 10 * day),  actualDate: null, status: 'IN_PROGRESS' as const, description: 'End-to-end testing across ERP modules.' },
+    { id: 'f1000001-0001-0001-0001-000000000007', projectId: '33333333-3333-3333-3333-333333333003', name: 'UAT sign-off',                      plannedDate: new Date(now.getTime() + 20 * day),  actualDate: null, status: 'PLANNED' as const,     description: 'User acceptance testing with business stakeholders.' },
+    { id: 'f1000001-0001-0001-0001-000000000008', projectId: '33333333-3333-3333-3333-333333333003', name: 'Go-live',                           plannedDate: new Date(now.getTime() + 60 * day),  actualDate: null, status: 'PLANNED' as const,     description: 'Production cutover.' },
+    // Beacon Mobile (PRJ-103)
+    { id: 'f1000001-0001-0001-0001-000000000009', projectId: '33333333-3333-3333-3333-333333333004', name: 'UI/UX review complete',             plannedDate: new Date(now.getTime() - 45 * day),  actualDate: new Date(now.getTime() - 40 * day),  status: 'HIT' as const,         description: 'Design review with product team.' },
+    { id: 'f1000001-0001-0001-0001-00000000000a', projectId: '33333333-3333-3333-3333-333333333004', name: 'Alpha release',                     plannedDate: new Date(now.getTime() + 7 * day),   actualDate: null, status: 'IN_PROGRESS' as const, description: 'Internal alpha on TestFlight.' },
+    { id: 'f1000001-0001-0001-0001-00000000000b', projectId: '33333333-3333-3333-3333-333333333004', name: 'App Store submission',              plannedDate: new Date(now.getTime() + 45 * day),  actualDate: null, status: 'PLANNED' as const,     description: 'Apple App Store submission.' },
+    // Bench Planning (PRJ-100)
+    { id: 'f1000001-0001-0001-0001-00000000000c', projectId: '33333333-3333-3333-3333-333333333001', name: 'Q1 bench review',                   plannedDate: new Date(now.getTime() - 20 * day),  actualDate: new Date(now.getTime() - 18 * day),  status: 'HIT' as const,         description: 'Quarterly bench utilization review.' },
+    { id: 'f1000001-0001-0001-0001-00000000000d', projectId: '33333333-3333-3333-3333-333333333001', name: 'Skills matrix refresh',             plannedDate: new Date(now.getTime() + 10 * day),  actualDate: null, status: 'PLANNED' as const,     description: 'Annual skills matrix update.' },
+  ];
+
+  for (const m of milestones) {
+    await prisma.projectMilestone.upsert({
+      where: { id: m.id },
+      update: {},
+      create: { ...m, updatedAt: new Date() },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${milestones.length} project milestones.`);
+}
+
+async function seedProjectChangeRequests(): Promise<void> {
+  const now = new Date();
+  const day = 86400000;
+  const crs = [
+    // Delivery Central (PRJ-101) — stable, some CRs
+    { id: 'f2000001-0001-0001-0001-000000000001', projectId: '33333333-3333-3333-3333-333333333002', title: 'Add SSO integration',                  description: 'Enterprise customers require SSO via Okta.', status: 'APPROVED' as const,   severity: 'HIGH' as const,     outOfBaseline: false, impactScope: 'New authentication module', impactSchedule: '+2 weeks', impactBudget: '+$40k',  requesterPersonId: '11111111-1111-1111-1111-111111111010', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 10 * day), createdAt: new Date(now.getTime() - 14 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000002', projectId: '33333333-3333-3333-3333-333333333002', title: 'Support mobile push notifications',    description: 'Out-of-scope but business-critical.',        status: 'APPROVED' as const,   severity: 'MEDIUM' as const,   outOfBaseline: true,  impactScope: 'New notification service', impactSchedule: '+3 weeks', impactBudget: '+$55k', requesterPersonId: '11111111-1111-1111-1111-111111111010', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 5 * day),  createdAt: new Date(now.getTime() - 8 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000003', projectId: '33333333-3333-3333-3333-333333333002', title: 'Dark mode UI',                         description: 'User-requested feature.',                    status: 'PROPOSED' as const,   severity: 'LOW' as const,      outOfBaseline: true,  impactScope: 'Theme system', impactSchedule: '+1 week', impactBudget: '+$12k', requesterPersonId: '11111111-1111-1111-1111-111111111010', decidedByPersonId: null, decidedAt: null, createdAt: new Date(now.getTime() - 3 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000004', projectId: '33333333-3333-3333-3333-333333333002', title: 'Webhook retry logic',                  description: 'Current retry exponential backoff too aggressive.', status: 'REJECTED' as const, severity: 'LOW' as const, outOfBaseline: false, impactScope: 'Minor refactor', impactSchedule: '+2 days', impactBudget: null,   requesterPersonId: '11111111-1111-1111-1111-111111111010', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 7 * day), createdAt: new Date(now.getTime() - 9 * day) },
+    // Atlas ERP (PRJ-102) — declining, many CRs
+    { id: 'f2000001-0001-0001-0001-000000000005', projectId: '33333333-3333-3333-3333-333333333003', title: 'Multi-currency support',               description: 'Global rollout requires EUR/GBP/JPY.',       status: 'APPROVED' as const,   severity: 'CRITICAL' as const, outOfBaseline: true,  impactScope: 'Currency module rewrite', impactSchedule: '+6 weeks', impactBudget: '+$120k', requesterPersonId: '11111111-1111-1111-1111-111111111006', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 15 * day), createdAt: new Date(now.getTime() - 20 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000006', projectId: '33333333-3333-3333-3333-333333333003', title: 'Tax compliance updates',               description: 'New VAT rules for EU.',                      status: 'APPROVED' as const,   severity: 'HIGH' as const,     outOfBaseline: true,  impactScope: 'Tax engine',   impactSchedule: '+4 weeks', impactBudget: '+$80k',  requesterPersonId: '11111111-1111-1111-1111-111111111006', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 8 * day),  createdAt: new Date(now.getTime() - 12 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000007', projectId: '33333333-3333-3333-3333-333333333003', title: 'Custom reporting engine',              description: 'Client wants ad-hoc report builder.',        status: 'PROPOSED' as const,   severity: 'HIGH' as const,     outOfBaseline: true,  impactScope: 'New reports module', impactSchedule: '+8 weeks', impactBudget: '+$180k', requesterPersonId: '11111111-1111-1111-1111-111111111006', decidedByPersonId: null, decidedAt: null, createdAt: new Date(now.getTime() - 2 * day) },
+    { id: 'f2000001-0001-0001-0001-000000000008', projectId: '33333333-3333-3333-3333-333333333003', title: 'Additional audit fields',              description: 'Compliance auditor request.',                status: 'PROPOSED' as const,   severity: 'MEDIUM' as const,   outOfBaseline: true,  impactScope: 'DB schema',    impactSchedule: '+1 week',  impactBudget: '+$15k',  requesterPersonId: '11111111-1111-1111-1111-111111111006', decidedByPersonId: null, decidedAt: null, createdAt: new Date(now.getTime() - 1 * day) },
+    // Bench Planning (PRJ-100) — few CRs
+    { id: 'f2000001-0001-0001-0001-000000000009', projectId: '33333333-3333-3333-3333-333333333001', title: 'Include part-time contractors',        description: 'Expand bench analysis scope.',               status: 'APPROVED' as const,   severity: 'LOW' as const,      outOfBaseline: false, impactScope: 'Query expansion', impactSchedule: '+3 days', impactBudget: null,  requesterPersonId: '11111111-1111-1111-1111-111111111005', decidedByPersonId: '11111111-1111-1111-1111-111111111004', decidedAt: new Date(now.getTime() - 25 * day), createdAt: new Date(now.getTime() - 28 * day) },
+  ];
+
+  for (const cr of crs) {
+    await prisma.projectChangeRequest.upsert({
+      where: { id: cr.id },
+      update: {},
+      create: { ...cr, updatedAt: new Date() },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${crs.length} change requests.`);
+}
+
+async function seedBudgetEvmData(): Promise<void> {
+  // Update existing ProjectBudget rows with realistic EVM values
+  // Patterns: healthy CPI (0.97), declining (0.82), critical (0.68)
+  const evm = [
+    // PRJ-101 Delivery Central (healthy)
+    { projectId: '33333333-3333-3333-3333-333333333002', fiscalYear: 2026, earnedValue: 485000, actualCost: 500000,  plannedToDate: 500000, eac: 980000,  capexCorrectPct: 0.96 },
+    // PRJ-102 Atlas ERP (declining)
+    { projectId: '33333333-3333-3333-3333-333333333003', fiscalYear: 2026, earnedValue: 410000, actualCost: 500000,  plannedToDate: 450000, eac: 1100000, capexCorrectPct: 0.87 },
+    // PRJ-100 Bench Planning (improving)
+    { projectId: '33333333-3333-3333-3333-333333333001', fiscalYear: 2026, earnedValue: 68000,  actualCost: 100000,  plannedToDate: 90000,  eac: 205000,  capexCorrectPct: 0.92 },
+    // PRJ-103 Beacon Mobile (stable)
+    { projectId: '33333333-3333-3333-3333-333333333004', fiscalYear: 2026, earnedValue: 220000, actualCost: 235000,  plannedToDate: 240000, eac: 475000,  capexCorrectPct: 0.98 },
+  ];
+
+  for (const e of evm) {
+    await prisma.projectBudget.updateMany({
+      where: { projectId: e.projectId, fiscalYear: e.fiscalYear },
+      data: {
+        earnedValue: e.earnedValue,
+        actualCost: e.actualCost,
+        plannedToDate: e.plannedToDate,
+        eac: e.eac,
+        capexCorrectPct: e.capexCorrectPct,
+      },
+    });
+  }
+
+  // Also backfill Project.baselineEndsOn / forecastEndsOn / criticalPathFloatDays / baselineRequirements
+  const projectUpdates = [
+    { id: '33333333-3333-3333-3333-333333333001', baselineRequirements: 80,  criticalPathFloatDays: 7,  forecastEndsOn: null },
+    { id: '33333333-3333-3333-3333-333333333002', baselineRequirements: 150, criticalPathFloatDays: 12, forecastEndsOn: null },
+    { id: '33333333-3333-3333-3333-333333333003', baselineRequirements: 200, criticalPathFloatDays: 1,  forecastEndsOn: new Date(Date.now() + 90 * 86400000) },
+    { id: '33333333-3333-3333-3333-333333333004', baselineRequirements: 100, criticalPathFloatDays: 5,  forecastEndsOn: null },
+    { id: '33333333-3333-3333-3333-333333333005', baselineRequirements: 120, criticalPathFloatDays: 8,  forecastEndsOn: null },
+    { id: '33333333-3333-3333-3333-333333333006', baselineRequirements: 90,  criticalPathFloatDays: 15, forecastEndsOn: null },
+  ];
+
+  for (const p of projectUpdates) {
+    await prisma.project.update({
+      where: { id: p.id },
+      data: {
+        baselineRequirements: p.baselineRequirements,
+        criticalPathFloatDays: p.criticalPathFloatDays,
+        forecastEndsOn: p.forecastEndsOn,
+      },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded EVM data for ${evm.length} budgets and radiator fields for ${projectUpdates.length} projects.`);
+}
+
+async function seedRadiatorThresholds(): Promise<void> {
+  // Demonstrate customized thresholds — tighter CPI for fixed-price projects
+  const thresholds = [
+    { subDimensionKey: 'costPerformanceIndex', thresholdScore4: 0.98, thresholdScore3: 0.95, thresholdScore2: 0.9, thresholdScore1: 0.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId: '11111111-1111-1111-1111-111111111004' },
+    { subDimensionKey: 'teamMood',             thresholdScore4: 4.2,  thresholdScore3: 3.7,  thresholdScore2: 3.2, thresholdScore1: 2.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId: '11111111-1111-1111-1111-111111111004' },
+  ];
+
+  for (const t of thresholds) {
+    await prisma.radiatorThresholdConfig.upsert({
+      where: { subDimensionKey: t.subDimensionKey },
+      update: { ...t, updatedAt: new Date() },
+      create: { ...t, updatedAt: new Date() },
+    });
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`Seeded ${thresholds.length} custom radiator threshold configs.`);
+}
+
+async function seedRadiatorOverrides(): Promise<void> {
+  // Find a current-week snapshot and attach an override for demo
+  const latestSnapshots = await prisma.projectRagSnapshot.findMany({
+    where: { projectId: { in: ['33333333-3333-3333-3333-333333333003'] } },
+    orderBy: { weekStarting: 'desc' },
+    take: 1,
+  });
+
+  if (latestSnapshots.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log('No snapshot found for override seeding; skipping.');
+    return;
+  }
+
+  const snap = latestSnapshots[0];
+  const override = {
+    id: 'f3000001-0001-0001-0001-000000000001',
+    snapshotId: snap.id,
+    subDimensionKey: 'teamMood',
+    autoScore: 3,
+    overrideScore: 1,
+    reason: 'Team is burning out due to vendor escalation pressure. PM manual assessment lower than pulse data suggests.',
+    overriddenByPersonId: '11111111-1111-1111-1111-111111111006',
+  };
+
+  await prisma.projectRadiatorOverride.upsert({
+    where: { id: override.id },
+    update: {},
+    create: override,
+  });
+
+  // eslint-disable-next-line no-console
+  console.log('Seeded 1 radiator override.');
 }
 
 async function seedPhase2Cases(): Promise<void> {
@@ -1347,6 +1774,8 @@ async function main(): Promise<void> {
     await createManyInChunks('staffingRequest', phase2StaffingRequests);
     await createManyInChunks('staffingRequestFulfilment', phase2StaffingRequestFulfilments);
 
+    await seedPlannerData();
+
     await seedPhase2Cases();
     await seedCaseSteps();
     await seedMetadata();
@@ -1355,6 +1784,13 @@ async function main(): Promise<void> {
     await seedTimesheets();
     await seedPulseEntries();
     await seedInAppNotifications();
+    await seedProjectRisks();
+    await seedProjectMilestones();
+    await seedProjectChangeRequests();
+    await seedBudgetEvmData();
+    await seedRadiatorThresholds();
+    await seedRagSnapshots();
+    await seedRadiatorOverrides();
 
     // eslint-disable-next-line no-console
     console.log('Phase 2 dataset seeded.', phase2DatasetSummary);
@@ -1524,10 +1960,28 @@ async function main(): Promise<void> {
   throw new Error(`Unsupported seed profile "${profile}".`);
 }
 
+// DM-R-10 — atomic-like seed guarantee.
+//
+// We do not wrap main() in a single prisma.$transaction — the bank-scale
+// profile would OOM Postgres and the `idle_in_transaction_session_timeout`
+// budget is not forgiving enough across a 2k-line, multi-minute seed run.
+//
+// Instead: on failure, rewind to an empty-DB state by calling
+// clearExistingData() again. The guarantee is "no partial seeded state
+// survives a failed seed", which is the property the original
+// transaction wrap was intended to provide.
 main()
   .catch(async (error: unknown) => {
     // eslint-disable-next-line no-console
-    console.error('Seed failed.', error);
+    console.error('Seed failed — rolling back to empty state via clearExistingData().', error);
+    try {
+      await clearExistingData();
+      // eslint-disable-next-line no-console
+      console.error('DM-R-10: rollback complete. DB is empty.');
+    } catch (rollbackError) {
+      // eslint-disable-next-line no-console
+      console.error('DM-R-10: rollback ALSO failed; DB may be partially seeded.', rollbackError);
+    }
     process.exitCode = 1;
   })
   .finally(async () => {

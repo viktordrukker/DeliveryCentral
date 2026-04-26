@@ -119,7 +119,7 @@ export class ResourceManagerDashboardQueryService {
     const pendingAssignmentApprovals = assignments
       .filter(
         (assignment) =>
-          assignment.status.value === 'REQUESTED' && managedPersonIds.has(assignment.personId),
+          assignment.status.value === 'PROPOSED' && managedPersonIds.has(assignment.personId),
       )
       .sort((left, right) => right.requestedAt.getTime() - left.requestedAt.getTime())
       .map((assignment) => ({

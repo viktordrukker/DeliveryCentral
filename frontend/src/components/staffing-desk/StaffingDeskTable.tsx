@@ -2,16 +2,34 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ColumnConfigurator } from '@/components/staffing-desk/ColumnConfigurator';
-import { TextFilter, MultiSelectFilter, DateFilter, NumericFilter, NoFilter, parseNumericFilter } from '@/components/staffing-desk/InlineFilters';
+import { TextFilter, MultiSelectFilter, DateFilter, NumericFilter, NoFilter } from '@/components/staffing-desk/InlineFilters';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
-import { fuzzyMatch } from '@/lib/fuzzy-search';
 import type { StaffingDeskRow } from '@/lib/api/staffing-desk';
 import { priorityTone } from '@/features/staffing-desk/staffing-desk.types';
 import { humanizeEnum } from '@/lib/labels';
 import { formatDateShort } from '@/lib/format-date';
+import { getAgingDays, getAgingTone, getAgingTooltip } from '@/features/staffing-desk/aging';
+import {
+  type ColDef,
+  type InlineFilterState,
+  NUM,
+  S_TABS,
+  S_TAB,
+  S_TAB_ACTIVE,
+  S_TABLE,
+  S_TH,
+  S_TH_FILTER,
+  S_TD,
+  S_ROW,
+  S_TOOLBAR,
+  STATUS_OPTS,
+  PRIORITY_OPTS,
+  EMP_STATUS_OPTS,
+  applyInlineFilters,
+  computeUniqueValues,
+} from '@/components/staffing-desk/table-shared';
 
-const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 type Tab = 'supply' | 'demand';
 
 interface Props {
@@ -22,42 +40,6 @@ interface Props {
   onTabChange?: (tab: Tab) => void;
   columnsOpen?: boolean;
   onColumnsClose?: () => void;
-}
-
-/* ── Styles ── */
-const S_TABS: React.CSSProperties = { display: 'flex', gap: 0, borderBottom: '2px solid var(--color-border)', marginBottom: 0 };
-const S_TAB: React.CSSProperties = { padding: 'var(--space-2) var(--space-3)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: 'var(--color-text-muted)', borderBottom: '2px solid transparent', marginBottom: -2 };
-const S_TAB_ACTIVE: React.CSSProperties = { ...S_TAB, color: 'var(--color-accent)', borderBottomColor: 'var(--color-accent)' };
-const S_TABLE: React.CSSProperties = { borderCollapse: 'collapse', fontSize: 12 };
-const S_TH: React.CSSProperties = { padding: '6px 6px 0', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'left', background: 'var(--color-surface-alt)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 2, verticalAlign: 'top' };
-const S_TH_FILTER: React.CSSProperties = { padding: '0 6px 4px', background: 'var(--color-surface-alt)', position: 'sticky', top: 22, zIndex: 2, borderBottom: '2px solid var(--color-border)' };
-const S_TD: React.CSSProperties = { padding: '5px 6px', borderBottom: '1px solid var(--color-border)', verticalAlign: 'middle' };
-const S_ROW: React.CSSProperties = { cursor: 'pointer', transition: 'background 80ms' };
-const S_TOOLBAR: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-1) 0' };
-
-/* ── Filter state ── */
-interface InlineFilterState {
-  [key: string]: string;
-}
-
-/* ── Status/priority options ── */
-const STATUS_OPTS = ['DRAFT', 'REQUESTED', 'OPEN', 'IN_REVIEW', 'APPROVED', 'ACTIVE', 'ENDED', 'FULFILLED', 'REJECTED', 'REVOKED', 'CANCELLED', 'ARCHIVED'];
-const PRIORITY_OPTS = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-const EMP_STATUS_OPTS = ['ACTIVE', 'LEAVE', 'INACTIVE', 'TERMINATED'];
-
-/* ── Column definitions ── */
-type FilterType = 'text' | 'multiselect' | 'date' | 'numeric' | 'none';
-interface ColDef {
-  key: string;
-  label: string;
-  category: string;
-  width?: number;
-  align?: 'left' | 'right';
-  isTimeline?: boolean;
-  filterType: FilterType;
-  filterOptions?: string[];
-  getValue: (row: StaffingDeskRow) => string | number | null;
-  render: (row: StaffingDeskRow, onPersonClick?: (id: string, name: string) => void) => React.ReactNode;
 }
 
 const SUPPLY_ALL_COLUMNS: ColDef[] = [
@@ -94,53 +76,19 @@ const DEMAND_ALL_COLUMNS: ColDef[] = [
   { key: 'skills', label: 'Skills', category: 'Request', width: 110, filterType: 'multiselect', getValue: (r) => r.skills.join(','), render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.skills.slice(0, 3).join(', ')}{r.skills.length > 3 ? ` +${r.skills.length - 3}` : ''}</span> },
   { key: 'requestedBy', label: 'By', category: 'Request', width: 90, filterType: 'multiselect', getValue: (r) => r.requestedByName, render: (r) => r.requestedByName ?? '' },
   { key: 'summary', label: 'Summary', category: 'Request', width: 150, filterType: 'text', getValue: (r) => r.summary, render: (r) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{r.summary ?? ''}</span> },
-  { key: 'createdAt', label: 'Created', category: 'Request', width: 75, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span> },
+  { key: 'createdAt', label: 'Created', category: 'Request', width: 110, filterType: 'date', getValue: (r) => r.createdAt.slice(0, 10), render: (r) => {
+    const tone = getAgingTone(r.createdAt);
+    const days = getAgingDays(r.createdAt);
+    const status = tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'neutral';
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={getAgingTooltip(tone)}>
+        <span style={{ fontSize: 10 }}>{formatDateShort(r.createdAt)}</span>
+        <StatusBadge status={status} label={`${days}d`} variant="chip" />
+      </span>
+    );
+  } },
 ];
 
-
-/* ── Client-side filtering logic ── */
-
-function applyInlineFilters(items: StaffingDeskRow[], filters: InlineFilterState, cols: ColDef[]): StaffingDeskRow[] {
-  return items.filter((row) => {
-    for (const col of cols) {
-      const filterVal = filters[col.key];
-      if (!filterVal) continue;
-
-      const cellVal = col.getValue(row);
-
-      switch (col.filterType) {
-        case 'text': {
-          if (cellVal === null || cellVal === undefined) return false;
-          if (!fuzzyMatch(String(cellVal), filterVal)) return false;
-          break;
-        }
-        case 'multiselect': {
-          const selected = filterVal.split(',').filter(Boolean);
-          if (selected.length === 0) break;
-          if (cellVal === null || cellVal === '') return false;
-          // Support comma-separated cell values (e.g. skills) — match if ANY selected value appears
-          const cellParts = String(cellVal).split(',').map((s) => s.trim());
-          if (!selected.some((s) => cellParts.includes(s))) return false;
-          break;
-        }
-        case 'date': {
-          // filterVal is a date string YYYY-MM-DD; show rows where date >= filterVal
-          if (!cellVal) return false;
-          if (String(cellVal) < filterVal) return false;
-          break;
-        }
-        case 'numeric': {
-          const pred = parseNumericFilter(filterVal);
-          if (pred && typeof cellVal === 'number') {
-            if (!pred(cellVal)) return false;
-          }
-          break;
-        }
-      }
-    }
-    return true;
-  });
-}
 
 /* ── Component ── */
 
@@ -187,32 +135,7 @@ export function StaffingDeskTable({ items, onRowClick, onPersonClick, activeTab,
 
   const activeFilterCount = Object.values(inlineFilters).filter(Boolean).length;
 
-  // Compute unique values per column for dropdown/multiselect options
-  const uniqueValuesMap = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const col of allCols) {
-      if (col.filterType !== 'text' && col.filterType !== 'multiselect') continue;
-      // Skip columns with hardcoded options
-      if (col.filterOptions) continue;
-      const seen = new Set<string>();
-      for (const row of rawItems) {
-        const v = col.getValue(row);
-        if (v == null || v === '') continue;
-        // Handle comma-separated values (skills)
-        const s = String(v);
-        if (s.includes(',')) {
-          for (const part of s.split(',')) {
-            const trimmed = part.trim();
-            if (trimmed) seen.add(trimmed);
-          }
-        } else {
-          seen.add(s);
-        }
-      }
-      map[col.key] = [...seen].sort();
-    }
-    return map;
-  }, [rawItems, allCols]);
+  const uniqueValuesMap = useMemo(() => computeUniqueValues(rawItems, allCols), [rawItems, allCols]);
 
   return (
     <div>

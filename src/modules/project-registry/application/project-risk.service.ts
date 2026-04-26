@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { RiskCategory, RiskStatus, RiskType } from '@prisma/client';
+import { RiskCategory, RiskReviewCadence, RiskStatus, RiskType } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -15,6 +15,33 @@ import {
 
 const OPEN_STATUSES: RiskStatus[] = ['IDENTIFIED', 'ASSESSED', 'MITIGATING'];
 
+/**
+ * Derive a review cadence from impact × probability (PMI Practice Standard for
+ * Project Risk Management §5.4).
+ * H×H → weekly · H×M or M×H → fortnightly · M×M → monthly · L×× → quarterly.
+ */
+export function deriveRiskCadence(impact: number, probability: number): RiskReviewCadence {
+  const high = impact >= 4 && probability >= 4;
+  if (high) return 'WEEKLY';
+  const medHigh = (impact >= 4 && probability >= 2) || (probability >= 4 && impact >= 2);
+  if (medHigh) return 'FORTNIGHTLY';
+  if (impact >= 2 && probability >= 2) return 'MONTHLY';
+  return 'QUARTERLY';
+}
+
+export function cadenceDays(cadence: RiskReviewCadence): number {
+  switch (cadence) {
+    case 'WEEKLY':
+      return 7;
+    case 'FORTNIGHTLY':
+      return 14;
+    case 'MONTHLY':
+      return 30;
+    case 'QUARTERLY':
+      return 90;
+  }
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -25,19 +52,23 @@ export class ProjectRiskService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found.');
 
+    const probability = dto.probability ?? 3;
+    const impact = dto.impact ?? 3;
     const risk = await this.prisma.projectRisk.create({
       data: {
         projectId,
         title: dto.title,
         description: dto.description ?? null,
         category: dto.category,
-        probability: dto.probability ?? 3,
-        impact: dto.impact ?? 3,
+        probability,
+        impact,
         strategy: dto.strategy ?? null,
         strategyDescription: dto.strategyDescription ?? null,
         damageControlPlan: dto.damageControlPlan ?? null,
         ownerPersonId: dto.ownerPersonId ?? null,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+        lastReviewedAt: new Date(),
+        reviewCadence: deriveRiskCadence(impact, probability),
       },
     });
 
@@ -45,7 +76,12 @@ export class ProjectRiskService {
   }
 
   public async update(riskId: string, dto: UpdateProjectRiskDto): Promise<ProjectRiskResponseDto> {
-    await this.ensureRiskExists(riskId);
+    const existing = await this.prisma.projectRisk.findUnique({ where: { id: riskId } });
+    if (!existing) throw new NotFoundException('Risk not found.');
+
+    const nextProbability = dto.probability ?? existing.probability;
+    const nextImpact = dto.impact ?? existing.impact;
+    const cadenceChanged = dto.probability !== undefined || dto.impact !== undefined;
 
     const risk = await this.prisma.projectRisk.update({
       where: { id: riskId },
@@ -61,9 +97,20 @@ export class ProjectRiskService {
         ...(dto.ownerPersonId !== undefined ? { ownerPersonId: dto.ownerPersonId } : {}),
         ...(dto.assigneePersonId !== undefined ? { assigneePersonId: dto.assigneePersonId } : {}),
         ...(dto.dueDate !== undefined ? { dueDate: new Date(dto.dueDate) } : {}),
+        lastReviewedAt: new Date(),
+        ...(cadenceChanged ? { reviewCadence: deriveRiskCadence(nextImpact, nextProbability) } : {}),
       },
     });
 
+    return this.toResponseDto(risk);
+  }
+
+  public async markReviewed(riskId: string): Promise<ProjectRiskResponseDto> {
+    await this.ensureRiskExists(riskId);
+    const risk = await this.prisma.projectRisk.update({
+      where: { id: riskId },
+      data: { lastReviewedAt: new Date() },
+    });
     return this.toResponseDto(risk);
   }
 

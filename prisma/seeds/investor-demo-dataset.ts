@@ -243,7 +243,7 @@ const FAR   = new Date('2027-12-31T00:00:00Z');
 
 // Helper to create an assignment record
 let _asnIdx = 0;
-function asn(personId: string, projectId: string, alloc: number, status: 'ACTIVE' | 'APPROVED' = 'ACTIVE'): Record<string, unknown> {
+function asn(personId: string, projectId: string, alloc: number, status: 'ASSIGNED' | 'BOOKED' = 'ASSIGNED'): Record<string, unknown> {
   _asnIdx++;
   return {
     id: `id${String(_asnIdx).padStart(6, '0')}-as00-0000-0000-000000000000`,

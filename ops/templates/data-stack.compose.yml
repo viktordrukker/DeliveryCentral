@@ -1,0 +1,102 @@
+# Shared data stack — one Postgres instance + one Caddy reverse proxy serving
+# both the prod and staging app stacks. Lives at /opt/deliverycentral-data/
+# on the VM. Rendered (with .env populated) by ops/bootstrap-app.sh.
+#
+# DO NOT add any service that scales per-environment here. Anything
+# environment-aware (issue-reporter, etc.) lives in the per-stack
+# docker-compose.prod.yml.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dc-data-postgres-1
+    environment:
+      # Superuser — used only by init-db.sh on first boot to create the two
+      # per-environment roles. App stacks connect with prod_user / staging_user
+      # (see DATABASE_URL in their .env files).
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      # Init script reads these to mint the per-env roles + databases.
+      DC_PROD_DB: workload_tracking_prod
+      DC_PROD_USER: prod_user
+      DC_PROD_PASSWORD: ${PROD_DB_PASSWORD}
+      DC_STAGING_DB: workload_tracking_staging
+      DC_STAGING_USER: staging_user
+      DC_STAGING_PASSWORD: ${STAGING_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/01-init-dc-databases.sh:ro
+    networks: [dc-shared]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    image: dc-caddy:custom
+    container_name: dc-data-caddy-1
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      PROD_DOMAIN: ${PROD_DOMAIN}
+      STAGING_DOMAIN: ${STAGING_DOMAIN}
+      MONITOR_DOMAIN: ${MONITOR_DOMAIN}
+      LOGS_DOMAIN: ${LOGS_DOMAIN}
+      CADDY_BASIC_AUTH_USER: ${CADDY_BASIC_AUTH_USER:-admin}
+      CADDY_BASIC_AUTH_HASH: ${CADDY_BASIC_AUTH_HASH:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [dc-shared]
+    restart: unless-stopped
+
+  # --- Optional monitoring (opt-in: --profile monitoring) -------------------
+  uptime-kuma:
+    profiles: ['monitoring']
+    image: louislam/uptime-kuma:1
+    container_name: dc-data-uptime-kuma-1
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks: [dc-shared]
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3001 >/dev/null 2>&1 || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  dozzle:
+    profiles: ['monitoring']
+    image: amir20/dozzle:v8.14.6
+    container_name: dc-data-dozzle-1
+    environment:
+      DOZZLE_NO_ANALYTICS: 'true'
+      DOZZLE_LEVEL: info
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [dc-shared]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
+  uptime-kuma-data:
+
+# Shared bridge network. Created by this compose file (NOT external) — the
+# per-stack compose files declare it with `external: true` and join it.
+networks:
+  dc-shared:
+    name: dc-shared
+    driver: bridge

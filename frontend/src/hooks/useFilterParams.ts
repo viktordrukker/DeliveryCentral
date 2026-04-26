@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 /**
@@ -12,16 +12,20 @@ export function useFilterParams<T extends Record<string, string>>(
 ): [T, (updates: Partial<T>) => void, () => void] {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Lock defaults to first-render reference so callers can pass inline object literals
+  // without causing filters/setFilters to get a new identity every render.
+  const defaultsRef = useRef(defaults);
+
   const currentFilters = useMemo(() => {
-    const result = { ...defaults };
-    for (const key of Object.keys(defaults)) {
+    const result = { ...defaultsRef.current };
+    for (const key of Object.keys(defaultsRef.current)) {
       const val = searchParams.get(key);
       if (val !== null) {
         (result as Record<string, string>)[key] = val;
       }
     }
     return result;
-  }, [searchParams, defaults]);
+  }, [searchParams]);
 
   const setFilters = useCallback(
     (updates: Partial<T>) => {
@@ -29,7 +33,7 @@ export function useFilterParams<T extends Record<string, string>>(
         (prev) => {
           const next = new URLSearchParams(prev);
           for (const [key, value] of Object.entries(updates)) {
-            if (value === undefined || value === '' || value === (defaults as Record<string, string>)[key]) {
+            if (value === undefined || value === '' || value === (defaultsRef.current as Record<string, string>)[key]) {
               next.delete(key);
             } else {
               next.set(key, value as string);
@@ -40,7 +44,7 @@ export function useFilterParams<T extends Record<string, string>>(
         { replace: true },
       );
     },
-    [setSearchParams, defaults],
+    [setSearchParams],
   );
 
   const resetFilters = useCallback(() => {

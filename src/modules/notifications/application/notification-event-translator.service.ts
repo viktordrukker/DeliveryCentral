@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
 import { AppConfig } from '@src/shared/config/app-config';
@@ -7,11 +7,31 @@ import { NotificationDispatchService } from './notification-dispatch.service';
 
 @Injectable()
 export class NotificationEventTranslatorService {
+  private readonly logger = new Logger(NotificationEventTranslatorService.name);
+
   public constructor(
     private readonly notificationDispatchService: NotificationDispatchService,
     private readonly appConfig: AppConfig,
     private readonly inAppNotificationService?: InAppNotificationService,
   ) {}
+
+  private createInAppNotification(
+    recipientPersonId: string,
+    eventType: string,
+    title: string,
+    body: string | undefined,
+    link: string,
+  ): void {
+    if (!this.inAppNotificationService) return;
+    this.inAppNotificationService
+      .createNotification(recipientPersonId, eventType, title, body, link)
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        this.logger.warn(
+          `In-app notification delivery failed for ${eventType} → person ${recipientPersonId}: ${message}`,
+        );
+      });
+  }
 
   public async assignmentCreated(payload: {
     assignmentId: string;
@@ -21,7 +41,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('assignment.created', 'assignment-created-email', payload);
     if (payload.personId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.personId,
         'assignment.created',
         'You have a new assignment',
@@ -37,7 +57,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('assignment.approved', 'assignment-approved-email', payload);
     if (payload.recipientPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.recipientPersonId,
         'assignment.approved',
         'Assignment approved',
@@ -54,7 +74,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('assignment.rejected', 'assignment-rejected-email', payload);
     if (payload.recipientPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.recipientPersonId,
         'assignment.rejected',
         'Assignment rejected',
@@ -87,7 +107,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('case.created', 'case-created-email', payload);
     if (payload.subjectPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.subjectPersonId,
         'case.created',
         'A case has been opened',
@@ -103,7 +123,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('case.step_completed', 'case-step-completed-email', payload);
     if (payload.ownerPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.ownerPersonId,
         'case.step_completed',
         'Case step completed',
@@ -119,7 +139,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('case.closed', 'case-closed-email', payload);
     if (payload.subjectPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.subjectPersonId,
         'case.closed',
         'Your case has been closed',
@@ -131,6 +151,26 @@ export class NotificationEventTranslatorService {
 
   public async assignmentEnded(payload: { assignmentId: string }): Promise<void> {
     await this.sendEmail('assignment.ended', 'assignment-ended-email', payload);
+  }
+
+  public async assignmentStatusChanged(payload: {
+    assignmentId: string;
+    previousStatus: string;
+    reason?: string;
+    recipientPersonId?: string;
+    status: string;
+  }): Promise<void> {
+    const eventType = `assignment.${payload.status.toLowerCase()}`;
+    await this.sendEmail(eventType, `assignment-${payload.status.toLowerCase()}-email`, payload);
+    if (payload.recipientPersonId) {
+      this.createInAppNotification(
+        payload.recipientPersonId,
+        eventType,
+        `Assignment ${payload.status.toLowerCase().replace('_', ' ')}`,
+        payload.reason,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
   }
 
   public async employeeTerminated(payload: { personId: string }): Promise<void> {
@@ -173,7 +213,7 @@ export class NotificationEventTranslatorService {
     personId: string;
   }): Promise<void> {
     await this.sendEmail('timesheet.approved', 'timesheet-approved-email', payload);
-    void this.inAppNotificationService?.createNotification(
+    this.createInAppNotification(
       payload.personId,
       'timesheet.approved',
       `Timesheet approved for week of ${payload.weekStart}`,
@@ -189,7 +229,7 @@ export class NotificationEventTranslatorService {
     reason?: string;
   }): Promise<void> {
     await this.sendEmail('timesheet.rejected', 'timesheet-rejected-email', payload);
-    void this.inAppNotificationService?.createNotification(
+    this.createInAppNotification(
       payload.personId,
       'timesheet.rejected',
       `Timesheet rejected for week of ${payload.weekStart}`,
@@ -208,7 +248,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('staffingRequest.submitted', 'staffing-request-submitted-email', payload);
     if (payload.ownerPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.ownerPersonId,
         'staffingRequest.submitted',
         `New staffing request for role: ${payload.role}`,
@@ -224,7 +264,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('staffingRequest.inReview', 'staffing-request-in-review-email', payload);
     if (payload.requesterPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.requesterPersonId,
         'staffingRequest.inReview',
         'Your staffing request is under review',
@@ -241,7 +281,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('staffingRequest.fulfilled', 'staffing-request-fulfilled-email', payload);
     if (payload.requesterPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.requesterPersonId,
         'staffingRequest.fulfilled',
         'Staffing request fulfilled',
@@ -250,7 +290,7 @@ export class NotificationEventTranslatorService {
       );
     }
     if (payload.assignedPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.assignedPersonId,
         'staffingRequest.fulfilled',
         'You have been assigned to fill a staffing request',
@@ -266,7 +306,7 @@ export class NotificationEventTranslatorService {
   }): Promise<void> {
     await this.sendEmail('staffingRequest.cancelled', 'staffing-request-cancelled-email', payload);
     if (payload.requesterPersonId) {
-      void this.inAppNotificationService?.createNotification(
+      this.createInAppNotification(
         payload.requesterPersonId,
         'staffingRequest.cancelled',
         'Staffing request cancelled',
@@ -282,7 +322,7 @@ export class NotificationEventTranslatorService {
 
   public async assignmentAmended(payload: { assignmentId: string; personId: string }): Promise<void> {
     await this.sendEmail('assignment.amended', 'assignment-amended-email', payload);
-    void this.inAppNotificationService?.createNotification(
+    this.createInAppNotification(
       payload.personId,
       'assignment.amended',
       'Your assignment has been amended',
@@ -293,7 +333,7 @@ export class NotificationEventTranslatorService {
 
   public async caseApproved(payload: { caseId: string; subjectPersonId: string }): Promise<void> {
     await this.sendEmail('case.approved', 'case-approved-email', payload);
-    void this.inAppNotificationService?.createNotification(
+    this.createInAppNotification(
       payload.subjectPersonId,
       'case.approved',
       'Your case has been approved',
@@ -304,7 +344,7 @@ export class NotificationEventTranslatorService {
 
   public async caseRejected(payload: { caseId: string; subjectPersonId: string; reason: string }): Promise<void> {
     await this.sendEmail('case.rejected', 'case-rejected-email', payload);
-    void this.inAppNotificationService?.createNotification(
+    this.createInAppNotification(
       payload.subjectPersonId,
       'case.rejected',
       `Your case has been rejected: ${payload.reason}`,

@@ -44,8 +44,11 @@ import { ListAssignmentsService } from '../application/list-assignments.service'
 import { RejectProjectAssignmentService } from '../application/reject-project-assignment.service';
 import { AmendProjectAssignmentService } from '../application/amend-project-assignment.service';
 import { RevokeProjectAssignmentService } from '../application/revoke-project-assignment.service';
+import { TransitionProjectAssignmentService } from '../application/transition-project-assignment.service';
 import { AssignmentConcurrencyConflictError } from '../application/assignment-concurrency-conflict.error';
 import { ProjectAssignment } from '../domain/entities/project-assignment.entity';
+import { AssignmentStatusValue } from '../domain/value-objects/assignment-status';
+import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
 class AmendAssignmentRequestDto {
   allocationPercent?: number;
@@ -55,6 +58,11 @@ class AmendAssignmentRequestDto {
 }
 
 class RevokeAssignmentRequestDto {
+  reason?: string;
+}
+
+class TransitionRequestDto {
+  caseId?: string;
   reason?: string;
 }
 
@@ -72,6 +80,7 @@ export class AssignmentsController {
     private readonly getAssignmentByIdService: GetAssignmentByIdService,
     private readonly amendProjectAssignmentService: AmendProjectAssignmentService,
     private readonly revokeProjectAssignmentService: RevokeProjectAssignmentService,
+    private readonly transitionProjectAssignmentService: TransitionProjectAssignmentService,
   ) {}
 
   @Post('activate')
@@ -319,6 +328,132 @@ export class AssignmentsController {
         this.revokeProjectAssignmentService.execute({
           assignmentId: id,
           reason: request.reason,
+        }),
+      ),
+    );
+  }
+
+  @Post(':id/propose')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Propose a candidate for a created staffing slot' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('resource_manager', 'delivery_manager', 'admin')
+  public async proposeAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('PROPOSED', id, request, httpRequest);
+  }
+
+  @Post(':id/book')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Book a proposed assignment after validating workload' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async bookAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('BOOKED', id, request, httpRequest);
+  }
+
+  @Post(':id/onboarding')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Move a booked assignment to onboarding' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async onboardingAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('ONBOARDING', id, request, httpRequest);
+  }
+
+  @Post(':id/assign')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark an assignment as actively assigned (work started)' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async assignAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('ASSIGNED', id, request, httpRequest);
+  }
+
+  @Post(':id/hold')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Place an assignment on hold (escalation, case, or incident)' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'director', 'admin')
+  public async holdAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('ON_HOLD', id, request, httpRequest);
+  }
+
+  @Post(':id/release')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Release an on-hold assignment back to assigned' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'director', 'admin')
+  public async releaseAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('ASSIGNED', id, request, httpRequest);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark an assignment as completed (natural end of work)' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async completeAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('COMPLETED', id, request, httpRequest);
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel an assignment' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'resource_manager', 'director', 'admin')
+  public async cancelAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('CANCELLED', id, request, httpRequest);
+  }
+
+  private async runTransition(
+    target: AssignmentStatusValue,
+    id: string,
+    request: TransitionRequestDto,
+    httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    return this.mapAssignmentResponse(
+      await this.withAssignmentErrors(() =>
+        this.transitionProjectAssignmentService.execute({
+          actorId,
+          actorRoles,
+          assignmentId: id,
+          caseId: request.caseId,
+          reason: request.reason,
+          target,
         }),
       ),
     );

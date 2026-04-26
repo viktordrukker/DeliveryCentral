@@ -34,7 +34,9 @@ export class ProjectHealthQueryService {
     // Staffing score (33 pts max)
     const allAssignments = await this.projectAssignmentRepository.findAll();
     const approvedAssignments = allAssignments.filter(
-      (a) => a.projectId === projectId && a.status.value === 'APPROVED',
+      (a) =>
+        a.projectId === projectId &&
+        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value),
     );
     const assignmentCount = approvedAssignments.length;
     let staffingScore = 0;

@@ -51,6 +51,8 @@ class UpdateProjectRequestDto {
   name?: string;
   description?: string;
   status?: ProjectStatus;
+  projectManagerId?: string;
+  deliveryManagerId?: string;
 }
 
 @ApiTags('projects')
@@ -206,13 +208,14 @@ export class ProjectsController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update project metadata (name, description, status)' })
+  @ApiOperation({ summary: 'Update project metadata (name, description, status, PM, DM).' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
   @RequireRoles('project_manager', 'director', 'admin')
   public async updateProject(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateProjectRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; roles?: string[] } },
   ): Promise<ProjectCreatedResponseDto> {
     return this.mapCreatedProjectResponse(
       await this.withProjectLifecycleErrors(() =>
@@ -221,6 +224,14 @@ export class ProjectsController {
           name: request.name,
           projectId: id,
           status: request.status,
+          projectManagerId: request.projectManagerId,
+          deliveryManagerId: request.deliveryManagerId,
+          actor: httpRequest.principal
+            ? {
+                personId: httpRequest.principal.personId,
+                roles: httpRequest.principal.roles ?? [],
+              }
+            : undefined,
         }),
       ),
     );

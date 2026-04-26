@@ -284,7 +284,7 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('submits as draft when Save Draft is clicked', async () => {
-    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ status: 'DRAFT' }));
+    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ status: 'CREATED' }));
 
     const { user } = renderWithRouter();
 

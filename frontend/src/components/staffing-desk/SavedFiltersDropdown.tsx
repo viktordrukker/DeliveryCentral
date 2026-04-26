@@ -1,34 +1,38 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { useOutsideClick } from '@/hooks/useOutsideClick';
+
 interface SavedFilter {
   name: string;
   filters: Record<string, string>;
   createdAt: string;
 }
 
-const STORAGE_KEY = 'staffing-desk-saved-filters';
+const DEFAULT_STORAGE_KEY = 'staffing-desk-saved-filters';
 
-function loadSaved(): SavedFilter[] {
+function loadSaved(key: string): SavedFilter[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function saveToDisk(filters: SavedFilter[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+function saveToDisk(key: string, filters: SavedFilter[]): void {
+  localStorage.setItem(key, JSON.stringify(filters));
 }
 
 interface Props {
   currentFilters: Record<string, string>;
   onApply: (filters: Record<string, string>) => void;
+  storageKey?: string;
 }
 
-export function SavedFiltersDropdown({ currentFilters, onApply }: Props): JSX.Element {
+export function SavedFiltersDropdown({ currentFilters, onApply, storageKey }: Props): JSX.Element {
+  const key = storageKey ?? DEFAULT_STORAGE_KEY;
   const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState(loadSaved);
+  const [saved, setSaved] = useState(() => loadSaved(key));
   const [newName, setNewName] = useState('');
 
   const handleSave = useCallback(() => {
@@ -36,14 +40,14 @@ export function SavedFiltersDropdown({ currentFilters, onApply }: Props): JSX.El
     if (!name) return;
     const updated = [...saved.filter((f) => f.name !== name), { name, filters: { ...currentFilters }, createdAt: new Date().toISOString() }];
     setSaved(updated);
-    saveToDisk(updated);
+    saveToDisk(key, updated);
     setNewName('');
   }, [newName, currentFilters, saved]);
 
   const handleDelete = useCallback((name: string) => {
     const updated = saved.filter((f) => f.name !== name);
     setSaved(updated);
-    saveToDisk(updated);
+    saveToDisk(key, updated);
   }, [saved]);
 
   const handleApply = useCallback((f: SavedFilter) => {
@@ -51,8 +55,11 @@ export function SavedFiltersDropdown({ currentFilters, onApply }: Props): JSX.El
     setOpen(false);
   }, [onApply]);
 
+  const closeMenu = useCallback(() => setOpen(false), []);
+  const wrapRef = useOutsideClick<HTMLDivElement>(open, closeMenu);
+
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         className="button button--secondary button--sm"
         onClick={() => setOpen((v) => !v)}

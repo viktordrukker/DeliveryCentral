@@ -6,6 +6,7 @@ import { AssignmentConcurrencyConflictError } from '@src/modules/assignments/app
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
 import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { PrismaProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/prisma/prisma-project-assignment.repository';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
@@ -55,7 +56,7 @@ describe('Prisma assignment and work evidence repositories', () => {
         requestedAt: new Date('2025-01-10T00:00:00.000Z'),
         requestedByPersonId: persistenceReferenceIds.requestedByPersonId,
         staffingRole: 'Engineer',
-        status: ApprovalState.approved(),
+        status: AssignmentStatus.booked(),
         validFrom: new Date('2025-02-01T00:00:00.000Z'),
       },
       AssignmentId.from('96666666-0000-0000-0000-000000000001'),
@@ -106,7 +107,7 @@ describe('Prisma assignment and work evidence repositories', () => {
         requestedAt: new Date('2025-01-11T00:00:00.000Z'),
         requestedByPersonId: persistenceReferenceIds.requestedByPersonId,
         staffingRole: 'Analyst',
-        status: ApprovalState.requested(),
+        status: AssignmentStatus.created(),
         validFrom: new Date('2025-02-15T00:00:00.000Z'),
       },
       assignmentId,
@@ -149,7 +150,7 @@ describe('Prisma assignment and work evidence repositories', () => {
         requestedAt: new Date('2025-01-11T00:00:00.000Z'),
         requestedByPersonId: persistenceReferenceIds.requestedByPersonId,
         staffingRole: 'Analyst',
-        status: ApprovalState.requested(),
+        status: AssignmentStatus.created(),
         validFrom: new Date('2025-02-15T00:00:00.000Z'),
       },
       AssignmentId.from('96666666-0000-0000-0000-000000000003'),

@@ -1,5 +1,5 @@
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
-import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
+import { AssignmentStatus } from '@src/modules/assignments/domain/value-objects/assignment-status';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
@@ -38,7 +38,7 @@ describe('scenario: jira sync outage safety', () => {
           requestedAt: new Date('2025-01-10T00:00:00.000Z'),
           requestedByPersonId: '11111111-1111-1111-1111-111111111006',
           staffingRole: 'Lead Engineer',
-          status: ApprovalState.approved(),
+          status: AssignmentStatus.booked(),
           validFrom: new Date('2025-02-01T00:00:00.000Z'),
         },
         AssignmentId.from('scenario-assignment-001'),

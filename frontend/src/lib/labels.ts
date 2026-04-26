@@ -1,11 +1,27 @@
 export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
-  APPROVED: 'Approved',
-  ENDED: 'Ended',
+  ASSIGNED: 'Assigned',
+  BOOKED: 'Booked',
+  CANCELLED: 'Cancelled',
+  COMPLETED: 'Completed',
+  CREATED: 'Created',
+  ONBOARDING: 'Onboarding',
+  ON_HOLD: 'On-hold',
   OVERRIDE_CREATED: 'Override Created',
-  PENDING: 'Pending',
+  PROPOSED: 'Proposed',
   REJECTED: 'Rejected',
-  REQUESTED: 'Requested',
 };
+
+export const ASSIGNMENT_STATUS_ORDER: readonly string[] = [
+  'CREATED',
+  'PROPOSED',
+  'REJECTED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+  'ON_HOLD',
+  'COMPLETED',
+  'CANCELLED',
+];
 
 export const PROJECT_STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Active',

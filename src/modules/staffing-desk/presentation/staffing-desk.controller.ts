@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -11,6 +11,8 @@ import { DemandProfileService, DemandProfileResponseDto } from '../application/d
 import { BenchManagementService, BenchDashboardResponseDto } from '../application/bench-management.service';
 import { ProjectTimelineService, ProjectTimelineResponseDto } from '../application/project-timeline.service';
 import { TeamBuilderService, TeamBuilderRequestDto, TeamBuilderResponseDto } from '../application/team-builder.service';
+import { WorkforcePlannerService, WorkforcePlannerResponseDto, AutoMatchRequestDto, AutoMatchResultDto, PlannerApplyRequestDto, PlannerApplyResponseDto, ExtensionValidateRequestDto, ExtensionValidateResponseDto, WhyNotRequestDto, WhyNotResponseDto } from '../application/workforce-planner.service';
+import { PlannerScenarioService, CreatePlannerScenarioDto, UpdatePlannerScenarioDto, PlannerScenarioDetailDto, PlannerScenarioSummaryDto } from '../application/planner-scenario.service';
 
 @ApiTags('staffing-desk')
 @Controller('staffing-desk')
@@ -23,6 +25,8 @@ export class StaffingDeskController {
     private readonly demandProfileService: DemandProfileService,
     private readonly projectTimelineService: ProjectTimelineService,
     private readonly teamBuilderService: TeamBuilderService,
+    private readonly workforcePlannerService: WorkforcePlannerService,
+    private readonly plannerScenarioService: PlannerScenarioService,
   ) {}
 
   @Get()
@@ -108,6 +112,96 @@ export class StaffingDeskController {
       poolId,
       projectId,
     });
+  }
+
+  @Get('planner')
+  @ApiOperation({ summary: 'Workforce planner: project-centric simulation data with supply/demand/budget' })
+  @ApiQuery({ name: 'from', required: true, description: 'Start date (Monday, YYYY-MM-DD)' })
+  @ApiQuery({ name: 'weeks', required: false, description: 'Horizon in weeks (default 13)' })
+  @ApiQuery({ name: 'includeDrafts', required: false, description: 'Include DRAFT projects (default false)' })
+  @ApiQuery({ name: 'poolId', required: false })
+  @ApiQuery({ name: 'orgUnitId', required: false })
+  @ApiOkResponse({ description: 'Workforce planner response with projects, supply, demand, budget' })
+  public async planner(
+    @Query('from') from: string,
+    @Query('weeks') weeks?: string,
+    @Query('includeDrafts') includeDrafts?: string,
+    @Query('poolId') poolId?: string,
+    @Query('orgUnitId') orgUnitId?: string,
+    @Query('projectStatuses') projectStatuses?: string,
+    @Query('priorities') priorities?: string,
+  ): Promise<WorkforcePlannerResponseDto> {
+    const parsedStatuses = projectStatuses ? (projectStatuses.split(',').filter(Boolean) as Array<'ACTIVE' | 'DRAFT' | 'ON_HOLD' | 'CLOSED' | 'COMPLETED' | 'ARCHIVED'>) : undefined;
+    const parsedPriorities = priorities ? (priorities.split(',').filter(Boolean) as Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'>) : undefined;
+    return this.workforcePlannerService.getPlan({
+      from,
+      weeks: weeks ? Number(weeks) : 13,
+      includeDrafts: includeDrafts === 'true',
+      poolId,
+      orgUnitId,
+      projectStatuses: parsedStatuses,
+      priorities: parsedPriorities,
+    });
+  }
+
+  @Post('planner/auto-match')
+  @ApiOperation({ summary: 'Auto-match bench to demand using strategy-driven scoring (BALANCED default)' })
+  @ApiOkResponse({ description: 'Strategy, per-suggestion rationale, mismatch details, summary stats, unmatched demand' })
+  public async autoMatch(@Body() request?: AutoMatchRequestDto): Promise<AutoMatchResultDto> {
+    return this.workforcePlannerService.autoMatch(request ?? {});
+  }
+
+  @Post('planner/apply')
+  @ApiOperation({ summary: 'Apply planning decisions: create assignments + staffing requests + extensions' })
+  @ApiOkResponse({ description: 'Apply result with counts' })
+  public async applyPlan(@Body() request: PlannerApplyRequestDto): Promise<PlannerApplyResponseDto> {
+    return this.workforcePlannerService.applyPlan(request);
+  }
+
+  @Post('planner/extension-validate')
+  @ApiOperation({ summary: 'Validate extending an existing assignment against employment, leave, project-end, and over-allocation constraints' })
+  @ApiOkResponse({ description: 'Validation result with blocking errors and non-blocking anomalies' })
+  public async validateExtension(@Body() request: ExtensionValidateRequestDto): Promise<ExtensionValidateResponseDto> {
+    return this.workforcePlannerService.validateExtension(request);
+  }
+
+  @Post('planner/why-not')
+  @ApiOperation({ summary: 'Explain why an unmatched demand was not filled: ranks closest candidates with per-candidate disqualifiers' })
+  @ApiOkResponse({ description: 'Top-N close bench candidates with skill/availability/leave/employment reasoning' })
+  public async whyNotFilled(@Body() request: WhyNotRequestDto): Promise<WhyNotResponseDto> {
+    return this.workforcePlannerService.whyNot(request);
+  }
+
+  /* ── Planner Scenarios (server-persisted simulation snapshots) ── */
+
+  @Get('planner/scenarios')
+  @ApiOperation({ summary: 'List active planner scenarios with summary metrics' })
+  public async listScenarios(): Promise<PlannerScenarioSummaryDto[]> {
+    return this.plannerScenarioService.list();
+  }
+
+  @Get('planner/scenarios/:id')
+  @ApiOperation({ summary: 'Load a scenario including its serialized simulation state' })
+  public async getScenario(@Param('id') id: string): Promise<PlannerScenarioDetailDto> {
+    return this.plannerScenarioService.get(id);
+  }
+
+  @Post('planner/scenarios')
+  @ApiOperation({ summary: 'Save the current simulation state as a new scenario' })
+  public async createScenario(@Body() dto: CreatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
+    return this.plannerScenarioService.create(dto);
+  }
+
+  @Patch('planner/scenarios/:id')
+  @ApiOperation({ summary: 'Update an existing scenario (name, state, summary counts)' })
+  public async updateScenario(@Param('id') id: string, @Body() dto: UpdatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
+    return this.plannerScenarioService.update(id, dto);
+  }
+
+  @Delete('planner/scenarios/:id')
+  @ApiOperation({ summary: 'Archive a scenario (soft delete)' })
+  public async archiveScenario(@Param('id') id: string): Promise<{ archived: boolean }> {
+    return this.plannerScenarioService.archive(id);
   }
 
   @Post('team-builder')

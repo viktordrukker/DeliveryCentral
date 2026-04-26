@@ -98,6 +98,83 @@ export class HealthService {
     };
   }
 
+  /**
+   * DM-R-8 — deep health probe.
+   *
+   * Exercises each aggregate root through the Prisma client layer.
+   * Returns per-aggregate {status, latencyMs, count} + an overall status.
+   * Any aggregate that fails to respond within 3000ms or throws marks the
+   * overall probe as degraded.
+   *
+   * Called by:
+   *   - docker-compose.prod.yml migrate-then-smoke step
+   *   - scripts/db-migrate-safe.sh (post-migrate verification extension)
+   */
+  public async getDeepHealth(): Promise<{
+    aggregates: Array<{
+      name: string;
+      status: 'ready' | 'degraded';
+      latencyMs: number;
+      count: number | null;
+      error?: string;
+    }>;
+    status: 'ready' | 'degraded';
+    timestamp: string;
+  }> {
+    const PROBES: Array<[string, () => Promise<number>]> = [
+      ['Person', () => this.prisma.person.count()],
+      ['OrgUnit', () => this.prisma.orgUnit.count()],
+      ['Project', () => this.prisma.project.count()],
+      ['ProjectAssignment', () => this.prisma.projectAssignment.count()],
+      ['CaseRecord', () => this.prisma.caseRecord.count()],
+      ['TimesheetWeek', () => this.prisma.timesheetWeek.count()],
+      ['LocalAccount', () => this.prisma.localAccount.count()],
+      ['NotificationRequest', () => this.prisma.notificationRequest.count()],
+      ['InAppNotification', () => this.prisma.inAppNotification.count()],
+      ['StaffingRequest', () => this.prisma.staffingRequest.count()],
+      ['Skill', () => this.prisma.skill.count()],
+      ['ProjectBudget', () => this.prisma.projectBudget.count()],
+    ];
+
+    const TIMEOUT_MS = 3000;
+
+    const results = await Promise.all(
+      PROBES.map(async ([name, probe]) => {
+        const startedAt = Date.now();
+        try {
+          const count = await Promise.race([
+            probe(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`aggregate probe timed out after ${TIMEOUT_MS}ms`)), TIMEOUT_MS),
+            ),
+          ]);
+          return {
+            name,
+            status: 'ready' as const,
+            latencyMs: Date.now() - startedAt,
+            count,
+          };
+        } catch (error) {
+          return {
+            name,
+            status: 'degraded' as const,
+            latencyMs: Date.now() - startedAt,
+            count: null,
+            error: error instanceof Error ? error.message : 'Unknown error.',
+          };
+        }
+      }),
+    );
+
+    const overall = results.some((r) => r.status === 'degraded') ? 'degraded' : 'ready';
+
+    return {
+      aggregates: results,
+      status: overall,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   public async getDiagnostics(): Promise<{
     auditVisibility: {
       lastBusinessAuditAt: string | null;
