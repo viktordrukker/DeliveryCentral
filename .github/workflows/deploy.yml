@@ -106,38 +106,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Deploy via SSH (staging)
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
-          host: ${{ secrets.STAGING_VPS_HOST }}
-          username: ${{ secrets.STAGING_VPS_USER }}
-          key: ${{ secrets.STAGING_VPS_SSH_KEY }}
-          script: |
+          ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.STAGING_VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via SSH (staging)
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_VPS_USER }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_CADDY_DOMAIN }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new "$STAGING_USER@$STAGING_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral-staging
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
-            # Capture the currently-running image SHA so we can roll back if the
-            # new image fails its health probe. First-deploy: file is created
-            # empty by bootstrap-app.sh, the rollback step no-ops cleanly.
-            CURRENT_BACKEND=$(docker inspect dc-staging-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
-            CURRENT_FRONTEND=$(docker inspect dc-staging-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
-            echo "$CURRENT_BACKEND"  > .previous-backend-image
-            echo "$CURRENT_FRONTEND" > .previous-frontend-image
+            CURRENT_BACKEND=\$(docker inspect dc-staging-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            CURRENT_FRONTEND=\$(docker inspect dc-staging-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            echo "\$CURRENT_BACKEND"  > .previous-backend-image
+            echo "\$CURRENT_FRONTEND" > .previous-frontend-image
 
-            export BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ needs.build-and-push.outputs.image_tag }}
-            export FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ needs.build-and-push.outputs.image_tag }}
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
             docker compose -p dc-staging -f docker-compose.prod.yml pull
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build migrate
             docker compose -p dc-staging -f docker-compose.prod.yml wait migrate
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build backend frontend
-            # Stamp the deployed commit so the issue-reporter (monitoring profile) can cite it.
-            echo "${{ github.sha }}" > /opt/deliverycentral-staging/.current-sha
+            echo "$DEPLOY_SHA" > /opt/deliverycentral-staging/.current-sha
             sleep 20
-            # Smoke: shallow + deep (DM-R-8) + migration-audit row
-            curl -sf https://${{ secrets.STAGING_CADDY_DOMAIN }}/api/health > /dev/null
-            curl -sf https://${{ secrets.STAGING_CADDY_DOMAIN }}/api/health/deep | \
-              grep -q '"status":"ready"' || { echo "deep health failed"; exit 1; }
+            curl -sf "https://$STAGING_DOMAIN/api/health" > /dev/null
+            curl -sf "https://$STAGING_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
+              || { echo "deep health failed"; exit 1; }
+          EOF
 
       - name: Staging deploy marker
         # Writes a tiny artifact + run-level output the prod job (or a
@@ -219,44 +230,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Deploy via SSH (production)
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via SSH (production)
+        env:
+          PROD_HOST: ${{ secrets.VPS_HOST }}
+          PROD_USER: ${{ secrets.VPS_USER }}
+          PROD_DOMAIN: ${{ secrets.CADDY_DOMAIN }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new "$PROD_USER@$PROD_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
-            # Login to GHCR for image pulls
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            CURRENT_BACKEND=\$(docker inspect dc-prod-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            CURRENT_FRONTEND=\$(docker inspect dc-prod-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            echo "\$CURRENT_BACKEND"  > .previous-backend-image
+            echo "\$CURRENT_FRONTEND" > .previous-frontend-image
 
-            # Capture currently-running images for rollback. First deploy =
-            # empty strings; the rollback below treats that as a no-op.
-            CURRENT_BACKEND=$(docker inspect dc-prod-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
-            CURRENT_FRONTEND=$(docker inspect dc-prod-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
-            echo "$CURRENT_BACKEND"  > .previous-backend-image
-            echo "$CURRENT_FRONTEND" > .previous-frontend-image
-
-            export BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ needs.build-and-push.outputs.image_tag }}
-            export FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ needs.build-and-push.outputs.image_tag }}
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
             docker compose -p dc-prod -f docker-compose.prod.yml pull
 
-            # Rolling restart — migrate first, then app services
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
             docker compose -p dc-prod -f docker-compose.prod.yml wait migrate
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
-            echo "${{ github.sha }}" > /opt/deliverycentral/.current-sha
+            echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
 
-            # Health check — shallow + deep (DM-R-8). On failure: roll back to
-            # the previous-known-good images captured above.
             sleep 15
             rollback() {
               echo "Health check failed — rolling back to previous images"
-              if [ -n "$CURRENT_BACKEND" ] && [ -n "$CURRENT_FRONTEND" ]; then
-                export BACKEND_IMAGE="$CURRENT_BACKEND"
-                export FRONTEND_IMAGE="$CURRENT_FRONTEND"
+              if [ -n "\$CURRENT_BACKEND" ] && [ -n "\$CURRENT_FRONTEND" ]; then
+                export BACKEND_IMAGE="\$CURRENT_BACKEND"
+                export FRONTEND_IMAGE="\$CURRENT_FRONTEND"
                 docker compose -p dc-prod -f docker-compose.prod.yml pull
                 docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
               else
@@ -264,7 +283,8 @@ jobs:
               fi
               exit 1
             }
-            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health || rollback
-            curl -sf https://${{ secrets.CADDY_DOMAIN }}/api/health/deep | grep -q '"status":"ready"' || rollback
+            curl -sf "https://$PROD_DOMAIN/api/health" || rollback
+            curl -sf "https://$PROD_DOMAIN/api/health/deep" | grep -q '"status":"ready"' || rollback
 
-            echo "Deploy ${{ needs.build-and-push.outputs.image_tag }} successful"
+            echo "Deploy $IMAGE_TAG successful"
+          EOF
