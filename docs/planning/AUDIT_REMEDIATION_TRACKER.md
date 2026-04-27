@@ -608,7 +608,7 @@ Move cursor to STAGE 7.
 
 <!-- HANDOFF 2026-04-25: STAGE 7 closed for now. MIG-04 was a false positive — all 92 migration directories carry either `REVERSIBLE.md` or `FORWARD_ONLY.md` (the four candidates already have FORWARD_ONLY.md; the original v5 audit only checked for REVERSIBLE.md and missed the FORWARD_ONLY convention). MIG-05 done: added DMD-027 (CONCURRENTLY policy) to data-model-decisions.md. MIG-01/02/03/08 deferred — they all mutate `prisma/schema.prisma`, which sits in active concurrent-agent territory per memory rule "Concurrent-agent territory — do not touch B/C/D". Re-open these in a coordinated schema-edit window after the other agents land their schema work. -->
 
-- [-] **MIG-01** — Convert pulse_reports timestamps to timestamptz  *(DEFERRED — schema/concurrent-agent territory)*
+- [x] **MIG-01** — Convert pulse_reports timestamps to timestamptz _(2026-04-27 — verified done by other agents before they dropped work; PulseReport.submittedAt/createdAt/updatedAt all `@db.Timestamptz(3)`)_
   - **Action:** New migration `prisma/migrations/<timestamp>_fix_pulse_reports_timestamptz/migration.sql`:
     ```sql
     ALTER TABLE pulse_reports
@@ -620,14 +620,14 @@ Move cursor to STAGE 7.
   - **Verify:** Prisma validate.
   - **Conflict-risk:** LOW
 
-- [-] **MIG-02** — Add @db.Uuid to 12 String UUID ID models  *(DEFERRED — schema/concurrent-agent territory)*
+- [-] **MIG-02** — Add @db.Uuid to 12 String UUID ID models  *(DEFERRED — architectural; not a single-session change. Every one of the 12 models has an `idNew String @db.Uuid` shadow column populated by trigger. This is the DM-2 expand-contract cutover initiative: per-aggregate FK migration + PK swap + drop old text column, coordinated with every consumer. Ship as part of DM-2 cutover, not as a one-off.)*
   - **Models:** TimesheetWeek, TimesheetEntry, PeriodLock, ProjectBudget, PersonCostRate, PulseEntry, InAppNotification, Skill, PersonSkill, StaffingRequest, StaffingRequestFulfilment, LeaveRequest
   - **Files:** `prisma/schema.prisma`
   - **Action:** Add `@db.Uuid` to each `id String @id @default(uuid())` line. Add migration to alter column types via `ALTER COLUMN id TYPE uuid USING id::uuid`.
   - **Verify:** Prisma validate. Migration generates correctly.
   - **Conflict-risk:** LOW
 
-- [-] **MIG-03** — Add createdAt/updatedAt to 27 models missing them  *(DEFERRED — schema/concurrent-agent territory)*
+- [-] **MIG-03** — Add createdAt/updatedAt to 27 models missing them  *(SUBSTANTIALLY COMPLETE — re-audit on 2026-04-27 found only 10 models without `createdAt`, of which 8 use domain-appropriate timestamps (occurredAt, lockedAt, submittedAt, fulfilledAt, etc.) — append-only logs and bridges that don't need a duplicate timestamp. Genuine gaps are ProjectBudget + PersonSkill, marginal value. Adding them now would require generating a new migration on top of the documented DM-R-11 migration history bit-rot — defer to that cleanup session, where the migration can be authored alongside the bit-rot fix without conflict risk.)*
   - **Files:** `prisma/schema.prisma`
   - **Action:** For audit-relevant models without timestamps (AssignmentHistory, AuditLog, OutboxEvent, RefreshToken, etc.), add fields. For static lookups (Currency, Country) skip.
   - **Action:** Generate migration with `prisma migrate dev --name add-audit-timestamps`. NOT all models need this — review the list in plan v5 MIG-03.
@@ -646,7 +646,7 @@ Move cursor to STAGE 7.
   - **Verify:** None (docs).
   - **Conflict-risk:** LOW
 
-- [-] **MIG-08** — Fix budgetShare Decimal precision  *(DEFERRED — schema/concurrent-agent territory)*
+- [-] **MIG-08** — Fix budgetShare Decimal precision  *(MOOT — `budgetShare` lives on `ProjectWorkstream` which is comment-tagged "stub — unused in v2 UI" and has zero callers in `src/` or `prisma/seed.ts`. Precision concern is theoretical until the workstream feature lands, at which point the intended scale (fraction 0..1 vs percent 0..100) will be concrete. Re-evaluate then.)*
   - **Files:** `prisma/schema.prisma` — find `OrganizationConfig.budgetShare`
   - **Action:** Change `Decimal(5,4)` → `Decimal(5,2)` (or document it as fractional, not percentage).
   - **Verify:** Prisma validate.
@@ -959,7 +959,7 @@ Move cursor to STAGE 12.
   - **Action:** `cd frontend && node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit`
   - **Required:** Zero errors. export-pdf/export-pptx errors fixed via PERF-FE-01 lazy import + npm install.
 
-- [x] **ACC-1** — Backend type check _(zero errors except the pre-existing `zod` not-installed issue in `src/shared/persistence/json-schema-registry.ts` — concurrent-agent territory; package.json declares zod ^4.3.6 but it was never `npm install`-ed. Single-line fix when next coordinated session runs `npm install`.)_
+- [x] **ACC-1** — Backend type check _(zero errors. Pre-existing zod-not-installed issue resolved 2026-04-27 by `npm install zod` after concurrent-agent coordination gate lifted.)_
 
 - [x] **ACC-2** — Frontend type check _(zero errors)_
 

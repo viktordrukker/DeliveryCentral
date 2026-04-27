@@ -3,8 +3,15 @@
 #
 # This file is kept as a reference for single-stack standalone use only.
 # The deployed copy serves both prod and staging from one Caddy container
-# via two site blocks. To regenerate the deployed copy, re-run
-# `bash ops/bootstrap-app.sh --refresh-caddy`.
+# via two site blocks.
+#
+# To regenerate the deployed copy without re-running the full bootstrap:
+#   bash ops/bootstrap-app.sh --refresh-caddy
+# This validates the new template inside the Caddy container, replaces the
+# live Caddyfile only if validation passes, and reloads Caddy zero-downtime.
+#
+# In normal flow you don't need to run that manually — the deploy workflow
+# (deploy.yml) does the same thing automatically on every push to main.
 #
 # `rate_limit` requires the mholt/caddy-ratelimit module — the data-stack
 # Dockerfile builds Caddy with it via xcaddy. The base caddy:2.9-alpine

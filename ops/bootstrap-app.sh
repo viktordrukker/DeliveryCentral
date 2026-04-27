@@ -44,6 +44,36 @@ die()  { printf "    ${C_RED}✗ %s${C_OFF}\n" "$*" >&2; exit 1; }
 [ -f "$BASELINE" ] || die "baseline schema missing at $BASELINE — repo not fully checked out?"
 groups | grep -q '\bdocker\b' || die "deploy user is not in the docker group — log out and back in, then re-run"
 
+# --refresh-caddy: re-render the deployed data-stack Caddyfile from the
+# template + reload Caddy without restart. Used when ops/templates/data-stack.Caddyfile
+# changes (security headers, upstream ports, rate limits) and you want the
+# change applied immediately without going through the deploy workflow.
+# Validates the new file inside the Caddy container BEFORE replacing the live
+# copy, so a syntactically broken template never takes down the proxy.
+if [ "${1:-}" = "--refresh-caddy" ]; then
+    step "Refreshing data-stack Caddyfile from template"
+    src="$TEMPLATES/data-stack.Caddyfile"
+    dst="$DATA_DIR/Caddyfile"
+    [ -f "$src" ] || die "template missing at $src"
+    [ -f "$dst" ] || die "deployed Caddyfile missing at $dst — run full bootstrap first"
+    if diff -q "$src" "$dst" >/dev/null 2>&1; then
+        ok "Caddyfile already up to date — nothing to do"
+        exit 0
+    fi
+    docker ps --format '{{.Names}}' | grep -q '^dc-data-caddy-1$' || die "Caddy container 'dc-data-caddy-1' is not running"
+    docker cp "$src" dc-data-caddy-1:/tmp/Caddyfile.new
+    if docker exec dc-data-caddy-1 caddy validate --config /tmp/Caddyfile.new --adapter caddyfile; then
+        cp "$src" "$dst"
+        docker exec dc-data-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+        docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+        ok "Caddy reloaded with new config"
+        exit 0
+    else
+        docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+        die "caddy validate failed on new template — deployed Caddyfile left unchanged"
+    fi
+fi
+
 gen_secret() { openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 48; }
 gen_pw()     { openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24; }
 read_or_gen() {
