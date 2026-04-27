@@ -156,6 +156,38 @@ jobs:
             docker compose -p dc-staging -f docker-compose.prod.yml wait migrate
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral-staging/.current-sha
+
+            # Self-healing Caddy refresh: the data-stack Caddyfile is a copy
+            # made by ops/bootstrap-app.sh at first VM bootstrap and is otherwise
+            # never updated. Without this step, any change to the routing /
+            # security headers / upstream ports in ops/templates/data-stack.Caddyfile
+            # silently does nothing in prod until a human reruns bootstrap.
+            # We validate the new file inside the Caddy container BEFORE replacing
+            # the live copy, so a syntactically broken template never takes down
+            # the proxy.
+            TEMPLATE_PATH=/opt/deliverycentral-staging/ops/templates/data-stack.Caddyfile
+            DEPLOYED_PATH=/opt/deliverycentral-data/Caddyfile
+            if [ ! -f "\$TEMPLATE_PATH" ]; then
+              echo "::warning::Caddy template missing at \$TEMPLATE_PATH — skipping refresh."
+            elif [ ! -f "\$DEPLOYED_PATH" ]; then
+              echo "::warning::Deployed Caddyfile missing at \$DEPLOYED_PATH — skipping refresh (run ops/bootstrap-app.sh once first)."
+            elif diff -q "\$TEMPLATE_PATH" "\$DEPLOYED_PATH" >/dev/null 2>&1; then
+              echo "Caddy template unchanged — no refresh needed"
+            else
+              echo "Caddy template differs from deployed copy — validating + refreshing..."
+              docker cp "\$TEMPLATE_PATH" dc-data-caddy-1:/tmp/Caddyfile.new
+              if docker exec dc-data-caddy-1 caddy validate --config /tmp/Caddyfile.new --adapter caddyfile; then
+                cp "\$TEMPLATE_PATH" "\$DEPLOYED_PATH"
+                docker exec dc-data-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+                echo "✓ Caddy reloaded with new config"
+              else
+                echo "::error::caddy validate FAILED on new template — leaving deployed Caddyfile unchanged"
+                docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+                exit 1
+              fi
+              docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+            fi
+
             sleep 20
             curl -sf "https://$STAGING_DOMAIN/api/health" > /dev/null
             curl -sf "https://$STAGING_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
@@ -288,6 +320,34 @@ jobs:
             docker compose -p dc-prod -f docker-compose.prod.yml wait migrate
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
+
+            # Self-healing Caddy refresh — see same block in deploy-staging for
+            # full rationale. In normal flow staging refreshed already so this
+            # is a diff-clean no-op; in prod-only deploys (workflow_dispatch
+            # target=prod-only) this is the only place the deployed Caddyfile
+            # gets updated.
+            TEMPLATE_PATH=/opt/deliverycentral/ops/templates/data-stack.Caddyfile
+            DEPLOYED_PATH=/opt/deliverycentral-data/Caddyfile
+            if [ ! -f "\$TEMPLATE_PATH" ]; then
+              echo "::warning::Caddy template missing at \$TEMPLATE_PATH — skipping refresh."
+            elif [ ! -f "\$DEPLOYED_PATH" ]; then
+              echo "::warning::Deployed Caddyfile missing at \$DEPLOYED_PATH — skipping refresh (run ops/bootstrap-app.sh once first)."
+            elif diff -q "\$TEMPLATE_PATH" "\$DEPLOYED_PATH" >/dev/null 2>&1; then
+              echo "Caddy template unchanged — no refresh needed"
+            else
+              echo "Caddy template differs from deployed copy — validating + refreshing..."
+              docker cp "\$TEMPLATE_PATH" dc-data-caddy-1:/tmp/Caddyfile.new
+              if docker exec dc-data-caddy-1 caddy validate --config /tmp/Caddyfile.new --adapter caddyfile; then
+                cp "\$TEMPLATE_PATH" "\$DEPLOYED_PATH"
+                docker exec dc-data-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+                echo "✓ Caddy reloaded with new config"
+              else
+                echo "::error::caddy validate FAILED on new template — leaving deployed Caddyfile unchanged"
+                docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+                exit 1
+              fi
+              docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+            fi
 
             sleep 15
             rollback() {
