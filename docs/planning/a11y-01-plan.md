@@ -58,12 +58,30 @@ Before promoting, run the spec against the current build to capture the
 baseline of `serious` violations. That output is the work-list for items
 3.3 + 3.4.
 
-**Run:**
+**Run (in CI, or in a Playwright-clean dev environment):**
 ```bash
-docker compose exec backend npm run test:e2e -- e2e/tests/14-accessibility.spec.ts
-# OR locally if Playwright deps are installed:
-npx playwright test e2e/tests/14-accessibility.spec.ts --reporter=list
+# This is a Playwright UI suite, not a Jest suite — npm run test:e2e is Jest.
+npm run test:e2e:ui -- e2e/tests/14-accessibility.spec.ts --project=chromium --reporter=list
 ```
+
+**Environment requirements (discovered 2026-04-27):** running this from
+the docker dev stack from a developer host requires:
+- `TZ=UTC` (the backend's `start:dev` enforces a UTC precondition via
+  `DM-4-4` and refuses to boot otherwise)
+- The `test-results/playwright/` directory must be writable by the
+  current user (it can end up owned by root after prior CI/docker runs;
+  `sudo chown -R $USER test-results/` clears this)
+- Playwright's `webServer` config in `playwright.config.ts` expects to
+  manage its own backend on `:3000` and frontend on `:4173`. Pointing
+  it at the docker-compose dev stack via `PLAYWRIGHT_BASE_URL` is not
+  enough — the `webServer` block still tries to spawn its own services
+  and trips on the dev DB / TZ / port mismatches.
+
+**Practical recommendation:** run the baseline capture in CI. The
+existing `deploy-staging` flow runs Playwright in a clean container
+where these constraints are already satisfied; adding a `--reporter=json`
+output and capturing it as a CI artifact gives the same baseline data
+without the local-env friction.
 
 **Success:** spec output lists every violation per role dashboard.
 

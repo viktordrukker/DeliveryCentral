@@ -737,7 +737,7 @@ Move cursor to STAGE 8.
   - **Verify:** None.
   - **Conflict-risk:** LOW
 
-- [-] **OBS-03** — Notification retry worker — **scaled-down version**  *(DEFERRED — needs reconstruction of channel/template/adapter from persisted delivery; dedicated session with tests)*
+- [-] **OBS-03** — Notification retry worker — **scaled-down version**  *(DEFERRED — preconditions not met. Re-audited 2026-04-27: the audit text assumed `RETRYING` deliveries persist in the DB awaiting pickup, but `notification-dispatch.service` actually runs all retries inline within one `dispatch()` call (loop bounded by `maxAttempts`). For OBS-03 to have work to do, dispatch needs to be refactored to do **one attempt per call** and return `RETRYING` as a third terminal state — which breaks the current return-type contract `'SUCCEEDED' | 'FAILED'` plus the existing test expectations at `test/notifications/notifications.spec.ts:252-257` that pin loop-completes-in-one-call semantics. Net: not a "scaled-down version", it's a substantive dispatch-service refactor + worker + new return state + spec updates. OBS-04's inline-sleep cap (200ms) already addresses the original "request handler blocked during retry" concern; OBS-03 is now an architectural improvement, not a fix. Re-open when the dispatch contract is revisited.)*
   - **Files:** New: `src/modules/notifications/application/notification-retry.service.ts`
   - **Action:** Single `setInterval` (every **5 minutes**, not 60s) that selects RETRYING deliveries with `nextAttemptAt <= NOW()`, batched at most 25 per tick. Use `app.enableShutdownHooks()` integration so `clearInterval` runs on SIGTERM. Skip if last tick is still running (single in-flight only).
   - **Verify:** TS clean. Memory profile: ≤10 MB.
