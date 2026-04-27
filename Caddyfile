@@ -27,9 +27,13 @@
         max_size 1MB
     }
 
-    # Forward API requests to the backend
+    # Forward API requests to the backend.
+    # 600r/m = 10/s sustained — accommodates the admin / settings pages, which
+    # fan out ~15-20 parallel GETs on load, plus background polls (notification
+    # bell, SSE). The backend's NestJS-level throttler is the precise rate
+    # limit; Caddy's edge limit is first-line DoS protection only.
     handle /api/* {
-        rate_limit {remote.ip} 100r/m
+        rate_limit {remote.ip} 600r/m
         reverse_proxy backend:3000
     }
 

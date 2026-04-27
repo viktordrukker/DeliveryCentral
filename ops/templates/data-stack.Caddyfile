@@ -31,7 +31,11 @@
         rate_limit {
             zone api_prod {
                 key {remote_host}
-                events 100
+                # 600r/m = 10/s sustained — accommodates admin/settings pages
+                # which fan out ~15-20 parallel GETs on load, plus background
+                # polls. Backend NestJS throttler is the precise rate limit;
+                # Caddy's edge limit is first-line DoS protection only.
+                events 600
                 window 1m
             }
         }
@@ -52,7 +56,11 @@
         rate_limit {
             zone api_staging {
                 key {remote_host}
-                events 100
+                # 600r/m = 10/s sustained — accommodates admin/settings pages
+                # which fan out ~15-20 parallel GETs on load, plus background
+                # polls. Backend NestJS throttler is the precise rate limit;
+                # Caddy's edge limit is first-line DoS protection only.
+                events 600
                 window 1m
             }
         }
