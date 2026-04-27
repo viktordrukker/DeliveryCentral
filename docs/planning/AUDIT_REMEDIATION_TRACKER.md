@@ -831,7 +831,7 @@ Move cursor to STAGE 11.
   - **Verify:** Coverage run passes the thresholds (or document baseline if below).
   - **Conflict-risk:** LOW
 
-- [-] **TEST-01 / TEST-06** — Auth module unit tests  *(DEFERRED — substantial new test files; needs dedicated session with real test DB + deterministic otplib/qrcode mocking)*
+- [x] **TEST-01 / TEST-06** — Auth module unit tests _(2026-04-27 — 4 spec files in `test/unit/auth/`: auth.service.spec (15 tests), password.service.spec (15), token.service.spec (10), two-factor.service.spec (9). 49 tests total, all passing. Uses `createPrismaServiceStub` for DB; mocks otplib + qrcode for determinism per audit guidance; bcrypt runs real for cryptographic correctness. Fast suite count: 64 → 113.)_
   - **Files:** New under `test/unit/auth/`:
     - `auth.service.spec.ts` — login (success, locked, no account, dummy hash timing), getMe, listAccounts
     - `token.service.spec.ts` — issueTokenPair, refresh (rotation, expired), revokeRefreshToken
