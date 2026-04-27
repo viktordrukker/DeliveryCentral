@@ -366,7 +366,7 @@ export class StaffingDeskService {
       if (!managerByPerson.has(rl.subjectPersonId)) managerByPerson.set(rl.subjectPersonId, rl.manager.displayName);
     }
 
-    type PersonMeta = { displayName: string; grade: string | null; role: string | null; email: string | null; employmentStatus: string };
+    interface PersonMeta { displayName: string; grade: string | null; role: string | null; email: string | null; employmentStatus: string }
     const peopleById = new Map<string, PersonMeta>();
     for (const p of people) {
       peopleById.set(p.id, { displayName: p.displayName, grade: p.grade, role: p.role, email: p.primaryEmail, employmentStatus: p.employmentStatus });

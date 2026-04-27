@@ -65,7 +65,7 @@ export interface ListStaffingRequestsQuery {
 // from @prisma/client/runtime/library); expose it as `any` here to
 // avoid cross-cutting type wiring at this transitional point. Callers
 // convert via `.toNumber()`.
-type PrismaRecord = {
+interface PrismaRecord {
   allocationPercent: { toNumber(): number };
   cancelledAt: Date | null;
   createdAt: Date;
@@ -84,7 +84,7 @@ type PrismaRecord = {
   status: string;
   summary: string | null;
   updatedAt: Date;
-};
+}
 
 @Injectable()
 export class InMemoryStaffingRequestService {

@@ -225,7 +225,7 @@ export class TimeManagementController {
     });
 
     // Group by person
-    type PersonAcc = { submitted: number; approved: number; rejected: number; draft: number; totalHours: number; otHours: number };
+    interface PersonAcc { submitted: number; approved: number; rejected: number; draft: number; totalHours: number; otHours: number }
     const personAccMap = new Map<string, PersonAcc>();
 
     for (const w of weeks) {

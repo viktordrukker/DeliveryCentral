@@ -148,7 +148,7 @@ export class PlannedVsActualQueryService {
     );
 
     // Group entries by person:project, but also track status breakdown
-    type ActualGroup = {
+    interface ActualGroup {
       assignmentId: string | null;
       entryIds: string[];
       effortHours: number;
@@ -159,7 +159,7 @@ export class PlannedVsActualQueryService {
       latestDate: Date;
       personId: string;
       projectId: string;
-    };
+    }
 
     const actualsByKey = new Map<string, ActualGroup>();
 
@@ -287,11 +287,11 @@ export class PlannedVsActualQueryService {
     };
 
     // ── Per-project summary ──
-    type ProjectAcc = {
+    interface ProjectAcc {
       projectId: string; projectCode: string; projectName: string;
       plannedHours: number; approvedHours: number; submittedHours: number; draftHours: number;
       assignmentCount: number;
-    };
+    }
     const projectAccMap = new Map<string, ProjectAcc>();
 
     for (const a of dbAssignments) {
@@ -420,7 +420,7 @@ export class PlannedVsActualQueryService {
     };
 
     // ── Per-org-unit summary ──
-    type OrgAcc = { orgUnitId: string; orgUnitName: string; personIds: Set<string>; plannedHours: number; approvedHours: number; submittedHours: number; draftHours: number };
+    interface OrgAcc { orgUnitId: string; orgUnitName: string; personIds: Set<string>; plannedHours: number; approvedHours: number; submittedHours: number; draftHours: number }
     const orgAccMap = new Map<string, OrgAcc>();
 
     for (const a of dbAssignments) {
@@ -463,7 +463,7 @@ export class PlannedVsActualQueryService {
     });
 
     // ── Per-resource-pool summary ──
-    type PoolAcc = { poolId: string; poolName: string; personIds: Set<string>; plannedHours: number; approvedHours: number; submittedHours: number; draftHours: number };
+    interface PoolAcc { poolId: string; poolName: string; personIds: Set<string>; plannedHours: number; approvedHours: number; submittedHours: number; draftHours: number }
     const poolAccMap = new Map<string, PoolAcc>();
 
     for (const a of dbAssignments) {

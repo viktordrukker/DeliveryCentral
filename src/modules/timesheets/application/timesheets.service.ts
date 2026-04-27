@@ -263,7 +263,7 @@ export class TimesheetsService {
       query.personId,
     );
 
-    type Acc = { hours: number; standardHours: number; overtimeHours: number; benchHours: number };
+    interface Acc { hours: number; standardHours: number; overtimeHours: number; benchHours: number }
     const byProjectMap = new Map<string, Acc>();
     const byPersonMap = new Map<string, Acc>();
     const byDayMap = new Map<string, number>();

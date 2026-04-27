@@ -188,7 +188,7 @@ export class BenchManagementService {
 
     // PERF-02: index requests by skill once so each bench person only scores requests
     // that share at least one skill, instead of iterating every open request per person.
-    type RequestRecord = { id: string; role: string; skills: string[] };
+    interface RequestRecord { id: string; role: string; skills: string[] }
     const requestsBySkill = new Map<string, RequestRecord[]>();
     for (const req of openRequests) {
       const rec: RequestRecord = { id: req.id, role: req.role, skills: req.skills };

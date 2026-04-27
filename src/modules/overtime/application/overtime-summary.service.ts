@@ -73,8 +73,8 @@ export class OvertimeSummaryService {
     }
 
     // Aggregate per person per week
-    type WeekAcc = { total: number; byProject: Map<string, number> };
-    type PersonAcc = { weekMap: Map<string, WeekAcc>; totalHours: number };
+    interface WeekAcc { total: number; byProject: Map<string, number> }
+    interface PersonAcc { weekMap: Map<string, WeekAcc>; totalHours: number }
     const personAccMap = new Map<string, PersonAcc>();
 
     for (const tw of timesheetWeeks) {

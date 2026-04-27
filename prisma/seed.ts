@@ -190,7 +190,7 @@ async function seedNotificationInfrastructure(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log('Notification infrastructure seeded (email channel + staffing templates).');
 }
 
@@ -327,7 +327,7 @@ async function seedMetadata(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${dictionaries.length} metadata dictionaries, ${entries.length} entries.`);
 }
 
@@ -407,7 +407,7 @@ async function seedFullNotificationInfrastructure(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Notification infrastructure seeded (3 channels + ${templates.length} templates).`);
 }
 
@@ -469,7 +469,7 @@ async function seedPlatformSettings(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${Object.keys(defaults).length} platform settings.`);
 }
 
@@ -538,7 +538,7 @@ async function seedSkills(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${skills.length} skills, ${personSkills.length} person-skill assignments.`);
 }
 
@@ -653,7 +653,7 @@ async function seedTimesheets(): Promise<void> {
     }
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${mondays.length} timesheet weeks each for Ethan Brooks and Lucas Reed.`);
 }
 
@@ -701,7 +701,7 @@ async function seedPulseEntries(): Promise<void> {
     }
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${count} pulse entries for ${people.length} people.`);
 }
 
@@ -763,7 +763,7 @@ async function seedCaseSteps(): Promise<void> {
     }
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${count} case steps for ${cases.length} cases.`);
 }
 
@@ -795,7 +795,7 @@ async function seedInAppNotifications(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${notifications.length} in-app notifications.`);
 }
 
@@ -960,7 +960,7 @@ async function seedPlannerData(): Promise<void> {
   ];
   await createManyInChunks('projectBudget', budgets);
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded planner data: ${rolePlans.length} role plans, ${costRates.length} cost rates, ${budgets.length} budgets.`);
 }
 
@@ -996,7 +996,7 @@ async function seedProjectRisks(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${risks.length} project risks.`);
 }
 
@@ -1100,7 +1100,7 @@ async function seedRagSnapshots(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${snapshots.length} RAG snapshots.`);
 }
 
@@ -1135,7 +1135,7 @@ async function seedProjectMilestones(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${milestones.length} project milestones.`);
 }
 
@@ -1165,7 +1165,7 @@ async function seedProjectChangeRequests(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${crs.length} change requests.`);
 }
 
@@ -1217,7 +1217,7 @@ async function seedBudgetEvmData(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded EVM data for ${evm.length} budgets and radiator fields for ${projectUpdates.length} projects.`);
 }
 
@@ -1236,7 +1236,7 @@ async function seedRadiatorThresholds(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${thresholds.length} custom radiator threshold configs.`);
 }
 
@@ -1249,7 +1249,7 @@ async function seedRadiatorOverrides(): Promise<void> {
   });
 
   if (latestSnapshots.length === 0) {
-    // eslint-disable-next-line no-console
+     
     console.log('No snapshot found for override seeding; skipping.');
     return;
   }
@@ -1271,7 +1271,7 @@ async function seedRadiatorOverrides(): Promise<void> {
     create: override,
   });
 
-  // eslint-disable-next-line no-console
+   
   console.log('Seeded 1 radiator override.');
 }
 
@@ -1324,7 +1324,7 @@ async function seedPhase2Cases(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Seeded ${cases.length} phase2 cases.`);
 }
 
@@ -1344,7 +1344,7 @@ async function seedPhase2Accounts(): Promise<void> {
   for (const account of accounts) {
     const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
     if (existing) {
-      // eslint-disable-next-line no-console
+       
       console.log(`Account already exists, skipping: ${account.email}`);
       continue;
     }
@@ -1364,7 +1364,7 @@ async function seedPhase2Accounts(): Promise<void> {
       },
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log(`Phase 2 account seeded: ${account.email} [${account.roles.join(', ')}]`);
   }
 }
@@ -1382,7 +1382,7 @@ async function seedLifeDemoAccounts(): Promise<void> {
   for (const account of extraAccounts) {
     const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
     if (existing) {
-      // eslint-disable-next-line no-console
+       
       console.log(`Account already exists, skipping: ${account.email}`);
       continue;
     }
@@ -1402,7 +1402,7 @@ async function seedLifeDemoAccounts(): Promise<void> {
       },
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log(`Life demo account seeded: ${account.email} [${account.roles.join(', ')}]`);
   }
 }
@@ -1422,7 +1422,7 @@ async function seedInvestorDemoAccounts(): Promise<void> {
   for (const account of accounts) {
     const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
     if (existing) {
-      // eslint-disable-next-line no-console
+       
       console.log(`Account already exists, skipping: ${account.email}`);
       continue;
     }
@@ -1442,7 +1442,7 @@ async function seedInvestorDemoAccounts(): Promise<void> {
       },
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log(`Investor demo account seeded: ${account.email} [${account.roles.join(', ')}]`);
   }
 }
@@ -1455,7 +1455,7 @@ async function seedSuperadmin(): Promise<void> {
   const existing = await prisma.localAccount.findUnique({ where: { email } });
 
   if (existing) {
-    // eslint-disable-next-line no-console
+     
     console.log(`Superadmin account already exists: ${email}`);
     return;
   }
@@ -1492,7 +1492,7 @@ async function seedSuperadmin(): Promise<void> {
     },
   });
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Superadmin seeded: ${email}`);
 }
 
@@ -1546,7 +1546,7 @@ async function seedCaseStepsForRealistic(): Promise<void> {
       });
     }
   }
-  // eslint-disable-next-line no-console
+   
   console.log(`  Case steps: ${count} steps for ${realisticCases.length} cases`);
 }
 
@@ -1600,7 +1600,7 @@ async function seedRealisticPersonSkills(): Promise<void> {
       }
     }
   }
-  // eslint-disable-next-line no-console
+   
   console.log(`  Person skills: ${count} assignments`);
 }
 
@@ -1624,7 +1624,7 @@ async function seedRealisticAccounts(): Promise<void> {
   for (const account of realisticAccounts) {
     const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
     if (existing) {
-      // eslint-disable-next-line no-console
+       
       console.log(`  Account already exists, skipping: ${account.email}`);
       continue;
     }
@@ -1644,7 +1644,7 @@ async function seedRealisticAccounts(): Promise<void> {
       },
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log(`  Account seeded: ${account.email} [${account.roles.join(', ')}]`);
   }
 }
@@ -1716,7 +1716,7 @@ async function main(): Promise<void> {
       workEvidenceSources: demoWorkEvidenceSources,
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log('Demo dataset seeded.', demoDatasetSummary);
     await seedSuperadmin();
     await seedNotificationInfrastructure();
@@ -1745,7 +1745,7 @@ async function main(): Promise<void> {
       workEvidenceSources: bankScaleDataset.workEvidenceSources,
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log('Bank-scale dataset seeded.', bankScaleProfileSummary);
     await seedSuperadmin();
     await seedNotificationInfrastructure();
@@ -1794,7 +1794,7 @@ async function main(): Promise<void> {
     await seedRagSnapshots();
     await seedRadiatorOverrides();
 
-    // eslint-disable-next-line no-console
+     
     console.log('Phase 2 dataset seeded.', phase2DatasetSummary);
     await seedSuperadmin();
     await seedPhase2Accounts();
@@ -1825,7 +1825,7 @@ async function main(): Promise<void> {
 
     await seedCaseTypes();
 
-    // eslint-disable-next-line no-console
+     
     console.log('Life demo dataset seeded.', lifeDemoDatasetSummary);
     await seedSuperadmin();
     await seedLifeDemoAccounts();
@@ -1862,7 +1862,7 @@ async function main(): Promise<void> {
     await seedPlatformSettings();
     await seedSkills();
 
-    // eslint-disable-next-line no-console
+     
     console.log('Investor demo dataset seeded.', idDatasetSummary);
     await seedSuperadmin();
     await seedInvestorDemoAccounts();
@@ -1948,7 +1948,7 @@ async function main(): Promise<void> {
     // Assign skills to key people
     await seedRealisticPersonSkills();
 
-    // eslint-disable-next-line no-console
+     
     console.log(`${profile === 'enterprise' ? 'Enterprise' : 'Realistic'} dataset seeded.`, realisticDatasetSummary);
     console.log(`  Timesheets: ${weeks.length} weeks, ${entries.length} entries`);
     console.log(`  Pulse entries: ${pulseEntries.length}`);
@@ -1974,14 +1974,14 @@ async function main(): Promise<void> {
 // transaction wrap was intended to provide.
 main()
   .catch(async (error: unknown) => {
-    // eslint-disable-next-line no-console
+     
     console.error('Seed failed — rolling back to empty state via clearExistingData().', error);
     try {
       await clearExistingData();
-      // eslint-disable-next-line no-console
+       
       console.error('DM-R-10: rollback complete. DB is empty.');
     } catch (rollbackError) {
-      // eslint-disable-next-line no-console
+       
       console.error('DM-R-10: rollback ALSO failed; DB may be partially seeded.', rollbackError);
     }
     process.exitCode = 1;
