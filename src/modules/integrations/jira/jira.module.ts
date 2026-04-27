@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { InMemoryExternalSyncStateRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-external-sync-state.repository';
 import { InMemoryProjectExternalLinkRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project-external-link.repository';

@@ -1,15 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEnum,
-  
-  IsDateString,
-  
-  
-  Matches,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
 export class CreateReportingLineRequestDto {
   @ApiProperty()

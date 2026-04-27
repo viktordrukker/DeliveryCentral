@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { AppConfig } from '@src/shared/config/app-config';
-import { isPlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
 export interface JwtAccessPayload {
   sub: string;

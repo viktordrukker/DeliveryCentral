@@ -69,7 +69,6 @@ export class ProjectTimelineService {
     }
     const endDate = new Date(startDate);
     endDate.setUTCDate(endDate.getUTCDate() + weekCount * 7);
-    const endDateStr = endDate.toISOString().slice(0, 10);
 
     // Resolve person scope for pool filter
     let personScope: Set<string> | null = null;

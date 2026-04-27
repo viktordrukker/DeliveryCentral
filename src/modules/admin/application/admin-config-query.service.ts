@@ -10,7 +10,6 @@ import { AppConfig } from '@src/shared/config/app-config';
 
 import {
   AdminConfigDictionarySummaryDto,
-  AdminConfigIntegrationDto,
   AdminConfigResponseDto,
   AdminConfigSystemFlagDto,
   AdminIntegrationsResponseDto,

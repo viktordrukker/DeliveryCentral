@@ -27,7 +27,10 @@ export class FetchTeamsWebhookTransport implements TeamsWebhookTransport {
     });
 
     if (!response.ok) {
-      const body = await response.text();
+      // Drain the body so the connection can be reused; we don't surface the
+      // remote error message into the failure today (Teams returns generic
+      // strings) but the read avoids leaking the response stream.
+      await response.text();
       const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
       throw new NotificationDeliveryFailure(
         retryable ? 'Teams webhook delivery temporarily failed.' : 'Teams webhook delivery failed.',

@@ -174,9 +174,6 @@ export class TimeManagementController {
       select: { personId: true, startDate: true, endDate: true, type: true },
     });
 
-    // Get holidays
-    const holidays = await this.holidayService.getHolidayDatesForMonth(year, month);
-
     // Group by person
     const personMap = new Map<string, TeamCalendarDay[]>();
     for (const lr of leaves) {

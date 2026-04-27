@@ -62,7 +62,11 @@ export class PasswordService {
       data: { accountId: account.id, tokenHash, expiresAt },
     });
 
-    const resetLink = `${this.appConfig.corsOrigin}/reset-password?token=${tokenRaw}`;
+    // Reset link is the future shape of the email body — kept out-of-band as
+    // a string here so the integration in the notifications module is a single
+    // string substitution. Prefix `_` keeps the lint rule happy until then.
+    const _resetLink = `${this.appConfig.corsOrigin}/reset-password?token=${tokenRaw}`;
+    void _resetLink;
 
     if (this.appConfig.smtpEnabled) {
       // TODO: integrate notifications module for email delivery

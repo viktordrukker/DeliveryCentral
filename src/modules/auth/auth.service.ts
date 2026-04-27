@@ -6,7 +6,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { isPlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
 import { TokenService } from './token.service';
-import type { TokenPair } from './token.service';
 import type { MeDto } from './dto/me.dto';
 
 // Pre-computed bcrypt hash of a dummy password — used for constant-time login to prevent email enumeration.

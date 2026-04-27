@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
 import { WorkloadDashboardQueryService } from './workload-dashboard-query.service';
-import { RoleDashboardResponseDto, RoleDashboardSectionDto } from './contracts/role-dashboard.dto';
+import { RoleDashboardResponseDto } from './contracts/role-dashboard.dto';
 
 type SupportedDashboardRole =
   | 'employee'

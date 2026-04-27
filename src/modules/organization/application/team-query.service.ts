@@ -15,7 +15,7 @@ import {
   TeamSummaryDto,
 } from './contracts/team.dto';
 import { PersonDirectoryQueryService } from './person-directory-query.service';
-import { InMemoryTeamStore, getDefaultInMemoryTeamStore } from './in-memory-team.store';
+import { getDefaultInMemoryTeamStore } from './in-memory-team.store';
 import { TeamStorePort } from './team-store.port';
 
 @Injectable()

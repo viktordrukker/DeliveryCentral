@@ -758,9 +758,6 @@ const projects: ProjectDef[] = [
   },
 ];
 
-// All billable ICs that can be assigned
-const allBillableIcs = [...engIcIds, ...dataIcIds, ...conIcIds, ...advIcIds];
-
 // ---------------------------------------------------------------------------
 // ASSIGNMENTS — realistic staffing across projects
 // ---------------------------------------------------------------------------

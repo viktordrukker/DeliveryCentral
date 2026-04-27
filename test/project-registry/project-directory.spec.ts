@@ -5,7 +5,6 @@ import request from 'supertest';
 import { AppModule } from '@src/app.module';
 import { GetProjectByIdService } from '@src/modules/project-registry/application/get-project-by-id.service';
 import { ProjectDirectoryQueryService } from '@src/modules/project-registry/application/project-directory-query.service';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { demoProjectExternalLinks } from '../../prisma/seeds/demo-dataset';
 import { ProjectExternalLink } from '@src/modules/project-registry/domain/entities/project-external-link.entity';
 import { ExternalProjectKey } from '@src/modules/project-registry/domain/value-objects/external-project-key';

@@ -64,7 +64,6 @@ export class StaffingSuggestionsService {
 
     if (matchingSkills.length === 0) return [];
 
-    const skillIdToName = new Map(matchingSkills.map((s) => [s.id, s.name.toLowerCase()]));
     const skillIds = matchingSkills.map((s) => s.id);
 
     // Find person skills matching any required skill

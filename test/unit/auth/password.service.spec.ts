@@ -3,7 +3,6 @@ import * as bcrypt from 'bcrypt';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 
 import { AppConfig } from '@src/shared/config/app-config';
-import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { PasswordService } from '@src/modules/auth/password.service';
 
 import { createPrismaServiceStub } from '../../helpers/db/mock-prisma-client';

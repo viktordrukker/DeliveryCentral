@@ -157,7 +157,7 @@ function encodeBase64Url(value: string): string {
 function decodeJson<T>(value: string): T {
   try {
     return JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as T;
-  } catch (error) {
+  } catch {
     throw new Error('Token payload is malformed.');
   }
 }

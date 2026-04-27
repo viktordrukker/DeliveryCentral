@@ -31,7 +31,9 @@ export async function runUatDashboardsScenario(
   const happyPathResult = await runUatHappyPathStaffingScenario(client, {
     skipNotificationChecks: true,
   });
-  const anomalyResult = await runUatStaffingAnomaliesScenario(client, {
+  // Run-only — return value isn't asserted; the scenario's side effects on
+  // the test DB are what subsequent assertions depend on.
+  await runUatStaffingAnomaliesScenario(client, {
     expectM365Failure: false,
   });
 

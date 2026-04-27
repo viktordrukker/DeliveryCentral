@@ -1316,7 +1316,6 @@ export class WorkforcePlannerService {
     }
 
     const currentValidToDate = assignment.validTo ?? assignment.validFrom;
-    const currentValidToStr = currentValidToDate.toISOString().slice(0, 10);
     const newValidToDate = new Date(request.newValidTo);
     const conflicts: ExtensionConflict[] = [];
 

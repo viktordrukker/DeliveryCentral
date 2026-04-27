@@ -84,7 +84,6 @@ export class BenchManagementService {
     weeks?: number;
   }): Promise<BenchDashboardResponseDto> {
     const now = new Date();
-    const nowStr = now.toISOString().slice(0, 10);
     const weeksAhead = params.weeks ?? 12;
 
     // Resolve person scope

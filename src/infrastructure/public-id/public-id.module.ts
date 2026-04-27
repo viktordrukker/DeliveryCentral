@@ -3,7 +3,6 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { PublicIdBootstrapService } from './public-id-bootstrap.service';
 import {
-  DEFAULT_PUBLIC_ID_SERIALIZER_CONFIG,
   PUBLIC_ID_SERIALIZER_CONFIG,
   PublicIdSerializerConfig,
 } from './public-id-serializer.config';
