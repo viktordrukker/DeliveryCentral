@@ -83,7 +83,9 @@ function mapAssignmentStatus(value: string): AssignmentStatus {
     case 'ARCHIVED':
       return AssignmentStatus.cancelled();
     default:
-      return AssignmentStatus.created();
+      // DATA-08: surface data-corruption rather than silently coerce. Unknown enum values
+      // indicate a schema/migration drift that callers must investigate.
+      throw new Error(`Unmapped legacy assignment status from DB: '${value}'`);
   }
 }
 
@@ -99,7 +101,8 @@ function mapApprovalDecision(value: string): ApprovalState {
     case 'REQUESTED':
       return ApprovalState.requested();
     default:
-      return ApprovalState.requested();
+      // DATA-08: see above — throw on unknown rather than coerce silently.
+      throw new Error(`Unmapped approval decision from DB: '${value}'`);
   }
 }
 

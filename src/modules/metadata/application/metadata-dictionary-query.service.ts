@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { MetadataDictionaryRepositoryPort } from '../domain/repositories/metadata-dictionary-repository.port';
@@ -126,7 +126,7 @@ export class MetadataDictionaryQueryService {
     const dictionary = await this.metadataDictionaryRepository.findById(id);
 
     if (!dictionary) {
-      throw new Error(`Metadata dictionary not found for id ${id}.`);
+      throw new NotFoundException(`Metadata dictionary not found for id ${id}.`);
     }
 
     const entries = await this.metadataEntryRepository.findByDictionaryId(id);

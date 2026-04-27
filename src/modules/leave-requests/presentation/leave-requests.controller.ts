@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -27,6 +28,7 @@ export class LeaveRequestsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Submit a leave request' })
   @ApiCreatedResponse({ description: 'Created leave request' })
   public async create(
@@ -38,6 +40,7 @@ export class LeaveRequestsController {
   }
 
   @Get('my')
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get own leave requests' })
   @ApiOkResponse({ description: 'Own leave requests' })
   public async getMy(
@@ -64,7 +67,7 @@ export class LeaveRequestsController {
   @ApiOkResponse({ description: 'Approved leave request' })
   @RequireRoles('hr_manager', 'director', 'admin')
   public async approve(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<LeaveRequestDto> {
     const reviewerId = this.resolvePersonId(req);
@@ -77,7 +80,7 @@ export class LeaveRequestsController {
   @ApiOkResponse({ description: 'Rejected leave request' })
   @RequireRoles('hr_manager', 'director', 'admin')
   public async reject(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<LeaveRequestDto> {
     const reviewerId = this.resolvePersonId(req);

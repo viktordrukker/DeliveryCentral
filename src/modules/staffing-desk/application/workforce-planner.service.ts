@@ -433,9 +433,10 @@ export class WorkforcePlannerService {
         // Assignments overlapping this week
         const weekAssignments: PlannerAssignmentBlock[] = [];
         for (const a of projAssignments) {
+          // DATE-02: open-ended assignments use null instead of a 9999 sentinel.
           const aStart = a.validFrom.toISOString().slice(0, 10);
-          const aEnd = a.validTo ? a.validTo.toISOString().slice(0, 10) : '9999-12-31';
-          if (aStart <= weekEnd && aEnd >= ws) {
+          const aEnd = a.validTo ? a.validTo.toISOString().slice(0, 10) : null;
+          if (aStart <= weekEnd && (aEnd === null || aEnd >= ws)) {
             const alloc = a.allocationPercent?.toNumber() ?? 0;
             const rate = costByPerson.get(a.personId);
             weekAssignments.push({
@@ -478,9 +479,12 @@ export class WorkforcePlannerService {
         // Then: role plans not covered by requests
         for (const rp of projRolePlans) {
           if (coveredRoles.has(rp.roleName.toLowerCase())) continue;
+          // DATE-02: open-ended role plans use null. The fallback start date
+          // (0000-01-01) is a valid lexicographic minimum used only when both
+          // the role plan start and the project start are unset.
           const rpStart = rp.plannedStartDate ? rp.plannedStartDate.toISOString().slice(0, 10) : (proj.startsOn?.toISOString().slice(0, 10) ?? '0000-01-01');
-          const rpEnd = rp.plannedEndDate ? rp.plannedEndDate.toISOString().slice(0, 10) : '9999-12-31';
-          if (rpStart <= weekEnd && rpEnd >= ws) {
+          const rpEnd = rp.plannedEndDate ? rp.plannedEndDate.toISOString().slice(0, 10) : null;
+          if (rpStart <= weekEnd && (rpEnd === null || rpEnd >= ws)) {
             // Count how many assignments match this role
             const matchedCount = weekAssignments.filter((a) => a.staffingRole.toLowerCase() === rp.roleName.toLowerCase()).length;
             const openHc = Math.max(0, rp.headcount - matchedCount);

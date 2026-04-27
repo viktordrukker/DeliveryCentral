@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
@@ -28,7 +28,7 @@ export class DeliveryManagerDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Delivery manager dashboard asOf is invalid.');
+      throw new BadRequestException('Delivery manager dashboard asOf is invalid.');
     }
 
     const settings = await this.platformSettingsService.getAll();

@@ -42,6 +42,10 @@ export class TimesheetRepository {
     id: string,
     data: Prisma.TimesheetWeekUpdateInput,
   ): Promise<TimesheetWeekWithEntries> {
+    // FIXME(DATA-06): TimesheetWeek has a version field but updates don't use optimistic locking.
+    // Compare with prisma-project-assignment.repository.ts:228 — the right pattern is updateMany
+    // with `where: { id, version: aggregate.version }` + throw on count == 0. Apply once callers
+    // are refactored to thread the current version through (currently service mutates by id only).
     return this.prisma.timesheetWeek.update({
       where: { id },
       data,

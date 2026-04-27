@@ -6,6 +6,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { StaffingRequestPriority, createStaffingRequest, submitStaffingRequest } from '@/lib/api/staffing-requests';
 
 interface FormValues {
@@ -42,6 +43,17 @@ export function CreateStaffingRequestPage(): JSX.Element {
   }));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // FE-03: priority/allocation/headcount have non-empty defaults; only treat the
+  // form as dirty once the user has supplied something we can't infer.
+  const isDirty =
+    values.role.trim() !== '' ||
+    values.startDate !== '' ||
+    values.endDate !== '' ||
+    values.skills.trim() !== '' ||
+    values.summary.trim() !== '' ||
+    // projectId is dirty only if it differs from the URL-prefilled value
+    values.projectId !== (searchParams.get('projectId') ?? '');
+  useUnsavedChangesWarning(isDirty);
 
   function handleChange(field: keyof FormValues, value: string): void {
     setValues((prev) => ({ ...prev, [field]: value }));

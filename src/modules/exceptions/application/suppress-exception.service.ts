@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { ExceptionResolutionRecord, ExceptionResolutionStore } from '../domain/exception-resolution.store';
 import { ExceptionQueueQueryService } from './exception-queue-query.service';
@@ -18,14 +18,14 @@ export class SuppressExceptionService {
 
   public async execute(command: SuppressExceptionCommand): Promise<ExceptionResolutionRecord> {
     if (!command.reason || command.reason.trim().length === 0) {
-      throw new Error('A suppression reason is required.');
+      throw new BadRequestException('A suppression reason is required.');
     }
 
     const queue = await this.exceptionQueueQueryService.getQueue({});
     const exists = queue.items.some((item) => item.id === command.exceptionId);
 
     if (!exists && !this.resolutionStore.isResolved(command.exceptionId)) {
-      throw new Error('Exception not found.');
+      throw new NotFoundException('Exception not found.');
     }
 
     return this.resolutionStore.suppress(

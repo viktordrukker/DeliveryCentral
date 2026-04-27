@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AssignmentHistory } from '../domain/entities/assignment-history.entity';
 import { AssignmentId } from '../domain/value-objects/assignment-id';
@@ -19,7 +19,7 @@ export class RevokeProjectAssignmentService {
     const assignment = await this.repository.findByAssignmentId(id);
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     assignment.revoke(command.reason);

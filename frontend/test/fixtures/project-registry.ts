@@ -22,8 +22,10 @@ export function buildProjectDirectoryItem(
 export function buildProjectDirectoryResponse(
   overrides: Partial<ProjectDirectoryResponse> = {},
 ): ProjectDirectoryResponse {
+  const items = overrides.items ?? [buildProjectDirectoryItem()];
   return {
-    items: overrides.items ?? [buildProjectDirectoryItem()],
+    items,
+    totalCount: overrides.totalCount ?? items.length,
   };
 }
 

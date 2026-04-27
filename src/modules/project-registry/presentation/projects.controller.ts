@@ -73,6 +73,7 @@ export class ProjectsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Create an internal project with charter fields' })
   @ApiCreatedResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project manager not found.' })
@@ -86,6 +87,7 @@ export class ProjectsController {
 
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Activate a draft internal project' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -238,6 +240,7 @@ export class ProjectsController {
   }
 
   @Get(':id/health')
+  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get composite health score for a project (0-100)' })
   @ApiOkResponse({ description: 'Project health score and grade.' })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -252,8 +255,11 @@ export class ProjectsController {
   }
 
   @Get()
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List internal projects with external link summaries' })
   @ApiQuery({ name: 'source', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiOkResponse({ type: ProjectDirectoryResponseDto })
   public async listProjects(
     @Query() query: ProjectDirectoryQueryDto,
@@ -262,6 +268,7 @@ export class ProjectsController {
   }
 
   @Get(':id/dashboard')
+  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get project dashboard: staffing, evidence by week, allocation by person' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   public async getProjectDashboard(
@@ -282,6 +289,7 @@ export class ProjectsController {
   }
 
   @Get(':id')
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get an internal project by id with external link details' })
   @ApiOkResponse({ type: ProjectDetailsDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })

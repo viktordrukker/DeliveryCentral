@@ -14,12 +14,20 @@ export interface AssignmentFilters {
   project: string;
   status: string;
   to: string;
+  // FE-04: optional pagination. The backend already accepts page/pageSize and
+  // returns totalCount. Callers that omit them get the full result set.
+  page?: number;
+  pageSize?: number;
 }
 
 interface AssignmentsState extends QueryState<AssignmentDirectoryResponse> {
   totalCount: number;
   visibleItems: AssignmentDirectoryItem[];
+  page: number;
+  pageSize: number;
 }
+
+const DEFAULT_PAGE_SIZE = 50;
 
 export function useAssignments(filters: AssignmentFilters): AssignmentsState {
   const [state, setState] = useState<QueryState<AssignmentDirectoryResponse>>({
@@ -35,6 +43,8 @@ export function useAssignments(filters: AssignmentFilters): AssignmentsState {
       personId: filters.personId || undefined,
       status: filters.status || undefined,
       to: filters.to || undefined,
+      page: filters.page,
+      pageSize: filters.pageSize,
     })
       .then((data) => {
         if (!active) {
@@ -60,7 +70,7 @@ export function useAssignments(filters: AssignmentFilters): AssignmentsState {
     return () => {
       active = false;
     };
-  }, [filters.from, filters.personId, filters.status, filters.to]);
+  }, [filters.from, filters.personId, filters.status, filters.to, filters.page, filters.pageSize]);
 
   const visibleItems = useMemo(() => {
     const items = state.data?.items ?? [];
@@ -81,5 +91,7 @@ export function useAssignments(filters: AssignmentFilters): AssignmentsState {
     ...state,
     totalCount: state.data?.totalCount ?? 0,
     visibleItems,
+    page: filters.page ?? 1,
+    pageSize: filters.pageSize ?? DEFAULT_PAGE_SIZE,
   };
 }

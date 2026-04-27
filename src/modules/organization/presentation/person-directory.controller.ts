@@ -8,6 +8,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { CreateEmployeeRequestDto } from '../application/contracts/create-employee.request';
@@ -69,7 +71,7 @@ export class PersonDirectoryController {
   @ApiOkResponse({ type: EmployeeResponseDto })
   @ApiNotFoundResponse({ description: 'Employee not found.' })
   @RequireRoles('hr_manager', 'director', 'admin')
-  public async deactivateEmployee(@Param('id') id: string): Promise<EmployeeResponseDto> {
+  public async deactivateEmployee(@Param('id', ParseUUIDPipe) id: string): Promise<EmployeeResponseDto> {
     return this.mapEmployeeResponse(
       await this.withEmployeeErrors(() => this.deactivateEmployeeService.execute(id)),
     );
@@ -82,7 +84,7 @@ export class PersonDirectoryController {
   @ApiNotFoundResponse({ description: 'Employee not found.' })
   @RequireRoles('hr_manager', 'director', 'admin')
   public async terminateEmployee(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TerminatePersonRequestDto,
   ): Promise<EmployeeResponseDto> {
     return this.mapEmployeeResponse(
@@ -98,6 +100,7 @@ export class PersonDirectoryController {
   }
 
   @Get()
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List people for workload and org visibility' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
@@ -131,10 +134,12 @@ export class PersonDirectoryController {
   }
 
   @Get(':id')
+  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get a person directory record by id' })
   @ApiOkResponse({ type: PersonDirectoryItemDto })
   @ApiNotFoundResponse({ description: 'Person not found.' })
-  public async getPersonById(@Param('id') id: string): Promise<PersonDirectoryItemDto> {
+  public async getPersonById(@Param('id', ParseUUIDPipe) id: string): Promise<PersonDirectoryItemDto> {
     const person = await this.personDirectoryQueryService.getPersonById(id);
 
     if (!person) {
@@ -145,10 +150,12 @@ export class PersonDirectoryController {
   }
 
   @Get(':id/activity')
+  @RequireRoles('hr_manager', 'director', 'admin')
+  @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get employee activity feed (lifecycle events)' })
   @ApiOkResponse({ description: 'Activity events for the person.' })
   public async getPersonActivity(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query('limit') limit?: string,
   ): Promise<EmployeeActivityEventDto[]> {
     return this.employeeActivityService.listByPerson(id, limit ? parseInt(limit, 10) : 50);

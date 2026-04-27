@@ -13,6 +13,7 @@ export class CreateAccountRequestDto {
   @ApiProperty()
   @IsEmail()
   @IsNotEmpty()
+  @MaxLength(254) // EMAIL-01 — RFC 5321 maximum email address length.
   public email!: string;
 
   @ApiProperty()

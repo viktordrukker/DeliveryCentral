@@ -9,7 +9,24 @@
 #
 # All upstreams resolve via the shared `dc-shared` Docker bridge network.
 
+# INFRA-06: edge security headers and 1 MB body cap apply to both site blocks.
+# INFRA-08: frontend nginx now listens on unprivileged 8080.
+(security_baseline) {
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+    request_body {
+        max_size 1MB
+    }
+}
+
 {$PROD_DOMAIN} {
+    import security_baseline
     handle /api/* {
         rate_limit {
             zone api_prod {
@@ -21,7 +38,7 @@
         reverse_proxy dc-prod-backend-1:3000
     }
     handle {
-        reverse_proxy dc-prod-frontend-1:80
+        reverse_proxy dc-prod-frontend-1:8080
     }
     log {
         output stdout
@@ -30,6 +47,7 @@
 }
 
 {$STAGING_DOMAIN} {
+    import security_baseline
     handle /api/* {
         rate_limit {
             zone api_staging {
@@ -41,7 +59,7 @@
         reverse_proxy dc-staging-backend-1:3000
     }
     handle {
-        reverse_proxy dc-staging-frontend-1:80
+        reverse_proxy dc-staging-frontend-1:8080
     }
     log {
         output stdout

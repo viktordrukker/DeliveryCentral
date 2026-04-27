@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
@@ -35,44 +35,44 @@ export class CreateProjectService {
 
   public async execute(input: CreateProjectInput): Promise<Project> {
     if (this.personRepository && !input.startDate) {
-      throw new Error('Project start date is required.');
+      throw new BadRequestException('Project start date is required.');
     }
 
     if (!input.projectManagerId && this.personRepository) {
-      throw new Error('Project manager is required.');
+      throw new BadRequestException('Project manager is required.');
     }
 
     const startDate = input.startDate ? new Date(input.startDate) : undefined;
     const plannedEndDate = input.plannedEndDate ? new Date(input.plannedEndDate) : undefined;
     if (startDate && Number.isNaN(startDate.getTime())) {
-      throw new Error('Project start date is invalid.');
+      throw new BadRequestException('Project start date is invalid.');
     }
 
     if (plannedEndDate && Number.isNaN(plannedEndDate.getTime())) {
-      throw new Error('Project planned end date is invalid.');
+      throw new BadRequestException('Project planned end date is invalid.');
     }
 
     if (plannedEndDate && startDate && plannedEndDate < startDate) {
-      throw new Error('Project planned end date must be on or after the start date.');
+      throw new BadRequestException('Project planned end date must be on or after the start date.');
     }
 
     if (input.projectManagerId) {
       if (!this.personRepository) {
-        throw new Error('Project manager validation is unavailable.');
+        throw new InternalServerErrorException('Project manager validation is unavailable.');
       }
 
       const manager = await this.personRepository.findByPersonId(
         PersonId.from(input.projectManagerId),
       );
       if (!manager) {
-        throw new Error('Project manager does not exist.');
+        throw new NotFoundException('Project manager does not exist.');
       }
     }
 
     const projectCode = input.projectCode ?? this.generateProjectCode();
     const existing = await this.projectRepository.findByProjectCode(projectCode);
     if (existing) {
-      throw new Error('Project code already exists.');
+      throw new ConflictException('Project code already exists.');
     }
 
     const project = Project.create({

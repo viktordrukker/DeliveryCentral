@@ -84,9 +84,10 @@ export class PeopleThreeSixtyService {
       weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
       let total = 0;
       for (const a of assignments) {
+        // DATE-02: open-ended assignments (validTo === null) are treated as
+        // overlapping any week from validFrom onwards. No 2099 sentinel.
         const aStart = new Date(a.validFrom);
-        const aEnd = a.validTo ? new Date(a.validTo) : new Date('2099-12-31');
-        if (aStart <= weekEnd && aEnd >= d) {
+        if (aStart <= weekEnd && (a.validTo === null || new Date(a.validTo) >= d)) {
           total += Number(a.allocationPercent);
         }
       }

@@ -24,6 +24,9 @@ export interface ProjectDirectoryItem {
 
 export interface ProjectDirectoryResponse {
   items: ProjectDirectoryItem[];
+  // FE-04: total matching the filter (before pagination). The server always
+  // populates this; the optional marker is for back-compat with older fixtures.
+  totalCount?: number;
 }
 
 export interface ProjectExternalLink {
@@ -147,6 +150,8 @@ export interface ProjectDirectoryQuery {
   source?: string;
   status?: string;
   search?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export async function fetchProjectDirectory(
@@ -164,6 +169,14 @@ export async function fetchProjectDirectory(
 
   if (query.search) {
     params.set('search', query.search);
+  }
+
+  if (query.page !== undefined) {
+    params.set('page', String(query.page));
+  }
+
+  if (query.pageSize !== undefined) {
+    params.set('pageSize', String(query.pageSize));
   }
 
   const suffix = params.toString();

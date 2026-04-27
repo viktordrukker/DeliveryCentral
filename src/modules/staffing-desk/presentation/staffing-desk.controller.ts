@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -182,7 +182,7 @@ export class StaffingDeskController {
 
   @Get('planner/scenarios/:id')
   @ApiOperation({ summary: 'Load a scenario including its serialized simulation state' })
-  public async getScenario(@Param('id') id: string): Promise<PlannerScenarioDetailDto> {
+  public async getScenario(@Param('id', ParseUUIDPipe) id: string): Promise<PlannerScenarioDetailDto> {
     return this.plannerScenarioService.get(id);
   }
 
@@ -194,13 +194,13 @@ export class StaffingDeskController {
 
   @Patch('planner/scenarios/:id')
   @ApiOperation({ summary: 'Update an existing scenario (name, state, summary counts)' })
-  public async updateScenario(@Param('id') id: string, @Body() dto: UpdatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
+  public async updateScenario(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
     return this.plannerScenarioService.update(id, dto);
   }
 
   @Delete('planner/scenarios/:id')
   @ApiOperation({ summary: 'Archive a scenario (soft delete)' })
-  public async archiveScenario(@Param('id') id: string): Promise<{ archived: boolean }> {
+  public async archiveScenario(@Param('id', ParseUUIDPipe) id: string): Promise<{ archived: boolean }> {
     return this.plannerScenarioService.archive(id);
   }
 

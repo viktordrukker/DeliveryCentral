@@ -159,8 +159,10 @@ export class ProjectTimelineService {
       if (!row) continue;
       row.totalAssignments++;
 
+      // DATE-02: use `null` to mean "open ended" instead of a far-future
+      // sentinel string. The week-overlap check below handles null explicitly.
       const aStart = a.validFrom.toISOString().slice(0, 10);
-      const aEnd = a.validTo ? a.validTo.toISOString().slice(0, 10) : '9999-12-31';
+      const aEnd = a.validTo ? a.validTo.toISOString().slice(0, 10) : null;
       const alloc = a.allocationPercent?.toNumber() ?? 0;
 
       const block: TimelineAssignmentBlock = {
@@ -174,7 +176,7 @@ export class ProjectTimelineService {
       for (let i = 0; i < weekStarts.length; i++) {
         const ws = weekStarts[i];
         const we = this.addDays(ws, 6);
-        if (aStart <= we && aEnd >= ws) {
+        if (aStart <= we && (aEnd === null || aEnd >= ws)) {
           row.weekData[i].assignments.push(block);
           row.weekData[i].totalSupplyPercent += alloc;
         }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TeamQueryService } from '@src/modules/organization/application/team-query.service';
@@ -27,12 +27,12 @@ export class ResourceManagerDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Resource manager dashboard asOf is invalid.');
+      throw new BadRequestException('Resource manager dashboard asOf is invalid.');
     }
 
     const person = await this.personDirectoryQueryService.getPersonById(query.personId, asOf);
     if (!person) {
-      throw new Error('Resource manager dashboard person was not found.');
+      throw new NotFoundException('Resource manager dashboard person was not found.');
     }
 
     const [dbPeople, dbProjects, dbOrgUnits, dbResourcePools] = await Promise.all([

@@ -75,11 +75,14 @@ export class PortfolioDashboardService {
       orderBy: { name: 'asc' },
     });
 
-    const now = new Date();
+    // DATE-01: compute week-of-Monday offsets in UTC so a deploy in a TZ that
+    // observes DST doesn't shift the heatmap by an hour at the boundary.
+    const nowMs = Date.now();
+    const baseDay = new Date(nowMs).getUTCDay();
     const weekHeaders: string[] = [];
     for (let i = 0; i < weeksAhead; i++) {
-      const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() + i * 7 - weekStart.getDay() + 1); // Monday
+      const offsetDays = i * 7 - baseDay + 1;
+      const weekStart = new Date(nowMs + offsetDays * 86400000);
       weekHeaders.push(weekStart.toISOString().slice(0, 10));
     }
 

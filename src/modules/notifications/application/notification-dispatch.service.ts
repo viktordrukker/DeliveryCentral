@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -46,26 +46,26 @@ export class NotificationDispatchService {
   ): Promise<NotificationDispatchResult> {
     const channel = await this.channelRepository.findByChannelKey(command.channelKey);
     if (!channel || !channel.isEnabled) {
-      throw new Error('Notification channel is not available.');
+      throw new BadRequestException('Notification channel is not available.');
     }
 
     const template = await this.templateRepository.findByTemplateKey(command.templateKey);
     if (!template) {
-      throw new Error('Notification template not found.');
+      throw new NotFoundException('Notification template not found.');
     }
 
     if (template.channelId !== channel.id) {
-      throw new Error('Notification template channel does not match the selected channel.');
+      throw new BadRequestException('Notification template channel does not match the selected channel.');
     }
 
     const adapter = this.adapterIndex.get(channel.channelKey);
     if (!adapter) {
-      throw new Error('Notification channel adapter is not registered.');
+      throw new BadRequestException('Notification channel adapter is not registered.');
     }
 
     const validConfig = await adapter.validateConfig(channel.config);
     if (!validConfig) {
-      throw new Error('Notification channel configuration is invalid.');
+      throw new BadRequestException('Notification channel configuration is invalid.');
     }
 
     const request = NotificationRequest.create({
@@ -149,8 +149,13 @@ export class NotificationDispatchService {
             status: 'RETRYING',
           });
 
-          if (this.retryPolicy.retryDelayMs > 0) {
-            await sleep(this.retryPolicy.retryDelayMs);
+          // OBS-04: cap the inline backoff so request handlers don't block on long retry
+          // delays. The full `nextAttemptAt` is preserved in the DB so a future retry worker
+          // (OBS-03) can honor the configured backoff. The inline pause exists only as a
+          // mild fairness gap between same-request attempts within one call.
+          const inlineDelay = Math.min(this.retryPolicy.retryDelayMs, 200);
+          if (inlineDelay > 0) {
+            await sleep(inlineDelay);
           }
 
           continue;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/app/auth-context';
 import { fetchInbox, markAllRead, markNotificationRead, InAppNotification } from '@/lib/api/inbox';
 
 const POLL_INTERVAL_MS = 30_000;
@@ -51,12 +52,14 @@ function groupNotifications(items: InAppNotification[]): Array<{ label: string; 
 }
 
 export function NotificationBell(): JSX.Element {
+  const { principal } = useAuth();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
+  const isAuthenticated = principal !== null;
 
   async function loadNotifications(): Promise<void> {
     try {
@@ -67,11 +70,18 @@ export function NotificationBell(): JSX.Element {
     }
   }
 
+  // Only poll while the user is authenticated. Without this guard the timer keeps
+  // hitting the inbox endpoint after logout (or before the principal resolves on
+  // first paint) and produces noisy 401s in the console.
   useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      return;
+    }
     void loadNotifications();
     const timer = setInterval(() => void loadNotifications(), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAuthenticated]);
 
   // Listen for real-time SSE count updates and refresh when count increases
   useEffect(() => {

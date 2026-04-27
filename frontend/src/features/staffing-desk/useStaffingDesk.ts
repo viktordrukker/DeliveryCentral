@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   fetchStaffingDesk,
@@ -32,12 +32,21 @@ export function useStaffingDesk(query: StaffingDeskQuery): UseStaffingDeskState 
 
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
+  // QUAL-07: serialize the query into a stable string so the effect re-runs on
+  // *content* change rather than on every parent re-render that happens to
+  // produce a fresh `query` object reference. The latest `query` is read via a
+  // ref so the effect's dependency list stays honest: only the serialized key
+  // and the manual refetch counter trigger a refetch. No eslint-disable needed.
+  const queryKey = JSON.stringify(query);
+  const queryRef = useRef(query);
+  queryRef.current = query;
+
   useEffect(() => {
     let active = true;
     setIsLoading(true);
     setError(null);
 
-    void fetchStaffingDesk(query)
+    void fetchStaffingDesk(queryRef.current)
       .then((response) => {
         if (active) setData(response);
       })
@@ -49,14 +58,7 @@ export function useStaffingDesk(query: StaffingDeskQuery): UseStaffingDeskState 
       });
 
     return () => { active = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    query.kind, query.person, query.personId, query.project, query.projectId,
-    query.poolId, query.orgUnitId, query.status, query.priority,
-    query.role, query.skills, query.from, query.to,
-    query.allocMin, query.allocMax, query.sortBy, query.sortDir,
-    query.page, query.pageSize, fetchKey,
-  ]);
+  }, [queryKey, fetchKey]);
 
   return {
     items: data?.items ?? [],

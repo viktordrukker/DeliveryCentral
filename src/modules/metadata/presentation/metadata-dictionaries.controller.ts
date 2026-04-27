@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -43,6 +44,7 @@ export class MetadataDictionariesController {
   ) {}
 
   @Get()
+  @RequireRoles('admin', 'hr_manager', 'director')
   @ApiOperation({ summary: 'List metadata dictionaries for admin visibility' })
   @ApiQuery({ name: 'entityType', required: false, type: String })
   @ApiQuery({ name: 'scopeOrgUnitId', required: false, type: String })
@@ -55,10 +57,11 @@ export class MetadataDictionariesController {
   }
 
   @Get(':id')
+  @RequireRoles('admin', 'hr_manager', 'director')
   @ApiOperation({ summary: 'Get a metadata dictionary with entries and related configuration summaries' })
   @ApiOkResponse({ type: MetadataDictionaryDetailsDto })
   @ApiNotFoundResponse({ description: 'Metadata dictionary not found.' })
-  public async getDictionaryById(@Param('id') id: string): Promise<MetadataDictionaryDetailsDto> {
+  public async getDictionaryById(@Param('id', ParseUUIDPipe) id: string): Promise<MetadataDictionaryDetailsDto> {
     const result = await this.metadataDictionaryQueryService.getDictionaryById(id);
 
     if (!result) {

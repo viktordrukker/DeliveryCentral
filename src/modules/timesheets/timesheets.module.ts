@@ -25,9 +25,12 @@ import { TimeManagementController } from './presentation/time-management.control
     },
     {
       provide: TimesheetsService,
-      useFactory: (repo: TimesheetRepository, notificationEventTranslator: NotificationEventTranslatorService) =>
-        new TimesheetsService(repo, notificationEventTranslator),
-      inject: [TimesheetRepository, NotificationEventTranslatorService],
+      useFactory: (
+        repo: TimesheetRepository,
+        prisma: PrismaService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+      ) => new TimesheetsService(repo, prisma, notificationEventTranslator),
+      inject: [TimesheetRepository, PrismaService, NotificationEventTranslatorService],
     },
     PublicHolidayService,
     TimeGapDetectionService,

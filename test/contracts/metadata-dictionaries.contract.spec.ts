@@ -7,6 +7,7 @@ import { createSeededInMemoryMetadataDictionaryRepository } from '@src/modules/m
 import { createSeededInMemoryMetadataEntryRepository } from '@src/modules/metadata/infrastructure/repositories/in-memory/create-seeded-in-memory-metadata-entry.repository';
 import { roleHeaders } from '../helpers/api/auth-headers';
 import { createApiTestApp } from '../helpers/api/create-api-test-app';
+import { createPrismaServiceStub } from '../helpers/db/mock-prisma-client';
 
 describe('metadata dictionary API contract', () => {
   it('returns stable dictionary list fields required by the admin UI', async () => {
@@ -17,18 +18,16 @@ describe('metadata dictionary API contract', () => {
         .overrideProvider(InMemoryMetadataEntryRepository)
         .useValue(createSeededInMemoryMetadataEntryRepository())
         .overrideProvider(PrismaService)
-        .useValue({
-          customFieldDefinition: {
-            count: async () => 0,
-          },
-          entityLayoutDefinition: {
-            findMany: async () => [],
-          },
-          workflowDefinition: {
-            count: async () => 0,
-            findMany: async () => [],
-          },
-        } as unknown as PrismaService),
+        .useValue(
+          createPrismaServiceStub({
+            customFieldDefinition: { count: async () => 0 },
+            entityLayoutDefinition: { findMany: async () => [] },
+            workflowDefinition: {
+              count: async () => 0,
+              findMany: async () => [],
+            },
+          }),
+        ),
     );
 
     const response = await request(app.getHttpServer())

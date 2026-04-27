@@ -65,6 +65,9 @@ export class Project extends AggregateRoot<ProjectProps> {
   }
 
   public close(): void {
+    if (this.status === 'CLOSED') {
+      return;
+    }
     if (this.status !== 'ACTIVE') {
       throw new Error('Project can only be closed from ACTIVE.');
     }

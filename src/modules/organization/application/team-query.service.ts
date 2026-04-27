@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import {
   InMemoryProjectAssignmentRepository,
@@ -215,7 +215,7 @@ export class TeamQueryService {
   private async getTeamSummary(id: string): Promise<TeamSummaryDto> {
     const pool = (await this.teamStore.getTeams()).find((item) => item.id === id);
     if (!pool) {
-      throw new Error('Team not found.');
+      throw new NotFoundException('Team not found.');
     }
 
     const asOf = new Date();

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -143,13 +144,14 @@ export class TimesheetsController {
   @ApiOperation({ summary: 'Approve a timesheet' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async approveWeek(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<TimesheetWeekDto> {
     const approverId = this.resolveUserId(req);
+    const approverRoles = req.principal?.roles ?? [];
 
     try {
-      return await this.service.approveWeek(id, approverId);
+      return await this.service.approveWeek(id, approverId, approverRoles);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to approve timesheet.';
       if (message.includes('not found')) throw new NotFoundException(message);
@@ -163,7 +165,7 @@ export class TimesheetsController {
   @ApiOperation({ summary: 'Reject a timesheet' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async rejectWeek(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RejectTimesheetDto,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<TimesheetWeekDto> {

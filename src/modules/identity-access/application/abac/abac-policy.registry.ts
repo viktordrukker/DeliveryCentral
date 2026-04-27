@@ -14,10 +14,10 @@ const SEED_POLICIES: AbacPolicy[] = [
     resource: 'assignment',
     action: 'approve',
     description: 'Resource managers may only approve assignments within their managed resource pool.',
+    // AUTHZ-08: empty managedPoolIds must produce a NO-MATCH filter, not a NO-FILTER (which would
+    // bypass the restriction). Use `{ in: [] }` so Prisma evaluates "match nothing".
     dataFilter: (principal: AbacPrincipal) => ({
-      resourcePool: principal.managedPoolIds?.length
-        ? { id: { in: principal.managedPoolIds } }
-        : {},
+      resourcePool: { id: { in: principal.managedPoolIds ?? [] } },
     }),
   },
   {
@@ -26,10 +26,9 @@ const SEED_POLICIES: AbacPolicy[] = [
     resource: 'assignment',
     action: 'read',
     description: 'Project managers can only read assignments for projects they manage.',
+    // AUTHZ-08: same pattern — empty list = no rows visible (NOT all rows).
     dataFilter: (principal: AbacPrincipal) => ({
-      projectId: principal.managedProjectIds?.length
-        ? { in: principal.managedProjectIds }
-        : undefined,
+      projectId: { in: principal.managedProjectIds ?? [] },
     }),
   },
   {

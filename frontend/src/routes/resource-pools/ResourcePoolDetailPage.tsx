@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
@@ -22,6 +22,7 @@ import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 
 export function ResourcePoolDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { principal } = useAuth();
   const [pool, setPool] = useState<ResourcePool | null>(null);
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
@@ -216,7 +217,7 @@ export function ResourcePoolDetailPage(): JSX.Element {
                   </thead>
                   <tbody>
                     {pool.members.map((member) => (
-                      <tr key={member.personId} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/people/${member.personId}`)}>
+                      <tr key={member.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${member.personId}`)}>
                         <td style={{ fontWeight: 500 }}>{member.displayName}</td>
                         <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDate(member.validFrom)}</td>
                         <td style={{ textAlign: 'right' }}>

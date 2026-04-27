@@ -18,6 +18,13 @@ const config: Config = {
   transformIgnorePatterns: ['node_modules/(?!(@scure/base|@noble/hashes|@otplib/plugin-crypto-noble)/)'],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
+  // TEST-08 — coverage thresholds NOT YET ENFORCED. The fast suite alone covers
+  // ~2.6% of `src/` because most service/controller/repository code is exercised
+  // by the DB + integration suites. Setting a meaningful global threshold
+  // requires running the full combined suite (`test:unit` + `test:db` +
+  // `test:integration`) and using that number as the floor. Path-scoped
+  // thresholds for `src/modules/*/domain/**` (which the fast suite does cover
+  // well) are the natural next step. Tracked as a follow-up to TEST-01/06.
   maxWorkers: configuredMaxWorkers && configuredMaxWorkers.length > 0 ? configuredMaxWorkers : defaultMaxWorkers,
   // Default Jest testTimeout is 5000 ms, which is too short for the NestJS
   // integration-test bootstrap (AppModule.compile() + Prisma $connect typically

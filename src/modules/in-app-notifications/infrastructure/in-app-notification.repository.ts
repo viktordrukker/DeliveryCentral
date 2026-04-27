@@ -49,16 +49,16 @@ export class InAppNotificationRepository {
   }
 
   public async markRead(id: string, recipientPersonId: string): Promise<InAppNotificationRecord | null> {
-    const existing = await this.prisma.inAppNotification.findFirst({
+    // Atomic compound match prevents TOCTOU race where another process could change the
+    // recipient between a check and a non-scoped update.
+    const result = await this.prisma.inAppNotification.updateMany({
       where: { id, recipientPersonId },
-    });
-
-    if (!existing) return null;
-
-    return this.prisma.inAppNotification.update({
-      where: { id },
       data: { readAt: new Date() },
     });
+    if (result.count === 0) {
+      return null;
+    }
+    return this.prisma.inAppNotification.findUnique({ where: { id } });
   }
 
   public async markAllRead(recipientPersonId: string): Promise<void> {

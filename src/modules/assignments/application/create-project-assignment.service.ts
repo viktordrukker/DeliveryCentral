@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
@@ -44,52 +44,52 @@ export class CreateProjectAssignmentService {
     const endDate = command.endDate ? new Date(command.endDate) : undefined;
 
     if (Number.isNaN(startDate.getTime())) {
-      throw new Error('Assignment start date is invalid.');
+      throw new BadRequestException('Assignment start date is invalid.');
     }
 
     if (endDate && Number.isNaN(endDate.getTime())) {
-      throw new Error('Assignment end date is invalid.');
+      throw new BadRequestException('Assignment end date is invalid.');
     }
 
     if (endDate && endDate < startDate) {
-      throw new Error('Assignment end date must be on or after the start date.');
+      throw new BadRequestException('Assignment end date must be on or after the start date.');
     }
 
     if (this.assignmentReferenceRepository) {
       if (!command.personValidated) {
         const personExists = await this.assignmentReferenceRepository.personExists(command.personId);
         if (!personExists) {
-          throw new Error('Person does not exist.');
+          throw new NotFoundException('Person does not exist.');
         }
 
         const personIsActive = await this.assignmentReferenceRepository.personIsActive(
           command.personId,
         );
         if (!personIsActive) {
-          throw new Error('Inactive employees cannot receive new assignments.');
+          throw new ConflictException('Inactive employees cannot receive new assignments.');
         }
       }
 
       if (!command.projectValidated) {
         const projectExists = await this.assignmentReferenceRepository.projectExists(command.projectId);
         if (!projectExists) {
-          throw new Error('Project does not exist.');
+          throw new NotFoundException('Project does not exist.');
         }
 
         if (endDate && this.assignmentReferenceRepository.projectEndDate) {
           const projectEnd = await this.assignmentReferenceRepository.projectEndDate(command.projectId);
           if (projectEnd && endDate > projectEnd) {
-            throw new Error('Assignment end date exceeds the project end date.');
+            throw new BadRequestException('Assignment end date exceeds the project end date.');
           }
         }
       }
     } else {
       if (!command.personId.startsWith('11111111-')) {
-        throw new Error('Person does not exist.');
+        throw new NotFoundException('Person does not exist.');
       }
 
       if (!command.projectId.startsWith('33333333-')) {
-        throw new Error('Project does not exist.');
+        throw new NotFoundException('Project does not exist.');
       }
     }
 
@@ -102,13 +102,13 @@ export class CreateProjectAssignmentService {
 
     if (conflicts.length > 0) {
       if (!command.allowOverlapOverride) {
-        throw new Error('Overlapping assignment for the same person and project already exists.');
+        throw new ConflictException('Overlapping assignment for the same person and project already exists.');
       }
 
       const overrideReason = command.overrideReason?.trim();
 
       if (!overrideReason) {
-        throw new Error('Assignment override reason is required.');
+        throw new BadRequestException('Assignment override reason is required.');
       }
     }
 
@@ -157,6 +157,12 @@ export class CreateProjectAssignmentService {
       staffingRole: command.staffingRole,
     });
 
+    // FIXME(DATA-05): These three writes are not atomic. Repository ports don't share a Prisma tx.
+    // If appendApproval or appendHistory fails after assignment.save, we leave a partial record.
+    // Proper fix requires either: (a) adding `tx` parameter through the port, or (b) consolidating
+    // into a single repository.createWithApproval(...) method that internally uses prisma.$transaction.
+    // For now: order is safe (assignment first), and FK Restrict on AssignmentApproval/History
+    // prevents downstream cascades. Failures are visible via the structured exception filter.
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendApproval(initialApproval);
     await this.projectAssignmentRepository.appendHistory(historyEntry);
@@ -235,15 +241,21 @@ export class CreateProjectAssignmentService {
       staffingRole: command.staffingRole,
     });
 
-    void this.employeeActivityService?.record({
+    this.employeeActivityService?.record({
       personId: command.personId,
       eventType: 'ASSIGNED',
       summary: `Assigned to project ${command.projectId} as ${command.staffingRole} at ${command.allocationPercent}%`,
       actorId: command.actorId,
       relatedEntityId: assignment.assignmentId.value,
       metadata: { projectId: command.projectId, staffingRole: command.staffingRole, allocationPercent: command.allocationPercent, status: assignment.status.value },
+    }).catch((err: unknown) => {
+      this.logger.warn(
+        `Activity event ASSIGNED for ${command.personId} failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
     });
 
     return assignment;
   }
+
+  private readonly logger = new Logger(CreateProjectAssignmentService.name);
 }

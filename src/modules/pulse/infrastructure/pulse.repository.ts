@@ -28,8 +28,10 @@ export class PulseRepository {
   }
 
   public async findHistory(personId: string, weeks: number): Promise<PulseEntryRecord[]> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - weeks * 7);
+    // DATE-01: subtract whole days using millisecond arithmetic so a query that
+    // straddles a DST boundary still subtracts exactly N×7 days. setDate() works
+    // in local time and can drift by 1 hour across DST transitions.
+    const cutoff = new Date(Date.now() - weeks * 7 * 86400000);
 
     return this.prisma.pulseEntry.findMany({
       where: {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { CaseRecord } from '../domain/entities/case-record.entity';
 import { CaseId } from '../domain/value-objects/case-id';
@@ -13,7 +13,7 @@ export class ArchiveCaseService {
     const caseRecord = await this.caseRecordRepository.findByCaseId(id);
 
     if (!caseRecord) {
-      throw new Error('Case not found.');
+      throw new NotFoundException('Case not found.');
     }
 
     caseRecord.archive();

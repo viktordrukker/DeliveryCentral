@@ -9,6 +9,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useCreateCasePage } from '@/features/cases/useCreateCasePage';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 
 const initialValues: CaseFormValues = {
   caseTypeKey: 'ONBOARDING',
@@ -23,6 +24,16 @@ export function CreateCasePage(): JSX.Element {
   const navigate = useNavigate();
   const [values, setValues] = useState<CaseFormValues>(initialValues);
   const state = useCreateCasePage();
+  // FE-03: caseTypeKey defaults to ONBOARDING and is excluded from the dirty
+  // check; only fields the user has actually filled in count.
+  const isDirty =
+    !state.createdCase &&
+    (values.ownerPersonId !== '' ||
+      values.relatedAssignmentId !== '' ||
+      values.relatedProjectId !== '' ||
+      values.subjectPersonId !== '' ||
+      values.summary.trim() !== '');
+  useUnsavedChangesWarning(isDirty);
 
   const canRenderForm = useMemo(() => state.people.length > 0, [state.people.length]);
 

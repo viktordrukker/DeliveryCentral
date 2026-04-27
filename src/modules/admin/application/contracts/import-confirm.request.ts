@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 export class ImportRowDto {
   @ApiProperty()
   @IsEmail()
+  @MaxLength(254) // EMAIL-01 — RFC 5321 maximum email address length.
   public email!: string;
 
   @ApiProperty()

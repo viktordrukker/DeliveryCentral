@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { NotificationRequestRepositoryPort } from '../domain/repositories/notification-request-repository.port';
 
@@ -13,7 +13,7 @@ export class RequeueNotificationService {
     const request = all.find((r) => r.id === requestId);
 
     if (!request) {
-      throw new Error('Notification request not found.');
+      throw new NotFoundException('Notification request not found.');
     }
 
     request.requeue();

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
@@ -67,7 +67,7 @@ export class WorkEvidenceController {
   @ApiOkResponse({ type: WorkEvidenceResponseDto })
   @ApiNotFoundResponse({ description: 'Work evidence not found.' })
   public async updateWorkEvidence(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateWorkEvidenceRequestDto,
   ): Promise<WorkEvidenceResponseDto> {
     try {

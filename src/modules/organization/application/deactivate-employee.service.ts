@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -19,7 +19,7 @@ export class DeactivateEmployeeService {
     const employee = await this.personRepository.findByPersonId(PersonId.from(personId));
 
     if (!employee) {
-      throw new Error('Employee does not exist.');
+      throw new NotFoundException('Employee does not exist.');
     }
 
     employee.deactivate();

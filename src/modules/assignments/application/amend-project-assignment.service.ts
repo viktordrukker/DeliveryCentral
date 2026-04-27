@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AllocationPercent } from '../domain/value-objects/allocation-percent';
 import { AssignmentHistory } from '../domain/entities/assignment-history.entity';
@@ -23,7 +23,7 @@ export class AmendProjectAssignmentService {
     const assignment = await this.repository.findByAssignmentId(id);
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     const previous: Record<string, unknown> = {
@@ -50,7 +50,7 @@ export class AmendProjectAssignmentService {
     if (command.validTo !== undefined) {
       const date = new Date(command.validTo);
       if (Number.isNaN(date.getTime())) {
-        throw new Error('Amendment end date is invalid.');
+        throw new BadRequestException('Amendment end date is invalid.');
       }
       changes.validTo = date;
     }

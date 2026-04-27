@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { EndProjectAssignmentService } from '@src/modules/assignments/application/end-project-assignment.service';
@@ -31,13 +31,13 @@ export class TerminateEmployeeService {
     const employee = await this.personRepository.findByPersonId(PersonId.from(command.personId));
 
     if (!employee) {
-      throw new Error('Employee does not exist.');
+      throw new NotFoundException('Employee does not exist.');
     }
 
     const terminatedAt = command.terminatedAt ? new Date(command.terminatedAt) : new Date();
 
     if (Number.isNaN(terminatedAt.getTime())) {
-      throw new Error('terminatedAt is not a valid date.');
+      throw new BadRequestException('terminatedAt is not a valid date.');
     }
 
     employee.terminate(terminatedAt);

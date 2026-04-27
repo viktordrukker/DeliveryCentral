@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -151,10 +151,10 @@ export class InMemoryStaffingRequestService {
 
   public async submit(idOrPublicId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
-    if (!existing) throw new Error('Staffing request not found.');
-    if (existing.status !== 'DRAFT') throw new Error(`Cannot submit from status ${existing.status}.`);
+    if (!existing) throw new NotFoundException('Staffing request not found.');
+    if (existing.status !== 'DRAFT') throw new ConflictException(`Cannot submit from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
       data: { status: 'OPEN' },
@@ -166,10 +166,10 @@ export class InMemoryStaffingRequestService {
 
   public async review(idOrPublicId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
-    if (!existing) throw new Error('Staffing request not found.');
-    if (existing.status !== 'OPEN') throw new Error(`Cannot review from status ${existing.status}.`);
+    if (!existing) throw new NotFoundException('Staffing request not found.');
+    if (existing.status !== 'OPEN') throw new ConflictException(`Cannot review from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
       data: { status: 'IN_REVIEW' },
@@ -181,10 +181,10 @@ export class InMemoryStaffingRequestService {
 
   public async release(idOrPublicId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
-    if (!existing) throw new Error('Staffing request not found.');
-    if (existing.status !== 'IN_REVIEW') throw new Error(`Cannot release from status ${existing.status}.`);
+    if (!existing) throw new NotFoundException('Staffing request not found.');
+    if (existing.status !== 'IN_REVIEW') throw new ConflictException(`Cannot release from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
       data: { status: 'OPEN' },
@@ -196,14 +196,14 @@ export class InMemoryStaffingRequestService {
 
   public async fulfil(idOrPublicId: string, proposedByPersonId: string, assignedPersonId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({
       where: { id },
       select: { status: true, headcountRequired: true, headcountFulfilled: true },
     });
-    if (!existing) throw new Error('Staffing request not found.');
+    if (!existing) throw new NotFoundException('Staffing request not found.');
     if (existing.status === 'CANCELLED' || existing.status === 'FULFILLED') {
-      throw new Error(`Cannot fulfil from status ${existing.status}.`);
+      throw new ConflictException(`Cannot fulfil from status ${existing.status}.`);
     }
 
     const newFulfilled = existing.headcountFulfilled + 1;
@@ -229,11 +229,11 @@ export class InMemoryStaffingRequestService {
 
   public async cancel(idOrPublicId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
-    if (!existing) throw new Error('Staffing request not found.');
+    if (!existing) throw new NotFoundException('Staffing request not found.');
     if (existing.status === 'FULFILLED' || existing.status === 'CANCELLED') {
-      throw new Error(`Cannot cancel from status ${existing.status}.`);
+      throw new ConflictException(`Cannot cancel from status ${existing.status}.`);
     }
     const record = await this.prisma.staffingRequest.update({
       where: { id },
@@ -249,10 +249,10 @@ export class InMemoryStaffingRequestService {
     updates: Partial<Pick<StaffingRequest, 'allocationPercent' | 'endDate' | 'headcountRequired' | 'priority' | 'role' | 'skills' | 'startDate' | 'summary'>>,
   ): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
-    if (!id) throw new Error('Staffing request not found.');
+    if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
-    if (!existing) throw new Error('Staffing request not found.');
-    if (existing.status !== 'DRAFT') throw new Error('Can only update DRAFT requests.');
+    if (!existing) throw new NotFoundException('Staffing request not found.');
+    if (existing.status !== 'DRAFT') throw new ConflictException('Can only update DRAFT requests.');
 
     const data: Record<string, unknown> = {};
     if (updates.allocationPercent !== undefined) data['allocationPercent'] = updates.allocationPercent;

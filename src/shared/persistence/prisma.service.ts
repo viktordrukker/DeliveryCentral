@@ -7,6 +7,7 @@ import {
   PublicIdService,
   registerPublicIdMiddleware,
 } from '../../infrastructure/public-id';
+import { registerSoftDeleteMiddleware } from './soft-delete.middleware';
 
 const MAX_CONNECT_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
@@ -59,6 +60,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     // so `onModuleInit` connect-retries and downstream writes share the same
     // create/createMany hook (DMD-026).
     registerPublicIdMiddleware(this, this.publicIdService);
+
+    // SEC-06: optional soft-delete middleware. Default OFF — flipping it on changes the
+    // behavior of every find/delete query for tracked models. Enable per-environment via
+    // SOFT_DELETE_MIDDLEWARE_ENABLED=true once all reads/exports that require archived
+    // rows have switched to the `__includeArchived: true` escape hatch.
+    if (process.env.SOFT_DELETE_MIDDLEWARE_ENABLED === 'true') {
+      registerSoftDeleteMiddleware(this);
+      this.logger.log('Soft-delete Prisma middleware registered (SEC-06 / DM-8-2).');
+    }
   }
 
   public async onModuleInit(): Promise<void> {

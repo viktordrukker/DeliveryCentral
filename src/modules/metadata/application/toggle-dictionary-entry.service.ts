@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { MetadataEntry } from '../domain/entities/metadata-entry.entity';
 import { MetadataEntryRepositoryPort } from '../domain/repositories/metadata-entry-repository.port';
@@ -18,7 +18,7 @@ export class ToggleDictionaryEntryService {
     const entry = await this.metadataEntryRepository.findById(command.entryId);
 
     if (!entry) {
-      throw new Error('Metadata dictionary entry not found.');
+      throw new NotFoundException('Metadata dictionary entry not found.');
     }
 
     if (command.isEnabled) {

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Query, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Post, Query, ValidationPipe } from '@nestjs/common';
 import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -6,6 +6,7 @@ import { RequireRoles } from '@src/modules/identity-access/application/roles.dec
 import { NotificationTemplateDto } from '../application/contracts/notification-template.dto';
 import { NotificationOutcomeDto } from '../application/contracts/notification-outcome.dto';
 import { NotificationQueueResponseDto } from '../application/contracts/notification-queue.dto';
+import { NotificationQueueQueryDto } from '../application/contracts/notification-queue.query';
 import { NudgeRequestDto } from '../application/contracts/nudge.dto';
 import { NotificationOutcomeQueryService } from '../application/notification-outcome-query.service';
 import { NotificationQueueQueryService } from '../application/notification-queue-query.service';
@@ -57,19 +58,14 @@ export class NotificationsController {
   @Get('queue')
   @RequireRoles('admin')
   @ApiOperation({ summary: 'List notification requests with optional status filter and pagination' })
-  @ApiQuery({ name: 'status', required: false, type: String, enum: ['QUEUED', 'RETRYING', 'SENT', 'FAILED_TERMINAL'] })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiOkResponse({ type: NotificationQueueResponseDto })
   public async listQueue(
-    @Query('status') status?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
+    @Query() query: NotificationQueueQueryDto,
   ): Promise<NotificationQueueResponseDto> {
     return this.notificationQueueQueryService.execute({
-      page: page ? Number(page) : undefined,
-      pageSize: pageSize ? Number(pageSize) : undefined,
-      status,
+      page: query.page,
+      pageSize: query.pageSize,
+      status: query.status,
     });
   }
 
@@ -79,7 +75,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Requeue a FAILED_TERMINAL notification request' })
   @ApiOkResponse({ description: 'Notification requeued' })
   @ApiNotFoundResponse({ description: 'Notification request not found.' })
-  public async requeueNotification(@Param('id') id: string): Promise<{ status: string }> {
+  public async requeueNotification(@Param('id', ParseUUIDPipe) id: string): Promise<{ status: string }> {
     try {
       await this.requeueNotificationService.execute(id);
       return { status: 'requeued' };

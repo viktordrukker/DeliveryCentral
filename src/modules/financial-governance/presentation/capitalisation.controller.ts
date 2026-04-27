@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Body,
   Query,
@@ -101,7 +102,7 @@ export class PeriodLocksController {
   @RequireRoles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a period lock' })
-  public async deletePeriodLock(@Param('id') id: string): Promise<void> {
+  public async deletePeriodLock(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     try {
       await this.service.deletePeriodLock(id);
     } catch (error) {

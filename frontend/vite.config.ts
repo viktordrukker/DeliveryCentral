@@ -45,7 +45,6 @@ export default defineConfig({
             'recharts',
             'd3',
             'd3-org-chart',
-            '@xyflow/react',
           ],
         },
       },

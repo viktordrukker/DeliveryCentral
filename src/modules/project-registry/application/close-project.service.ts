@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
@@ -56,7 +56,7 @@ export class CloseProjectService {
     const project = await this.projectRepository.findByProjectId(ProjectId.from(projectId));
 
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     if (
@@ -81,7 +81,7 @@ export class CloseProjectService {
       if (options.allowActiveAssignmentOverride) {
         const overrideReason = options.overrideReason?.trim();
         if (!overrideReason) {
-          throw new Error('Project closure override reason is required.');
+          throw new BadRequestException('Project closure override reason is required.');
         }
       }
     }

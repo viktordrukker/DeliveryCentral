@@ -8,6 +8,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -61,7 +62,7 @@ export class ResourcePoolsController {
   @ApiOkResponse({ type: ResourcePoolDto })
   @ApiNotFoundResponse({ description: 'Resource pool not found.' })
   @RequireRoles('resource_manager', 'admin', 'director', 'hr_manager')
-  public async getResourcePoolById(@Param('id') id: string): Promise<ResourcePoolDto> {
+  public async getResourcePoolById(@Param('id', ParseUUIDPipe) id: string): Promise<ResourcePoolDto> {
     const pool = await this.repository.findById(id);
     if (!pool) throw new NotFoundException('Resource pool not found.');
     return this.toDto(pool);
@@ -92,7 +93,7 @@ export class ResourcePoolsController {
   @ApiNotFoundResponse({ description: 'Resource pool not found.' })
   @RequireRoles('resource_manager', 'admin')
   public async updateResourcePool(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateResourcePoolRequestDto,
   ): Promise<ResourcePoolDto> {
     const pool = await this.repository.update(id, {
@@ -110,7 +111,7 @@ export class ResourcePoolsController {
   @ApiNotFoundResponse({ description: 'Resource pool not found.' })
   @RequireRoles('resource_manager', 'admin')
   public async addMember(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: AddResourcePoolMemberRequestDto,
   ): Promise<ResourcePoolDto> {
     if (!request.personId?.trim()) {
@@ -128,7 +129,7 @@ export class ResourcePoolsController {
   @ApiNotFoundResponse({ description: 'Resource pool not found.' })
   @RequireRoles('resource_manager', 'admin')
   public async removeMember(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Param('personId') personId: string,
   ): Promise<ResourcePoolDto> {
     const pool = await this.repository.removeMember(id, personId);

@@ -31,7 +31,17 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<{ id: string; email: string } | null> {
-    const account = await this.prisma.localAccount.findUnique({ where: { email } });
+    // PERF-03: only load fields used by the credential check; skips twoFactorSecret/backupCodesHash etc.
+    const account = await this.prisma.localAccount.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        lockedUntil: true,
+        failedLoginAttempts: true,
+      },
+    });
 
     // Constant-time behavior: always run bcrypt.compare to prevent timing-based email enumeration.
     const passwordHash = account?.passwordHash ?? DUMMY_PASSWORD_HASH;

@@ -66,6 +66,9 @@ export class ProjectDirectoryItemDto {
 export class ProjectDirectoryResponseDto {
   @ApiProperty({ type: [ProjectDirectoryItemDto] })
   public items!: ProjectDirectoryItemDto[];
+
+  @ApiProperty({ description: 'Total number of items matching the filter, before pagination is applied.' })
+  public totalCount!: number;
 }
 
 export class ProjectDetailsDto extends ProjectDirectoryItemDto {

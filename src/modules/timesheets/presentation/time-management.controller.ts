@@ -65,6 +65,7 @@ export class TimeManagementController {
   @ApiOperation({ summary: 'Unified approval queue: timesheets + leave requests' })
   @ApiQuery({ name: 'month', required: false, type: String })
   @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiOkResponse({ description: 'Mixed list of timesheets and leave requests awaiting approval.' })
   public async getQueue(
     @Query('month') monthStr?: string,
     @Query('status') status?: string,
@@ -159,6 +160,7 @@ export class TimeManagementController {
   @Get('team-calendar')
   @ApiOperation({ summary: 'Team absence calendar for a month' })
   @ApiQuery({ name: 'month', required: true, type: String })
+  @ApiOkResponse({ description: 'Per-person calendar of leave and holiday days for the requested month.' })
   public async getTeamCalendar(@Query('month') monthStr: string): Promise<TeamCalendarPerson[]> {
     const [yearStr, monthNumStr] = monthStr.split('-');
     const year = parseInt(yearStr, 10);
@@ -204,6 +206,7 @@ export class TimeManagementController {
   @Get('compliance')
   @ApiOperation({ summary: 'Team time compliance status for a month' })
   @ApiQuery({ name: 'month', required: true, type: String })
+  @ApiOkResponse({ description: 'Per-person compliance status, gap days, and overtime totals.' })
   public async getCompliance(@Query('month') monthStr: string): Promise<ComplianceRow[]> {
     const [yearStr, monthNumStr] = monthStr.split('-');
     const year = parseInt(yearStr, 10);

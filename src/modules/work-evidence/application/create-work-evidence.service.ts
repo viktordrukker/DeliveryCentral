@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { WorkEvidence } from '../domain/entities/work-evidence.entity';
 import { WorkEvidenceSource } from '../domain/entities/work-evidence-source.entity';
@@ -27,19 +27,19 @@ export class CreateWorkEvidenceService {
     const recordedAt = new Date(command.recordedAt);
 
     if (Number.isNaN(recordedAt.getTime())) {
-      throw new Error('Work evidence recordedAt is invalid.');
+      throw new BadRequestException('Work evidence recordedAt is invalid.');
     }
 
     if (!command.sourceRecordKey.trim()) {
-      throw new Error('Work evidence sourceRecordKey is required.');
+      throw new BadRequestException('Work evidence sourceRecordKey is required.');
     }
 
     if (!command.sourceType.trim()) {
-      throw new Error('Work evidence sourceType is required.');
+      throw new BadRequestException('Work evidence sourceType is required.');
     }
 
     if (command.effortHours <= 0) {
-      throw new Error('Work evidence effortHours must be greater than zero.');
+      throw new BadRequestException('Work evidence effortHours must be greater than zero.');
     }
 
     const evidence = WorkEvidence.create({

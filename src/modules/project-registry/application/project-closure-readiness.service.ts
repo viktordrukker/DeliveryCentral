@@ -84,12 +84,15 @@ export class ProjectClosureReadinessService {
     }
 
     // 6. Current week RAG snapshot
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const mondayDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayDiff);
-    monday.setHours(0, 0, 0, 0);
+    // DATE-01: compute Monday in UTC. ProjectRagSnapshot.weekStarting is stored
+    // as a UTC date and matched exactly in the query below — building `monday`
+    // via local-time setDate()+setHours(0,0,0,0) produced an off-by-day match
+    // for any client TZ ahead of UTC at midnight local.
+    const nowMs = Date.now();
+    const dayOfWeek = new Date(nowMs).getUTCDay();
+    const mondayOffsetDays = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(nowMs + mondayOffsetDays * 86400000);
+    monday.setUTCHours(0, 0, 0, 0);
 
     const hasCurrentWeekRag = !!(await this.prisma.projectRagSnapshot.findFirst({
       where: { projectId, weekStarting: monday },

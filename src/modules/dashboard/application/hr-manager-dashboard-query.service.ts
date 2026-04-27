@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { ListCasesService } from '@src/modules/case-management/application/list-cases.service';
@@ -36,12 +36,12 @@ export class HrManagerDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('HR manager dashboard asOf is invalid.');
+      throw new BadRequestException('HR manager dashboard asOf is invalid.');
     }
 
     const manager = await this.personDirectoryQueryService.getPersonById(query.personId, asOf);
     if (!manager) {
-      throw new Error('HR manager dashboard person was not found.');
+      throw new NotFoundException('HR manager dashboard person was not found.');
     }
 
     const people = await this.personRepository.listAll();

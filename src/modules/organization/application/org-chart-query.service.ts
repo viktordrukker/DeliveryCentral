@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PersonRepositoryPort } from '../domain/repositories/person-repository.port';
 import { OrgUnitRepositoryPort } from '../domain/repositories/org-unit-repository.port';
@@ -46,7 +46,7 @@ export class OrgChartQueryService {
       const orgUnit = await this.orgUnitRepository.findById(orgUnitId);
 
       if (!orgUnit) {
-        throw new Error(`Org unit not found for ${orgUnitId}`);
+        throw new NotFoundException(`Org unit not found for ${orgUnitId}`);
       }
 
       const members = await Promise.all(

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { CreateProjectAssignmentService } from './create-project-assignment.service';
 
@@ -47,7 +47,7 @@ export class BulkCreateProjectAssignmentsService {
     command: BulkCreateProjectAssignmentsCommand,
   ): Promise<BulkCreateProjectAssignmentsResult> {
     if (!Array.isArray(command.entries) || command.entries.length === 0) {
-      throw new Error('Bulk assignment request must include at least one entry.');
+      throw new BadRequestException('Bulk assignment request must include at least one entry.');
     }
 
     const createdItems: BulkCreateProjectAssignmentsResult['createdItems'] = [];

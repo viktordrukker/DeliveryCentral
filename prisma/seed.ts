@@ -567,7 +567,9 @@ async function seedTimesheets(): Promise<void> {
 
     // Ethan: APPROVED for weeks 1-2, SUBMITTED for week 3, DRAFT for week 4
     const ethanStatus = weekIdx <= 2 ? 'APPROVED' : weekIdx === 3 ? 'SUBMITTED' : 'DRAFT';
-    const ethanWeekId = `66666666-ts00-0000-0001-00000000000${weekIdx}`;
+    // ID format must be valid hex (ParseUUIDPipe rejects non-hex chars).
+    // `1500` keeps the human-readable mnemonic that `ts00` originally provided.
+    const ethanWeekId = `66666666-1500-0000-0001-00000000000${weekIdx}`;
     await prismaSeed.timesheetWeek.upsert({
       where: { personId_weekStart: { personId: ethanId, weekStart: monday } },
       create: {
@@ -616,7 +618,7 @@ async function seedTimesheets(): Promise<void> {
 
     // Lucas: 1 week APPROVED, rest SUBMITTED
     const lucasStatus = weekIdx === 1 ? 'APPROVED' : 'SUBMITTED';
-    const lucasWeekId = `66666666-ts00-0000-0002-00000000000${weekIdx}`;
+    const lucasWeekId = `66666666-1500-0000-0002-00000000000${weekIdx}`;
     await prismaSeed.timesheetWeek.upsert({
       where: { personId_weekStart: { personId: lucasId, weekStart: monday } },
       create: {

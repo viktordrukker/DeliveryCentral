@@ -6,12 +6,14 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { SkillsService } from '../application/skills.service';
@@ -29,6 +31,7 @@ export class AdminSkillsController {
   public constructor(private readonly service: SkillsService) {}
 
   @Get()
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List all skills in the skill dictionary' })
   @ApiOkResponse({ type: [SkillDto] })
   public async list(): Promise<SkillDto[]> {
@@ -65,19 +68,22 @@ export class PersonSkillsController {
   public constructor(private readonly service: SkillsService) {}
 
   @Get(':id/skills')
+  @RequireRoles('hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin')
+  @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get skills for a person' })
   @ApiOkResponse({ type: [PersonSkillDto] })
-  public async getPersonSkills(@Param('id') personId: string): Promise<PersonSkillDto[]> {
+  public async getPersonSkills(@Param('id', ParseUUIDPipe) personId: string): Promise<PersonSkillDto[]> {
     return this.service.getPersonSkills(personId);
   }
 
   @Put(':id/skills')
-  @RequireRoles('admin', 'hr_manager', 'resource_manager', 'delivery_manager', 'director', 'employee')
+  @RequireRoles('admin', 'hr_manager', 'resource_manager', 'delivery_manager', 'director')
+  @AllowSelfScope({ param: 'id' })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Replace all skills for a person' })
   @ApiOkResponse({ type: [PersonSkillDto] })
   public async upsertPersonSkills(
-    @Param('id') personId: string,
+    @Param('id', ParseUUIDPipe) personId: string,
     @Body() items: UpsertPersonSkillItemDto[],
   ): Promise<PersonSkillDto[]> {
     return this.service.upsertPersonSkills(personId, items);

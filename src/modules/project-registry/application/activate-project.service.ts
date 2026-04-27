@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
@@ -19,7 +19,7 @@ export class ActivateProjectService {
     const project = await this.projectRepository.findByProjectId(ProjectId.from(projectId));
 
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     project.activate();

@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
@@ -95,7 +95,7 @@ export class ExceptionQueueQueryService {
   private resolveAsOf(value?: string): Date {
     const asOf = value ? new Date(value) : new Date();
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Exceptions asOf is invalid.');
+      throw new BadRequestException('Exceptions asOf is invalid.');
     }
 
     return asOf;

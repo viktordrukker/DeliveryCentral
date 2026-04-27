@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiConflictResponse, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import * as bcrypt from 'bcrypt';
 
@@ -129,7 +129,7 @@ export class AdminConfigController {
   @ApiOperation({ summary: 'Update account roles or enabled state' })
   @ApiOkResponse({ description: 'Account updated.' })
   public async updateAccount(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateAccountDto,
   ): Promise<{ id: string; email: string; displayName: string; roles: string[]; source: string; isEnabled: boolean }> {
     const existing = await this.prisma.localAccount.findUnique({ where: { id } });
@@ -167,7 +167,7 @@ export class AdminConfigController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a platform account' })
   public async deleteAccount(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: { userId?: string } },
   ): Promise<void> {
     if (id === req.principal?.userId) {
@@ -335,7 +335,7 @@ export class AdminConfigController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequireRoles('admin')
   @ApiOperation({ summary: 'Delete a webhook subscription' })
-  public deleteWebhook(@Param('id') id: string): void {
+  public deleteWebhook(@Param('id', ParseUUIDPipe) id: string): void {
     const deleted = this.webhookService.delete(id);
     if (!deleted) {
       throw new NotFoundException('Webhook subscription not found.');
@@ -347,7 +347,7 @@ export class AdminConfigController {
   @RequireRoles('admin')
   @ApiOperation({ summary: 'Send a test delivery to a webhook subscription' })
   @ApiOkResponse({ description: 'Test delivery result.' })
-  public async testWebhook(@Param('id') id: string): Promise<WebhookDeliveryAttempt> {
+  public async testWebhook(@Param('id', ParseUUIDPipe) id: string): Promise<WebhookDeliveryAttempt> {
     try {
       return await this.webhookService.testDelivery(id);
     } catch (error) {
@@ -359,7 +359,7 @@ export class AdminConfigController {
   @RequireRoles('admin')
   @ApiOperation({ summary: 'Get last 10 delivery attempts for a webhook subscription' })
   @ApiOkResponse({ description: 'Delivery log.' })
-  public getWebhookDeliveries(@Param('id') id: string): WebhookDeliveryAttempt[] {
+  public getWebhookDeliveries(@Param('id', ParseUUIDPipe) id: string): WebhookDeliveryAttempt[] {
     return this.webhookService.getDeliveryLog(id);
   }
 

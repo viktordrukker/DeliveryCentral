@@ -10,6 +10,11 @@ import { setColorModePreference } from '@/styles/design-tokens';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
+// QUAL-06: how long the SSE notification stream waits before reconnecting after
+// the server drops the connection. 60s is a balance between picking up new
+// notifications quickly and not hammering the backend if it's unreachable.
+const SSE_RECONNECT_DELAY_MS = 60_000;
+
 export function setDarkMode(value: boolean): void {
   setColorModePreference(value ? 'dark' : 'light');
 }
@@ -68,9 +73,8 @@ function useNotificationStream(): void {
         // ignore abort or network errors
       }
 
-      // Reconnect after 60s if not aborted
       if (!controller?.signal.aborted) {
-        retryTimeout = setTimeout(() => void connect(), 60_000);
+        retryTimeout = setTimeout(() => void connect(), SSE_RECONNECT_DELAY_MS);
       }
     }
 

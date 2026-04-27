@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Patch, Req, ValidationPipe } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
@@ -35,6 +35,7 @@ export class MeNotificationPrefsController {
   @Get()
   @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Read the current user notification preferences' })
+  @ApiOkResponse({ type: [NotificationPreferenceDto] })
   public async getMyPrefs(
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<NotificationPreferenceDto[]> {
@@ -47,6 +48,7 @@ export class MeNotificationPrefsController {
   @Patch()
   @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Replace one or more notification preferences for the current user' })
+  @ApiOkResponse({ type: [NotificationPreferenceDto] })
   public async updateMyPrefs(
     @Req() req: { principal?: RequestPrincipal },
     @Body(new ValidationPipe({ whitelist: true })) body: UpdateNotificationPreferencesDto,

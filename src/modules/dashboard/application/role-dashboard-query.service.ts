@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
 import { WorkloadDashboardQueryService } from './workload-dashboard-query.service';
@@ -24,7 +24,7 @@ export class RoleDashboardQueryService {
 
   public async execute(query: RoleDashboardQuery): Promise<RoleDashboardResponseDto> {
     if (!this.isSupportedRole(query.role)) {
-      throw new Error('Unsupported dashboard role.');
+      throw new BadRequestException('Unsupported dashboard role.');
     }
 
     const workloadSummary = await this.workloadDashboardQueryService.execute({

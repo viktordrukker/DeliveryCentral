@@ -154,22 +154,11 @@ export class ProjectRagService {
     }
 
     // Budget burn dimension hint
-    const budgetSnap = await this.prisma.projectBudget.findFirst({
-      where: { projectId },
-      orderBy: { fiscalYear: 'desc' },
-    });
-    let burnPct: number | null = null;
-    if (budgetSnap) {
-      const totalBudget = Number(budgetSnap.capexBudget) + Number(budgetSnap.opexBudget);
-      if (totalBudget > 0) {
-        const timesheetHours = await this.prisma.timesheetEntry.aggregate({
-          _sum: { hours: true },
-          where: { projectId, timesheetWeek: { status: 'APPROVED' } },
-        });
-        const totalHours = Number(timesheetHours._sum?.hours ?? 0);
-        burnPct = Math.round((totalHours * 100) / totalBudget * 100) / 100;
-      }
-    }
+    // FIXME(DATA-15): Burn percentage compares hours (timesheet) against dollars (budget)
+    // without an hourly-rate conversion — the result is semantically meaningless and was
+    // additionally producing a 100x inflated number. Disabled until cost rate lookup is wired in
+    // (PersonCostRate model exists; needs aggregation by project + period). See audit plan DATA-15.
+    const burnPct: number | null = null;
 
     const allRags = [base.staffingRag, base.scheduleRag, base.budgetRag, scopeRag, business.rag];
     const overallRag: RagRating = allRags.includes('RED') ? 'RED' : allRags.includes('AMBER') ? 'AMBER' : 'GREEN';
@@ -207,9 +196,9 @@ export class ProjectRagService {
       return { rag: 'GREEN', explanation: 'No assigned team — no pulse data.', avgMood: null };
     }
 
-    // Get recent pulse entries (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Get recent pulse entries (last 30 days). DATE-01: subtract via ms so the
+    // window is exactly 30×24h regardless of DST.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
 
     const pulseEntries = await this.prisma.pulseEntry.findMany({
       where: {
@@ -436,8 +425,8 @@ export class ProjectRagService {
   }
 
   public async getSnapshotHistory(projectId: string, weeksBack = 12): Promise<RagSnapshotDto[]> {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - weeksBack * 7);
+    // DATE-01: ms arithmetic — exactly weeksBack×7×24h ago, DST-stable.
+    const cutoff = new Date(Date.now() - weeksBack * 7 * 86400000);
 
     const snapshots = await this.prisma.projectRagSnapshot.findMany({
       where: { projectId, weekStarting: { gte: cutoff } },
@@ -450,12 +439,15 @@ export class ProjectRagService {
   // ── Helpers ─────────────────────────────────────────────────────────────
 
   private getCurrentWeekStart(): Date {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Monday
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diff);
-    monday.setHours(0, 0, 0, 0);
+    // DATE-01: compute Monday of the current week in UTC. weekStarting is
+    // stored as a UTC date in ProjectRagSnapshot and is matched exactly in
+    // the queries above; building it in local time produced an off-by-day
+    // miss for any client TZ ahead of UTC at midnight local.
+    const nowMs = Date.now();
+    const dayOfWeek = new Date(nowMs).getUTCDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(nowMs + diff * 86400000);
+    monday.setUTCHours(0, 0, 0, 0);
     return monday;
   }
 

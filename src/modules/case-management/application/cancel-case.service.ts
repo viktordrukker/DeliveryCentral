@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { CaseRecord } from '../domain/entities/case-record.entity';
 import { CaseId } from '../domain/value-objects/case-id';
@@ -18,11 +18,11 @@ export class CancelCaseService {
     const caseRecord = await this.caseRecordRepository.findByCaseId(id);
 
     if (!caseRecord) {
-      throw new Error('Case not found.');
+      throw new NotFoundException('Case not found.');
     }
 
     if (!command.reason || command.reason.trim().length === 0) {
-      throw new Error('A cancellation reason is required.');
+      throw new BadRequestException('A cancellation reason is required.');
     }
 
     caseRecord.cancel(command.reason.trim());

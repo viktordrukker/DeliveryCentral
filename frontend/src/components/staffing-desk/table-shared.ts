@@ -29,7 +29,11 @@ export interface InlineFilterState {
 
 export const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 export const S_TABS: React.CSSProperties = { display: 'flex', gap: 0, borderBottom: '2px solid var(--color-border)', marginBottom: 0 };
-export const S_TAB: React.CSSProperties = { padding: 'var(--space-2) var(--space-3)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: 'var(--color-text-muted)', borderBottom: '2px solid transparent', marginBottom: -2 };
+// Use longhand `borderBottom*` properties on tabs. React DOM warns when a
+// shorthand (`borderBottom`) is removed across a re-render while a longhand
+// (`borderBottomColor`) is still set — which happens here as the active-tab
+// indicator toggles between Supply / Demand.
+export const S_TAB: React.CSSProperties = { padding: 'var(--space-2) var(--space-3)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: 'var(--color-text-muted)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent', marginBottom: -2 };
 export const S_TAB_ACTIVE: React.CSSProperties = { ...S_TAB, color: 'var(--color-accent)', borderBottomColor: 'var(--color-accent)' };
 export const S_TABLE: React.CSSProperties = { borderCollapse: 'collapse', fontSize: 12 };
 export const S_TH: React.CSSProperties = { padding: '6px 6px 0', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'left', background: 'var(--color-surface-alt)', whiteSpace: 'nowrap', position: 'sticky', top: 0, zIndex: 2, verticalAlign: 'top' };

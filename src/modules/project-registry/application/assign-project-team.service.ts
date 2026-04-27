@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { CreateProjectAssignmentService } from '@src/modules/assignments/application/create-project-assignment.service';
@@ -67,7 +67,7 @@ export class AssignProjectTeamService {
   public async execute(command: AssignProjectTeamCommand): Promise<AssignProjectTeamResult> {
     const project = await this.projectRepository.findById(command.projectId);
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     if (command.expectedProjectVersion !== undefined && project.version !== command.expectedProjectVersion) {
@@ -75,29 +75,29 @@ export class AssignProjectTeamService {
     }
 
     if (project.status !== 'ACTIVE') {
-      throw new Error('Team assignments can only be created for ACTIVE projects.');
+      throw new ConflictException('Team assignments can only be created for ACTIVE projects.');
     }
 
     const teamOrgUnit = await this.orgUnitRepository.findByOrgUnitId(
       OrgUnitId.from(command.teamOrgUnitId),
     );
     if (!teamOrgUnit) {
-      throw new Error('Team org unit does not exist.');
+      throw new NotFoundException('Team org unit does not exist.');
     }
 
     const startDate = new Date(command.startDate);
     const endDate = command.endDate ? new Date(command.endDate) : undefined;
 
     if (Number.isNaN(startDate.getTime())) {
-      throw new Error('Assignment start date is invalid.');
+      throw new BadRequestException('Assignment start date is invalid.');
     }
 
     if (endDate && Number.isNaN(endDate.getTime())) {
-      throw new Error('Assignment end date is invalid.');
+      throw new BadRequestException('Assignment end date is invalid.');
     }
 
     if (endDate && endDate < startDate) {
-      throw new Error('Assignment end date must be on or after the start date.');
+      throw new BadRequestException('Assignment end date must be on or after the start date.');
     }
 
     const activeMemberships = await this.personOrgMembershipRepository.findActiveByOrgUnit(
@@ -107,7 +107,7 @@ export class AssignProjectTeamService {
 
     const teamMembers = await this.resolveEligibleTeamMembers(activeMemberships);
     if (teamMembers.length === 0) {
-      throw new Error('Team has no active primary members for the requested start date.');
+      throw new ConflictException('Team has no active primary members for the requested start date.');
     }
 
     const skippedDuplicates: TeamAssignmentSkippedItem[] = [];

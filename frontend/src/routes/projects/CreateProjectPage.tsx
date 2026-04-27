@@ -8,10 +8,32 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { ProjectLifecycleForm } from '@/components/projects/ProjectLifecycleForm';
 import { useProjectLifecycleAdmin } from '@/features/projects/useProjectLifecycleAdmin';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
+
+// Fields the user actively fills in. `priority` defaults to MEDIUM and is excluded
+// so the warning does not fire on a freshly opened, untouched form.
+const DIRTY_FIELDS = [
+  'clientId',
+  'deliveryManagerId',
+  'description',
+  'domain',
+  'engagementModel',
+  'name',
+  'plannedEndDate',
+  'projectManagerId',
+  'projectType',
+  'startDate',
+  'tags',
+  'techStack',
+] as const;
 
 export function CreateProjectPage(): JSX.Element {
   const state = useProjectLifecycleAdmin();
   const navigate = useNavigate();
+  const isDirty =
+    !state.createdProject &&
+    DIRTY_FIELDS.some((field) => (state.values[field] ?? '').toString().trim() !== '');
+  useUnsavedChangesWarning(isDirty);
 
   return (
     <PageContainer testId="project-lifecycle-admin-page">

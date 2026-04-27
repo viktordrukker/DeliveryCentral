@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { MetadataEntry } from '../domain/entities/metadata-entry.entity';
@@ -31,7 +31,7 @@ export class CreateDictionaryEntryService {
     const normalizedType = command.dictionaryType.trim().toLowerCase();
 
     if (!(normalizedType in SUPPORTED_DICTIONARY_TYPES)) {
-      throw new Error('Metadata dictionary type is not supported.');
+      throw new BadRequestException('Metadata dictionary type is not supported.');
     }
 
     const dictionary = await this.metadataDictionaryRepository.findByDictionaryKey(
@@ -40,7 +40,7 @@ export class CreateDictionaryEntryService {
     );
 
     if (!dictionary) {
-      throw new Error('Metadata dictionary not found.');
+      throw new NotFoundException('Metadata dictionary not found.');
     }
 
     const entryKey = command.entryKey.trim();
@@ -48,15 +48,15 @@ export class CreateDictionaryEntryService {
     const displayName = command.displayName.trim();
 
     if (!entryKey) {
-      throw new Error('Metadata dictionary entryKey is required.');
+      throw new BadRequestException('Metadata dictionary entryKey is required.');
     }
 
     if (!entryValue) {
-      throw new Error('Metadata dictionary entryValue is required.');
+      throw new BadRequestException('Metadata dictionary entryValue is required.');
     }
 
     if (!displayName) {
-      throw new Error('Metadata dictionary displayName is required.');
+      throw new BadRequestException('Metadata dictionary displayName is required.');
     }
 
     const existingEntry = await this.metadataEntryRepository.findByEntryKey(
@@ -64,7 +64,7 @@ export class CreateDictionaryEntryService {
       entryKey,
     );
     if (existingEntry) {
-      throw new Error('Metadata dictionary entryKey already exists.');
+      throw new ConflictException('Metadata dictionary entryKey already exists.');
     }
 
     const entries = await this.metadataEntryRepository.findByDictionaryId(dictionary.id);

@@ -41,9 +41,19 @@ RUN apk update && apk upgrade --no-cache \
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/app.conf
 
-EXPOSE 80
+# INFRA-08: run nginx as the unprivileged `nginx` user. The official image
+# already includes the user; running the master non-root requires listening on
+# an unprivileged port (>1024), which nginx.conf now does (8080). Pre-create
+# the runtime directories the master needs to write to with the right owner.
+RUN chown -R nginx:nginx /var/cache/nginx /var/run /usr/share/nginx/html /etc/nginx/conf.d \
+  && touch /var/run/nginx.pid \
+  && chown nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
+EXPOSE 8080
 
 HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=10s \
-  CMD wget -q -O - http://127.0.0.1:80/ > /dev/null 2>&1 || exit 1
+  CMD wget -q -O - http://127.0.0.1:8080/ > /dev/null 2>&1 || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

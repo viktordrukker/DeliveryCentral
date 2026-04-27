@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -30,11 +30,11 @@ export class AssignLineManagerService {
     const endDate = command.endDate ? new Date(command.endDate) : undefined;
 
     if (Number.isNaN(startDate.getTime())) {
-      throw new Error('Reporting line start date is invalid.');
+      throw new BadRequestException('Reporting line start date is invalid.');
     }
 
     if (endDate && Number.isNaN(endDate.getTime())) {
-      throw new Error('Reporting line end date is invalid.');
+      throw new BadRequestException('Reporting line end date is invalid.');
     }
 
     const effectiveDateRange = EffectiveDateRange.create(startDate, endDate);
@@ -43,12 +43,12 @@ export class AssignLineManagerService {
 
     const subject = await this.personRepository.findByPersonId(subjectId);
     if (!subject) {
-      throw new Error('Employee does not exist.');
+      throw new NotFoundException('Employee does not exist.');
     }
 
     const manager = await this.personRepository.findByPersonId(managerId);
     if (!manager) {
-      throw new Error('Manager does not exist.');
+      throw new NotFoundException('Manager does not exist.');
     }
 
     const existingSolidLines = await this.reportingLineRepository.findBySubject(subjectId, [
@@ -75,7 +75,7 @@ export class AssignLineManagerService {
     );
 
     if (nonAdjustableOverlapExists) {
-      throw new Error('Overlapping solid-line manager assignment already exists.');
+      throw new ConflictException('Overlapping solid-line manager assignment already exists.');
     }
 
     if (predecessorLine) {
@@ -126,9 +126,11 @@ export class AssignLineManagerService {
     rightStart: Date,
     rightEnd: Date | undefined,
   ): boolean {
-    const normalizedLeftEnd = leftEnd ?? new Date('9999-12-31T23:59:59.999Z');
-    const normalizedRightEnd = rightEnd ?? new Date('9999-12-31T23:59:59.999Z');
-
-    return leftStart <= normalizedRightEnd && rightStart <= normalizedLeftEnd;
+    // DATE-02: an undefined end means "open ended" — overlap with any range
+    // whose start is on or before the bounded end (or with any range when both
+    // ends are open). No 9999-12-31 sentinel needed.
+    const leftEndsBeforeRightStart = leftEnd !== undefined && leftEnd < rightStart;
+    const rightEndsBeforeLeftStart = rightEnd !== undefined && rightEnd < leftStart;
+    return !leftEndsBeforeRightStart && !rightEndsBeforeLeftStart;
   }
 }

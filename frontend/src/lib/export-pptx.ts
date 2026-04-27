@@ -1,16 +1,19 @@
-import html2canvas from 'html2canvas';
-import PptxGenJS from 'pptxgenjs';
-
 // White background constant assembled at runtime so the raw-color guardrail
 // does not flag this necessary canvas export configuration.
 const WHITE_BG = ['#', 'ffffff'].join('');
 
+// PERF-FE-01: html2canvas (~300 KB gz) and pptxgenjs (~250 KB gz) are imported
+// lazily — the main bundle does not include them until a user clicks "Export".
 export async function generatePptxFromElement(
   element: HTMLElement,
   filename: string,
   title: string,
   narrative?: string,
 ): Promise<void> {
+  const [{ default: html2canvas }, { default: PptxGenJS }] = await Promise.all([
+    import('html2canvas'),
+    import('pptxgenjs'),
+  ]);
   const canvas = await html2canvas(element, {
     backgroundColor: WHITE_BG,
     scale: 2,

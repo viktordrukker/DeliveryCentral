@@ -421,14 +421,14 @@ function RadiatorTabInner({ project, projectId, reload }: RadiatorTabProps): JSX
               ) : null}
             </h3>
             {snap ? (
-              <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                Overall: <strong>{Math.round(snap.overallScore)}/100</strong>{' '}
+              <div style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Overall: <strong>{Math.round(snap.overallScore)}/100</strong></span>
                 <StatusBadge
                   label={bandLabel(snap.overallBand)}
                   tone={bandTone(snap.overallBand)}
                   variant="chip"
                 />
-              </p>
+              </div>
             ) : (
               <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-muted)' }}>
                 {loading ? 'Loading radiator…' : 'No radiator data yet.'}

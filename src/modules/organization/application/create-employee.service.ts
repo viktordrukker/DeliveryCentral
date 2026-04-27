@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -24,6 +24,8 @@ interface CreateEmployeeCommand {
 
 @Injectable()
 export class CreateEmployeeService {
+  private readonly logger = new Logger(CreateEmployeeService.name);
+
   public constructor(
     private readonly personRepository: PersonRepositoryPort,
     private readonly orgUnitRepository: OrgUnitRepositoryPort,
@@ -39,12 +41,12 @@ export class CreateEmployeeService {
 
     const existingEmployee = await this.personRepository.findByEmail(normalizedEmail);
     if (existingEmployee) {
-      throw new Error('Employee email already exists.');
+      throw new ConflictException('Employee email already exists.');
     }
 
     const orgUnit = await this.orgUnitRepository.findByOrgUnitId(targetOrgUnitId);
     if (!orgUnit) {
-      throw new Error('Org unit does not exist.');
+      throw new NotFoundException('Org unit does not exist.');
     }
 
     const employee = Person.createEmployee({
@@ -69,14 +71,27 @@ export class CreateEmployeeService {
 
     employee.pullDomainEvents();
 
+    // DATA-05: pseudo-transactional cleanup. Repositories are domain ports (no shared Prisma tx),
+    // so on membership-save failure we compensate by deleting the orphaned person record.
+    let personSaved = false;
     try {
       await this.personRepository.save(employee);
+      personSaved = true;
       await this.personOrgMembershipRepository.save(membership);
     } catch (error: unknown) {
-      // If membership save fails, attempt to clean up the orphaned person record
       const isUniqueViolation = error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002';
+      if (personSaved) {
+        // Best-effort rollback of the orphaned person.
+        try {
+          await this.personRepository.delete(employee.personId.value);
+        } catch (rollbackErr) {
+          this.logger.error(
+            `Failed to rollback orphan person ${employee.personId.value} after membership save failure: ${rollbackErr instanceof Error ? rollbackErr.message : 'unknown'}`,
+          );
+        }
+      }
       if (isUniqueViolation) {
-        throw new Error('Employee email already exists.');
+        throw new ConflictException('Employee email already exists.');
       }
       throw error;
     }
@@ -99,19 +114,23 @@ export class CreateEmployeeService {
       targetEntityType: 'EMPLOYEE',
     });
 
-    void this.employeeActivityService?.record({
+    this.employeeActivityService?.record({
       personId: employee.personId.value,
       eventType: 'HIRED',
       summary: `Employee ${command.name} hired. Email: ${command.email}`,
       metadata: { email: command.email, orgUnitId: command.orgUnitId },
+    }).catch((err: unknown) => {
+      this.logger.warn(`Activity event HIRED for ${employee.personId.value} failed: ${err instanceof Error ? err.message : 'unknown'}`);
     });
 
     // Auto-create onboarding case (20b-08)
-    void this.createLifecycleCase?.({
+    this.createLifecycleCase?.({
       caseTypeKey: 'ONBOARDING',
       ownerPersonId: employee.personId.value,
       subjectPersonId: employee.personId.value,
       summary: `Onboarding for ${command.name}`,
+    })?.catch((err: unknown) => {
+      this.logger.warn(`Onboarding case creation for ${employee.personId.value} failed: ${err instanceof Error ? err.message : 'unknown'}`);
     });
 
     return employee;

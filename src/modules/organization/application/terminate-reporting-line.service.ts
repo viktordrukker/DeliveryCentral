@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { ReportingLine } from '../domain/entities/reporting-line.entity';
 import { ReportingLineRepositoryPort } from '../domain/repositories/reporting-line-repository.port';
@@ -16,12 +16,12 @@ export class TerminateReportingLineService {
     const reportingLine = await this.repository.findById(command.reportingLineId);
 
     if (!reportingLine) {
-      throw new Error('Reporting line not found.');
+      throw new NotFoundException('Reporting line not found.');
     }
 
     const endDate = new Date(command.endDate);
     if (Number.isNaN(endDate.getTime())) {
-      throw new Error('End date is invalid.');
+      throw new BadRequestException('End date is invalid.');
     }
 
     reportingLine.endOn(endDate);

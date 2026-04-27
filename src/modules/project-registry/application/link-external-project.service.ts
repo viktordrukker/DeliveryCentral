@@ -1,3 +1,5 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
+
 import { ProjectExternalLink } from '../domain/entities/project-external-link.entity';
 import { ProjectExternalLinkRepositoryPort } from '../domain/repositories/project-external-link-repository.port';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
@@ -25,7 +27,7 @@ export class LinkExternalProjectService {
     const project = await this.projectRepository.findByProjectId(input.projectId);
 
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     const existingLink = await this.projectExternalLinkRepository.findByExternalKey(
@@ -34,7 +36,7 @@ export class LinkExternalProjectService {
     );
 
     if (existingLink && !existingLink.projectId.equals(input.projectId)) {
-      throw new Error('External project key is already linked to a different internal project.');
+      throw new ConflictException('External project key is already linked to a different internal project.');
     }
 
     if (existingLink) {

@@ -69,6 +69,12 @@ export class FinancialService {
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
       throw new BadRequestException('Invalid from/to date.');
     }
+    // DATE-03: a `from` after `to` returns an empty result without an obvious
+    // signal that the caller swapped the bounds — fail fast so the caller can
+    // see and fix the inversion.
+    if (fromDate.getTime() > toDate.getTime()) {
+      throw new BadRequestException('`from` must be on or before `to`.');
+    }
 
     const entries = await this.repo.findApprovedEntriesForCapitalisation(
       fromDate,
@@ -362,7 +368,7 @@ export class FinancialService {
     const burnDown: BurnDownPoint[] = weeks.map((week, idx) => ({
       week,
       cumCost: weekMap.get(week) ?? 0,
-      budgetLine: totalBudget > 0 ? (totalBudget / weeks.length) * (idx + 1) : 0,
+      budgetLine: totalBudget > 0 && weeks.length > 0 ? (totalBudget / weeks.length) * (idx + 1) : 0,
     }));
 
     // Forecast: linear extrapolation based on elapsed fiscal year

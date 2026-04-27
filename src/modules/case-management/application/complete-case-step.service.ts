@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -68,11 +68,11 @@ export class CompleteCaseStepService {
     });
 
     if (!existing) {
-      throw new Error('Case step not found.');
+      throw new NotFoundException('Case step not found.');
     }
 
     if (existing.status === 'COMPLETED') {
-      throw new Error('Case step is already completed.');
+      throw new ConflictException('Case step is already completed.');
     }
 
     const updated = await this.prisma.caseStep.update({
@@ -107,7 +107,7 @@ export class CompleteCaseStepService {
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey: key } },
     });
     if (existing) {
-      throw new Error(`Step with key '${key}' already exists.`);
+      throw new ConflictException(`Step with key '${key}' already exists.`);
     }
     const created = await this.prisma.caseStep.create({
       data: {
@@ -133,7 +133,7 @@ export class CompleteCaseStepService {
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey } },
     });
     if (!existing) {
-      throw new Error('Case step not found.');
+      throw new NotFoundException('Case step not found.');
     }
     await this.prisma.caseStep.delete({
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey } },

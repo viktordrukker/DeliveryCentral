@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
 import {
@@ -39,7 +40,7 @@ export class ProjectBudgetController {
   @ApiOperation({ summary: 'Upsert project budget for fiscal year' })
   @ApiOkResponse({ description: 'Project budget.' })
   public async upsertBudget(
-    @Param('id') projectId: string,
+    @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: UpsertProjectBudgetDto,
   ): Promise<ProjectBudgetDto> {
     try {
@@ -56,7 +57,7 @@ export class ProjectBudgetController {
   @ApiOperation({ summary: 'Get project budget dashboard' })
   @ApiOkResponse({ description: 'Project budget dashboard.' })
   public async getBudgetDashboard(
-    @Param('id') projectId: string,
+    @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<ProjectBudgetDashboard> {
     try {
       return await this.service.getProjectBudgetDashboard(projectId);
@@ -81,7 +82,7 @@ export class PersonCostRateController {
   @ApiOperation({ summary: 'Set person cost rate' })
   @ApiOkResponse({ description: 'Person cost rate.' })
   public async setCostRate(
-    @Param('id') personId: string,
+    @Param('id', ParseUUIDPipe) personId: string,
     @Body() dto: CreatePersonCostRateDto,
   ): Promise<PersonCostRateDto> {
     try {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { PersonRepositoryPort } from '../domain/repositories/person-repository.port';
@@ -22,17 +22,17 @@ export class UpdateTeamMemberService {
   public async execute(command: UpdateTeamMemberCommand): Promise<void> {
     const team = (await this.teamStore.getTeams()).find((item) => item.id === command.teamId);
     if (!team) {
-      throw new Error('Team not found.');
+      throw new NotFoundException('Team not found.');
     }
 
     const person = await this.personRepository.findById(command.personId);
     if (!person) {
-      throw new Error('Person not found.');
+      throw new NotFoundException('Person not found.');
     }
 
     if (command.action === 'add') {
       if (await this.teamStore.findActiveMembership(command.teamId, command.personId)) {
-        throw new Error('Person is already an active member of this team.');
+        throw new ConflictException('Person is already an active member of this team.');
       }
 
       await this.teamStore.addMember(command.teamId, command.personId);
@@ -58,7 +58,7 @@ export class UpdateTeamMemberService {
 
     const removed = await this.teamStore.removeMember(command.teamId, command.personId);
     if (!removed) {
-      throw new Error('Person is not an active member of this team.');
+      throw new ConflictException('Person is not an active member of this team.');
     }
 
     this.auditLogger?.record({

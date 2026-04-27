@@ -5,12 +5,10 @@ import {
   IsEmail,
   IsOptional,
   IsEnum,
-  
   IsArray,
   IsDateString,
-  
-  
   Matches,
+  MaxLength,
 } from 'class-validator';
 
 export class CreateEmployeeRequestDto {
@@ -22,6 +20,7 @@ export class CreateEmployeeRequestDto {
   @ApiProperty()
   @IsEmail()
   @IsNotEmpty()
+  @MaxLength(254) // EMAIL-01 — RFC 5321 maximum email address length.
   public email!: string;
 
   @ApiPropertyOptional({

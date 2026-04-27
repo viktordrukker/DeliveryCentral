@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
@@ -30,7 +30,7 @@ export class EndProjectAssignmentService {
     );
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     const endDate = new Date(command.endDate);
@@ -79,15 +79,21 @@ export class EndProjectAssignmentService {
       assignmentId: assignment.assignmentId.value,
     });
 
-    void this.employeeActivityService?.record({
+    this.employeeActivityService?.record({
       personId: assignment.personId,
       eventType: 'UNASSIGNED',
       summary: `Assignment ended for project ${assignment.projectId}. Reason: ${command.reason ?? 'Not specified'}`,
       actorId: command.actorId,
       relatedEntityId: assignment.assignmentId.value,
       metadata: { projectId: assignment.projectId, reason: command.reason },
+    }).catch((err: unknown) => {
+      this.logger.warn(
+        `Activity event UNASSIGNED for ${assignment.personId} failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
     });
 
     return assignment;
   }
+
+  private readonly logger = new Logger(EndProjectAssignmentService.name);
 }

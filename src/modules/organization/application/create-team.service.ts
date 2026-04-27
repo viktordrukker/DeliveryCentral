@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -25,11 +25,11 @@ export class CreateTeamService {
     const orgUnitId = command.orgUnitId?.trim() || undefined;
 
     if (!code) {
-      throw new Error('Team code is required.');
+      throw new BadRequestException('Team code is required.');
     }
 
     if (!name) {
-      throw new Error('Team name is required.');
+      throw new BadRequestException('Team name is required.');
     }
 
     const duplicate = (await this.teamStore.getTeams()).find(
@@ -37,7 +37,7 @@ export class CreateTeamService {
     );
 
     if (duplicate) {
-      throw new Error('Team code already exists.');
+      throw new ConflictException('Team code already exists.');
     }
 
     const team = await this.teamStore.createTeam({

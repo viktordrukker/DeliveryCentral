@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
@@ -31,7 +31,7 @@ export class ProjectManagerDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Project manager dashboard asOf is invalid.');
+      throw new BadRequestException('Project manager dashboard asOf is invalid.');
     }
 
     const settings = await this.platformSettingsService.getAll();
@@ -39,7 +39,7 @@ export class ProjectManagerDashboardQueryService {
 
     const person = await this.personDirectoryQueryService.getPersonById(query.personId, asOf);
     if (!person) {
-      throw new Error('Project manager dashboard person was not found.');
+      throw new NotFoundException('Project manager dashboard person was not found.');
     }
 
     const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });

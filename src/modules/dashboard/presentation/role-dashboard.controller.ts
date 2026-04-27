@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
@@ -202,6 +204,7 @@ export class RoleDashboardController {
   }
 
   @Get(':role')
+  @RequireRoles('admin', 'director', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Get tailored dashboard data for a supported role' })
   @ApiParam({
     name: 'role',
@@ -211,8 +214,15 @@ export class RoleDashboardController {
   @ApiOkResponse({ type: RoleDashboardResponseDto })
   public async getRoleDashboard(
     @Param('role') role: string,
+    @Req() req: { principal?: { roles?: string[] } },
     @Query('asOf') asOf?: string,
   ): Promise<RoleDashboardResponseDto> {
+    // AUTHZ-06: prevent privilege escalation via URL — caller must hold the requested role
+    // (admin always passes through).
+    const callerRoles = req.principal?.roles ?? [];
+    if (!callerRoles.includes('admin') && !callerRoles.includes(role)) {
+      throw new ForbiddenException(`Role '${role}' is not in your scope.`);
+    }
     try {
       return await this.roleDashboardQueryService.execute({ asOf, role });
     } catch (error) {

@@ -28,16 +28,20 @@ import { AppConfig } from '../config/app-config';
  * Application-name tag: `dc::replica::<agent>::<session>` so
  * `pg_stat_activity` on the replica can attribute reads too (DM-R-26).
  */
-function withApplicationName(rawUrl: string): string {
+function withApplicationName(rawUrl: string, agentId: string): string {
+  let url: URL;
   try {
-    const url = new URL(rawUrl);
-    const agent = (process.env.AGENT_ID || 'human').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 16);
-    const session = randomUUID().slice(0, 8);
-    url.searchParams.set('application_name', `dc::replica::${agent}::${session}`);
-    return url.toString();
-  } catch {
-    return rawUrl;
+    url = new URL(rawUrl);
+  } catch (err) {
+    // Fail loud — silently routing reads to a malformed URL would mask the misconfiguration. (REPLICA-01)
+    throw new Error(
+      `READ_REPLICA_DATABASE_URL (or DATABASE_URL fallback) is not a valid URL: ${err instanceof Error ? err.message : 'parse failure'}`,
+    );
   }
+  const agent = agentId.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 16);
+  const session = randomUUID().slice(0, 8);
+  url.searchParams.set('application_name', `dc::replica::${agent}::${session}`);
+  return url.toString();
 }
 
 @Injectable()
@@ -46,9 +50,11 @@ export class PrismaReadReplicaService extends PrismaClient implements OnModuleIn
   private readonly replicaConfigured: boolean;
 
   public constructor(appConfig: AppConfig) {
-    const replicaUrl = process.env.READ_REPLICA_DATABASE_URL;
+    // CONFIG-02: read replica + agent ID now come from AppConfig instead of
+    // direct process.env access.
+    const replicaUrl = appConfig.readReplicaDatabaseUrl;
     const effectiveUrl = replicaUrl || appConfig.databaseUrl;
-    const tagged = withApplicationName(effectiveUrl);
+    const tagged = withApplicationName(effectiveUrl, appConfig.agentId);
     super({ datasources: { db: { url: tagged } } });
     this.replicaConfigured = Boolean(replicaUrl);
   }

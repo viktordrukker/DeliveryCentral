@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { WorkEvidence } from '../domain/entities/work-evidence.entity';
 import { WorkEvidenceId } from '../domain/value-objects/work-evidence-id';
@@ -21,7 +21,7 @@ export class UpdateWorkEvidenceService {
     const evidence = await this.workEvidenceRepository.findByWorkEvidenceId(id);
 
     if (!evidence) {
-      throw new Error('Work evidence not found.');
+      throw new NotFoundException('Work evidence not found.');
     }
 
     const changes: Parameters<typeof evidence.update>[0] = {};
@@ -33,7 +33,7 @@ export class UpdateWorkEvidenceService {
     if (command.occurredOn !== undefined) {
       const date = new Date(command.occurredOn);
       if (Number.isNaN(date.getTime())) {
-        throw new Error('Activity date is invalid.');
+        throw new BadRequestException('Activity date is invalid.');
       }
       changes.occurredOn = date;
     }

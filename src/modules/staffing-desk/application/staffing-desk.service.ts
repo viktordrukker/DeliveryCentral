@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -6,8 +6,16 @@ import { StaffingDeskQueryDto } from './staffing-desk-query.dto';
 import { StaffingDeskResponseDto, StaffingDeskKpis, SupplyDemandMetrics } from './staffing-desk-response.dto';
 import { StaffingDeskRowDto, resolveStatusGroup } from './staffing-desk-row.dto';
 
+// PERF-08 (partial): the staffing desk merges assignments + requests, applies cross-entity
+// text filters, then sorts in memory. Switching to true DB-level pagination requires moving
+// the merge into a UNION query so OFFSET/LIMIT can be applied to the unified set. Until then
+// each side is capped at STAFFING_DESK_FETCH_LIMIT and a warning is logged when truncation
+// is detected so operators know the result page may be incomplete.
+const STAFFING_DESK_FETCH_LIMIT = 5000;
+
 @Injectable()
 export class StaffingDeskService {
+  private readonly logger = new Logger(StaffingDeskService.name);
   public constructor(private readonly prisma: PrismaService) {}
 
   public async query(dto: StaffingDeskQueryDto): Promise<StaffingDeskResponseDto> {
@@ -25,15 +33,27 @@ export class StaffingDeskService {
     // Resolve person IDs filtered by pool or org unit
     const personScope = await this.resolvePersonScope(dto);
 
-    const [assignmentRows, requestRows, lookups] = await Promise.all([
+    // PERF-07: scope lookup tables to the IDs returned by the primary queries instead of
+    // loading every person/project/skill/membership row in the database.
+    const [assignmentRows, requestRows] = await Promise.all([
       kind !== 'request' ? this.fetchAssignments(dto, statusList, allocMin, allocMax, personScope) : Promise.resolve([]),
       kind !== 'assignment' ? this.fetchRequests(dto, statusList, priorityList, skillList, allocMin, allocMax) : Promise.resolve([]),
-      this.fetchLookups(),
     ]);
+    if (assignmentRows.length >= STAFFING_DESK_FETCH_LIMIT) {
+      this.logger.warn(`Assignment fetch capped at ${STAFFING_DESK_FETCH_LIMIT}; results may be truncated. PERF-08 follow-up needed.`);
+    }
+    if (requestRows.length >= STAFFING_DESK_FETCH_LIMIT) {
+      this.logger.warn(`Staffing-request fetch capped at ${STAFFING_DESK_FETCH_LIMIT}; results may be truncated. PERF-08 follow-up needed.`);
+    }
+    const personIdsForLookups = new Set<string>();
+    for (const a of assignmentRows) personIdsForLookups.add(a.personId);
+    for (const r of requestRows) personIdsForLookups.add(r.requestedByPersonId);
+    const projectIdsForLookups = new Set<string>();
+    for (const a of assignmentRows) projectIdsForLookups.add(a.projectId);
+    for (const r of requestRows) projectIdsForLookups.add(r.projectId);
 
-    const { peopleById, projectsById, skillsByPerson, poolByPerson, orgByPerson, managerByPerson } = lookups;
-
-    // Batch-load ALL assignments for all unique person IDs (for inline timeline rendering)
+    // Batch-load ALL assignments for all unique person IDs (for inline timeline rendering).
+    // Run before fetchLookups so timeline-referenced projects appear in projectsById.
     const uniquePersonIds = [...new Set(assignmentRows.map((a) => a.personId))];
     const allPersonAssignments = uniquePersonIds.length > 0
       ? await this.prisma.projectAssignment.findMany({
@@ -41,6 +61,14 @@ export class StaffingDeskService {
           select: { personId: true, projectId: true, allocationPercent: true, validFrom: true, validTo: true, status: true },
         })
       : [];
+    for (const pa of allPersonAssignments) projectIdsForLookups.add(pa.projectId);
+
+    const lookups = await this.fetchLookups(
+      [...personIdsForLookups],
+      [...projectIdsForLookups],
+    );
+
+    const { peopleById, projectsById, skillsByPerson, poolByPerson, orgByPerson, managerByPerson } = lookups;
     const assignmentsByPerson = new Map<string, typeof allPersonAssignments>();
     for (const a of allPersonAssignments) {
       let arr = assignmentsByPerson.get(a.personId);
@@ -215,7 +243,7 @@ export class StaffingDeskService {
         assignmentCode: true,
       },
       orderBy: { validFrom: 'desc' },
-      take: 5000,
+      take: STAFFING_DESK_FETCH_LIMIT,
     });
   }
 
@@ -264,7 +292,7 @@ export class StaffingDeskService {
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 5000,
+      take: STAFFING_DESK_FETCH_LIMIT,
     });
   }
 
@@ -298,14 +326,22 @@ export class StaffingDeskService {
     return new Set(poolPersonIds ?? orgPersonIds ?? []);
   }
 
-  private async fetchLookups() {
+  private async fetchLookups(personIds: string[], projectIds: string[]) {
+    // PERF-07: scope every lookup query to the IDs returned by the primary queries.
+    // Without scoping, this loaded every Person, Project, PersonSkill, etc. row in the DB.
+    const personFilter = personIds.length > 0 ? { id: { in: personIds } } : { id: { in: [] } };
+    const projectFilter = projectIds.length > 0 ? { id: { in: projectIds } } : { id: { in: [] } };
+    const personScopedFilter = personIds.length > 0 ? { personId: { in: personIds } } : { personId: { in: [] } };
+    const subjectScopedFilter =
+      personIds.length > 0 ? { subjectPersonId: { in: personIds } } : { subjectPersonId: { in: [] } };
+
     const [people, projects, personSkills, poolMemberships, orgMemberships, reportingLines] = await Promise.all([
-      this.prisma.person.findMany({ select: { id: true, displayName: true, grade: true, role: true, primaryEmail: true, employmentStatus: true } }),
-      this.prisma.project.findMany({ select: { id: true, name: true } }),
-      this.prisma.personSkill.findMany({ select: { personId: true, skill: { select: { name: true } } } }),
-      this.prisma.personResourcePoolMembership.findMany({ select: { personId: true, resourcePool: { select: { name: true } } } }),
-      this.prisma.personOrgMembership.findMany({ select: { personId: true, orgUnit: { select: { name: true } } } }),
-      this.prisma.reportingLine.findMany({ where: { relationshipType: 'SOLID_LINE' }, select: { subjectPersonId: true, manager: { select: { displayName: true } } } }),
+      this.prisma.person.findMany({ where: personFilter, select: { id: true, displayName: true, grade: true, role: true, primaryEmail: true, employmentStatus: true } }),
+      this.prisma.project.findMany({ where: projectFilter, select: { id: true, name: true } }),
+      this.prisma.personSkill.findMany({ where: personScopedFilter, select: { personId: true, skill: { select: { name: true } } } }),
+      this.prisma.personResourcePoolMembership.findMany({ where: personScopedFilter, select: { personId: true, resourcePool: { select: { name: true } } } }),
+      this.prisma.personOrgMembership.findMany({ where: personScopedFilter, select: { personId: true, orgUnit: { select: { name: true } } } }),
+      this.prisma.reportingLine.findMany({ where: { relationshipType: 'SOLID_LINE', ...subjectScopedFilter }, select: { subjectPersonId: true, manager: { select: { displayName: true } } } }),
     ]);
 
     const skillsByPerson = new Map<string, string[]>();

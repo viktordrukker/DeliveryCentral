@@ -105,7 +105,10 @@ export function AssignmentsPage(): JSX.Element {
       </>,
     );
     return () => setActions(null);
-  }, [setActions, state.items, state.isLoading, isEmployeeOnly, filters, activeTab, setFilters]);
+    // Use primitive/string keys so identity-changing object refs (filters, state.items)
+    // don't retrigger the effect on every render and cause infinite loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setActions, state.items.length, state.isLoading, isEmployeeOnly, JSON.stringify(filters), activeTab, setFilters]);
 
   function handleRowClick(row: { id: string; kind: string }): void {
     if (row.kind === 'assignment') navigate(`/assignments/${row.id}`);

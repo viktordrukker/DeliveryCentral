@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -76,7 +76,7 @@ export class ReportsController {
   @Delete('templates/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a report template' })
-  public deleteTemplate(@Param('id') id: string): void {
+  public deleteTemplate(@Param('id', ParseUUIDPipe) id: string): void {
     const deleted = this.reportBuilderService.deleteTemplate(id);
     if (!deleted) {
       throw new NotFoundException('Report template not found.');

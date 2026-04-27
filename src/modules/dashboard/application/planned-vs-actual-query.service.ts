@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
@@ -30,7 +30,7 @@ export class PlannedVsActualQueryService {
   public async execute(query: PlannedVsActualQuery) {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Planned vs actual asOf is invalid.');
+      throw new BadRequestException('Planned vs actual asOf is invalid.');
     }
 
     const weeksIncluded = Math.min(Math.max(query.weeks ?? 4, 1), 12);

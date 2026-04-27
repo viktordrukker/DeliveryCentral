@@ -305,6 +305,17 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          load: true
+          tags: deliverycentral-backend:ci
+
+      # INFRA-05 — scan the backend image alongside the frontend.
+      - name: Scan backend image for vulnerabilities
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e2f6a1c0a7f1bf99 # v0.24
+        with:
+          image-ref: deliverycentral-backend:ci
+          format: table
+          exit-code: 0
+          severity: CRITICAL,HIGH
 
       - name: Build frontend production image
         uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6

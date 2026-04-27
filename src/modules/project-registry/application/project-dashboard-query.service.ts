@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -61,7 +61,7 @@ export class ProjectDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Project dashboard asOf is invalid.');
+      throw new BadRequestException('Project dashboard asOf is invalid.');
     }
 
     const project = (await this.projectRepository.findAll()).find(
@@ -69,7 +69,7 @@ export class ProjectDashboardQueryService {
     );
 
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });

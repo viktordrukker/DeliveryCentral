@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -70,7 +71,7 @@ export class ExceptionsController {
   @ApiOkResponse({ type: ExceptionResolutionResponseDto })
   @ApiNotFoundResponse({ description: 'Exception item not found.' })
   public async resolveException(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: ResolveExceptionRequestDto,
   ): Promise<ExceptionResolutionResponseDto> {
     try {
@@ -103,7 +104,7 @@ export class ExceptionsController {
   @ApiOkResponse({ type: ExceptionResolutionResponseDto })
   @ApiNotFoundResponse({ description: 'Exception item not found.' })
   public async suppressException(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: SuppressExceptionRequestDto,
   ): Promise<ExceptionResolutionResponseDto> {
     try {
@@ -135,7 +136,7 @@ export class ExceptionsController {
   @ApiOkResponse({ type: ExceptionQueueItemDto })
   @ApiNotFoundResponse({ description: 'Exception item not found.' })
   public async getById(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ExceptionQueueQueryDto,
   ): Promise<ExceptionQueueItemDto> {
     try {

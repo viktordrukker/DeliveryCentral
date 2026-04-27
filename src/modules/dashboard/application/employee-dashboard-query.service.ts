@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AssignmentDirectoryItemDto } from '@src/modules/assignments/application/contracts/assignment-directory.dto';
 import { ListAssignmentsService } from '@src/modules/assignments/application/list-assignments.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
@@ -23,12 +23,12 @@ export class EmployeeDashboardQueryService {
     const asOf = query.asOf ? new Date(query.asOf) : new Date();
 
     if (Number.isNaN(asOf.getTime())) {
-      throw new Error('Employee dashboard asOf is invalid.');
+      throw new BadRequestException('Employee dashboard asOf is invalid.');
     }
 
     const person = await this.personDirectoryQueryService.getPersonById(query.personId, asOf);
     if (!person) {
-      throw new Error('Employee dashboard person was not found.');
+      throw new NotFoundException('Employee dashboard person was not found.');
     }
 
     const assignmentResult = await this.listAssignmentsService.execute({

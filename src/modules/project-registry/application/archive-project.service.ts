@@ -1,3 +1,5 @@
+import { NotFoundException } from '@nestjs/common';
+
 import { Project } from '../domain/entities/project.entity';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 import { ProjectId } from '../domain/value-objects/project-id';
@@ -14,7 +16,7 @@ export class ArchiveProjectService {
     const project = await this.projectRepository.findByProjectId(input.projectId);
 
     if (!project) {
-      throw new Error('Project not found.');
+      throw new NotFoundException('Project not found.');
     }
 
     project.archive(input.archivedAt);

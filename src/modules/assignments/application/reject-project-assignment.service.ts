@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
@@ -32,7 +32,7 @@ export class RejectProjectAssignmentService {
     );
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     assignment.reject();

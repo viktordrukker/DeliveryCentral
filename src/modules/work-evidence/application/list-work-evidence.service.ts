@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { WorkEvidenceRepositoryPort } from '../domain/repositories/work-evidence-repository.port';
 
@@ -21,11 +21,11 @@ export class ListWorkEvidenceService {
     const dateTo = query.dateTo ? new Date(query.dateTo) : undefined;
 
     if (dateFrom && Number.isNaN(dateFrom.getTime())) {
-      throw new Error('Work evidence dateFrom is invalid.');
+      throw new BadRequestException('Work evidence dateFrom is invalid.');
     }
 
     if (dateTo && Number.isNaN(dateTo.getTime())) {
-      throw new Error('Work evidence dateTo is invalid.');
+      throw new BadRequestException('Work evidence dateTo is invalid.');
     }
 
     return {

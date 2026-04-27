@@ -43,19 +43,20 @@ export class WorkloadDashboardController {
     @Query() query: WorkloadTrendQueryDto,
   ): Promise<WorkloadTrendPointDto[]> {
     try {
-      const weeks = Math.min(Math.max(parseInt(query.weeks ?? '12', 10) || 12, 1), 52);
+      const weeks = query.weeks ?? 12;
       const trendCacheKey = `workload-trend:${weeks}`;
       const cached = getCached<WorkloadTrendPointDto[]>(trendCacheKey);
       if (cached) {
         return cached;
       }
 
-      const now = new Date();
+      const nowMs = Date.now();
       const results: WorkloadTrendPointDto[] = [];
 
+      // DATE-01: subtract whole days via millisecond arithmetic so the trend
+      // points stay 7×24h apart even across DST boundaries.
       for (let i = weeks - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i * 7);
+        const d = new Date(nowMs - i * 7 * 86400000);
         const asOf = d.toISOString();
         const summary = await this.workloadDashboardQueryService.execute({ asOf });
         results.push({

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -52,7 +53,7 @@ export class ReportingLinesController {
   @ApiNotFoundResponse({ description: 'Reporting line not found.' })
   @RequireRoles('resource_manager', 'director', 'hr_manager', 'admin')
   public async terminateReportingLine(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TerminateReportingLineRequestDto,
   ): Promise<ReportingLineResponseDto> {
     return this.mapResponse(

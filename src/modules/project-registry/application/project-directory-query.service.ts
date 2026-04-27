@@ -8,6 +8,8 @@ import { ProjectRepositoryPort } from '../domain/repositories/project-repository
 
 interface ProjectDirectoryQuery {
   source?: string;
+  page?: string | number;
+  pageSize?: string | number;
 }
 
 @Injectable()
@@ -18,7 +20,9 @@ export class ProjectDirectoryQueryService {
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
   ) {}
 
-  public async execute(query: ProjectDirectoryQuery): Promise<{ items: ProjectDirectoryItemDto[] }> {
+  public async execute(
+    query: ProjectDirectoryQuery,
+  ): Promise<{ items: ProjectDirectoryItemDto[]; totalCount: number }> {
     const source = query.source?.trim().toUpperCase();
     const [projects, assignments, externalLinks] = await Promise.all([
       this.projectRepository.findAll(),
@@ -73,6 +77,16 @@ export class ProjectDirectoryQueryService {
       });
     }
 
-    return { items };
+    // FE-04: pagination is opt-in. Callers that don't pass page/pageSize get the
+    // full result set + a totalCount, preserving the legacy contract while letting
+    // newer callers slice the response.
+    const totalCount = items.length;
+    const pageNum = query.page !== undefined ? Number(query.page) : NaN;
+    const pageSizeNum = query.pageSize !== undefined ? Number(query.pageSize) : NaN;
+    if (Number.isFinite(pageNum) && Number.isFinite(pageSizeNum) && pageNum >= 1 && pageSizeNum >= 1) {
+      const start = (pageNum - 1) * pageSizeNum;
+      return { items: items.slice(start, start + pageSizeNum), totalCount };
+    }
+    return { items, totalCount };
   }
 }

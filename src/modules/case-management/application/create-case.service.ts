@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { CaseReferenceRepositoryPort } from './ports/case-reference.repository.port';
@@ -31,26 +31,26 @@ export class CreateCaseService {
   public async execute(command: CreateCaseCommand): Promise<CaseRecord> {
     const validTypes: CaseTypeKey[] = ['ONBOARDING', 'OFFBOARDING', 'TRANSFER', 'PERFORMANCE'];
     if (!validTypes.includes(command.caseTypeKey)) {
-      throw new Error(`Unsupported case type: ${command.caseTypeKey}`);
+      throw new BadRequestException(`Unsupported case type: ${command.caseTypeKey}`);
     }
 
     if (!(await this.personExists(command.subjectPersonId))) {
-      throw new Error('Case subject person does not exist.');
+      throw new NotFoundException('Case subject person does not exist.');
     }
 
     if (!(await this.personExists(command.ownerPersonId))) {
-      throw new Error('Case owner person does not exist.');
+      throw new NotFoundException('Case owner person does not exist.');
     }
 
     if (command.relatedProjectId && !(await this.projectExists(command.relatedProjectId))) {
-      throw new Error('Related project does not exist.');
+      throw new NotFoundException('Related project does not exist.');
     }
 
     if (
       command.relatedAssignmentId &&
       !(await this.assignmentExists(command.relatedAssignmentId))
     ) {
-      throw new Error('Related assignment does not exist.');
+      throw new NotFoundException('Related assignment does not exist.');
     }
 
     const participants = (command.participants ?? []).map((participant) =>
@@ -93,7 +93,7 @@ export class CreateCaseService {
       }
     }
 
-    throw new Error('Failed to generate unique case number after retries.');
+    throw new InternalServerErrorException('Failed to generate unique case number after retries.');
   }
 
   private async assignmentExists(assignmentId: string): Promise<boolean> {

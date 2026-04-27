@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
+import { AppConfig } from '@src/shared/config/app-config';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { registerPublicIdMiddleware } from './public-id-prisma.middleware';
@@ -35,10 +36,13 @@ export class PublicIdBootstrapService implements OnModuleInit {
   public constructor(
     private readonly moduleRef: ModuleRef,
     private readonly publicIdService: PublicIdService,
+    private readonly appConfig: AppConfig,
   ) {}
 
   public onModuleInit(): void {
-    const enabled = (process.env.PUBLIC_ID_MIDDLEWARE_ENABLED ?? 'true').toLowerCase() !== 'false';
+    // CONFIG-02: feature toggle now lives on AppConfig instead of being read
+    // from process.env at startup.
+    const enabled = this.appConfig.publicIdMiddlewareEnabled;
     if (!enabled) {
       this.logger.warn(
         'PUBLIC_ID_MIDDLEWARE_ENABLED=false — skipping Prisma publicId middleware install. ' +

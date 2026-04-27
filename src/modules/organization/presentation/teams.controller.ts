@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -35,6 +36,7 @@ export class TeamsController {
   ) {}
 
   @Get()
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List operational teams' })
   @ApiOkResponse({ type: TeamListResponseDto })
   public async listTeams(): Promise<TeamListResponseDto> {
@@ -64,9 +66,10 @@ export class TeamsController {
   }
 
   @Get(':id')
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get an operational team by id' })
   @ApiOkResponse({ type: TeamSummaryDto })
-  public async getTeam(@Param('id') id: string): Promise<TeamSummaryDto> {
+  public async getTeam(@Param('id', ParseUUIDPipe) id: string): Promise<TeamSummaryDto> {
     const team = await this.teamQueryService.getTeam(id);
     if (!team) {
       throw new NotFoundException('Team not found.');
@@ -76,10 +79,11 @@ export class TeamsController {
   }
 
   @Get(':id/members')
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get operational team members' })
   @ApiOkResponse({ type: TeamMembersResponseDto })
   public async getTeamMembers(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query('asOf') asOf?: string,
   ): Promise<TeamMembersResponseDto> {
     const members = await this.teamQueryService.getTeamMembersAsOf(
@@ -94,10 +98,11 @@ export class TeamsController {
   }
 
   @Get(':id/dashboard')
+  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Get operational team dashboard summary' })
   @ApiOkResponse({ type: TeamDashboardDto })
   public async getTeamDashboard(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query('asOf') asOf?: string,
   ): Promise<TeamDashboardDto> {
     const dashboard = await this.teamQueryService.getTeamDashboard(
@@ -117,7 +122,7 @@ export class TeamsController {
   @ApiOkResponse({ type: TeamMembersResponseDto })
   @RequireRoles('resource_manager', 'director', 'admin')
   public async updateTeamMembers(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateTeamMemberRequestDto,
   ): Promise<TeamMembersResponseDto> {
     try {

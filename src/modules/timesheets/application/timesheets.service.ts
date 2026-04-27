@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { TimesheetRepository } from '../infrastructure/timesheet.repository';
 import {
@@ -28,8 +29,44 @@ function parseWeekStart(weekStart: string): Date {
 export class TimesheetsService {
   public constructor(
     private readonly repo: TimesheetRepository,
+    private readonly prisma: PrismaService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
   ) {}
+
+  /**
+   * AUTHZ-02: Verify the approver is in the line-management chain of the timesheet owner.
+   * director/admin/hr_manager bypass the chain check (cross-org approvers by policy).
+   * Walks the SOLID_LINE reporting graph upward from the owner up to a depth limit.
+   */
+  private async isApproverInManagerChain(
+    ownerPersonId: string,
+    approverPersonId: string,
+    approverRoles: string[],
+  ): Promise<boolean> {
+    if (
+      approverRoles.includes('admin') ||
+      approverRoles.includes('director') ||
+      approverRoles.includes('hr_manager')
+    ) {
+      return true;
+    }
+
+    const MAX_DEPTH = 8;
+    let cursor: string | null = ownerPersonId;
+    const visited = new Set<string>();
+    for (let i = 0; i < MAX_DEPTH && cursor; i++) {
+      if (visited.has(cursor)) break;
+      visited.add(cursor);
+      const line: { managerPersonId: string } | null = await this.prisma.reportingLine.findFirst({
+        where: { subjectPersonId: cursor, relationshipType: 'SOLID_LINE', validTo: null },
+        select: { managerPersonId: true },
+      });
+      if (!line) return false;
+      if (line.managerPersonId === approverPersonId) return true;
+      cursor = line.managerPersonId;
+    }
+    return false;
+  }
 
   public async getMyWeek(personId: string, weekStart: string): Promise<TimesheetWeekDto> {
     const weekDate = parseWeekStart(weekStart);
@@ -132,7 +169,11 @@ export class TimesheetsService {
     return weeks.map((w) => this.mapWeek(w));
   }
 
-  public async approveWeek(weekId: string, approverId: string): Promise<TimesheetWeekDto> {
+  public async approveWeek(
+    weekId: string,
+    approverId: string,
+    approverRoles: string[] = [],
+  ): Promise<TimesheetWeekDto> {
     const week = await this.repo.findWeekById(weekId);
 
     if (!week) {
@@ -146,6 +187,14 @@ export class TimesheetsService {
     if (week.status !== 'SUBMITTED') {
       throw new BadRequestException(
         `Cannot approve a timesheet with status ${week.status}.`,
+      );
+    }
+
+    // AUTHZ-02: enforce manager-chain when approver is not director/admin/hr_manager.
+    const allowed = await this.isApproverInManagerChain(week.personId, approverId, approverRoles);
+    if (!allowed) {
+      throw new ForbiddenException(
+        'You are not in the management chain of this timesheet owner.',
       );
     }
 

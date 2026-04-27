@@ -91,6 +91,9 @@ export class InMemoryWebhookService {
     payload: unknown,
   ): Promise<WebhookDeliveryAttempt> {
     const body = JSON.stringify({ eventType, payload, timestamp: new Date().toISOString() });
+    if (!sub.secret || sub.secret.length < 16) {
+      throw new Error(`Webhook subscription ${sub.id} has an invalid secret (must be at least 16 characters).`);
+    }
     const signature = createHmac('sha256', sub.secret).update(body).digest('hex');
 
     const attempt: WebhookDeliveryAttempt = {

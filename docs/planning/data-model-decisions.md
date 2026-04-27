@@ -265,6 +265,27 @@ Schema and code go together only in the "switch callers" release; never in the a
 - Filter predicates simplify: `status === 'PENDING'` captures all pending approvals.
 - After DM-4 enum migration, `REQUESTED` is dropped from the enum entirely.
 
+## DMD-028 · `OutboxEvent` is dormant infrastructure on CX13 deployments
+
+**Status:** Accepted (audit OBS-02)
+**Context:** The `OutboxEvent` model implements the transactional outbox pattern: domain mutations enqueue an event row in the same transaction as the state change, and a downstream worker drains the queue and dispatches to consumers. The audit (OBS-02) flagged that no application code writes to this table and no worker drains it.
+**Decision:** On the CX13 single-VM deployment we deliberately keep `OutboxEvent` dormant. The table and indexes (`@@index([status, availableAt])`, `@@index([aggregateType, aggregateId])`) remain in the schema as a contract — the moment a workflow needs guaranteed at-least-once external delivery, it can start writing rows without a migration. Until then, in-app notifications and audit logs are written directly without an outbox hop. The worker is intentionally not built: a worker on a single 2-vCPU VM that occasionally scans an empty table is wasted scheduler pressure.
+**Consequences:**
+- New writers for `OutboxEvent` must come bundled with a worker that drains the table; landing one without the other is a regression of this decision.
+- The dormancy is operationally safe: with zero writers, accumulation is zero.
+- A future migration from single-VM to a worker-fleet topology lifts this restriction; the schema is already prepared.
+
+## DMD-027 · `CREATE INDEX CONCURRENTLY` is mandatory on populated tables
+
+**Status:** Accepted (audit MIG-05)
+**Context:** Plain `CREATE INDEX` takes an `ACCESS EXCLUSIVE` lock on the target table for the duration of the build. On any table with non-trivial row count this blocks reads and writes long enough to cause request timeouts and queue backpressure in production. Several earlier migrations (`20260419_pulse_v2_foundation`, `20260419_pulse_reports`) shipped with non-concurrent `CREATE INDEX` statements — acceptable on the empty tables they created, but the pattern must not propagate.
+**Decision:** Every `CREATE INDEX` on a table that already holds rows in production **must** use `CREATE INDEX CONCURRENTLY`. Indexes created on the same migration that creates the table itself may use plain `CREATE INDEX` (the table is empty and no concurrency exists). Concurrent index creation cannot run inside a transaction, so the migration file must opt out of Prisma's default transaction wrapping by separating the statement into its own migration directory or using the `-- prisma:transactional false` directive.
+**Consequences:**
+- Reviewers reject any migration that adds an index to a pre-existing populated table without `CONCURRENTLY`.
+- Concurrent index creation can fail (e.g. unique constraint violation discovered mid-build); the migration must include a `DROP INDEX IF EXISTS` recovery step or be paired with a rollback.sql.
+- Composite indexes that need to back a `UNIQUE` constraint use the two-step pattern: `CREATE UNIQUE INDEX CONCURRENTLY ...` followed by `ALTER TABLE ... ADD CONSTRAINT ... USING INDEX ...`.
+- Schema-foundation migrations on greenfield tables remain free to use plain `CREATE INDEX` — the cost is paid up-front while the table is empty.
+
 ---
 
 ## Superseded Decisions

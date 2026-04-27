@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { OvertimePolicyService } from '../application/overtime-policy.service';
@@ -45,7 +45,7 @@ export class OvertimeController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequireRoles('resource_manager', 'delivery_manager', 'admin')
   @ApiOperation({ summary: 'Retire an overtime policy' })
-  public async removePolicy(@Param('id') id: string): Promise<void> {
+  public async removePolicy(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.policyService.remove(id);
   }
 

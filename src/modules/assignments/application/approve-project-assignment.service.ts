@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
@@ -34,17 +34,17 @@ export class ApproveProjectAssignmentService {
     );
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     if (assignment.personId === command.actorId) {
-      throw new Error('Cannot approve your own assignment.');
+      throw new ForbiddenException('Cannot approve your own assignment.');
     }
 
     if (this.assignmentReferenceRepository) {
       const isActive = await this.assignmentReferenceRepository.personIsActive(assignment.personId);
       if (!isActive) {
-        throw new Error('Cannot approve assignment for an inactive or terminated employee.');
+        throw new ConflictException('Cannot approve assignment for an inactive or terminated employee.');
       }
     }
 

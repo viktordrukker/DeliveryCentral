@@ -186,6 +186,19 @@ export class BenchManagementService {
       select: { id: true, role: true, skills: true, allocationPercent: true, priority: true },
     });
 
+    // PERF-02: index requests by skill once so each bench person only scores requests
+    // that share at least one skill, instead of iterating every open request per person.
+    type RequestRecord = { id: string; role: string; skills: string[] };
+    const requestsBySkill = new Map<string, RequestRecord[]>();
+    for (const req of openRequests) {
+      const rec: RequestRecord = { id: req.id, role: req.role, skills: req.skills };
+      for (const skill of req.skills) {
+        const list = requestsBySkill.get(skill);
+        if (list) list.push(rec);
+        else requestsBySkill.set(skill, [rec]);
+      }
+    }
+
     // Build bench people list
     const benchPeople: BenchPersonDto[] = [];
     for (const p of allPeople) {
@@ -196,17 +209,18 @@ export class BenchManagementService {
       const daysOnBench = Math.max(0, Math.round((now.getTime() - benchStart.getTime()) / 86400000));
       const skills = skillsByPerson.get(p.id) ?? [];
 
-      // Simple best-match scoring
+      // Walk only requests that share ≥1 skill with this person; tally matches per request.
+      const matchCount = new Map<RequestRecord, number>();
+      for (const skill of skills) {
+        const candidates = requestsBySkill.get(skill.name);
+        if (!candidates) continue;
+        for (const rec of candidates) matchCount.set(rec, (matchCount.get(rec) ?? 0) + 1);
+      }
       let bestReq: { id: string; role: string; score: number } | null = null;
-      for (const req of openRequests) {
-        let score = 0;
-        const personSkillNames = new Set(skills.map((s) => s.name));
-        for (const reqSkill of req.skills) {
-          if (personSkillNames.has(reqSkill)) score += 1;
-        }
-        if (req.skills.length > 0) score = score / req.skills.length;
+      for (const [rec, matches] of matchCount) {
+        const score = rec.skills.length > 0 ? matches / rec.skills.length : 0;
         if (!bestReq || score > bestReq.score) {
-          bestReq = { id: req.id, role: req.role, score: Math.round(score * 100) / 100 };
+          bestReq = { id: rec.id, role: rec.role, score: Math.round(score * 100) / 100 };
         }
       }
 

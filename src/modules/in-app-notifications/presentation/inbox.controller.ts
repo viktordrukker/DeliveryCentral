@@ -6,6 +6,7 @@ import {
   MessageEvent,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -65,9 +66,10 @@ export class InboxController {
   @HttpCode(HttpStatus.OK)
   @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Mark a single notification as read' })
+  @ApiOkResponse({ type: InAppNotificationDto })
   public async markRead(
     @Req() req: { principal?: RequestPrincipal },
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<InAppNotificationDto> {
     const personId = req.principal?.personId ?? '';
     const result = await this.inAppNotificationService.markRead(id, personId);
@@ -83,6 +85,7 @@ export class InboxController {
   @HttpCode(HttpStatus.OK)
   @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Mark all unread notifications as read' })
+  @ApiOkResponse({ description: 'Acknowledgement payload `{ status: "ok" }`.' })
   public async markAllRead(
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<{ status: string }> {
@@ -98,6 +101,7 @@ export class InboxController {
   @Sse('stream')
   @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Server-sent events stream for real-time notification count updates' })
+  @ApiOkResponse({ description: 'text/event-stream with `{ unreadCount, connected }` events emitted every 30s.' })
   public streamNotifications(
     @Req() req: { principal?: RequestPrincipal; on?: (event: string, handler: () => void) => void },
   ): Observable<MessageEvent> {

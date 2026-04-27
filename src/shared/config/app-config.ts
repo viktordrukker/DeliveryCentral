@@ -79,6 +79,11 @@ export class AppConfig {
   public readonly radiusAccountMatchStrategy: 'email' | 'none';
   public readonly serviceName: string;
 
+  // CONFIG-02: previously read directly from process.env at multiple call sites.
+  public readonly readReplicaDatabaseUrl?: string;
+  public readonly publicIdMiddlewareEnabled: boolean;
+  public readonly agentId: string;
+
   public constructor() {
     this.nodeEnv = process.env.NODE_ENV ?? 'development';
     this.port = Number(process.env.PORT ?? '3000');
@@ -166,9 +171,25 @@ export class AppConfig {
     this.seedAdminDisplayName = process.env.SEED_ADMIN_DISPLAY_NAME ?? 'System Administrator';
     this.demoMode = process.env.DEMO_MODE === 'true';
     this.corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+
+    // Reject wildcard or non-HTTPS origins in production. (SEC-18)
+    if (process.env.NODE_ENV === 'production') {
+      const origins = this.corsOrigin.split(',').map((o) => o.trim()).filter((o) => o.length > 0);
+      if (origins.length === 0 || origins.some((o) => o === '*')) {
+        throw new Error('CORS_ORIGIN must list explicit origins in production. Wildcard is forbidden.');
+      }
+      if (origins.some((o) => !o.startsWith('https://'))) {
+        throw new Error('CORS_ORIGIN entries must use https:// in production.');
+      }
+    }
+
     this.databaseUrl =
       process.env.DATABASE_URL ??
       'postgresql://postgres:postgres@localhost:5432/workload_tracking?schema=public';
+    this.readReplicaDatabaseUrl = process.env.READ_REPLICA_DATABASE_URL || undefined;
+    this.publicIdMiddlewareEnabled =
+      (process.env.PUBLIC_ID_MIDDLEWARE_ENABLED ?? 'true').toLowerCase() !== 'false';
+    this.agentId = process.env.AGENT_ID ?? 'human';
     this.exceptionsStaleApprovalDays = Math.max(
       1,
       Number(process.env.EXCEPTIONS_STALE_APPROVAL_DAYS ?? '14'),

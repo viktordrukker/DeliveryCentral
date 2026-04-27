@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
@@ -61,14 +61,14 @@ export class TransitionProjectAssignmentService {
     );
 
     if (!assignment) {
-      throw new Error('Assignment not found.');
+      throw new NotFoundException('Assignment not found.');
     }
 
     const previousStatus = assignment.status.value;
     const transition = findTransition(previousStatus, command.target);
 
     if (!transition) {
-      throw new Error(
+      throw new ConflictException(
         `Assignment cannot transition from ${previousStatus} to ${command.target}.`,
       );
     }

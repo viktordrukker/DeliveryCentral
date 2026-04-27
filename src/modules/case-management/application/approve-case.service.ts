@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
@@ -25,7 +25,7 @@ export class ApproveCaseService {
 
   public async approve(command: ApproveCaseCommand): Promise<CaseRecord> {
     const caseRecord = await this.caseRecordRepository.findById(command.caseId);
-    if (!caseRecord) throw new Error('Case not found.');
+    if (!caseRecord) throw new NotFoundException('Case not found.');
 
     caseRecord.approve();
     await this.caseRecordRepository.save(caseRecord);
@@ -46,7 +46,7 @@ export class ApproveCaseService {
 
   public async reject(command: RejectCaseCommand): Promise<CaseRecord> {
     const caseRecord = await this.caseRecordRepository.findById(command.caseId);
-    if (!caseRecord) throw new Error('Case not found.');
+    if (!caseRecord) throw new NotFoundException('Case not found.');
 
     caseRecord.reject(command.reason);
     await this.caseRecordRepository.save(caseRecord);

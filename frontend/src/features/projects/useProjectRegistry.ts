@@ -10,10 +10,16 @@ import { QueryState } from '@/lib/api/query-state';
 export interface ProjectRegistryFilters {
   search: string;
   source?: string;
+  // FE-04: pagination is opt-in. Callers that omit page/pageSize get the full
+  // dataset and can keep filtering client-side; callers that pass them get a
+  // server-paginated slice.
+  page?: number;
+  pageSize?: number;
 }
 
 interface ProjectRegistryState extends QueryState<ProjectDirectoryResponse> {
   visibleItems: ProjectDirectoryItem[];
+  totalCount: number;
 }
 
 export function useProjectRegistry(
@@ -29,6 +35,8 @@ export function useProjectRegistry(
     setState({ isLoading: true });
     void fetchProjectDirectory({
       source: filters.source,
+      page: filters.page,
+      pageSize: filters.pageSize,
     })
       .then((data) => {
         if (!active) {
@@ -54,7 +62,7 @@ export function useProjectRegistry(
     return () => {
       active = false;
     };
-  }, [filters.source]);
+  }, [filters.source, filters.page, filters.pageSize]);
 
   const visibleItems = useMemo(() => {
     const items = state.data?.items ?? [];
@@ -75,5 +83,6 @@ export function useProjectRegistry(
   return {
     ...state,
     visibleItems,
+    totalCount: state.data?.totalCount ?? state.data?.items.length ?? 0,
   };
 }

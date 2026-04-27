@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { CaseRecord } from '../domain/entities/case-record.entity';
@@ -17,7 +17,7 @@ export class CloseCaseService {
     const caseRecord = await this.caseRecordRepository.findByCaseId(id);
 
     if (!caseRecord) {
-      throw new Error('Case not found.');
+      throw new NotFoundException('Case not found.');
     }
 
     caseRecord.close();
