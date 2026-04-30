@@ -136,7 +136,10 @@ jobs:
             # Capture exit code from `wait` (returns the container's exit code)
             # so we can surface migrate stdout/stderr in the workflow log when
             # the migration fails, instead of just seeing 'exit 1'.
-            MIGRATE_EXIT=\$(docker compose -p dc-staging -f docker-compose.prod.yml wait migrate)
+            # || true absorbs compose-wait's non-zero exit (which would otherwise
+            # trigger set -e before we get to the if-block) so we can capture
+            # the failing container's exit code from stdout and surface its logs.
+            MIGRATE_EXIT=\$(docker compose -p dc-staging -f docker-compose.prod.yml wait migrate || true)
             if [ "\$MIGRATE_EXIT" != "0" ]; then
               echo "::group::migrate container logs (exit=\$MIGRATE_EXIT)"
               docker compose -p dc-staging -f docker-compose.prod.yml logs --no-color --tail=400 migrate || true
