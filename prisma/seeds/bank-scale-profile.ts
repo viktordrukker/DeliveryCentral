@@ -647,7 +647,10 @@ function createBankScaleDataset(): SeedDataset {
           personId: assignment.personId,
           projectId: assignment.projectId,
           sourceRecordKey: `BANK-WE-${workEvidenceSequence.toString().padStart(7, '0')}`,
-          evidenceType: ['JIRA_WORKLOG', 'TIMESHEET_ENTRY', 'M365_ACTIVITY'][(index + copy) % 3],
+          // DM-4-2 promoted WorkEvidence.evidenceType to enum WorkEvidenceType
+          // (JIRA_WORKLOG | MANUAL_ENTRY | TIMESHEET_ENTRY). M365_ACTIVITY is
+          // not in that set; map M365 evidence to MANUAL_ENTRY here.
+          evidenceType: (['JIRA_WORKLOG', 'TIMESHEET_ENTRY', 'MANUAL_ENTRY'] as const)[(index + copy) % 3],
           recordedAt: occurredOn,
           occurredOn,
           durationMinutes: [60, 90, 120, 180][(index + copy) % 4],

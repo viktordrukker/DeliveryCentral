@@ -914,63 +914,76 @@ async function seedInAppNotifications(): Promise<void> {
 }
 
 async function clearExistingData(): Promise<void> {
-  // In-app notifications, pulse, timesheets, skills, platform settings
-  await prismaSeed.inAppNotification.deleteMany();
-  await prismaSeed.pulseEntry.deleteMany();
-  await prismaSeed.timesheetEntry.deleteMany();
-  await prismaSeed.timesheetWeek.deleteMany();
-  await prismaSeed.personSkill.deleteMany();
-  await prismaSeed.skill.deleteMany();
-  await prismaSeed.platformSetting.deleteMany();
-  // Metadata
-  await prismaSeed.metadataEntry.deleteMany();
-  await prismaSeed.metadataDictionary.deleteMany();
-  // Notification infrastructure
-  await prismaSeed.notificationDelivery.deleteMany();
-  await prismaSeed.notificationRequest.deleteMany();
-  await prisma.notificationTemplate.deleteMany();
-  await prisma.notificationChannel.deleteMany();
-  // Core domain
-  await prisma.employeeActivityEvent.deleteMany();
-  await prisma.workEvidenceLink.deleteMany();
-  await prisma.workEvidence.deleteMany();
-  await prisma.workEvidenceSource.deleteMany();
-  await prisma.assignmentHistory.deleteMany();
-  await prisma.assignmentApproval.deleteMany();
-  await prisma.projectAssignment.deleteMany();
-  await prisma.externalSyncState.deleteMany();
-  await prisma.projectExternalLink.deleteMany();
-  await prisma.staffingRequestFulfilment.deleteMany();
-  await prisma.staffingRequest.deleteMany();
-  await prisma.projectRadiatorOverride.deleteMany();
-  await prisma.projectRisk.deleteMany();
-  await prisma.projectRolePlan.deleteMany();
-  await prisma.projectRagSnapshot.deleteMany();
-  await prisma.projectVendorEngagement.deleteMany();
-  await prisma.projectBudget.deleteMany();
-  await prisma.projectMilestone.deleteMany();
-  await prisma.projectChangeRequest.deleteMany();
-  await prisma.radiatorThresholdConfig.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.personResourcePoolMembership.deleteMany();
-  await prisma.resourcePool.deleteMany();
-  await prisma.reportingLine.deleteMany();
-  await prisma.personOrgMembership.deleteMany();
-  await prisma.position.deleteMany();
-  await prisma.orgUnit.deleteMany();
-  await prismaSeed.caseParticipant.deleteMany();
-  await prismaSeed.caseStep.deleteMany();
-  await prismaSeed.caseRecord.deleteMany();
-  await prismaSeed.caseType.deleteMany();
-  await prisma.leaveRequest.deleteMany();
-  await prisma.leaveBalance.deleteMany();
-  await prisma.overtimeException.deleteMany();
-  await prisma.overtimePolicy.deleteMany();
-  await prisma.personCostRate.deleteMany();
-  await prisma.person.deleteMany();
-  await prisma.passwordResetToken.deleteMany();
-  await prisma.refreshToken.deleteMany();
-  await prisma.localAccount.deleteMany();
+  // Wrap the entire wipe in one transaction so `SET LOCAL` actually applies
+  // to every deleteMany. DM-R-23's mass-mutation guard rejects DELETEs that
+  // affect >1000 rows unless `public.allow_bulk` is true; without this the
+  // seed's own rollback path fails the second a profile inserts more than
+  // 1000 rows of any aggregate before erroring (see commit f096b04 trail).
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL public.allow_bulk = 'true'`);
+      const t = tx as any;
+
+      // In-app notifications, pulse, timesheets, skills, platform settings
+      await t.inAppNotification.deleteMany();
+      await t.pulseEntry.deleteMany();
+      await t.timesheetEntry.deleteMany();
+      await t.timesheetWeek.deleteMany();
+      await t.personSkill.deleteMany();
+      await t.skill.deleteMany();
+      await t.platformSetting.deleteMany();
+      // Metadata
+      await t.metadataEntry.deleteMany();
+      await t.metadataDictionary.deleteMany();
+      // Notification infrastructure
+      await t.notificationDelivery.deleteMany();
+      await t.notificationRequest.deleteMany();
+      await t.notificationTemplate.deleteMany();
+      await t.notificationChannel.deleteMany();
+      // Core domain
+      await t.employeeActivityEvent.deleteMany();
+      await t.workEvidenceLink.deleteMany();
+      await t.workEvidence.deleteMany();
+      await t.workEvidenceSource.deleteMany();
+      await t.assignmentHistory.deleteMany();
+      await t.assignmentApproval.deleteMany();
+      await t.projectAssignment.deleteMany();
+      await t.externalSyncState.deleteMany();
+      await t.projectExternalLink.deleteMany();
+      await t.staffingRequestFulfilment.deleteMany();
+      await t.staffingRequest.deleteMany();
+      await t.projectRadiatorOverride.deleteMany();
+      await t.projectRisk.deleteMany();
+      await t.projectRolePlan.deleteMany();
+      await t.projectRagSnapshot.deleteMany();
+      await t.projectVendorEngagement.deleteMany();
+      await t.projectBudget.deleteMany();
+      await t.projectMilestone.deleteMany();
+      await t.projectChangeRequest.deleteMany();
+      await t.radiatorThresholdConfig.deleteMany();
+      await t.project.deleteMany();
+      await t.personResourcePoolMembership.deleteMany();
+      await t.resourcePool.deleteMany();
+      await t.reportingLine.deleteMany();
+      await t.personOrgMembership.deleteMany();
+      await t.position.deleteMany();
+      await t.orgUnit.deleteMany();
+      await t.caseParticipant.deleteMany();
+      await t.caseStep.deleteMany();
+      await t.caseRecord.deleteMany();
+      await t.caseType.deleteMany();
+      await t.leaveRequest.deleteMany();
+      await t.leaveBalance.deleteMany();
+      await t.overtimeException.deleteMany();
+      await t.overtimePolicy.deleteMany();
+      await t.personCostRate.deleteMany();
+      await t.person.deleteMany();
+      await t.passwordResetToken.deleteMany();
+      await t.refreshToken.deleteMany();
+      await t.localAccount.deleteMany();
+    },
+    { timeout: 120000, maxWait: 10000 },
+  );
 }
 
 async function seedCaseTypes(): Promise<void> {

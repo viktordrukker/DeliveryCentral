@@ -62,22 +62,44 @@ jobs:
             set -e
             cd /opt/deliverycentral-staging
 
+            # Sync the working tree to the latest main commit so docker cp
+            # below copies the current seed sources (the staging-seed flow
+            # does not run via build-and-stage so the on-VM tree might be
+            # stale from a previous deploy).
+            git fetch origin main && git reset --hard origin/main
+
             # Confirm the backend container is up before invoking exec.
             if ! docker compose -p dc-staging -f docker-compose.prod.yml ps backend | grep -q 'Up'; then
               echo "::error::backend container is not Up — run build-and-stage first"
               exit 1
             fi
 
-            # Run the seed inside the backend container. The production image
-            # strips dev-deps, so we install ts-node + typescript no-save for
-            # this run only (per docs/deployment/preprod-hetzner.md §6).
+            # The production image bakes only what runtime needs:
+            #   prisma/schema.prisma + prisma/migrations/  ✓
+            #   prisma/seed.ts + prisma/seeds/* + tsconfig.json  ✗ (stripped)
+            # Inject them into the running container so ts-node can find them.
+            # (docker cp into an existing dir nests; remove and recreate.)
+            docker exec dc-staging-backend-1 rm -rf /app/prisma/seeds
+            docker exec dc-staging-backend-1 mkdir -p /app/prisma/seeds
+            docker cp tsconfig.json dc-staging-backend-1:/app/tsconfig.json
+            docker cp prisma/seed.ts dc-staging-backend-1:/app/prisma/seed.ts
+            for f in prisma/seeds/*.ts prisma/seeds/README.md; do
+              [ -f "\$f" ] && docker cp "\$f" "dc-staging-backend-1:/app/prisma/seeds/\$(basename \$f)"
+            done
+
+            # Run the seed inside the backend container.
+            #   HOME=/tmp           : appuser has no writable HOME (npm errors EACCES on mkdir /home/appuser).
+            #   NODE_ENV=development: npm skips devDeps in production mode, leaving ts-node@10 not actually installed.
+            #     Once installed, the seed itself runs with NODE_ENV=production via the inner export.
             docker compose -p dc-staging -f docker-compose.prod.yml exec -T \
+              -e HOME=/tmp \
+              -e NODE_ENV=development \
               -e SEED_PROFILE=$SEED_PROFILE \
               backend sh -c '
                 set -e
                 cd /app
                 npm install --no-save --no-audit ts-node@10 typescript@5 >/dev/null 2>&1
-                node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
+                NODE_ENV=production node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
               '
           EOF
 
