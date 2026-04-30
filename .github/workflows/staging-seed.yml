@@ -1,0 +1,90 @@
+name: staging-seed
+
+# Manually run the prisma seed script against the staging VPS DB.
+#
+# Why a workflow (vs a one-line `gh run` script): the production-target
+# images strip dev-deps, so `db:seed` can't run directly. The canonical
+# recipe is to `npm install --no-save ts-node typescript` inside the
+# running backend container and execute the seed via ts-node — see
+# docs/deployment/preprod-hetzner.md §6. This workflow encapsulates
+# that recipe and reuses the staging SSH secrets the deploy workflow
+# already has.
+#
+# Picking a profile: see `prisma/seed.ts` for the available datasets.
+# `bank-scale` is the largest (multi-thousand-row stress dataset).
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Seed profile to load on staging.'
+        required: true
+        type: choice
+        options:
+          - bank-scale
+          - enterprise
+          - phase2
+          - demo
+          - life-demo
+          - investor-demo
+        default: bank-scale
+
+concurrency:
+  group: staging-seed
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: Run prisma/seed.ts on staging (profile=${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    environment: staging
+    if: vars.STAGING_DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run seed via SSH
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          SEED_PROFILE: ${{ inputs.profile }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral-staging
+
+            # Confirm the backend container is up before invoking exec.
+            if ! docker compose -p dc-staging -f docker-compose.prod.yml ps backend | grep -q 'Up'; then
+              echo "::error::backend container is not Up — run build-and-stage first"
+              exit 1
+            fi
+
+            # Run the seed inside the backend container. The production image
+            # strips dev-deps, so we install ts-node + typescript no-save for
+            # this run only (per docs/deployment/preprod-hetzner.md §6).
+            docker compose -p dc-staging -f docker-compose.prod.yml exec -T \
+              -e SEED_PROFILE=$SEED_PROFILE \
+              backend sh -c '
+                set -e
+                cd /app
+                npm install --no-save --no-audit ts-node@10 typescript@5 >/dev/null 2>&1
+                node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
+              '
+          EOF
+
+      - name: Verify deep health after seed
+        env:
+          STAGING_DOMAIN: ${{ secrets.STAGING_CADDY_DOMAIN }}
+        run: |
+          curl -sf "https://$STAGING_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
+            || { echo "::error::deep health failed after seed"; exit 1; }
+          echo "::notice title=Seed complete::profile=${{ inputs.profile }}"
