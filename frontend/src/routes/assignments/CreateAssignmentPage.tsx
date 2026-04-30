@@ -23,6 +23,7 @@ import {
   useCreateAssignmentPage,
 } from '@/features/assignments/useCreateAssignmentPage';
 import type { PlannedAssignment } from '@/components/staffing-desk/WorkloadTimeline';
+import { Button } from '@/components/ds';
 
 const initialValues: CreateAssignmentFormValues = {
   actorId: '',
@@ -158,9 +159,9 @@ export function CreateAssignmentPage(): JSX.Element {
       />
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/assignments">
+          <Button as={Link} variant="secondary" to="/assignments">
             Back to assignments
-          </Link>
+          </Button>
         }
         eyebrow="Assignments"
         subtitle="Create a formal internal person-to-project assignment with full context and timeline visibility."

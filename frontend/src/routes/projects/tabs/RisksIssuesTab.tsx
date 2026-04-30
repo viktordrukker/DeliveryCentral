@@ -24,6 +24,7 @@ import {
   resolveRisk,
   closeRisk,
 } from '@/lib/api/project-risks';
+import { Button } from '@/components/ds';
 
 interface RisksIssuesTabProps {
   projectId: string;
@@ -160,9 +161,9 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
       {/* Create Risk button / form */}
       {!showCreate ? (
         <div>
-          <button className="button button--primary button--sm" type="button" onClick={() => setShowCreate(true)}>
+          <Button variant="primary" size="sm" type="button" onClick={() => setShowCreate(true)}>
             + New Risk
-          </button>
+          </Button>
         </div>
       ) : (
         <SectionCard title="Create Risk">
@@ -192,12 +193,12 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
               <textarea className="field__control" rows={2} value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} />
             </label>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-              <button className="button button--primary" type="submit" disabled={isCreating}>
+              <Button variant="primary" type="submit" disabled={isCreating}>
                 {isCreating ? 'Creating...' : 'Create'}
-              </button>
-              <button className="button button--secondary" type="button" onClick={() => setShowCreate(false)}>
+              </Button>
+              <Button variant="secondary" type="button" onClick={() => setShowCreate(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </SectionCard>

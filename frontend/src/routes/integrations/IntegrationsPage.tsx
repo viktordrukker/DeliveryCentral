@@ -8,6 +8,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { StatusCard } from '@/components/integrations/StatusCard';
 import { useJiraIntegrationStatus } from '@/features/integrations/useJiraIntegrationStatus';
 import { formatDateTime } from '@/lib/format-date';
+import { Button } from '@/components/ds';
 
 export function IntegrationsPage(): JSX.Element {
   const state = useJiraIntegrationStatus();
@@ -16,9 +17,9 @@ export function IntegrationsPage(): JSX.Element {
     <PageContainer>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/admin/integrations">
+          <Button as={Link} variant="secondary" to="/admin/integrations">
             Configure →
-          </Link>
+          </Button>
         }
         eyebrow="Integrations"
         subtitle="Operator-facing status for Jira synchronization. Business pages stay isolated from adapter mechanics and sync operations."
@@ -84,14 +85,9 @@ export function IntegrationsPage(): JSX.Element {
                   Trigger a Jira project sync without exposing connection secrets or low-level adapter configuration in the UI.
                 </p>
                 <div className="section-card__actions-row section-card__actions-row--start">
-                  <button
-                    className="button"
-                    disabled={!state.data.supportsProjectSync || state.isSyncing}
-                    onClick={() => void state.syncProjects()}
-                    type="button"
-                  >
+                  <Button variant="primary" disabled={!state.data.supportsProjectSync || state.isSyncing} onClick={() => void state.syncProjects()} type="button">
                     {state.isSyncing ? 'Syncing...' : 'Trigger project sync'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </SectionCard>

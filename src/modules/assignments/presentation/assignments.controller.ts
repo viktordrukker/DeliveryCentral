@@ -20,6 +20,8 @@ import { RequireRoles } from '@src/modules/identity-access/application/roles.dec
 
 import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
 import { ApproveProjectAssignmentService } from '../application/approve-project-assignment.service';
+import { DirectorApproveService } from '../application/director-approve.service';
+import { ScheduleOnboardingService } from '../application/schedule-onboarding.service';
 import { BulkCreateProjectAssignmentsService } from '../application/bulk-create-project-assignments.service';
 import { AssignmentDecisionRequestDto } from '../application/contracts/assignment-decision.request';
 import {
@@ -81,6 +83,8 @@ export class AssignmentsController {
     private readonly amendProjectAssignmentService: AmendProjectAssignmentService,
     private readonly revokeProjectAssignmentService: RevokeProjectAssignmentService,
     private readonly transitionProjectAssignmentService: TransitionProjectAssignmentService,
+    private readonly directorApproveService: DirectorApproveService,
+    private readonly scheduleOnboardingService: ScheduleOnboardingService,
   ) {}
 
   @Post('activate')
@@ -121,7 +125,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a formal internal project assignment' })
   @ApiCreatedResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'resource_manager', 'director', 'admin')
+  @RequireRoles('director', 'admin')
   public async createAssignment(
     @Body() request: CreateProjectAssignmentRequestDto,
   ): Promise<ProjectAssignmentResponseDto> {
@@ -333,6 +337,19 @@ export class AssignmentsController {
     );
   }
 
+  @Post(':id/submit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit a draft assignment (DRAFT → CREATED)' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'resource_manager', 'director', 'admin')
+  public async submitDraftAssignment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: TransitionRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    return this.runTransition('CREATED', id, request, httpRequest);
+  }
+
   @Post(':id/propose')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Propose a candidate for a created staffing slot' })
@@ -361,14 +378,29 @@ export class AssignmentsController {
 
   @Post(':id/onboarding')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Move a booked assignment to onboarding' })
+  @ApiOperation({
+    summary: 'Move a booked assignment to onboarding (optionally schedules onboardingDate)',
+  })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
   @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
   public async onboardingAssignment(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: TransitionRequestDto,
+    @Body() request: TransitionRequestDto & { onboardingDate?: string },
     @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
   ): Promise<ProjectAssignmentResponseDto> {
+    if (request?.onboardingDate) {
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+      const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+      const assignment = await this.withAssignmentErrors(() =>
+        this.scheduleOnboardingService.execute({
+          actorId,
+          actorRoles,
+          assignmentId: id,
+          onboardingDate: request.onboardingDate as string,
+        }),
+      );
+      return this.mapAssignmentResponse(assignment);
+    }
     return this.runTransition('ONBOARDING', id, request, httpRequest);
   }
 
@@ -435,6 +467,32 @@ export class AssignmentsController {
     @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
   ): Promise<ProjectAssignmentResponseDto> {
     return this.runTransition('CANCELLED', id, request, httpRequest);
+  }
+
+  // Slate endpoints moved to /staffing-requests/:id/proposals/* — the slate
+  // aggregate now hangs off StaffingRequest, so the assignment is born at
+  // pick-time with a real personId. Old endpoints removed; no compatibility
+  // shim because there are no production rows in the legacy slate tables.
+
+  @Post(':id/director-approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record Director second-step approval (when threshold trips)' })
+  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
+  @RequireRoles('director', 'admin')
+  public async directorApprove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: { reason?: string } | undefined,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProjectAssignmentResponseDto> {
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    const assignment = await this.directorApproveService.execute({
+      actorId,
+      actorRoles,
+      assignmentId: id,
+      reason: request?.reason,
+    });
+    return this.mapAssignmentResponse(assignment);
   }
 
   private async runTransition(

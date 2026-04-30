@@ -1,11 +1,11 @@
 import { FormEvent } from 'react';
 
-import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { MetadataDictionaryDetails } from '@/lib/api/metadata';
 
 import { DictionaryEntryForm, DictionaryEntryFormValues } from './DictionaryEntryForm';
+import { Button, DataView } from '@/components/ds';
 
 interface DictionaryEditorProps {
   dictionary: MetadataDictionaryDetails | null;
@@ -60,7 +60,8 @@ export function DictionaryEditor({
 
       <div className="details-grid">
         <SectionCard title="Entries">
-          <DataTable
+          <DataView
+            pageSizeOptions={[1000]}
             columns={[
               {
                 key: 'displayName',
@@ -85,16 +86,9 @@ export function DictionaryEditor({
               {
                 key: 'actions',
                 render: (item) => (
-                  <button
-                    className="button button--secondary"
-                    onClick={() => {
-                      void onToggleEntry(item.id, !item.isEnabled);
-                    }}
-                    style={{ fontSize: '12px', padding: '2px 8px' }}
-                    type="button"
-                  >
+                  <Button variant="secondary" onClick={() => { void onToggleEntry(item.id, !item.isEnabled); }} style={{ fontSize: '12px', padding: '2px 8px' }} type="button">
                     {item.isEnabled ? 'Disable' : 'Enable'}
-                  </button>
+                  </Button>
                 ),
                 title: 'Actions',
               },
@@ -106,7 +100,7 @@ export function DictionaryEditor({
               />
             }
             getRowKey={(item) => item.id}
-            items={dictionary.entries}
+            rows={dictionary.entries}
           />
         </SectionCard>
 

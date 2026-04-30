@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { TimesheetsService } from './application/timesheets.service';
@@ -29,8 +30,9 @@ import { TimeManagementController } from './presentation/time-management.control
         repo: TimesheetRepository,
         prisma: PrismaService,
         notificationEventTranslator: NotificationEventTranslatorService,
-      ) => new TimesheetsService(repo, prisma, notificationEventTranslator),
-      inject: [TimesheetRepository, PrismaService, NotificationEventTranslatorService],
+        platformSettings: PlatformSettingsService,
+      ) => new TimesheetsService(repo, prisma, notificationEventTranslator, platformSettings),
+      inject: [TimesheetRepository, PrismaService, NotificationEventTranslatorService, PlatformSettingsService],
     },
     PublicHolidayService,
     TimeGapDetectionService,

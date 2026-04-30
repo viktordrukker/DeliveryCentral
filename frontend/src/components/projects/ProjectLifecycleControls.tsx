@@ -10,6 +10,7 @@ import { GovernanceOverridePanel } from '@/components/common/GovernanceOverrideP
 import { SectionCard } from '@/components/common/SectionCard';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { ApiError } from '@/lib/api/http-client';
+import { Button } from '@/components/ds';
 import {
   type ProjectClosureResponse,
   type ProjectDetails,
@@ -162,17 +163,17 @@ export function ProjectLifecycleControls({
 
       {canManageProject && canActivate ? (
         <div style={{ marginTop: 12 }}>
-          <button className="button--project-detail button--primary" disabled={isActivating} onClick={() => void handleActivate()} type="button">
-            {isActivating ? 'Activating...' : 'Activate project'}
-          </button>
+          <Button variant="primary" disabled={isActivating} onClick={() => void handleActivate()}>
+            {isActivating ? 'Activating…' : 'Activate project'}
+          </Button>
         </div>
       ) : null}
 
       {canManageProject && canClose ? (
         <div style={{ marginTop: 12 }}>
-          <button className="button--project-detail button--danger" disabled={isClosing} onClick={() => setConfirmCloseOpen(true)} type="button">
-            {isClosing ? 'Closing...' : 'Close project'}
-          </button>
+          <Button variant="danger" disabled={isClosing} onClick={() => setConfirmCloseOpen(true)}>
+            {isClosing ? 'Closing…' : 'Close project'}
+          </Button>
         </div>
       ) : null}
 

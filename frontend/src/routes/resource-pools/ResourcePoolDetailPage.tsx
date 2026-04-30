@@ -19,6 +19,8 @@ import {
 } from '@/lib/api/resource-pools';
 import { PersonDirectoryItem, fetchPersonDirectory } from '@/lib/api/person-directory';
 import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button, Table, type Column } from '@/components/ds';
+import type { ResourcePoolMember } from '@/lib/api/resource-pools';
 
 export function ResourcePoolDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -119,9 +121,9 @@ export function ResourcePoolDetailPage(): JSX.Element {
     <PageContainer testId="resource-pool-detail-page">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/resource-pools">
+          <Button as={Link} variant="secondary" to="/resource-pools">
             Back to pools
-          </Link>
+          </Button>
         }
         eyebrow="Resource Pools"
         subtitle="Pool details and member roster."
@@ -188,14 +190,9 @@ export function ResourcePoolDetailPage(): JSX.Element {
                   </select>
                 </label>
                 <div className="form-actions">
-                  <button
-                    className="button"
-                    disabled={!selectedPersonId || isSubmitting}
-                    onClick={() => void handleAddMember()}
-                    type="button"
-                  >
+                  <Button variant="primary" disabled={!selectedPersonId || isSubmitting} onClick={() => void handleAddMember()} type="button">
                     {isSubmitting ? 'Saving…' : 'Add member'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}
@@ -206,42 +203,24 @@ export function ResourcePoolDetailPage(): JSX.Element {
                 title="No members"
               />
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Member Since</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pool.members.map((member) => (
-                      <tr key={member.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${member.personId}`)}>
-                        <td style={{ fontWeight: 500 }}>{member.displayName}</td>
-                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDate(member.validFrom)}</td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${member.personId}`} onClick={(e) => e.stopPropagation()}>
-                              Go
-                            </Link>
-                            {canManage ? (
-                              <button
-                                className="button button--danger"
-                                disabled={isSubmitting}
-                                onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(member.personId); }}
-                                type="button"
-                              >
-                                Remove
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'name', title: 'Name', getValue: (m) => m.displayName, render: (m) => <span style={{ fontWeight: 500 }}>{m.displayName}</span> },
+                  { key: 'since', title: 'Member Since', getValue: (m) => m.validFrom, render: (m) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDate(m.validFrom)}</span> },
+                  { key: 'actions', title: 'Actions', align: 'right', render: (m) => (
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${m.personId}`} onClick={(e) => e.stopPropagation()}>Go</Link>
+                      {canManage ? (
+                        <Button variant="danger" size="sm" disabled={isSubmitting} onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(m.personId); }} type="button">Remove</Button>
+                      ) : null}
+                    </div>
+                  ) },
+                ] as Column<ResourcePoolMember>[]}
+                rows={pool.members}
+                getRowKey={(m) => m.personId}
+                onRowClick={(m) => navigate(`/people/${m.personId}`)}
+              />
             )}
           </SectionCard>
 
@@ -250,17 +229,17 @@ export function ResourcePoolDetailPage(): JSX.Element {
               <div>
                 <dt>Assignments</dt>
                 <dd>
-                  <Link className="button button--secondary" to="/assignments/new">
+                  <Button as={Link} variant="secondary" to="/assignments/new">
                     Create new assignment
-                  </Link>
+                  </Button>
                 </dd>
               </div>
               <div>
                 <dt>Dashboard</dt>
                 <dd>
-                  <Link className="button button--secondary" to="/dashboard/resource-manager">
+                  <Button as={Link} variant="secondary" to="/dashboard/resource-manager">
                     Open RM dashboard
-                  </Link>
+                  </Button>
                 </dd>
               </div>
             </div>

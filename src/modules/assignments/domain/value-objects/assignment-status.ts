@@ -7,14 +7,18 @@ export type AssignmentStatusValue =
   | 'CANCELLED'
   | 'COMPLETED'
   | 'CREATED'
+  | 'DRAFT'
+  | 'IN_REVIEW'
   | 'ONBOARDING'
   | 'ON_HOLD'
   | 'PROPOSED'
   | 'REJECTED';
 
 export const ASSIGNMENT_STATUS_VALUES: readonly AssignmentStatusValue[] = [
+  'DRAFT',
   'CREATED',
   'PROPOSED',
+  'IN_REVIEW',
   'REJECTED',
   'BOOKED',
   'ONBOARDING',
@@ -37,6 +41,14 @@ export interface AssignmentTransition {
 }
 
 export const ASSIGNMENT_STATUS_TRANSITIONS: Record<AssignmentStatusValue, readonly AssignmentTransition[]> = {
+  DRAFT: [
+    { to: 'CREATED', roles: ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'] },
+    {
+      to: 'CANCELLED',
+      roles: ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'],
+      requiresReason: true,
+    },
+  ],
   CREATED: [
     { to: 'PROPOSED', roles: ['resource_manager', 'delivery_manager'] },
     {
@@ -46,12 +58,26 @@ export const ASSIGNMENT_STATUS_TRANSITIONS: Record<AssignmentStatusValue, readon
     },
   ],
   PROPOSED: [
+    { to: 'IN_REVIEW', roles: ['project_manager', 'delivery_manager', 'director', 'admin'] },
     {
       to: 'REJECTED',
       roles: ['project_manager', 'delivery_manager', 'director', 'admin'],
       requiresReason: true,
     },
     { to: 'BOOKED', roles: ['project_manager', 'delivery_manager', 'director', 'admin'] },
+    {
+      to: 'CANCELLED',
+      roles: ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'],
+      requiresReason: true,
+    },
+  ],
+  IN_REVIEW: [
+    { to: 'BOOKED', roles: ['project_manager', 'delivery_manager', 'director', 'admin'] },
+    {
+      to: 'REJECTED',
+      roles: ['project_manager', 'delivery_manager', 'director', 'admin'],
+      requiresReason: true,
+    },
     {
       to: 'CANCELLED',
       roles: ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'],
@@ -119,6 +145,7 @@ export const ASSIGNMENT_CREATE_ROLES: readonly PlatformRole[] = [
 export const ASSIGNMENT_AMEND_SOURCE_STATUSES: ReadonlySet<AssignmentStatusValue> = new Set([
   'CREATED',
   'PROPOSED',
+  'IN_REVIEW',
   'BOOKED',
   'ONBOARDING',
   'ASSIGNED',
@@ -154,8 +181,10 @@ export class AssignmentStatus extends ValueObject<{ value: AssignmentStatusValue
 
   public static fromLegacy(value: string): AssignmentStatus {
     switch (value) {
+      case 'DRAFT':
       case 'CREATED':
       case 'PROPOSED':
+      case 'IN_REVIEW':
       case 'REJECTED':
       case 'BOOKED':
       case 'ONBOARDING':
@@ -164,7 +193,6 @@ export class AssignmentStatus extends ValueObject<{ value: AssignmentStatusValue
       case 'COMPLETED':
       case 'CANCELLED':
         return AssignmentStatus.from(value as AssignmentStatusValue);
-      case 'DRAFT':
       case 'REQUESTED':
         return AssignmentStatus.created();
       case 'APPROVED':
@@ -181,12 +209,20 @@ export class AssignmentStatus extends ValueObject<{ value: AssignmentStatusValue
     }
   }
 
+  public static draft(): AssignmentStatus {
+    return new AssignmentStatus({ value: 'DRAFT' });
+  }
+
   public static created(): AssignmentStatus {
     return new AssignmentStatus({ value: 'CREATED' });
   }
 
   public static proposed(): AssignmentStatus {
     return new AssignmentStatus({ value: 'PROPOSED' });
+  }
+
+  public static inReview(): AssignmentStatus {
+    return new AssignmentStatus({ value: 'IN_REVIEW' });
   }
 
   public static rejected(): AssignmentStatus {

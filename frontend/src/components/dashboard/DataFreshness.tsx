@@ -1,67 +1,53 @@
-import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { ReactNode } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
-import { formatDateTime } from '@/lib/format-date';
+import { Button } from '@/components/ds';
 
 interface DataFreshnessProps {
-  lastUpdated?: Date | null;
+  /** Timestamp of the last successful data fetch. */
+  lastFetch: Date;
+  /** Callback to refresh data. */
   onRefresh: () => void;
-  isRefreshing: boolean;
+  /** Optional refreshing flag — disables the button + shows a different label. */
+  refreshing?: boolean;
+  /** Optional TipBalloon (or any node) rendered to the right of the refresh button. */
+  tip?: ReactNode;
+  /** Optional `data-testid` for E2E selectors. */
+  testId?: string;
 }
 
+/**
+ * Phase DS-5 — standardized data-freshness footer for dashboards.
+ *
+ * Replaces the inline `<div className="data-freshness">…</div>` pattern that
+ * appeared verbatim in every dashboard page. Now a single component so the
+ * "Updated X ago · Refresh" line is consistent and centrally fixable.
+ *
+ * Token-driven (zero MUI). Composes the existing `.data-freshness` CSS class
+ * which already had the right styling.
+ */
 export function DataFreshness({
-  lastUpdated,
+  lastFetch,
   onRefresh,
-  isRefreshing,
+  refreshing = false,
+  tip,
+  testId,
 }: DataFreshnessProps): JSX.Element {
-  const isStale = lastUpdated
-    ? Date.now() - lastUpdated.getTime() > 30 * 60 * 1000
-    : false;
-
   return (
-    <Box
-      className="data-freshness"
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        px: 2,
-        py: 0.75,
-        borderTop: '1px solid var(--color-border)',
-        background: 'var(--color-surface-alt)',
-        position: 'sticky',
-        bottom: 0,
-        zIndex: 1,
-      }}
-    >
-      <Typography
-        variant="caption"
-        sx={{
-          color: isStale ? 'var(--color-status-warning)' : 'var(--color-text-muted)',
-          flex: 1,
-        }}
-      >
-        {lastUpdated
-          ? `Data as of: ${formatDateTime(lastUpdated)}`
-          : 'Loading...'}
-        {isStale ? ' (stale)' : ''}
-      </Typography>
-      <IconButton
-        size="small"
+    <div className="data-freshness" data-testid={testId}>
+      <span>
+        Updated {formatDistanceToNow(lastFetch, { addSuffix: true })}
+      </span>
+      {' · '}
+      <Button
+        variant="link"
+        size="sm"
         onClick={onRefresh}
-        disabled={isRefreshing}
-        title="Refresh data"
-        sx={{ p: 0.5 }}
+        disabled={refreshing}
       >
-        {isRefreshing ? (
-          <CircularProgress size={16} />
-        ) : (
-          <RefreshIcon sx={{ fontSize: 18 }} />
-        )}
-      </IconButton>
-    </Box>
+        {refreshing ? 'Refreshing…' : 'Refresh'}
+      </Button>
+      {tip}
+    </div>
   );
 }

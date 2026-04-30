@@ -20,6 +20,7 @@ import {
   fetchMilestones,
   updateMilestone,
 } from '@/lib/api/project-milestones';
+import { Button, DatePicker, Input, Select, Table, type Column } from '@/components/ds';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -195,13 +196,9 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <span>Milestones ({milestones.length})</span>
             {canManage && !showCreate ? (
-              <button
-                className="button button--secondary button--sm"
-                onClick={() => setShowCreate(true)}
-                type="button"
-              >
+              <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)} type="button">
                 + New Milestone
-              </button>
+              </Button>
             ) : null}
           </span>
         }
@@ -230,13 +227,9 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
               </label>
               <label className="field">
                 <span className="field__label">Planned Date</span>
-                <input
-                  className="field__control"
-                  onChange={(e) => setCreatePlannedDate(e.target.value)}
-                  required
-                  type="date"
-                  value={createPlannedDate}
-                />
+                <DatePicker onValueChange={(value) => setCreatePlannedDate(value)}
+ required value={createPlannedDate}
+ />
               </label>
               <label className="field">
                 <span className="field__label">Status</span>
@@ -254,16 +247,12 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
               </label>
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-              <button className="button button--primary" disabled={saving} type="submit">
+              <Button variant="primary" disabled={saving} type="submit">
                 {saving ? 'Saving…' : 'Create'}
-              </button>
-              <button
-                className="button button--secondary"
-                onClick={() => setShowCreate(false)}
-                type="button"
-              >
+              </Button>
+              <Button variant="secondary" onClick={() => setShowCreate(false)} type="button">
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         ) : null}
@@ -273,130 +262,62 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
             description="No milestones yet. Create one to start tracking delivery commitments."
             title="No milestones"
           />
-        ) : (
-          <table className="dash-compact-table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Name</th>
-                <th style={{ textAlign: 'left' }}>Description</th>
-                <th style={{ textAlign: 'left', width: 130 }}>Planned</th>
-                <th style={{ textAlign: 'left', width: 130 }}>Actual</th>
-                <th style={{ textAlign: 'left', width: 120 }}>Status</th>
-                {canManage ? <th style={{ textAlign: 'right', width: 160 }}>Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {milestones.map((m) => {
-                const isEditing = editId === m.id;
-                if (isEditing) {
-                  return (
-                    <tr key={m.id}>
-                      <td>
-                        <input
-                          className="field__control"
-                          onChange={(e) => setEditName(e.target.value)}
-                          type="text"
-                          value={editName}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="field__control"
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          type="text"
-                          value={editDesc}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="field__control"
-                          onChange={(e) => setEditPlannedDate(e.target.value)}
-                          type="date"
-                          value={editPlannedDate}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="field__control"
-                          onChange={(e) => setEditActualDate(e.target.value)}
-                          type="date"
-                          value={editActualDate}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          className="field__control"
-                          onChange={(e) => setEditStatus(e.target.value as MilestoneStatus)}
-                          value={editStatus}
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s.replace('_', ' ')}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
-                          <button
-                            className="button button--primary button--sm"
-                            disabled={saving}
-                            onClick={() => void handleSaveEdit()}
-                            type="button"
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="button button--secondary button--sm"
-                            onClick={() => setEditId(null)}
-                            type="button"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-                return (
-                  <tr key={m.id}>
-                    <td style={{ fontWeight: 500 }}>{m.name}</td>
-                    <td style={{ color: 'var(--color-text-muted)' }}>{m.description ?? '—'}</td>
-                    <td>{formatDate(m.plannedDate)}</td>
-                    <td>{m.actualDate ? formatDate(m.actualDate) : '—'}</td>
-                    <td>
-                      <StatusBadge
-                        label={m.status.replace('_', ' ')}
-                        tone={statusTone(m.status)}
-                        variant="chip"
-                      />
-                    </td>
-                    {canManage ? (
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
-                          <button
-                            className="button button--secondary button--sm"
-                            onClick={() => beginEdit(m)}
-                            type="button"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="button button--secondary button--sm"
-                            onClick={() => setDeleteTarget(m)}
-                            type="button"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        ) : (() => {
+          const baseColumns: Column<ProjectMilestoneDto>[] = [
+            { key: 'name', title: 'Name', getValue: (m) => m.name, render: (m) => (
+              editId === m.id
+                ? <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                : <span style={{ fontWeight: 500 }}>{m.name}</span>
+            ) },
+            { key: 'desc', title: 'Description', getValue: (m) => m.description ?? '', render: (m) => (
+              editId === m.id
+                ? <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                : <span style={{ color: 'var(--color-text-muted)' }}>{m.description ?? '—'}</span>
+            ) },
+            { key: 'planned', title: 'Planned', width: 130, getValue: (m) => m.plannedDate, render: (m) => (
+              editId === m.id
+                ? <DatePicker onValueChange={setEditPlannedDate} value={editPlannedDate} />
+                : formatDate(m.plannedDate)
+            ) },
+            { key: 'actual', title: 'Actual', width: 130, getValue: (m) => m.actualDate ?? '', render: (m) => (
+              editId === m.id
+                ? <DatePicker onValueChange={setEditActualDate} value={editActualDate} />
+                : (m.actualDate ? formatDate(m.actualDate) : '—')
+            ) },
+            { key: 'status', title: 'Status', width: 120, getValue: (m) => m.status, render: (m) => (
+              editId === m.id ? (
+                <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value as MilestoneStatus)}>
+                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                </Select>
+              ) : (
+                <StatusBadge label={m.status.replace('_', ' ')} tone={statusTone(m.status)} variant="chip" />
+              )
+            ) },
+          ];
+          if (canManage) {
+            baseColumns.push({ key: 'actions', title: 'Actions', align: 'right', width: 160, render: (m) => (
+              editId === m.id ? (
+                <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
+                  <Button variant="primary" size="sm" disabled={saving} onClick={() => void handleSaveEdit()} type="button">Save</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setEditId(null)} type="button">Cancel</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
+                  <Button variant="secondary" size="sm" onClick={() => beginEdit(m)} type="button">Edit</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setDeleteTarget(m)} type="button">Delete</Button>
+                </div>
+              )
+            ) });
+          }
+          return (
+            <Table
+              variant="compact"
+              columns={baseColumns}
+              rows={milestones}
+              getRowKey={(m) => m.id}
+            />
+          );
+        })()}
       </SectionCard>
     </div>
   );

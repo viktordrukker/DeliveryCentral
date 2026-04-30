@@ -11,6 +11,7 @@ import {
   fetchPlatformSettings,
   updatePlatformSetting,
 } from '@/lib/api/platform-settings';
+import { Button } from '@/components/ds';
 
 type SettingValue = string | number | boolean | string[] | null;
 
@@ -140,6 +141,17 @@ const SECTIONS: SectionDef[] = [
       { key: 'showDiagnosticsInCoreDashboards', label: 'Show Diagnostics In Core Dashboards', type: 'boolean' },
       { key: 'allowedSources', label: 'Allowed Sources (comma-separated)', type: 'text' },
       { key: 'retentionDays', label: 'Retention Days (blank = keep)', type: 'text' },
+    ],
+  },
+  {
+    id: 'timeEntry',
+    title: 'Time Entry — submission rules & validation',
+    fields: [
+      { key: 'allowSubmitInAdvance', label: 'Allow submit in advance (before week ends)', type: 'boolean' },
+      { key: 'allowFutureDateEntry', label: 'Allow logging hours on future dates', type: 'boolean' },
+      { key: 'maxHoursPerDay', label: 'Max hours per day (work-day length cap)', type: 'number' },
+      { key: 'maxHoursPerWeek', label: 'Max hours per week (work-week length cap)', type: 'number' },
+      { key: 'standardHoursPerDay', label: 'Standard hours per day', type: 'number' },
     ],
   },
 ];
@@ -311,16 +323,9 @@ function SettingsSection({ section, values, onSave }: SettingsSectionProps): JSX
               />
             )}
 
-            <button
-              className="button button--secondary"
-              data-testid={`save-${section.id}-${field.key}`}
-              disabled={saving[field.key] === true}
-              onClick={() => { void handleSave(field); }}
-              style={{ fontSize: '13px', padding: '4px 12px' }}
-              type="button"
-            >
+            <Button variant="secondary" data-testid={`save-${section.id}-${field.key}`} disabled={saving[field.key] === true} onClick={() => { void handleSave(field); }} style={{ fontSize: '13px', padding: '4px 12px' }} type="button">
               {saving[field.key] === true ? 'Saving…' : 'Save'}
-            </button>
+            </Button>
 
             {errors[field.key] ? (
               <span style={{ color: 'var(--color-status-danger)', fontSize: '12px' }}>{errors[field.key]}</span>

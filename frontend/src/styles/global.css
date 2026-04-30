@@ -210,11 +210,69 @@ textarea {
   overflow-y: auto;
 }
 
+/* DS-5-2 — mobile sidebar collapse. Below `md` (≤768px), the sidebar
+   collapses to a hamburger-toggled overlay drawer. The grid drops the
+   sidebar column entirely; the sidebar repositions to `position: fixed` and
+   slides in from the left when `app-shell__sidebar--open` is set. The
+   hamburger button + backdrop overlay (already in markup) are revealed by
+   media query; SidebarNav's `onNavigate` auto-closes the drawer on link
+   click. */
+@media (max-width: 768px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell__sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    box-shadow: var(--shadow-modal);
+  }
+  .app-shell__sidebar--open {
+    transform: translateX(0);
+  }
+  .app-shell__hamburger {
+    display: flex;
+  }
+  .app-shell__overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+  .app-shell__content {
+    padding: var(--space-3);
+  }
+}
+
 .page-container--viewport {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* DS-5-1 FormPageLayout — sticky footer for long forms. Sticks to the
+   bottom of the page-content scroll container so primary submit/cancel
+   actions stay reachable. Only rendered when `stickyFooter` slot is set. */
+.form-page-layout__sticky-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  margin-top: auto;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  z-index: 5;
 }
 
 .sidebar-nav {
@@ -883,6 +941,22 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   margin-bottom: var(--space-3);
 }
 
+/* DS-5-3 — below `sm` (≤640px), tabs become a horizontal scroller with snap.
+   Long tab rows (project detail has 7) overflow gracefully on mobile. */
+@media (max-width: 640px) {
+  .tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .tab-bar__tab {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
 .tab-bar__tab {
   display: inline-flex;
   align-items: center;
@@ -1131,6 +1205,30 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   flex-shrink: 0;
+}
+
+/* DS-5-4 — below `sm` (≤640px), KPI items reflow to a fixed 2-up grid.
+   Without this the flex `min-width: 140px` allows 1+2 / 2+1 / 1+1+1 layouts
+   depending on item count; the 2-up grid gives a predictable stack on
+   mobile. Items lose the right-border in the last column to avoid the
+   double-border at the wrap boundary. */
+@media (max-width: 640px) {
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .kpi-strip__item {
+    flex: initial;
+    min-width: 0;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .kpi-strip__item:nth-child(2n) {
+    border-right: none;
+  }
+  .kpi-strip__item:nth-last-child(-n+2) {
+    border-bottom: none;
+  }
 }
 
 .kpi-strip__item {
@@ -3408,42 +3506,10 @@ a.monitoring-card:hover {
 .skeleton--card { height: 6rem; }
 .skeleton--chart { height: 16rem; }
 
-/* Confirm Dialog */
-.confirm-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.confirm-dialog {
-  background: var(--color-surface);
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-modal);
-  padding: 28px 32px;
-  min-width: 340px;
-  max-width: 520px;
-  width: 100%;
-}
-.confirm-dialog__title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--color-text);
-}
-.confirm-dialog__message {
-  color: var(--color-text-muted);
-  margin-bottom: 18px;
-  line-height: 1.5;
-}
-.confirm-dialog__actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 18px;
-}
+/* `.confirm-dialog-*` classes removed 2026-04-27 (DS-Group E orphan cleanup).
+   The DS `<Modal>` shell + `<ConfirmDialog>` rebuild (DS-2-1, DS-2-3) own the
+   styling now. App.tsx's Keyboard Shortcuts modal — the last consumer —
+   migrated to `<Modal size="sm">` in the same turn. */
 
 /* Command Palette */
 .command-palette-overlay {
@@ -3967,27 +4033,9 @@ a.monitoring-card:hover {
   border-top: 2px solid var(--color-border);
   cursor: default;
 }
-.copy-week-popover {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card, 10px);
-  box-shadow: var(--shadow-modal, 0 8px 32px rgba(0,0,0,.18));
-  padding: var(--space-4, 16px);
-  z-index: 100;
-  min-width: 240px;
-  font-size: 13px;
-  margin-top: 4px;
-}
-.copy-week-popover__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2, 8px);
-  margin-top: var(--space-3, 12px);
-}
+/* `.copy-week-popover*` classes removed 2026-04-27 (DS-Group E orphan
+   cleanup). TimesheetPage's "Copy last week" popover (DS-2-6) now uses
+   the DS `<Popover>` shell. */
 .timesheet-week-summary {
   display: flex;
   gap: var(--space-3, 12px);
@@ -4115,15 +4163,5 @@ a.monitoring-card:hover {
   border-radius: var(--radius-card, 8px);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Confirm dialog fade-in (20d-11)                                    */
-/* ------------------------------------------------------------------ */
-
-.confirm-dialog__overlay {
-  animation: confirm-fade-in 150ms ease;
-}
-
-@keyframes confirm-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* `.confirm-dialog__overlay` + `confirm-fade-in` removed 2026-04-27 (DS-Group
+   E orphan cleanup). DS Modal owns its own enter animation now. */

@@ -14,6 +14,8 @@ import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchWorkloadMatrix, WorkloadMatrixResponse } from '@/lib/api/workload';
 import { exportToXlsx } from '@/lib/export';
+import { Button, IconButton, Table, type Column } from '@/components/ds';
+import type { WorkloadPerson } from '@/lib/api/workload';
 
 /* ── Allocation helpers (private) ──────────────────────────────────────────── */
 
@@ -296,14 +298,9 @@ export function WorkloadMatrixPage(): JSX.Element {
           </select>
         </label>
 
-        <button
-          className="button button--secondary"
-          onClick={handleExport}
-          style={{ alignSelf: 'flex-end' }}
-          type="button"
-        >
+        <Button variant="secondary" onClick={handleExport} style={{ alignSelf: 'flex-end' }} type="button">
           Export XLSX
-        </button>
+        </Button>
       </FilterBar>
 
       {isLoading ? <LoadingState label="Loading workload matrix..." variant="skeleton" skeletonType="chart" /> : null}
@@ -358,155 +355,102 @@ export function WorkloadMatrixPage(): JSX.Element {
             </div>
 
             <div style={S_GRID_WRAP} role="grid" onKeyDown={handleGridKeyDown}>
-              <table style={S_MATRIX_TABLE}>
-                <thead>
-                  <tr style={S_THEAD_ROW}>
-                    <th style={S_STICKY_TH}
-                    >
-                      Person
-                    </th>
-                    {filteredProjects.map((project) => (
-                      <th
-                        key={project.id}
-                        style={{
-                          padding: '8px',
-                          textAlign: 'center',
-                          borderBottom: '2px solid var(--color-border)',
-                          minWidth: '80px',
-                          maxWidth: '120px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title={project.name}
-                      >
+              <Table
+                variant="compact"
+                columns={[
+                  {
+                    key: 'person',
+                    title: 'Person',
+                    cellStyle: {
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--color-surface)',
+                      zIndex: 1,
+                      padding: '6px 12px',
+                      fontWeight: 500,
+                    },
+                    headerClassName: 'alloc-row-header',
+                    getValue: (p) => p.displayName,
+                    render: (p) => (
+                      <Link style={{ color: 'var(--color-accent)' }} to={`/people/${p.id}`} onClick={(e) => e.stopPropagation()}>
+                        {p.displayName}
+                      </Link>
+                    ),
+                  },
+                  ...filteredProjects.map((project, colIdx) => ({
+                    key: `proj-${project.id}`,
+                    title: (
+                      <span title={project.name}>
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
                           {project.projectCode}
                         </div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '110px' }}>
                           {project.name}
                         </div>
-                      </th>
-                    ))}
-                    <th
-                      className="alloc-row-total"
-                      style={{
-                        position: 'sticky',
-                        right: 0,
-                        background: 'var(--color-surface-secondary, #f3f4f6)',
-                        zIndex: 2,
-                        padding: '8px',
-                        textAlign: 'center',
-                        borderBottom: '2px solid var(--color-border)',
-                        minWidth: '70px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredPeople.map((person, rowIdx) => {
-                    const total = person.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
-                    return (
-                      <tr key={person.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td
-                          style={{
-                            position: 'sticky',
-                            left: 0,
-                            background: 'var(--color-surface, white)',
-                            zIndex: 1,
-                            padding: '6px 12px',
-                            fontWeight: 500,
-                          }}
+                      </span>
+                    ),
+                    align: 'center' as const,
+                    cellStyle: { padding: '4px', minWidth: '80px', maxWidth: '120px' },
+                    render: (p: WorkloadPerson, rowIdx: number) => {
+                      const alloc = p.allocations.find((a) => a.projectId === project.id);
+                      const pct = alloc?.allocationPercent ?? 0;
+                      const cellKey = `${rowIdx}-${colIdx}`;
+                      const isFocused = focusedCell === cellKey;
+                      return (
+                        <div
+                          ref={(el) => { cellRefs.current[cellKey] = el; }}
+                          className={allocClass(pct)}
+                          tabIndex={isFocused ? 0 : -1}
+                          onFocus={() => setFocusedCell(cellKey)}
+                          onClick={() => handleCellClick(p, project, pct)}
+                          role="gridcell"
                         >
-                          <Link style={{ color: 'var(--color-primary, #2563eb)' }} to={`/people/${person.id}`}>
-                            {person.displayName}
-                          </Link>
-                        </td>
-                        {filteredProjects.map((project, colIdx) => {
-                          const alloc = person.allocations.find((a) => a.projectId === project.id);
-                          const pct = alloc?.allocationPercent ?? 0;
-                          const cellKey = `${rowIdx}-${colIdx}`;
-                          const isFocused = focusedCell === cellKey;
-
-                          return (
-                            <td key={project.id} style={{ padding: '4px', textAlign: 'center' }}>
-                              <div
-                                ref={(el) => { cellRefs.current[cellKey] = el; }}
-                                className={allocClass(pct)}
-                                tabIndex={isFocused ? 0 : -1}
-                                onFocus={() => setFocusedCell(cellKey)}
-                                onClick={() => handleCellClick(person, project, pct)}
-                                role="gridcell"
-                              >
-                                {pct === 0 ? '\u2014' : `${pct}%`}
-                              </div>
-                            </td>
-                          );
-                        })}
-                        <td
-                          className="alloc-row-total"
-                          style={{
-                            position: 'sticky',
-                            right: 0,
-                            background: 'var(--color-surface, white)',
-                            zIndex: 1,
-                          }}
-                        >
-                          <div className={allocClass(total)}>
-                            {total === 0
-                              ? '\u2014'
-                              : total > 100
-                                ? `\u26A0 ${total}%`
-                                : `${total}%`}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {/* Column totals row */}
-                  <tr style={{ borderTop: '2px solid var(--color-border)', background: 'var(--color-surface-secondary, #f9fafb)' }}>
-                    <td
-                      style={{
-                        position: 'sticky',
-                        left: 0,
-                        background: 'var(--color-surface-secondary, #f9fafb)',
-                        zIndex: 1,
-                        padding: '6px 12px',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      FTE Total
-                    </td>
+                          {pct === 0 ? '—' : `${pct}%`}
+                        </div>
+                      );
+                    },
+                  })),
+                  {
+                    key: 'total',
+                    title: 'Total',
+                    align: 'center',
+                    cellStyle: {
+                      position: 'sticky',
+                      right: 0,
+                      background: 'var(--color-surface)',
+                      zIndex: 1,
+                      minWidth: '70px',
+                    },
+                    render: (p) => {
+                      const total = p.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
+                      return (
+                        <div className={allocClass(total)}>
+                          {total === 0 ? '—' : total > 100 ? `⚠ ${total}%` : `${total}%`}
+                        </div>
+                      );
+                    },
+                  },
+                ] as Column<WorkloadPerson>[]}
+                rows={filteredPeople}
+                getRowKey={(p) => p.id}
+                footer={
+                  <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${filteredProjects.length}, minmax(80px, 1fr)) 70px`, padding: '6px 12px', background: 'var(--color-surface-alt)', fontWeight: 700, fontSize: '0.8rem', borderTop: '2px solid var(--color-border)' }}>
+                    <span>FTE Total</span>
                     {filteredProjects.map((project) => {
                       const total = filteredPeople.reduce((sum, person) => {
                         const alloc = person.allocations.find((a) => a.projectId === project.id);
                         return sum + (alloc?.allocationPercent ?? 0) / 100;
                       }, 0);
                       return (
-                        <td
-                          key={project.id}
-                          style={{
-                            textAlign: 'center',
-                            padding: '4px',
-                            fontWeight: 600,
-                            fontSize: '0.8rem',
-                            color: 'var(--color-text)',
-                          }}
-                        >
-                          {total === 0 ? '\u2014' : total.toFixed(2)}
-                        </td>
+                        <span key={project.id} style={{ textAlign: 'center', fontWeight: 600 }}>
+                          {total === 0 ? '—' : total.toFixed(2)}
+                        </span>
                       );
                     })}
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
+                    <span />
+                  </div>
+                }
+              />
             </div>
 
             {/* Drill-down side panel (A3) */}
@@ -524,14 +468,14 @@ export function WorkloadMatrixPage(): JSX.Element {
                       <div className="alloc-panel__avatar">{panel.personName[0].toUpperCase()}</div>
                       <strong>{panel.personName}</strong>
                     </div>
-                    <button
+                    <IconButton
                       onClick={() => setPanel(null)}
                       aria-label="Close"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text-secondary)' }}
-                      type="button"
+                      size="sm"
+                      style={{ fontSize: '18px', color: 'var(--color-text-secondary)' }}
                     >
-                      \u2715
-                    </button>
+                      {'\u2715'}
+                    </IconButton>
                   </div>
                   <div className="alloc-panel__stat">
                     <span className="alloc-panel__stat-value" style={{ color: allocColor(panel.allocationPercent) }}>{panel.allocationPercent}%</span>
@@ -545,14 +489,9 @@ export function WorkloadMatrixPage(): JSX.Element {
                     <a href={'/assignments?personId=' + panel.personId}>View all assignments \u2192</a>
                     <a href={'/projects/' + panel.projectId}>View project \u2192</a>
                   </div>
-                  <button
-                    className="button button--secondary"
-                    onClick={() => setPanel(null)}
-                    style={{ marginTop: 'var(--space-5, 20px)', width: '100%' }}
-                    type="button"
-                  >
+                  <Button variant="secondary" onClick={() => setPanel(null)} style={{ marginTop: 'var(--space-5, 20px)', width: '100%' }} type="button">
                     Close
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

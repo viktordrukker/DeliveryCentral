@@ -35,6 +35,18 @@ export class AssignmentDirectoryItemDto {
 
   @ApiProperty()
   public version!: number;
+
+  @ApiPropertyOptional({ enum: ['PROPOSAL', 'REVIEW', 'APPROVAL', 'RM_FINALIZE'] })
+  public slaStage?: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  public slaDueAt?: string | null;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  public slaBreachedAt?: string | null;
+
+  @ApiPropertyOptional()
+  public requiresDirectorApproval?: boolean;
 }
 
 export class AssignmentHistoryItemDto {

@@ -10,6 +10,7 @@ import {
   confirmBulkImport,
   previewBulkImport,
 } from '@/lib/api/bulk-import';
+import { Button, Table, type Column } from '@/components/ds';
 
 const CSV_TEMPLATE = `givenName,familyName,email,grade,role
 Jane,Smith,jane.smith@example.com,Senior,engineer
@@ -95,31 +96,21 @@ export function BulkImportPage(): JSX.Element {
             <dd style={{ color: result.failed.length > 0 ? 'var(--color-status-danger)' : undefined }}>{result.failed.length}</dd>
           </dl>
           {result.failed.length > 0 ? (
-            <table className="dash-compact-table" style={{ marginTop: '1rem' }}>
-              <thead>
-                <tr>
-                  <th scope="col">Email</th>
-                  <th scope="col">Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.failed.map((f) => (
-                  <tr key={f.email}>
-                    <td>{f.email}</td>
-                    <td style={{ color: 'var(--color-status-danger)' }}>{f.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ marginTop: '1rem' }}>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'email', title: 'Email', getValue: (f) => f.email, render: (f) => f.email },
+                  { key: 'reason', title: 'Reason', getValue: (f) => f.reason, render: (f) => <span style={{ color: 'var(--color-status-danger)' }}>{f.reason}</span> },
+                ] as Column<typeof result.failed[number]>[]}
+                rows={result.failed}
+                getRowKey={(f) => f.email}
+              />
+            </div>
           ) : null}
-          <button
-            className="button button--secondary"
-            onClick={() => { setResult(null); setCsvText(''); }}
-            style={{ marginTop: '1rem' }}
-            type="button"
-          >
+          <Button variant="secondary" onClick={() => { setResult(null); setCsvText(''); }} style={{ marginTop: '1rem' }} type="button">
             Import Another File
-          </button>
+          </Button>
         </SectionCard>
       ) : (
         <>
@@ -128,20 +119,12 @@ export function BulkImportPage(): JSX.Element {
               Required columns: <code>givenName</code>, <code>familyName</code>, <code>email</code>. Optional: <code>grade</code>, <code>role</code>.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                className="button button--secondary"
-                onClick={handleDownloadTemplate}
-                type="button"
-              >
+              <Button variant="secondary" onClick={handleDownloadTemplate} type="button">
                 Download Template
-              </button>
-              <button
-                className="button button--secondary"
-                onClick={() => fileRef.current?.click()}
-                type="button"
-              >
+              </Button>
+              <Button variant="secondary" onClick={() => fileRef.current?.click()} type="button">
                 Choose File
-              </button>
+              </Button>
               <input
                 accept=".csv,.txt"
                 onChange={(e) => void handleFileChange(e)}
@@ -158,15 +141,9 @@ export function BulkImportPage(): JSX.Element {
               style={{ marginTop: '1rem', fontFamily: 'monospace', fontSize: '0.8rem', width: '100%' }}
               value={csvText}
             />
-            <button
-              className="button"
-              disabled={!csvText.trim() || previewing}
-              onClick={() => void handlePreview()}
-              style={{ marginTop: '0.75rem' }}
-              type="button"
-            >
+            <Button variant="primary" disabled={!csvText.trim() || previewing} onClick={() => void handlePreview()} style={{ marginTop: '0.75rem' }} type="button">
               {previewing ? 'Validating...' : 'Validate & Preview'}
-            </button>
+            </Button>
           </SectionCard>
 
           {previewRows !== null ? (
@@ -184,42 +161,26 @@ export function BulkImportPage(): JSX.Element {
 
               {previewRows.length > 0 ? (
                 <>
-                  <table className="dash-compact-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Given Name</th>
-                        <th scope="col">Family Name</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Grade</th>
-                        <th scope="col">Role</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewRows.slice(0, 20).map((row) => (
-                        <tr key={row.email} style={{ background: 'var(--color-success-bg)' }}>
-                          <td>{row.givenName}</td>
-                          <td>{row.familyName}</td>
-                          <td>{row.email}</td>
-                          <td>{row.grade ?? '—'}</td>
-                          <td>{row.role ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'given', title: 'Given Name', getValue: (r) => r.givenName, render: (r) => r.givenName },
+                      { key: 'family', title: 'Family Name', getValue: (r) => r.familyName, render: (r) => r.familyName },
+                      { key: 'email', title: 'Email', getValue: (r) => r.email, render: (r) => r.email },
+                      { key: 'grade', title: 'Grade', getValue: (r) => r.grade ?? '', render: (r) => r.grade ?? '—' },
+                      { key: 'role', title: 'Role', getValue: (r) => r.role ?? '', render: (r) => r.role ?? '—' },
+                    ] as Column<BulkImportPreviewRow>[]}
+                    rows={previewRows.slice(0, 20)}
+                    getRowKey={(r) => r.email}
+                  />
                   {previewRows.length > 20 ? (
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
                       ...and {previewRows.length - 20} more rows.
                     </p>
                   ) : null}
-                  <button
-                    className="button"
-                    disabled={confirming}
-                    onClick={() => void handleConfirm()}
-                    style={{ marginTop: '1rem' }}
-                    type="button"
-                  >
+                  <Button variant="primary" disabled={confirming} onClick={() => void handleConfirm()} style={{ marginTop: '1rem' }} type="button">
                     {confirming ? 'Importing...' : `Confirm Import (${previewRows.length} people)`}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <p style={{ color: 'var(--color-status-warning)' }}>No valid rows to import. Check the invalid row errors above.</p>

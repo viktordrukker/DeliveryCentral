@@ -1,4 +1,5 @@
 import { FormEvent } from 'react';
+import { Button, DatePicker } from '@/components/ds';
 
 interface SelectOption {
   label: string;
@@ -73,33 +74,25 @@ export function ReportingLineForm({
 
         <label className="field">
           <span className="field__label">Start Date</span>
-          <input
-            aria-invalid={!!errors.startDate}
-            className="field__control"
-            onChange={(event) => onChange('startDate', event.target.value)}
-            type="date"
-            value={values.startDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.startDate} onValueChange={(value) => onChange('startDate', value)} value={values.startDate}
+ />
           {errors.startDate ? <span className="field__error">{errors.startDate}</span> : null}
         </label>
 
         <label className="field">
           <span className="field__label">End Date</span>
-          <input
-            aria-invalid={!!errors.endDate}
-            className="field__control"
-            onChange={(event) => onChange('endDate', event.target.value)}
-            type="date"
-            value={values.endDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.endDate} onValueChange={(value) => onChange('endDate', value)} value={values.endDate}
+ />
           {errors.endDate ? <span className="field__error">{errors.endDate}</span> : null}
         </label>
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Saving reporting line...' : 'Save reporting line'}
-        </button>
+        </Button>
       </div>
     </form>
   );

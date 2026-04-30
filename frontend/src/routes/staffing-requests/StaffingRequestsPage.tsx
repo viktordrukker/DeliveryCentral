@@ -20,6 +20,7 @@ import {
   fetchStaffingRequests,
 } from '@/lib/api/staffing-requests';
 import { getAgingDays, getAgingTone, getAgingTooltip } from '@/features/staffing-desk/aging';
+import { Button, Table, type Column } from '@/components/ds';
 
 const DERIVED_STATUSES: DerivedStaffingRequestStatus[] = [
   'Open',
@@ -85,9 +86,9 @@ export function StaffingRequestsPage(): JSX.Element {
           filename="staffing_requests"
         />
         <CopyLinkButton />
-        <button className="button button--sm" onClick={() => navigate('/staffing-requests/new')} type="button">
+        <Button variant="primary" size="sm" onClick={() => navigate('/staffing-requests/new')} type="button">
           Create request
-        </button>
+        </Button>
         <TipTrigger />
       </>
     );
@@ -120,41 +121,26 @@ export function StaffingRequestsPage(): JSX.Element {
           const pagedItems = filteredRequests.slice((page - 1) * pageSize, page * pageSize);
           return (
             <>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table" style={{ minWidth: 700 }}>
-                  <thead>
-                    <tr>
-                      <th scope="col">Project</th>
-                      <th scope="col">Role</th>
-                      <th style={{ width: 70 }}>Priority</th>
-                      <th style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 60 }}>Alloc %</th>
-                      <th style={{ width: 140 }}>Dates</th>
-                      <th style={{ width: 72 }}>Age</th>
-                      <th style={{ width: 80 }}>Status</th>
-                      <th style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', width: 80 }}>
-                        HC <TipBalloon tip="Shows fulfilled vs required headcount for this request." arrow="bottom" />
-                      </th>
-                      <th style={{ width: 40 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedItems.map((r) => (
-                      <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/staffing-requests/${r.id}`)}>
-                        <td style={{ fontWeight: 500 }}>{r.projectName ?? r.projectId}</td>
-                        <td>{r.role}</td>
-                        <td style={{ fontSize: 11, fontWeight: 600 }}>{PRIORITY_LABELS[r.priority] ?? r.priority}</td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{r.allocationPercent}%</td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
-                          {formatDateShort(r.startDate)} {'\u2192'} {formatDateShort(r.endDate)}
-                        </td>
-                        <td><StatusBadge label={r.derivedStatus} tone={DERIVED_STATUS_TONE[r.derivedStatus] as never} variant="dot" /></td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{r.headcountFulfilled}/{r.headcountRequired}</td>
-                        <td><Link to={`/staffing-requests/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'project', title: 'Project', getValue: (r) => r.projectName ?? r.projectId, render: (r) => <span style={{ fontWeight: 500 }}>{r.projectName ?? r.projectId}</span> },
+                  { key: 'role', title: 'Role', getValue: (r) => r.role, render: (r) => r.role },
+                  { key: 'priority', title: 'Priority', width: 70, getValue: (r) => r.priority, render: (r) => <span style={{ fontSize: 11, fontWeight: 600 }}>{PRIORITY_LABELS[r.priority] ?? r.priority}</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (r) => r.allocationPercent, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.allocationPercent}%</span> },
+                  { key: 'dates', title: 'Dates', width: 140, getValue: (r) => `${r.startDate}-${r.endDate}`, render: (r) => (
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
+                      {formatDateShort(r.startDate)} {'\u2192'} {formatDateShort(r.endDate)}
+                    </span>
+                  ) },
+                  { key: 'status', title: 'Status', width: 80, getValue: (r) => r.derivedStatus, render: (r) => <StatusBadge label={r.derivedStatus} tone={DERIVED_STATUS_TONE[r.derivedStatus] as never} variant="dot" /> },
+                  { key: 'hc', title: <>HC <TipBalloon tip="Shows fulfilled vs required headcount for this request." arrow="bottom" /></>, align: 'right', width: 80, getValue: (r) => r.headcountFulfilled, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.headcountFulfilled}/{r.headcountRequired}</span> },
+                  { key: 'go', title: '', width: 40, render: (r) => <Link to={`/staffing-requests/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+                ] as Column<StaffingRequest>[]}
+                rows={pagedItems}
+                getRowKey={(r) => r.id}
+                onRowClick={(r) => navigate(`/staffing-requests/${r.id}`)}
+              />
               <PaginationControls
                 page={page}
                 pageSize={pageSize}

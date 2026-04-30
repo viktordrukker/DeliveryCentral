@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ds';
 
 interface RadiatorTimeTravelSliderProps {
   /** Weeks available in history, ascending oldest → newest. */
@@ -85,13 +86,9 @@ export function RadiatorTimeTravelSlider({
         {displayedWeek}
       </span>
       {pendingIdx < max ? (
-        <button
-          className="button button--secondary button--sm"
-          onClick={handleReturnToCurrent}
-          type="button"
-        >
+        <Button variant="secondary" size="sm" onClick={handleReturnToCurrent} type="button">
           Return to current
-        </button>
+        </Button>
       ) : null}
     </div>
   );

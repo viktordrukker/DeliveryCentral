@@ -1,5 +1,6 @@
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { TeamMember } from '@/lib/api/teams';
+import { Button } from '@/components/ds';
 
 interface MemberSelectorProps {
   isSubmitting: boolean;
@@ -31,14 +32,9 @@ export function MemberSelector({
               {person.currentOrgUnit?.name ?? 'No org unit'} | {person.primaryEmail ?? 'No email'}
             </div>
           </div>
-          <button
-            className="button button--secondary"
-            disabled={isSubmitting}
-            onClick={() => void onAdd(person.id)}
-            type="button"
-          >
+          <Button variant="secondary" disabled={isSubmitting} onClick={() => void onAdd(person.id)} type="button">
             Add member
-          </button>
+          </Button>
         </div>
       ))}
     </div>

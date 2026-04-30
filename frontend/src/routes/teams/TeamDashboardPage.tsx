@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { useTeamDashboard } from '@/features/teams/useTeamDashboard';
+import { Button, DescriptionList, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -30,8 +31,8 @@ export function TeamDashboardPage(): JSX.Element {
         actions={
           id ? (
             <>
-              <Link className="button button--secondary button--sm" to="/teams">Back to teams</Link>
-              <Link className="button button--secondary button--sm" to="/assignments">Assignments</Link>
+              <Button as={Link} variant="secondary" size="sm" to="/teams">Back to teams</Button>
+              <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
             </>
           ) : null
         }
@@ -81,35 +82,29 @@ export function TeamDashboardPage(): JSX.Element {
 
           {/* ── Team Summary ── */}
           <SectionCard title="Team Summary" collapsible>
-            <table className="dash-compact-table">
-              <tbody>
-                <tr><td style={{ fontWeight: 500, width: 140 }}>Team</td><td>{d.team.name}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Code</td><td>{d.team.code}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Linked Org Unit</td><td>{d.team.orgUnit?.name ?? 'Not linked'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Description</td><td style={{ color: 'var(--color-text-muted)' }}>{d.team.description ?? 'No description available'}</td></tr>
-              </tbody>
-            </table>
+            <DescriptionList items={[
+              { label: 'Team', value: d.team.name },
+              { label: 'Code', value: d.team.code },
+              { label: 'Linked Org Unit', value: d.team.orgUnit?.name ?? 'Not linked' },
+              { label: 'Description', value: <span style={{ color: 'var(--color-text-muted)' }}>{d.team.description ?? 'No description available'}</span> },
+            ]} />
           </SectionCard>
 
           {/* ── Anomaly Summary ── */}
           <SectionCard title="Anomaly Summary" collapsible>
-            <table className="dash-compact-table">
-              <thead>
-                <tr><th>Anomaly Type</th><th style={NUM}>Count</th></tr>
-              </thead>
-              <tbody>
-                {[
-                  { label: 'Open exceptions', count: d.anomalySummary.openExceptionCount, color: d.anomalySummary.openExceptionCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
-                  { label: 'Stale approvals', count: d.anomalySummary.staleApprovalCount, color: d.anomalySummary.staleApprovalCount > 0 ? 'var(--color-status-warning)' : 'inherit' },
-                  { label: 'Project closure conflicts', count: d.anomalySummary.projectClosureConflictCount, color: d.anomalySummary.projectClosureConflictCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
-                ].map((row) => (
-                  <tr key={row.label}>
-                    <td>{row.label}</td>
-                    <td style={{ ...NUM, fontWeight: 600, color: row.color }}>{row.count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'label', title: 'Anomaly Type', getValue: (r) => r.label, render: (r) => r.label },
+                { key: 'count', title: 'Count', align: 'right', getValue: (r) => r.count, render: (r) => <span style={{ ...NUM, fontWeight: 600, color: r.color }}>{r.count}</span> },
+              ] as Column<{ label: string; count: number; color: string }>[]}
+              rows={[
+                { label: 'Open exceptions', count: d.anomalySummary.openExceptionCount, color: d.anomalySummary.openExceptionCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
+                { label: 'Stale approvals', count: d.anomalySummary.staleApprovalCount, color: d.anomalySummary.staleApprovalCount > 0 ? 'var(--color-status-warning)' : 'inherit' },
+                { label: 'Project closure conflicts', count: d.anomalySummary.projectClosureConflictCount, color: d.anomalySummary.projectClosureConflictCount > 0 ? 'var(--color-status-danger)' : 'inherit' },
+              ]}
+              getRowKey={(r) => r.label}
+            />
           </SectionCard>
 
           {/* ── Projects & Cross-Project ── */}
@@ -118,17 +113,16 @@ export function TeamDashboardPage(): JSX.Element {
               {d.projectsInvolved.length === 0 ? (
                 <EmptyState description="No active project involvement recorded." title="No projects" />
               ) : (
-                <table className="dash-compact-table">
-                  <thead><tr><th>Project</th><th style={{ width: 40 }}></th></tr></thead>
-                  <tbody>
-                    {d.projectsInvolved.map((p) => (
-                      <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${p.id}`)}>
-                        <td style={{ fontWeight: 500 }}>{p.name}</td>
-                        <td><Link to={`/projects/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'name', title: 'Project', getValue: (p) => p.name, render: (p) => <span style={{ fontWeight: 500 }}>{p.name}</span> },
+                    { key: 'go', title: '', width: 40, render: (p) => <Link to={`/projects/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+                  ] as Column<typeof d.projectsInvolved[number]>[]}
+                  rows={d.projectsInvolved}
+                  getRowKey={(p) => p.id}
+                  onRowClick={(p) => navigate(`/projects/${p.id}`)}
+                />
               )}
             </SectionCard>
 
@@ -136,18 +130,17 @@ export function TeamDashboardPage(): JSX.Element {
               {d.crossProjectSpread.membersOnMultipleProjects.length === 0 ? (
                 <EmptyState description="No team members staffed across multiple active projects." title="No cross-project spread" />
               ) : (
-                <table className="dash-compact-table">
-                  <thead><tr><th>Person</th><th style={NUM}>Projects</th><th style={{ width: 40 }}></th></tr></thead>
-                  <tbody>
-                    {d.crossProjectSpread.membersOnMultipleProjects.map((person) => (
-                      <tr key={person.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${person.id}`)}>
-                        <td style={{ fontWeight: 500 }}>{person.displayName}</td>
-                        <td style={NUM}>{person.activeProjectCount}</td>
-                        <td><Link to={`/people/${person.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                    { key: 'projects', title: 'Projects', align: 'right', getValue: (p) => p.activeProjectCount, render: (p) => <span style={NUM}>{p.activeProjectCount}</span> },
+                    { key: 'go', title: '', width: 40, render: (p) => <Link to={`/people/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+                  ] as Column<typeof d.crossProjectSpread.membersOnMultipleProjects[number]>[]}
+                  rows={d.crossProjectSpread.membersOnMultipleProjects}
+                  getRowKey={(p) => p.id}
+                  onRowClick={(p) => navigate(`/people/${p.id}`)}
+                />
               )}
             </SectionCard>
           </div>
@@ -157,19 +150,18 @@ export function TeamDashboardPage(): JSX.Element {
             {d.peopleWithNoAssignments.length === 0 ? (
               <EmptyState description="Everyone in this team currently has at least one assignment." title="No unassigned people" />
             ) : (
-              <table className="dash-compact-table">
-                <thead><tr><th>Person</th><th>Org Unit</th><th>Email</th><th style={{ width: 40 }}></th></tr></thead>
-                <tbody>
-                  {d.peopleWithNoAssignments.map((person) => (
-                    <tr key={person.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${person.id}`)}>
-                      <td style={{ fontWeight: 500 }}>{person.displayName}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{person.currentOrgUnitName ?? '\u2014'}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{person.primaryEmail ?? '\u2014'}</td>
-                      <td><Link to={`/people/${person.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                  { key: 'orgUnit', title: 'Org Unit', getValue: (p) => p.currentOrgUnitName ?? '\u2014', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.currentOrgUnitName ?? '\u2014'}</span> },
+                  { key: 'email', title: 'Email', getValue: (p) => p.primaryEmail ?? '\u2014', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.primaryEmail ?? '\u2014'}</span> },
+                  { key: 'go', title: '', width: 40, render: (p) => <Link to={`/people/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+                ] as Column<typeof d.peopleWithNoAssignments[number]>[]}
+                rows={d.peopleWithNoAssignments}
+                getRowKey={(p) => p.id}
+                onRowClick={(p) => navigate(`/people/${p.id}`)}
+              />
             )}
           </SectionCard>
 

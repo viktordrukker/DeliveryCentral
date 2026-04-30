@@ -3,6 +3,7 @@ import { FormEvent } from 'react';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { Button } from '@/components/ds';
 
 export interface CaseFormValues {
   caseTypeKey: string;
@@ -144,9 +145,9 @@ export function CaseForm({
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Creating case...' : 'Create case'}
-        </button>
+        </Button>
       </div>
     </form>
   );

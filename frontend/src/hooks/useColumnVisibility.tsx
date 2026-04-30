@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ds';
 
 interface ColumnDef {
   key: string;
@@ -65,16 +66,9 @@ export function useColumnVisibility<T extends ColumnDef>(
 
   const ColumnVisibilityMenu = (
     <div ref={menuRef} style={{ position: 'relative' }}>
-      <button
-        aria-label="Customize columns"
-        className="button button--secondary"
-        onClick={() => setMenuOpen((v) => !v)}
-        style={{ fontSize: '12px', padding: '4px 10px' }}
-        title="Show/hide columns"
-        type="button"
-      >
+      <Button aria-label="Customize columns" variant="secondary" onClick={() => setMenuOpen((v) => !v)} style={{ fontSize: '12px', padding: '4px 10px' }} title="Show/hide columns" type="button">
         Columns ▾
-      </button>
+      </Button>
       {menuOpen ? (
         <div
           style={{

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { useOutsideClick } from '@/hooks/useOutsideClick';
+import { Button, IconButton } from '@/components/ds';
 
 interface SavedFilter {
   name: string;
@@ -60,14 +61,9 @@ export function SavedFiltersDropdown({ currentFilters, onApply, storageKey }: Pr
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <button
-        className="button button--secondary button--sm"
-        onClick={() => setOpen((v) => !v)}
-        type="button"
-        style={{ fontSize: 10 }}
-      >
+      <Button variant="secondary" size="sm" onClick={() => setOpen((v) => !v)} type="button" style={{ fontSize: 10 }}>
         Saved Filters ({saved.length})
-      </button>
+      </Button>
 
       {open && (
         <div style={{
@@ -99,14 +95,15 @@ export function SavedFiltersDropdown({ currentFilters, onApply, storageKey }: Pr
               >
                 {f.name}
               </span>
-              <button
+              <IconButton
+                aria-label={`Delete ${f.name}`}
+                size="sm"
                 onClick={() => handleDelete(f.name)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--color-text-subtle)', padding: '0 2px' }}
-                type="button"
+                style={{ fontSize: 12, color: 'var(--color-text-subtle)' }}
                 title="Delete"
               >
-                &times;
-              </button>
+                ×
+              </IconButton>
             </div>
           ))}
 
@@ -119,9 +116,9 @@ export function SavedFiltersDropdown({ currentFilters, onApply, storageKey }: Pr
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
             />
-            <button className="button button--sm" onClick={handleSave} type="button" style={{ fontSize: 10, padding: '3px 8px' }}>
+            <Button variant="primary" size="sm" onClick={handleSave} type="button" style={{ fontSize: 10, padding: '3px 8px' }}>
               Save
-            </button>
+            </Button>
           </div>
         </div>
       )}

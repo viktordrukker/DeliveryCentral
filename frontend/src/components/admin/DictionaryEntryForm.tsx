@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 
 import { initialDictionaryEntryFormValues } from '@/features/admin/useDictionaryAdmin';
+import { Button } from '@/components/ds';
 
 export type DictionaryEntryFormValues = typeof initialDictionaryEntryFormValues;
 
@@ -67,9 +68,9 @@ export function DictionaryEntryForm({
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Creating...' : 'Add entry'}
-        </button>
+        </Button>
       </div>
     </form>
   );

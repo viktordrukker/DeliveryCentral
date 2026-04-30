@@ -3,6 +3,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { OrgDistributionTreemap } from '@/components/charts/OrgDistributionTreemap';
 import type { HrDistributionItem } from '@/lib/api/dashboard-hr-manager';
+import { Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -41,30 +42,21 @@ export function HrOrganizationTab({ orgDistribution, totalHeadcount }: Props): J
         {orgDistribution.length === 0 ? (
           <EmptyState description="No organization distribution data is available." title="No org distribution" />
         ) : (
-          <table className="dash-compact-table">
-            <thead>
-              <tr>
-                <th>Org Unit</th>
-                <th style={NUM}>Employees</th>
-                <th style={NUM}>% of Total</th>
-                <th style={{ width: 120 }}>Bar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orgDistribution.map((item) => (
-                <tr key={item.key}>
-                  <td style={{ fontWeight: 500 }}>{item.label}</td>
-                  <td style={NUM}>{item.count}</td>
-                  <td style={NUM}>{totalHeadcount > 0 ? Math.round((item.count / totalHeadcount) * 100) : 0}%</td>
-                  <td>
-                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((item.count / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: 'var(--color-chart-5)' }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'label', title: 'Org Unit', getValue: (i) => i.label, render: (i) => <span style={{ fontWeight: 500 }}>{i.label}</span> },
+              { key: 'count', title: 'Employees', align: 'right', getValue: (i) => i.count, render: (i) => <span style={NUM}>{i.count}</span> },
+              { key: 'pct', title: '% of Total', align: 'right', getValue: (i) => totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0, render: (i) => <span style={NUM}>{totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0}%</span> },
+              { key: 'bar', title: 'Bar', width: 120, render: (i) => (
+                <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((i.count / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: 'var(--color-chart-5)' }} />
+                </div>
+              ) },
+            ] as Column<HrDistributionItem>[]}
+            rows={orgDistribution}
+            getRowKey={(i) => i.key}
+          />
         )}
       </SectionCard>
     </>

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma } from '@prisma/client';
 
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { TimesheetRepository } from '../infrastructure/timesheet.repository';
@@ -12,6 +13,10 @@ import {
   TimesheetWeekDto,
   UpsertEntryDto,
 } from './contracts/timesheet.dto';
+
+function todayUtcStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function toDateStr(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -25,12 +30,25 @@ function parseWeekStart(weekStart: string): Date {
   return d;
 }
 
+function parseMonthBounds(month: string): { monthStart: Date; monthEnd: Date } {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!m) throw new BadRequestException(`Invalid month: ${month}`);
+  const year = Number(m[1]);
+  const monthIdx = Number(m[2]);
+  if (monthIdx < 1 || monthIdx > 12) throw new BadRequestException(`Invalid month: ${month}`);
+  return {
+    monthStart: new Date(Date.UTC(year, monthIdx - 1, 1)),
+    monthEnd: new Date(Date.UTC(year, monthIdx, 0)),
+  };
+}
+
 @Injectable()
 export class TimesheetsService {
   public constructor(
     private readonly repo: TimesheetRepository,
     private readonly prisma: PrismaService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly platformSettings?: PlatformSettingsService,
   ) {}
 
   /**
@@ -107,6 +125,17 @@ export class TimesheetsService {
       throw new BadRequestException('This period is locked and cannot be edited.');
     }
 
+    // Validation: future-date entry + max-hours-per-day
+    const settings = await this.platformSettings?.getAll();
+    const allowFutureDateEntry = settings?.timeEntry.allowFutureDateEntry ?? false;
+    const maxHoursPerDay = settings?.timeEntry.maxHoursPerDay ?? 12;
+    if (!allowFutureDateEntry && dto.date > todayUtcStr()) {
+      throw new BadRequestException('Logging hours on future dates is disabled by your administrator.');
+    }
+    if (dto.hours > maxHoursPerDay) {
+      throw new BadRequestException(`Hours (${dto.hours}) exceed the daily cap of ${maxHoursPerDay}h.`);
+    }
+
     const entry = await this.repo.upsertEntry(
       week.id,
       dto.projectId,
@@ -114,6 +143,9 @@ export class TimesheetsService {
       new Prisma.Decimal(dto.hours),
       dto.capex ?? false,
       dto.description,
+      dto.benchCategory,
+      dto.workLabel,
+      dto.workItemId,
     );
 
     return {
@@ -124,7 +156,46 @@ export class TimesheetsService {
       hours: Number(entry.hours),
       capex: entry.capex,
       description: entry.description ?? undefined,
+      benchCategory: entry.benchCategory || undefined,
+      workLabel: entry.workLabel || undefined,
+      workItemId: entry.workItemId ?? undefined,
     };
+  }
+
+  public async renameRow(
+    personId: string,
+    dto: { month: string; kind: 'BENCH' | 'WORK_LABEL'; projectId?: string; oldLabel?: string; newLabel?: string },
+  ): Promise<{ updated: number }> {
+    const { monthStart, monthEnd } = parseMonthBounds(dto.month);
+    const oldLabel = dto.oldLabel ?? '';
+    const newLabel = dto.newLabel ?? '';
+    if (newLabel === oldLabel) return { updated: 0 };
+    const result = await this.repo.renameRowInMonth(
+      personId,
+      monthStart,
+      monthEnd,
+      dto.kind,
+      dto.projectId,
+      oldLabel,
+      newLabel,
+    );
+    return { updated: result.count };
+  }
+
+  public async deleteRow(
+    personId: string,
+    dto: { month: string; kind: 'BENCH' | 'WORK_LABEL'; projectId?: string; label?: string },
+  ): Promise<{ deleted: number }> {
+    const { monthStart, monthEnd } = parseMonthBounds(dto.month);
+    const result = await this.repo.deleteRowInMonth(
+      personId,
+      monthStart,
+      monthEnd,
+      dto.kind,
+      dto.projectId,
+      dto.label ?? '',
+    );
+    return { deleted: result.count };
   }
 
   public async submitWeek(personId: string, weekStart: string): Promise<TimesheetWeekDto> {
@@ -138,6 +209,26 @@ export class TimesheetsService {
     if (week.status !== 'DRAFT') {
       throw new BadRequestException(
         `Cannot submit a timesheet with status ${week.status}.`,
+      );
+    }
+
+    // Validation: submit-in-advance + max-hours-per-week
+    const settings = await this.platformSettings?.getAll();
+    const allowSubmitInAdvance = settings?.timeEntry.allowSubmitInAdvance ?? false;
+    const maxHoursPerWeek = settings?.timeEntry.maxHoursPerWeek ?? 60;
+    if (!allowSubmitInAdvance) {
+      // Last day of the week is weekStart + 6 days. Block if it hasn't passed yet.
+      const lastDay = new Date(weekDate.getTime() + 6 * 86400000);
+      if (lastDay > new Date()) {
+        throw new BadRequestException(
+          'Submitting a week before its last day is disabled by your administrator.',
+        );
+      }
+    }
+    const weekTotal = week.entries.reduce((s, e) => s + Number(e.hours), 0);
+    if (weekTotal > maxHoursPerWeek) {
+      throw new BadRequestException(
+        `Week total (${weekTotal}h) exceeds the weekly cap of ${maxHoursPerWeek}h.`,
       );
     }
 
@@ -157,6 +248,46 @@ export class TimesheetsService {
     });
 
     return this.mapWeek(updated);
+  }
+
+  /**
+   * Revoke a SUBMITTED week back to DRAFT. Owner-only — managers reject via the
+   * approval flow instead. Approved weeks can't be revoked here (would need
+   * an admin unlock).
+   */
+  public async revokeWeek(personId: string, weekStart: string): Promise<TimesheetWeekDto> {
+    const weekDate = parseWeekStart(weekStart);
+    const week = await this.repo.findWeekWithEntries(personId, weekDate);
+    if (!week) throw new NotFoundException('Timesheet week not found.');
+    if (week.personId !== personId) throw new ForbiddenException('You can only revoke your own timesheet.');
+    if (week.status === 'DRAFT') return this.mapWeek(week);
+    if (week.status === 'APPROVED') {
+      throw new BadRequestException('Cannot revoke an approved timesheet. Ask an admin to unlock it.');
+    }
+    const updated = await this.repo.updateWeek(week.id, {
+      status: 'DRAFT',
+      submittedAt: null,
+      rejectedReason: null,
+    });
+    return this.mapWeek(updated);
+  }
+
+  /**
+   * Reset a DRAFT week — wipe every entry. No-op for non-DRAFT weeks (the user
+   * has to revoke first if it's SUBMITTED).
+   */
+  public async resetWeek(personId: string, weekStart: string): Promise<{ deletedEntries: number }> {
+    const weekDate = parseWeekStart(weekStart);
+    const week = await this.repo.findWeekWithEntries(personId, weekDate);
+    if (!week) throw new NotFoundException('Timesheet week not found.');
+    if (week.personId !== personId) throw new ForbiddenException('You can only reset your own timesheet.');
+    if (week.status !== 'DRAFT') {
+      throw new BadRequestException(
+        `Cannot reset a ${week.status} week. Revoke it first.`,
+      );
+    }
+    const result = await this.prisma.timesheetEntry.deleteMany({ where: { timesheetWeekId: week.id } });
+    return { deletedEntries: result.count };
   }
 
   public async getApprovalQueue(query: {
@@ -389,6 +520,9 @@ export class TimesheetsService {
         hours: Prisma.Decimal;
         capex: boolean;
         description: string | null;
+        benchCategory?: string;
+        workLabel?: string;
+        workItemId?: string | null;
       }>;
     },
   ): TimesheetWeekDto {
@@ -414,6 +548,9 @@ export class TimesheetsService {
         hours: Number(e.hours),
         capex: e.capex,
         description: e.description ?? undefined,
+        benchCategory: e.benchCategory || undefined,
+        workLabel: e.workLabel || undefined,
+        workItemId: e.workItemId ?? undefined,
       })),
     };
   }

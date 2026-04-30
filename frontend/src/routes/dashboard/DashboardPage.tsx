@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
 import { getDashboardPath } from '@/app/role-routing';
 import { useTitleBarActions } from '@/app/title-bar-context';
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { DateRangePreset } from '@/components/common/DateRangePreset';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   WorkforceOverviewChart,
   type WorkforceWeekData,
@@ -26,6 +25,7 @@ import {
   fetchWorkloadTrend,
 } from '@/lib/api/workload-dashboard';
 import { QueryState } from '@/lib/api/query-state';
+import { Button, DataView, type Column } from '@/components/ds';
 
 /* ── Threshold color helper ──────────────────────────────────────── */
 const tc = (val: number, warn: number, danger: number, higherIsBad = true): string => {
@@ -72,9 +72,9 @@ export function DashboardPage(): JSX.Element {
           value={{ from: rangeFrom, to: rangeTo }}
           onChange={(r) => { setRangeFrom(r.from); setRangeTo(r.to); }}
         />
-        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
-        <Link className="button button--secondary button--sm" to="/assignments">Assignments</Link>
-        <Link className="button button--secondary button--sm" to="/dashboard/planned-vs-actual">Planned vs actual</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard/planned-vs-actual">Planned vs actual</Button>
         <TipTrigger />
       </>
     );
@@ -169,7 +169,7 @@ export function DashboardPage(): JSX.Element {
     return items;
   }, [activeProjects, projectsWithNoStaff, totalPeople, unassigned]);
 
-  const actionColumns = useMemo<DataTableColumn<DashboardActionItem>[]>(() => [
+  const actionColumns = useMemo<Column<DashboardActionItem>[]>(() => [
     {
       key: 'index',
       render: (item) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{item.index}</span>,
@@ -264,14 +264,27 @@ export function DashboardPage(): JSX.Element {
     return <Navigate replace to={home} />;
   }
 
-  return (
-    <PageContainer>
+  const banners = (
+    <>
       {state.isLoading ? <LoadingState label="Loading dashboard..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
+    </>
+  );
 
+  return (
+    <DashboardLayout
+      banners={banners}
+      prelude={d ? <OnboardingChecklist /> : null}
+      freshness={d ? (
+        <DataFreshness
+          lastFetch={lastFetch}
+          onRefresh={refetch}
+          tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers from the server." arrow="top" />}
+        />
+      ) : null}
+    >
       {d ? (
         <>
-          <OnboardingChecklist />
           {/* ── KPI STRIP ── */}
           <div className="kpi-strip" aria-label="Key metrics">
             <Link className="kpi-strip__item" to="/workload"
@@ -314,7 +327,7 @@ export function DashboardPage(): JSX.Element {
               <span className="kpi-strip__value">{issues}</span>
               <span className="kpi-strip__label">Open Issues</span>
               <span className="kpi-strip__context" style={{ color: issues === 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
-                {issues === 0 ? '\u2713 All clear' : `${noStaffCount} unstaffed`}
+                {issues === 0 ? '✓ All clear' : `${noStaffCount} unstaffed`}
               </span>
             </Link>
           </div>
@@ -351,12 +364,12 @@ export function DashboardPage(): JSX.Element {
                   Action Items ({actionItems.length})
                 </span>
               </div>
-              <DataTable
+              <DataView<DashboardActionItem>
+                pageSizeOptions={[1000]}
                 caption="Workforce action items requiring attention"
                 columns={actionColumns}
                 getRowKey={(item) => item.id}
-                items={actionItems}
-                minWidth={780}
+                rows={actionItems}
                 onRowClick={(item) => nav(item.href)}
                 variant="compact"
               />
@@ -372,21 +385,13 @@ export function DashboardPage(): JSX.Element {
           {/* ── System healthy ── */}
           {noStaffCount === 0 && unassigned <= 3 && (
             <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-status-active)' }}>
-              <span style={{ fontSize: 22 }}>{'\u2713'}</span>{' '}
+              <span style={{ fontSize: 22 }}>{'✓'}</span>{' '}
               <span style={{ fontWeight: 600 }}>System healthy</span>
               <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginLeft: 8 }}>No staffing gaps detected</span>
             </div>
           )}
-
-          {/* ── DATA FRESHNESS ── */}
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers from the server." arrow="top" />
-          </div>
         </>
       ) : null}
-    </PageContainer>
+    </DashboardLayout>
   );
 }

@@ -1,4 +1,5 @@
 import { FormEvent } from 'react';
+import { Button, DatePicker } from '@/components/ds';
 
 export interface EmployeeLifecycleFormValues {
   email: string;
@@ -136,12 +137,8 @@ export function EmployeeLifecycleForm({
 
         <label className="field">
           <span className="field__label">Hire Date</span>
-          <input
-            className="field__control"
-            onChange={(event) => onChange('hireDate', event.target.value)}
-            type="date"
-            value={values.hireDate}
-          />
+          <DatePicker onValueChange={(value) => onChange('hireDate', value)} value={values.hireDate}
+ />
         </label>
 
         <label className="field">
@@ -206,9 +203,9 @@ export function EmployeeLifecycleForm({
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Creating employee...' : 'Create employee'}
-        </button>
+        </Button>
       </div>
     </form>
   );

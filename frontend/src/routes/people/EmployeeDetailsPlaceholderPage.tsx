@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { TabBar } from '@/components/common/TabBar';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -27,6 +28,7 @@ import { humanizeEnum, EMPLOYMENT_STATUS_LABELS } from '@/lib/labels';
 import { PersonActivityFeed } from '@/components/people/PersonActivityFeed';
 import { Person360Tab } from '@/components/people/Person360Tab';
 import { HR_DIRECTOR_ADMIN_ROLES, THREESIXTY_REVIEW_ROLES, SKILL_EDIT_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button, DatePicker } from '@/components/ds';
 
 export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
@@ -201,32 +203,18 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         actions={
           <>
             {canManageLifecycle ? (
-              <button
-                className="button button--secondary"
-                disabled={isDeactivating || lifecycleStatus === 'INACTIVE' || lifecycleStatus === 'TERMINATED'}
-                onClick={() => {
-                  setConfirmDeactivateOpen(true);
-                }}
-                type="button"
-              >
+              <Button variant="secondary" disabled={isDeactivating || lifecycleStatus === 'INACTIVE' || lifecycleStatus === 'TERMINATED'} onClick={() => { setConfirmDeactivateOpen(true); }} type="button">
                 {isDeactivating
                   ? 'Deactivating...'
                   : lifecycleStatus === 'INACTIVE'
                     ? 'Already inactive'
                     : 'Deactivate employee'}
-              </button>
+              </Button>
             ) : null}
             {canManageLifecycle ? (
-              <button
-                className="button button--danger"
-                disabled={isTerminating || lifecycleStatus === 'TERMINATED'}
-                onClick={() => {
-                  setConfirmTerminateOpen(true);
-                }}
-                type="button"
-              >
+              <Button variant="danger" disabled={isTerminating || lifecycleStatus === 'TERMINATED'} onClick={() => { setConfirmTerminateOpen(true); }} type="button">
                 {lifecycleStatus === 'TERMINATED' ? 'Terminated' : 'Terminate employee'}
-              </button>
+              </Button>
             ) : null}
           </>
         }
@@ -235,48 +223,17 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         title={state.data?.displayName ?? 'Employee Details'}
       />
 
-      <div className="tab-nav" data-testid="person-detail-tabs" role="tablist">
-        <button
-          aria-selected={activeTab === 'overview'}
-          className={`tab-nav__item${activeTab === 'overview' ? ' tab-nav__item--active' : ''}`}
-          onClick={() => setTab('overview')}
-          role="tab"
-          type="button"
-        >
-          Overview
-        </button>
-        {canView360 ? (
-          <button
-            aria-selected={activeTab === '360'}
-            className={`tab-nav__item${activeTab === '360' ? ' tab-nav__item--active' : ''}`}
-            data-testid="tab-360"
-            onClick={() => setTab('360')}
-            role="tab"
-            type="button"
-          >
-            360 View
-          </button>
-        ) : null}
-        <button
-          aria-selected={activeTab === 'skills'}
-          className={`tab-nav__item${activeTab === 'skills' ? ' tab-nav__item--active' : ''}`}
-          data-testid="tab-skills"
-          onClick={() => setTab('skills')}
-          role="tab"
-          type="button"
-        >
-          Skills
-        </button>
-        <button
-          aria-selected={activeTab === 'history'}
-          className={`tab-nav__item${activeTab === 'history' ? ' tab-nav__item--active' : ''}`}
-          data-testid="tab-history"
-          onClick={() => setTab('history')}
-          role="tab"
-          type="button"
-        >
-          History
-        </button>
+      <div data-testid="person-detail-tabs">
+        <TabBar
+          activeTab={activeTab}
+          onTabChange={(id) => setTab(id as typeof activeTab)}
+          tabs={[
+            { id: 'overview', label: 'Overview' },
+            ...(canView360 ? [{ id: '360', label: '360 View' }] : []),
+            { id: 'skills', label: 'Skills' },
+            { id: 'history', label: 'History' },
+          ]}
+        />
       </div>
 
       {state.isLoading ? <LoadingState label="Loading employee details..." variant="skeleton" skeletonType="detail" /> : null}
@@ -309,29 +266,18 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               </label>
               <label>
                 <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Termination date (optional)</span>
-                <input
-                  className="input"
-                  onChange={(e) => { setTerminateDate(e.target.value); }}
-                  type="date"
-                  value={terminateDate}
-                />
+                <DatePicker
+ className="input"
+ onValueChange={(value) => { setTerminateDate(value); }} value={terminateDate}
+ />
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className="button button--danger"
-                  disabled={isTerminating}
-                  onClick={() => { void handleTerminate(); }}
-                  type="button"
-                >
+                <Button variant="danger" disabled={isTerminating} onClick={() => { void handleTerminate(); }} type="button">
                   {isTerminating ? 'Terminating...' : 'Confirm termination'}
-                </button>
-                <button
-                  className="button button--secondary"
-                  onClick={() => { setShowTerminateForm(false); }}
-                  type="button"
-                >
+                </Button>
+                <Button variant="secondary" onClick={() => { setShowTerminateForm(false); }} type="button">
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -459,23 +405,12 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                     {endRelationshipSuccess ? <p className="field__success">{endRelationshipSuccess}</p> : null}
                     <label className="field">
                       <span className="field__label">End date</span>
-                      <input
-                        className="field__control"
-                        onChange={(e) => { setEndRelationshipDate(e.target.value); }}
-                        type="date"
-                        value={endRelationshipDate}
-                      />
+                      <DatePicker onValueChange={(value) => { setEndRelationshipDate(value); }} value={endRelationshipDate}
+ />
                     </label>
-                    <button
-                      className="button button--secondary"
-                      disabled={isEndingRelationship}
-                      onClick={() => {
-                        void handleEndRelationship(reportingLine.lastCreatedReportingLine!.id);
-                      }}
-                      type="button"
-                    >
+                    <Button variant="secondary" disabled={isEndingRelationship} onClick={() => { void handleEndRelationship(reportingLine.lastCreatedReportingLine!.id); }} type="button">
                       {isEndingRelationship ? 'Ending...' : 'End relationship'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}

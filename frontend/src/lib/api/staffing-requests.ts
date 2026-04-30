@@ -33,6 +33,7 @@ export interface StaffingRequest {
   allocationPercent: number;
   assignmentSummary: StaffingAssignmentSummary;
   cancelledAt?: string;
+  candidatePersonId?: string;
   createdAt: string;
   derivedStatus: DerivedStaffingRequestStatus;
   endDate: string;
@@ -54,6 +55,7 @@ export interface StaffingRequest {
 
 export interface CreateStaffingRequestInput {
   allocationPercent: number;
+  candidatePersonId?: string;
   endDate: string;
   headcountRequired?: number;
   priority: StaffingRequestPriority;
@@ -128,6 +130,10 @@ export async function releaseStaffingRequest(id: string): Promise<StaffingReques
   return httpPost<StaffingRequest, Record<string, never>>(`/staffing-requests/${id}/release`, {});
 }
 
+export async function duplicateStaffingRequest(id: string): Promise<StaffingRequest> {
+  return httpPost<StaffingRequest, Record<string, never>>(`/staffing-requests/${id}/duplicate`, {});
+}
+
 export interface SkillBreakdown {
   availabilityModifier: number;
   importanceWeight: number;
@@ -148,6 +154,120 @@ export interface SuggestionCandidate {
 
 export async function fetchStaffingSuggestions(requestId: string): Promise<SuggestionCandidate[]> {
   return httpGet<SuggestionCandidate[]>(`/staffing-requests/suggestions?requestId=${encodeURIComponent(requestId)}`);
+}
+
+// ─── Proposal slate API ────────────────────────────────────────────────────
+// The slate aggregate hangs off the StaffingRequest: PM creates the request,
+// RM proposes a slate, PM picks. Pick creates the Assignment at BOOKED.
+
+export type ProposalCandidateDecision =
+  | 'PENDING'
+  | 'PICKED'
+  | 'DECLINED'
+  | 'AUTO_DECLINED';
+
+export interface ProposalSlateCandidateDto {
+  id: string;
+  candidatePersonId: string;
+  rank: number;
+  matchScore: number;
+  availabilityPercent?: number;
+  mismatchedSkills: string[];
+  rationale?: string;
+  decision: ProposalCandidateDecision;
+  decidedAt?: string;
+}
+
+export interface ProposalSlateDto {
+  id: string;
+  staffingRequestId: string;
+  proposedByPersonId: string;
+  status: 'OPEN' | 'DECIDED' | 'EXPIRED' | 'WITHDRAWN';
+  proposedAt: string;
+  expiresAt?: string;
+  decidedAt?: string;
+  candidates: ProposalSlateCandidateDto[];
+}
+
+export interface SubmitProposalSlateCandidate {
+  candidatePersonId: string;
+  rank: number;
+  matchScore: number;
+  availabilityPercent?: number;
+  mismatchedSkills?: string[];
+  rationale?: string;
+}
+
+export interface SubmitProposalSlateRequest {
+  candidates: SubmitProposalSlateCandidate[];
+  expiresAt?: string;
+}
+
+export interface RejectProposalSlateRequest {
+  reasonCode: string;
+  reason?: string;
+  /** true → request returns to OPEN; false → request → CANCELLED. */
+  sendBack: boolean;
+}
+
+export interface PickProposalCandidateResponse {
+  assignmentId: string;
+  slate: ProposalSlateDto;
+}
+
+export interface RejectProposalSlateResponse {
+  slate: ProposalSlateDto;
+  nextRequestStatus: 'OPEN' | 'CANCELLED';
+}
+
+export async function fetchProposalSlate(
+  staffingRequestId: string,
+): Promise<ProposalSlateDto | null> {
+  return httpGet<ProposalSlateDto | null>(
+    `/staffing-requests/${staffingRequestId}/proposals`,
+  );
+}
+
+export async function submitProposalSlate(
+  staffingRequestId: string,
+  request: SubmitProposalSlateRequest,
+): Promise<ProposalSlateDto> {
+  return httpPost<ProposalSlateDto, SubmitProposalSlateRequest>(
+    `/staffing-requests/${staffingRequestId}/proposals`,
+    request,
+  );
+}
+
+export async function acknowledgeProposalSlate(
+  staffingRequestId: string,
+  slateId: string,
+): Promise<ProposalSlateDto> {
+  return httpPost<ProposalSlateDto, Record<string, never>>(
+    `/staffing-requests/${staffingRequestId}/proposals/${slateId}/acknowledge`,
+    {},
+  );
+}
+
+export async function pickProposalCandidate(
+  staffingRequestId: string,
+  slateId: string,
+  candidateId: string,
+): Promise<PickProposalCandidateResponse> {
+  return httpPost<PickProposalCandidateResponse, { candidateId: string }>(
+    `/staffing-requests/${staffingRequestId}/proposals/${slateId}/pick`,
+    { candidateId },
+  );
+}
+
+export async function rejectProposalSlate(
+  staffingRequestId: string,
+  slateId: string,
+  request: RejectProposalSlateRequest,
+): Promise<RejectProposalSlateResponse> {
+  return httpPost<RejectProposalSlateResponse, RejectProposalSlateRequest>(
+    `/staffing-requests/${staffingRequestId}/proposals/${slateId}/reject-all`,
+    request,
+  );
 }
 
 export async function checkAllocationConflict(params: {

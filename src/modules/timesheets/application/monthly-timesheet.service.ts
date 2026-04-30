@@ -15,7 +15,12 @@ export interface MonthlyEntryDto {
   projectCode: string;
   projectName: string;
   assignmentId: string | null;
-  benchCategory: string | null;
+  /** Empty string means "not a bench row" (use `benchCategory.length > 0` to test). */
+  benchCategory: string;
+  /** Free-text work-item label for project-custom rows; '' for assignment-driven rows. */
+  workLabel: string;
+  /** Future Jira/work-item FK; null today. */
+  workItemId: string | null;
   capex: boolean;
   description: string | null;
 }
@@ -180,7 +185,9 @@ export class MonthlyTimesheetService {
           projectCode: proj?.projectCode ?? 'UNKNOWN',
           projectName: proj?.name ?? e.projectId,
           assignmentId: e.assignmentId,
-          benchCategory: e.benchCategory,
+          benchCategory: e.benchCategory ?? '',
+          workLabel: e.workLabel ?? '',
+          workItemId: e.workItemId ?? null,
           capex: e.capex,
           description: e.description,
         };
@@ -200,7 +207,7 @@ export class MonthlyTimesheetService {
 
     // Add bench row if enabled and person has any bench entries
     if (settings.timeEntry.benchEnabled) {
-      const hasBenchEntries = entries.some((e) => e.benchCategory !== null);
+      const hasBenchEntries = entries.some((e) => e.benchCategory.length > 0);
       if (hasBenchEntries || assignments.length === 0) {
         assignmentRows.push({
           assignmentId: '',
@@ -220,7 +227,7 @@ export class MonthlyTimesheetService {
     const effectiveWorkingDays = workingDays - approvedLeaveDays;
     const expectedHours = effectiveWorkingDays * stdHoursPerDay;
     const reportedHours = entries.reduce((s, e) => s + e.hours, 0);
-    const benchHours = entries.filter((e) => e.benchCategory !== null).reduce((s, e) => s + e.hours, 0);
+    const benchHours = entries.filter((e) => e.benchCategory.length > 0).reduce((s, e) => s + e.hours, 0);
     const leaveHours = approvedLeaveDays * stdHoursPerDay;
     const standardHours = Math.min(reportedHours, effectiveWorkingDays * stdHoursPerDay);
     const overtimeHours = Math.max(0, reportedHours - effectiveWorkingDays * stdHoursPerDay);
@@ -230,8 +237,9 @@ export class MonthlyTimesheetService {
     // By project
     const byProjectMap = new Map<string, { hours: number; code: string; name: string }>();
     for (const e of entries) {
-      const key = e.benchCategory ? 'BENCH' : e.projectId;
-      const acc = byProjectMap.get(key) ?? { hours: 0, code: e.benchCategory ? 'BENCH' : e.projectCode, name: e.benchCategory ? 'Bench Time' : e.projectName };
+      const isBench = e.benchCategory.length > 0;
+      const key = isBench ? 'BENCH' : e.projectId;
+      const acc = byProjectMap.get(key) ?? { hours: 0, code: isBench ? 'BENCH' : e.projectCode, name: isBench ? 'Bench Time' : e.projectName };
       acc.hours += e.hours;
       byProjectMap.set(key, acc);
     }
@@ -356,7 +364,15 @@ export class MonthlyTimesheetService {
         const hours = Math.round((Number(a.allocationPercent) / 100) * stdHoursPerDay * 10) / 10;
         if (hours <= 0) continue;
         await this.prisma.timesheetEntry.upsert({
-          where: { timesheetWeekId_projectId_date: { timesheetWeekId: week.id, projectId: a.projectId, date } },
+          where: {
+            timesheetWeekId_projectId_benchCategory_workLabel_date: {
+              timesheetWeekId: week.id,
+              projectId: a.projectId,
+              benchCategory: '',
+              workLabel: '',
+              date,
+            },
+          },
           create: { timesheetWeekId: week.id, projectId: a.projectId, date, hours: new Prisma.Decimal(hours.toFixed(2)) },
           update: {},
         });
@@ -382,21 +398,20 @@ export class MonthlyTimesheetService {
         date: { gte: prevStart, lte: prevEnd },
         timesheetWeek: { personId },
       },
-      select: { date: true, projectId: true, hours: true, capex: true, benchCategory: true },
+      select: { date: true, projectId: true, hours: true, capex: true, benchCategory: true, workLabel: true },
     });
 
-    // Build pattern: dayOfWeek → [{ projectId, hours, capex, benchCategory }]
-    const pattern = new Map<number, Array<{ projectId: string; hours: number; capex: boolean; benchCategory: string | null }>>();
+    // Build pattern: dayOfWeek → [{ projectId, hours, capex, benchCategory, workLabel }]
+    const pattern = new Map<number, Array<{ projectId: string; hours: number; capex: boolean; benchCategory: string; workLabel: string }>>();
     for (const e of prevEntries) {
       const dow = e.date.getUTCDay();
       if (dow === 0 || dow === 6) continue;
       const list = pattern.get(dow) ?? [];
-      const existing = list.find((x) => x.projectId === e.projectId);
+      const existing = list.find((x) => x.projectId === e.projectId && x.benchCategory === e.benchCategory && x.workLabel === e.workLabel);
       if (existing) {
-        // Average if multiple weeks have different values
         existing.hours = (existing.hours + Number(e.hours)) / 2;
       } else {
-        list.push({ projectId: e.projectId, hours: Number(e.hours), capex: e.capex, benchCategory: e.benchCategory });
+        list.push({ projectId: e.projectId, hours: Number(e.hours), capex: e.capex, benchCategory: e.benchCategory, workLabel: e.workLabel });
       }
       pattern.set(dow, list);
     }
@@ -445,11 +460,20 @@ export class MonthlyTimesheetService {
         const hours = Math.round(entry.hours * 10) / 10;
         if (hours <= 0) continue;
         await this.prisma.timesheetEntry.upsert({
-          where: { timesheetWeekId_projectId_date: { timesheetWeekId: week.id, projectId: entry.projectId, date } },
+          where: {
+            timesheetWeekId_projectId_benchCategory_workLabel_date: {
+              timesheetWeekId: week.id,
+              projectId: entry.projectId,
+              benchCategory: entry.benchCategory,
+              workLabel: entry.workLabel,
+              date,
+            },
+          },
           create: {
             timesheetWeekId: week.id, projectId: entry.projectId, date,
             hours: new Prisma.Decimal(hours.toFixed(2)), capex: entry.capex,
             benchCategory: entry.benchCategory,
+            workLabel: entry.workLabel,
           },
           update: {},
         });

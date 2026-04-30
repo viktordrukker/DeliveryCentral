@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { jqlToFilters, type JqlFilters } from '@/features/staffing-desk/jql-to-filters';
 import { filtersToJql } from '@/features/staffing-desk/jql-from-filters';
 import { JqlParseError, parseJql } from '@/features/staffing-desk/jql-parser';
+import { Button } from '@/components/ds';
 
 interface Props {
   filters: Record<string, string>;
@@ -162,9 +163,9 @@ export function JqlQueryBar({ filters, onApplyFilters, visible }: Props): JSX.El
             </div>
           )}
         </div>
-        <button className="button button--sm" onClick={() => { apply(); setShowSuggestions(false); }} type="button" style={{ fontSize: 10, padding: '3px 10px' }}>
+        <Button variant="primary" size="sm" onClick={() => { apply(); setShowSuggestions(false); }} type="button" style={{ fontSize: 10, padding: '3px 10px' }}>
           Apply
-        </button>
+        </Button>
       </div>
       {error && (
         <div style={{ fontSize: 10, color: 'var(--color-status-danger)', marginTop: 2, paddingLeft: 40 }}>

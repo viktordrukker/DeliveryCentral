@@ -2,6 +2,7 @@ import { FormEvent } from 'react';
 
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { Button } from '@/components/ds';
 
 export interface CreateWorkEvidenceFormValues {
   effortHours: string;
@@ -140,9 +141,9 @@ export function CreateWorkEvidenceForm({
       </label>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Submitting...' : 'Record work evidence'}
-        </button>
+        </Button>
       </div>
     </form>
   );

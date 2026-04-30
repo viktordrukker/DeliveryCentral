@@ -8,15 +8,14 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { PortfolioStaffingHeatmap } from '@/components/dashboard/PortfolioStaffingHeatmap';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { ViewToggle } from '@/components/common/ViewToggle';
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -30,6 +29,7 @@ import { exportToXlsx } from '@/lib/export';
 import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool } from '@/lib/api/portfolio-dashboard';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealth, type ProjectHealthDto } from '@/lib/api/project-health';
+import { Button, DataView, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -95,9 +95,9 @@ export function DirectorDashboardPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button className="button button--secondary button--sm" onClick={() => exportSummary()} type="button">Export</button>
-        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
-        <Link className="button button--secondary button--sm" to="/workload">Workload</Link>
+        <Button variant="secondary" size="sm" onClick={() => exportSummary()} type="button">Export</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/workload">Workload</Button>
         <TipTrigger />
       </>
     );
@@ -135,7 +135,7 @@ export function DirectorDashboardPage(): JSX.Element {
   }, [projectRows]);
 
   // Action table columns
-  const actionColumns = useMemo<DataTableColumn<ProjectActionRow>[]>(() => [
+  const actionColumns = useMemo<Column<ProjectActionRow>[]>(() => [
     {
       key: 'health',
       title: '',
@@ -229,12 +229,15 @@ export function DirectorDashboardPage(): JSX.Element {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <table className="dash-compact-table">
-                  <thead><tr><th scope="col">Org Unit</th><th scope="col" style={NUM}>Util %</th></tr></thead>
-                  <tbody>{d.unitUtilisation.map((item) => (
-                    <tr key={item.orgUnitId}><td style={{ fontWeight: 500 }}>{item.orgUnitName}</td><td style={{ ...NUM, fontWeight: 600, color: tc(item.utilisation, 60, 40, false) }}>{item.utilisation}%</td></tr>
-                  ))}</tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'unit', title: 'Org Unit', getValue: (item) => item.orgUnitName, render: (item) => <span style={{ fontWeight: 500 }}>{item.orgUnitName}</span> },
+                    { key: 'util', title: 'Util %', align: 'right', getValue: (item) => item.utilisation, render: (item) => <span style={{ ...NUM, fontWeight: 600, color: tc(item.utilisation, 60, 40, false) }}>{item.utilisation}%</span> },
+                  ] as Column<typeof d.unitUtilisation[number]>[]}
+                  rows={d.unitUtilisation}
+                  getRowKey={(item) => item.orgUnitId}
+                />
               )}
             </SectionCard>
 
@@ -252,14 +255,20 @@ export function DirectorDashboardPage(): JSX.Element {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <table className="dash-compact-table">
-                    <thead><tr><th scope="col">Status</th><th scope="col" style={NUM}>Count</th><th scope="col" style={NUM}>%</th></tr></thead>
-                    <tbody>
-                      <tr><td><StatusBadge status="active" label="Green" variant="dot" /></td><td style={NUM}>{ps.byRag.green}</td><td style={NUM}>{ps.totalProjects > 0 ? Math.round(ps.byRag.green / ps.totalProjects * 100) : 0}%</td></tr>
-                      <tr><td><StatusBadge status="warning" label="Amber" variant="dot" /></td><td style={NUM}>{ps.byRag.amber}</td><td style={NUM}>{ps.totalProjects > 0 ? Math.round(ps.byRag.amber / ps.totalProjects * 100) : 0}%</td></tr>
-                      <tr><td><StatusBadge status="danger" label="Red" variant="dot" /></td><td style={NUM}>{ps.byRag.red}</td><td style={NUM}>{ps.totalProjects > 0 ? Math.round(ps.byRag.red / ps.totalProjects * 100) : 0}%</td></tr>
-                    </tbody>
-                  </table>
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'status', title: 'Status', getValue: (r) => r.label, render: (r) => <StatusBadge status={r.tone} label={r.label} variant="dot" /> },
+                      { key: 'count', title: 'Count', align: 'right', getValue: (r) => r.count, render: (r) => <span style={NUM}>{r.count}</span> },
+                      { key: 'pct', title: '%', align: 'right', getValue: (r) => r.pct, render: (r) => <span style={NUM}>{r.pct}%</span> },
+                    ] as Column<{ tone: string; label: string; count: number; pct: number }>[]}
+                    rows={[
+                      { tone: 'active', label: 'Green', count: ps.byRag.green, pct: ps.totalProjects > 0 ? Math.round(ps.byRag.green / ps.totalProjects * 100) : 0 },
+                      { tone: 'warning', label: 'Amber', count: ps.byRag.amber, pct: ps.totalProjects > 0 ? Math.round(ps.byRag.amber / ps.totalProjects * 100) : 0 },
+                      { tone: 'danger', label: 'Red', count: ps.byRag.red, pct: ps.totalProjects > 0 ? Math.round(ps.byRag.red / ps.totalProjects * 100) : 0 },
+                    ]}
+                    getRowKey={(r) => r.label}
+                  />
                 )}
               </SectionCard>
             ) : null}
@@ -281,16 +290,17 @@ export function DirectorDashboardPage(): JSX.Element {
                 </div>
               ) : (
                 <>
-                  <table className="dash-compact-table">
-                    <thead><tr><th scope="col">Person</th><th scope="col" style={NUM}>Alloc %</th><th scope="col">Available</th></tr></thead>
-                    <tbody>{availablePool.slice(0, 10).map((p) => (
-                      <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${p.id}`)}>
-                        <td style={{ fontWeight: 500 }}>{p.displayName}</td>
-                        <td style={{ ...NUM, color: p.currentAllocation === 0 ? 'var(--color-status-active)' : 'var(--color-text-muted)' }}>{p.currentAllocation}%</td>
-                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.availableFrom ?? 'Now'}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                      { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.currentAllocation, render: (p) => <span style={{ ...NUM, color: p.currentAllocation === 0 ? 'var(--color-status-active)' : 'var(--color-text-muted)' }}>{p.currentAllocation}%</span> },
+                      { key: 'avail', title: 'Available', getValue: (p) => p.availableFrom ?? 'Now', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.availableFrom ?? 'Now'}</span> },
+                    ] as Column<typeof availablePool[number]>[]}
+                    rows={availablePool.slice(0, 10)}
+                    getRowKey={(p) => p.id}
+                    onRowClick={(p) => navigate(`/people/${p.id}`)}
+                  />
                   {availablePool.length > 10 ? <div style={{ marginTop: 'var(--space-2)', fontSize: 11, color: 'var(--color-text-muted)' }}>Showing 10 of {availablePool.length} — <Link to="/workload" style={{ color: 'var(--color-accent)' }}>View all</Link></div> : null}
                 </>
               )}
@@ -301,7 +311,7 @@ export function DirectorDashboardPage(): JSX.Element {
           <SectionCard title={
             <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               Portfolio Staffing Timeline
-              <span style={{ display: 'inline-flex', gap: 0, borderRadius: 'var(--radius-control, 4px)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+              <span style={{ display: 'inline-flex', gap: 4 }}>
                 {([
                   { label: '2W', weeks: 2 },
                   { label: '1M', weeks: 4 },
@@ -309,23 +319,14 @@ export function DirectorDashboardPage(): JSX.Element {
                   { label: '6M', weeks: 26 },
                   { label: '12M', weeks: 52 },
                 ] as const).map((opt) => (
-                  <button
+                  <Button
                     key={opt.weeks}
-                    type="button"
+                    size="xs"
+                    variant={heatmapWeeks === opt.weeks ? 'primary' : 'secondary'}
                     onClick={() => setHeatmapWeeks(opt.weeks)}
-                    style={{
-                      padding: '2px 10px',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      border: 'none',
-                      borderLeft: opt.weeks !== 2 ? '1px solid var(--color-border)' : 'none',
-                      cursor: 'pointer',
-                      background: heatmapWeeks === opt.weeks ? 'var(--color-accent)' : 'var(--color-surface)',
-                      color: heatmapWeeks === opt.weeks ? 'var(--color-surface)' : 'var(--color-text-muted)',
-                    }}
                   >
                     {opt.label}
-                  </button>
+                  </Button>
                 ))}
               </span>
             </span>
@@ -347,11 +348,12 @@ export function DirectorDashboardPage(): JSX.Element {
             ) : sortedProjects.length === 0 ? (
               <EmptyState description="No projects found." title="No projects" action={{ href: '/projects/new', label: 'Create Project' }} />
             ) : (
-              <DataTable
+              <DataView<ProjectActionRow>
+                pageSizeOptions={[1000]}
                 caption="Projects sorted by health — worst first"
                 columns={actionColumns}
                 getRowKey={(row) => row.id}
-                items={sortedProjects}
+                rows={sortedProjects}
                 onRowClick={(row) => navigate(`/projects/${row.id}/dashboard`)}
                 variant="compact"
               />
@@ -364,10 +366,7 @@ export function DirectorDashboardPage(): JSX.Element {
           <RecentActivityRail role="director" />
 
           {/* ═══ DATA FRESHNESS ═══ */}
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-          </div>
+          <DataFreshness lastFetch={lastFetch} onRefresh={refetch} />
         </>
       ) : null}
     </PageContainer>

@@ -15,6 +15,7 @@ import {
   getCurrentWeekMonday,
 } from '@/lib/workload-helpers';
 import type { StaffingDeskRow } from '@/lib/api/staffing-desk';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface Props {
   filters: { from?: string; poolId?: string; to?: string };
@@ -106,90 +107,92 @@ export function StaffingDeskTimeline({ filters, onRowClick }: Props): JSX.Elemen
     <div>
       {/* Week navigation */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', alignItems: 'center' }}>
-        <button className="button button--secondary button--sm" onClick={goPrev} type="button">&laquo; Prev 4</button>
-        <button className="button button--secondary button--sm" onClick={goToToday} type="button">Today</button>
-        <button className="button button--secondary button--sm" onClick={goNext} type="button">Next 4 &raquo;</button>
+        <Button variant="secondary" size="sm" onClick={goPrev} type="button">&laquo; Prev 4</Button>
+        <Button variant="secondary" size="sm" onClick={goToToday} type="button">Today</Button>
+        <Button variant="secondary" size="sm" onClick={goNext} type="button">Next 4 &raquo;</Button>
       </div>
 
-      <div style={S_WRAPPER}>
-        <table style={S_TABLE}>
-          <thead>
-            <tr style={{ background: 'var(--color-surface-alt)' }}>
-              <th style={S_NAME_TH}>Person</th>
-              <th style={{ ...S_TH, minWidth: 50 }}>Total</th>
-              {weeks.map((w) => (
-                <th key={w} style={{
-                  ...S_TH,
-                  background: w === currentWeek ? 'var(--color-accent-bg)' : undefined,
-                }}>
-                  {formatWeekLabel(w)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.people.map((person) => {
-              const totalAlloc = person.assignments
+      <Table
+        variant="compact"
+        columns={[
+          {
+            key: 'person',
+            title: 'Person',
+            cellStyle: S_NAME_TD,
+            getValue: (p) => p.displayName,
+            render: (p) => p.displayName,
+          },
+          {
+            key: 'total',
+            title: 'Total',
+            align: 'center',
+            getValue: (p) => p.assignments.filter((a) => a.status === 'APPROVED' || a.status === 'ACTIVE').reduce((sum, a) => sum + a.allocationPercent, 0),
+            render: (p) => {
+              const totalAlloc = p.assignments
                 .filter((a) => a.status === 'APPROVED' || a.status === 'ACTIVE')
                 .reduce((sum, a) => sum + a.allocationPercent, 0);
-
               return (
-                <tr key={person.id}>
-                  <td style={S_NAME_TD}>{person.displayName}</td>
-                  <td style={{
-                    ...S_CELL, textAlign: 'center', fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: getCellTextColor(totalAlloc),
-                    background: getCellBackground(totalAlloc),
-                  }}>
-                    {totalAlloc}%
-                  </td>
-                  {weeks.map((weekStart) => {
-                    const weekEnd = addDays(weekStart, 6);
-                    const weekAssignments = person.assignments.filter((a) => {
-                      const aEnd = a.validTo ?? '9999-12-31';
-                      return a.validFrom <= weekEnd && aEnd >= weekStart;
-                    });
-                    const weekTotal = weekAssignments.reduce((s, a) => s + a.allocationPercent, 0);
-
-                    // Find open requests overlapping this week
-                    const weekRequests = requests.filter((r) => {
-                      const rStart = r.startDate.slice(0, 10);
-                      const rEnd = r.endDate.slice(0, 10);
-                      return rStart <= weekEnd && rEnd >= weekStart;
-                    });
-
+                <span style={{
+                  display: 'inline-block',
+                  padding: '0 6px',
+                  borderRadius: 3,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: getCellTextColor(totalAlloc),
+                  background: getCellBackground(totalAlloc),
+                }}>{totalAlloc}%</span>
+              );
+            },
+          },
+          ...weeks.map((weekStart) => ({
+            key: `wk-${weekStart}`,
+            title: <span style={{ background: weekStart === currentWeek ? 'var(--color-accent-bg)' : undefined, padding: '2px 4px' }}>{formatWeekLabel(weekStart)}</span>,
+            align: 'center' as const,
+            cellStyle: { padding: '2px 4px', verticalAlign: 'top' as const, minWidth: 80 },
+            render: (p: WorkloadPlanningPerson) => {
+              const weekEnd = addDays(weekStart, 6);
+              const weekAssignments = p.assignments.filter((a) => {
+                const aEnd = a.validTo ?? '9999-12-31';
+                return a.validFrom <= weekEnd && aEnd >= weekStart;
+              });
+              const weekTotal = weekAssignments.reduce((s, a) => s + a.allocationPercent, 0);
+              const weekRequests = requests.filter((r) => {
+                const rStart = r.startDate.slice(0, 10);
+                const rEnd = r.endDate.slice(0, 10);
+                return rStart <= weekEnd && rEnd >= weekStart;
+              });
+              return (
+                <div style={{
+                  background: weekStart === currentWeek ? 'var(--color-accent-bg)' : getCellBackground(weekTotal),
+                  padding: 2,
+                  borderRadius: 3,
+                  minHeight: 28,
+                }}>
+                  {weekAssignments.map((a) => {
+                    const { background, color } = blockStyle(a.allocationPercent);
                     return (
-                      <td key={weekStart} style={{
-                        ...S_CELL,
-                        background: weekStart === currentWeek ? 'var(--color-accent-bg)' : getCellBackground(weekTotal),
-                      }}>
-                        {weekAssignments.map((a) => {
-                          const { background, color } = blockStyle(a.allocationPercent);
-                          return (
-                            <div
-                              key={a.id}
-                              style={{ ...S_BLOCK, background, color }}
-                              title={`${a.projectName}: ${a.allocationPercent}% (${a.validFrom} – ${a.validTo ?? 'open'})`}
-                            >
-                              {a.projectName.slice(0, 6)} {a.allocationPercent}%
-                            </div>
-                          );
-                        })}
-                        {weekRequests.slice(0, 2).map((r) => (
-                          <div key={r.id} style={S_REQUEST_BLOCK} title={`Request: ${r.role} ${r.allocationPercent}%`}>
-                            {r.role.slice(0, 8)} {r.allocationPercent}%
-                          </div>
-                        ))}
-                      </td>
+                      <div
+                        key={a.id}
+                        style={{ ...S_BLOCK, background, color }}
+                        title={`${a.projectName}: ${a.allocationPercent}% (${a.validFrom} – ${a.validTo ?? 'open'})`}
+                      >
+                        {a.projectName.slice(0, 6)} {a.allocationPercent}%
+                      </div>
                     );
                   })}
-                </tr>
+                  {weekRequests.slice(0, 2).map((r) => (
+                    <div key={r.id} style={S_REQUEST_BLOCK} title={`Request: ${r.role} ${r.allocationPercent}%`}>
+                      {r.role.slice(0, 8)} {r.allocationPercent}%
+                    </div>
+                  ))}
+                </div>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
+            },
+          })),
+        ] as Column<WorkloadPlanningPerson>[]}
+        rows={data.people}
+        getRowKey={(p) => p.id}
+      />
     </div>
   );
 }

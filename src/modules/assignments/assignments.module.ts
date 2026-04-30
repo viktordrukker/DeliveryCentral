@@ -8,8 +8,13 @@ import { AmendProjectAssignmentService } from './application/amend-project-assig
 import { ActivateApprovedAssignmentsService } from './application/activate-approved-assignments.service';
 import { ApproveProjectAssignmentService } from './application/approve-project-assignment.service';
 import { BulkCreateProjectAssignmentsService } from './application/bulk-create-project-assignments.service';
+import { AssignmentSlaService } from './application/assignment-sla.service';
+import { AssignmentSlaSweepService } from './application/assignment-sla-sweep.service';
 import { CreateProjectAssignmentService } from './application/create-project-assignment.service';
+import { DirectorApprovalThresholdService } from './application/director-approval-threshold.service';
+import { DirectorApproveService } from './application/director-approve.service';
 import { EndProjectAssignmentService } from './application/end-project-assignment.service';
+import { ScheduleOnboardingService } from './application/schedule-onboarding.service';
 import { GetAssignmentByIdService } from './application/get-assignment-by-id.service';
 import { ListAssignmentsService } from './application/list-assignments.service';
 import { RejectProjectAssignmentService } from './application/reject-project-assignment.service';
@@ -57,6 +62,21 @@ import { AssignmentsController } from './presentation/assignments.controller';
         new GetAssignmentByIdService(repository, prisma),
       inject: [InMemoryProjectAssignmentRepository, PrismaService],
     },
+    DirectorApprovalThresholdService,
+    {
+      provide: AssignmentSlaService,
+      useFactory: (prisma: PrismaService) => new AssignmentSlaService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: AssignmentSlaSweepService,
+      useFactory: (
+        prisma: PrismaService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        auditLogger: AuditLoggerService,
+      ) => new AssignmentSlaSweepService(prisma, notificationEventTranslator, auditLogger),
+      inject: [PrismaService, NotificationEventTranslatorService, AuditLoggerService],
+    },
     {
       provide: CreateProjectAssignmentService,
       useFactory: (
@@ -64,18 +84,51 @@ import { AssignmentsController } from './presentation/assignments.controller';
         referenceRepository: InMemoryAssignmentReferenceRepository,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
+        directorApprovalThresholdService: DirectorApprovalThresholdService,
       ) =>
         new CreateProjectAssignmentService(
           repository,
           referenceRepository,
           auditLogger,
           notificationEventTranslator,
+          undefined,
+          directorApprovalThresholdService,
         ),
       inject: [
         InMemoryProjectAssignmentRepository,
         InMemoryAssignmentReferenceRepository,
         AuditLoggerService,
         NotificationEventTranslatorService,
+        DirectorApprovalThresholdService,
+      ],
+    },
+    {
+      provide: DirectorApproveService,
+      useFactory: (
+        repository: InMemoryProjectAssignmentRepository,
+        auditLogger: AuditLoggerService,
+      ) => new DirectorApproveService(repository, auditLogger),
+      inject: [InMemoryProjectAssignmentRepository, AuditLoggerService],
+    },
+    {
+      provide: ScheduleOnboardingService,
+      useFactory: (
+        repository: InMemoryProjectAssignmentRepository,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        slaService: AssignmentSlaService,
+      ) =>
+        new ScheduleOnboardingService(
+          repository,
+          auditLogger,
+          notificationEventTranslator,
+          slaService,
+        ),
+      inject: [
+        InMemoryProjectAssignmentRepository,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+        AssignmentSlaService,
       ],
     },
     {
@@ -153,16 +206,19 @@ import { AssignmentsController } from './presentation/assignments.controller';
         repository: InMemoryProjectAssignmentRepository,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
+        slaService: AssignmentSlaService,
       ) =>
         new TransitionProjectAssignmentService(
           repository,
           auditLogger,
           notificationEventTranslator,
+          slaService,
         ),
       inject: [
         InMemoryProjectAssignmentRepository,
         AuditLoggerService,
         NotificationEventTranslatorService,
+        AssignmentSlaService,
       ],
     },
   ],
@@ -179,6 +235,11 @@ import { AssignmentsController } from './presentation/assignments.controller';
     RevokeProjectAssignmentService,
     TransitionProjectAssignmentService,
     InMemoryProjectAssignmentRepository,
+    DirectorApprovalThresholdService,
+    DirectorApproveService,
+    ScheduleOnboardingService,
+    AssignmentSlaService,
+    AssignmentSlaSweepService,
   ],
 })
 export class AssignmentsModule {}

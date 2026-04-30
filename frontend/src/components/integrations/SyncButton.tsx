@@ -1,3 +1,5 @@
+import { Button } from '@/components/ds';
+
 interface SyncButtonProps {
   disabled?: boolean;
   isSyncing: boolean;
@@ -12,13 +14,8 @@ export function SyncButton({
   onClick,
 }: SyncButtonProps): JSX.Element {
   return (
-    <button
-      className="button"
-      disabled={disabled || isSyncing}
-      onClick={onClick}
-      type="button"
-    >
+    <Button variant="primary" disabled={disabled || isSyncing} onClick={onClick} type="button">
       {isSyncing ? 'Syncing...' : label}
-    </button>
+    </Button>
   );
 }

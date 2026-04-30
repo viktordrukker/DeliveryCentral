@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { validateExtension, type ExtensionConflict, type ExtensionValidateResponse } from '@/lib/api/staffing-desk';
 import type { ForceAssignReason, ForceAssignReasonType, PlannerSimulation } from '@/features/staffing-desk/usePlannerSimulation';
+import { Button, DatePicker, FormField, FormModal, Select, Textarea } from '@/components/ds';
 
 export interface ExtendTarget {
   assignmentId: string;
@@ -29,24 +30,6 @@ const REASONS: Array<{ value: ForceAssignReasonType; label: string }> = [
   { value: 'OTHER', label: 'Other (explain)' },
 ];
 
-const S_BACKDROP: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 95,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
-const S_PANEL: React.CSSProperties = {
-  width: 'min(520px, 96vw)', maxHeight: '90vh',
-  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-  borderRadius: 8, boxShadow: 'var(--shadow-modal)',
-  display: 'flex', flexDirection: 'column',
-};
-const S_HEADER: React.CSSProperties = { padding: '12px 16px', borderBottom: '1px solid var(--color-border)' };
-const S_BODY: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 };
-const S_FOOTER: React.CSSProperties = {
-  padding: '10px 16px', borderTop: '1px solid var(--color-border)',
-  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
-};
-const S_QUICK: React.CSSProperties = { display: 'flex', gap: 4, flexWrap: 'wrap' };
-
 function addDaysStr(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setUTCDate(d.getUTCDate() + days);
@@ -57,6 +40,15 @@ const SEVERITY_TONE: Record<'info' | 'warning' | 'danger', 'info' | 'warning' | 
   info: 'info', warning: 'warning', danger: 'danger',
 };
 
+/**
+ * Phase DS-2-7 Tier C2 — rebuilt on `<FormModal>`. Single-submit shape; the
+ * server-side `validateExtension` flow runs in a debounced effect and only
+ * gates the submit button via `submitDisabled`. The "Extend"/"Extend anyway"
+ * label switches based on whether soft conflicts are present. The status
+ * line below the form (legacy footer text) is rendered as the FormModal
+ * description's secondary slot — kept as a small footer-status block inside
+ * the body so it's adjacent to the action button.
+ */
 export function PlannerExtendAssignmentModal({ target, simulation, onClose }: Props): JSX.Element {
   const baseDate = target.currentValidTo ?? target.currentValidFrom;
   const [newValidTo, setNewValidTo] = useState(() => addDaysStr(baseDate, 28));
@@ -97,9 +89,10 @@ export function PlannerExtendAssignmentModal({ target, simulation, onClose }: Pr
   const hasBlocking = blockingConflicts.length > 0;
   const isOtherWithoutNote = reasonType === 'OTHER' && reasonNote.trim().length === 0;
   const datesInvalid = !newValidTo || newValidTo <= baseDate;
+  const submitDisabled = hasBlocking || datesInvalid || isOtherWithoutNote || !validation || loading;
 
-  const handleConfirm = useCallback(() => {
-    if (hasBlocking || datesInvalid || isOtherWithoutNote || !validation) return;
+  const handleConfirm = useCallback(async () => {
+    if (submitDisabled || !validation) return;
     const reason: ForceAssignReason | undefined = softConflicts.length > 0
       ? { type: reasonType, note: reasonNote.trim() || undefined }
       : undefined;
@@ -117,110 +110,98 @@ export function PlannerExtendAssignmentModal({ target, simulation, onClose }: Pr
       reason,
     });
     onClose();
-  }, [hasBlocking, datesInvalid, isOtherWithoutNote, validation, softConflicts.length, reasonType, reasonNote, simulation, target, newValidTo, onClose]);
+  }, [submitDisabled, validation, softConflicts.length, reasonType, reasonNote, simulation, target, newValidTo, onClose]);
 
   return (
-    <div style={S_BACKDROP} role="dialog" aria-modal="true" aria-label="Extend assignment">
-      <div style={S_PANEL}>
-        <div style={S_HEADER}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Extend assignment</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            {target.personName} · {target.projectName} · {target.staffingRole || '—'} · {target.allocationPercent}%
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            Current end: <strong>{target.currentValidTo ?? 'open-ended'}</strong>
-          </div>
-        </div>
-
-        <div style={S_BODY}>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--color-text-subtle)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quick extend</div>
-            <div style={S_QUICK}>
-              {[14, 28, 42, 84, 180].map((d) => (
-                <button key={d} type="button" className="button button--secondary button--sm" onClick={() => quickSet(d)} style={{ fontSize: 10 }}>
-                  {d < 28 ? `+${d}d` : d < 84 ? `+${Math.round(d / 7)}w` : `+${Math.round(d / 30)}mo`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <label className="field" style={{ gap: 4 }}>
-            <span className="field__label">New end date</span>
-            <input
-              type="date"
-              className="field__control"
-              value={newValidTo}
-              min={addDaysStr(baseDate, 1)}
-              onChange={(e) => setNewValidTo(e.target.value)}
-              data-testid="extend-new-date"
-            />
-          </label>
-
-          {loading && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Checking constraints…</div>}
-          {validationError && <div style={{ fontSize: 11, color: 'var(--color-status-danger)' }}>{validationError}</div>}
-
-          {validation && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {validation.conflicts.length === 0 && (
-                <div style={{ fontSize: 11, color: 'var(--color-status-active)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <StatusBadge label="OK" tone="active" variant="chip" size="small" /> No conflicts — safe to extend.
-                </div>
-              )}
-              {validation.conflicts.map((c, i) => (
-                <ConflictRow key={`${c.kind}-${i}`} conflict={c} />
-              ))}
-            </div>
-          )}
-
-          {softConflicts.length > 0 && !hasBlocking && (
-            <>
-              <label className="field" style={{ gap: 4 }}>
-                <span className="field__label">Reason for proceeding (saved with anomaly)</span>
-                <select
-                  className="field__control"
-                  value={reasonType}
-                  onChange={(e) => setReasonType(e.target.value as ForceAssignReasonType)}
-                  data-testid="extend-reason"
-                >
-                  {REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </label>
-              {reasonType === 'OTHER' && (
-                <label className="field" style={{ gap: 4 }}>
-                  <span className="field__label">Note</span>
-                  <textarea
-                    className="field__control"
-                    rows={2}
-                    value={reasonNote}
-                    onChange={(e) => setReasonNote(e.target.value)}
-                    maxLength={240}
-                    placeholder="Explain why the extension is justified despite the anomaly…"
-                  />
-                </label>
-              )}
-            </>
-          )}
-        </div>
-
-        <div style={S_FOOTER}>
-          <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-            {hasBlocking ? 'Resolve blocking issues to proceed' : softConflicts.length > 0 ? `${softConflicts.length} anomaly marker(s) will be logged` : ' '}
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className="button button--secondary button--sm" onClick={onClose} type="button">Cancel</button>
-            <button
-              className="button button--sm"
-              onClick={handleConfirm}
-              disabled={hasBlocking || datesInvalid || isOtherWithoutNote || !validation || loading}
-              type="button"
-              data-testid="extend-confirm"
-            >
-              {softConflicts.length > 0 ? 'Extend anyway' : 'Extend'}
-            </button>
-          </div>
+    <FormModal
+      open
+      onCancel={onClose}
+      onSubmit={handleConfirm}
+      title="Extend assignment"
+      description={`${target.personName} · ${target.projectName} · ${target.staffingRole || '—'} · ${target.allocationPercent}% — Current end: ${target.currentValidTo ?? 'open-ended'}`}
+      submitLabel={softConflicts.length > 0 ? 'Extend anyway' : 'Extend'}
+      submitDisabled={submitDisabled}
+      dirty={newValidTo !== addDaysStr(baseDate, 28) || reasonNote !== ''}
+      size="md"
+    >
+      <div>
+        <div style={{ fontSize: 10, color: 'var(--color-text-subtle)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quick extend</div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[14, 28, 42, 84, 180].map((d) => (
+            <Button key={d} variant="secondary" size="sm" onClick={() => quickSet(d)} style={{ fontSize: 10 }}>
+              {d < 28 ? `+${d}d` : d < 84 ? `+${Math.round(d / 7)}w` : `+${Math.round(d / 30)}mo`}
+            </Button>
+          ))}
         </div>
       </div>
-    </div>
+
+      <FormField label="New end date">
+        {(props) => (
+          <DatePicker
+            value={newValidTo}
+            min={addDaysStr(baseDate, 1)}
+            onValueChange={setNewValidTo}
+            data-testid="extend-new-date"
+            {...props}
+          />
+        )}
+      </FormField>
+
+      {loading && <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Checking constraints…</div>}
+      {validationError && <div style={{ fontSize: 11, color: 'var(--color-status-danger)' }}>{validationError}</div>}
+
+      {validation && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {validation.conflicts.length === 0 && (
+            <div style={{ fontSize: 11, color: 'var(--color-status-active)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <StatusBadge label="OK" tone="active" variant="chip" size="small" /> No conflicts — safe to extend.
+            </div>
+          )}
+          {validation.conflicts.map((c, i) => (
+            <ConflictRow key={`${c.kind}-${i}`} conflict={c} />
+          ))}
+        </div>
+      )}
+
+      {softConflicts.length > 0 && !hasBlocking && (
+        <>
+          <FormField label="Reason for proceeding (saved with anomaly)">
+            {(props) => (
+              <Select
+                value={reasonType}
+                onChange={(e) => setReasonType(e.target.value as ForceAssignReasonType)}
+                data-testid="extend-reason"
+                {...props}
+              >
+                {REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </Select>
+            )}
+          </FormField>
+          {reasonType === 'OTHER' && (
+            <FormField label="Note" required>
+              {(props) => (
+                <Textarea
+                  rows={2}
+                  value={reasonNote}
+                  onChange={(e) => setReasonNote(e.target.value)}
+                  maxLength={240}
+                  placeholder="Explain why the extension is justified despite the anomaly…"
+                  {...props}
+                />
+              )}
+            </FormField>
+          )}
+        </>
+      )}
+
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' }}>
+        {hasBlocking
+          ? 'Resolve blocking issues to proceed'
+          : softConflicts.length > 0
+            ? `${softConflicts.length} anomaly marker(s) will be logged`
+            : ' '}
+      </div>
+    </FormModal>
   );
 }
 

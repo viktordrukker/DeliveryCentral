@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { PlannerSimulation, SimAnomaly, AnomalyKind, AnomalySeverity } from '@/features/staffing-desk/usePlannerSimulation';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface Props {
   simulation: PlannerSimulation;
@@ -107,58 +108,36 @@ export function PlannerAnomalyTable({ simulation }: Props): JSX.Element | null {
     <div style={S_EXPANDED} data-testid="planner-anomaly-table">
       <div style={S_EXPANDED_HEADER}>
         <StripBadges />
-        <button
-          type="button"
-          className="button button--secondary button--sm"
-          onClick={() => setExpanded(false)}
-          style={{ fontSize: 10 }}
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded(false)} style={{ fontSize: 10 }}>
           Collapse ▾
-        </button>
+        </Button>
       </div>
       <div style={S_BODY}>
-        <table style={S_TABLE}>
-          <thead>
-            <tr>
-              <th style={{ ...S_TH, width: 80 }}>Severity</th>
-              <th style={{ ...S_TH, width: 180 }}>Kind</th>
-              <th style={S_TH}>Person</th>
-              <th style={S_TH}>Project</th>
-              <th style={{ ...S_TH, width: 80 }}>Source</th>
-              <th style={S_TH}>Reason</th>
-              <th style={S_TH}>Message</th>
-              <th style={{ ...S_TH, width: 80 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {anomalies.map((a) => (
-              <tr key={a.id}>
-                <td style={S_TD}>
-                  <StatusBadge label={a.severity.toUpperCase()} tone={SEVERITY_TONE[a.severity]} variant="chip" size="small" />
-                </td>
-                <td style={S_TD}>{KIND_LABEL[a.kind]}</td>
-                <td style={S_TD}>{a.personName}</td>
-                <td style={S_TD}>{a.projectName || '—'}</td>
-                <td style={S_TD}>{a.sourceKind}</td>
-                <td style={S_TD} title={a.reasonNote ?? ''}>
-                  {a.reasonType ? <StatusBadge label={a.reasonType} tone="info" variant="chip" size="small" /> : '—'}
-                </td>
-                <td style={{ ...S_TD, color: 'var(--color-text-muted)' }}>{a.message}</td>
-                <td style={S_TD}>
-                  <button
-                    type="button"
-                    className="button button--secondary button--sm"
-                    onClick={() => resolveSource(a)}
-                    style={{ fontSize: 9 }}
-                    title="Undo the sim action that created this anomaly"
-                  >
-                    Undo
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Table
+          variant="compact"
+          columns={[
+            { key: 'severity', title: 'Severity', width: 80, getValue: (a) => a.severity, render: (a) => (
+              <StatusBadge label={a.severity.toUpperCase()} tone={SEVERITY_TONE[a.severity]} variant="chip" size="small" />
+            ) },
+            { key: 'kind', title: 'Kind', width: 180, getValue: (a) => KIND_LABEL[a.kind], render: (a) => KIND_LABEL[a.kind] },
+            { key: 'person', title: 'Person', getValue: (a) => a.personName, render: (a) => a.personName },
+            { key: 'project', title: 'Project', getValue: (a) => a.projectName ?? '', render: (a) => a.projectName || '—' },
+            { key: 'source', title: 'Source', width: 80, getValue: (a) => a.sourceKind, render: (a) => a.sourceKind },
+            { key: 'reason', title: 'Reason', getValue: (a) => a.reasonType ?? '', render: (a) => (
+              <span title={a.reasonNote ?? ''}>
+                {a.reasonType ? <StatusBadge label={a.reasonType} tone="info" variant="chip" size="small" /> : '—'}
+              </span>
+            ) },
+            { key: 'message', title: 'Message', getValue: (a) => a.message, render: (a) => <span style={{ color: 'var(--color-text-muted)' }}>{a.message}</span> },
+            { key: 'undo', title: '', width: 80, render: (a) => (
+              <Button type="button" variant="secondary" size="sm" onClick={() => resolveSource(a)} style={{ fontSize: 9 }} title="Undo the sim action that created this anomaly">
+                Undo
+              </Button>
+            ) },
+          ] as Column<SimAnomaly>[]}
+          rows={anomalies}
+          getRowKey={(a) => a.id}
+        />
       </div>
     </div>
   );

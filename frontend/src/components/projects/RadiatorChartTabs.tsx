@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { Button } from '@/components/ds';
+
 import { type RagCutoffs } from '@/features/project-pulse/rag-bands';
 import { type ProjectShape } from '@/features/project-pulse/shape-defaults';
 import type { RadiatorSnapshotDto } from '@/lib/api/project-radiator';
@@ -43,17 +45,18 @@ export function RadiatorChartTabs({
         {TABS.map((t) => {
           const active = view === t.id;
           return (
-            <button
+            <Button
               aria-pressed={active}
               aria-selected={active}
-              className={active ? 'tab-bar__tab tab-bar__tab--active' : 'tab-bar__tab'}
+              variant={active ? 'primary' : 'secondary'}
+              size="sm"
               key={t.id}
               onClick={() => setView(t.id)}
               role="tab"
               type="button"
             >
               {t.label}
-            </button>
+            </Button>
           );
         })}
       </div>

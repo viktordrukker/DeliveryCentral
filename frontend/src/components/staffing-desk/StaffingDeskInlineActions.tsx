@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { hasAnyRole, STAFFING_DESK_ROLES } from '@/app/route-manifest';
 import type { StaffingDeskRow } from '@/lib/api/staffing-desk';
 import type { StaffingDeskActions } from '@/features/staffing-desk/useStaffingDeskActions';
+import { Button } from '@/components/ds';
 
 const RM_APPROVE_ROLES = ['resource_manager', 'director', 'admin'] as const;
 const PM_END_ROLES = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'] as const;
@@ -42,19 +43,19 @@ export function StaffingDeskInlineActions({ actions, row }: Props): JSX.Element 
     return (
       <div style={{ display: 'flex', gap: 4 }}>
         {row.status === 'REQUESTED' && canApprove && (
-          <button className="button button--sm" onClick={() => void actions.approveAssignment(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <Button variant="primary" size="sm" onClick={() => void actions.approveAssignment(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
             Approve
-          </button>
+          </Button>
         )}
         {row.status === 'REQUESTED' && canApprove && (
-          <button className="button button--secondary button--sm" onClick={() => setConfirmAction('reject')} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <Button variant="secondary" size="sm" onClick={() => setConfirmAction('reject')} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
             Reject
-          </button>
+          </Button>
         )}
         {row.status === 'ACTIVE' && canEnd && (
-          <button className="button button--secondary button--sm" onClick={() => setConfirmAction('end')} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <Button variant="secondary" size="sm" onClick={() => setConfirmAction('end')} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
             End
-          </button>
+          </Button>
         )}
         <ConfirmDialog
           open={confirmAction === 'reject' || confirmAction === 'end'}
@@ -76,19 +77,19 @@ export function StaffingDeskInlineActions({ actions, row }: Props): JSX.Element 
     return (
       <div style={{ display: 'flex', gap: 4 }}>
         {row.status === 'OPEN' && canManage && (
-          <button className="button button--sm" onClick={() => void actions.reviewRequest(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <Button variant="primary" size="sm" onClick={() => void actions.reviewRequest(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
             Review
-          </button>
+          </Button>
         )}
         {row.status === 'IN_REVIEW' && canManage && (
-          <button className="button button--secondary button--sm" onClick={() => void actions.releaseRequest(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <Button variant="secondary" size="sm" onClick={() => void actions.releaseRequest(row.id)} type="button" style={{ fontSize: 10, padding: '2px 8px' }}>
             Release
-          </button>
+          </Button>
         )}
         {!isTerminal && canCancel && (
-          <button className="button button--secondary button--sm" onClick={() => setConfirmAction('cancel')} type="button" style={{ fontSize: 10, padding: '2px 8px', color: 'var(--color-status-danger)' }}>
+          <Button variant="secondary" size="sm" onClick={() => setConfirmAction('cancel')} type="button" style={{ fontSize: 10, padding: '2px 8px', color: 'var(--color-status-danger)' }}>
             Cancel
-          </button>
+          </Button>
         )}
         <ConfirmDialog
           open={confirmAction === 'cancel'}

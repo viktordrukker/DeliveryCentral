@@ -16,6 +16,7 @@ import {
   fetchApprovalQueue,
   rejectTimesheet,
 } from '@/lib/api/timesheets';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -205,21 +206,13 @@ export function TimesheetApprovalPage(): JSX.Element {
         </label>
         <label className="field">
           <span className="field__label">From</span>
-          <input
-            className="field__control"
-            onChange={(e) => setFilters({ from: e.target.value })}
-            type="date"
-            value={filters.from}
-          />
+          <DatePicker onValueChange={(value) => setFilters({ from: value })} value={filters.from}
+ />
         </label>
         <label className="field">
           <span className="field__label">To</span>
-          <input
-            className="field__control"
-            onChange={(e) => setFilters({ to: e.target.value })}
-            type="date"
-            value={filters.to}
-          />
+          <DatePicker onValueChange={(value) => setFilters({ to: value })} value={filters.to}
+ />
         </label>
       </div>
 
@@ -249,13 +242,9 @@ export function TimesheetApprovalPage(): JSX.Element {
       {selected.size > 0 && (
         <div className="bulk-actions">
           <span>{selected.size} selected</span>
-          <button
-            className="button"
-            onClick={() => void handleBulkApprove()}
-            type="button"
-          >
+          <Button variant="primary" onClick={() => void handleBulkApprove()} type="button">
             Approve Selected
-          </button>
+          </Button>
         </div>
       )}
 
@@ -264,85 +253,74 @@ export function TimesheetApprovalPage(): JSX.Element {
       {weeks.length === 0 ? (
         <div className="empty-state">No timesheets match the current filters.</div>
       ) : (
-        <table className="dash-compact-table" aria-label="Approval queue">
-          <thead>
-            <tr>
-              <th>
+        <div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'select', title: (
                 <input
                   aria-label="Select all"
                   checked={selected.size === weeks.length && weeks.length > 0}
                   onChange={toggleSelectAll}
                   type="checkbox"
                 />
-              </th>
-              <th>Person</th>
-              <th>Week Start</th>
-              <th>Status</th>
-              <th>Total Hours</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {weeks.map((week) => (
-              <>
-                <tr key={week.id} data-testid={`approval-row-${week.id}`}>
-                  <td>
-                    <input
-                      aria-label={`Select ${week.id}`}
-                      checked={selected.has(week.id)}
-                      onChange={() => toggleSelect(week.id)}
-                      type="checkbox"
-                    />
-                  </td>
-                  <td>{personNames[week.personId] ?? week.personId}</td>
-                  <td>{week.weekStart}</td>
-                  <td>
-                    <span className={`badge ${getStatusBadgeClass(week.status)}`}>
-                      {week.status}
-                    </span>
-                  </td>
-                  <td>{totalHours(week).toFixed(1)}h</td>
-                  <td>
-                    <button
-                      className="button button--secondary button--sm"
-                      onClick={() =>
-                        setExpandedId(expandedId === week.id ? null : week.id)
-                      }
-                      type="button"
-                    >
-                      {expandedId === week.id ? 'Collapse' : 'View'}
-                    </button>
-                    {week.status === 'SUBMITTED' && (
-                      <>
-                        <button
-                          className="button button--sm"
-                          onClick={() => void handleApprove(week.id)}
-                          type="button"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className="button button--danger button--sm"
-                          onClick={() => setRejectTarget(week.id)}
-                          type="button"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-                {(expandedId === week.id || week.status === 'SUBMITTED') && (
-                  <tr key={`${week.id}-expanded`}>
-                    <td colSpan={6}>
-                      <TimesheetReadOnlyGrid week={week} />
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
-          </tbody>
-        </table>
+              ), render: (week) => (
+                <input
+                  aria-label={`Select ${week.id}`}
+                  checked={selected.has(week.id)}
+                  onChange={() => toggleSelect(week.id)}
+                  type="checkbox"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) },
+              { key: 'person', title: 'Person', getValue: (w) => personNames[w.personId] ?? w.personId, render: (w) => personNames[w.personId] ?? w.personId },
+              { key: 'weekStart', title: 'Week Start', getValue: (w) => w.weekStart, render: (w) => w.weekStart },
+              { key: 'status', title: 'Status', getValue: (w) => w.status, render: (w) => (
+                <span className={`badge ${getStatusBadgeClass(w.status)}`}>{w.status}</span>
+              ) },
+              { key: 'hours', title: 'Total Hours', getValue: (w) => totalHours(w), render: (w) => `${totalHours(w).toFixed(1)}h` },
+              { key: 'actions', title: 'Actions', render: (w) => (
+                <div style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                  <Button variant="secondary" size="sm" onClick={() => setExpandedId(expandedId === w.id ? null : w.id)} type="button">
+                    {expandedId === w.id ? 'Collapse' : 'View'}
+                  </Button>
+                  {w.status === 'SUBMITTED' && (
+                    <>
+                      <Button variant="primary" size="sm" onClick={() => void handleApprove(w.id)} type="button">
+                        Approve
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => setRejectTarget(w.id)} type="button">
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) },
+            ] as Column<TimesheetWeek>[]}
+            rows={weeks}
+            getRowKey={(w) => w.id}
+            rowClassName={(w) => `approval-row approval-row-${w.id}`}
+          />
+          {/* Inline-expand panels for each row that is expanded or auto-expanded (SUBMITTED) */}
+          {weeks.filter((w) => expandedId === w.id || w.status === 'SUBMITTED').map((week) => (
+            <div
+              key={`${week.id}-detail`}
+              style={{
+                marginTop: 'var(--space-1)',
+                padding: 'var(--space-2)',
+                background: 'var(--color-surface-alt)',
+                borderRadius: 4,
+                border: '1px solid var(--color-border)',
+              }}
+              data-testid={`approval-detail-${week.id}`}
+            >
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                Detail — {personNames[week.personId] ?? week.personId} · week of {week.weekStart}
+              </div>
+              <TimesheetReadOnlyGrid week={week} />
+            </div>
+          ))}
+        </div>
       )}
       </ViewportTable>
 
@@ -376,36 +354,28 @@ function TimesheetReadOnlyGrid({ week }: { week: TimesheetWeek }): JSX.Element {
 
   return (
     <div className="timesheet-readonly-grid">
-      <table className="timesheet-grid timesheet-grid--readonly" aria-label="Timesheet detail">
-        <thead>
-          <tr>
-            <th>Project</th>
-            {weekDays.map((date, i) => (
-              <th key={date}>
-                {DAY_LABELS[i]}
-                <br />
-                <small>{date.slice(5)}</small>
-              </th>
-            ))}
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projectIds.map((projectId) => (
-            <tr key={projectId}>
-              <td>{projectId}</td>
-              {weekDays.map((date) => (
-                <td key={date}>{getHours(projectId, date) || ''}</td>
-              ))}
-              <td>
-                <strong>
-                  {weekDays.reduce((s, d) => s + getHours(projectId, d), 0).toFixed(1)}
-                </strong>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Table
+        variant="compact"
+        columns={[
+          { key: 'project', title: 'Project', getValue: (id) => id, render: (id) => id },
+          ...weekDays.map((date, i) => ({
+            key: `d-${date}`,
+            title: <span>{DAY_LABELS[i]}<br /><small>{date.slice(5)}</small></span>,
+            align: 'center' as const,
+            getValue: (id: string) => getHours(id, date),
+            render: (id: string) => getHours(id, date) || '',
+          })),
+          {
+            key: 'total',
+            title: 'Total',
+            align: 'right',
+            getValue: (id) => weekDays.reduce((s, d) => s + getHours(id, d), 0),
+            render: (id) => <strong>{weekDays.reduce((s, d) => s + getHours(id, d), 0).toFixed(1)}</strong>,
+          },
+        ] as Column<string>[]}
+        rows={projectIds}
+        getRowKey={(id) => id}
+      />
     </div>
   );
 }

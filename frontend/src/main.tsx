@@ -6,6 +6,7 @@ import { App } from './app/App';
 import { useAppTheme } from './app/theme';
 import { bootstrapDesignTokens } from './styles/design-tokens';
 import './styles/global.css';
+import './components/ds/ds.css';
 
 // Recharts' ResponsiveContainer transiently reports width/height of -1 on first
 // paint (ResizeObserver fires before layout). The warning is non-actionable and

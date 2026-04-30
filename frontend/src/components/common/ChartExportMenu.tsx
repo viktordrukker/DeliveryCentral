@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { Button, IconButton } from '@/components/ds';
+
 export interface ChartCsvData {
   headers: string[];
   rows: Array<Record<string, unknown>>;
@@ -61,25 +63,23 @@ export function ChartExportMenu({ csvData, title }: ChartExportMenuProps): JSX.E
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
-      <button
+      <IconButton
         aria-haspopup="menu"
         aria-label="Chart export options"
         onClick={() => setOpen((v) => !v)}
+        size="sm"
         style={{
-          background: 'none',
           border: '1px solid var(--color-border)',
           borderRadius: 4,
           color: 'var(--color-text-muted)',
-          cursor: 'pointer',
           fontSize: '16px',
           lineHeight: 1,
           padding: '2px 8px',
         }}
         title="Export options"
-        type="button"
       >
         ⋯
-      </button>
+      </IconButton>
       {copied ? (
         <span style={{ color: 'var(--color-status-active)', fontSize: '12px', marginLeft: 6 }}>Copied!</span>
       ) : null}
@@ -90,7 +90,7 @@ export function ChartExportMenu({ csvData, title }: ChartExportMenuProps): JSX.E
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 6,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            boxShadow: 'var(--shadow-dropdown)',
             minWidth: 160,
             position: 'absolute',
             right: 0,
@@ -98,22 +98,26 @@ export function ChartExportMenu({ csvData, title }: ChartExportMenuProps): JSX.E
             zIndex: 50,
           }}
         >
-          <button
+          <Button
             onClick={downloadCsv}
             role="menuitem"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'block', fontSize: '13px', padding: '8px 12px', textAlign: 'left', width: '100%' }}
+            variant="link"
+            size="sm"
+            style={{ display: 'block', fontSize: '13px', padding: '8px 12px', textAlign: 'left', width: '100%' }}
             type="button"
           >
             Download CSV
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={copyToClipboard}
             role="menuitem"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'block', fontSize: '13px', padding: '8px 12px', textAlign: 'left', width: '100%' }}
+            variant="link"
+            size="sm"
+            style={{ display: 'block', fontSize: '13px', padding: '8px 12px', textAlign: 'left', width: '100%' }}
             type="button"
           >
             Copy data to clipboard
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

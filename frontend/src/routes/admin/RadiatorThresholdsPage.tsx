@@ -14,6 +14,7 @@ import {
   fetchThresholdConfigs,
   upsertThresholdConfig,
 } from '@/lib/api/radiator-thresholds';
+import { Button, Input, Select, Table, type Column } from '@/components/ds';
 
 const QUADRANT_FOR_KEY: Record<string, string> = {
   changeRequestBurden: 'Scope',
@@ -184,118 +185,66 @@ export function RadiatorThresholdsPage(): JSX.Element {
         </SectionCard>
       ) : (
         <SectionCard title={`Thresholds (${rows.length})`}>
-          <table className="dash-compact-table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Sub-dimension</th>
-                <th style={{ textAlign: 'left', width: 90 }}>Quadrant</th>
-                <th style={{ textAlign: 'left', width: 160 }}>Direction</th>
-                <th style={{ textAlign: 'right', width: 80 }}>t4 (Green)</th>
-                <th style={{ textAlign: 'right', width: 80 }}>t3</th>
-                <th style={{ textAlign: 'right', width: 80 }}>t2</th>
-                <th style={{ textAlign: 'right', width: 80 }}>t1</th>
-                <th style={{ textAlign: 'right', width: 200 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'sub', title: 'Sub-dimension', getValue: (r) => AXIS_LABELS[r.subDimensionKey] ?? r.subDimensionKey, render: (r) => (
+                <span style={{ fontWeight: 500 }}>
+                  {AXIS_LABELS[r.subDimensionKey] ?? r.subDimensionKey}
+                  {r.isDefault ? (
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: 11, marginLeft: 4 }}>(default)</span>
+                  ) : null}
+                </span>
+              ) },
+              { key: 'quadrant', title: 'Quadrant', width: 90, getValue: (r) => QUADRANT_FOR_KEY[r.subDimensionKey] ?? '', render: (r) => <span style={{ color: 'var(--color-text-muted)' }}>{QUADRANT_FOR_KEY[r.subDimensionKey] ?? '—'}</span> },
+              { key: 'dir', title: 'Direction', width: 160, render: (r) => {
                 const e = edits[r.subDimensionKey];
                 if (!e) return null;
-                const dirty =
-                  e.direction !== r.direction ||
-                  e.thresholdScore1 !== r.thresholdScore1 ||
-                  e.thresholdScore2 !== r.thresholdScore2 ||
-                  e.thresholdScore3 !== r.thresholdScore3 ||
-                  e.thresholdScore4 !== r.thresholdScore4;
+                return (
+                  <Select value={e.direction} onChange={(ev) => updateField(r.subDimensionKey, 'direction', ev.target.value as ThresholdDirection)}>
+                    <option value="HIGHER_IS_BETTER">Higher is better</option>
+                    <option value="LOWER_IS_BETTER">Lower is better</option>
+                  </Select>
+                );
+              } },
+              { key: 't4', title: 't4 (Green)', align: 'right', width: 80, render: (r) => {
+                const e = edits[r.subDimensionKey];
+                if (!e) return null;
+                return <Input type="number" step="any" style={{ textAlign: 'right' }} value={e.thresholdScore4} onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore4', Number(ev.target.value))} />;
+              } },
+              { key: 't3', title: 't3', align: 'right', width: 80, render: (r) => {
+                const e = edits[r.subDimensionKey];
+                if (!e) return null;
+                return <Input type="number" step="any" style={{ textAlign: 'right' }} value={e.thresholdScore3} onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore3', Number(ev.target.value))} />;
+              } },
+              { key: 't2', title: 't2', align: 'right', width: 80, render: (r) => {
+                const e = edits[r.subDimensionKey];
+                if (!e) return null;
+                return <Input type="number" step="any" style={{ textAlign: 'right' }} value={e.thresholdScore2} onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore2', Number(ev.target.value))} />;
+              } },
+              { key: 't1', title: 't1', align: 'right', width: 80, render: (r) => {
+                const e = edits[r.subDimensionKey];
+                if (!e) return null;
+                return <Input type="number" step="any" style={{ textAlign: 'right' }} value={e.thresholdScore1} onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore1', Number(ev.target.value))} />;
+              } },
+              { key: 'actions', title: 'Actions', align: 'right', width: 200, render: (r) => {
+                const e = edits[r.subDimensionKey];
+                if (!e) return null;
+                const dirty = e.direction !== r.direction || e.thresholdScore1 !== r.thresholdScore1 || e.thresholdScore2 !== r.thresholdScore2 || e.thresholdScore3 !== r.thresholdScore3 || e.thresholdScore4 !== r.thresholdScore4;
                 const isSaving = saving[r.subDimensionKey] === true;
                 return (
-                  <tr key={r.subDimensionKey}>
-                    <td style={{ fontWeight: 500 }}>
-                      {AXIS_LABELS[r.subDimensionKey] ?? r.subDimensionKey}
-                      {r.isDefault ? (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: 11, marginLeft: 4 }}>
-                          (default)
-                        </span>
-                      ) : null}
-                    </td>
-                    <td style={{ color: 'var(--color-text-muted)' }}>
-                      {QUADRANT_FOR_KEY[r.subDimensionKey] ?? '—'}
-                    </td>
-                    <td>
-                      <select
-                        className="field__control"
-                        onChange={(ev) => updateField(r.subDimensionKey, 'direction', ev.target.value as ThresholdDirection)}
-                        value={e.direction}
-                      >
-                        <option value="HIGHER_IS_BETTER">Higher is better</option>
-                        <option value="LOWER_IS_BETTER">Lower is better</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        className="field__control"
-                        onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore4', Number(ev.target.value))}
-                        step="any"
-                        style={{ textAlign: 'right' }}
-                        type="number"
-                        value={e.thresholdScore4}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="field__control"
-                        onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore3', Number(ev.target.value))}
-                        step="any"
-                        style={{ textAlign: 'right' }}
-                        type="number"
-                        value={e.thresholdScore3}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="field__control"
-                        onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore2', Number(ev.target.value))}
-                        step="any"
-                        style={{ textAlign: 'right' }}
-                        type="number"
-                        value={e.thresholdScore2}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="field__control"
-                        onChange={(ev) => updateField(r.subDimensionKey, 'thresholdScore1', Number(ev.target.value))}
-                        step="any"
-                        style={{ textAlign: 'right' }}
-                        type="number"
-                        value={e.thresholdScore1}
-                      />
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
-                        <button
-                          className="button button--secondary button--sm"
-                          disabled={!dirty || isSaving}
-                          onClick={() => resetRow(r.subDimensionKey)}
-                          type="button"
-                        >
-                          Reset
-                        </button>
-                        <button
-                          className="button button--primary button--sm"
-                          disabled={!dirty || isSaving}
-                          onClick={() => void handleSave(r.subDimensionKey)}
-                          type="button"
-                        >
-                          {isSaving ? 'Saving…' : 'Save'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
+                    <Button variant="secondary" size="sm" disabled={!dirty || isSaving} onClick={() => resetRow(r.subDimensionKey)} type="button">Reset</Button>
+                    <Button variant="primary" size="sm" disabled={!dirty || isSaving} onClick={() => void handleSave(r.subDimensionKey)} type="button">
+                      {isSaving ? 'Saving…' : 'Save'}
+                    </Button>
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
+              } },
+            ] as Column<ThresholdConfigDto>[]}
+            rows={rows.filter((r) => edits[r.subDimensionKey])}
+            getRowKey={(r) => r.subDimensionKey}
+          />
         </SectionCard>
       )}
     </PageContainer>

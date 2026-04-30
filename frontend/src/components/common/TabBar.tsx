@@ -1,3 +1,5 @@
+import { Button } from '@/components/ds';
+
 interface TabBarItem {
   id: string;
   label: string;
@@ -13,16 +15,17 @@ export function TabBar({ activeTab, onTabChange, tabs }: TabBarProps): JSX.Eleme
   return (
     <div className="tab-bar" role="tablist">
       {tabs.map((tab) => (
-        <button
+        <Button
           aria-selected={activeTab === tab.id}
-          className={`tab-bar__tab${activeTab === tab.id ? ' tab-bar__tab--active' : ''}`}
+          variant={activeTab === tab.id ? 'primary' : 'secondary'}
+          size="sm"
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           role="tab"
           type="button"
         >
           {tab.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

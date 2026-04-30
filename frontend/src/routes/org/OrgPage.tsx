@@ -8,6 +8,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useOrgChart, OrgViewMode } from '@/features/org-chart/useOrgChart';
+import { Button } from '@/components/ds';
 
 export function OrgPage(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -46,20 +47,22 @@ export function OrgPage(): JSX.Element {
 
           {/* View toggle */}
           <div className="org-view-toggle">
-            <button
-              className={'org-view-toggle__btn' + (viewMode === 'people' ? ' org-view-toggle__btn--active' : '')}
+            <Button
+              variant={viewMode === 'people' ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setViewMode('people')}
               type="button"
             >
               People
-            </button>
-            <button
-              className={'org-view-toggle__btn' + (viewMode === 'departments' ? ' org-view-toggle__btn--active' : '')}
+            </Button>
+            <Button
+              variant={viewMode === 'departments' ? 'primary' : 'secondary'}
+              size="sm"
               onClick={() => setViewMode('departments')}
               type="button"
             >
               Departments
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -69,15 +72,9 @@ export function OrgPage(): JSX.Element {
               Updated {formatDistanceToNow(state.lastUpdated, { addSuffix: true })}
             </span>
           )}
-          <button
-            className="button button--secondary button--sm"
-            disabled={state.isLoading}
-            onClick={state.refetch}
-            title="Refresh org chart data"
-            type="button"
-          >
+          <Button variant="secondary" size="sm" disabled={state.isLoading} onClick={state.refetch} title="Refresh org chart data" type="button">
             {state.isLoading ? 'Loading...' : '\u21BB Refresh'}
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -13,9 +13,11 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { ViewportTable } from '@/components/layout/ViewportTable';
 import { WorkEvidenceTable } from '@/components/work-evidence/WorkEvidenceTable';
+import { Button } from '@/components/ds';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { createWorkEvidence } from '@/lib/api/work-evidence';
 import { useWorkEvidencePage } from '@/features/work-evidence/useWorkEvidencePage';
+import { DatePicker } from '@/components/ds';
 
 function makeInitialCreateValues(): CreateWorkEvidenceFormValues {
   const now = new Date();
@@ -53,8 +55,8 @@ export function WorkEvidencePage(): JSX.Element {
     setActions(
       <>
         {state.visibleItems.length > 0 ? (
-          <button
-            className="button button--secondary"
+          <Button
+            variant="secondary"
             disabled={state.isLoading}
             onClick={() => {
               exportToXlsx(
@@ -70,7 +72,7 @@ export function WorkEvidencePage(): JSX.Element {
             type="button"
           >
             Export XLSX
-          </button>
+          </Button>
         ) : null}
         <TipTrigger />
       </>
@@ -210,21 +212,13 @@ export function WorkEvidencePage(): JSX.Element {
         </label>
         <label className="field">
           <span className="field__label">Date From</span>
-          <input
-            className="field__control"
-            onChange={(event) => setFilters({ dateFrom: event.target.value })}
-            type="date"
-            value={filters.dateFrom}
-          />
+          <DatePicker onValueChange={(value) => setFilters({ dateFrom: value })} value={filters.dateFrom}
+ />
         </label>
         <label className="field">
           <span className="field__label">Date To</span>
-          <input
-            className="field__control"
-            onChange={(event) => setFilters({ dateTo: event.target.value })}
-            type="date"
-            value={filters.dateTo}
-          />
+          <DatePicker onValueChange={(value) => setFilters({ dateTo: value })} value={filters.dateTo}
+ />
         </label>
       </FilterBar>
 

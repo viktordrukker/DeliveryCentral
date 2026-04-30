@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import { Button } from '@/components/ds';
+
 import { usePulseHover } from '@/features/project-pulse/hover-context';
 import {
   DEFAULT_RAG_CUTOFFS,
@@ -85,8 +87,9 @@ export function ScoreHeatmap({
               const isHovered =
                 pulseHover.hoverTarget?.kind === 'axis' && pulseHover.hoverTarget.axisKey === cell.sub.key;
               return (
-                <button
+                <Button
                   aria-label={`${AXIS_LABELS[cell.sub.key] ?? cell.sub.key}: ${formatScore(cell.sub.effectiveScore)}`}
+                  variant="secondary"
                   data-axis-key={cell.sub.key}
                   disabled={faded || !onAxisClick}
                   key={cell.sub.key}
@@ -100,7 +103,6 @@ export function ScoreHeatmap({
                       : '1px solid var(--color-border)',
                     borderRadius: 'var(--radius-control)',
                     color: faded ? 'var(--color-text-subtle)' : 'var(--color-surface)',
-                    cursor: !faded && onAxisClick ? 'pointer' : 'default',
                     display: 'flex',
                     flexDirection: 'column',
                     fontSize: 10,
@@ -121,7 +123,7 @@ export function ScoreHeatmap({
                   <span style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
                     {formatScore(cell.sub.effectiveScore)}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>

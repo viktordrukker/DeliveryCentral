@@ -8,10 +8,9 @@ import {
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ANOMALY_TYPE_LABELS, humanizeEnum } from '@/lib/labels';
-import { ActionDataTable, type ActionColumn, type QuickAction, type BatchAction, type QuickFilter } from '@/components/common/ActionDataTable';
 import { CreateAssignmentModal, type AssignmentModalPreFill } from '@/components/assignments/CreateAssignmentModal';
 import { BatchAssignmentConfirmModal } from '@/components/assignments/BatchAssignmentConfirmModal';
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
+import { DataView, type BulkAction, type RowAction } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -56,6 +55,7 @@ import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-r
 import { useOvertimeSummary } from '@/features/dashboard/useOvertimeSummary';
 import type { OvertimePersonSummary, OvertimeProjectSummary } from '@/lib/api/overtime';
 import { formatDateShort } from '@/lib/format-date';
+import { Button, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -141,10 +141,10 @@ export function PlannedVsActualPage(): JSX.Element {
           <span className="field__label">As of</span>
           <input className="field__control" onChange={(e) => setAsOf(e.target.value)} type="datetime-local" value={asOf.slice(0, 16)} />
         </label>
-        <Link className="button button--secondary button--sm" to="/assignments">Assignments</Link>
-        <Link className="button button--secondary button--sm" to="/time-management">Time Management</Link>
-        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
-        <Link className="button button--secondary button--sm" to="/reports/time">Time Analytics</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/time-management">Time Management</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/reports/time">Time Analytics</Button>
         <TipTrigger />
       </>
     );
@@ -223,7 +223,7 @@ export function PlannedVsActualPage(): JSX.Element {
   };
 
   /* ── Action table columns ── */
-  const actionCols = useMemo<ActionColumn<PvaActionItem>[]>(() => [
+  const actionCols = useMemo<Column<PvaActionItem>[]>(() => [
     { key: 'severity', render: (item) => <StatusBadge label={item.severity} size="small" tone={item.severityTone} variant="dot" />, title: 'Severity', width: 80 },
     { key: 'category', render: (item) => item.category, title: 'Category', width: 130 },
     { key: 'project', render: (item) => item.project ? <><span style={{ color: 'var(--color-text-muted)', fontSize: 11, ...NUM }}>{item.projectCode}</span>{' '}<span style={{ fontWeight: 500 }}>{item.project}</span></> : <span style={{ color: 'var(--color-text-muted)' }}>{'\u2014'}</span>, title: 'Project' },
@@ -237,26 +237,29 @@ export function PlannedVsActualPage(): JSX.Element {
     setAssignModalPreFill({ personId: item.personId, personName: item.person, personStatus: pd?.lifecycleStatus, personTerminatedAt: pd?.terminatedAt, projectId: item.projectId, projectName: item.project, contextHours: item.hours, contextDate: item.activityDate });
   }
 
-  const actionQuickActions = useMemo<QuickAction<PvaActionItem>[]>(() => [
+  const actionQuickActions = useMemo<RowAction<PvaActionItem>[]>(() => [
     {
-      label: 'Resolve', tone: 'primary',
-      onClick: (item) => {
+      key: 'resolve',
+      label: 'Resolve',
+      onSelect: (item) => {
         if (item.sourceCategory === 'silent') nav('/assignments');
         else if (item.sourceCategory === 'missing') nav(`/people/${item.personId}`);
         else openAssignModal(item);
       },
     },
     {
-      label: 'Assign', tone: 'secondary',
-      onClick: (item) => openAssignModal(item),
-      hidden: (item) => item.sourceCategory === 'silent' || item.sourceCategory === 'missing',
+      key: 'assign',
+      label: 'Assign',
+      onSelect: (item) => openAssignModal(item),
+      visibleFor: (item) => item.sourceCategory !== 'silent' && item.sourceCategory !== 'missing',
     },
   ], [nav]);
 
-  const actionBatchActions = useMemo<BatchAction<PvaActionItem>[]>(() => [
+  const actionBatchActions = useMemo<BulkAction<PvaActionItem>[]>(() => [
     {
-      label: 'Batch Assign', tone: 'primary',
-      onClick: (items) => {
+      key: 'batch-assign',
+      label: 'Batch Assign',
+      onSelect: (_keys, items) => {
         const assignable = items.filter((i) => i.sourceCategory !== 'silent' && i.sourceCategory !== 'missing');
         if (assignable.length === 0) return;
         setBatchItems(assignable.map((i) => ({ personId: i.personId, personName: i.person, projectId: i.projectId, projectName: i.project, contextHours: i.hours, contextDate: i.activityDate })));
@@ -264,7 +267,8 @@ export function PlannedVsActualPage(): JSX.Element {
     },
   ], []);
 
-  const actionFilters = useMemo<QuickFilter[]>(() => [
+  // Quick-filter chip buttons rendered in the DataView toolbar slot.
+  const actionFilters = useMemo(() => [
     { label: 'All', active: !actionSeverityFilter, count: actionItems.length, onClick: () => setActionSeverityFilter('') },
     { label: 'Critical', active: actionSeverityFilter === 'Critical', count: actionItems.filter((i) => i.severity === 'Critical').length, onClick: () => setActionSeverityFilter('Critical') },
     { label: 'High', active: actionSeverityFilter === 'High', count: actionItems.filter((i) => i.severity === 'High').length, onClick: () => setActionSeverityFilter('High') },
@@ -272,7 +276,7 @@ export function PlannedVsActualPage(): JSX.Element {
   ], [actionItems, actionSeverityFilter]);
 
   /* ── Detail table columns ── */
-  const matchedCols = useMemo<ActionColumn<MatchedRecordItem>[]>(() => [
+  const matchedCols = useMemo<Column<MatchedRecordItem>[]>(() => [
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.project.projectCode}</span> {item.project.name}</>, title: 'Project' },
     { key: 'role', render: (item) => item.staffingRole, title: 'Role', width: 100 },
@@ -281,7 +285,7 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'variance', render: (item) => { const d = item.effortHours - (item.allocationPercent * (standardHoursPerWeek / 100)); return <StatusBadge label={`${d > 0 ? '+' : ''}${d.toFixed(1)}h`} size="small" tone={d > 2 ? 'danger' : d < -2 ? 'warning' : 'active'} />; }, title: 'Var', width: 75 },
   ], [standardHoursPerWeek]);
 
-  const noEvidenceCols = useMemo<ActionColumn<AssignedButNoEvidenceItem>[]>(() => [
+  const noEvidenceCols = useMemo<Column<AssignedButNoEvidenceItem>[]>(() => [
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.project.projectCode}</span> {item.project.name}</>, title: 'Project' },
     { key: 'role', render: (item) => item.staffingRole, title: 'Role', width: 100 },
@@ -289,7 +293,7 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'status', render: () => <StatusBadge label="No Actual Time" size="small" tone="warning" />, title: 'Status', width: 110 },
   ], []);
 
-  const noAssignmentCols = useMemo<ActionColumn<EvidenceButNoApprovedAssignmentItem>[]>(() => [
+  const noAssignmentCols = useMemo<Column<EvidenceButNoApprovedAssignmentItem>[]>(() => [
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.project.projectCode}</span> {item.project.name}</>, title: 'Project' },
     { key: 'source', render: (item) => item.sourceType, title: 'Source', width: 90 },
@@ -298,26 +302,28 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'status', render: () => <StatusBadge label="No Assignment" size="small" tone="danger" />, title: 'Status', width: 110 },
   ], []);
 
-  const anomalyCols = useMemo<ActionColumn<ComparisonAnomalyItem>[]>(() => [
+  const anomalyCols = useMemo<Column<ComparisonAnomalyItem>[]>(() => [
     { key: 'type', render: (item) => <StatusBadge label={humanizeEnum(item.type, ANOMALY_TYPE_LABELS)} size="small" tone="warning" />, title: 'Type', width: 160 },
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => item.project.name, title: 'Project' },
     { key: 'details', render: (item) => <span style={{ fontSize: 11 }}>{item.message}</span>, title: 'Details' },
   ], []);
 
-  const detailQuickActions: Record<DetailTab, QuickAction<unknown>[]> = useMemo(() => ({
-    matched: [{ label: 'View', tone: 'secondary' as const, onClick: (item: unknown) => nav(`/assignments/${(item as MatchedRecordItem).assignmentId}`) }],
-    noEvidence: [{ label: 'Review Assignment', tone: 'secondary' as const, onClick: (item: unknown) => nav(`/assignments?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
+  const detailQuickActions: Record<DetailTab, RowAction<unknown>[]> = useMemo(() => ({
+    matched: [{ key: 'view', label: 'View', onSelect: (item: unknown) => nav(`/assignments/${(item as MatchedRecordItem).assignmentId}`) }],
+    noEvidence: [{ key: 'review', label: 'Review Assignment', onSelect: (item: unknown) => nav(`/assignments?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
     noAssignment: [{
-      label: 'Create Assignment', tone: 'primary' as const,
-      onClick: (item: unknown) => {
+      key: 'create',
+      label: 'Create Assignment',
+      onSelect: (item: unknown) => {
         const e = item as EvidenceButNoApprovedAssignmentItem;
         openAssignModal({ personId: e.person.id, person: e.person.displayName, projectId: e.project.id, project: e.project.name, hours: e.effortHours, activityDate: e.activityDate });
       },
     }],
     anomalies: [{
-      label: 'Resolve', tone: 'primary' as const,
-      onClick: (item: unknown) => {
+      key: 'resolve',
+      label: 'Resolve',
+      onSelect: (item: unknown) => {
         const a = item as ComparisonAnomalyItem;
         openAssignModal({ personId: a.person.id, person: a.person.displayName, projectId: a.project.id, project: a.project.name, hours: null, activityDate: null });
       },
@@ -325,14 +331,14 @@ export function PlannedVsActualPage(): JSX.Element {
   }), []);
 
   /* ── Mismatch table columns ── */
-  const projectMismatchCols = useMemo<DataTableColumn<MismatchedProjectRow>[]>(() => [
+  const projectMismatchCols = useMemo<Column<MismatchedProjectRow>[]>(() => [
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.projectCode}</span> {item.projectName}</>, title: 'Project' },
     { key: 'noEvidence', align: 'right', render: (item) => item.noEvidenceCount || '\u2014', title: 'No Actual', width: 75 },
     { key: 'noAssignment', align: 'right', render: (item) => item.noAssignmentCount || '\u2014', title: 'No Assign', width: 75 },
     { key: 'anomalies', align: 'right', render: (item) => item.anomalyCount || '\u2014', title: 'Anomaly', width: 60 },
     { key: 'total', align: 'right', render: (item) => <span style={{ fontWeight: 600 }}>{item.totalIssues}</span>, title: 'Total', width: 50 },
   ], []);
-  const peopleMismatchCols = useMemo<DataTableColumn<MismatchedPersonRow>[]>(() => [
+  const peopleMismatchCols = useMemo<Column<MismatchedPersonRow>[]>(() => [
     { key: 'person', render: (item) => item.personName, title: 'Person' },
     { key: 'noEvidence', align: 'right', render: (item) => item.noEvidenceCount || '\u2014', title: 'No Actual', width: 75 },
     { key: 'noAssignment', align: 'right', render: (item) => item.noAssignmentCount || '\u2014', title: 'No Assign', width: 75 },
@@ -341,7 +347,7 @@ export function PlannedVsActualPage(): JSX.Element {
   ], []);
 
   /* ── Staffing gap columns ── */
-  const staffingCols = useMemo<DataTableColumn<UnstaffedProject>[]>(() => [
+  const staffingCols = useMemo<Column<UnstaffedProject>[]>(() => [
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.projectCode}</span> {item.projectName}</>, title: 'Project' },
     { key: 'open', align: 'right', render: (item) => item.openRequests, title: 'Open Req', width: 70 },
     { key: 'unfilled', align: 'right', render: (item) => <span style={{ fontWeight: 600, color: 'var(--color-status-danger)' }}>{item.unfilledHeadcount}</span>, title: 'Unfilled HC', width: 80 },
@@ -349,7 +355,7 @@ export function PlannedVsActualPage(): JSX.Element {
   ], []);
 
   /* ── Over-submitted columns ── */
-  const overSubCols = useMemo<DataTableColumn<ProjectPvaSummary>[]>(() => [
+  const overSubCols = useMemo<Column<ProjectPvaSummary>[]>(() => [
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.projectCode}</span> {item.projectName}</>, title: 'Project' },
     { key: 'planned', align: 'right', render: (item) => <span style={NUM}>{item.plannedHours}h</span>, title: 'Planned', width: 70 },
     { key: 'actual', align: 'right', render: (item) => <span style={NUM}>{item.totalActualHours}h</span>, title: 'Actual', width: 70 },
@@ -424,19 +430,33 @@ export function PlannedVsActualPage(): JSX.Element {
           </DashSection>
 
           {/* ── WHAT NEEDS ATTENTION ── */}
-          <ActionDataTable<PvaActionItem>
-            title={`What Needs Attention (${actionItems.length})`}
-            columns={actionCols}
-            items={filteredActionItems}
-            getRowKey={(item) => item.id}
-            onRowClick={(item) => nav(item.href)}
-            quickActions={actionQuickActions}
-            batchActions={actionBatchActions}
-            quickFilters={actionFilters}
-            pageSize={10}
-            totalLabel="issues"
-            emptyState={<EmptyState description="No issues found." title="All clear" />}
-          />
+          <SectionCard title={`What Needs Attention (${actionItems.length})`}>
+            <DataView<PvaActionItem>
+              columns={actionCols}
+              rows={filteredActionItems}
+              getRowKey={(item) => item.id}
+              onRowClick={(item) => nav(item.href)}
+              rowActions={actionQuickActions}
+              bulkActions={actionBatchActions}
+              pageSizeOptions={[10, 25, 50, 100]}
+              variant="compact"
+              toolbar={
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {actionFilters.map((f) => (
+                    <Button
+                      key={f.label}
+                      size="sm"
+                      variant={f.active ? 'primary' : 'secondary'}
+                      onClick={f.onClick}
+                    >
+                      {f.label}{f.count !== undefined ? ` (${f.count})` : ''}
+                    </Button>
+                  ))}
+                </div>
+              }
+              emptyState={<EmptyState description="No issues found." title="All clear" />}
+            />
+          </SectionCard>
 
           {/* ── SECONDARY ANALYSIS (2×2 grid) ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-4)' }}>
@@ -445,8 +465,8 @@ export function PlannedVsActualPage(): JSX.Element {
               {state.data.projectSummaries.length > 0 ? (
                 <>
                   <div style={{ display: 'flex', gap: 4, marginBottom: 'var(--space-2)' }}>
-                    <button type="button" className={`button button--sm ${pipelineView === 'chart' ? 'button--primary' : 'button--secondary'}`} onClick={() => setPipelineView('chart')}>Chart</button>
-                    <button type="button" className={`button button--sm ${pipelineView === 'table' ? 'button--primary' : 'button--secondary'}`} onClick={() => setPipelineView('table')}>Table</button>
+                    <Button size="sm" variant={pipelineView === 'chart' ? 'primary' : 'secondary'} onClick={() => setPipelineView('chart')}>Chart</Button>
+                    <Button size="sm" variant={pipelineView === 'table' ? 'primary' : 'secondary'} onClick={() => setPipelineView('table')}>Table</Button>
                   </div>
                   {pipelineView === 'chart' ? (
                     <div style={{ height: Math.max(200, pipelineRows.length * 36 + 60) }}>
@@ -464,28 +484,19 @@ export function PlannedVsActualPage(): JSX.Element {
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <table className="dash-compact-table">
-                      <thead>
-                        <tr>
-                          <th>Project</th>
-                          <th style={NUM}>Approved</th>
-                          <th style={NUM}>Submitted</th>
-                          <th style={NUM}>Draft</th>
-                          <th style={NUM}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.data.projectSummaries.map((p) => (
-                          <tr key={p.projectId} style={{ cursor: 'pointer' }} onClick={() => nav(`/projects/${p.projectId}`)}>
-                            <td><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</span> {p.projectName}</td>
-                            <td style={{ ...NUM, color: 'var(--color-status-active)' }}>{p.approvedHours}h</td>
-                            <td style={{ ...NUM, color: p.submittedHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{p.submittedHours}h</td>
-                            <td style={{ ...NUM, color: p.draftHours > 0 ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{p.draftHours}h</td>
-                            <td style={{ ...NUM, fontWeight: 600 }}>{p.totalActualHours}h</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table
+                      variant="compact"
+                      columns={[
+                        { key: 'project', title: 'Project', getValue: (p) => p.projectName, render: (p) => <span><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</span> {p.projectName}</span> },
+                        { key: 'approved', title: 'Approved', align: 'right', getValue: (p) => p.approvedHours, render: (p) => <span style={{ ...NUM, color: 'var(--color-status-active)' }}>{p.approvedHours}h</span> },
+                        { key: 'submitted', title: 'Submitted', align: 'right', getValue: (p) => p.submittedHours, render: (p) => <span style={{ ...NUM, color: p.submittedHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{p.submittedHours}h</span> },
+                        { key: 'draft', title: 'Draft', align: 'right', getValue: (p) => p.draftHours, render: (p) => <span style={{ ...NUM, color: p.draftHours > 0 ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{p.draftHours}h</span> },
+                        { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.totalActualHours, render: (p) => <span style={{ ...NUM, fontWeight: 600 }}>{p.totalActualHours}h</span> },
+                      ] as Column<typeof state.data.projectSummaries[number]>[]}
+                      rows={state.data.projectSummaries}
+                      getRowKey={(p) => p.projectId}
+                      onRowClick={(p) => nav(`/projects/${p.projectId}`)}
+                    />
                   )}
                   {kpis.missingPersonCount > 0 && (
                     <div style={{ fontSize: 11, color: 'var(--color-status-danger)', marginTop: 'var(--space-2)', padding: '0 var(--space-2)' }}>
@@ -501,7 +512,7 @@ export function PlannedVsActualPage(): JSX.Element {
             {/* Staffing Coverage */}
             <SectionCard title="Staffing Coverage" id="staffing-section">
               {staffingGaps.length > 0 ? (
-                <DataTable columns={staffingCols} getRowKey={(item) => item.projectId} items={staffingGaps} variant="compact" onRowClick={(item) => nav(`/staffing-requests?projectId=${item.projectId}`)} />
+                <DataView columns={staffingCols} getRowKey={(item) => item.projectId} rows={staffingGaps} variant="compact" onRowClick={(item) => nav(`/staffing-requests?projectId=${item.projectId}`)} pageSizeOptions={[1000]} />
               ) : (
                 <EmptyState description="All projects are fully staffed." title="All staffed" />
               )}
@@ -510,8 +521,8 @@ export function PlannedVsActualPage(): JSX.Element {
             {/* Dept/Pool Submission Rate */}
             <SectionCard title="Submission Rate by Org" id="submission-section">
               <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', alignItems: 'center' }}>
-                <button type="button" className={`button button--sm ${orgDim === 'department' ? 'button--primary' : 'button--secondary'}`} onClick={() => setOrgDim('department')}>Department</button>
-                <button type="button" className={`button button--sm ${orgDim === 'pool' ? 'button--primary' : 'button--secondary'}`} onClick={() => setOrgDim('pool')}>Resource Pool</button>
+                <Button size="sm" variant={orgDim === 'department' ? 'primary' : 'secondary'} onClick={() => setOrgDim('department')}>Department</Button>
+                <Button size="sm" variant={orgDim === 'pool' ? 'primary' : 'secondary'} onClick={() => setOrgDim('pool')}>Resource Pool</Button>
                 <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>
                   Submission = (submitted + approved) / planned. Values above 100% indicate time logged to projects without matching assignment.
                 </span>
@@ -564,7 +575,7 @@ export function PlannedVsActualPage(): JSX.Element {
             {/* Over-Submitted Projects */}
             <SectionCard title="Over-Submitted Projects" id="oversub-section">
               {overSubmitted.length > 0 ? (
-                <DataTable columns={overSubCols} getRowKey={(item) => item.projectId} items={overSubmitted} variant="compact" onRowClick={(item) => nav(`/projects/${item.projectId}`)} />
+                <DataView columns={overSubCols} getRowKey={(item) => item.projectId} rows={overSubmitted} variant="compact" onRowClick={(item) => nav(`/projects/${item.projectId}`)} pageSizeOptions={[1000]} />
               ) : (
                 <EmptyState description="No projects exceed planned hours." title="All within plan" />
               )}
@@ -576,9 +587,9 @@ export function PlannedVsActualPage(): JSX.Element {
             <SectionCard title="Overtime Analysis" id="overtime-section">
               <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', alignItems: 'center' }}>
                 {(['person', 'project', 'department', 'pool'] as const).map((d) => (
-                  <button key={d} type="button" className={`button button--sm ${otDim === d ? 'button--primary' : 'button--secondary'}`} onClick={() => setOtDim(d)}>
+                  <Button key={d} size="sm" variant={otDim === d ? 'primary' : 'secondary'} onClick={() => setOtDim(d)}>
                     {{ person: 'By Person', project: 'By Project', department: 'By Department', pool: 'By Pool' }[d]}
-                  </button>
+                  </Button>
                 ))}
                 <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>
                   {otData.totalOvertimeHours}h total overtime across {otData.peopleWithOvertime} people ({otData.overtimeRate}% of standard hours)
@@ -635,67 +646,61 @@ export function PlannedVsActualPage(): JSX.Element {
                 {/* Table */}
                 <div style={{ overflow: 'auto', maxHeight: 400 }}>
                   {otDim === 'person' && (
-                    <table className="dash-compact-table">
-                      <thead><tr><th>Person</th><th style={NUM}>Total</th><th style={NUM}>Std</th><th style={NUM}>OT</th><th style={NUM}>Cap</th><th>Status</th></tr></thead>
-                      <tbody>
-                        {otData.personSummaries.filter((p) => p.overtimeHours > 0).map((p) => (
-                          <tr key={p.personId} style={{ cursor: 'pointer' }} onClick={() => nav(`/people/${p.personId}`)}>
-                            <td style={{ fontWeight: 500 }}>{p.displayName}</td>
-                            <td style={NUM}>{p.totalHours}h</td>
-                            <td style={NUM}>{p.standardHours}h</td>
-                            <td style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</td>
-                            <td style={NUM}>{p.effectiveThreshold}h/wk</td>
-                            <td><StatusBadge label={p.exceedsThreshold ? 'Over Cap' : p.hasException ? 'Exception' : 'Within Cap'} size="small" tone={p.exceedsThreshold ? 'danger' : 'active'} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table
+                      variant="compact"
+                      columns={[
+                        { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                        { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.totalHours, render: (p) => <span style={NUM}>{p.totalHours}h</span> },
+                        { key: 'std', title: 'Std', align: 'right', getValue: (p) => p.standardHours, render: (p) => <span style={NUM}>{p.standardHours}h</span> },
+                        { key: 'ot', title: 'OT', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</span> },
+                        { key: 'cap', title: 'Cap', align: 'right', getValue: (p) => p.effectiveThreshold, render: (p) => <span style={NUM}>{p.effectiveThreshold}h/wk</span> },
+                        { key: 'status', title: 'Status', render: (p) => <StatusBadge label={p.exceedsThreshold ? 'Over Cap' : p.hasException ? 'Exception' : 'Within Cap'} size="small" tone={p.exceedsThreshold ? 'danger' : 'active'} /> },
+                      ] as Column<typeof otData.personSummaries[number]>[]}
+                      rows={otData.personSummaries.filter((p) => p.overtimeHours > 0)}
+                      getRowKey={(p) => p.personId}
+                      onRowClick={(p) => nav(`/people/${p.personId}`)}
+                    />
                   )}
                   {otDim === 'project' && (
-                    <table className="dash-compact-table">
-                      <thead><tr><th>Project</th><th style={NUM}>OT Hours</th><th style={NUM}>People</th></tr></thead>
-                      <tbody>
-                        {otData.projectSummaries.map((p) => (
-                          <tr key={p.projectId} style={{ cursor: 'pointer' }} onClick={() => nav(`/projects/${p.projectId}`)}>
-                            <td><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</span> {p.projectName}</td>
-                            <td style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</td>
-                            <td style={NUM}>{p.contributorCount}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table
+                      variant="compact"
+                      columns={[
+                        { key: 'project', title: 'Project', getValue: (p) => p.projectName, render: (p) => <span><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.projectCode}</span> {p.projectName}</span> },
+                        { key: 'ot', title: 'OT Hours', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</span> },
+                        { key: 'people', title: 'People', align: 'right', getValue: (p) => p.contributorCount, render: (p) => <span style={NUM}>{p.contributorCount}</span> },
+                      ] as Column<typeof otData.projectSummaries[number]>[]}
+                      rows={otData.projectSummaries}
+                      getRowKey={(p) => p.projectId}
+                      onRowClick={(p) => nav(`/projects/${p.projectId}`)}
+                    />
                   )}
                   {otDim === 'department' && (
-                    <table className="dash-compact-table">
-                      <thead><tr><th>Department</th><th style={NUM}>People</th><th style={NUM}>OT Hours</th><th style={NUM}>Policy Cap</th><th style={NUM}>Exceeding</th></tr></thead>
-                      <tbody>
-                        {otData.departmentSummaries.map((d) => (
-                          <tr key={d.orgUnitId}>
-                            <td style={{ fontWeight: 500 }}>{d.orgUnitName}</td>
-                            <td style={NUM}>{d.personCount}</td>
-                            <td style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{d.totalOvertimeHours}h</td>
-                            <td style={NUM}>{d.policyMaxHours != null ? `${d.policyMaxHours}h/wk` : 'Default'}</td>
-                            <td style={{ ...NUM, color: d.exceedingPolicyCount > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{d.exceedingPolicyCount}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table
+                      variant="compact"
+                      columns={[
+                        { key: 'dept', title: 'Department', getValue: (d) => d.orgUnitName, render: (d) => <span style={{ fontWeight: 500 }}>{d.orgUnitName}</span> },
+                        { key: 'people', title: 'People', align: 'right', getValue: (d) => d.personCount, render: (d) => <span style={NUM}>{d.personCount}</span> },
+                        { key: 'ot', title: 'OT Hours', align: 'right', getValue: (d) => d.totalOvertimeHours, render: (d) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{d.totalOvertimeHours}h</span> },
+                        { key: 'cap', title: 'Policy Cap', align: 'right', render: (d) => <span style={NUM}>{d.policyMaxHours != null ? `${d.policyMaxHours}h/wk` : 'Default'}</span> },
+                        { key: 'exceeding', title: 'Exceeding', align: 'right', getValue: (d) => d.exceedingPolicyCount, render: (d) => <span style={{ ...NUM, color: d.exceedingPolicyCount > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{d.exceedingPolicyCount}</span> },
+                      ] as Column<typeof otData.departmentSummaries[number]>[]}
+                      rows={otData.departmentSummaries}
+                      getRowKey={(d) => d.orgUnitId}
+                    />
                   )}
                   {otDim === 'pool' && (
-                    <table className="dash-compact-table">
-                      <thead><tr><th>Pool</th><th style={NUM}>People</th><th style={NUM}>OT Hours</th><th style={NUM}>Policy Cap</th><th style={NUM}>Exceeding</th></tr></thead>
-                      <tbody>
-                        {otData.poolSummaries.map((p) => (
-                          <tr key={p.poolId}>
-                            <td style={{ fontWeight: 500 }}>{p.poolName}</td>
-                            <td style={NUM}>{p.personCount}</td>
-                            <td style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.totalOvertimeHours}h</td>
-                            <td style={NUM}>{p.policyMaxHours != null ? `${p.policyMaxHours}h/wk` : 'Default'}</td>
-                            <td style={{ ...NUM, color: p.exceedingPolicyCount > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{p.exceedingPolicyCount}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <Table
+                      variant="compact"
+                      columns={[
+                        { key: 'pool', title: 'Pool', getValue: (p) => p.poolName, render: (p) => <span style={{ fontWeight: 500 }}>{p.poolName}</span> },
+                        { key: 'people', title: 'People', align: 'right', getValue: (p) => p.personCount, render: (p) => <span style={NUM}>{p.personCount}</span> },
+                        { key: 'ot', title: 'OT Hours', align: 'right', getValue: (p) => p.totalOvertimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.totalOvertimeHours}h</span> },
+                        { key: 'cap', title: 'Policy Cap', align: 'right', render: (p) => <span style={NUM}>{p.policyMaxHours != null ? `${p.policyMaxHours}h/wk` : 'Default'}</span> },
+                        { key: 'exceeding', title: 'Exceeding', align: 'right', getValue: (p) => p.exceedingPolicyCount, render: (p) => <span style={{ ...NUM, color: p.exceedingPolicyCount > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{p.exceedingPolicyCount}</span> },
+                      ] as Column<typeof otData.poolSummaries[number]>[]}
+                      rows={otData.poolSummaries}
+                      getRowKey={(p) => p.poolId}
+                    />
                   )}
                 </div>
               </div>
@@ -719,14 +724,14 @@ export function PlannedVsActualPage(): JSX.Element {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-4)' }}>
             <DashSection title="Top Mismatched Projects">
               {topProjects.length > 0 ? (
-                <DataTable columns={projectMismatchCols} getRowKey={(item) => item.projectId} items={topProjects} variant="compact" onRowClick={(item) => nav(`/projects/${item.projectId}`)} />
+                <DataView columns={projectMismatchCols} getRowKey={(item) => item.projectId} rows={topProjects} variant="compact" onRowClick={(item) => nav(`/projects/${item.projectId}`)} pageSizeOptions={[1000]} />
               ) : (
                 <EmptyState description="No mismatched projects" title="All clear" />
               )}
             </DashSection>
             <DashSection title="Top Mismatched People">
               {topPeople.length > 0 ? (
-                <DataTable columns={peopleMismatchCols} getRowKey={(item) => item.personId} items={topPeople} variant="compact" onRowClick={(item) => nav(`/people/${item.personId}`)} />
+                <DataView columns={peopleMismatchCols} getRowKey={(item) => item.personId} rows={topPeople} variant="compact" onRowClick={(item) => nav(`/people/${item.personId}`)} pageSizeOptions={[1000]} />
               ) : (
                 <EmptyState description="No mismatched people" title="All clear" />
               )}
@@ -742,72 +747,78 @@ export function PlannedVsActualPage(): JSX.Element {
           </DashSection>
 
           {/* ── RECONCILIATION DETAIL ── */}
-          <div id="detail-explorer">
-            {detailTab === 'matched' && (
-              <ActionDataTable<MatchedRecordItem>
-                title="Activity Detail"
-                titleExtra={<div style={{ display: 'flex', gap: 'var(--space-1)' }}>{(['noAssignment', 'noEvidence', 'matched', 'anomalies'] as DetailTab[]).map((t) => {
-                  const labels: Record<DetailTab, string> = { matched: 'Matched', noEvidence: 'Staffed, No Actual Time', noAssignment: 'Unplanned Work', anomalies: 'Anomalies' };
-                  return <button key={t} className={`button ${detailTab === t ? 'button--primary' : 'button--secondary'} button--sm`} onClick={() => setDetailTab(t)} type="button">{labels[t]} ({detailCounts[t]})</button>;
-                })}</div>}
-                columns={matchedCols}
-                items={state.data.matchedRecords}
-                getRowKey={(item) => `${item.assignmentId}-${item.workEvidenceId}`}
-                onRowClick={(item) => nav(`/assignments/${item.assignmentId}`)}
-                quickActions={detailQuickActions.matched as QuickAction<MatchedRecordItem>[]}
-                totalLabel="matched records"
-                emptyState={<EmptyState description="No matched records." title="Empty" />}
-              />
-            )}
-            {detailTab === 'noEvidence' && (
-              <ActionDataTable<AssignedButNoEvidenceItem>
-                title="Activity Detail"
-                titleExtra={<div style={{ display: 'flex', gap: 'var(--space-1)' }}>{(['noAssignment', 'noEvidence', 'matched', 'anomalies'] as DetailTab[]).map((t) => {
-                  const labels: Record<DetailTab, string> = { matched: 'Matched', noEvidence: 'Staffed, No Actual Time', noAssignment: 'Unplanned Work', anomalies: 'Anomalies' };
-                  return <button key={t} className={`button ${detailTab === t ? 'button--primary' : 'button--secondary'} button--sm`} onClick={() => setDetailTab(t)} type="button">{labels[t]} ({detailCounts[t]})</button>;
-                })}</div>}
-                columns={noEvidenceCols}
-                items={state.data.assignedButNoEvidence}
-                getRowKey={(item) => item.assignmentId}
-                onRowClick={(item) => nav(`/assignments?personId=${item.person.id}`)}
-                quickActions={detailQuickActions.noEvidence as QuickAction<AssignedButNoEvidenceItem>[]}
-                totalLabel="staffed records without approved time"
-                emptyState={<EmptyState description="No staffed records are missing approved time." title="Empty" />}
-              />
-            )}
-            {detailTab === 'noAssignment' && (
-              <ActionDataTable<EvidenceButNoApprovedAssignmentItem>
-                title="Activity Detail"
-                titleExtra={<div style={{ display: 'flex', gap: 'var(--space-1)' }}>{(['noAssignment', 'noEvidence', 'matched', 'anomalies'] as DetailTab[]).map((t) => {
-                  const labels: Record<DetailTab, string> = { matched: 'Matched', noEvidence: 'Staffed, No Actual Time', noAssignment: 'Unplanned Work', anomalies: 'Anomalies' };
-                  return <button key={t} className={`button ${detailTab === t ? 'button--primary' : 'button--secondary'} button--sm`} onClick={() => setDetailTab(t)} type="button">{labels[t]} ({detailCounts[t]})</button>;
-                })}</div>}
-                columns={noAssignmentCols}
-                items={state.data.evidenceButNoApprovedAssignment}
-                getRowKey={(item) => item.workEvidenceId}
-                onRowClick={(item) => openAssignModal({ personId: item.person.id, person: item.person.displayName, projectId: item.project.id, project: item.project.name, hours: item.effortHours, activityDate: item.activityDate })}
-                quickActions={detailQuickActions.noAssignment as QuickAction<EvidenceButNoApprovedAssignmentItem>[]}
-                totalLabel="unplanned records"
-                emptyState={<EmptyState description="No unplanned work." title="Empty" />}
-              />
-            )}
-            {detailTab === 'anomalies' && (
-              <ActionDataTable<ComparisonAnomalyItem>
-                title="Activity Detail"
-                titleExtra={<div style={{ display: 'flex', gap: 'var(--space-1)' }}>{(['noAssignment', 'noEvidence', 'matched', 'anomalies'] as DetailTab[]).map((t) => {
-                  const labels: Record<DetailTab, string> = { matched: 'Matched', noEvidence: 'Staffed, No Actual Time', noAssignment: 'Unplanned Work', anomalies: 'Anomalies' };
-                  return <button key={t} className={`button ${detailTab === t ? 'button--primary' : 'button--secondary'} button--sm`} onClick={() => setDetailTab(t)} type="button">{labels[t]} ({detailCounts[t]})</button>;
-                })}</div>}
-                columns={anomalyCols}
-                items={state.data.anomalies}
-                getRowKey={(_, i) => `anomaly-${i}`}
-                onRowClick={(item) => nav(`/projects/${item.project.id}`)}
-                quickActions={detailQuickActions.anomalies as QuickAction<ComparisonAnomalyItem>[]}
-                totalLabel="anomalies"
-                emptyState={<EmptyState description="No anomalies." title="Empty" />}
-              />
-            )}
-          </div>
+          {(() => {
+            const detailTabLabels: Record<DetailTab, string> = { matched: 'Matched', noEvidence: 'Staffed, No Actual Time', noAssignment: 'Unplanned Work', anomalies: 'Anomalies' };
+            const detailTabBar = (
+              <div style={{ display: 'flex', gap: 'var(--space-1)', flexWrap: 'wrap' }}>
+                {(['noAssignment', 'noEvidence', 'matched', 'anomalies'] as DetailTab[]).map((t) => (
+                  <Button key={t} size="sm" variant={detailTab === t ? 'primary' : 'secondary'} onClick={() => setDetailTab(t)}>
+                    {detailTabLabels[t]} ({detailCounts[t]})
+                  </Button>
+                ))}
+              </div>
+            );
+            return (
+              <SectionCard
+                id="detail-explorer"
+                title={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-2)', width: '100%' }}>
+                    <span>Activity Detail</span>
+                    {detailTabBar}
+                  </div>
+                }
+              >
+                {detailTab === 'matched' && (
+                  <DataView<MatchedRecordItem>
+                    columns={matchedCols}
+                    rows={state.data.matchedRecords}
+                    getRowKey={(item) => `${item.assignmentId}-${item.workEvidenceId}`}
+                    onRowClick={(item) => nav(`/assignments/${item.assignmentId}`)}
+                    rowActions={detailQuickActions.matched as RowAction<MatchedRecordItem>[]}
+                    pageSizeOptions={[25, 50, 100]}
+                    variant="compact"
+                    emptyState={<EmptyState description="No matched records." title="Empty" />}
+                  />
+                )}
+                {detailTab === 'noEvidence' && (
+                  <DataView<AssignedButNoEvidenceItem>
+                    columns={noEvidenceCols}
+                    rows={state.data.assignedButNoEvidence}
+                    getRowKey={(item) => item.assignmentId}
+                    onRowClick={(item) => nav(`/assignments?personId=${item.person.id}`)}
+                    rowActions={detailQuickActions.noEvidence as RowAction<AssignedButNoEvidenceItem>[]}
+                    pageSizeOptions={[25, 50, 100]}
+                    variant="compact"
+                    emptyState={<EmptyState description="No staffed records are missing approved time." title="Empty" />}
+                  />
+                )}
+                {detailTab === 'noAssignment' && (
+                  <DataView<EvidenceButNoApprovedAssignmentItem>
+                    columns={noAssignmentCols}
+                    rows={state.data.evidenceButNoApprovedAssignment}
+                    getRowKey={(item) => item.workEvidenceId}
+                    onRowClick={(item) => openAssignModal({ personId: item.person.id, person: item.person.displayName, projectId: item.project.id, project: item.project.name, hours: item.effortHours, activityDate: item.activityDate })}
+                    rowActions={detailQuickActions.noAssignment as RowAction<EvidenceButNoApprovedAssignmentItem>[]}
+                    pageSizeOptions={[25, 50, 100]}
+                    variant="compact"
+                    emptyState={<EmptyState description="No unplanned work." title="Empty" />}
+                  />
+                )}
+                {detailTab === 'anomalies' && (
+                  <DataView<ComparisonAnomalyItem>
+                    columns={anomalyCols}
+                    rows={state.data.anomalies}
+                    getRowKey={(_, i) => `anomaly-${i}`}
+                    onRowClick={(item) => nav(`/projects/${item.project.id}`)}
+                    rowActions={detailQuickActions.anomalies as RowAction<ComparisonAnomalyItem>[]}
+                    pageSizeOptions={[25, 50, 100]}
+                    variant="compact"
+                    emptyState={<EmptyState description="No anomalies." title="Empty" />}
+                  />
+                )}
+              </SectionCard>
+            );
+          })()}
 
           {kpis.alignmentRate === 100 && kpis.anomalyCount === 0 && (
             <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-status-active)' }}>
@@ -820,7 +831,7 @@ export function PlannedVsActualPage(): JSX.Element {
           {/* ── DATA FRESHNESS ── */}
           <div className="data-freshness">
             Showing {state.data.weeksIncluded} {state.data.weeksIncluded === 1 ? 'week' : 'weeks'} ending {formatDateShort(state.data.weekEnd)}{' '}
-            <button type="button" className="button button--secondary button--sm" onClick={refetch} style={{ marginLeft: 'var(--space-2)' }}>{'\u21bb'} Refresh</button>
+            <Button type="button" variant="secondary" size="sm" onClick={refetch} style={{ marginLeft: 'var(--space-2)' }}>{'\u21bb'} Refresh</Button>
           </div>
         </>
       ) : null}

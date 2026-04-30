@@ -131,7 +131,9 @@ async function requestJson<TResponse>(
 
   // 204 No Content and empty 200 responses have no body to parse.
   if (response.status === 204) return undefined as unknown as TResponse;
-  return (await response.json()) as TResponse;
+  const text = await response.text();
+  if (text.length === 0) return null as unknown as TResponse;
+  return JSON.parse(text) as TResponse;
 }
 
 export async function httpGet<TResponse>(

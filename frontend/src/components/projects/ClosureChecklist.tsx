@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { httpGet } from '@/lib/api/http-client';
+import { Button } from '@/components/ds';
 
 interface ClosureReadiness {
   projectId: string;
@@ -102,22 +103,13 @@ export function ClosureChecklist({ projectId, onClose, onOverride, canOverride }
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <button
-          className="button button--primary"
-          disabled={!readiness.isReady}
-          onClick={onClose}
-          type="button"
-        >
+        <Button variant="primary" disabled={!readiness.isReady} onClick={onClose} type="button">
           Close Project
-        </button>
+        </Button>
         {canOverride && !readiness.isReady ? (
-          <button
-            className="button button--danger button--sm"
-            onClick={onOverride}
-            type="button"
-          >
+          <Button variant="danger" size="sm" onClick={onOverride} type="button">
             Override & Close (Director)
-          </button>
+          </Button>
         ) : null}
       </div>
 

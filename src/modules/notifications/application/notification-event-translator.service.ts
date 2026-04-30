@@ -353,6 +353,128 @@ export class NotificationEventTranslatorService {
     );
   }
 
+  // ── Workflow Overhaul Phase WO-3 — proposal slate + SLA events ──────────────
+
+  public async proposalSubmitted(payload: {
+    assignmentId: string;
+    candidateCount: number;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail('assignment.proposal_submitted', 'assignment-proposal-submitted-email', {
+      assignmentId: payload.assignmentId,
+      candidateCount: payload.candidateCount,
+    });
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.proposal_submitted',
+        `Proposal slate submitted (${payload.candidateCount} candidate${payload.candidateCount === 1 ? '' : 's'})`,
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  public async proposalAcknowledged(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail('assignment.proposal_acknowledged', 'assignment-proposal-acknowledged-email', {
+      assignmentId: payload.assignmentId,
+    });
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.proposal_acknowledged',
+        'Reviewer is engaged with your proposal',
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  public async proposalDirectorApprovalRequested(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail(
+      'assignment.proposal_director_approval_requested',
+      'assignment-proposal-director-approval-email',
+      { assignmentId: payload.assignmentId },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.proposal_director_approval_requested',
+        'Director approval needed',
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  public async assignmentOnboardingScheduled(payload: {
+    assignmentId: string;
+    onboardingDate: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail(
+      'assignment.onboarding_scheduled',
+      'assignment-onboarding-scheduled-email',
+      { assignmentId: payload.assignmentId, onboardingDate: payload.onboardingDate },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.onboarding_scheduled',
+        `Onboarding scheduled for ${payload.onboardingDate}`,
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  public async assignmentSlaBreached(payload: {
+    assignmentId: string;
+    slaStage: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail('assignment.sla_breached', 'assignment-sla-breached-email', {
+      assignmentId: payload.assignmentId,
+      slaStage: payload.slaStage,
+    });
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.sla_breached',
+        `Assignment SLA breached (${payload.slaStage})`,
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  public async assignmentEscalatedToCase(payload: {
+    assignmentId: string;
+    caseId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail(
+      'assignment.escalated_to_case',
+      'assignment-escalated-to-case-email',
+      { assignmentId: payload.assignmentId, caseId: payload.caseId },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.escalated_to_case',
+        'Assignment escalated to a case',
+        undefined,
+        `/cases/${payload.caseId}`,
+      );
+    }
+  }
+
   private async sendEmail(
     eventName: string,
     templateKey: string,

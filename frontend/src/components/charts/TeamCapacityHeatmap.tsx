@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
+import { Table, type Column } from '@/components/ds';
+
 interface TeamCapacityHeatmapPerson {
   allocationByWeek: number[];
   name: string;
@@ -12,73 +14,55 @@ interface TeamCapacityHeatmapProps {
 }
 
 function cellColor(pct: number): string {
-  if (pct === 0) return '#f0f0f0';
-  if (pct <= 50) return '#bbf7d0';
-  if (pct <= 80) return '#22c55e';
-  if (pct <= 100) return '#f59e0b';
-  if (pct <= 120) return '#f97316';
-  return '#ef4444';
+  if (pct === 0) return 'var(--color-border)';
+  if (pct <= 50) return 'color-mix(in srgb, var(--color-status-active) 40%, var(--color-surface))';
+  if (pct <= 80) return 'var(--color-status-active)';
+  if (pct <= 100) return 'var(--color-status-warning)';
+  if (pct <= 120) return 'color-mix(in srgb, var(--color-status-warning) 70%, var(--color-status-danger))';
+  return 'var(--color-status-danger)';
 }
 
 export function TeamCapacityHeatmap({ people, weeks }: TeamCapacityHeatmapProps): JSX.Element {
   const navigate = useNavigate();
 
+  const columns: Column<TeamCapacityHeatmapPerson>[] = [
+    { key: 'name', title: 'Person', getValue: (p) => p.name, render: (p) => <span style={{ whiteSpace: 'nowrap' }}>{p.name}</span> },
+    ...weeks.map((w, idx) => ({
+      key: `wk-${w}`,
+      title: <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>{w}</span>,
+      align: 'center' as const,
+      render: (p: TeamCapacityHeatmapPerson) => {
+        const pct = p.allocationByWeek[idx] ?? 0;
+        const isClickable = Boolean(p.personId);
+        return (
+          <span
+            onClick={isClickable ? () => navigate(`/assignments?personId=${p.personId}&weekStart=${w}`) : undefined}
+            style={{
+              backgroundColor: cellColor(pct),
+              borderRadius: '3px',
+              cursor: isClickable ? 'pointer' : 'default',
+              fontSize: '11px',
+              padding: '2px 6px',
+              display: 'inline-block',
+              transition: 'opacity 0.15s',
+            }}
+            title={isClickable
+              ? `${p.name} — ${w}: ${pct}% — click to view assignments`
+              : `${p.name} — ${w}: ${pct}%`}
+          >
+            {pct > 0 ? `${pct}%` : '—'}
+          </span>
+        );
+      },
+    })),
+  ];
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: '13px', width: '100%' }}>
-        <thead>
-          <tr>
-            <th style={{ padding: '4px 8px', textAlign: 'left' }}>Person</th>
-            {weeks.map((w) => (
-              <th
-                key={w}
-                style={{ fontSize: '11px', padding: '4px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}
-              >
-                {w}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {people.map((person) => (
-            <tr key={person.name}>
-              <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>{person.name}</td>
-              {weeks.map((w, idx) => {
-                const pct = person.allocationByWeek[idx] ?? 0;
-                const isClickable = Boolean(person.personId);
-                return (
-                  <td
-                    key={w}
-                    onClick={
-                      isClickable
-                        ? () => navigate(`/assignments?personId=${person.personId}&weekStart=${w}`)
-                        : undefined
-                    }
-                    style={{
-                      backgroundColor: cellColor(pct),
-                      borderRadius: '3px',
-                      cursor: isClickable ? 'pointer' : 'default',
-                      fontSize: '11px',
-                      padding: '4px',
-                      textAlign: 'center',
-                      transition: 'opacity 0.15s',
-                    }}
-                    title={
-                      isClickable
-                        ? `${person.name} — ${w}: ${pct}% — click to view assignments`
-                        : `${person.name} — ${w}: ${pct}%`
-                    }
-                    onMouseEnter={(e) => { if (isClickable) (e.currentTarget as HTMLElement).style.opacity = '0.75'; }}
-                    onMouseLeave={(e) => { if (isClickable) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                  >
-                    {pct > 0 ? `${pct}%` : '—'}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      variant="compact"
+      columns={columns}
+      rows={people}
+      getRowKey={(p) => p.name}
+    />
   );
 }

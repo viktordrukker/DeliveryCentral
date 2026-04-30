@@ -6,6 +6,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { HrisConfig, HrisSyncResult, fetchHrisConfig, updateHrisConfig, triggerHrisSync } from '@/lib/api/hris';
+import { Button } from '@/components/ds';
 
 export function HrisConfigPage(): JSX.Element {
   const [config, setConfig] = useState<HrisConfig | null>(null);
@@ -142,22 +143,12 @@ export function HrisConfigPage(): JSX.Element {
         ) : null}
 
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-          <button
-            className="button button--primary"
-            disabled={saving}
-            onClick={() => void handleSave()}
-            type="button"
-          >
+          <Button variant="primary" disabled={saving} onClick={() => void handleSave()} type="button">
             {saving ? 'Saving…' : 'Save Configuration'}
-          </button>
-          <button
-            className="button button--secondary"
-            disabled={syncing || config.activeAdapter === 'none'}
-            onClick={() => void handleSync()}
-            type="button"
-          >
+          </Button>
+          <Button variant="secondary" disabled={syncing || config.activeAdapter === 'none'} onClick={() => void handleSync()} type="button">
             {syncing ? 'Syncing…' : 'Run Sync Now'}
-          </button>
+          </Button>
         </div>
 
         {syncResult ? (

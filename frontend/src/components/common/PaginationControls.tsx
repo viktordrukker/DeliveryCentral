@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Button } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const };
 const PAGE_SIZES = [10, 25, 50, 100] as const;
@@ -49,59 +50,35 @@ export function PaginationControls({
       </span>
 
       <span style={{ display: 'inline-flex', gap: 'var(--space-1)', alignItems: 'center' }}>
-        <button
-          className="button button--secondary button--sm"
-          disabled={page <= 1}
-          onClick={() => onPageChange(1)}
-          type="button"
-          title="First page"
-        >
+        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(1)} type="button" title="First page">
           {'\u21E4'}
-        </button>
-        <button
-          className="button button--secondary button--sm"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          type="button"
-          title="Previous page"
-        >
+        </Button>
+        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)} type="button" title="Previous page">
           {'\u2190'}
-        </button>
+        </Button>
 
         {pageNumbers.map((p, i) =>
           p === 'ellipsis' ? (
             <span key={`e${i}`} style={{ padding: '0 2px', fontSize: 11, color: 'var(--color-text-muted)' }}>{'\u2026'}</span>
           ) : (
-            <button
+            <Button
               key={p}
-              className={`button button--sm ${p === page ? 'button--primary' : 'button--secondary'}`}
+              size="sm"
+              variant={p === page ? 'primary' : 'secondary'}
               onClick={() => onPageChange(p)}
-              type="button"
               style={{ minWidth: 28, padding: '2px 6px' }}
             >
               {p}
-            </button>
+            </Button>
           ),
         )}
 
-        <button
-          className="button button--secondary button--sm"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          type="button"
-          title="Next page"
-        >
+        <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} type="button" title="Next page">
           {'\u2192'}
-        </button>
-        <button
-          className="button button--secondary button--sm"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(totalPages)}
-          type="button"
-          title="Last page"
-        >
+        </Button>
+        <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(totalPages)} type="button" title="Last page">
           {'\u21E5'}
-        </button>
+        </Button>
       </span>
 
       <span style={{ flex: '1 1 0', textAlign: 'right' }}>

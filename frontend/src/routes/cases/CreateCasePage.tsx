@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useCreateCasePage } from '@/features/cases/useCreateCasePage';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
+import { Button } from '@/components/ds';
 
 const initialValues: CaseFormValues = {
   caseTypeKey: 'ONBOARDING',
@@ -56,9 +57,9 @@ export function CreateCasePage(): JSX.Element {
     <PageContainer testId="create-case-page">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/cases">
+          <Button as={Link} variant="secondary" to="/cases">
             Back to cases
-          </Link>
+          </Button>
         }
         eyebrow="Cases"
         subtitle="Open a real operational case with explicit people and optional staffing context."
@@ -115,9 +116,9 @@ export function CreateCasePage(): JSX.Element {
                   <div>
                     <dt>Next Step</dt>
                     <dd>
-                      <Link className="button button--secondary" to={`/cases/${state.createdCase.id}`}>
+                      <Button as={Link} variant="secondary" to={`/cases/${state.createdCase.id}`}>
                         Open case detail
-                      </Link>
+                      </Button>
                     </dd>
                   </div>
                 </dl>

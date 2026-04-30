@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { Button } from '@/components/ds';
 
 interface AssignmentListProps {
   emptyDescription: string;
@@ -36,13 +37,9 @@ export function AssignmentList({
           <p className="monitoring-list__summary">
             {item.staffingRole} · {item.allocationPercent}% · {item.approvalState}
           </p>
-          <Link
-            className="button button--secondary"
-            style={{ marginTop: '6px', fontSize: '0.75rem' }}
-            to={`/assignments/${item.id}`}
-          >
+          <Button as={Link} variant="secondary" style={{ marginTop: '6px', fontSize: '0.75rem' }} to={`/assignments/${item.id}`}>
             View assignment
-          </Link>
+          </Button>
         </div>
       ))}
     </div>

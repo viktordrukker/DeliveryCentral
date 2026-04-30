@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -14,6 +13,7 @@ import {
   fetchPortfolioRadiator,
 } from '@/lib/api/portfolio-radiator';
 import type { RadiatorBand } from '@/lib/api/project-radiator';
+import { Button, DataView, type Column } from '@/components/ds';
 
 function bandTone(band: RadiatorBand): 'active' | 'warning' | 'danger' | 'neutral' {
   if (band === 'GREEN') return 'active';
@@ -114,7 +114,7 @@ export function PortfolioRadiatorPage(): JSX.Element {
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   }
 
-  const columns: DataTableColumn<PortfolioRadiatorEntry>[] = [
+  const columns: Column<PortfolioRadiatorEntry>[] = [
     {
       key: 'project',
       render: (r) => (
@@ -124,7 +124,7 @@ export function PortfolioRadiatorPage(): JSX.Element {
           </Link>
         </div>
       ),
-      title: <button className="button button--link" onClick={() => toggleSort('name')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">Project{sortIndicator('name')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('name')}>Project{sortIndicator('name')}</Button>,
     },
     {
       key: 'code',
@@ -138,7 +138,7 @@ export function PortfolioRadiatorPage(): JSX.Element {
       render: (r) => (
         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{r.overallScore}</span>
       ),
-      title: <button className="button button--link" onClick={() => toggleSort('score')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">Overall{sortIndicator('score')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('score')}>Overall{sortIndicator('score')}</Button>,
       width: 80,
     },
     {
@@ -151,28 +151,28 @@ export function PortfolioRadiatorPage(): JSX.Element {
       align: 'right',
       key: 'scope',
       render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.quadrantScores.scope ?? '—'}</span>,
-      title: <button className="button button--link" onClick={() => toggleSort('scope')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">Scope{sortIndicator('scope')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('scope')}>Scope{sortIndicator('scope')}</Button>,
       width: 80,
     },
     {
       align: 'right',
       key: 'schedule',
       render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.quadrantScores.schedule ?? '—'}</span>,
-      title: <button className="button button--link" onClick={() => toggleSort('schedule')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">Schedule{sortIndicator('schedule')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('schedule')}>Schedule{sortIndicator('schedule')}</Button>,
       width: 90,
     },
     {
       align: 'right',
       key: 'budget',
       render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.quadrantScores.budget ?? '—'}</span>,
-      title: <button className="button button--link" onClick={() => toggleSort('budget')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">Budget{sortIndicator('budget')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('budget')}>Budget{sortIndicator('budget')}</Button>,
       width: 80,
     },
     {
       align: 'right',
       key: 'people',
       render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.quadrantScores.people ?? '—'}</span>,
-      title: <button className="button button--link" onClick={() => toggleSort('people')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'inherit', fontWeight: 600 }} type="button">People{sortIndicator('people')}</button>,
+      title: <Button variant="link" size="sm" onClick={() => toggleSort('people')}>People{sortIndicator('people')}</Button>,
       width: 80,
     },
   ];
@@ -216,7 +216,7 @@ export function PortfolioRadiatorPage(): JSX.Element {
 
       {rows && rows.length > 0 ? (
         <SectionCard title="Projects">
-          <DataTable columns={columns} items={sorted} variant="compact" />
+          <DataView columns={columns} rows={sorted} getRowKey={(r) => r.projectId} variant="compact" pageSizeOptions={[1000]} />
         </SectionCard>
       ) : null}
     </PageContainer>

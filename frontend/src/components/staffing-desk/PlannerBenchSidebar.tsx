@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { AutoMatchStrategy, PlannerBenchPerson, UnmatchedDemand } from '@/lib/api/staffing-desk';
 import type { PlannerSimulation } from '@/features/staffing-desk/usePlannerSimulation';
+import { Button, IconButton } from '@/components/ds';
 
 interface Props {
   benchPeople: PlannerBenchPerson[];
@@ -103,16 +104,9 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
             <span style={{ fontSize: 8, color: 'var(--color-text-subtle)' }}>Ignored for GROWTH (uses 20–60% stretch band)</span>
           )}
         </label>
-        <button
-          className="button button--sm"
-          onClick={() => onAutoMatch(strategy, minMatch / 100)}
-          disabled={autoMatchLoading || !simulating}
-          type="button"
-          style={{ width: '100%', fontSize: 10 }}
-          data-testid="planner-auto-match"
-        >
+        <Button variant="primary" size="sm" onClick={() => onAutoMatch(strategy, minMatch / 100)} disabled={autoMatchLoading || !simulating} type="button" style={{ width: '100%', fontSize: 10 }} data-testid="planner-auto-match">
           {autoMatchLoading ? 'Matching…' : 'Auto-Distribute'}
-        </button>
+        </Button>
         {simulation.suggestions.length > 0 && (
           <div style={{ fontSize: 9, color: 'var(--color-text-muted)', textAlign: 'center' }}>
             {simulation.suggestions.filter((s) => s.accepted).length}/{simulation.suggestions.length} accepted
@@ -184,30 +178,13 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
                     {d.reason && <div style={{ fontSize: 8, color: 'var(--color-status-warning)', marginTop: 1 }}>{d.reason}</div>}
                   </div>
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button
-                      className="button button--secondary button--sm"
-                      onClick={() => onWhyNot(d.demandId)}
-                      type="button"
-                      title="Why wasn't this filled?"
-                      style={{ fontSize: 8, padding: '1px 5px', minWidth: 0 }}
-                    >
+                    <Button variant="secondary" size="sm" onClick={() => onWhyNot(d.demandId)} type="button" title="Why wasn't this filled?" style={{ fontSize: 8, padding: '1px 5px', minWidth: 0 }}>
                       ?
-                    </button>
+                    </Button>
                     {simulating && !hasIntent && (
-                      <button
-                        className="button button--secondary button--sm"
-                        onClick={() => simulation.addHireIntent({
-                          projectId: '', projectName: d.projectName,
-                          role: d.role, skills: d.skills, count: d.headcountOpen,
-                          priority: 'MEDIUM', allocationPercent: 100,
-                          startDate: new Date().toISOString().slice(0, 10),
-                          endDate: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
-                        })}
-                        type="button"
-                        style={{ fontSize: 8, padding: '1px 6px' }}
-                      >
+                      <Button variant="secondary" size="sm" onClick={() => simulation.addHireIntent({ projectId: '', projectName: d.projectName, role: d.role, skills: d.skills, count: d.headcountOpen, priority: 'MEDIUM', allocationPercent: 100, startDate: new Date().toISOString().slice(0, 10), endDate: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10), })} type="button" style={{ fontSize: 8, padding: '1px 6px' }}>
                         +Hire
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -219,7 +196,7 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
                   <div style={{ fontWeight: 500, color: 'var(--color-accent)' }}>{h.role} ×{h.count}</div>
                   <div style={{ fontSize: 8, color: 'var(--color-text-subtle)' }}>Hire intent</div>
                 </div>
-                <button onClick={() => simulation.removeHireIntent(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)', fontSize: 12 }} type="button">×</button>
+                <IconButton aria-label="Remove hire intent" size="sm" onClick={() => simulation.removeHireIntent(h.id)} style={{ color: 'var(--color-text-subtle)', fontSize: 12 }}>×</IconButton>
               </div>
             ))}
           </div>

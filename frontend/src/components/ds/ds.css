@@ -1,0 +1,1712 @@
+/**
+ * DC Design System — atoms (Phase DS-1).
+ *
+ * Every rule references design tokens (var(--…)) — no raw hex values.
+ * Touch targets ≥44px below md. Focus rings use --focus-ring-* tokens.
+ */
+
+/* ── Reset shared by interactive atoms ──────────────────────────────────── */
+.ds-button,
+.ds-icon-button,
+.ds-link,
+.ds-input,
+.ds-textarea,
+.ds-select,
+.ds-checkbox__input,
+.ds-radio__input,
+.ds-switch__input {
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+
+.ds-button:focus-visible,
+.ds-icon-button:focus-visible,
+.ds-link:focus-visible,
+.ds-input:focus-visible,
+.ds-textarea:focus-visible,
+.ds-select:focus-visible,
+.ds-checkbox__input:focus-visible + .ds-checkbox__box,
+.ds-radio__input:focus-visible + .ds-radio__box,
+.ds-switch__input:focus-visible + .ds-switch__track {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* ── Button ──────────────────────────────────────────────────────────────── */
+.ds-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast),
+              opacity var(--transition-fast);
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ds-button:disabled,
+.ds-button[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ds-button[data-loading='true'] {
+  cursor: progress;
+}
+
+/* Sizes — touch target ≥44px enforced below md via media query */
+.ds-button--xs { padding: 2px 8px; font-size: 11px; min-height: 22px; }
+.ds-button--sm { padding: 4px 10px; font-size: 12px; min-height: 28px; }
+.ds-button--md { padding: 6px 14px; font-size: 13px; min-height: 36px; }
+.ds-button--lg { padding: 10px 18px; font-size: 14px; min-height: 44px; }
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-button--xs,
+  .ds-button--sm,
+  .ds-button--md {
+    min-height: var(--touch-target-min);
+  }
+}
+
+/* Variants */
+.ds-button--primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+.ds-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
+  filter: brightness(1.08);
+}
+
+.ds-button--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.ds-button--secondary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border-strong);
+}
+
+.ds-button--ghost {
+  background: transparent;
+  color: var(--color-text);
+}
+.ds-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--color-surface-alt);
+}
+
+.ds-button--danger {
+  background: var(--color-status-danger);
+  color: #fff;
+}
+.ds-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
+  filter: brightness(1.08);
+}
+
+.ds-button--link {
+  background: transparent;
+  color: var(--color-accent);
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-color: transparent;
+}
+.ds-button--link:hover:not(:disabled):not([aria-disabled='true']) {
+  text-decoration: underline;
+}
+
+.ds-button__spinner {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── IconButton ──────────────────────────────────────────────────────────── */
+.ds-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.ds-icon-button:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+.ds-icon-button:disabled { cursor: not-allowed; opacity: 0.45; }
+
+.ds-icon-button--xs { width: 22px; height: 22px; }
+.ds-icon-button--sm { width: 28px; height: 28px; }
+.ds-icon-button--md { width: 36px; height: 36px; }
+.ds-icon-button--lg { width: 44px; height: 44px; }
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-icon-button { min-width: var(--touch-target-min); min-height: var(--touch-target-min); }
+}
+
+/* ── Link ────────────────────────────────────────────────────────────────── */
+.ds-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: text-decoration-color var(--transition-fast);
+}
+.ds-link:hover { text-decoration: underline; }
+
+.ds-link--muted { color: var(--color-text-muted); }
+.ds-link--xs { font-size: 11px; }
+.ds-link--sm { font-size: 12px; }
+.ds-link--md { font-size: 13px; }
+
+/* ── Input / Textarea / Select shared field controls ─────────────────────── */
+.ds-input,
+.ds-textarea,
+.ds-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  line-height: 1.4;
+  transition: border-color var(--transition-fast);
+}
+.ds-input::placeholder,
+.ds-textarea::placeholder { color: var(--color-text-subtle); }
+
+.ds-input:focus,
+.ds-textarea:focus,
+.ds-select:focus {
+  border-color: var(--color-accent);
+}
+
+.ds-input--invalid,
+.ds-textarea--invalid,
+.ds-select--invalid,
+.ds-input[aria-invalid='true'],
+.ds-textarea[aria-invalid='true'],
+.ds-select[aria-invalid='true'] {
+  border-color: var(--color-status-danger);
+}
+
+.ds-input:disabled,
+.ds-textarea:disabled,
+.ds-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--color-surface-alt);
+}
+
+.ds-textarea {
+  min-height: 64px;
+  resize: vertical;
+  font-family: var(--font-sans);
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-input, .ds-textarea, .ds-select { min-height: var(--touch-target-min); font-size: 14px; }
+}
+
+/* ── Checkbox / Radio ────────────────────────────────────────────────────── */
+.ds-checkbox,
+.ds-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+  user-select: none;
+}
+.ds-checkbox--disabled,
+.ds-radio--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ds-checkbox__input,
+.ds-radio__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ds-checkbox__box,
+.ds-radio__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  flex: 0 0 auto;
+}
+.ds-checkbox__box { border-radius: 4px; }
+.ds-radio__box { border-radius: 50%; }
+
+.ds-checkbox__input:checked + .ds-checkbox__box,
+.ds-radio__input:checked + .ds-radio__box {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.ds-checkbox__check {
+  width: 12px;
+  height: 12px;
+  color: #fff;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+.ds-checkbox__input:checked + .ds-checkbox__box .ds-checkbox__check { opacity: 1; }
+
+.ds-radio__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+}
+.ds-radio__input:checked + .ds-radio__box .ds-radio__dot { opacity: 1; }
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-checkbox, .ds-radio { min-height: var(--touch-target-min); }
+}
+
+/* ── Switch ──────────────────────────────────────────────────────────────── */
+.ds-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+  color: var(--color-text);
+  font-size: 13px;
+}
+.ds-switch--disabled { cursor: not-allowed; opacity: 0.55; }
+
+.ds-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ds-switch__track {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-border-strong);
+  transition: background-color var(--transition-fast);
+  flex: 0 0 auto;
+}
+.ds-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left var(--transition-fast);
+}
+.ds-switch__input:checked + .ds-switch__track {
+  background: var(--color-accent);
+}
+.ds-switch__input:checked + .ds-switch__track .ds-switch__thumb {
+  left: 18px;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-switch { min-height: var(--touch-target-min); }
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.ds-spinner {
+  display: inline-block;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: ds-spinner-rotate 720ms linear infinite;
+  vertical-align: middle;
+}
+.ds-spinner--xs { width: 12px; height: 12px; }
+.ds-spinner--sm { width: 16px; height: 16px; }
+.ds-spinner--md { width: 24px; height: 24px; }
+.ds-spinner--lg { width: 32px; height: 32px; }
+
+@keyframes ds-spinner-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* On-button spinner — inherits color */
+.ds-button .ds-spinner {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+}
+.ds-button--secondary .ds-spinner,
+.ds-button--ghost .ds-spinner,
+.ds-button--link .ds-spinner {
+  border-color: var(--color-border);
+  border-top-color: var(--color-accent);
+}
+
+/* ── Skeleton ────────────────────────────────────────────────────────────── */
+.ds-skeleton {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-alt) 0%,
+    var(--color-border) 50%,
+    var(--color-surface-alt) 100%
+  );
+  background-size: 200% 100%;
+  animation: ds-skeleton-shimmer 1500ms ease-in-out infinite;
+  border-radius: 4px;
+}
+.ds-skeleton--circle { border-radius: 50%; }
+.ds-skeleton--text { height: 1em; border-radius: 2px; }
+
+@keyframes ds-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-spinner,
+  .ds-skeleton {
+    animation: none;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/* Phase DS-2 — Surfaces (Modal / Drawer / Sheet / Popover / MenuPopover)   */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Backdrop shared by Modal / Drawer / Sheet ───────────────────────────── */
+.ds-modal-backdrop,
+.ds-drawer-backdrop,
+.ds-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.ds-drawer-backdrop {
+  align-items: stretch;
+  padding: 0;
+}
+.ds-sheet-backdrop {
+  align-items: flex-end;
+  padding: 0;
+}
+
+/* ── Modal panel ─────────────────────────────────────────────────────────── */
+.ds-modal {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 2 * var(--space-4));
+  width: 100%;
+}
+.ds-modal--sm        { max-width: 420px; }
+.ds-modal--md        { max-width: 560px; }
+.ds-modal--lg        { max-width: 760px; }
+.ds-modal--xl        { max-width: 960px; }
+.ds-modal--fullscreen {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+.ds-modal__header {
+  padding: var(--space-4) var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.ds-modal__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.ds-modal__description {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.ds-modal__body {
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.ds-modal__footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  background: var(--color-surface-alt);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+/* Mobile auto-collapse — Modal becomes full-screen below sm. */
+@media (max-width: 640px) {
+  .ds-modal-backdrop { padding: 0; align-items: stretch; }
+  .ds-modal {
+    max-width: none;
+    width: 100%;
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  .ds-modal__footer { border-radius: 0; }
+}
+
+/* ── Drawer ──────────────────────────────────────────────────────────────── */
+.ds-drawer {
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: var(--shadow-modal);
+  width: 100%;
+}
+.ds-drawer-backdrop {
+  /* Push the drawer to the side (default right). Override per side below. */
+  justify-content: flex-end;
+}
+.ds-drawer-backdrop:has(.ds-drawer--left) { justify-content: flex-start; }
+.ds-drawer--right { /* default placement */ }
+.ds-drawer--left { /* mirror; styling identical, position handled by backdrop */ }
+.ds-drawer--sm { max-width: 320px; }
+.ds-drawer--md { max-width: 480px; }
+.ds-drawer--lg { max-width: 720px; }
+
+.ds-drawer__header {
+  padding: var(--space-4) var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.ds-drawer__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ds-drawer__description {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.ds-drawer__body {
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.ds-drawer__footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  background: var(--color-surface-alt);
+}
+
+/* Mobile — drawer goes full-width regardless of side. */
+@media (max-width: 640px) {
+  .ds-drawer--sm,
+  .ds-drawer--md,
+  .ds-drawer--lg { max-width: 100%; }
+}
+
+/* ── Sheet (bottom-anchored) ─────────────────────────────────────────────── */
+.ds-sheet {
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-modal);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+}
+.ds-sheet__header {
+  padding: var(--space-2) var(--space-5) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+}
+.ds-sheet__handle {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-strong);
+  margin: 0 auto var(--space-2);
+}
+.ds-sheet__title { margin: 0; font-size: 16px; font-weight: 600; }
+.ds-sheet__description { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: 13px; }
+.ds-sheet__body { padding: var(--space-4) var(--space-5); overflow-y: auto; flex: 1 1 auto; }
+.ds-sheet__footer {
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  background: var(--color-surface-alt);
+}
+
+/* ── Popover ─────────────────────────────────────────────────────────────── */
+.ds-popover {
+  position: fixed;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-dropdown);
+  min-width: 160px;
+  max-width: min(90vw, 360px);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ── MenuPopover ─────────────────────────────────────────────────────────── */
+.ds-menu {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+}
+.ds-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.ds-menu__item:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+.ds-menu__item:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-subtle);
+}
+.ds-menu__item--danger { color: var(--color-status-danger); }
+.ds-menu__item--danger:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+.ds-menu__icon { display: inline-flex; width: 16px; justify-content: center; }
+.ds-menu__label { flex: 1 1 auto; }
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-menu__item { min-height: var(--touch-target-min); }
+}
+
+/* ── Confirm dialog — internal layout (renders inside Modal body) ───────── */
+.ds-confirm-dialog__message {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ds-confirm-dialog__reason {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ds-confirm-dialog__reason-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+/* ── FormModal — form inside Modal body ──────────────────────────────────── */
+.ds-form-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/* Phase DS-3 — Form molecules                                              */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+/* ── FormField shell ─────────────────────────────────────────────────────── */
+.ds-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ds-form-field__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+.ds-form-field__required { color: var(--color-status-danger); }
+.ds-form-field__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-subtle);
+}
+.ds-form-field__control { display: flex; }
+.ds-form-field__error {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-status-danger);
+  font-weight: 500;
+}
+
+/* ── SearchInput ─────────────────────────────────────────────────────────── */
+.ds-search-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+.ds-search-input__icon {
+  position: absolute;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  color: var(--color-text-muted);
+}
+.ds-search-input__field {
+  width: 100%;
+  padding: 8px 32px 8px 30px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+}
+.ds-search-input__field::placeholder { color: var(--color-text-subtle); }
+.ds-search-input__field:focus {
+  border-color: var(--color-accent);
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+.ds-search-input__field:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--color-surface-alt);
+}
+.ds-search-input__clear {
+  position: absolute;
+  right: 4px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-search-input__field { min-height: var(--touch-target-min); font-size: 14px; }
+}
+
+/* ── DateRangePicker ─────────────────────────────────────────────────────── */
+.ds-date-range {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+.ds-date-range--inline {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.ds-date-range__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ds-date-range__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+/* ── CheckboxGroup / RadioGroup ──────────────────────────────────────────── */
+.ds-checkbox-group,
+.ds-radio-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+}
+.ds-checkbox-group--vertical,
+.ds-radio-group--vertical {
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ds-checkbox-group--horizontal,
+.ds-radio-group--horizontal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.ds-checkbox-group__legend,
+.ds-radio-group__legend {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+  padding: 0;
+}
+.ds-checkbox-group__hint,
+.ds-radio-group__hint {
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+/* ── Combobox ────────────────────────────────────────────────────────────── */
+/* Trigger doubles as the search input: a wrapper that looks like an input,
+   containing a real <input> and a chevron. Click anywhere in the wrapper to
+   focus the input and open the popover. */
+.ds-combobox__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: text;
+  transition: border-color var(--transition-fast);
+}
+.ds-combobox__trigger:hover {
+  border-color: var(--color-border-strong);
+}
+.ds-combobox__trigger--open,
+.ds-combobox__trigger:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+.ds-combobox__trigger--invalid { border-color: var(--color-status-danger); }
+.ds-combobox__trigger--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--color-surface-alt);
+}
+.ds-combobox__input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+.ds-combobox__input::placeholder {
+  color: var(--color-text-subtle);
+}
+.ds-combobox__input:disabled {
+  cursor: not-allowed;
+}
+.ds-combobox__chevron { color: var(--color-text-muted); font-size: 11px; flex-shrink: 0; }
+
+.ds-combobox__popover {
+  width: var(--combobox-popover-width, 240px);
+  min-width: 200px;
+  max-width: 90vw;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ds-combobox__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.ds-combobox__option {
+  display: flex;
+  flex-direction: column;
+  padding: 6px var(--space-3);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.ds-combobox__option--active { background: var(--color-surface-alt); }
+.ds-combobox__option--selected {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 500;
+}
+.ds-combobox__option--disabled {
+  cursor: not-allowed;
+  color: var(--color-text-subtle);
+}
+.ds-combobox__option-label { line-height: 1.4; }
+.ds-combobox__option-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+.ds-combobox__empty {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--color-text-subtle);
+  font-size: 12px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-combobox__trigger { min-height: var(--touch-target-min); font-size: 14px; }
+  .ds-combobox__option { min-height: var(--touch-target-min); justify-content: center; }
+}
+
+/* ── MultiCombobox ───────────────────────────────────────────────────────── */
+/* Same field shape as Combobox, but the wrapper hosts inline chips for each
+   selected value alongside the search input — one cohesive control. */
+.ds-multi-combobox__trigger {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  min-height: 38px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: text;
+  transition: border-color var(--transition-fast);
+}
+.ds-multi-combobox__trigger:hover {
+  border-color: var(--color-border-strong);
+}
+.ds-multi-combobox__trigger--open,
+.ds-multi-combobox__trigger:focus-within {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+.ds-multi-combobox__trigger--invalid { border-color: var(--color-status-danger); }
+.ds-multi-combobox__trigger--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background: var(--color-surface-alt);
+}
+.ds-multi-combobox__input {
+  flex: 1;
+  min-width: 60px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+}
+.ds-multi-combobox__input::placeholder {
+  color: var(--color-text-subtle);
+}
+.ds-multi-combobox__chevron { color: var(--color-text-muted); font-size: 11px; flex-shrink: 0; }
+
+.ds-multi-combobox__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 12px;
+  background: var(--color-accent-soft, var(--color-surface-alt));
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+.ds-multi-combobox__chip-label { line-height: 1.4; }
+.ds-multi-combobox__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.ds-multi-combobox__chip-remove:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.ds-multi-combobox__popover {
+  width: var(--combobox-popover-width, 240px);
+  min-width: 200px;
+  max-width: 90vw;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ds-multi-combobox__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.ds-multi-combobox__option {
+  display: flex;
+  flex-direction: column;
+  padding: 6px var(--space-3);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.ds-multi-combobox__option--active { background: var(--color-surface-alt); }
+.ds-multi-combobox__option--disabled {
+  cursor: not-allowed;
+  color: var(--color-text-subtle);
+}
+.ds-multi-combobox__option-label { line-height: 1.4; }
+.ds-multi-combobox__option-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+.ds-multi-combobox__empty {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--color-text-subtle);
+  font-size: 12px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-multi-combobox__trigger { min-height: var(--touch-target-min); font-size: 14px; }
+  .ds-multi-combobox__option { min-height: var(--touch-target-min); justify-content: center; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════ */
+/* Phase DS-4 — Table primitive + DataView                                  */
+/* ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Table primitive ─────────────────────────────────────────────────────── */
+.ds-table-shell {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.ds-table-shell--embedded {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ds-table {
+  overflow-x: auto;
+  flex: 1 1 auto;
+}
+/* DS-4-3 virtualization: explicit scroll container with sticky-thead anchor. */
+.ds-table--virtualized {
+  overflow: auto;
+  flex: 0 0 auto;
+}
+.ds-table__spacer { background: transparent; }
+.ds-table__spacer td { background: transparent; }
+.ds-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+}
+
+.ds-table thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ds-table__head--sticky thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Resizable header — drag handle on right edge. */
+.ds-table__th--resizable {
+  position: relative;
+  padding-right: 14px;
+}
+.ds-table__resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+.ds-table__resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  right: 2px;
+  width: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+.ds-table__resize-handle:hover::after,
+.ds-table__resize-handle:active::after {
+  background: var(--color-accent);
+  opacity: 1;
+}
+.ds-table__th-content {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+/* Truncated cell — JS hover tooltip handles the full text. */
+.ds-table__cell--truncate {
+  position: relative;
+  overflow: hidden;
+}
+.ds-table__cell--truncate .ds-table__cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-table__cell-tooltip {
+  position: fixed;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-dropdown);
+  padding: 6px 10px;
+  font-size: 12px;
+  max-width: min(360px, 90vw);
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+/* Optional second header row for bespoke filter cells (escape-hatch surfaces). */
+.ds-table__filter-row th {
+  background: var(--color-surface);
+  padding: 2px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  /* Establish a clipping context for any inner inputs that visually overflow
+     a narrow cell (e.g. native date-input calendar indicator on a 40px-wide
+     column). NOT applied as `overflow: hidden` because that would also clip
+     absolutely-positioned filter dropdowns (text autocomplete / multiselect).
+     The clipping is delegated to `.inline-filter-clip` on individual filter
+     wrappers that don't need to overflow. */
+}
+.ds-table__head--sticky .ds-table__filter-row th {
+  top: 32px;
+}
+/* DS-4-5 — inline cell edit. Display mode is a transparent button with a
+   subtle dashed border on hover; edit mode shows the input + spinner +
+   inline error. */
+.ds-editable-cell {
+  display: block;
+  width: 100%;
+  text-align: inherit;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-control);
+  padding: 1px 4px;
+  margin: -1px -4px;
+  cursor: text;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.ds-editable-cell:hover {
+  border-color: var(--color-border);
+  background: var(--color-surface-alt);
+}
+.ds-editable-cell:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+.ds-editable-cell__placeholder {
+  color: var(--color-text-subtle);
+}
+.ds-editable-cell--editing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.ds-editable-cell--editing .ds-input,
+.ds-editable-cell--editing .ds-select {
+  padding: 4px 6px;
+  font-size: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.ds-editable-cell__error {
+  font-size: 10px;
+  color: var(--color-status-danger);
+  margin-left: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+/* Wrap class used by DateFilter / NumericFilter / NoFilter inside narrow
+   columns so their native picker indicators don't bleed into adjacent
+   filter cells. Dropdown filters (TextFilter, MultiSelectFilter) MUST NOT
+   use this — they need overflow: visible for the dropdown. */
+.inline-filter-clip {
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+/* Within a clipped narrow filter cell, hide the native calendar indicator
+   (it doesn't fit alongside the placeholder) and make the input itself
+   clickable to open the picker. The whole input becomes the trigger. */
+.inline-filter-clip input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.inline-filter-clip input[type="date"] {
+  cursor: pointer;
+}
+
+.ds-table tbody td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.ds-table tbody tr:last-child td { border-bottom: none; }
+
+.ds-table__row--interactive {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+.ds-table__row--interactive:hover { background: var(--color-surface-alt); }
+.ds-table__row--interactive:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
+.ds-table--compact thead th { padding: 4px var(--space-2); font-size: 10px; }
+.ds-table--compact tbody td { padding: 4px var(--space-2); font-size: 12px; }
+
+.ds-table--embedded thead th { background: transparent; }
+.ds-table--embedded tbody td { padding: 4px 6px; }
+
+.ds-table__toolbar {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.ds-table__footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+.ds-table__empty {
+  padding: var(--space-6);
+  text-align: center;
+}
+
+/* ── DataView toolbar / filter row / footer ──────────────────────────────── */
+.ds-data-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* DS DescriptionList — key-value pairs as semantic `<dl>` markup.
+   Replaces the inline `<table>` + `<tr><td>label</td><td>value</td></tr>` pattern. */
+.ds-description-list {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+.ds-description-list--compact {
+  font-size: 13px;
+  gap: 4px var(--space-3);
+}
+.ds-description-list__row {
+  display: contents;
+}
+.ds-description-list__label {
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 0;
+}
+.ds-description-list__value {
+  margin: 0;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+/* DS-4-4 — mobile card-list mode. Below `sm` (≤640px), DataView swaps the
+   table for a card-per-row list. Each card has a title + label/value field
+   stack + optional actions row. Tap the body to fire `onRowClick`. */
+.ds-data-view--cards {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.ds-data-view__card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ds-data-view__card {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+}
+.ds-data-view__card:last-child {
+  border-bottom: none;
+}
+.ds-data-view__card-body {
+  padding: var(--space-3);
+}
+.ds-data-view__card-body--interactive {
+  cursor: pointer;
+  min-height: var(--touch-target-min);
+  transition: background-color var(--transition-fast);
+}
+.ds-data-view__card-body--interactive:hover,
+.ds-data-view__card-body--interactive:focus-visible {
+  background: var(--color-surface-alt);
+}
+.ds-data-view__card-body--interactive:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+.ds-data-view__card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+.ds-data-view__card-fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 4px var(--space-2);
+  font-size: 12px;
+}
+.ds-data-view__card-field {
+  display: contents;
+}
+.ds-data-view__card-label {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin: 0;
+}
+.ds-data-view__card-value {
+  color: var(--color-text);
+  margin: 0;
+  word-break: break-word;
+}
+.ds-data-view__card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 0 var(--space-3) var(--space-3);
+}
+.ds-data-view__empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.ds-data-view__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+.ds-data-view__toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+.ds-data-view__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ds-data-view__filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 var(--space-1);
+  background: var(--color-surface-alt);
+  border-top: 1px solid var(--color-border);
+}
+.ds-data-view__filter-cell {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  min-width: 0;
+}
+.ds-data-view__filter-cell .ds-input,
+.ds-data-view__filter-cell .ds-select {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.ds-data-view__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+.ds-data-view__sort-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+.ds-data-view__sort-indicator {
+  font-size: 9px;
+  color: var(--color-text-subtle);
+}
+
+.ds-data-view__row-actions {
+  display: inline-flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.ds-data-view__bulk-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.ds-data-view__bulk-count {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.ds-data-view__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.ds-data-view__footer-summary { font-variant-numeric: tabular-nums; }
+.ds-data-view__pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ds-data-view__pagination-status {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.ds-data-view__page-size {
+  width: auto;
+  padding: 2px 6px;
+  font-size: 11px;
+  min-height: auto;
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  .ds-data-view__filter-cell .ds-input,
+  .ds-data-view__filter-cell .ds-select {
+    font-size: 13px;
+    padding: 6px 10px;
+    min-height: var(--touch-target-min);
+  }
+}
+
+/* ── Timeline ────────────────────────────────────────────────────────────── */
+.ds-timeline {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.ds-timeline__track {
+  position: relative;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: visible;
+}
+.ds-timeline__track--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ds-timeline__empty {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+.ds-timeline__hgrid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--color-border);
+  opacity: 0.3;
+  z-index: 0;
+}
+.ds-timeline__vgrid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--color-border);
+  opacity: 0.5;
+  z-index: 0;
+}
+.ds-timeline__conflict {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-status-danger);
+  opacity: 0.08;
+  z-index: 1;
+  pointer-events: none;
+}
+.ds-timeline__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--color-accent);
+  z-index: 3;
+  pointer-events: none;
+}
+.ds-timeline__overline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--color-status-danger);
+  opacity: 0.5;
+  z-index: 1;
+  pointer-events: none;
+}
+.ds-timeline__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left-width: 3px;
+  border-left-style: solid;
+  z-index: 4;
+  pointer-events: none;
+}
+.ds-timeline__marker-label {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ds-timeline__bar,
+.ds-timeline__block {
+  position: absolute;
+  border: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 2px 2px 0 0;
+  min-width: 3px;
+  cursor: pointer;
+  z-index: 2;
+  outline: none;
+  transition: opacity 100ms, outline 100ms, box-shadow 100ms;
+}
+.ds-timeline__bar {
+  top: 1px;
+  bottom: 1px;
+  border-radius: 2px;
+}
+.ds-timeline__bar:hover,
+.ds-timeline__bar:focus-visible,
+.ds-timeline__bar[data-hovered],
+.ds-timeline__block:hover,
+.ds-timeline__block:focus-visible,
+.ds-timeline__block[data-hovered] {
+  opacity: 1 !important;
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+  z-index: 5;
+}
+.ds-timeline--xs .ds-timeline__block {
+  border-radius: 1px;
+}
+.ds-timeline__months {
+  position: relative;
+  margin-top: 2px;
+}
+.ds-timeline__month-label {
+  position: absolute;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.ds-timeline__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+.ds-timeline__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: capitalize;
+}
+.ds-timeline__legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.ds-timeline__legend-swatch--line {
+  width: 2px;
+  height: 10px;
+  border-radius: 0;
+  background: var(--color-accent);
+}
+
+/* Hover card lives in portal root, outside .ds-timeline */
+.ds-timeline__hovercard {
+  position: fixed;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-dropdown);
+  width: 240px;
+  font-size: 12px;
+  pointer-events: none;
+}
+.ds-timeline__hovercard-body {
+  padding: var(--space-2) var(--space-3);
+}
+.ds-timeline__hovercard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 6px;
+}
+.ds-timeline__hovercard-title {
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-timeline__hovercard-rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px var(--space-2);
+  margin: 0;
+}
+.ds-timeline__hovercard-rows dt {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.ds-timeline__hovercard-rows dd {
+  margin: 0;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.ds-timeline__hovercard-sub {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+}
+.ds-timeline__hovercard-bad {
+  color: var(--color-status-danger);
+  font-weight: 600;
+}
+.ds-timeline__hovercard-cta {
+  border-top: 1px solid var(--color-border);
+  padding: 6px var(--space-3);
+  font-size: 11px;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-timeline__bar,
+  .ds-timeline__block {
+    transition: none;
+  }
+}

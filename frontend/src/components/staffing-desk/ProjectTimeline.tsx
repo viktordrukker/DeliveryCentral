@@ -12,6 +12,7 @@ import {
   type BenchPerson,
 } from '@/lib/api/staffing-desk';
 import { getCurrentWeekMonday, addDays } from '@/lib/workload-helpers';
+import { Button, Table, type Column } from '@/components/ds';
 
 /* ── Styles ── */
 const S_TABLE: React.CSSProperties = { borderCollapse: 'collapse', fontSize: 11 };
@@ -165,46 +166,46 @@ export function ProjectTimeline({ filters }: Props): JSX.Element {
         {/* Horizon selector */}
         <div style={{ display: 'inline-flex', border: '1px solid var(--color-border)', borderRadius: 6, overflow: 'hidden' }}>
           {HORIZONS.map((h) => (
-            <button
+            <Button
               key={h.weeks}
-              type="button"
-              className={horizon === h.weeks ? 'button button--sm' : 'button button--secondary button--sm'}
+              size="sm"
+              variant={horizon === h.weeks ? 'primary' : 'secondary'}
               style={{ borderRadius: 0, border: 'none', minWidth: 40 }}
               onClick={() => setHorizon(h.weeks)}
             >
               {h.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Week navigation */}
         <div style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
-          <button className="button button--secondary button--sm" onClick={goPrev} type="button">&laquo;</button>
-          <button className="button button--secondary button--sm" onClick={goToToday} type="button">Today</button>
-          <button className="button button--secondary button--sm" onClick={goNext} type="button">&raquo;</button>
+          <Button variant="secondary" size="sm" onClick={goPrev} type="button">&laquo;</Button>
+          <Button variant="secondary" size="sm" onClick={goToToday} type="button">Today</Button>
+          <Button variant="secondary" size="sm" onClick={goNext} type="button">&raquo;</Button>
         </div>
 
         {/* Simulate toggle */}
         <div style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
-          <button
-            className={simMode ? 'button button--sm' : 'button button--secondary button--sm'}
+          <Button
+            size="sm"
+            variant={simMode ? 'primary' : 'secondary'}
             onClick={() => setSimMode((v) => !v)}
-            type="button"
             style={{ fontSize: 10 }}
           >
             {simMode ? 'Simulating' : 'Simulate'}
-          </button>
+          </Button>
           {simulations.length > 0 && (
             <>
               <span style={{ fontSize: 10, color: 'var(--color-status-warning)', fontWeight: 600 }}>
                 {simulations.length} move{simulations.length > 1 ? 's' : ''}
               </span>
-              <button className="button button--sm" type="button" style={{ fontSize: 10 }} onClick={() => { /* TODO: apply simulations as real assignments */ }}>
+              <Button variant="primary" size="sm" type="button" style={{ fontSize: 10 }} onClick={() => { /* TODO: apply simulations as real assignments */ }}>
                 Apply
-              </button>
-              <button className="button button--secondary button--sm" type="button" style={{ fontSize: 10 }} onClick={discardSimulations}>
+              </Button>
+              <Button variant="secondary" size="sm" type="button" style={{ fontSize: 10 }} onClick={discardSimulations}>
                 Discard
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -214,113 +215,91 @@ export function ProjectTimeline({ filters }: Props): JSX.Element {
         </span>
       </div>
 
+      {/* Month header strip (rendered above the table because DS Table doesn't support multi-row thead) */}
+      <div style={{ overflowX: 'auto', display: 'flex', alignItems: 'stretch', borderBottom: '2px solid var(--color-border)', background: 'var(--color-surface-alt)' }}>
+        <div style={{ ...S_NAME_TH, borderBottom: 'none', position: 'sticky', left: 0, zIndex: 4, display: 'flex', alignItems: 'center' }}>
+          Project
+        </div>
+        {monthHeaders.map((m, i) => (
+          <div
+            key={`${m.label}-${i}`}
+            style={{ ...S_MONTH_TH, flex: `0 0 ${m.span * 56}px`, minWidth: m.span * 56 }}
+          >
+            {m.label}
+          </div>
+        ))}
+      </div>
+
       {/* Grid */}
       <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 280px)' }}>
-        <table style={S_TABLE}>
-          {/* Month header row */}
-          <thead>
-            <tr>
-              <th style={{ ...S_NAME_TH, borderBottom: '2px solid var(--color-border)' }} rowSpan={2}>Project</th>
-              {monthHeaders.map((m, i) => (
-                <th key={`${m.label}-${i}`} colSpan={m.span} style={S_MONTH_TH}>{m.label}</th>
-              ))}
-            </tr>
-            {/* Week header row */}
-            <tr>
-              {data.weeks.map((w) => (
-                <th key={w} style={{ ...S_TH, background: w === currentWeek ? 'var(--color-accent-bg)' : 'var(--color-surface-alt)' }}>
-                  {format(new Date(w), 'dd MMM')}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Project rows */}
-            {data.projects.map((proj) => (
-              <ProjectRow
-                key={proj.projectId}
-                project={proj}
-                weeks={data.weeks}
-                currentWeek={currentWeek}
-                simMode={simMode}
-                simulations={simulations.filter((s) => s.toProjectId === proj.projectId)}
-                removedSims={simulations.filter((s) => s.fromProjectId === proj.projectId)}
-                onDragStart={setDragItem}
-                onDrop={handleSimDrop}
-                onRemoveSim={removeSimulation}
-              />
-            ))}
-
-            {/* Bench row */}
-            {data.bench.length > 0 && (
-              <tr>
-                <td style={{ ...S_NAME_TD, background: 'var(--color-surface-alt)', fontStyle: 'italic', color: 'var(--color-text-muted)' }}>
+        <Table
+          variant="compact"
+          columns={[
+            {
+              key: 'project',
+              title: <span style={{ visibility: 'hidden' }}>Project</span>,
+              cellStyle: S_NAME_TD,
+              getValue: (proj) => proj.projectName,
+              render: (proj) => (
+                <>
+                  <div>{proj.projectName}</div>
+                  <div style={{ fontSize: 9, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 1 }}>
+                    <span style={{ color: 'var(--color-status-active)' }}>{proj.totalAssignments} assigned</span>
+                    {proj.totalOpenRequests > 0 && (
+                      <span style={{ color: 'var(--color-status-warning)', marginLeft: 6 }}>{proj.totalOpenRequests} open</span>
+                    )}
+                  </div>
+                </>
+              ),
+            },
+            ...data.weeks.map((w) => ({
+              key: `wk-${w}`,
+              title: <span style={{ background: w === currentWeek ? 'var(--color-accent-bg)' : undefined, padding: '2px 4px', display: 'inline-block', minWidth: 50 }}>{format(new Date(w), 'dd MMM')}</span>,
+              align: 'center' as const,
+              cellStyle: { padding: 0, minWidth: 54, verticalAlign: 'top' as const },
+              render: (proj: ProjectTimelineRow) => {
+                const wd = proj.weekData.find((d) => d.weekStart === w);
+                const weekSims = simulations.filter((s) => s.toProjectId === proj.projectId && s.weekStart === w);
+                const weekRemoved = simulations.filter((s) => s.fromProjectId === proj.projectId && s.weekStart === w);
+                return (
+                  <WeekCell
+                    data={wd}
+                    isCurrent={w === currentWeek}
+                    simMode={simMode}
+                    simBlocks={weekSims}
+                    removedPersonIds={new Set(weekRemoved.map((s) => s.personId))}
+                    projectId={proj.projectId}
+                    weekStart={w}
+                    onDragStart={setDragItem}
+                    onDrop={handleSimDrop}
+                    onRemoveSim={removeSimulation}
+                  />
+                );
+              },
+            })),
+          ] as Column<ProjectTimelineRow>[]}
+          rows={data.projects}
+          getRowKey={(proj) => proj.projectId}
+          footer={
+            data.bench.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'stretch', borderTop: '2px solid var(--color-border)', background: 'var(--color-surface-alt)' }}>
+                <div style={{ ...S_NAME_TD, background: 'var(--color-surface-alt)', fontStyle: 'italic', color: 'var(--color-text-muted)', position: 'sticky', left: 0, zIndex: 1, minWidth: 180 }}>
                   Bench ({data.bench.length})
                   <div style={{ fontSize: 9, fontWeight: 400 }}>Available &lt;20% alloc</div>
-                </td>
-                {data.weeks.map((w, wi) => (
-                  <td key={w} style={{ ...S_CELL, background: wi === 0 ? 'var(--color-surface-alt)' : undefined }}>
-                    {wi === 0 && data.bench.slice(0, 8).map((b) => (
-                      <div key={b.personId} style={S_BENCH_BLOCK} title={`${b.personName}: ${b.availablePercent}% free — ${b.skills.join(', ')}`}>
-                        {b.personName.split(' ')[0]} {b.availablePercent}%
-                      </div>
-                    ))}
-                  </td>
-                ))}
-              </tr>
-            )}
-          </tbody>
-        </table>
+                </div>
+                <div style={{ flex: 1, padding: '2px 4px' }}>
+                  {data.bench.slice(0, 8).map((b) => (
+                    <div key={b.personId} style={S_BENCH_BLOCK} title={`${b.personName}: ${b.availablePercent}% free — ${b.skills.join(', ')}`}>
+                      {b.personName.split(' ')[0]} {b.availablePercent}%
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : undefined
+          }
+        />
       </div>
     </div>
-  );
-}
-
-/* ── Project row ── */
-
-function ProjectRow({ project, weeks, currentWeek, simMode, simulations, removedSims, onDragStart, onDrop, onRemoveSim }: {
-  currentWeek: string;
-  onDragStart: (item: { personId: string; personName: string; allocationPercent: number; fromProjectId: string; weekStart: string }) => void;
-  onDrop: (toProjectId: string, weekStart: string) => void;
-  onRemoveSim: (id: string) => void;
-  project: ProjectTimelineRow;
-  removedSims: SimulatedMove[];
-  simMode: boolean;
-  simulations: SimulatedMove[];
-  weeks: string[];
-}): JSX.Element {
-  return (
-    <tr>
-      <td style={S_NAME_TD}>
-        <div>{project.projectName}</div>
-        <div style={{ fontSize: 9, color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 1 }}>
-          <span style={{ color: 'var(--color-status-active)' }}>{project.totalAssignments} assigned</span>
-          {project.totalOpenRequests > 0 && (
-            <span style={{ color: 'var(--color-status-warning)', marginLeft: 6 }}>{project.totalOpenRequests} open</span>
-          )}
-        </div>
-      </td>
-      {weeks.map((w) => {
-        const wd = project.weekData.find((d) => d.weekStart === w);
-        const weekSims = simulations.filter((s) => s.weekStart === w);
-        const weekRemoved = removedSims.filter((s) => s.weekStart === w);
-        return (
-          <WeekCell
-            key={w}
-            data={wd}
-            isCurrent={w === currentWeek}
-            simMode={simMode}
-            simBlocks={weekSims}
-            removedPersonIds={new Set(weekRemoved.map((s) => s.personId))}
-            projectId={project.projectId}
-            weekStart={w}
-            onDragStart={onDragStart}
-            onDrop={onDrop}
-            onRemoveSim={onRemoveSim}
-          />
-        );
-      })}
-    </tr>
   );
 }
 
@@ -346,8 +325,8 @@ function WeekCell({ data, isCurrent, simMode, simBlocks, removedPersonIds, proje
     : undefined;
 
   return (
-    <td
-      style={{ ...S_CELL, background: bg }}
+    <div
+      style={{ background: bg, padding: '2px 2px', minHeight: 32 }}
       onDragOver={simMode ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
       onDragLeave={simMode ? () => setDragOver(false) : undefined}
       onDrop={simMode ? () => { setDragOver(false); onDrop(projectId, weekStart); } : undefined}
@@ -396,6 +375,6 @@ function WeekCell({ data, isCurrent, simMode, simBlocks, removedPersonIds, proje
           {r.role.slice(0, 8)} {r.allocationPercent}%
         </div>
       ))}
-    </td>
+    </div>
   );
 }

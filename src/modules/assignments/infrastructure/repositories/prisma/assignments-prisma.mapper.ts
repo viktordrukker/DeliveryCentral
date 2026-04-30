@@ -1,6 +1,9 @@
 import { AssignmentApproval } from '@src/modules/assignments/domain/entities/assignment-approval.entity';
 import { AssignmentHistory } from '@src/modules/assignments/domain/entities/assignment-history.entity';
-import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
+import {
+  ProjectAssignment,
+  AssignmentSlaStageValue,
+} from '@src/modules/assignments/domain/entities/project-assignment.entity';
 import { AllocationPercent } from '@src/modules/assignments/domain/value-objects/allocation-percent';
 import { ApprovalState } from '@src/modules/assignments/domain/value-objects/approval-state';
 import {
@@ -16,13 +19,19 @@ interface PrismaProjectAssignmentRecord {
   cancellationReason: string | null;
   id: string;
   notes: string | null;
+  onboardingDate?: Date | null;
   onHoldCaseId: string | null;
   onHoldReason: string | null;
   personId: string;
   projectId: string;
   rejectionReason: string | null;
+  rejectionReasonCode?: string | null;
   requestedAt: Date;
   requestedByPersonId: string | null;
+  requiresDirectorApproval?: boolean | null;
+  slaBreachedAt?: Date | null;
+  slaDueAt?: Date | null;
+  slaStage?: string | null;
   staffingRequestId: string | null;
   staffingRole: string;
   status: AssignmentStatusValue;
@@ -53,8 +62,10 @@ interface PrismaAssignmentHistoryRecord {
 }
 
 const VALID_STATUS_VALUES = new Set<AssignmentStatusValue>([
+  'DRAFT',
   'CREATED',
   'PROPOSED',
+  'IN_REVIEW',
   'REJECTED',
   'BOOKED',
   'ONBOARDING',
@@ -117,13 +128,19 @@ export class AssignmentsPrismaMapper {
         archivedAt: record.archivedAt ?? undefined,
         cancellationReason: record.cancellationReason ?? undefined,
         notes: record.notes ?? undefined,
+        onboardingDate: record.onboardingDate ?? undefined,
         onHoldCaseId: record.onHoldCaseId ?? undefined,
         onHoldReason: record.onHoldReason ?? undefined,
         personId: record.personId,
         projectId: record.projectId,
         rejectionReason: record.rejectionReason ?? undefined,
+        rejectionReasonCode: record.rejectionReasonCode ?? undefined,
         requestedAt: record.requestedAt,
         requestedByPersonId: record.requestedByPersonId ?? undefined,
+        requiresDirectorApproval: record.requiresDirectorApproval ?? false,
+        slaBreachedAt: record.slaBreachedAt ?? undefined,
+        slaDueAt: record.slaDueAt ?? undefined,
+        slaStage: (record.slaStage ?? undefined) as AssignmentSlaStageValue | undefined,
         staffingRequestId: record.staffingRequestId ?? undefined,
         staffingRole: record.staffingRole,
         status: mapAssignmentStatus(record.status),

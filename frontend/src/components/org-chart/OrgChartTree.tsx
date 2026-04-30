@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { OrgChartNode } from '@/lib/api/org-chart';
 import { ORG_UNIT_TYPE_LABELS, humanizeEnum } from '@/lib/labels';
+import { Button } from '@/components/ds';
 
 interface OrgChartTreeProps {
   nodes: OrgChartNode[];
@@ -31,13 +32,9 @@ function OrgChartTreeNode({ node }: { node: OrgChartNode }): JSX.Element {
             <div className="org-tree__meta">{node.code} · {humanizeEnum(node.kind, ORG_UNIT_TYPE_LABELS)}</div>
           </div>
           {hasChildren ? (
-            <button
-              className="button button--secondary"
-              onClick={() => setExpanded((current) => !current)}
-              type="button"
-            >
+            <Button variant="secondary" onClick={() => setExpanded((current) => !current)} type="button">
               {expanded ? 'Collapse' : 'Expand'}
-            </button>
+            </Button>
           ) : null}
         </div>
 
@@ -62,9 +59,9 @@ function OrgChartTreeNode({ node }: { node: OrgChartNode }): JSX.Element {
                     {member.lineManagerName ?? 'No line manager'}
                   </div>
                 </div>
-                <Link className="button button--secondary" to={`/people/${member.id}`}>
+                <Button as={Link} variant="secondary" to={`/people/${member.id}`}>
                   View person
-                </Link>
+                </Button>
               </div>
             ))}
           </div>

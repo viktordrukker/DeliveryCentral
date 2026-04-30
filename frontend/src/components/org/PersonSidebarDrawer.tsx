@@ -4,6 +4,7 @@ import type { OrgPersonEnriched } from '@/features/org-chart/useOrgChart';
 import { usePersonSidebarData } from '@/features/org-chart/usePersonSidebarData';
 import { useAuth } from '@/app/auth-context';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button } from '@/components/ds';
 
 const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#00838f', '#558b2f'];
 function avatarBg(name: string): string {
@@ -45,7 +46,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
       {/* Header */}
       <div className="org-chart-drawer__header">
         <h3>{person.displayName}</h3>
-        <button className="button button--ghost button--sm" onClick={onClose} type="button">{'\u2715'}</button>
+        <Button variant="secondary" size="sm" onClick={onClose} type="button">{'\u2715'}</Button>
       </div>
 
       {/* Identity */}
@@ -219,21 +220,16 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
 
       {/* Action links */}
       <div className="person-drawer__actions">
-        <button
-          className="button button--primary"
-          onClick={() => navigate(`/people/${person.id}`)}
-          type="button"
-          style={{ width: '100%' }}
-        >
+        <Button variant="primary" onClick={() => navigate(`/people/${person.id}`)} type="button" style={{ width: '100%' }}>
           View Profile
-        </button>
-        <Link className="button button--secondary" to={`/assignments?personId=${person.id}`} style={{ width: '100%', textAlign: 'center' }}>
+        </Button>
+        <Button as={Link} variant="secondary" to={`/assignments?personId=${person.id}`} style={{ width: '100%', textAlign: 'center' }}>
           View Assignments
-        </Link>
+        </Button>
         {person.primaryEmail && (
-          <a className="button button--secondary" href={`mailto:${person.primaryEmail}`} style={{ width: '100%', textAlign: 'center' }}>
+          <Button as="a" variant="secondary" href={`mailto:${person.primaryEmail}`} style={{ width: '100%', textAlign: 'center' }}>
             Send Email
-          </a>
+          </Button>
         )}
       </div>
     </div>

@@ -9,6 +9,7 @@ import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchApprovalQueue } from '@/lib/api/timesheets';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
 import { exportToXlsx } from '@/lib/export';
+import { Button, DatePicker } from '@/components/ds';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -63,35 +64,22 @@ function ReportCard({ description, hasDateRange, name, onGenerate }: ReportCardP
         <div style={{ alignItems: 'flex-end', display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
           <label className="field" style={{ flex: '0 0 auto' }}>
             <span className="field__label">From</span>
-            <input
-              className="field__control"
-              onChange={(e) => setFrom(e.target.value)}
-              type="date"
-              value={from}
-            />
+            <DatePicker onValueChange={(value) => setFrom(value)} value={from}
+ />
           </label>
           <label className="field" style={{ flex: '0 0 auto' }}>
             <span className="field__label">To</span>
-            <input
-              className="field__control"
-              onChange={(e) => setTo(e.target.value)}
-              type="date"
-              value={to}
-            />
+            <DatePicker onValueChange={(value) => setTo(value)} value={to}
+ />
           </label>
         </div>
       ) : null}
 
       {error ? <ErrorState description={error} /> : null}
 
-      <button
-        className="button button--primary"
-        disabled={loading}
-        onClick={handleGenerate}
-        type="button"
-      >
+      <Button variant="primary" disabled={loading} onClick={handleGenerate} type="button">
         {loading ? 'Generating…' : 'Generate & Download'}
-      </button>
+      </Button>
     </div>
   );
 }

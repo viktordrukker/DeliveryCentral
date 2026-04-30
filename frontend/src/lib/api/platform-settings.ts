@@ -77,6 +77,19 @@ export interface EvidenceManagementSettings {
   retentionDays: number | null;
 }
 
+export interface TimeEntrySettings {
+  benchEnabled: boolean;
+  benchCategories: string[];
+  copyPreviousEnabled: boolean;
+  autoFillFromAssignments: boolean;
+  gapDetectionEnabled: boolean;
+  standardHoursPerDay: number;
+  allowSubmitInAdvance: boolean;
+  allowFutureDateEntry: boolean;
+  maxHoursPerDay: number;
+  maxHoursPerWeek: number;
+}
+
 export interface PlatformSettingsResponse {
   capitalisation: CapitalisationSettings;
   dashboard: DashboardSettings;
@@ -88,6 +101,7 @@ export interface PlatformSettingsResponse {
   security: SecuritySettings;
   sso: SsoOidcSettings;
   timesheets: TimesheetsSettings;
+  timeEntry: TimeEntrySettings;
 }
 
 export interface UpdateSettingResponse {
@@ -112,4 +126,18 @@ export async function updatePlatformSetting(
 
   window.dispatchEvent(new CustomEvent('platform-settings:updated', { detail: { key, value } }));
   return response;
+}
+
+export interface PlatformSettingRow {
+  key: string;
+  value: unknown;
+  isDefault: boolean;
+}
+
+export async function fetchPlatformSettingsByPrefix(
+  prefix: string,
+): Promise<PlatformSettingRow[]> {
+  return httpGet<PlatformSettingRow[]>(
+    `/admin/platform-settings/by-prefix/${encodeURIComponent(prefix)}`,
+  );
 }

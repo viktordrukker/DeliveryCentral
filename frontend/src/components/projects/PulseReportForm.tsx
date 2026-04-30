@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { Button } from '@/components/ds';
 import type { ProjectShape } from '@/features/project-pulse/shape-defaults';
 import {
   type PulseQuadrantKey,
@@ -191,8 +192,10 @@ export function PulseReportForm({
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 600, paddingTop: 6 }}>{QUADRANT_LABELS[key]}</span>
-              <button
+              <Button
                 aria-label={`${QUADRANT_LABELS[key]} RAG — ${rag ?? 'unset'}`}
+                variant="secondary"
+                size="sm"
                 disabled={!canEdit || saving}
                 onClick={() => patchDim(key, { rag: nextRag(entry.rag) })}
                 style={{
@@ -201,7 +204,6 @@ export function PulseReportForm({
                   border: ragMeta ? `1px solid ${ragMeta.tone}` : '1px dashed var(--color-border)',
                   borderRadius: 'var(--radius-control)',
                   color: ragMeta ? 'var(--color-surface)' : 'var(--color-text-muted)',
-                  cursor: canEdit && !saving ? 'pointer' : 'not-allowed',
                   display: 'flex',
                   fontSize: 12,
                   fontWeight: 700,
@@ -212,7 +214,7 @@ export function PulseReportForm({
                 type="button"
               >
                 {ragMeta ? ragMeta.label : '—'}
-              </button>
+              </Button>
               <textarea
                 aria-label={`${QUADRANT_LABELS[key]} optional note`}
                 className="field__control"
@@ -231,30 +233,15 @@ export function PulseReportForm({
 
       {canEdit ? (
         <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-          <button
-            className="button--project-detail"
-            disabled={saving || !dirty}
-            onClick={() => void save(false)}
-            type="button"
-          >
-            {saving ? 'Saving...' : 'Save draft'}
-          </button>
-          <button
-            className="button--project-detail button--primary"
-            disabled={saving}
-            onClick={() => void save(true)}
-            type="button"
-          >
+          <Button variant="secondary" disabled={saving || !dirty} onClick={() => void save(false)}>
+            {saving ? 'Saving…' : 'Save draft'}
+          </Button>
+          <Button variant="primary" disabled={saving} onClick={() => void save(true)}>
             Submit
-          </button>
-          <button
-            className="button--project-detail"
-            disabled={saving}
-            onClick={() => setDetailedOpen(true)}
-            type="button"
-          >
+          </Button>
+          <Button variant="secondary" disabled={saving} onClick={() => setDetailedOpen(true)}>
             + Report detailed status{detailedCount > 0 ? ` (${detailedCount})` : ''}
-          </button>
+          </Button>
         </div>
       ) : null}
 

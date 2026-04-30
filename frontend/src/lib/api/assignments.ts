@@ -14,6 +14,10 @@ export interface AssignmentDirectoryItem {
   project: AssignmentPartySummary;
   staffingRole: string;
   startDate: string;
+  slaStage?: string | null;
+  slaDueAt?: string | null;
+  slaBreachedAt?: string | null;
+  requiresDirectorApproval?: boolean;
 }
 
 export interface AssignmentDirectoryResponse {
@@ -284,6 +288,8 @@ export type AssignmentStatusValue =
   | 'CANCELLED'
   | 'COMPLETED'
   | 'CREATED'
+  | 'DRAFT'
+  | 'IN_REVIEW'
   | 'ONBOARDING'
   | 'ON_HOLD'
   | 'PROPOSED'
@@ -295,8 +301,10 @@ export interface TransitionAssignmentRequest {
 }
 
 const TRANSITION_PATH: Record<AssignmentStatusValue, string> = {
-  CREATED: 'propose',
+  DRAFT: 'draft',
+  CREATED: 'submit',
   PROPOSED: 'propose',
+  IN_REVIEW: 'in-review',
   REJECTED: 'reject',
   BOOKED: 'book',
   ONBOARDING: 'onboarding',
@@ -378,4 +386,32 @@ export async function cancelAssignment(
   request: TransitionAssignmentRequest,
 ): Promise<ProjectAssignmentResponse> {
   return transitionAssignment(id, 'CANCELLED', request);
+}
+
+// Slate API moved to lib/api/staffing-requests.ts — slate hangs off the
+// staffing request now; pick creates the assignment at BOOKED.
+
+export async function directorApproveAssignment(
+  assignmentId: string,
+  reason?: string,
+): Promise<ProjectAssignmentResponse> {
+  return httpPost<ProjectAssignmentResponse, { reason?: string }>(
+    `/assignments/${assignmentId}/director-approve`,
+    reason ? { reason } : {},
+  );
+}
+
+export interface ScheduleOnboardingRequest {
+  /** ISO date — when the person starts onboarding paperwork. Must be ≤ assignment start date. */
+  onboardingDate: string;
+}
+
+export async function scheduleOnboarding(
+  assignmentId: string,
+  request: ScheduleOnboardingRequest,
+): Promise<ProjectAssignmentResponse> {
+  return httpPost<ProjectAssignmentResponse, ScheduleOnboardingRequest>(
+    `/assignments/${assignmentId}/onboarding`,
+    request,
+  );
 }

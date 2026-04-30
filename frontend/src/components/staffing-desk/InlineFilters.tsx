@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, DatePicker } from '@/components/ds';
 
 const S_INPUT: React.CSSProperties = {
   width: '100%', fontSize: 10, padding: '3px 5px', border: '1px solid var(--color-border)',
@@ -116,13 +117,15 @@ export function MultiSelectFilter({ options, selected, onChange }: MultiSelectFi
 
   return (
     <div style={S_WRAP} ref={wrapRef}>
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         style={{ ...S_INPUT, cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         onClick={() => setOpen((v) => !v)}
       >
         {label} ▾
-      </button>
+      </Button>
       {open && (
         <div style={S_DROPDOWN}>
           {/* Search input at top */}
@@ -169,9 +172,19 @@ export function MultiSelectFilter({ options, selected, onChange }: MultiSelectFi
 interface DateFilterProps { value: string; onChange: (v: string) => void }
 
 export function DateFilter({ value, onChange }: DateFilterProps): JSX.Element {
+  // Native calendar indicator is CSS-hidden in narrow filter cells (see
+  // `.inline-filter-clip input[type="date"]::-webkit-calendar-picker-indicator`
+  // in `ds.css`). Click anywhere on the input to open the picker — uses
+  // `HTMLInputElement.showPicker()` which is supported in Chromium 99+ /
+  // Firefox 101+ / Safari 16+. Older browsers degrade to "click and type".
   return (
-    <div style={S_WRAP}>
-      <input style={{ ...S_INPUT, fontSize: 9 }} type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    <div style={S_WRAP} className="inline-filter-clip">
+      <DatePicker
+        style={{ ...S_INPUT, fontSize: 9 }}
+        value={value}
+        onValueChange={(value) => onChange(value)}
+        onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+      />
     </div>
   );
 }
@@ -182,7 +195,7 @@ interface NumericFilterProps { value: string; onChange: (v: string) => void; pla
 
 export function NumericFilter({ value, onChange, placeholder }: NumericFilterProps): JSX.Element {
   return (
-    <div style={S_WRAP}>
+    <div style={S_WRAP} className="inline-filter-clip">
       <input style={{ ...S_INPUT, fontFamily: 'monospace' }} type="text" placeholder={placeholder ?? '80 or >=80'} value={value} onChange={(e) => onChange(e.target.value)} title="Type a number for exact match, or use < > <= >= (e.g. >=80)" />
     </div>
   );
@@ -191,7 +204,7 @@ export function NumericFilter({ value, onChange, placeholder }: NumericFilterPro
 /* ── No filter ── */
 
 export function NoFilter(): JSX.Element {
-  return <div style={{ ...S_WRAP, height: 22 }} />;
+  return <div style={{ ...S_WRAP, height: 22 }} className="inline-filter-clip" />;
 }
 
 /* ── Numeric filter parser ── */

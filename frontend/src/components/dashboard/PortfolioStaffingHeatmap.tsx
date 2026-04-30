@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Table, type Column } from '@/components/ds';
 import type { PortfolioHeatmapResponse, PortfolioHeatmapRow } from '@/lib/api/portfolio-dashboard';
 
 interface PortfolioStaffingHeatmapProps {
@@ -132,49 +133,65 @@ export function PortfolioStaffingHeatmap({ data }: PortfolioStaffingHeatmapProps
       </div>
 
       {/* Heatmap table */}
-      <div style={{ overflowX: 'auto' }}>
-        <table className="dash-compact-table" style={{ fontSize: 11 }}>
-          <caption className="sr-only">Portfolio staffing heatmap — projects with timeline, staffing bars, and weekly RAG indicators</caption>
-          <thead>
-            <tr>
-              <th scope="col" style={{ position: 'sticky', left: 0, background: 'var(--color-surface-alt)', zIndex: 2, minWidth: 160 }}>Project</th>
-              <th scope="col" style={{ width: 45, textAlign: 'center' }}>RAG</th>
-              <th scope="col" style={{ width: 60, textAlign: 'right' }}>Staff</th>
-              <th scope="col" style={{ width: 50, textAlign: 'right' }}>Fill</th>
-              <th scope="col" style={{ minWidth: 300 }}>
+      <Table
+        variant="compact"
+        columns={[
+          {
+            key: 'project',
+            title: 'Project',
+            getValue: (r) => r.projectName,
+            headerClassName: 'ds-heatmap-sticky-header',
+            cellStyle: { position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, minWidth: 160 },
+            render: (r) => (
+              <>
+                <Link to={`/projects/${r.projectId}/dashboard`} style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}>
+                  {r.projectName}
+                </Link>
+                {r.clientName ? <div style={{ fontSize: 9, color: 'var(--color-text-muted)' }}>{r.clientName}</div> : null}
+              </>
+            ),
+          },
+          {
+            key: 'rag',
+            title: 'RAG',
+            align: 'center',
+            width: 45,
+            getValue: (r) => r.currentRag,
+            render: (r) => <StatusBadge status={r.currentRag === 'GREEN' ? 'active' : r.currentRag === 'AMBER' ? 'warning' : 'danger'} label={r.currentRag[0]} variant="chip" />,
+          },
+          {
+            key: 'staff',
+            title: 'Staff',
+            align: 'right',
+            width: 60,
+            getValue: (r) => r.staffCount,
+            render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{r.staffCount}/{r.plannedCount}</span>,
+          },
+          {
+            key: 'fill',
+            title: 'Fill',
+            align: 'right',
+            width: 50,
+            getValue: (r) => r.currentFillRate,
+            render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: RAG_BG[r.currentRag] }}>{r.currentFillRate}%</span>,
+          },
+          {
+            key: 'timeline',
+            title: (
+              <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--color-text-muted)' }}>
                   {data.weekHeaders.map((w) => <span key={w}>{w.slice(5)}</span>)}
                 </div>
                 Timeline
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.rows.map((row) => (
-              <tr key={row.projectId}>
-                <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1 }}>
-                  <Link to={`/projects/${row.projectId}/dashboard`} style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}>
-                    {row.projectName}
-                  </Link>
-                  {row.clientName ? <div style={{ fontSize: 9, color: 'var(--color-text-muted)' }}>{row.clientName}</div> : null}
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <StatusBadge status={row.currentRag === 'GREEN' ? 'active' : row.currentRag === 'AMBER' ? 'warning' : 'danger'} label={row.currentRag[0]} variant="chip" />
-                </td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                  {row.staffCount}/{row.plannedCount}
-                </td>
-                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: RAG_BG[row.currentRag] }}>
-                  {row.currentFillRate}%
-                </td>
-                <td style={{ padding: '4px 8px' }}>
-                  <ProjectTimelineBar row={row} weekHeaders={data.weekHeaders} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </>
+            ),
+            cellStyle: { padding: '4px 8px', minWidth: 300 },
+            render: (r) => <ProjectTimelineBar row={r} weekHeaders={data.weekHeaders} />,
+          },
+        ] as Column<PortfolioHeatmapRow>[]}
+        rows={data.rows}
+        getRowKey={(r) => r.projectId}
+      />
     </div>
   );
 }

@@ -2,12 +2,16 @@ import { BulkAssignmentResponse } from '@/lib/api/assignments';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { SectionCard } from '@/components/common/SectionCard';
+import { Table, type Column } from '@/components/ds';
 
 interface BulkAssignmentResultsProps {
   people: PersonDirectoryItem[];
   projects: ProjectDirectoryItem[];
   result: BulkAssignmentResponse;
 }
+
+type CreatedItem = BulkAssignmentResponse['createdItems'][number];
+type FailedItem = BulkAssignmentResponse['failedItems'][number];
 
 export function BulkAssignmentResults({
   people,
@@ -21,6 +25,21 @@ export function BulkAssignmentResults({
   function getProjectName(projectId: string): string {
     return projects.find((project) => project.id === projectId)?.name ?? projectId;
   }
+
+  const createdColumns: Column<CreatedItem>[] = [
+    { key: 'index', title: 'Item', getValue: (i) => i.index + 1, render: (i) => i.index + 1 },
+    { key: 'person', title: 'Person', getValue: (i) => getPersonName(i.assignment.personId), render: (i) => getPersonName(i.assignment.personId) },
+    { key: 'project', title: 'Project', getValue: (i) => getProjectName(i.assignment.projectId), render: (i) => getProjectName(i.assignment.projectId) },
+    { key: 'status', title: 'Status', getValue: (i) => i.assignment.status, render: (i) => i.assignment.status },
+  ];
+
+  const failedColumns: Column<FailedItem>[] = [
+    { key: 'index', title: 'Item', getValue: (i) => i.index + 1, render: (i) => i.index + 1 },
+    { key: 'person', title: 'Person', getValue: (i) => getPersonName(i.personId), render: (i) => getPersonName(i.personId) },
+    { key: 'project', title: 'Project', getValue: (i) => getProjectName(i.projectId), render: (i) => getProjectName(i.projectId) },
+    { key: 'code', title: 'Code', getValue: (i) => i.code, render: (i) => i.code },
+    { key: 'message', title: 'Message', getValue: (i) => i.message, render: (i) => i.message },
+  ];
 
   return (
     <div className="dictionary-editor">
@@ -47,28 +66,12 @@ export function BulkAssignmentResults({
           {result.createdItems.length === 0 ? (
             <p className="dictionary-editor__copy">No assignments were created in this batch.</p>
           ) : (
-            <div className="data-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Item</th>
-                    <th scope="col">Person</th>
-                    <th scope="col">Project</th>
-                    <th scope="col">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.createdItems.map((item) => (
-                    <tr key={`${item.assignment.id}-${item.index}`}>
-                      <td>{item.index + 1}</td>
-                      <td>{getPersonName(item.assignment.personId)}</td>
-                      <td>{getProjectName(item.assignment.projectId)}</td>
-                      <td>{item.assignment.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              variant="compact"
+              columns={createdColumns}
+              rows={result.createdItems}
+              getRowKey={(i) => `${i.assignment.id}-${i.index}`}
+            />
           )}
         </SectionCard>
 
@@ -76,30 +79,12 @@ export function BulkAssignmentResults({
           {result.failedItems.length === 0 ? (
             <p className="dictionary-editor__copy">No items failed in this batch.</p>
           ) : (
-            <div className="data-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Item</th>
-                    <th scope="col">Person</th>
-                    <th scope="col">Project</th>
-                    <th scope="col">Code</th>
-                    <th scope="col">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.failedItems.map((item) => (
-                    <tr key={`${item.index}-${item.personId}-${item.code}`}>
-                      <td>{item.index + 1}</td>
-                      <td>{getPersonName(item.personId)}</td>
-                      <td>{getProjectName(item.projectId)}</td>
-                      <td>{item.code}</td>
-                      <td>{item.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              variant="compact"
+              columns={failedColumns}
+              rows={result.failedItems}
+              getRowKey={(i) => `${i.index}-${i.personId}-${i.code}`}
+            />
           )}
         </SectionCard>
       </div>

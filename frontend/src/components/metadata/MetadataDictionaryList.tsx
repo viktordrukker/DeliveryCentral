@@ -1,4 +1,5 @@
 import { MetadataDictionarySummary } from '@/lib/api/metadata';
+import { Button } from '@/components/ds';
 
 interface MetadataDictionaryListProps {
   items: MetadataDictionarySummary[];
@@ -14,7 +15,8 @@ export function MetadataDictionaryList({
   return (
     <div className="metadata-list" role="list">
       {items.map((item) => (
-        <button
+        <Button
+          variant="secondary"
           className={`metadata-list__item${item.id === selectedId ? ' metadata-list__item--active' : ''}`}
           key={item.id}
           onClick={() => onSelect(item.id)}
@@ -23,7 +25,7 @@ export function MetadataDictionaryList({
           <div className="metadata-list__header">
             <div>
               <div className="metadata-list__title">{item.displayName}</div>
-              <div className="metadata-list__meta">{item.entityType} · {item.dictionaryKey}</div>
+              <div className="metadata-list__meta">{item.entityType} Â· {item.dictionaryKey}</div>
             </div>
             <span className="scope-card__count">{item.enabledEntryCount}</span>
           </div>
@@ -33,7 +35,7 @@ export function MetadataDictionaryList({
             <span>{item.relatedCustomFieldCount} fields</span>
             <span>{item.workflowUsageCount} workflows</span>
           </div>
-        </button>
+        </Button>
       ))}
     </div>
   );

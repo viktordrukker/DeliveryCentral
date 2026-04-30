@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { DateRangePreset } from '@/components/common/DateRangePreset';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -19,6 +19,7 @@ import { PmOverviewTab } from './pm-tabs/OverviewTab';
 import { PmTimelineTab } from './pm-tabs/TimelineTab';
 import { PmStaffingTab, type OverallocatedPerson } from './pm-tabs/StaffingTab';
 import { PmVarianceTab } from './pm-tabs/VarianceTab';
+import { Button } from '@/components/ds';
 
 const PM_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -81,7 +82,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
             ))}
           </datalist>
         </label>
-        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <TipTrigger />
       </>
     );
@@ -219,12 +220,11 @@ export function ProjectManagerDashboardPage(): JSX.Element {
 
           <RecentActivityRail role="pm" />
 
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
-          </div>
+          <DataFreshness
+            lastFetch={lastFetch}
+            onRefresh={refetch}
+            tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />}
+          />
         </>
       ) : null}
     </PageContainer>

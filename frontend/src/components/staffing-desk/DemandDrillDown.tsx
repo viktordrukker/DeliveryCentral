@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { fetchDemandProfile, type DemandProfileResponse } from '@/lib/api/staffing-desk';
 import { priorityTone } from '@/features/staffing-desk/staffing-desk.types';
+import { Button, Table, type Column } from '@/components/ds';
+import type { SkillGapEntry } from '@/lib/api/staffing-desk';
 
 interface Props {
   onClose: () => void;
@@ -50,7 +52,7 @@ export function DemandDrillDown({ onClose, open, projectId }: Props): JSX.Elemen
       <div style={PANEL}>
         <div style={HEADER}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Open Demand</div>
-          <button className="button button--secondary button--sm" onClick={onClose} type="button">&times;</button>
+          <Button variant="secondary" size="sm" onClick={onClose} type="button">&times;</Button>
         </div>
         <div style={BODY}>
           {loading && <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Loading...</div>}
@@ -76,37 +78,29 @@ export function DemandDrillDown({ onClose, open, projectId }: Props): JSX.Elemen
               {data.skillDemand.length > 0 && (
                 <div style={{ marginBottom: 'var(--space-3)' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-1)' }}>Skill Gap Analysis</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                        <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Skill</th>
-                        <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Needed</th>
-                        <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Available</th>
-                        <th style={{ textAlign: 'right', padding: '4px 8px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Gap</th>
-                        <th style={{ padding: '4px 8px' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.skillDemand.map((s) => (
-                        <tr key={s.skill} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '4px 8px' }}>{s.skill}</td>
-                          <td style={{ padding: '4px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{s.headcountNeeded}</td>
-                          <td style={{ padding: '4px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{s.availableSupply}</td>
-                          <td style={{ padding: '4px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                            {s.gap > 0 ? `−${s.gap}` : s.gap < 0 ? `+${Math.abs(s.gap)}` : '0'}
-                          </td>
-                          <td style={{ padding: '4px 8px' }}>
-                            <StatusBadge
-                              label={s.gap > 0 ? 'Deficit' : s.gap === 0 ? 'Exact' : 'Surplus'}
-                              tone={s.gap > 0 ? 'danger' : s.gap === 0 ? 'warning' : 'active'}
-                              variant="dot"
-                              size="small"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'skill', title: 'Skill', getValue: (s) => s.skill, render: (s) => s.skill },
+                      { key: 'needed', title: 'Needed', align: 'right', getValue: (s) => s.headcountNeeded, render: (s) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.headcountNeeded}</span> },
+                      { key: 'available', title: 'Available', align: 'right', getValue: (s) => s.availableSupply, render: (s) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.availableSupply}</span> },
+                      { key: 'gap', title: 'Gap', align: 'right', getValue: (s) => s.gap, render: (s) => (
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                          {s.gap > 0 ? `−${s.gap}` : s.gap < 0 ? `+${Math.abs(s.gap)}` : '0'}
+                        </span>
+                      ) },
+                      { key: 'status', title: '', render: (s) => (
+                        <StatusBadge
+                          label={s.gap > 0 ? 'Deficit' : s.gap === 0 ? 'Exact' : 'Surplus'}
+                          tone={s.gap > 0 ? 'danger' : s.gap === 0 ? 'warning' : 'active'}
+                          variant="dot"
+                          size="small"
+                        />
+                      ) },
+                    ] as Column<SkillGapEntry>[]}
+                    rows={data.skillDemand}
+                    getRowKey={(s) => s.skill}
+                  />
                 </div>
               )}
 

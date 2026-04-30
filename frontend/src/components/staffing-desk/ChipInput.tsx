@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
+import { IconButton } from '@/components/ds';
+
 /**
  * Multi-select chip input — type values, press Enter or comma to add as chips.
  * Shows as tags/badges that can be removed individually.
@@ -72,7 +74,7 @@ export function ChipInput({ label, placeholder, values, onChange, suggestions }:
         {values.map((v) => (
           <span key={v} style={S_CHIP}>
             {v}
-            <button style={S_REMOVE} onClick={(e) => { e.stopPropagation(); removeValue(v); }} type="button">&times;</button>
+            <IconButton aria-label={`Remove ${v}`} size="sm" style={S_REMOVE} onClick={(e) => { e.stopPropagation(); removeValue(v); }}>×</IconButton>
           </span>
         ))}
         <input

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TabBar } from '@/components/common/TabBar';
@@ -22,6 +22,7 @@ import { HrDataQualityTab } from './hr-tabs/DataQualityTab';
 import { HrRolesTab } from './hr-tabs/RolesTab';
 import { HrLifecycleTab } from './hr-tabs/LifecycleTab';
 import { HrWellbeingTab } from './hr-tabs/WellbeingTab';
+import { Button } from '@/components/ds';
 
 const HR_TABS = [
   { id: 'headcount', label: 'Headcount' },
@@ -122,8 +123,8 @@ export function HrDashboardPage(): JSX.Element {
             ))}
           </datalist>
         </label>
-        <Link className="button button--secondary button--sm" to="/people">Employee directory</Link>
-        <Link className="button button--secondary button--sm" to="/cases">Cases</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/people">Employee directory</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/cases">Cases</Button>
         <TipTrigger />
       </>
     );
@@ -292,12 +293,11 @@ export function HrDashboardPage(): JSX.Element {
 
           <RecentActivityRail role="hr" />
 
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
-          </div>
+          <DataFreshness
+            lastFetch={lastFetch}
+            onRefresh={refetch}
+            tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />}
+          />
         </>
       ) : null}
     </PageContainer>

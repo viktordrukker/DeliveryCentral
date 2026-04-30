@@ -4,6 +4,8 @@ export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Cancelled',
   COMPLETED: 'Completed',
   CREATED: 'Created',
+  DRAFT: 'Draft',
+  IN_REVIEW: 'In review',
   ONBOARDING: 'Onboarding',
   ON_HOLD: 'On-hold',
   OVERRIDE_CREATED: 'Override Created',
@@ -12,8 +14,10 @@ export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const ASSIGNMENT_STATUS_ORDER: readonly string[] = [
+  'DRAFT',
   'CREATED',
   'PROPOSED',
+  'IN_REVIEW',
   'REJECTED',
   'BOOKED',
   'ONBOARDING',

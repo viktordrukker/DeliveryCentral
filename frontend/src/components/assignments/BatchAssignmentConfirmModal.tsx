@@ -1,9 +1,10 @@
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
 import { bulkCreateAssignments, type BulkAssignmentResponse } from '@/lib/api/assignments';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
+import { DatePicker, FormField, FormModal, Input, Select, Table, type Column } from '@/components/ds';
 
 interface BatchAssignmentConfirmModalProps {
   items: AssignmentModalPreFill[];
@@ -12,28 +13,43 @@ interface BatchAssignmentConfirmModalProps {
   open: boolean;
 }
 
-function BatchInner({ items, onCancel, onSuccess }: { items: AssignmentModalPreFill[]; onCancel: () => void; onSuccess: (r: BulkAssignmentResponse) => void }): JSX.Element {
+/**
+ * Phase DS-2-7 Tier C1 — rebuilt on `<FormModal>`. The custom
+ * `confirm-dialog-overlay` markup is gone; the new shell handles backdrop /
+ * focus trap / scroll lock / mobile fullscreen / submit-loading / cancel
+ * dirty-guard. Public API unchanged.
+ */
+export function BatchAssignmentConfirmModal({ items, onCancel, onSuccess, open }: BatchAssignmentConfirmModalProps): JSX.Element {
+  return (
+    <BatchInner items={items} onCancel={onCancel} onSuccess={onSuccess} open={open} />
+  );
+}
+
+function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirmModalProps): JSX.Element {
   const { principal } = useAuth();
   const [staffingRole, setStaffingRole] = useState('');
   const [customRole, setCustomRole] = useState('');
   const [allocationPercent, setAllocationPercent] = useState(100);
   const [startDate, setStartDate] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const actorId = principal?.personId ?? '';
   const effectiveRole = staffingRole === '__custom__' ? customRole : staffingRole;
+  const isDirty = staffingRole !== '' || customRole !== '' || allocationPercent !== 100 || startDate !== '';
+  const submitDisabled =
+    !actorId ||
+    !effectiveRole.trim() ||
+    allocationPercent < 1 ||
+    allocationPercent > 100 ||
+    !startDate;
 
-  async function handleSubmit(e: FormEvent): Promise<void> {
-    e.preventDefault();
+  async function handleSubmit(): Promise<void> {
     if (!actorId) return;
-    if (!effectiveRole.trim()) { setError('Staffing role is required.'); return; }
-    if (allocationPercent < 1 || allocationPercent > 100) { setError('Allocation must be 1–100%.'); return; }
-    if (!startDate) { setError('Start date is required.'); return; }
+    if (!effectiveRole.trim()) { setError('Staffing role is required.'); throw new Error('validation'); }
+    if (allocationPercent < 1 || allocationPercent > 100) { setError('Allocation must be 1–100%.'); throw new Error('validation'); }
+    if (!startDate) { setError('Start date is required.'); throw new Error('validation'); }
 
-    setIsSubmitting(true);
     setError(null);
-
     try {
       const response = await bulkCreateAssignments({
         actorId,
@@ -50,85 +66,77 @@ function BatchInner({ items, onCancel, onSuccess }: { items: AssignmentModalPreF
       setStartDate('');
       onSuccess(response);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Batch creation failed.');
-    } finally {
-      setIsSubmitting(false);
+      const msg = err instanceof Error ? err.message : 'Batch creation failed.';
+      setError(msg);
+      throw err;
     }
   }
 
+  if (items.length === 0) return <></>;
+
   return (
-    <div className="confirm-dialog-overlay" onClick={onCancel}>
-      <div className="confirm-dialog" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-dialog__title">Batch Create Assignments</div>
-
-        <div style={{ background: 'var(--color-status-warning)', color: 'var(--color-surface)', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, marginBottom: 'var(--space-3)' }}>
-          This will create {items.length} assignment{items.length !== 1 ? 's' : ''} in one operation.
-        </div>
-
-        {/* Summary table */}
-        <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 6 }}>
-          <table className="dash-compact-table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th>Person</th>
-                <th>Project</th>
-                <th style={{ textAlign: 'right' }}>Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, i) => (
-                <tr key={i}>
-                  <td style={{ fontWeight: 500 }}>{item.personName}</td>
-                  <td>{item.projectName}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{item.contextHours !== null ? `${item.contextHours}h` : '\u2014'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {error && <div style={{ color: 'var(--color-status-danger)', fontSize: 12, marginBottom: 'var(--space-2)' }}>{error}</div>}
-
-        <form onSubmit={(e) => void handleSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>These fields apply to all {items.length} assignments:</div>
-          <label className="field">
-            <span className="field__label">Staffing Role *</span>
-            <select className="field__control" value={staffingRole} onChange={(e) => setStaffingRole(e.target.value)}>
-              <option value="">Select a role...</option>
-              {STAFFING_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-              <option value="__custom__">Other (custom)</option>
-            </select>
-          </label>
-          {staffingRole === '__custom__' && (
-            <label className="field">
-              <span className="field__label">Custom Role *</span>
-              <input className="field__control" value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Enter custom role" required />
-            </label>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-            <label className="field">
-              <span className="field__label">Allocation % *</span>
-              <input className="field__control" type="number" min={1} max={100} value={allocationPercent} onChange={(e) => setAllocationPercent(Number(e.target.value))} required />
-            </label>
-            <label className="field">
-              <span className="field__label">Start Date *</span>
-              <input className="field__control" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-            </label>
-          </div>
-
-          <div className="confirm-dialog__actions">
-            <button className="button button--secondary" type="button" onClick={onCancel} disabled={isSubmitting}>Cancel</button>
-            <button className="button button--primary" type="submit" disabled={isSubmitting || !actorId}>
-              {isSubmitting ? 'Creating...' : `Create ${items.length} Assignment${items.length !== 1 ? 's' : ''}`}
-            </button>
-          </div>
-        </form>
+    <FormModal
+      open={open}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+      title="Batch Create Assignments"
+      description={`This will create ${items.length} assignment${items.length !== 1 ? 's' : ''} in one operation.`}
+      submitLabel={`Create ${items.length} Assignment${items.length !== 1 ? 's' : ''}`}
+      submitDisabled={submitDisabled}
+      dirty={isDirty}
+      size="md"
+    >
+      <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 6 }}>
+        <Table
+          variant="compact"
+          columns={[
+            { key: 'person', title: 'Person', getValue: (i) => i.personName, render: (i) => <span style={{ fontWeight: 500 }}>{i.personName}</span> },
+            { key: 'project', title: 'Project', getValue: (i) => i.projectName, render: (i) => i.projectName },
+            { key: 'hours', title: 'Hours', align: 'right', getValue: (i) => i.contextHours ?? 0, render: (i) => (
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{i.contextHours !== null ? `${i.contextHours}h` : '—'}</span>
+            ) },
+          ] as Column<AssignmentModalPreFill>[]}
+          rows={items}
+          getRowKey={(_, i) => String(i)}
+        />
       </div>
-    </div>
-  );
-}
 
-export function BatchAssignmentConfirmModal({ items, onCancel, onSuccess, open }: BatchAssignmentConfirmModalProps): JSX.Element | null {
-  if (!open || items.length === 0) return null;
-  return <BatchInner items={items} onCancel={onCancel} onSuccess={onSuccess} />;
+      {error && <div style={{ color: 'var(--color-status-danger)', fontSize: 12, marginBottom: 'var(--space-2)' }}>{error}</div>}
+
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>
+        These fields apply to all {items.length} assignments:
+      </div>
+
+      <FormField label="Staffing Role" required>
+        {(props) => (
+          <Select value={staffingRole} onChange={(e) => setStaffingRole(e.target.value)} {...props}>
+            <option value="">Select a role...</option>
+            {STAFFING_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+            <option value="__custom__">Other (custom)</option>
+          </Select>
+        )}
+      </FormField>
+
+      {staffingRole === '__custom__' && (
+        <FormField label="Custom Role" required>
+          {(props) => (
+            <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} placeholder="Enter custom role" required {...props} />
+          )}
+        </FormField>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
+        <FormField label="Allocation %" required>
+          {(props) => (
+            <Input type="number" min={1} max={100} value={allocationPercent} onChange={(e) => setAllocationPercent(Number(e.target.value))} required {...props} />
+          )}
+        </FormField>
+        <FormField label="Start Date" required>
+          {(props) => (
+            <DatePicker value={startDate} onValueChange={setStartDate} required {...props} />
+          )}
+        </FormField>
+      </div>
+    </FormModal>
+  );
 }

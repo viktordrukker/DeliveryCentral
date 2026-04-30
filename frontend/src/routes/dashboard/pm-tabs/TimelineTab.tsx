@@ -8,6 +8,7 @@ import type {
   ManagedProjectDashboardItem,
   ProjectDashboardAttentionItem,
 } from '@/lib/api/dashboard-project-manager';
+import { Table, type Column } from '@/components/ds';
 
 interface Props {
   managedProjects: ManagedProjectDashboardItem[];
@@ -45,38 +46,19 @@ export function PmTimelineTab({ managedProjects, attentionProjects, onRowClick }
             title="No projects nearing closure"
           />
         ) : (
-          <div style={{ overflow: 'auto' }}>
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Project</th>
-                  <th style={{ width: 140 }}>Reason</th>
-                  <th style={{ width: 200 }}>Detail</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {attentionProjects.map((item) => (
-                  <tr key={item.projectId} style={{ cursor: 'pointer' }} onClick={() => onRowClick(item.projectId)}>
-                    <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{item.projectCode}</td>
-                    <td style={{ fontWeight: 500 }}>{item.projectName}</td>
-                    <td style={{ fontSize: 11 }}>{item.reason}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.detail}</td>
-                    <td>
-                      <Link
-                        to={`/projects/${item.projectId}/dashboard`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 10, color: 'var(--color-accent)' }}
-                      >
-                        Go
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'code', title: 'Code', getValue: (i) => i.projectCode, render: (i) => <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{i.projectCode}</span> },
+              { key: 'name', title: 'Project', getValue: (i) => i.projectName, render: (i) => <span style={{ fontWeight: 500 }}>{i.projectName}</span> },
+              { key: 'reason', title: 'Reason', width: 140, getValue: (i) => i.reason, render: (i) => <span style={{ fontSize: 11 }}>{i.reason}</span> },
+              { key: 'detail', title: 'Detail', width: 200, getValue: (i) => i.detail, render: (i) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{i.detail}</span> },
+              { key: 'go', title: '', width: 40, render: (i) => <Link to={`/projects/${i.projectId}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+            ] as Column<ProjectDashboardAttentionItem>[]}
+            rows={attentionProjects}
+            getRowKey={(i) => i.projectId}
+            onRowClick={(i) => onRowClick(i.projectId)}
+          />
         )}
       </SectionCard>
     </>

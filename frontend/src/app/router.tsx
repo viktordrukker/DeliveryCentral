@@ -50,6 +50,7 @@ import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
+import { ApprovalQueuePage } from '@/routes/assignments/ApprovalQueuePage';
 import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
 import { AssignmentsPage } from '@/routes/assignments/AssignmentsPage';
 import { BulkAssignmentPage } from '@/routes/assignments/BulkAssignmentPage';
@@ -182,12 +183,16 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDashboardRedirect /></RoleGuard>, path: 'projects/:id/dashboard' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentsPage /></RoleGuard>, path: 'assignments' },
   {
-    element: <RoleGuard allowedRoles={ASSIGNMENT_CREATE_ROLES}><CreateAssignmentPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><CreateAssignmentPage /></RoleGuard>,
     path: 'assignments/new',
   },
   {
     element: <RoleGuard allowedRoles={ASSIGNMENT_CREATE_ROLES}><BulkAssignmentPage /></RoleGuard>,
     path: 'assignments/bulk',
+  },
+  {
+    element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><ApprovalQueuePage /></RoleGuard>,
+    path: 'assignments/queue',
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentDetailsPlaceholderPage /></RoleGuard>, path: 'assignments/:id' },
   { element: <AccountSettingsPage />, path: 'settings/account' },

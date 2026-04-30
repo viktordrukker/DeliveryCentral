@@ -195,6 +195,46 @@ services:
       retries: 20
       start_period: 15s
 
+  # Phase DS-1-3 — design-system component playground (Ladle).
+  # Profile-gated so it doesn't start with the default app stack. Run with:
+  #   docker compose --profile ladle up -d ladle
+  # First-time setup (after package.json gained @ladle/react):
+  #   docker compose exec frontend npm install
+  # Reuses the frontend image + the shared frontend-node_modules volume so the
+  # ladle binary is available without a second install.
+  ladle:
+    profiles: ['ladle']
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      LADLE_PORT: ${LADLE_PORT:-61000}
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '${LADLE_PORT:-61000}:${LADLE_PORT:-61000}'
+      # Vite HMR WebSocket — pinned in .ladle/vite.config.ts so the browser
+      # can connect directly to ws://localhost:24678/.
+      - '${LADLE_HMR_PORT:-24678}:${LADLE_HMR_PORT:-24678}'
+    volumes:
+      - ./frontend:/app
+      - frontend-node_modules:/app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    command: sh -c "npm run ladle"
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:${LADLE_PORT:-61000} >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
   mock-data-generator:
     profiles: ['tools']
     build:

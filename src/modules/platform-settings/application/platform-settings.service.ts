@@ -68,6 +68,38 @@ const DEFAULTS: Record<string, unknown> = {
   'timeEntry.autoFillFromAssignments': true,
   'timeEntry.gapDetectionEnabled': true,
   'timeEntry.standardHoursPerDay': 8,
+  'timeEntry.allowSubmitInAdvance': false,
+  'timeEntry.allowFutureDateEntry': false,
+  'timeEntry.maxHoursPerDay': 12,
+  'timeEntry.maxHoursPerWeek': 60,
+  // Workflow Overhaul Phase WO §J — admin-tunable assignment workflow defaults.
+  'assignment.timeToFillTargetDays': 30,
+  'assignment.sla.proposalDays': 2,
+  'assignment.sla.reviewDays': 1,
+  'assignment.sla.approvalDays': 2,
+  'assignment.sla.rmFinalizeDays': 1,
+  'assignment.sla.warningPercents': [50, 75],
+  'assignment.sla.postBreachPercents': [],
+  'assignment.sla.sweepIntervalMinutes': 15,
+  'assignment.directorApproval.allocationPercentMin': 80,
+  'assignment.directorApproval.durationMonthsMin': 12,
+  'assignment.approvalQueue.defaultWindowDays': 30,
+  'assignment.slate.minCandidates': 1,
+  'assignment.slate.maxCandidates': 5,
+  'assignment.slo.approvalP50Hours': 24,
+  'assignment.slo.approvalP95Hours': 72,
+  'assignment.slo.breachRateMaxPercent': 5,
+  'assignment.matching.weights.skill': 25,
+  'assignment.matching.weights.proficiency': 15,
+  'assignment.matching.weights.importance': 15,
+  'assignment.matching.weights.availability': 15,
+  'assignment.matching.weights.recency': 5,
+  'assignment.matching.weights.grade': 10,
+  'assignment.matching.weights.domain': 5,
+  'assignment.matching.weights.language': 3,
+  'assignment.matching.weights.tz': 2,
+  'assignment.matching.weights.cert': 5,
+  'assignment.nudge.cooldownHours': 24,
 };
 
 @Injectable()
@@ -175,8 +207,41 @@ export class PlatformSettingsService {
         autoFillFromAssignments: map['timeEntry.autoFillFromAssignments'] as boolean,
         gapDetectionEnabled: map['timeEntry.gapDetectionEnabled'] as boolean,
         standardHoursPerDay: map['timeEntry.standardHoursPerDay'] as number,
+        allowSubmitInAdvance: map['timeEntry.allowSubmitInAdvance'] as boolean,
+        allowFutureDateEntry: map['timeEntry.allowFutureDateEntry'] as boolean,
+        maxHoursPerDay: map['timeEntry.maxHoursPerDay'] as number,
+        maxHoursPerWeek: map['timeEntry.maxHoursPerWeek'] as number,
       },
     };
+  }
+
+  /**
+   * Returns all platform-setting key/value pairs whose key starts with the
+   * given prefix, falling back to `DEFAULTS[key]` for any key that exists in
+   * the defaults map but hasn't been written to the DB yet. Used by admin
+   * UIs that surface a configurable namespace (e.g. `assignment.*`).
+   */
+  public async getByPrefix(prefix: string): Promise<{ key: string; value: unknown; isDefault: boolean }[]> {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: prefix } },
+    });
+    const seen = new Set(rows.map((r) => r.key));
+    const out: { key: string; value: unknown; isDefault: boolean }[] = rows.map((r) => ({
+      key: r.key,
+      value: r.value,
+      isDefault: false,
+    }));
+    for (const [key, value] of Object.entries(DEFAULTS)) {
+      if (!key.startsWith(prefix)) continue;
+      if (seen.has(key)) continue;
+      out.push({ key, value, isDefault: true });
+    }
+    out.sort((a, b) => a.key.localeCompare(b.key));
+    return out;
+  }
+
+  public defaultFor(key: string): unknown {
+    return DEFAULTS[key] ?? null;
   }
 
   public async updateKey(

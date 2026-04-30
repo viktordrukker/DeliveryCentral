@@ -31,6 +31,7 @@ import {
   fetchCapitalisationReport,
   fetchPeriodLocks,
 } from '@/lib/api/capitalisation';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 type SortKey = 'projectName' | 'capexHours' | 'opexHours' | 'totalHours' | 'capexPercent';
 
@@ -214,12 +215,12 @@ export function CapitalisationPage(): JSX.Element {
       <PageHeader
         actions={
           <div className="flex gap-2">
-            <button className="button button--secondary" onClick={handleExportXlsx} type="button">
+            <Button variant="secondary" onClick={handleExportXlsx} type="button">
               Export XLSX
-            </button>
-            <button className="button button--secondary" onClick={handleExportPdf} type="button">
+            </Button>
+            <Button variant="secondary" onClick={handleExportPdf} type="button">
               Export PDF
-            </button>
+            </Button>
           </div>
         }
         subtitle="CAPEX/OPEX capitalisation breakdown for approved timesheets"
@@ -252,25 +253,21 @@ export function CapitalisationPage(): JSX.Element {
                 <label className="form-label" htmlFor="custom-from">
                   From
                 </label>
-                <input
-                  className="form-control"
-                  id="custom-from"
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  type="date"
-                  value={customFrom}
-                />
+                <DatePicker
+ className="form-control"
+ id="custom-from"
+ onValueChange={(value) => setCustomFrom(value)} value={customFrom}
+ />
               </div>
               <div>
                 <label className="form-label" htmlFor="custom-to">
                   To
                 </label>
-                <input
-                  className="form-control"
-                  id="custom-to"
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  type="date"
-                  value={customTo}
-                />
+                <DatePicker
+ className="form-control"
+ id="custom-to"
+ onValueChange={(value) => setCustomTo(value)} value={customTo}
+ />
               </div>
             </>
           ) : null}
@@ -291,81 +288,52 @@ export function CapitalisationPage(): JSX.Element {
         <>
           {/* CAPEX/OPEX Breakdown Table (8-2-02) */}
           <SectionCard title="CAPEX / OPEX Breakdown by Project">
-            <div className="table-container">
-              <table className="dash-compact-table">
-                <thead>
-                  <tr>
-                    {(
-                      [
-                        ['projectName', 'Project'],
-                        ['capexHours', 'CAPEX Hours'],
-                        ['opexHours', 'OPEX Hours'],
-                        ['totalHours', 'Total Hours'],
-                        ['capexPercent', 'CAPEX %'],
-                      ] as [SortKey, string][]
-                    ).map(([key, label]) => (
-                      <th
-                        key={key}
-                        onClick={() => handleSort(key)}
-                        style={{ cursor: 'pointer' }}
+            <Table
+              variant="compact"
+              columns={(() => {
+                const sortHeader = (key: SortKey, label: string): JSX.Element => (
+                  <span onClick={() => handleSort(key)} style={{ cursor: 'pointer' }}>
+                    {label}{sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : ''}
+                  </span>
+                );
+                return [
+                  { key: 'projectName', title: sortHeader('projectName', 'Project'), getValue: (r) => r.projectName, render: (r) => r.projectName },
+                  { key: 'capexHours', title: sortHeader('capexHours', 'CAPEX Hours'), getValue: (r) => r.capexHours, render: (r) => r.capexHours.toFixed(1) },
+                  { key: 'opexHours', title: sortHeader('opexHours', 'OPEX Hours'), getValue: (r) => r.opexHours, render: (r) => r.opexHours.toFixed(1) },
+                  { key: 'totalHours', title: sortHeader('totalHours', 'Total Hours'), getValue: (r) => r.totalHours, render: (r) => r.totalHours.toFixed(1) },
+                  { key: 'capexPercent', title: sortHeader('capexPercent', 'CAPEX %'), getValue: (r) => r.capexPercent, render: (r) => `${r.capexPercent.toFixed(1)}%` },
+                  { key: 'alert', title: 'Alert', render: (r) => (
+                    r.alert ? (
+                      <span
+                        style={{
+                          background: 'var(--color-danger-bg)',
+                          border: '1px solid var(--color-status-danger)',
+                          borderRadius: 4,
+                          color: 'var(--color-status-danger)',
+                          fontSize: 12,
+                          padding: '2px 6px',
+                        }}
+                        title={`Deviation: ${((r.deviation ?? 0) * 100).toFixed(1)}%`}
                       >
-                        {label}
-                        {sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : ''}
-                      </th>
-                    ))}
-                    <th>Alert</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRows.map((row) => (
-                    <tr key={row.projectId}>
-                      <td>{row.projectName}</td>
-                      <td>{row.capexHours.toFixed(1)}</td>
-                      <td>{row.opexHours.toFixed(1)}</td>
-                      <td>{row.totalHours.toFixed(1)}</td>
-                      <td>{row.capexPercent.toFixed(1)}%</td>
-                      <td>
-                        {row.alert ? (
-                          <span
-                            style={{
-                              background: '#fef2f2',
-                              border: '1px solid #fca5a5',
-                              borderRadius: 4,
-                              color: '#dc2626',
-                              fontSize: 12,
-                              padding: '2px 6px',
-                            }}
-                            title={`Deviation: ${((row.deviation ?? 0) * 100).toFixed(1)}%`}
-                          >
-                            ⚠ Deviation
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>
-                      <strong>Totals</strong>
-                    </td>
-                    <td>
-                      <strong>{report.totals.capexHours.toFixed(1)}</strong>
-                    </td>
-                    <td>
-                      <strong>{report.totals.opexHours.toFixed(1)}</strong>
-                    </td>
-                    <td>
-                      <strong>{report.totals.totalHours.toFixed(1)}</strong>
-                    </td>
-                    <td>
-                      <strong>{report.totals.capexPercent.toFixed(1)}%</strong>
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                        ⚠ Deviation
+                      </span>
+                    ) : null
+                  ) },
+                ] as Column<CapitalisationProjectRow>[];
+              })()}
+              rows={sortedRows}
+              getRowKey={(r) => r.projectId}
+              footer={
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', padding: 'var(--space-2) var(--space-3)', fontWeight: 600, background: 'var(--color-surface-alt)' }}>
+                  <span>Totals</span>
+                  <span>{report.totals.capexHours.toFixed(1)}</span>
+                  <span>{report.totals.opexHours.toFixed(1)}</span>
+                  <span>{report.totals.totalHours.toFixed(1)}</span>
+                  <span>{report.totals.capexPercent.toFixed(1)}%</span>
+                  <span />
+                </div>
+              }
+            />
           </SectionCard>
 
           {/* Stacked bar chart (8-2-03) */}
@@ -415,34 +383,25 @@ export function CapitalisationPage(): JSX.Element {
               <label className="form-label" htmlFor="lock-from">
                 Lock From
               </label>
-              <input
-                className="form-control"
-                id="lock-from"
-                onChange={(e) => setLockFrom(e.target.value)}
-                type="date"
-                value={lockFrom}
-              />
+              <DatePicker
+ className="form-control"
+ id="lock-from"
+ onValueChange={(value) => setLockFrom(value)} value={lockFrom}
+ />
             </div>
             <div>
               <label className="form-label" htmlFor="lock-to">
                 Lock To
               </label>
-              <input
-                className="form-control"
-                id="lock-to"
-                onChange={(e) => setLockTo(e.target.value)}
-                type="date"
-                value={lockTo}
-              />
+              <DatePicker
+ className="form-control"
+ id="lock-to"
+ onValueChange={(value) => setLockTo(value)} value={lockTo}
+ />
             </div>
-            <button
-              className="button button--primary"
-              disabled={lockSubmitting}
-              onClick={() => void handleLockPeriod()}
-              type="button"
-            >
+            <Button variant="primary" disabled={lockSubmitting} onClick={() => void handleLockPeriod()} type="button">
               Lock Period
-            </button>
+            </Button>
           </div>
 
           {lockError ? <p className="text-red-600 text-sm mb-3">{lockError}</p> : null}
@@ -452,36 +411,22 @@ export function CapitalisationPage(): JSX.Element {
           ) : locks.length === 0 ? (
             <p className="text-sm text-gray-500">No locked periods.</p>
           ) : (
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Locked By</th>
-                  <th>Locked At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {locks.map((lock) => (
-                  <tr key={lock.id}>
-                    <td>{lock.periodFrom}</td>
-                    <td>{lock.periodTo}</td>
-                    <td>{lock.lockedBy}</td>
-                    <td>{formatDateShort(lock.lockedAt)}</td>
-                    <td>
-                      <button
-                        className="button button--danger"
-                        onClick={() => void handleUnlock(lock.id)}
-                        type="button"
-                      >
-                        Unlock
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'from', title: 'From', getValue: (l) => l.periodFrom, render: (l) => l.periodFrom },
+                { key: 'to', title: 'To', getValue: (l) => l.periodTo, render: (l) => l.periodTo },
+                { key: 'by', title: 'Locked By', getValue: (l) => l.lockedBy, render: (l) => l.lockedBy },
+                { key: 'at', title: 'Locked At', getValue: (l) => l.lockedAt, render: (l) => formatDateShort(l.lockedAt) },
+                { key: 'actions', title: 'Actions', render: (l) => (
+                  <Button variant="danger" size="sm" onClick={() => void handleUnlock(l.id)} type="button">
+                    Unlock
+                  </Button>
+                ) },
+              ] as Column<PeriodLock>[]}
+              rows={locks}
+              getRowKey={(l) => l.id}
+            />
           )}
         </SectionCard>
       ) : null}

@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -15,8 +14,9 @@ import {
   fetchVendors,
   updateVendor,
 } from '@/lib/api/vendors';
+import { Button, DataView, type Column } from '@/components/ds';
 
-const columns: DataTableColumn<VendorDto>[] = [
+const columns: Column<VendorDto>[] = [
   { key: 'name', title: 'Name', render: (v) => <span style={{ fontWeight: 500 }}>{v.name}</span> },
   { key: 'contactName', title: 'Contact', render: (v) => v.contactName || '\u2014' },
   { key: 'contactEmail', title: 'Email', render: (v) => v.contactEmail || '\u2014' },
@@ -85,9 +85,9 @@ export function VendorRegistryPage(): JSX.Element {
     <PageContainer testId="vendor-registry-page">
       <PageHeader
         actions={
-          <button className="button button--sm" onClick={() => setShowForm(true)} type="button">
+          <Button variant="primary" size="sm" onClick={() => setShowForm(true)} type="button">
             Add Vendor
-          </button>
+          </Button>
         }
         eyebrow="Admin"
         subtitle="Manage external vendors and subcontractors available for project staffing."
@@ -131,8 +131,8 @@ export function VendorRegistryPage(): JSX.Element {
               </label>
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-              <button className="button button--primary" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Vendor'}</button>
-              <button className="button button--secondary" type="button" onClick={() => setShowForm(false)}>Cancel</button>
+              <Button variant="primary" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Vendor'}</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
             </div>
           </form>
         </SectionCard>
@@ -144,7 +144,8 @@ export function VendorRegistryPage(): JSX.Element {
 
       {!isLoading && vendors.length > 0 ? (
         <SectionCard title={`Vendors (${vendors.length})`}>
-          <DataTable
+          <DataView<VendorDto>
+            pageSizeOptions={[1000]}
             caption="Vendor registry"
             columns={[
               ...columns,
@@ -153,19 +154,19 @@ export function VendorRegistryPage(): JSX.Element {
                 title: '',
                 width: 90,
                 render: (v) => (
-                  <button
-                    className={`button button--sm ${v.isActive ? 'button--secondary' : 'button--primary'}`}
+                  <Button
+                    size="sm"
+                    variant={v.isActive ? 'secondary' : 'primary'}
                     onClick={(e) => { e.stopPropagation(); void handleToggleActive(v); }}
-                    type="button"
                     style={{ fontSize: 10 }}
                   >
                     {v.isActive ? 'Deactivate' : 'Activate'}
-                  </button>
+                  </Button>
                 ),
               },
             ]}
             getRowKey={(v) => v.id}
-            items={vendors}
+            rows={vendors}
             variant="compact"
           />
         </SectionCard>

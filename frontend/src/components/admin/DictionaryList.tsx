@@ -1,4 +1,5 @@
 import { MetadataDictionarySummary } from '@/lib/api/metadata';
+import { Button } from '@/components/ds';
 
 interface DictionaryListProps {
   items: MetadataDictionarySummary[];
@@ -14,7 +15,8 @@ export function DictionaryList({
   return (
     <div className="dictionary-list">
       {items.map((item) => (
-        <button
+        <Button
+          variant="secondary"
           className={`dictionary-list__item${
             item.id === selectedId ? ' dictionary-list__item--active' : ''
           }`}
@@ -27,7 +29,7 @@ export function DictionaryList({
             <span className="dictionary-list__count">{item.entryCount}</span>
           </div>
           <p className="dictionary-list__meta">{item.dictionaryKey}</p>
-        </button>
+        </Button>
       ))}
     </div>
   );

@@ -10,6 +10,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { MetadataDictionaryList } from '@/components/metadata/MetadataDictionaryList';
 import { MetadataEntryPanel } from '@/components/metadata/MetadataEntryPanel';
 import { useMetadataAdmin } from '@/features/metadata/useMetadataAdmin';
+import { Button } from '@/components/ds';
 
 export function MetadataAdminPage(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -68,9 +69,9 @@ export function MetadataAdminPage(): JSX.Element {
           <div className="metadata-admin-grid">
             <SectionCard title="Dictionaries">
               <div className="section-card__actions-row section-card__actions-row--start">
-                <button className="button button--secondary" disabled type="button">
+                <Button variant="secondary" disabled type="button">
                   Add dictionary (coming soon)
-                </button>
+                </Button>
               </div>
               <MetadataDictionaryList
                 items={state.dictionaries}
@@ -81,12 +82,12 @@ export function MetadataAdminPage(): JSX.Element {
 
             <SectionCard title={selectedSummary ? selectedSummary.displayName : 'Dictionary Details'}>
               <div className="section-card__actions-row section-card__actions-row--start">
-                <button className="button button--secondary" disabled type="button">
+                <Button variant="secondary" disabled type="button">
                   Edit dictionary (coming soon)
-                </button>
-                <button className="button button--secondary" disabled type="button">
+                </Button>
+                <Button variant="secondary" disabled type="button">
                   Manage entries (coming soon)
-                </button>
+                </Button>
               </div>
 
               {state.isLoadingDetails ? <LoadingState label="Loading dictionary details..." variant="skeleton" skeletonType="table" /> : null}

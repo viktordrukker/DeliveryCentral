@@ -14,6 +14,7 @@ import {
   useDictionaryAdmin,
 } from '@/features/admin/useDictionaryAdmin';
 import { DictionaryEntryFormValues } from '@/components/admin/DictionaryEntryForm';
+import { Button } from '@/components/ds';
 
 export function DictionariesPage(): JSX.Element {
   const [values, setValues] = useState<DictionaryEntryFormValues>(
@@ -41,9 +42,9 @@ export function DictionariesPage(): JSX.Element {
     <PageContainer viewport>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/admin">
+          <Button as={Link} variant="secondary" to="/admin">
             Back to admin panel
-          </Link>
+          </Button>
         }
         eyebrow="Administration"
         subtitle="Manage metadata-backed person dictionaries through the existing metadata APIs. The page renders whatever dictionaries the API exposes and posts new entries using the selected dictionary key."

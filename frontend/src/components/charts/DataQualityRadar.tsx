@@ -1,3 +1,5 @@
+import { Table, type Column } from '@/components/ds';
+
 interface DataQualityRadarProps {
   scores: {
     assignmentPct: number;
@@ -8,8 +10,13 @@ interface DataQualityRadarProps {
   };
 }
 
+interface SignalRow {
+  label: string;
+  value: number;
+}
+
 export function DataQualityRadar({ scores }: DataQualityRadarProps): JSX.Element {
-  const rows = [
+  const rows: SignalRow[] = [
     { label: 'Manager', value: scores.managerPct },
     { label: 'Org Unit', value: scores.orgUnitPct },
     { label: 'Assignments', value: scores.assignmentPct },
@@ -17,22 +24,17 @@ export function DataQualityRadar({ scores }: DataQualityRadarProps): JSX.Element
     { label: 'Resource Pool', value: scores.resourcePoolPct },
   ];
 
+  const columns: Column<SignalRow>[] = [
+    { key: 'label', title: 'Signal', getValue: (r) => r.label, render: (r) => r.label },
+    { key: 'value', title: 'Coverage', align: 'right', getValue: (r) => r.value, render: (r) => `${r.value}%` },
+  ];
+
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Signal</th>
-          <th>Coverage</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.label}>
-            <td>{row.label}</td>
-            <td>{row.value}%</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Table
+      variant="compact"
+      columns={columns}
+      rows={rows}
+      getRowKey={(r) => r.label}
+    />
   );
 }

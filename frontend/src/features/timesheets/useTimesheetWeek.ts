@@ -60,8 +60,14 @@ export function useTimesheetWeek(weekStart: string): UseTimesheetWeekResult {
 
         setWeek((prev) => {
           if (!prev) return prev;
+          const targetBench = entry.benchCategory ?? '';
+          const targetWork = entry.workLabel ?? '';
           const existingIdx = prev.entries.findIndex(
-            (e) => e.projectId === entry.projectId && e.date === entry.date,
+            (e) =>
+              e.projectId === entry.projectId &&
+              e.date === entry.date &&
+              (e.benchCategory ?? '') === targetBench &&
+              (e.workLabel ?? '') === targetWork,
           );
           const newEntries =
             existingIdx >= 0

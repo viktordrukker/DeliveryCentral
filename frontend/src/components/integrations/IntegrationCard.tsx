@@ -1,5 +1,6 @@
 import { AdminIntegrationSummary } from '@/lib/api/admin';
 import { IntegrationProviderKey } from '@/features/admin/useIntegrationAdmin';
+import { Button } from '@/components/ds';
 
 import { StatusIndicator } from './StatusIndicator';
 
@@ -15,7 +16,8 @@ export function IntegrationCard({
   onSelect,
 }: IntegrationCardProps): JSX.Element {
   return (
-    <button
+    <Button
+      variant="secondary"
       className={`dictionary-list__item${isActive ? ' dictionary-list__item--active' : ''}`}
       onClick={() => onSelect(integration.provider as IntegrationProviderKey)}
       type="button"
@@ -27,6 +29,6 @@ export function IntegrationCard({
       <p className="dictionary-list__meta">
         {integration.lastSyncSummary ?? integration.lastProjectSyncSummary ?? 'No sync summary yet.'}
       </p>
-    </button>
+    </Button>
   );
 }

@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { formatDate } from '@/lib/format-date';
+import { Table, type Column } from '@/components/ds';
 import type {
   HrAtRiskEmployee,
   HrLifecycleActivityItem,
@@ -17,6 +18,11 @@ interface Props {
   onPersonClick: (personId: string) => void;
 }
 
+interface LifecycleRow extends HrLifecycleActivityItem {
+  kind: 'joined' | 'deactivated';
+  rowKey: string;
+}
+
 export function HrLifecycleTab({
   atRisk,
   openCaseSubjects,
@@ -24,6 +30,40 @@ export function HrLifecycleTab({
   recentDeactivationActivity,
   onPersonClick,
 }: Props): JSX.Element {
+  const lifecycleRows: LifecycleRow[] = [
+    ...recentJoinerActivity.map((i) => ({ ...i, kind: 'joined' as const, rowKey: `join-${i.personId}` })),
+    ...recentDeactivationActivity.map((i) => ({ ...i, kind: 'deactivated' as const, rowKey: `deact-${i.personId}` })),
+  ];
+
+  const atRiskColumns: Column<HrAtRiskEmployee & { _index: number }>[] = [
+    { key: 'index', title: '#', width: 28, getValue: (e) => e._index, render: (e) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{e._index}</span> },
+    { key: 'name', title: 'Name', getValue: (e) => e.displayName, render: (e) => <span style={{ fontWeight: 500 }}>{e.displayName}</span> },
+    { key: 'email', title: 'Email', getValue: (e) => e.primaryEmail ?? '', render: (e) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{e.primaryEmail ?? '—'}</span> },
+    { key: 'risk', title: 'Risk Factors', render: (e) => (
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {e.riskFactors.map((factor) => (
+          <span key={factor} style={{ background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: 3, fontSize: 10, fontWeight: 600, padding: '1px 6px' }}>{factor}</span>
+        ))}
+      </div>
+    ) },
+    { key: 'go', title: '', width: 40, render: (e) => (
+      <Link to={`/people/${e.personId}`} onClick={(ev) => ev.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
+    ) },
+  ];
+
+  const lifecycleColumns: Column<LifecycleRow>[] = [
+    { key: 'type', title: 'Type', width: 90, getValue: (r) => r.kind === 'joined' ? 'Joined' : 'Deactivated', render: (r) => (
+      <span style={{ color: r.kind === 'joined' ? 'var(--color-status-active)' : 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>
+        {r.kind === 'joined' ? 'Joined' : 'Deactivated'}
+      </span>
+    ) },
+    { key: 'name', title: 'Name', getValue: (r) => r.displayName, render: (r) => <span style={{ fontWeight: 500 }}>{r.displayName}</span> },
+    { key: 'date', title: 'Date', width: 100, getValue: (r) => r.occurredAt, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(r.occurredAt)}</span> },
+    { key: 'go', title: '', width: 40, render: (r) => (
+      <Link to={`/people/${r.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
+    ) },
+  ];
+
   return (
     <>
       {atRisk.length > 0 && (
@@ -32,43 +72,14 @@ export function HrLifecycleTab({
           <div className="dash-action-section__header">
             <span className="dash-action-section__title">At-Risk Employees ({atRisk.length})</span>
           </div>
-          <div style={{ overflow: 'auto' }} data-testid="at-risk-employees-panel">
-            <table className="dash-compact-table" style={{ minWidth: 500 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 28 }}>#</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Risk Factors</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {atRisk.map((emp, i) => (
-                  <tr key={emp.personId} style={{ cursor: 'pointer' }} onClick={() => onPersonClick(emp.personId)}>
-                    <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{i + 1}</td>
-                    <td style={{ fontWeight: 500 }}>{emp.displayName}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{emp.primaryEmail ?? '\u2014'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {emp.riskFactors.map((factor) => (
-                          <span key={factor} style={{ background: 'var(--color-status-danger)', color: '#fff', borderRadius: 3, fontSize: 10, fontWeight: 600, padding: '1px 6px' }}>{factor}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <Link
-                        to={`/people/${emp.personId}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 10, color: 'var(--color-accent)' }}
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div data-testid="at-risk-employees-panel">
+            <Table
+              variant="compact"
+              columns={atRiskColumns}
+              rows={atRisk.map((e, i) => ({ ...e, _index: i + 1 }))}
+              getRowKey={(e) => e.personId}
+              onRowClick={(e) => onPersonClick(e.personId)}
+            />
           </div>
         </div>
       )}
@@ -82,7 +93,7 @@ export function HrLifecycleTab({
             {openCaseSubjects.slice(0, 20).map((id) => (
               <span
                 key={id}
-                style={{ display: 'inline-block', background: 'var(--color-status-danger)', color: '#fff', borderRadius: 3, padding: '2px 8px', fontSize: 11, fontFamily: 'monospace' }}
+                style={{ display: 'inline-block', background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: 3, padding: '2px 8px', fontSize: 11, fontFamily: 'monospace' }}
               >
                 {id.slice(0, 8)}...
               </span>
@@ -105,53 +116,16 @@ export function HrLifecycleTab({
           ],
         }}
       >
-        {recentJoinerActivity.length === 0 && recentDeactivationActivity.length === 0 ? (
+        {lifecycleRows.length === 0 ? (
           <EmptyState description="No joiners or deactivations recorded recently." title="No recent lifecycle activity" />
         ) : (
-          <table className="dash-compact-table">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>Type</th>
-                <th>Name</th>
-                <th style={{ width: 100 }}>Date</th>
-                <th style={{ width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentJoinerActivity.map((item) => (
-                <tr key={`join-${item.personId}`} style={{ cursor: 'pointer' }} onClick={() => onPersonClick(item.personId)}>
-                  <td><span style={{ color: 'var(--color-status-active)', fontWeight: 600, fontSize: 11 }}>Joined</span></td>
-                  <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.occurredAt)}</td>
-                  <td>
-                    <Link
-                      to={`/people/${item.personId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: 10, color: 'var(--color-accent)' }}
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {recentDeactivationActivity.map((item) => (
-                <tr key={`deact-${item.personId}`} style={{ cursor: 'pointer' }} onClick={() => onPersonClick(item.personId)}>
-                  <td><span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>Deactivated</span></td>
-                  <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.occurredAt)}</td>
-                  <td>
-                    <Link
-                      to={`/people/${item.personId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ fontSize: 10, color: 'var(--color-accent)' }}
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={lifecycleColumns}
+            rows={lifecycleRows}
+            getRowKey={(r) => r.rowKey}
+            onRowClick={(r) => onPersonClick(r.personId)}
+          />
         )}
       </SectionCard>
     </>

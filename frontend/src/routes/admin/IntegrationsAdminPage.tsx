@@ -17,6 +17,7 @@ import { M365ReconciliationPanel } from '@/components/integrations/M365Reconcili
 import { RadiusReconciliationPanel } from '@/components/integrations/RadiusReconciliationPanel';
 import { StatusIndicator } from '@/components/integrations/StatusIndicator';
 import { SyncButton } from '@/components/integrations/SyncButton';
+import { Button } from '@/components/ds';
 
 export function IntegrationsAdminPage(): JSX.Element {
   const state = useIntegrationAdmin();
@@ -28,9 +29,9 @@ export function IntegrationsAdminPage(): JSX.Element {
     <PageContainer viewport>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/admin">
+          <Button as={Link} variant="secondary" to="/admin">
             Back to admin panel
-          </Link>
+          </Button>
         }
         eyebrow="Administration"
         subtitle="Review provider health and trigger supported sync operations without exposing connection details or credentials."

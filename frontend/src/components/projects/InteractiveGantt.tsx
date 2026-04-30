@@ -6,6 +6,7 @@ import {
   type ProjectMilestoneDto,
   updateMilestone,
 } from '@/lib/api/project-milestones';
+import { Button } from '@/components/ds';
 
 interface InteractiveGanttProps {
   projectId: string;
@@ -168,20 +169,12 @@ export function InteractiveGantt({
   return (
     <div data-testid="interactive-gantt">
       <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--space-2)', marginBottom: 6 }}>
-        <button
-          className={zoom === 'week' ? 'button--project-detail button--primary' : 'button--project-detail'}
-          onClick={() => setZoom('week')}
-          type="button"
-        >
+        <Button variant={zoom === 'week' ? 'primary' : 'secondary'} size="sm" onClick={() => setZoom('week')}>
           Week
-        </button>
-        <button
-          className={zoom === 'month' ? 'button--project-detail button--primary' : 'button--project-detail'}
-          onClick={() => setZoom('month')}
-          type="button"
-        >
+        </Button>
+        <Button variant={zoom === 'month' ? 'primary' : 'secondary'} size="sm" onClick={() => setZoom('month')}>
           Month
-        </button>
+        </Button>
         {canEdit ? (
           <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
             Drag a planned diamond to reschedule · click to edit

@@ -7,6 +7,7 @@ import { PlatformSettingsProvider } from './platform-settings-context';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { apiClientConfig } from '@/lib/api/config';
 import { setColorModePreference } from '@/styles/design-tokens';
+import { Button, Modal } from '@/components/ds';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -157,35 +158,30 @@ export function App(): JSX.Element {
         </PlatformSettingsProvider>
       </ErrorBoundary>
       <Toaster position="bottom-right" richColors />
-      {showShortcuts ? (
-        <div
-          aria-modal="true"
-          className="confirm-dialog-overlay"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowShortcuts(false); }}
-          role="dialog"
-        >
-          <div className="confirm-dialog" style={{ minWidth: 320 }}>
-            <h3 className="confirm-dialog__title">Keyboard Shortcuts</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
-              <tbody>
-                {SHORTCUTS.map(({ key, description }) => (
-                  <tr key={key}>
-                    <td style={{ padding: '4px 8px 4px 0', fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {key}
-                    </td>
-                    <td style={{ padding: '4px 0', color: '#6b7280' }}>{description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="confirm-dialog__actions">
-              <button className="button button--secondary" onClick={() => setShowShortcuts(false)} type="button">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <Modal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        title="Keyboard Shortcuts"
+        size="sm"
+        footer={
+          <Button variant="secondary" onClick={() => setShowShortcuts(false)}>
+            Close
+          </Button>
+        }
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {SHORTCUTS.map(({ key, description }) => (
+              <tr key={key}>
+                <td style={{ padding: '4px 8px 4px 0', fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {key}
+                </td>
+                <td style={{ padding: '4px 0', color: 'var(--color-text-muted)' }}>{description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Modal>
     </>
   );
 }

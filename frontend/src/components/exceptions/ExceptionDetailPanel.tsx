@@ -4,6 +4,7 @@ import { ExceptionQueueItem } from '@/lib/api/exceptions';
 import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { formatDateTime } from '@/lib/format-date';
+import { Button } from '@/components/ds';
 
 interface ExceptionDetailPanelProps {
   isLoading: boolean;
@@ -66,19 +67,19 @@ export function ExceptionDetailPanel({
 
       <div className="scope-card__actions">
         {item.personId ? (
-          <Link className="button button--secondary" to={`/people/${item.personId}`}>
+          <Button as={Link} variant="secondary" to={`/people/${item.personId}`}>
             Open person
-          </Link>
+          </Button>
         ) : null}
         {item.projectId ? (
-          <Link className="button button--secondary" to={`/projects/${item.projectId}`}>
+          <Button as={Link} variant="secondary" to={`/projects/${item.projectId}`}>
             Open project
-          </Link>
+          </Button>
         ) : null}
         {item.assignmentId ? (
-          <Link className="button button--secondary" to={`/assignments/${item.assignmentId}`}>
+          <Button as={Link} variant="secondary" to={`/assignments/${item.assignmentId}`}>
             Open assignment
-          </Link>
+          </Button>
         ) : null}
       </div>
 
@@ -94,9 +95,9 @@ export function ExceptionDetailPanel({
             </p>
           </div>
           <div className="scope-card__actions">
-            <Link className="button" to={`/projects/${item.projectId}`}>
+            <Button as={Link} variant="primary" to={`/projects/${item.projectId}`}>
               Review closure controls
-            </Link>
+            </Button>
           </div>
         </div>
       ) : null}

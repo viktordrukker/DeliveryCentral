@@ -1,4 +1,5 @@
 import { ContextMenuItem, ContextMenuPosition } from '@/lib/hooks/useContextMenu';
+import { Button } from '@/components/ds';
 
 interface ContextMenuProps {
   items: ContextMenuItem[];
@@ -29,27 +30,28 @@ export function ContextMenu({ items, onClose, position }: ContextMenuProps): JSX
       }}
     >
       {items.map((item) => (
-        <button
+        <Button
           key={item.label}
           onClick={() => {
             item.onClick();
             onClose();
           }}
           role="menuitem"
+          variant="link"
+          size="sm"
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
             display: 'block',
             fontSize: '13px',
             padding: '8px 16px',
             textAlign: 'left',
             width: '100%',
+            borderRadius: 0,
+            color: 'var(--color-text)',
           }}
           type="button"
         >
           {item.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

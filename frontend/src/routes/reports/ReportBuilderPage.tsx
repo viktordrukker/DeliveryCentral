@@ -18,6 +18,7 @@ import {
   saveReportTemplate,
 } from '@/lib/api/report-builder';
 import { useAuth } from '@/app/auth-context';
+import { Button, IconButton, Table } from '@/components/ds';
 
 const OPERATORS = [
   { value: 'eq', label: '=' },
@@ -185,13 +186,15 @@ export function ReportBuilderPage(): JSX.Element {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>Filters</span>
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={addFilter}
-                style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.7rem', padding: '1px 6px' }}
+                style={{ fontSize: '0.7rem', padding: '1px 6px' }}
                 type="button"
               >
                 + Add
-              </button>
+              </Button>
             </div>
             {filters.map((f, i) => (
               <div key={i} style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -216,13 +219,14 @@ export function ReportBuilderPage(): JSX.Element {
                   type="text"
                   value={f.value}
                 />
-                <button
+                <IconButton
+                  aria-label="Remove filter"
+                  size="sm"
                   onClick={() => removeFilter(i)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 700, fontSize: '0.8rem' }}
-                  type="button"
+                  style={{ color: 'var(--color-status-danger)', fontWeight: 700, fontSize: '0.8rem' }}
                 >
                   ✕
-                </button>
+                </IconButton>
               </div>
             ))}
           </div>
@@ -271,24 +275,12 @@ export function ReportBuilderPage(): JSX.Element {
               Share with all users
             </label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                className="button button--secondary"
-                disabled={!templateName || saving}
-                onClick={() => void handleSave()}
-                style={{ flex: 1, fontSize: '0.8rem' }}
-                type="button"
-              >
+              <Button variant="secondary" disabled={!templateName || saving} onClick={() => void handleSave()} style={{ flex: 1, fontSize: '0.8rem' }} type="button">
                 {saving ? 'Saving…' : 'Save Template'}
-              </button>
-              <button
-                className="button button--primary"
-                disabled={selectedCols.length === 0}
-                onClick={handleExport}
-                style={{ flex: 1, fontSize: '0.8rem' }}
-                type="button"
-              >
+              </Button>
+              <Button variant="primary" disabled={selectedCols.length === 0} onClick={handleExport} style={{ flex: 1, fontSize: '0.8rem' }} type="button">
                 Export XLSX
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -296,28 +288,21 @@ export function ReportBuilderPage(): JSX.Element {
         {/* Preview + templates */}
         <div>
           <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Preview</h3>
-          <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-            <table style={{ borderCollapse: 'collapse', fontSize: '0.8rem', width: '100%' }}>
-              <thead>
-                <tr style={{ background: '#f3f4f6' }}>
-                  {(selectedCols.length > 0 ? selectedCols : columns.map((c) => c.key)).map((key) => (
-                    <th key={key} style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>
-                      {columns.find((c) => c.key === key)?.label ?? key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {previewData.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    {Object.values(row).map((v, j) => (
-                      <td key={j} style={{ padding: '6px 10px', color: '#9ca3af', fontStyle: 'italic' }}>{v}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>Preview shows synthetic placeholder rows. Export for real data.</p>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <Table
+              variant="compact"
+              columns={(selectedCols.length > 0 ? selectedCols : columns.map((c) => c.key)).map((key) => ({
+                key,
+                title: columns.find((c) => c.key === key)?.label ?? key,
+                getValue: (row: Record<string, string>) => row[key] ?? '',
+                render: (row: Record<string, string>) => (
+                  <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{row[key] ?? ''}</span>
+                ),
+              }))}
+              rows={previewData}
+              getRowKey={(_row, i) => String(i)}
+            />
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Preview shows synthetic placeholder rows. Export for real data.</p>
           </div>
 
           {templates.length > 0 ? (
@@ -345,22 +330,12 @@ export function ReportBuilderPage(): JSX.Element {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button
-                        className="button button--secondary"
-                        onClick={() => handleLoadTemplate(t)}
-                        style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                        type="button"
-                      >
+                      <Button variant="secondary" onClick={() => handleLoadTemplate(t)} style={{ fontSize: '0.75rem', padding: '2px 8px' }} type="button">
                         Load
-                      </button>
-                      <button
-                        className="button button--danger"
-                        onClick={() => void handleDeleteTemplate(t.id)}
-                        style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                        type="button"
-                      >
+                      </Button>
+                      <Button variant="danger" onClick={() => void handleDeleteTemplate(t.id)} style={{ fontSize: '0.75rem', padding: '2px 8px' }} type="button">
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

@@ -18,6 +18,7 @@ import {
 } from '@/lib/api/leaveRequests';
 import { useAuth } from '@/app/auth-context';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 const LEAVE_TYPE_LABELS: Record<LeaveRequestType, string> = {
   ANNUAL: 'Annual Leave',
@@ -156,26 +157,18 @@ export function LeaveRequestPage(): JSX.Element {
           <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
             <div className="field" style={{ flex: 1 }}>
               <label className="field__label" htmlFor="start-date">Start Date</label>
-              <input
-                className="field__control"
-                id="start-date"
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                type="date"
-                value={startDate}
-              />
+              <DatePicker id="start-date"
+ onValueChange={(value) => setStartDate(value)}
+ required value={startDate}
+ />
             </div>
             <div className="field" style={{ flex: 1 }}>
               <label className="field__label" htmlFor="end-date">End Date</label>
-              <input
-                className="field__control"
-                id="end-date"
-                min={startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-                type="date"
-                value={endDate}
-              />
+              <DatePicker id="end-date"
+ min={startDate}
+ onValueChange={(value) => setEndDate(value)}
+ required value={endDate}
+ />
             </div>
           </div>
 
@@ -199,13 +192,9 @@ export function LeaveRequestPage(): JSX.Element {
             <p style={{ color: 'var(--color-status-active)', fontSize: '13px', marginBottom: '8px' }}>{successMessage}</p>
           ) : null}
 
-          <button
-            className="button button--primary"
-            disabled={isSubmitting}
-            type="submit"
-          >
+          <Button variant="primary" disabled={isSubmitting} type="submit">
             {isSubmitting ? 'Submitting...' : 'Submit Request'}
-          </button>
+          </Button>
         </form>
       </SectionCard>
 
@@ -216,47 +205,27 @@ export function LeaveRequestPage(): JSX.Element {
             title="No leave requests"
           />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="dash-compact-table">
-              <caption className="sr-only">My leave requests</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Type</th>
-                  <th scope="col">Dates</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Notes</th>
-                  <th scope="col">Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myRequests.map((req) => (
-                  <tr key={req.id}>
-                    <td style={{ fontWeight: 500 }}>{LEAVE_TYPE_LABELS[req.type]}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{req.startDate} → {req.endDate}</td>
-                    <td>
-                      <span
-                        style={{
-                          background: STATUS_COLORS[req.status] ?? 'var(--color-status-neutral)',
-                          borderRadius: '4px',
-                          color: 'var(--color-surface)',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          padding: '1px 6px',
-                        }}
-                      >
-                        {req.status}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{req.notes ?? ''}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                      {formatDate(req.createdAt)}
-                      {req.reviewedAt ? ` · Reviewed ${formatDate(req.reviewedAt)}` : ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'type', title: 'Type', getValue: (r) => LEAVE_TYPE_LABELS[r.type], render: (r) => <span style={{ fontWeight: 500 }}>{LEAVE_TYPE_LABELS[r.type]}</span> },
+              { key: 'dates', title: 'Dates', getValue: (r) => `${r.startDate} → ${r.endDate}`, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.startDate} → {r.endDate}</span> },
+              { key: 'status', title: 'Status', getValue: (r) => r.status, render: (r) => (
+                <span style={{ background: STATUS_COLORS[r.status] ?? 'var(--color-status-neutral)', borderRadius: '4px', color: 'var(--color-surface)', fontSize: '11px', fontWeight: 600, padding: '1px 6px' }}>
+                  {r.status}
+                </span>
+              ) },
+              { key: 'notes', title: 'Notes', getValue: (r) => r.notes ?? '', render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.notes ?? ''}</span> },
+              { key: 'submitted', title: 'Submitted', getValue: (r) => r.createdAt, render: (r) => (
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  {formatDate(r.createdAt)}
+                  {r.reviewedAt ? ` · Reviewed ${formatDate(r.reviewedAt)}` : ''}
+                </span>
+              ) },
+            ] as Column<LeaveRequestDto>[]}
+            rows={myRequests}
+            getRowKey={(r) => r.id}
+          />
         )}
       </SectionCard>
 
@@ -268,54 +237,28 @@ export function LeaveRequestPage(): JSX.Element {
               title="No pending requests"
             />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="dash-compact-table">
-                <caption className="sr-only">Pending leave requests for approval</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Person</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Start</th>
-                    <th scope="col">End</th>
-                    <th scope="col">Notes</th>
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingRequests.map((req) => (
-                    <tr key={req.id}>
-                      <td style={{ fontSize: '12px' }}>{req.personId.slice(0, 8)}…</td>
-                      <td>{LEAVE_TYPE_LABELS[req.type]}</td>
-                      <td>{req.startDate}</td>
-                      <td>{req.endDate}</td>
-                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {req.notes ?? '—'}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button
-                            className="button button--secondary"
-                            onClick={() => void handleApprove(req.id)}
-                            style={{ fontSize: '12px', padding: '2px 8px' }}
-                            type="button"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="button button--secondary"
-                            onClick={() => void handleReject(req.id)}
-                            style={{ color: 'var(--color-status-danger)', fontSize: '12px', padding: '2px 8px' }}
-                            type="button"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'person', title: 'Person', getValue: (r) => r.personId, render: (r) => <span style={{ fontSize: '12px' }}>{r.personId.slice(0, 8)}…</span> },
+                { key: 'type', title: 'Type', getValue: (r) => LEAVE_TYPE_LABELS[r.type], render: (r) => LEAVE_TYPE_LABELS[r.type] },
+                { key: 'start', title: 'Start', getValue: (r) => r.startDate, render: (r) => r.startDate },
+                { key: 'end', title: 'End', getValue: (r) => r.endDate, render: (r) => r.endDate },
+                { key: 'notes', title: 'Notes', getValue: (r) => r.notes ?? '', render: (r) => (
+                  <span style={{ display: 'inline-block', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.notes ?? '—'}
+                  </span>
+                ) },
+                { key: 'actions', title: 'Actions', render: (r) => (
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <Button variant="secondary" size="sm" onClick={() => void handleApprove(r.id)} type="button">Approve</Button>
+                    <Button variant="secondary" size="sm" onClick={() => void handleReject(r.id)} style={{ color: 'var(--color-status-danger)' }} type="button">Reject</Button>
+                  </div>
+                ) },
+              ] as Column<LeaveRequestDto>[]}
+              rows={pendingRequests}
+              getRowKey={(r) => r.id}
+            />
           )}
         </SectionCard>
       ) : null}

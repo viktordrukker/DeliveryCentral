@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { CellClass } from '@/lib/api/staffing-desk';
 import { suggestionKey, type PlannerSimulation } from '@/features/staffing-desk/usePlannerSimulation';
+import { Button, Table, type Column } from '@/components/ds';
+import type { AutoMatchSuggestion } from '@/lib/api/staffing-desk';
 
 interface Props {
   simulation: PlannerSimulation;
@@ -66,7 +68,7 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
               Strategy: <strong>{summary.strategy}</strong> — review before committing to simulation
             </div>
           </div>
-          <button className="button button--secondary button--sm" onClick={simulation.discardPreview} type="button">Close</button>
+          <Button variant="secondary" size="sm" onClick={simulation.discardPreview} type="button">Close</Button>
         </div>
 
         <div style={S_SUMMARY}>
@@ -106,66 +108,60 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
           )}
 
           {preview.suggestions.length > 0 && (
-            <table style={S_TABLE}>
-              <thead>
-                <tr>
-                  <th style={{ ...S_TH, width: 32 }}></th>
-                  <th style={S_TH}>Person</th>
-                  <th style={S_TH}>Project</th>
-                  <th style={S_TH}>Role</th>
-                  <th style={S_TH}>Week</th>
-                  <th style={{ ...S_TH, width: 90 }}>Class</th>
-                  <th style={{ ...S_TH, width: 70, textAlign: 'right' }}>Match</th>
-                  <th style={{ ...S_TH, width: 60, textAlign: 'right' }}>Alloc</th>
-                  <th style={S_TH}>Rationale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.suggestions.map((s) => {
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'check', title: '', width: 32, render: (s) => {
                   const key = suggestionKey(s);
                   const selected = preview.selectedIds.has(key);
                   return (
-                    <tr key={key} style={{ opacity: selected ? 1 : 0.45 }}>
-                      <td style={S_TD}>
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => simulation.togglePreviewSuggestion(key)}
-                          aria-label={`Include ${s.benchPersonName} → ${s.targetProjectName}`}
-                        />
-                      </td>
-                      <td style={S_TD}>
-                        <div style={{ fontWeight: 500 }}>{s.benchPersonName}</div>
-                        {s.constraintWarnings.length > 0 && (
-                          <div style={{ fontSize: 9, color: 'var(--color-status-warning)' }}>⚠ {s.constraintWarnings.join(' · ')}</div>
-                        )}
-                      </td>
-                      <td style={S_TD}>{s.targetProjectName}</td>
-                      <td style={S_TD}>{s.demandRole}</td>
-                      <td style={S_TD} data-tabular="true" title={s.coverageWeeks?.join(', ')}>
-                        {s.weekStart.slice(5)}
-                        {s.coverageWeeks && s.coverageWeeks.length > 1 && (
-                          <div style={{ fontSize: 9, color: 'var(--color-text-muted)' }}>×{s.coverageWeeks.length}w</div>
-                        )}
-                      </td>
-                      <td style={S_TD}>
-                        <StatusBadge label={s.cellClass} tone={CLASS_TONE[s.cellClass]} variant="chip" size="small" />
-                      </td>
-                      <td style={{ ...S_TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {Math.round(s.matchScore * 100)}%
-                      </td>
-                      <td style={{ ...S_TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{s.allocationPercent}%</td>
-                      <td style={{ ...S_TD, fontSize: 10, color: 'var(--color-text-muted)' }}>
-                        <div>{s.rationale}</div>
-                        {s.mismatchedSkills.length > 0 && (
-                          <div style={{ fontSize: 9, color: 'var(--color-status-danger)', marginTop: 2 }}>Missing: {s.mismatchedSkills.join(', ')}</div>
-                        )}
-                      </td>
-                    </tr>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => simulation.togglePreviewSuggestion(key)}
+                      aria-label={`Include ${s.benchPersonName} → ${s.targetProjectName}`}
+                    />
                   );
-                })}
-              </tbody>
-            </table>
+                } },
+                { key: 'person', title: 'Person', getValue: (s) => s.benchPersonName, render: (s) => (
+                  <>
+                    <div style={{ fontWeight: 500 }}>{s.benchPersonName}</div>
+                    {s.constraintWarnings.length > 0 && (
+                      <div style={{ fontSize: 9, color: 'var(--color-status-warning)' }}>⚠ {s.constraintWarnings.join(' · ')}</div>
+                    )}
+                  </>
+                ) },
+                { key: 'project', title: 'Project', getValue: (s) => s.targetProjectName, render: (s) => s.targetProjectName },
+                { key: 'role', title: 'Role', getValue: (s) => s.demandRole, render: (s) => s.demandRole },
+                { key: 'week', title: 'Week', getValue: (s) => s.weekStart, render: (s) => (
+                  <span title={s.coverageWeeks?.join(', ')}>
+                    {s.weekStart.slice(5)}
+                    {s.coverageWeeks && s.coverageWeeks.length > 1 && (
+                      <div style={{ fontSize: 9, color: 'var(--color-text-muted)' }}>×{s.coverageWeeks.length}w</div>
+                    )}
+                  </span>
+                ) },
+                { key: 'class', title: 'Class', width: 90, getValue: (s) => s.cellClass, render: (s) => (
+                  <StatusBadge label={s.cellClass} tone={CLASS_TONE[s.cellClass]} variant="chip" size="small" />
+                ) },
+                { key: 'match', title: 'Match', align: 'right', width: 70, getValue: (s) => s.matchScore, render: (s) => (
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(s.matchScore * 100)}%</span>
+                ) },
+                { key: 'alloc', title: 'Alloc', align: 'right', width: 60, getValue: (s) => s.allocationPercent, render: (s) => (
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.allocationPercent}%</span>
+                ) },
+                { key: 'rationale', title: 'Rationale', getValue: (s) => s.rationale, render: (s) => (
+                  <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+                    <div>{s.rationale}</div>
+                    {s.mismatchedSkills.length > 0 && (
+                      <div style={{ fontSize: 9, color: 'var(--color-status-danger)', marginTop: 2 }}>Missing: {s.mismatchedSkills.join(', ')}</div>
+                    )}
+                  </span>
+                ) },
+              ] as Column<AutoMatchSuggestion>[]}
+              rows={preview.suggestions}
+              getRowKey={(s) => suggestionKey(s)}
+            />
           )}
 
           {preview.unmatched.length > 0 && (
@@ -188,9 +184,10 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
             {selectedCount} of {preview.suggestions.length} selected · ${Math.round(summary.estimatedMonthlyCostImpact / 1000)}k/mo projected
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="button button--secondary button--sm" onClick={simulation.discardPreview} type="button">Discard</button>
-            <button
-              className="button button--sm"
+            <Button variant="secondary" size="sm" onClick={simulation.discardPreview} type="button">Discard</Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => {
                 simulation.commitPreview();
                 toast.success(`${selectedCount} suggestion${selectedCount === 1 ? '' : 's'} applied to simulation — visible in grid now`);
@@ -200,7 +197,7 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
               data-testid="planner-preview-apply"
             >
               Apply {selectedCount > 0 ? `${selectedCount} ` : ''}to simulation
-            </button>
+            </Button>
           </div>
         </div>
       </div>

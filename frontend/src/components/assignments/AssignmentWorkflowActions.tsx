@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import type { AssignmentStatusValue } from '@/lib/api/assignments';
+import { Button } from '@/components/ds';
 import {
   type AssignmentTransitionRule,
   availableTransitions,
@@ -12,6 +13,8 @@ export interface AssignmentWorkflowActionsProps {
   isSubmitting: boolean;
   onTransition: (target: AssignmentStatusValue, options: { reason?: string }) => Promise<void>;
   userRoles: readonly string[];
+  /** When true, BOOKED forward transitions are hidden until the director records approval. */
+  requiresDirectorApproval?: boolean;
 }
 
 type DialogState = {
@@ -19,17 +22,17 @@ type DialogState = {
   rule?: AssignmentTransitionRule;
 };
 
-function toneToButtonClass(tone: AssignmentTransitionRule['tone']): string {
+function toneToButtonVariant(tone: AssignmentTransitionRule['tone']): 'primary' | 'secondary' | 'danger' {
   switch (tone) {
     case 'primary':
-      return 'button';
+      return 'primary';
     case 'danger':
-      return 'button button--danger';
+      return 'danger';
     case 'warning':
-      return 'button button--secondary';
+      return 'secondary';
     case 'secondary':
     default:
-      return 'button button--secondary';
+      return 'secondary';
   }
 }
 
@@ -42,10 +45,11 @@ export function AssignmentWorkflowActions({
   isSubmitting,
   onTransition,
   userRoles,
+  requiresDirectorApproval = false,
 }: AssignmentWorkflowActionsProps): JSX.Element | null {
   const rules = useMemo(
-    () => availableTransitions(currentStatus, userRoles),
-    [currentStatus, userRoles],
+    () => availableTransitions(currentStatus, userRoles, { requiresDirectorApproval }),
+    [currentStatus, userRoles, requiresDirectorApproval],
   );
   const [dialog, setDialog] = useState<DialogState>({ open: false });
 
@@ -86,8 +90,8 @@ export function AssignmentWorkflowActions({
 
       <div className="workflow-panel__actions" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
         {rules.map((rule) => (
-          <button
-            className={toneToButtonClass(rule.tone)}
+          <Button
+            variant={toneToButtonVariant(rule.tone)}
             data-testid={`transition-${rule.to.toLowerCase()}`}
             disabled={isSubmitting}
             key={rule.to}
@@ -95,7 +99,7 @@ export function AssignmentWorkflowActions({
             type="button"
           >
             {isSubmitting ? 'Submitting...' : rule.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

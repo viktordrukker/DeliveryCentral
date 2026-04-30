@@ -20,6 +20,7 @@ import { useProjectDashboard } from '@/features/projects/useProjectDashboard';
 import { formatDate } from '@/lib/format-date';
 import { type ComputedRag, type RagSnapshotDto, type StaffingAlert, fetchComputedRag, fetchRagHistory, fetchStaffingAlerts } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
+import { Button, DescriptionList, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -57,11 +58,11 @@ export function ProjectDashboardPage(): JSX.Element {
       <PageHeader
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Link className="button button--secondary button--sm" to={`/projects/${id ?? ''}`}>Back to project</Link>
+            <Button as={Link} variant="secondary" size="sm" to={`/projects/${id ?? ''}`}>Back to project</Button>
             {canManage && (
               <>
-                <Link className="button button--secondary button--sm" to={`/staffing-requests/new?projectId=${id ?? ''}`}>Staffing request</Link>
-                <Link className="button button--secondary button--sm" to={`/assignments/new?projectId=${id ?? ''}`}>Quick assign</Link>
+                <Button as={Link} variant="secondary" size="sm" to={`/staffing-requests/new?projectId=${id ?? ''}`}>Staffing request</Button>
+                <Button as={Link} variant="secondary" size="sm" to={`/assignments/new?projectId=${id ?? ''}`}>Quick assign</Button>
               </>
             )}
           </div>
@@ -142,16 +143,14 @@ export function ProjectDashboardPage(): JSX.Element {
 
           {/* ── Project Summary ── */}
           <SectionCard title="Project Summary" collapsible>
-            <table className="dash-compact-table">
-              <tbody>
-                <tr><td style={{ fontWeight: 500, width: 140 }}>Name</td><td>{d.project.name}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Code</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.project.projectCode}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Status</td><td>{d.project.status}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Starts</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.dashboard.project.startsOn ? formatDate(d.dashboard.project.startsOn) : '\u2014'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Ends</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{d.dashboard.project.endsOn ? formatDate(d.dashboard.project.endsOn) : '\u2014'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Description</td><td style={{ color: 'var(--color-text-muted)' }}>{d.project.description ?? 'No description available'}</td></tr>
-              </tbody>
-            </table>
+            <DescriptionList items={[
+              { label: 'Name', value: d.project.name },
+              { label: 'Code', value: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{d.project.projectCode}</span> },
+              { label: 'Status', value: d.project.status },
+              { label: 'Starts', value: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{d.dashboard.project.startsOn ? formatDate(d.dashboard.project.startsOn) : '\u2014'}</span> },
+              { label: 'Ends', value: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{d.dashboard.project.endsOn ? formatDate(d.dashboard.project.endsOn) : '\u2014'}</span> },
+              { label: 'Description', value: <span style={{ color: 'var(--color-text-muted)' }}>{d.project.description ?? 'No description available'}</span> },
+            ]} />
           </SectionCard>
 
           {/* ── Assigned People ── */}
@@ -162,32 +161,19 @@ export function ProjectDashboardPage(): JSX.Element {
             {d.dashboard.assignments.length === 0 ? (
               <EmptyState description="No assignments found for this project." title="No assignments" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${id ?? ''}` }} />
             ) : (
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th style={{ width: 120 }}>Role</th>
-                      <th style={NUM}>Alloc %</th>
-                      <th style={{ width: 70 }}>Status</th>
-                      <th style={{ width: 90 }}>From</th>
-                      <th style={{ width: 90 }}>To</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.dashboard.assignments.map((a) => (
-                      <tr key={a.id}>
-                        <td style={{ fontWeight: 500 }}>{a.personDisplayName}</td>
-                        <td style={{ fontSize: 11 }}>{a.staffingRole}</td>
-                        <td style={NUM}>{a.allocationPercent}%</td>
-                        <td><span style={{ fontSize: 11, fontWeight: 600 }}>{a.status}</span></td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(a.validFrom)}</td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{a.validTo ? formatDate(a.validTo) : 'open'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (a) => a.personDisplayName, render: (a) => <span style={{ fontWeight: 500 }}>{a.personDisplayName}</span> },
+                  { key: 'role', title: 'Role', width: 120, getValue: (a) => a.staffingRole, render: (a) => <span style={{ fontSize: 11 }}>{a.staffingRole}</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}>{a.allocationPercent}%</span> },
+                  { key: 'status', title: 'Status', width: 70, getValue: (a) => a.status, render: (a) => <span style={{ fontSize: 11, fontWeight: 600 }}>{a.status}</span> },
+                  { key: 'from', title: 'From', width: 90, getValue: (a) => a.validFrom, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(a.validFrom)}</span> },
+                  { key: 'to', title: 'To', width: 90, getValue: (a) => a.validTo, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{a.validTo ? formatDate(a.validTo) : 'open'}</span> },
+                ] as Column<typeof d.dashboard.assignments[number]>[]}
+                rows={d.dashboard.assignments}
+                getRowKey={(a) => a.id}
+              />
             )}
           </SectionCard>
 
@@ -199,29 +185,26 @@ export function ProjectDashboardPage(): JSX.Element {
             }}>
               {d.dashboard.evidenceByWeek.every((w) => w.totalHours === 0) ? (
                 <EmptyState description="No time activity was captured in the last 12 weeks." title="No activity data" />
-              ) : (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr><th>Week</th><th style={NUM}>Hours</th><th style={{ width: 120 }}>Bar</th></tr>
-                  </thead>
-                  <tbody>
-                    {d.dashboard.evidenceByWeek.filter((w) => w.totalHours > 0).map((w) => {
-                      const maxH = Math.max(...d.dashboard.evidenceByWeek.map((wk) => wk.totalHours), 1);
-                      return (
-                        <tr key={w.weekStarting}>
-                          <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(w.weekStarting)}</td>
-                          <td style={{ ...NUM, fontWeight: 600 }}>{w.totalHours}h</td>
-                          <td>
-                            <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${Math.round((w.totalHours / maxH) * 100)}%`, borderRadius: 2, background: 'var(--color-status-active)' }} />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
+              ) : (() => {
+                const weeks = d.dashboard.evidenceByWeek.filter((w) => w.totalHours > 0);
+                const maxH = Math.max(...d.dashboard.evidenceByWeek.map((wk) => wk.totalHours), 1);
+                return (
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'week', title: 'Week', getValue: (w) => w.weekStarting, render: (w) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(w.weekStarting)}</span> },
+                      { key: 'hours', title: 'Hours', align: 'right', getValue: (w) => w.totalHours, render: (w) => <span style={{ ...NUM, fontWeight: 600 }}>{w.totalHours}h</span> },
+                      { key: 'bar', title: 'Bar', width: 120, render: (w) => (
+                        <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.round((w.totalHours / maxH) * 100)}%`, borderRadius: 2, background: 'var(--color-status-active)' }} />
+                        </div>
+                      ) },
+                    ] as Column<typeof weeks[number]>[]}
+                    rows={weeks}
+                    getRowKey={(w) => w.weekStarting}
+                  />
+                );
+              })()}
             </SectionCard>
 
             <SectionCard title="Allocation by Person" collapsible chartExport={{
@@ -231,24 +214,21 @@ export function ProjectDashboardPage(): JSX.Element {
               {d.dashboard.allocationByPerson.length === 0 ? (
                 <EmptyState description="No active allocations found." title="No allocations" />
               ) : (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr><th>Person</th><th style={NUM}>Alloc %</th><th style={{ width: 120 }}>Bar</th></tr>
-                  </thead>
-                  <tbody>
-                    {d.dashboard.allocationByPerson.map((item) => (
-                      <tr key={item.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
-                        <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                        <td style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</td>
-                        <td>
-                          <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'person', title: 'Person', getValue: (item) => item.displayName, render: (item) => <span style={{ fontWeight: 500 }}>{item.displayName}</span> },
+                    { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (item) => item.allocationPercent, render: (item) => <span style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</span> },
+                    { key: 'bar', title: 'Bar', width: 120, render: (item) => (
+                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
+                      </div>
+                    ) },
+                  ] as Column<typeof d.dashboard.allocationByPerson[number]>[]}
+                  rows={d.dashboard.allocationByPerson}
+                  getRowKey={(item) => item.personId}
+                  onRowClick={(item) => navigate(`/people/${item.personId}`)}
+                />
               )}
             </SectionCard>
           </div>

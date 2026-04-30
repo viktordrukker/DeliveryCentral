@@ -15,6 +15,7 @@ import { fetchTeams } from '@/lib/api/teams';
 import { fetchWorkloadPlanning, fetchCapacityForecast, WorkloadPlanningAssignment, WorkloadPlanningResponse, CapacityForecastWeek } from '@/lib/api/workload';
 import { httpPatch } from '@/lib/api/http-client';
 import { formatDateShort } from '@/lib/format-date';
+import { Button, DatePicker, IconButton, Table, type Column } from '@/components/ds';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -126,40 +127,38 @@ function AssignmentBlock({
       <span className="assignment-block__abbr">{assignment.projectName.slice(0, 3).toUpperCase()}</span>
       <span className="assignment-block__pct">{assignment.allocationPercent}%</span>
       <span style={{ display: 'inline-flex', gap: '1px', marginTop: '1px' }}>
-        <button
+        <IconButton
+          aria-label="Shorten by 1 week"
+          size="sm"
           onClick={() => onShorten(assignment.id)}
           style={{
-            background: 'none',
             border: `1px solid ${color}`,
             borderRadius: '2px',
-            cursor: 'pointer',
             fontSize: '0.6rem',
             lineHeight: 1,
             padding: '0 2px',
             color,
           }}
           title="Shorten by 1 week"
-          type="button"
         >
-          \u25C0
-        </button>
-        <button
+          {'\u25C0'}
+        </IconButton>
+        <IconButton
+          aria-label="Extend by 1 week"
+          size="sm"
           onClick={() => onExtend(assignment.id)}
           style={{
-            background: 'none',
             border: `1px solid ${color}`,
             borderRadius: '2px',
-            cursor: 'pointer',
             fontSize: '0.6rem',
             lineHeight: 1,
             padding: '0 2px',
             color,
           }}
           title="Extend by 1 week"
-          type="button"
         >
-          \u25B6
-        </button>
+          {'\u25B6'}
+        </IconButton>
       </span>
     </div>
   );
@@ -207,13 +206,14 @@ function DraggableWhatIfBlock({
     >
       <span className="assignment-block__abbr">{assignment.projectName.slice(0, 3).toUpperCase()}</span>
       <span className="assignment-block__pct">{assignment.allocationPercent}%</span>
-      <button
+      <IconButton
+        aria-label="Remove assignment"
+        size="sm"
         onClick={(e) => { e.stopPropagation(); onRemove(assignment.id); }}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 700, fontSize: '10px', padding: 0 }}
-        type="button"
+        style={{ color: 'var(--color-status-danger)', fontWeight: 700, fontSize: '10px' }}
       >
-        \u2715
-      </button>
+        {'\u2715'}
+      </IconButton>
     </div>
   );
 }
@@ -239,19 +239,18 @@ function PlanningDropCell({
   const conflict = isOver && wouldConflict;
 
   return (
-    <td
+    <div
       ref={setNodeRef}
       className={conflict ? 'planning-cell--conflict' : ''}
       style={{
-        background: isOver && !conflict ? 'rgba(17,75,122,.06)' : undefined,
-        padding: '4px',
+        background: isOver && !conflict ? 'var(--color-accent-bg)' : undefined,
         verticalAlign: 'top',
-        minWidth: '80px',
+        minHeight: '40px',
         transition: 'background 0.1s',
       }}
     >
       {children}
-    </td>
+    </div>
   );
 }
 
@@ -528,15 +527,15 @@ export function WorkloadPlanningPage(): JSX.Element {
 
       {/* Week navigation (B5) */}
       <div style={{ display: 'flex', gap: 'var(--space-2, 8px)', alignItems: 'center', marginBottom: 'var(--space-3, 12px)' }}>
-        <button className="button button--secondary" onClick={() => setWeekOffset((o) => o - 1)} type="button">
+        <Button variant="secondary" onClick={() => setWeekOffset((o) => o - 1)} type="button">
           \u2190 Prev
-        </button>
-        <button className="button button--secondary" disabled={weekOffset === 0} onClick={() => setWeekOffset(0)} type="button">
+        </Button>
+        <Button variant="secondary" disabled={weekOffset === 0} onClick={() => setWeekOffset(0)} type="button">
           Today
-        </button>
-        <button className="button button--secondary" onClick={() => setWeekOffset((o) => o + 1)} type="button">
+        </Button>
+        <Button variant="secondary" onClick={() => setWeekOffset((o) => o + 1)} type="button">
           Next \u2192
-        </button>
+        </Button>
       </div>
 
       {/* Person filter (B6) */}
@@ -604,32 +603,19 @@ export function WorkloadPlanningPage(): JSX.Element {
 
             <label className="field" style={{ flex: '1 1 120px' }}>
               <span className="field__label">From</span>
-              <input
-                className="field__control"
-                onChange={(e) => setWhatIfForm((f) => ({ ...f, validFrom: e.target.value }))}
-                type="date"
-                value={whatIfForm.validFrom}
-              />
+              <DatePicker onValueChange={(value) => setWhatIfForm((f) => ({ ...f, validFrom: value }))} value={whatIfForm.validFrom}
+ />
             </label>
 
             <label className="field" style={{ flex: '1 1 120px' }}>
               <span className="field__label">To (optional)</span>
-              <input
-                className="field__control"
-                onChange={(e) => setWhatIfForm((f) => ({ ...f, validTo: e.target.value }))}
-                type="date"
-                value={whatIfForm.validTo}
-              />
+              <DatePicker onValueChange={(value) => setWhatIfForm((f) => ({ ...f, validTo: value }))} value={whatIfForm.validTo}
+ />
             </label>
 
-            <button
-              className="button button--primary"
-              onClick={handleAddWhatIf}
-              style={{ alignSelf: 'flex-end' }}
-              type="button"
-            >
+            <Button variant="primary" onClick={handleAddWhatIf} style={{ alignSelf: 'flex-end' }} type="button">
               Add
-            </button>
+            </Button>
           </div>
 
           {whatIfAssignments.length > 0 ? (
@@ -642,13 +628,14 @@ export function WorkloadPlanningPage(): JSX.Element {
                     {' \u2014 '}
                     {a.projectName} ({a.allocationPercent}%) {a.validFrom} \u2013 {a.validTo ?? 'open'}
                     {' '}
-                    <button
+                    <IconButton
+                      aria-label="Remove what-if assignment"
+                      size="sm"
                       onClick={() => handleRemoveWhatIf(a.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 700 }}
-                      type="button"
+                      style={{ color: 'var(--color-status-danger)', fontWeight: 700 }}
                     >
-                      \u2715
-                    </button>
+                      {'\u2715'}
+                    </IconButton>
                   </li>
                 ))}
               </ul>
@@ -726,13 +713,14 @@ export function WorkloadPlanningPage(): JSX.Element {
                   ))}
                 </ul>
               )}
-              <button
+              <Button
+                variant="link"
+                size="sm"
                 onClick={() => setAtRiskSelected(null)}
-                style={{ marginTop: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: '#6b7280' }}
-                type="button"
+                style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}
               >
                 Dismiss
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>
@@ -744,217 +732,140 @@ export function WorkloadPlanningPage(): JSX.Element {
             description="No assignments found in the next 12 weeks for the current filters."
             title="No planning data"
           />
+        ) : filteredPeople.length === 0 && personFilter ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+            No people match the filter.
+          </div>
         ) : (
-          <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+          <div style={{ marginTop: '1rem' }}>
             <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <table
-                style={{
-                  borderCollapse: 'collapse',
-                  fontSize: '0.8rem',
-                  width: '100%',
-                }}
-              >
-                <thead>
-                  <tr style={{ background: '#f3f4f6' }}>
-                    <th
-                      style={{
-                        position: 'sticky',
-                        left: 0,
-                        background: '#f3f4f6',
-                        zIndex: 2,
-                        padding: '8px 12px',
-                        textAlign: 'left',
-                        borderBottom: '2px solid #e5e7eb',
-                        minWidth: '160px',
-                      }}
-                    >
-                      Person
-                    </th>
-                    {displayedWeeks.map((week) => {
-                      const isCurrentWeek = week === currentWeekMonday;
+              <Table
+                variant="compact"
+                columns={[
+                  {
+                    key: 'person',
+                    title: 'Person',
+                    cellStyle: {
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--color-surface)',
+                      zIndex: 1,
+                      padding: '6px 12px',
+                      fontWeight: 500,
+                      verticalAlign: 'top',
+                      minWidth: '160px',
+                    },
+                    getValue: (p) => p.displayName,
+                    render: (p) => {
+                      const weekTotals = displayedWeeks.map((w) => getTotalAllocationForWeek(p.assignments, w, whatIfAssignments, p.id));
+                      const avgPct = weekTotals.length > 0 ? Math.round(weekTotals.reduce((s, v) => s + v, 0) / weekTotals.length) : 0;
+                      const initial = p.displayName[0]?.toUpperCase() ?? '?';
                       return (
-                        <th
-                          key={week}
-                          className={isCurrentWeek ? 'col-today-marker' : ''}
-                          style={{
-                            padding: '6px 4px',
-                            textAlign: 'center',
-                            borderBottom: '2px solid #e5e7eb',
-                            minWidth: '80px',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            color: '#374151',
-                          }}
-                        >
-                          {week.slice(5)}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPeople.map((person) => {
-                    // Average allocation across visible weeks (B4)
-                    const weekTotals = displayedWeeks.map((w) =>
-                      getTotalAllocationForWeek(person.assignments, w, whatIfAssignments, person.id),
-                    );
-                    const avgPct = weekTotals.length > 0
-                      ? Math.round(weekTotals.reduce((s, v) => s + v, 0) / weekTotals.length)
-                      : 0;
-                    const initial = person.displayName[0]?.toUpperCase() ?? '?';
-
-                    return (
-                      <tr key={person.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td
-                          style={{
-                            position: 'sticky',
-                            left: 0,
-                            background: 'white',
-                            zIndex: 1,
-                            padding: '6px 12px',
-                            fontWeight: 500,
-                            verticalAlign: 'top',
-                          }}
-                        >
-                          <div className="planning-person-cell">
-                            <div className="planning-person-avatar" style={{ background: avatarColor(person.displayName) }}>
-                              {initial}
-                            </div>
-                            <div className="planning-person-info">
-                              <span className="planning-person-name">{person.displayName}</span>
-                              <div className="planning-person-bar" title={`Avg ${avgPct}% across visible weeks`}>
-                                <div
-                                  className="planning-person-bar__fill"
-                                  style={{
-                                    width: `${Math.min(avgPct, 100)}%`,
-                                    background: avgPct > 95
-                                      ? 'var(--color-error, #d32f2f)'
-                                      : avgPct > 80
-                                        ? 'var(--color-warning, #f57c00)'
-                                        : 'var(--color-success, #2e7d32)',
-                                  }}
-                                />
-                              </div>
+                        <div className="planning-person-cell">
+                          <div className="planning-person-avatar" style={{ background: avatarColor(p.displayName) }}>
+                            {initial}
+                          </div>
+                          <div className="planning-person-info">
+                            <span className="planning-person-name">{p.displayName}</span>
+                            <div className="planning-person-bar" title={`Avg ${avgPct}% across visible weeks`}>
+                              <div
+                                className="planning-person-bar__fill"
+                                style={{
+                                  width: `${Math.min(avgPct, 100)}%`,
+                                  background: avgPct > 95 ? 'var(--color-status-danger)' : avgPct > 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)',
+                                }}
+                              />
                             </div>
                           </div>
-                        </td>
-                        {displayedWeeks.map((week, weekIdx) => {
-                          const total = getTotalAllocationForWeek(person.assignments, week, whatIfAssignments, person.id);
-                          const weekAssignments = person.assignments.filter((a) =>
-                            assignmentOverlapsWeek(a, week),
-                          );
-                          const bg = getCellBackground(total);
-                          const textColor = getCellTextColor(total);
-                          const cellConflictKey = `${person.id}-${weekIdx}`;
-                          const hasTemporaryConflict = conflictCells.has(cellConflictKey);
+                        </div>
+                      );
+                    },
+                  },
+                  ...displayedWeeks.map((week, weekIdx) => ({
+                    key: `wk-${week}`,
+                    title: <span style={{ fontSize: '0.7rem' }}>{week.slice(5)}</span>,
+                    align: 'center' as const,
+                    headerClassName: week === currentWeekMonday ? 'col-today-marker' : undefined,
+                    cellStyle: { padding: '4px', verticalAlign: 'top' as const, minWidth: '80px' },
+                    render: (person: WorkloadPlanningResponse['people'][number]) => {
+                      const total = getTotalAllocationForWeek(person.assignments, week, whatIfAssignments, person.id);
+                      const weekAssignments = person.assignments.filter((a) => assignmentOverlapsWeek(a, week));
+                      const bg = getCellBackground(total);
+                      const textColor = getCellTextColor(total);
+                      const cellConflictKey = `${person.id}-${weekIdx}`;
+                      const hasTemporaryConflict = conflictCells.has(cellConflictKey);
 
-                          const weekWhatIfs = whatIfAssignments.filter(
-                            (a) => a.personId === person.id && assignmentOverlapsWeek(a, week),
-                          );
+                      const weekWhatIfs = whatIfAssignments.filter(
+                        (a) => a.personId === person.id && assignmentOverlapsWeek(a, week),
+                      );
 
-                          // Would adding a dragged item cause > 100%?
-                          const wouldConflict = activeId
-                            ? (() => {
-                                const dragData = whatIfAssignments.find((a) => activeId.startsWith(a.id));
-                                if (!dragData) return false;
-                                return total + dragData.allocationPercent > 100;
-                              })()
-                            : false;
+                      const wouldConflict = activeId
+                        ? (() => {
+                            const dragData = whatIfAssignments.find((a) => activeId.startsWith(a.id));
+                            if (!dragData) return false;
+                            return total + dragData.allocationPercent > 100;
+                          })()
+                        : false;
 
-                          const cellContent = (
-                            <>
-                              {total > 0 ? (
-                                <div
-                                  style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    textAlign: 'center',
-                                    color: textColor,
-                                    marginBottom: '2px',
-                                  }}
+                      const cellContent = (
+                        <>
+                          {total > 0 ? (
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textAlign: 'center', color: textColor, marginBottom: '2px' }}>
+                              {total}%
+                              {total > 100 ? (
+                                <span
+                                  style={{ marginLeft: '2px', fontSize: '0.65rem', background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: '3px', padding: '0 3px' }}
+                                  title="Over-allocated"
                                 >
-                                  {total}%
-                                  {total > 100 ? (
-                                    <span
-                                      style={{
-                                        marginLeft: '2px',
-                                        fontSize: '0.65rem',
-                                        background: '#dc2626',
-                                        color: 'white',
-                                        borderRadius: '3px',
-                                        padding: '0 3px',
-                                      }}
-                                      title="Over-allocated"
-                                    >
-                                      !
-                                    </span>
-                                  ) : null}
-                                </div>
+                                  !
+                                </span>
                               ) : null}
-                              {weekAssignments.map((assignment) => (
-                                <AssignmentBlock
-                                  assignment={assignment}
-                                  key={assignment.id}
-                                  onExtend={handleExtend}
-                                  onShorten={handleShorten}
-                                />
-                              ))}
-                              {whatIfMode && weekWhatIfs.map((a) => (
-                                <DraggableWhatIfBlock
-                                  key={a.id}
-                                  assignment={a}
-                                  weekIndex={weekIdx}
-                                  onRemove={handleRemoveWhatIf}
-                                />
-                              ))}
-                            </>
-                          );
+                            </div>
+                          ) : null}
+                          {weekAssignments.map((assignment) => (
+                            <AssignmentBlock
+                              assignment={assignment}
+                              key={assignment.id}
+                              onExtend={handleExtend}
+                              onShorten={handleShorten}
+                            />
+                          ))}
+                          {whatIfMode && weekWhatIfs.map((a) => (
+                            <DraggableWhatIfBlock
+                              key={a.id}
+                              assignment={a}
+                              weekIndex={weekIdx}
+                              onRemove={handleRemoveWhatIf}
+                            />
+                          ))}
+                        </>
+                      );
 
-                          if (whatIfMode) {
-                            return (
-                              <PlanningDropCell
-                                key={week}
-                                personId={person.id}
-                                weekIndex={weekIdx}
-                                wouldConflict={wouldConflict}
-                              >
-                                <div
-                                  className={hasTemporaryConflict ? 'planning-cell--conflict' : ''}
-                                  style={{ background: bg, minHeight: '40px' }}
-                                >
-                                  {cellContent}
-                                </div>
-                              </PlanningDropCell>
-                            );
-                          }
-
-                          return (
-                            <td
-                              key={week}
-                              style={{
-                                background: bg,
-                                padding: '4px',
-                                verticalAlign: 'top',
-                                minWidth: '80px',
-                              }}
-                            >
+                      if (whatIfMode) {
+                        return (
+                          <PlanningDropCell
+                            personId={person.id}
+                            weekIndex={weekIdx}
+                            wouldConflict={wouldConflict}
+                          >
+                            <div className={hasTemporaryConflict ? 'planning-cell--conflict' : ''} style={{ background: bg, minHeight: '40px' }}>
                               {cellContent}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
+                            </div>
+                          </PlanningDropCell>
+                        );
+                      }
 
-                  {filteredPeople.length === 0 && personFilter && (
-                    <tr>
-                      <td colSpan={displayedWeeks.length + 1} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                        No people match the filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      return (
+                        <div style={{ background: bg, minHeight: '40px', padding: 4 }}>
+                          {cellContent}
+                        </div>
+                      );
+                    },
+                  })),
+                ] as Column<WorkloadPlanningResponse['people'][number]>[]}
+                rows={filteredPeople}
+                getRowKey={(p) => p.id}
+              />
 
               <DragOverlay>
                 {draggedWhatIf ? (

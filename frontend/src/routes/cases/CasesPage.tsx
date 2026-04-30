@@ -13,6 +13,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { ExportButton } from '@/components/common/ExportButton';
 import { useCasesList } from '@/features/cases/useCasesList';
+import { Button } from '@/components/ds';
 
 export function CasesPage(): JSX.Element {
   const navigate = useNavigate();
@@ -36,9 +37,9 @@ export function CasesPage(): JSX.Element {
           ]}
           filename="cases"
         />
-        <button className="button" onClick={() => navigate('/cases/new')} type="button">
+        <Button variant="primary" onClick={() => navigate('/cases/new')} type="button">
           Create case
-        </button>
+        </Button>
         <TipTrigger />
       </>
     );

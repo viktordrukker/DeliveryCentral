@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { PageContainer } from '@/components/common/PageContainer';
+import { Button } from '@/components/ds';
 
 export function NotFoundPage(): JSX.Element {
   return (
@@ -13,9 +14,9 @@ export function NotFoundPage(): JSX.Element {
         <p style={{ color: 'var(--color-text-secondary)', margin: '0 0 2rem' }}>
           The page you are looking for does not exist or has been moved.
         </p>
-        <Link className="button button--primary" to="/">
+        <Button as={Link} variant="primary" to="/">
           Go to dashboard
-        </Link>
+        </Button>
       </div>
     </PageContainer>
   );

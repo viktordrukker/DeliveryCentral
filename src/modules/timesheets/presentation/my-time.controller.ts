@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Query, Req } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { ApiBody, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { MonthlyTimesheetService, MonthlyTimesheetResponse } from '../application/monthly-timesheet.service';
 import { TimeGapDetectionService, TimeGap } from '../application/time-gap-detection.service';
 import { PublicHolidayService, PublicHolidayDto } from '../application/public-holiday.service';
+import { TimesheetsService } from '../application/timesheets.service';
+import { DeleteMyTimeRowDto, RenameMyTimeRowDto } from '../application/contracts/timesheet.dto';
 import { parseMonthQuery } from '../application/contracts/month.query';
 
 @ApiTags('my-time')
@@ -13,6 +15,7 @@ export class MyTimeController {
     private readonly monthlyService: MonthlyTimesheetService,
     private readonly gapService: TimeGapDetectionService,
     private readonly holidayService: PublicHolidayService,
+    private readonly timesheetsService: TimesheetsService,
   ) {}
 
   @Get('month')
@@ -73,6 +76,32 @@ export class MyTimeController {
     const personId = personIdOverride ?? req.principal?.personId ?? req.principal?.userId ?? '';
     const { year, month } = parseMonthQuery(monthStr);
     return this.gapService.detectGaps(personId, year, month);
+  }
+
+  @Post('rename-row')
+  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @ApiOperation({ summary: 'Rename a custom row across all DRAFT entries in a month' })
+  @ApiBody({ type: RenameMyTimeRowDto })
+  @ApiOkResponse({ description: 'Number of entries updated.' })
+  public async renameRow(
+    @Body() dto: RenameMyTimeRowDto,
+    @Req() req: { principal?: { personId?: string; userId?: string } },
+  ): Promise<{ updated: number }> {
+    const personId = req.principal?.personId ?? req.principal?.userId ?? '';
+    return this.timesheetsService.renameRow(personId, dto);
+  }
+
+  @Post('delete-row')
+  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @ApiOperation({ summary: 'Delete all DRAFT entries belonging to a custom row in a month' })
+  @ApiBody({ type: DeleteMyTimeRowDto })
+  @ApiOkResponse({ description: 'Number of entries deleted.' })
+  public async deleteRow(
+    @Body() dto: DeleteMyTimeRowDto,
+    @Req() req: { principal?: { personId?: string; userId?: string } },
+  ): Promise<{ deleted: number }> {
+    const personId = req.principal?.personId ?? req.principal?.userId ?? '';
+    return this.timesheetsService.deleteRow(personId, dto);
   }
 }
 

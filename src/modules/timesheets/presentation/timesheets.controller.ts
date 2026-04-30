@@ -105,6 +105,42 @@ export class TimesheetsController {
     }
   }
 
+  @Post('timesheets/my/:weekStart/revoke')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke a submitted week back to DRAFT (owner only)' })
+  @ApiOkResponse({ description: 'Updated timesheet week' })
+  public async revokeWeek(
+    @Param('weekStart') weekStart: string,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<TimesheetWeekDto> {
+    const personId = this.resolvePersonId(req);
+    try {
+      return await this.service.revokeWeek(personId, weekStart);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to revoke timesheet.';
+      if (message.includes('not found')) throw new NotFoundException(message);
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post('timesheets/my/:weekStart/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Wipe all entries in a DRAFT week (owner only)' })
+  @ApiOkResponse({ description: 'Number of entries deleted.' })
+  public async resetWeek(
+    @Param('weekStart') weekStart: string,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<{ deletedEntries: number }> {
+    const personId = this.resolvePersonId(req);
+    try {
+      return await this.service.resetWeek(personId, weekStart);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reset timesheet.';
+      if (message.includes('not found')) throw new NotFoundException(message);
+      throw new BadRequestException(message);
+    }
+  }
+
   @Get('timesheets/my/history')
   @ApiOperation({ summary: 'Get own timesheet history' })
   @ApiQuery({ name: 'from', required: false, type: String })

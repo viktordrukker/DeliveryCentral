@@ -43,6 +43,8 @@
   "src/modules/pulse/application/contracts/pulse.dto.ts|PulseEntryDto|controller-uuid-leak",
   "src/modules/resource-pools/application/resource-pool.dto.ts|ResourcePoolDto|controller-uuid-leak",
   "src/modules/skills/application/contracts/skills.dto.ts|PersonSkillDto|controller-uuid-leak",
+  "src/modules/staffing-requests/application/contracts/proposal-slate.dto.ts|ProposalSlateCandidateResponseDto|controller-uuid-leak",
+  "src/modules/staffing-requests/application/contracts/proposal-slate.dto.ts|ProposalSlateResponseDto|controller-uuid-leak",
   "src/modules/timesheets/application/contracts/timesheet.dto.ts|TimesheetEntryDto|controller-uuid-leak",
   "src/modules/timesheets/application/contracts/timesheet.dto.ts|TimesheetWeekDto|controller-uuid-leak",
   "src/modules/work-evidence/application/contracts/work-evidence.response.ts|WorkEvidenceResponseDto|controller-uuid-leak"

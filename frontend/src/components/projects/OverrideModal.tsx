@@ -10,6 +10,7 @@ import {
 import type { SubDimensionScore } from '@/lib/api/project-radiator';
 
 import { AXIS_LABELS } from './ProjectRadiator';
+import { Button, FormField, FormModal, Input, Textarea } from '@/components/ds';
 
 interface OverrideModalProps {
   open: boolean;
@@ -27,17 +28,23 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/**
+ * Phase DS-2-7 Tier C2 — rebuilt on `<FormModal>`. Single-submit shape so
+ * FormModal fits cleanly. Legacy `button--project-detail` preset buttons
+ * migrated to DS `<Button>` atoms (Group D pattern). The error display
+ * inside the form body is kept as a contextual block; FormModal's own
+ * submitting state handles the spinner.
+ */
 export function OverrideModal({
   open,
   subDimension,
   onCancel,
   onConfirm,
   cutoffs = DEFAULT_RAG_CUTOFFS,
-}: OverrideModalProps): JSX.Element | null {
+}: OverrideModalProps): JSX.Element {
   const [score, setScore] = useState<number | null>(null);
   const [scoreInput, setScoreInput] = useState<string>('');
   const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,19 +54,19 @@ export function OverrideModal({
       setScoreInput(seed !== null ? seed.toFixed(1) : '');
       setReason('');
       setError(null);
-      setSubmitting(false);
     }
   }, [open, subDimension?.key, subDimension?.effectiveScore, subDimension?.autoScore]);
 
-  if (!open || !subDimension) return null;
+  if (!subDimension) return <></>;
 
   const trimmed = reason.trim();
   const reasonValid = trimmed.length >= MIN_REASON;
   const scoreValid = score !== null && !Number.isNaN(score) && score >= 0 && score <= 4;
-  const canSubmit = scoreValid && reasonValid && !submitting;
+  const submitDisabled = !scoreValid || !reasonValid;
   const subLabel = AXIS_LABELS[subDimension.key] ?? subDimension.key;
   const band = bandForScore(score, cutoffs);
   const bandFill = bandColor(band);
+  const isDirty = scoreInput !== '' || reason !== '';
 
   function handleScoreInput(raw: string): void {
     setScoreInput(raw);
@@ -79,153 +86,111 @@ export function OverrideModal({
   }
 
   async function handleSubmit(): Promise<void> {
-    if (!canSubmit || score === null) return;
-    setSubmitting(true);
+    if (score === null || !reasonValid) {
+      throw new Error('validation');
+    }
     setError(null);
     try {
       await onConfirm(score, trimmed);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to apply override.');
-      setSubmitting(false);
+      throw err;
     }
   }
 
   return (
-    <div
-      aria-modal="true"
-      className="confirm-dialog-overlay"
-      data-testid="override-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onCancel();
-      }}
-      role="dialog"
+    <FormModal
+      open={open}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+      title={`Override ${subLabel}`}
+      description={`Auto score: ${subDimension.autoScore !== null ? subDimension.autoScore.toFixed(1) : '—'} — ${subDimension.explanation}`}
+      submitLabel="Apply override"
+      submitDisabled={submitDisabled}
+      dirty={isDirty}
+      size="md"
+      testId="override-modal"
     >
-      <div className="confirm-dialog" style={{ maxWidth: 560 }}>
-        <h3 className="confirm-dialog__title">Override {subLabel}</h3>
-        <p className="confirm-dialog__message" style={{ marginBottom: 'var(--space-3)' }}>
-          Auto score:{' '}
-          <strong>
-            {subDimension.autoScore !== null ? subDimension.autoScore.toFixed(1) : '—'}
-          </strong>
-          {' — '}
-          {subDimension.explanation}
-        </p>
-
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <span className="field__label">New score (0.0 – 4.0)</span>
-          <div
-            style={{
-              alignItems: 'center',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 'var(--space-2)',
-              marginTop: 'var(--space-1)',
-            }}
-          >
-            <input
-              className="field__control"
-              disabled={submitting}
-              max={4}
-              min={0}
-              onChange={(e) => handleScoreInput(e.target.value)}
-              step={0.1}
-              style={{ width: 110 }}
-              type="number"
-              value={scoreInput}
-            />
-            {band ? (
-              <span
-                aria-label={`${bandLabel(band)} band`}
-                style={{
-                  alignItems: 'center',
-                  background: bandFill,
-                  borderRadius: 'var(--radius-control)',
-                  color: 'var(--color-surface)',
-                  display: 'inline-flex',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  gap: 4,
-                  letterSpacing: '0.04em',
-                  padding: '2px 10px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {bandLabel(band)}
+      <FormField label="New score (0.0 – 4.0)">
+        {(props) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+              <Input
+                max={4}
+                min={0}
+                onChange={(e) => handleScoreInput(e.target.value)}
+                step={0.1}
+                style={{ width: 110 }}
+                type="number"
+                value={scoreInput}
+                {...props}
+              />
+              {band ? (
+                <span
+                  aria-label={`${bandLabel(band)} band`}
+                  style={{
+                    alignItems: 'center', background: bandFill, borderRadius: 'var(--radius-control)',
+                    color: 'var(--color-surface)', display: 'inline-flex', fontSize: 11,
+                    fontWeight: 600, gap: 4, letterSpacing: '0.04em', padding: '2px 10px', textTransform: 'uppercase',
+                  }}
+                >
+                  {bandLabel(band)}
+                </span>
+              ) : null}
+              <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                Cutoffs: C &lt; {cutoffs.critical.toFixed(1)} · R &lt; {cutoffs.red.toFixed(1)} · A &lt; {cutoffs.amber.toFixed(1)}
               </span>
-            ) : null}
-            <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-              Cutoffs: C &lt; {cutoffs.critical.toFixed(1)} · R &lt; {cutoffs.red.toFixed(1)} · A &lt; {cutoffs.amber.toFixed(1)}
-            </span>
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {PRESETS.map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={score === p ? 'primary' : 'secondary'}
+                  onClick={() => handlePreset(p)}
+                >
+                  {p.toFixed(1)}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 'var(--space-2)' }}>
-            {PRESETS.map((p) => (
-              <button
-                className={score === p ? 'button--project-detail button--primary' : 'button--project-detail'}
-                disabled={submitting}
-                key={p}
-                onClick={() => handlePreset(p)}
-                type="button"
-              >
-                {p.toFixed(1)}
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
+      </FormField>
 
-        <label className="field" style={{ marginBottom: 'var(--space-3)' }}>
-          <span className="field__label">Reason ({MIN_REASON}–{MAX_REASON} chars)</span>
-          <textarea
-            className="field__control"
-            disabled={submitting}
-            maxLength={MAX_REASON}
-            onChange={(e) => setReason(e.target.value)}
-            rows={4}
-            value={reason}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2 }}>
-            <span style={{ color: reasonValid ? 'var(--color-text-muted)' : 'var(--color-status-danger)' }}>
-              {reasonValid ? 'Ready' : `Reason must be at least ${MIN_REASON} characters`}
-            </span>
-            <span style={{ color: 'var(--color-text-muted)' }}>
+      <FormField
+        label={`Reason (${MIN_REASON}–${MAX_REASON} chars)`}
+        error={!reasonValid && reason !== '' ? `Reason must be at least ${MIN_REASON} characters` : undefined}
+      >
+        {(props) => (
+          <>
+            <Textarea
+              maxLength={MAX_REASON}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              value={reason}
+              {...props}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 11, marginTop: 2, color: 'var(--color-text-muted)' }}>
               {trimmed.length}/{MAX_REASON}
-            </span>
-          </div>
-        </label>
+            </div>
+          </>
+        )}
+      </FormField>
 
-        {error ? (
-          <div
-            style={{
-              marginBottom: 'var(--space-3)',
-              padding: 'var(--space-2)',
-              fontSize: 12,
-              color: 'var(--color-status-danger)',
-              border: '1px solid var(--color-status-danger)',
-              borderRadius: 6,
-            }}
-          >
-            {error}
-          </div>
-        ) : null}
-
-        <div className="confirm-dialog__actions">
-          <button
-            className="button"
-            disabled={!canSubmit}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
-            {submitting ? 'Saving...' : 'Apply override'}
-          </button>
-          <button
-            className="button button--secondary"
-            disabled={submitting}
-            onClick={onCancel}
-            type="button"
-          >
-            Cancel
-          </button>
+      {error ? (
+        <div
+          style={{
+            marginTop: 'var(--space-2)',
+            padding: 'var(--space-2)',
+            fontSize: 12,
+            color: 'var(--color-status-danger)',
+            border: '1px solid var(--color-status-danger)',
+            borderRadius: 6,
+          }}
+        >
+          {error}
         </div>
-      </div>
-    </div>
+      ) : null}
+    </FormModal>
   );
 }

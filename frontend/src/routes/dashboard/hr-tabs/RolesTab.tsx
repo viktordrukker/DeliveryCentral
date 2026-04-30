@@ -3,6 +3,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { ManagerSpanDistributionBar } from '@/components/charts/ManagerSpanDistributionBar';
 import type { HrDistributionItem } from '@/lib/api/dashboard-hr-manager';
+import { Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -49,42 +50,24 @@ export function HrRolesTab({ roleDistribution, gradeDistribution, totalHeadcount
         {roleDistribution.length === 0 && gradeDistribution.length === 0 ? (
           <EmptyState description="No role or grade distribution data is available." title="No role or grade data" />
         ) : (
-          <table className="dash-compact-table">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Label</th>
-                <th style={NUM}>Count</th>
-                <th style={{ width: 120 }}>Bar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roleDistribution.map((item) => (
-                <tr key={`role-${item.key}`}>
-                  <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Role</td>
-                  <td style={{ fontWeight: 500 }}>{humanize(item.label)}</td>
-                  <td style={NUM}>{item.count}</td>
-                  <td>
-                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, Math.round((item.count / Math.max(1, totalHeadcount)) * 100))}%`, borderRadius: 2, background: 'var(--color-chart-3)' }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {gradeDistribution.map((item) => (
-                <tr key={`grade-${item.key}`}>
-                  <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Grade</td>
-                  <td style={{ fontWeight: 500 }}>{humanize(item.label)}</td>
-                  <td style={NUM}>{item.count}</td>
-                  <td>
-                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, Math.round((item.count / Math.max(1, totalHeadcount)) * 100))}%`, borderRadius: 2, background: 'var(--color-chart-5)' }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'type', title: 'Type', width: 70, getValue: (r) => r.kind, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.kind === 'role' ? 'Role' : 'Grade'}</span> },
+              { key: 'label', title: 'Label', getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{humanize(r.label)}</span> },
+              { key: 'count', title: 'Count', align: 'right', getValue: (r) => r.count, render: (r) => <span style={NUM}>{r.count}</span> },
+              { key: 'bar', title: 'Bar', width: 120, render: (r) => (
+                <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, Math.round((r.count / Math.max(1, totalHeadcount)) * 100))}%`, borderRadius: 2, background: r.kind === 'role' ? 'var(--color-chart-3)' : 'var(--color-chart-5)' }} />
+                </div>
+              ) },
+            ] as Column<HrDistributionItem & { kind: 'role' | 'grade' }>[]}
+            rows={[
+              ...roleDistribution.map((item) => ({ ...item, kind: 'role' as const })),
+              ...gradeDistribution.map((item) => ({ ...item, kind: 'grade' as const })),
+            ]}
+            getRowKey={(r) => `${r.kind}-${r.key}`}
+          />
         )}
       </SectionCard>
     </>

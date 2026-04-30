@@ -6,6 +6,7 @@ import type { ProjectRiskDto } from '@/lib/api/project-risks';
 import type { ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDate } from '@/lib/format-date';
+import { Button, DescriptionList, type DescriptionListItem, Table, type Column } from '@/components/ds';
 
 interface ProjectStatusReportViewProps {
   project: ProjectDetails;
@@ -61,6 +62,31 @@ const SUB_CRITERION_LABELS: Record<string, string> = {
   teamMood: 'Team Mood',
 };
 
+interface RiskRow {
+  id: string;
+  title: string;
+  category: string;
+  riskScore: number;
+  status: string;
+  strategy: string | null;
+}
+
+interface VendorRow {
+  id: string;
+  vendorName: string;
+  roleSummary: string;
+  headcount: number;
+  status: string;
+}
+
+interface DimensionRow {
+  key: string;
+  label: string;
+  rating: number;
+  source: string;
+  note: string;
+}
+
 export function ProjectStatusReportView({
   project,
   computed,
@@ -73,6 +99,58 @@ export function ProjectStatusReportView({
   dimensionDetails,
 }: ProjectStatusReportViewProps): JSX.Element {
   const reportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const staffingItems: DescriptionListItem[] = staffingSummary ? [
+    { label: 'Planned Headcount', value: <span style={NUM}>{staffingSummary.totalPlanned}</span> },
+    { label: 'Internal Filled', value: <span style={NUM}>{staffingSummary.totalInternalFilled}</span> },
+    { label: 'Vendor Filled', value: <span style={NUM}>{staffingSummary.totalVendorFilled}</span> },
+    { label: 'Fill Rate', value: <span style={NUM}>{staffingSummary.fillRate}%</span> },
+    { label: 'Gap', value: <span style={NUM}>{staffingSummary.totalGap}</span> },
+  ] : [];
+
+  const budgetItems: DescriptionListItem[] = budgetDashboard?.budget ? [
+    { label: 'CAPEX (Capitalization)', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.capex)}</span> },
+    { label: 'OPEX (Operational)', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.opex)}</span> },
+    { label: 'Total', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.total)}</span> },
+    { label: 'Forecast Remaining', value: <span style={NUM}>{formatCurrency(budgetDashboard.forecast.remainingBudget)}</span> },
+    { label: 'On Track', value: budgetDashboard.forecast.onTrack ? 'Yes' : 'No' },
+  ] : [];
+
+  const projectDetailItems: DescriptionListItem[] = (() => {
+    const items: DescriptionListItem[] = [
+      { label: 'Status', value: project.status },
+      { label: 'Start Date', value: <span style={NUM}>{project.startDate ? formatDate(project.startDate) : '—'}</span> },
+      { label: 'Planned End Date', value: <span style={NUM}>{project.plannedEndDate ? formatDate(project.plannedEndDate) : '—'}</span> },
+    ];
+    if (project.engagementModel) items.push({ label: 'Engagement Model', value: project.engagementModel });
+    if (project.priority) items.push({ label: 'Priority', value: project.priority });
+    if (project.clientName) items.push({ label: 'Client', value: project.clientName });
+    return items;
+  })();
+
+  const riskColumns: Column<RiskRow>[] = [
+    { key: 'title', title: 'Risk', getValue: (r) => r.title, render: (r) => <span style={{ fontWeight: 500 }}>{r.title}</span> },
+    { key: 'category', title: 'Category', width: 80, getValue: (r) => r.category, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.category}</span> },
+    { key: 'score', title: 'Score', align: 'right', width: 60, getValue: (r) => r.riskScore, render: (r) => <span style={{ ...NUM, fontWeight: 700 }}>{r.riskScore}</span> },
+    { key: 'status', title: 'Status', width: 80, getValue: (r) => r.status, render: (r) => <StatusBadge status={r.status} variant="chip" /> },
+    { key: 'strategy', title: 'Strategy', width: 90, getValue: (r) => r.strategy ?? '—', render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.strategy ?? '—'}</span> },
+  ];
+
+  const vendorColumns: Column<VendorRow>[] = [
+    { key: 'vendor', title: 'Vendor', getValue: (v) => v.vendorName, render: (v) => <span style={{ fontWeight: 500 }}>{v.vendorName}</span> },
+    { key: 'role', title: 'Role', getValue: (v) => v.roleSummary, render: (v) => <span style={{ color: 'var(--color-text-muted)' }}>{v.roleSummary}</span> },
+    { key: 'hc', title: 'HC', align: 'right', width: 50, getValue: (v) => v.headcount, render: (v) => <span style={NUM}>{v.headcount}</span> },
+    { key: 'status', title: 'Status', width: 80, getValue: (v) => v.status, render: (v) => <StatusBadge status={v.status} variant="chip" /> },
+  ];
+
+  const dimensionColumns: Column<DimensionRow>[] = [
+    { key: 'label', title: 'Criterion', width: 180, getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
+    { key: 'rating', title: 'Rating', align: 'right', width: 70, getValue: (r) => r.rating, render: (r) => <span style={NUM}>{r.rating}/5</span> },
+    { key: 'source', title: 'Source', width: 80, getValue: (r) => r.source, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.source}</span> },
+    { key: 'note', title: 'Note', getValue: (r) => r.note, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.note}</span> },
+  ];
+
+  const topRisks = (risks ?? []).slice(0, 5);
 
   return (
     <div className="project-status-report" data-testid="project-status-report" style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -152,30 +230,7 @@ export function ProjectStatusReportView({
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Staffing
           </div>
-          <table className="dash-compact-table" style={{ fontSize: 12 }}>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Planned Headcount</td>
-                <td style={NUM}>{staffingSummary.totalPlanned}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Internal Filled</td>
-                <td style={NUM}>{staffingSummary.totalInternalFilled}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Vendor Filled</td>
-                <td style={NUM}>{staffingSummary.totalVendorFilled}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Fill Rate</td>
-                <td style={NUM}>{staffingSummary.fillRate}%</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Gap</td>
-                <td style={NUM}>{staffingSummary.totalGap}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DescriptionList items={staffingItems} />
         </div>
       ) : null}
 
@@ -204,61 +259,22 @@ export function ProjectStatusReportView({
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Budget — FY{budgetDashboard.budget.fiscalYear}
           </div>
-          <table className="dash-compact-table" style={{ fontSize: 12 }}>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 500 }}>CAPEX (Capitalization)</td>
-                <td style={NUM}>{formatCurrency(budgetDashboard.budget.capex)}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>OPEX (Operational)</td>
-                <td style={NUM}>{formatCurrency(budgetDashboard.budget.opex)}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Total</td>
-                <td style={NUM}>{formatCurrency(budgetDashboard.budget.total)}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>Forecast Remaining</td>
-                <td style={NUM}>{formatCurrency(budgetDashboard.forecast.remainingBudget)}</td>
-              </tr>
-              <tr>
-                <td style={{ fontWeight: 500 }}>On Track</td>
-                <td>{budgetDashboard.forecast.onTrack ? 'Yes' : 'No'}</td>
-              </tr>
-            </tbody>
-          </table>
+          <DescriptionList items={budgetItems} />
         </div>
       ) : null}
 
       {/* Risk Posture */}
-      {risks && risks.length > 0 ? (
+      {topRisks.length > 0 ? (
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Risk Posture
           </div>
-          <table className="dash-compact-table" style={{ fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th>Risk</th>
-                <th style={{ width: 80 }}>Category</th>
-                <th style={{ width: 60, textAlign: 'right' }}>Score</th>
-                <th style={{ width: 80 }}>Status</th>
-                <th style={{ width: 90 }}>Strategy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {risks.slice(0, 5).map((r) => (
-                <tr key={r.id}>
-                  <td style={{ fontWeight: 500 }}>{r.title}</td>
-                  <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.category}</td>
-                  <td style={{ ...NUM, fontWeight: 700 }}>{r.riskScore}</td>
-                  <td><StatusBadge status={r.status} variant="chip" /></td>
-                  <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.strategy ?? '\u2014'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={riskColumns}
+            rows={topRisks.map((r) => ({ id: r.id, title: r.title, category: r.category, riskScore: r.riskScore, status: r.status, strategy: r.strategy ?? null }))}
+            getRowKey={(r) => r.id}
+          />
         </div>
       ) : null}
 
@@ -268,26 +284,12 @@ export function ProjectStatusReportView({
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Vendor Summary
           </div>
-          <table className="dash-compact-table" style={{ fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Role</th>
-                <th style={{ width: 50, textAlign: 'right' }}>HC</th>
-                <th style={{ width: 80 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vendorEngagements.map((v) => (
-                <tr key={v.id}>
-                  <td style={{ fontWeight: 500 }}>{v.vendorName}</td>
-                  <td style={{ color: 'var(--color-text-muted)' }}>{v.roleSummary}</td>
-                  <td style={NUM}>{v.headcount}</td>
-                  <td><StatusBadge status={v.status} variant="chip" /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={vendorColumns}
+            rows={vendorEngagements.map((v) => ({ id: v.id, vendorName: v.vendorName, roleSummary: v.roleSummary, headcount: v.headcount, status: v.status }))}
+            getRowKey={(v) => v.id}
+          />
         </div>
       ) : null}
 
@@ -304,23 +306,24 @@ export function ProjectStatusReportView({
               ([, v]) => v && typeof v === 'object' && 'rating' in v,
             );
             if (entries.length === 0) return null;
+            const dimensionRows: DimensionRow[] = entries.map(([key, val]) => ({
+              key,
+              label: SUB_CRITERION_LABELS[key] ?? key,
+              rating: val.rating,
+              source: val.auto ? 'Auto' : 'Manual',
+              note: val.note ?? '',
+            }));
             return (
               <div key={dim} style={{ marginBottom: 'var(--space-3)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-1)' }}>
                   {DIMENSION_LABELS[dim] ?? dim}
                 </div>
-                <table className="dash-compact-table" style={{ fontSize: 12 }}>
-                  <tbody>
-                    {entries.map(([key, val]) => (
-                      <tr key={key}>
-                        <td style={{ fontWeight: 500, width: 180 }}>{SUB_CRITERION_LABELS[key] ?? key}</td>
-                        <td style={NUM}>{val.rating}/5</td>
-                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{val.auto ? 'Auto' : 'Manual'}</td>
-                        <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{val.note ?? ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={dimensionColumns}
+                  rows={dimensionRows}
+                  getRowKey={(r) => r.key}
+                />
               </div>
             );
           })}
@@ -332,23 +335,14 @@ export function ProjectStatusReportView({
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Project Details
         </div>
-        <table className="dash-compact-table" style={{ fontSize: 12 }}>
-          <tbody>
-            <tr><td style={{ fontWeight: 500, width: 140 }}>Status</td><td>{project.status}</td></tr>
-            <tr><td style={{ fontWeight: 500 }}>Start Date</td><td style={NUM}>{project.startDate ? formatDate(project.startDate) : '\u2014'}</td></tr>
-            <tr><td style={{ fontWeight: 500 }}>Planned End Date</td><td style={NUM}>{project.plannedEndDate ? formatDate(project.plannedEndDate) : '\u2014'}</td></tr>
-            {project.engagementModel ? <tr><td style={{ fontWeight: 500 }}>Engagement Model</td><td>{project.engagementModel}</td></tr> : null}
-            {project.priority ? <tr><td style={{ fontWeight: 500 }}>Priority</td><td>{project.priority}</td></tr> : null}
-            {project.clientName ? <tr><td style={{ fontWeight: 500 }}>Client</td><td>{project.clientName}</td></tr> : null}
-          </tbody>
-        </table>
+        <DescriptionList items={projectDetailItems} />
       </div>
 
       {/* Print button (hidden when printing) */}
       <div className="no-print" style={{ marginTop: 'var(--space-5)', display: 'flex', gap: 'var(--space-2)' }}>
-        <button className="button button--primary" onClick={() => window.print()} type="button">
+        <Button variant="primary" onClick={() => window.print()} type="button">
           Print Report
-        </button>
+        </Button>
       </div>
     </div>
   );

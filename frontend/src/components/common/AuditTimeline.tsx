@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { type BusinessAuditRecord } from '@/lib/api/business-audit';
 import { formatDate } from '@/lib/format-date';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface AuditTimelineProps {
   events: BusinessAuditRecord[];
@@ -82,54 +83,39 @@ function EventCard({ event }: EventCardProps): JSX.Element {
           </div>
         ) : null}
         {hasDiff ? (
-          <button
-            className="audit-timeline__expand"
+          <Button
+            variant="link"
+            size="sm"
             onClick={() => setExpanded((v) => !v)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#2563eb',
-              cursor: 'pointer',
-              fontSize: '12px',
-              padding: '4px 0',
-            }}
             type="button"
           >
             {expanded ? 'Hide details' : 'Show details'}
-          </button>
+          </Button>
         ) : null}
         {expanded && hasDiff ? (
           <div className="audit-timeline__diff" style={{ marginTop: '8px', fontSize: '12px' }}>
             {diffKeys.size > 0 ? (
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: '2px 8px', background: '#f3f4f6' }}>Key</th>
-                    <th style={{ textAlign: 'left', padding: '2px 8px', background: '#f3f4f6' }}>Old</th>
-                    <th style={{ textAlign: 'left', padding: '2px 8px', background: '#f3f4f6' }}>New</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from(diffKeys).map((key) => (
-                    <tr key={key}>
-                      <td style={{ padding: '2px 8px', fontWeight: 600 }}>{key}</td>
-                      <td style={{ padding: '2px 8px', color: '#dc2626' }}>
-                        {event.oldValues?.[key] !== undefined
-                          ? JSON.stringify(event.oldValues[key])
-                          : '—'}
-                      </td>
-                      <td style={{ padding: '2px 8px', color: '#16a34a' }}>
-                        {event.newValues?.[key] !== undefined
-                          ? JSON.stringify(event.newValues[key])
-                          : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'key', title: 'Key', getValue: (k) => k, render: (k) => <span style={{ fontWeight: 600 }}>{k}</span> },
+                  { key: 'old', title: 'Old', getValue: (k) => event.oldValues?.[k] !== undefined ? JSON.stringify(event.oldValues[k]) : '', render: (k) => (
+                    <span style={{ color: 'var(--color-status-danger)' }}>
+                      {event.oldValues?.[k] !== undefined ? JSON.stringify(event.oldValues[k]) : '—'}
+                    </span>
+                  ) },
+                  { key: 'new', title: 'New', getValue: (k) => event.newValues?.[k] !== undefined ? JSON.stringify(event.newValues[k]) : '', render: (k) => (
+                    <span style={{ color: 'var(--color-status-active)' }}>
+                      {event.newValues?.[k] !== undefined ? JSON.stringify(event.newValues[k]) : '—'}
+                    </span>
+                  ) },
+                ] as Column<string>[]}
+                rows={Array.from(diffKeys)}
+                getRowKey={(k) => k}
+              />
             ) : null}
             {event.metadata && Object.keys(event.metadata).length > 0 && diffKeys.size === 0 ? (
-              <pre style={{ background: '#f9fafb', borderRadius: '4px', padding: '8px', overflow: 'auto' }}>
+              <pre style={{ background: 'var(--color-surface-alt)', borderRadius: '4px', padding: '8px', overflow: 'auto' }}>
                 {JSON.stringify(event.metadata, null, 2)}
               </pre>
             ) : null}

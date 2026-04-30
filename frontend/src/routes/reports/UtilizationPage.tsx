@@ -12,14 +12,14 @@ import {
 
 import { ChartWrapper } from '@/components/common/ChartWrapper';
 import { ErrorState } from '@/components/common/ErrorState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
+import { AnalysisLayout } from '@/components/layout/AnalysisLayout';
 import { SectionCard } from '@/components/common/SectionCard';
 import { ViewportTable } from '@/components/layout/ViewportTable';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { exportToXlsx } from '@/lib/export';
 import { UtilizationPersonRow, UtilizationReport, fetchUtilizationReport } from '@/lib/api/utilization';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 type UtilizationColumn = 'personName' | 'availableHours' | 'assignedHours' | 'actualHours' | 'utilizationPercent';
 
@@ -109,41 +109,31 @@ export function UtilizationPage(): JSX.Element {
   }));
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        actions={
-          sorted.length > 0 ? (
-            <button className="button button--secondary" onClick={handleExport} type="button">
-              Export XLSX
-            </button>
-          ) : undefined
-        }
-        eyebrow="Analytics"
-        subtitle="Available hours vs assigned hours vs actual timesheet hours per person."
-        title="Utilization Report"
-      />
-
-      <div className="filter-bar">
-        <label className="field">
-          <span className="field__label">From</span>
-          <input
-            className="field__control"
-            onChange={(e) => setFrom(e.target.value)}
-            type="date"
-            value={from}
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">To</span>
-          <input
-            className="field__control"
-            onChange={(e) => setTo(e.target.value)}
-            type="date"
-            value={to}
-          />
-        </label>
-      </div>
-
+    <AnalysisLayout
+      viewport
+      eyebrow="Analytics"
+      title="Utilization Report"
+      subtitle="Available hours vs assigned hours vs actual timesheet hours per person."
+      actions={
+        sorted.length > 0 ? (
+          <Button variant="secondary" onClick={handleExport} type="button">
+            Export XLSX
+          </Button>
+        ) : undefined
+      }
+      filters={
+        <>
+          <label className="field">
+            <span className="field__label">From</span>
+            <DatePicker onValueChange={(value) => setFrom(value)} value={from} />
+          </label>
+          <label className="field">
+            <span className="field__label">To</span>
+            <DatePicker onValueChange={(value) => setTo(value)} value={to} />
+          </label>
+        </>
+      }
+    >
       {!isLoading && !error && chartData.length > 0 ? (
         <SectionCard title="Utilization by Person — Overview">
           <ChartWrapper ariaLabel="Utilization bar chart — percentage per person">
@@ -186,45 +176,28 @@ export function UtilizationPage(): JSX.Element {
             No active assignments found for the selected period.
           </p>
         ) : null}
-        {!isLoading && !error && sorted.length > 0 ? (
-          <div style={{ overflow: 'auto' }}>
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th {...getThProps('personName')}>
-                    Person <span className="sort-indicator">{getSortIndicator('personName')}</span>
-                  </th>
-                  <th {...getThProps('availableHours')}>
-                    Available Hrs <span className="sort-indicator">{getSortIndicator('availableHours')}</span>
-                  </th>
-                  <th {...getThProps('assignedHours')}>
-                    Assigned Hrs <span className="sort-indicator">{getSortIndicator('assignedHours')}</span>
-                  </th>
-                  <th {...getThProps('actualHours')}>
-                    Actual Hrs <span className="sort-indicator">{getSortIndicator('actualHours')}</span>
-                  </th>
-                  <th {...getThProps('utilizationPercent')}>
-                    Utilization <span className="sort-indicator">{getSortIndicator('utilizationPercent')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((row: UtilizationPersonRow) => (
-                  <tr key={row.personId}>
-                    <td>{row.personName}</td>
-                    <td>{row.availableHours}</td>
-                    <td>{row.assignedHours}</td>
-                    <td>{row.actualHours}</td>
-                    <td>
-                      <UtilizationBar pct={row.utilizationPercent} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+        {!isLoading && !error && sorted.length > 0 ? (() => {
+          const sortHeader = (key: UtilizationColumn, label: string): JSX.Element => (
+            <span {...getThProps(key)}>
+              {label} <span className="sort-indicator">{getSortIndicator(key)}</span>
+            </span>
+          );
+          return (
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'personName', title: sortHeader('personName', 'Person'), getValue: (r) => r.personName, render: (r) => r.personName },
+                { key: 'availableHours', title: sortHeader('availableHours', 'Available Hrs'), getValue: (r) => r.availableHours, render: (r) => r.availableHours },
+                { key: 'assignedHours', title: sortHeader('assignedHours', 'Assigned Hrs'), getValue: (r) => r.assignedHours, render: (r) => r.assignedHours },
+                { key: 'actualHours', title: sortHeader('actualHours', 'Actual Hrs'), getValue: (r) => r.actualHours, render: (r) => r.actualHours },
+                { key: 'utilization', title: sortHeader('utilizationPercent', 'Utilization'), getValue: (r) => r.utilizationPercent, render: (r) => <UtilizationBar pct={r.utilizationPercent} /> },
+              ] as Column<UtilizationPersonRow>[]}
+              rows={sorted}
+              getRowKey={(r) => r.personId}
+            />
+          );
+        })() : null}
       </ViewportTable>
-    </PageContainer>
+    </AnalysisLayout>
   );
 }

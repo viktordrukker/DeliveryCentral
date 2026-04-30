@@ -23,6 +23,7 @@ import { TipBalloon } from '@/components/common/TipBalloon';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { exportToXlsx } from '@/lib/export';
 import { TimeReportData, fetchTimeReport } from '@/lib/api/timesheets';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -91,15 +92,15 @@ export function TimeReportPage(): JSX.Element {
         </label>
         {period === 'custom' && (
           <>
-            <label className="field"><span className="field__label">From</span><input className="field__control" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} /></label>
-            <label className="field"><span className="field__label">To</span><input className="field__control" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} /></label>
+            <label className="field"><span className="field__label">From</span><DatePicker value={customFrom} onValueChange={(value) => setCustomFrom(value)} /></label>
+            <label className="field"><span className="field__label">To</span><DatePicker value={customTo} onValueChange={(value) => setCustomTo(value)} /></label>
           </>
         )}
         {data && (
-          <button type="button" className="button button--secondary button--sm" onClick={() => {
+          <Button type="button" variant="secondary" size="sm" onClick={() => {
             const rows = data.byPerson.map((p) => ({ Person: p.name, Total: p.hours, Standard: p.standardHours, Overtime: p.overtimeHours, Bench: p.benchHours }));
             exportToXlsx(rows, 'time-analytics');
-          }}>Export XLSX</button>
+          }}>Export XLSX</Button>
         )}
       </>
     );
@@ -243,37 +244,27 @@ export function TimeReportPage(): JSX.Element {
           {/* ── DETAIL TABLE ── */}
           <SectionCard title="Detail by Person">
             {data.byPerson.length > 0 ? (
-              <table className="dash-compact-table">
-                <thead>
-                  <tr>
-                    <th>Person</th>
-                    <th style={NUM}>Standard</th>
-                    <th style={NUM}>Overtime</th>
-                    <th style={NUM}>Bench</th>
-                    <th style={NUM}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.byPerson.map((p) => (
-                    <tr key={p.name}>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td style={NUM}>{p.standardHours}h</td>
-                      <td style={{ ...NUM, color: p.overtimeHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{p.overtimeHours}h</td>
-                      <td style={{ ...NUM, color: p.benchHours > 0 ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{p.benchHours}h</td>
-                      <td style={{ ...NUM, fontWeight: 600 }}>{p.hours}h</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ fontWeight: 700 }}>
-                    <td>Total</td>
-                    <td style={NUM}>{data.standardHours}h</td>
-                    <td style={{ ...NUM, color: 'var(--color-status-warning)' }}>{data.overtimeHours}h</td>
-                    <td style={NUM}>{data.benchHours}h</td>
-                    <td style={NUM}>{data.totalHours}h</td>
-                  </tr>
-                </tfoot>
-              </table>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (p) => p.name, render: (p) => <span style={{ fontWeight: 500 }}>{p.name}</span> },
+                  { key: 'standard', title: 'Standard', align: 'right', getValue: (p) => p.standardHours, render: (p) => <span style={NUM}>{p.standardHours}h</span> },
+                  { key: 'overtime', title: 'Overtime', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, color: p.overtimeHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{p.overtimeHours}h</span> },
+                  { key: 'bench', title: 'Bench', align: 'right', getValue: (p) => p.benchHours, render: (p) => <span style={{ ...NUM, color: p.benchHours > 0 ? 'var(--color-text)' : 'var(--color-text-muted)' }}>{p.benchHours}h</span> },
+                  { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.hours, render: (p) => <span style={{ ...NUM, fontWeight: 600 }}>{p.hours}h</span> },
+                ] as Column<typeof data.byPerson[number]>[]}
+                rows={data.byPerson}
+                getRowKey={(p) => p.name}
+                footer={
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', padding: 'var(--space-2) var(--space-3)', fontWeight: 700, background: 'var(--color-surface-alt)' }}>
+                    <span>Total</span>
+                    <span style={NUM}>{data.standardHours}h</span>
+                    <span style={{ ...NUM, color: 'var(--color-status-warning)' }}>{data.overtimeHours}h</span>
+                    <span style={NUM}>{data.benchHours}h</span>
+                    <span style={NUM}>{data.totalHours}h</span>
+                  </div>
+                }
+              />
             ) : <div style={{ padding: 'var(--space-4)', color: 'var(--color-text-muted)', textAlign: 'center' }}>No data</div>}
           </SectionCard>
         </>

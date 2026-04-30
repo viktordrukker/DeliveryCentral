@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Button } from '@/components/ds';
 
 interface AuthTokenFieldProps {
   hasToken: boolean;
@@ -43,12 +44,12 @@ export function AuthTokenField({
         </label>
 
         <div className="entity-form__actions entity-form__actions--split">
-          <button className="button button--secondary" onClick={onClear} type="button">
+          <Button variant="secondary" onClick={onClear} type="button">
             Clear token
-          </button>
-          <button className="button" type="submit">
+          </Button>
+          <Button variant="primary" type="submit">
             Save token
-          </button>
+          </Button>
         </div>
       </form>
 

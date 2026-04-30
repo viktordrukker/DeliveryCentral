@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
+import { FormPageLayout } from '@/components/layout/FormPageLayout';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
   type OrgConfigDto,
@@ -13,6 +13,7 @@ import {
   resetOrgConfig,
   updateOrgConfig,
 } from '@/lib/api/org-config';
+import { Button } from '@/components/ds';
 
 const CADENCES: Array<{ value: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'; label: string }> = [
   { value: 'WEEKLY', label: 'Weekly' },
@@ -39,6 +40,7 @@ export function OrganizationConfigPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState<UpdateOrgConfigDto>({});
   const [saving, setSaving] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -72,8 +74,12 @@ export function OrganizationConfigPage(): JSX.Element {
     }
   }
 
-  async function handleReset(): Promise<void> {
-    if (!window.confirm('Reset all settings to product defaults?')) return;
+  function handleReset(): void {
+    setConfirmReset(true);
+  }
+
+  async function performReset(): Promise<void> {
+    setConfirmReset(false);
     setSaving(true);
     try {
       const updated = await resetOrgConfig();
@@ -98,32 +104,26 @@ export function OrganizationConfigPage(): JSX.Element {
   };
 
   return (
-    <PageContainer testId="organization-config-page">
-      <PageHeader
-        actions={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="button--project-detail"
-              disabled={saving}
-              onClick={() => void handleReset()}
-              type="button"
-            >
-              Reset to defaults
-            </button>
-            <button
-              className="button--project-detail button--primary"
-              disabled={saving || Object.keys(dirty).length === 0}
-              onClick={() => void handleSave()}
-              type="button"
-            >
-              {saving ? 'Saving...' : 'Save changes'}
-            </button>
-          </div>
-        }
-        eyebrow="Admin"
-        subtitle="Tune reporting cadence, thresholds, and governance without code deploys. Every change is audit-logged."
-        title="Organization configuration"
-      />
+    <FormPageLayout
+      testId="organization-config-page"
+      eyebrow="Admin"
+      title="Organization configuration"
+      subtitle="Tune reporting cadence, thresholds, and governance without code deploys. Every change is audit-logged."
+      actions={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" disabled={saving} onClick={handleReset}>
+            Reset to defaults
+          </Button>
+          <Button
+            variant="primary"
+            disabled={saving || Object.keys(dirty).length === 0}
+            onClick={() => void handleSave()}
+          >
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      }
+    >
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {/* Reporting category */}
@@ -348,6 +348,15 @@ export function OrganizationConfigPage(): JSX.Element {
           Last updated {new Date(effective.updatedAt).toLocaleString()}.
         </div>
       </div>
-    </PageContainer>
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset configuration?"
+        message="Reset all settings to product defaults? Your unsaved changes will also be discarded."
+        confirmLabel="Reset"
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => void performReset()}
+      />
+    </FormPageLayout>
   );
 }

@@ -1,4 +1,5 @@
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Button } from '@/components/ds';
 import type { ProjectExternalLink } from '@/lib/api/project-registry';
 
 interface ExternalLinksPanelProps {
@@ -67,15 +68,17 @@ export function ExternalLinksPanel({ links }: ExternalLinksPanelProps): JSX.Elem
 
           {/* Action */}
           {link.externalUrl ? (
-            <a
+            <Button
+              as="a"
+              variant="secondary"
+              size="sm"
               href={link.externalUrl}
               target="_blank"
               rel="noreferrer"
-              className="button button--secondary button--sm"
               style={{ alignSelf: 'flex-start', marginTop: 'auto', fontSize: 11 }}
             >
               Open in {link.provider}
-            </a>
+            </Button>
           ) : null}
         </div>
       ))}

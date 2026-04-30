@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '@/components/ds';
 
 interface Props {
   label?: string;
@@ -21,13 +22,8 @@ export function CopyLinkButton({ label = 'Copy link', title = 'Copy link to this
   }
 
   return (
-    <button
-      className="button button--secondary button--sm"
-      onClick={handleClick}
-      title={title}
-      type="button"
-    >
+    <Button variant="secondary" size="sm" onClick={handleClick} title={title} type="button">
       {copied ? 'Copied \u2713' : label}
-    </button>
+    </Button>
   );
 }

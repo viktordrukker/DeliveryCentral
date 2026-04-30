@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { MonitoringAdminData, useMonitoringAdmin } from '@/features/admin/useMonitoringAdmin';
 import { formatDateTime } from '@/lib/format-date';
+import { Button } from '@/components/ds';
 
 function computeHealthChecks(d: MonitoringAdminData): { label: string; ok: boolean }[] {
   return [
@@ -35,9 +36,9 @@ export function MonitoringPage(): JSX.Element {
     <PageContainer viewport>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/admin">
+          <Button as={Link} variant="secondary" to="/admin">
             Back to admin panel
-          </Link>
+          </Button>
         }
         eyebrow="Administration"
         subtitle="Read-only monitoring view over application health, readiness, and diagnostics. This page does not expose credentials and does not offer any write operations."

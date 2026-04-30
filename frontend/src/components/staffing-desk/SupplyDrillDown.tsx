@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { fetchSupplyProfile, type SupplyProfileResponse, type SupplyPerson } from '@/lib/api/staffing-desk';
+import { Button } from '@/components/ds';
 
 interface Props {
   onClose: () => void;
@@ -55,7 +56,7 @@ export function SupplyDrillDown({ onClose, open, poolId, orgUnitId }: Props): JS
       <div style={PANEL}>
         <div style={HEADER}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Available Supply</div>
-          <button className="button button--secondary button--sm" onClick={onClose} type="button">&times;</button>
+          <Button variant="secondary" size="sm" onClick={onClose} type="button">&times;</Button>
         </div>
         <div style={BODY}>
           {loading && <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Loading...</div>}
@@ -114,7 +115,7 @@ export function SupplyDrillDown({ onClose, open, poolId, orgUnitId }: Props): JS
                 <div style={{ marginBottom: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 'var(--space-2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
                     <span style={{ fontSize: 11, fontWeight: 600 }}>Workload Timeline</span>
-                    <button className="button button--secondary button--sm" onClick={() => setTimelinePerson(null)} type="button" style={{ fontSize: 10 }}>Close</button>
+                    <Button variant="secondary" size="sm" onClick={() => setTimelinePerson(null)} type="button" style={{ fontSize: 10 }}>Close</Button>
                   </div>
                   <WorkloadTimeline personId={timelinePerson} />
                 </div>
@@ -155,9 +156,9 @@ function PersonRow({ person, onViewTimeline }: { person: SupplyPerson; onViewTim
         )}
       </div>
       <StatusBadge label={`${person.availablePercent}% free`} tone={tone} variant="chip" size="small" />
-      <button className="button button--secondary button--sm" onClick={() => onViewTimeline(person.personId)} type="button" style={{ fontSize: 9, padding: '2px 6px' }}>
+      <Button variant="secondary" size="sm" onClick={() => onViewTimeline(person.personId)} type="button" style={{ fontSize: 9, padding: '2px 6px' }}>
         Timeline
-      </button>
+      </Button>
     </div>
   );
 }

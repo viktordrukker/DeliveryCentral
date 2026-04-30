@@ -13,6 +13,7 @@ import {
   type BenchRollOff,
 } from '@/lib/api/staffing-desk';
 import { formatDateShort } from '@/lib/format-date';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface Props {
   poolId?: string;
@@ -172,45 +173,36 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
       {benchPeople.length === 0 ? (
         <div style={{ padding: 'var(--space-3)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>No one on bench.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 11 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-surface-alt)', borderBottom: '2px solid var(--color-border)' }}>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Name</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Grade</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Skills</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Pool</th>
-                <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Days</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Last Project</th>
-                <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--color-text-muted)' }}>Best Match</th>
-              </tr>
-            </thead>
-            <tbody>
-              {benchPeople.map((p) => (
-                <tr key={p.personId} style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }} onClick={() => setSelectedPerson(p)}>
-                  <td style={{ padding: '6px 8px', fontWeight: 500, color: 'var(--color-accent)' }}>{p.displayName}</td>
-                  <td style={{ padding: '6px 8px' }}>{p.grade ?? '—'}</td>
-                  <td style={{ padding: '6px 8px', fontSize: 10, color: 'var(--color-text-muted)' }}>
-                    {p.skills.slice(0, 3).map((s) => s.name).join(', ')}{p.skills.length > 3 ? ` +${p.skills.length - 3}` : ''}
-                  </td>
-                  <td style={{ padding: '6px 8px', fontSize: 10 }}>{p.poolName ?? '—'}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: p.daysOnBench > 60 ? 'var(--color-status-danger)' : p.daysOnBench > 30 ? 'var(--color-status-warning)' : 'var(--color-text)' }}>
-                    {p.daysOnBench}
-                  </td>
-                  <td style={{ padding: '6px 8px', fontSize: 10, color: 'var(--color-text-muted)' }}>{p.lastProjectName ?? '—'}</td>
-                  <td style={{ padding: '6px 8px' }}>
-                    {p.bestMatchScore !== null ? (
-                      <span style={{ fontSize: 10 }}>
-                        <StatusBadge label={`${Math.round(p.bestMatchScore * 100)}%`} tone={p.bestMatchScore >= 0.7 ? 'active' : p.bestMatchScore >= 0.4 ? 'warning' : 'neutral'} variant="chip" size="small" />
-                        {' '}<span style={{ color: 'var(--color-text-muted)' }}>{p.bestMatchRole}</span>
-                      </span>
-                    ) : <span style={{ color: 'var(--color-text-subtle)', fontSize: 10 }}>No match</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          variant="compact"
+          columns={[
+            { key: 'name', title: 'Name', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500, color: 'var(--color-accent)' }}>{p.displayName}</span> },
+            { key: 'grade', title: 'Grade', getValue: (p) => p.grade ?? '', render: (p) => p.grade ?? '—' },
+            { key: 'skills', title: 'Skills', getValue: (p) => p.skills.map((s) => s.name).join(', '), render: (p) => (
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
+                {p.skills.slice(0, 3).map((s) => s.name).join(', ')}{p.skills.length > 3 ? ` +${p.skills.length - 3}` : ''}
+              </span>
+            ) },
+            { key: 'pool', title: 'Pool', getValue: (p) => p.poolName ?? '', render: (p) => <span style={{ fontSize: 10 }}>{p.poolName ?? '—'}</span> },
+            { key: 'days', title: 'Days', align: 'right', getValue: (p) => p.daysOnBench, render: (p) => (
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: p.daysOnBench > 60 ? 'var(--color-status-danger)' : p.daysOnBench > 30 ? 'var(--color-status-warning)' : 'var(--color-text)' }}>
+                {p.daysOnBench}
+              </span>
+            ) },
+            { key: 'lastProject', title: 'Last Project', getValue: (p) => p.lastProjectName ?? '', render: (p) => <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{p.lastProjectName ?? '—'}</span> },
+            { key: 'match', title: 'Best Match', render: (p) => (
+              p.bestMatchScore !== null ? (
+                <span style={{ fontSize: 10 }}>
+                  <StatusBadge label={`${Math.round(p.bestMatchScore * 100)}%`} tone={p.bestMatchScore >= 0.7 ? 'active' : p.bestMatchScore >= 0.4 ? 'warning' : 'neutral'} variant="chip" size="small" />
+                  {' '}<span style={{ color: 'var(--color-text-muted)' }}>{p.bestMatchRole}</span>
+                </span>
+              ) : <span style={{ color: 'var(--color-text-subtle)', fontSize: 10 }}>No match</span>
+            ) },
+          ] as Column<BenchPersonItem>[]}
+          rows={benchPeople}
+          getRowKey={(p) => p.personId}
+          onRowClick={(p) => setSelectedPerson(p)}
+        />
       )}
 
       {/* Person detail drawer */}
@@ -226,7 +218,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
                   {' · '}{selectedPerson.daysOnBench}d on bench
                 </div>
               </div>
-              <button className="button button--secondary button--sm" onClick={() => setSelectedPerson(null)} type="button">&times;</button>
+              <Button variant="secondary" size="sm" onClick={() => setSelectedPerson(null)} type="button">&times;</Button>
             </div>
             <div style={{ padding: 'var(--space-3) var(--space-4)', flex: 1, overflowY: 'auto' }}>
               {/* Profile */}
@@ -267,14 +259,9 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
                     <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
                       Match score: {Math.round(selectedPerson.bestMatchScore * 100)}%
                     </div>
-                    <button
-                      className="button button--sm"
-                      style={{ marginTop: 'var(--space-1)', fontSize: 10 }}
-                      onClick={() => propose(selectedPerson.personId, selectedPerson.displayName, selectedPerson.bestMatchRequestId)}
-                      type="button"
-                    >
+                    <Button variant="primary" size="sm" style={{ marginTop: 'var(--space-1)', fontSize: 10 }} onClick={() => propose(selectedPerson.personId, selectedPerson.displayName, selectedPerson.bestMatchRequestId)} type="button">
                       Propose Assignment
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

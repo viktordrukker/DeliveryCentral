@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   archivePlannerScenario,
   createPlannerScenario,
@@ -11,6 +12,12 @@ import {
   type PlannerScenarioSummary,
 } from '@/lib/api/staffing-desk';
 import type { PlannerSimulation, SerializedSimState } from '@/features/staffing-desk/usePlannerSimulation';
+import { Button } from '@/components/ds';
+
+type PendingConfirm =
+  | { kind: 'load'; id: string; name: string }
+  | { kind: 'archive'; id: string; name: string }
+  | null;
 
 interface Props {
   simulation: PlannerSimulation;
@@ -38,6 +45,7 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
   const [loading, setLoading] = useState(false);
   const [scenarios, setScenarios] = useState<PlannerScenarioSummary[]>([]);
   const [saving, setSaving] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -96,10 +104,7 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
     }
   }, [principal, simulation, horizonFrom, horizonWeeks, refresh]);
 
-  const handleLoad = useCallback(async (id: string, name: string) => {
-    if (simulation.hasChanges) {
-      if (!window.confirm(`Replace current simulation with "${name}"? Unsaved changes will be lost.`)) return;
-    }
+  const performLoad = useCallback(async (id: string, name: string) => {
     try {
       const detail = await getPlannerScenario(id);
       simulation.loadState(detail.state as SerializedSimState);
@@ -110,6 +115,14 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
       toast.error(e instanceof Error ? e.message : 'Load failed');
     }
   }, [simulation, onLoaded]);
+
+  const handleLoad = useCallback((id: string, name: string) => {
+    if (simulation.hasChanges) {
+      setPendingConfirm({ kind: 'load', id, name });
+      return;
+    }
+    void performLoad(id, name);
+  }, [simulation.hasChanges, performLoad]);
 
   const handleFork = useCallback(async (id: string, sourceName: string) => {
     const name = window.prompt('New scenario name', `${sourceName} (copy)`);
@@ -138,8 +151,7 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
     }
   }, [principal, refresh]);
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
-    if (!window.confirm(`Archive scenario "${name}"? This hides it from the list.`)) return;
+  const performArchive = useCallback(async (id: string, name: string) => {
     try {
       await archivePlannerScenario(id);
       toast.success(`Archived "${name}"`);
@@ -149,33 +161,34 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
     }
   }, [refresh]);
 
+  const handleDelete = useCallback((id: string, name: string) => {
+    setPendingConfirm({ kind: 'archive', id, name });
+  }, []);
+
+  const handleConfirmPending = useCallback(() => {
+    if (!pendingConfirm) return;
+    const { kind, id, name } = pendingConfirm;
+    setPendingConfirm(null);
+    if (kind === 'load') {
+      void performLoad(id, name);
+    } else if (kind === 'archive') {
+      void performArchive(id, name);
+    }
+  }, [pendingConfirm, performLoad, performArchive]);
+
   return (
     <div style={{ position: 'relative' }} data-scenarios-menu>
-      <button
-        type="button"
-        className="button button--secondary button--sm"
-        onClick={() => setOpen((v) => !v)}
-        style={{ fontSize: 10 }}
-        title="Planner scenarios"
-        data-testid="scenarios-menu-toggle"
-      >
+      <Button type="button" variant="secondary" size="sm" onClick={() => setOpen((v) => !v)} style={{ fontSize: 10 }} title="Planner scenarios" data-testid="scenarios-menu-toggle">
         Scenarios ▾
-      </button>
+      </Button>
       {open && (
         <div style={S_MENU}>
           <div style={S_HEADER}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Scenarios</span>
-              <button
-                type="button"
-                className="button button--sm"
-                onClick={() => void handleSave()}
-                disabled={saving || !simulation.hasChanges}
-                style={{ fontSize: 9 }}
-                title={simulation.hasChanges ? 'Save current simulation' : 'No changes to save'}
-              >
+              <Button type="button" variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving || !simulation.hasChanges} style={{ fontSize: 9 }} title={simulation.hasChanges ? 'Save current simulation' : 'No changes to save'}>
                 {saving ? 'Saving…' : 'Save current'}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -200,20 +213,35 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <button type="button" className="button button--sm" onClick={() => void handleLoad(s.id, s.name)} style={{ fontSize: 9 }} title="Replace current sim with this scenario">
+                <Button type="button" variant="primary" size="sm" onClick={() => handleLoad(s.id, s.name)} style={{ fontSize: 9 }} title="Replace current sim with this scenario">
                   Load
-                </button>
-                <button type="button" className="button button--secondary button--sm" onClick={() => void handleFork(s.id, s.name)} style={{ fontSize: 9 }} title="Duplicate this scenario">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => void handleFork(s.id, s.name)} style={{ fontSize: 9 }} title="Duplicate this scenario">
                   Fork
-                </button>
-                <button type="button" className="button button--secondary button--sm" onClick={() => void handleDelete(s.id, s.name)} style={{ fontSize: 9, color: 'var(--color-status-danger)' }} title="Archive scenario">
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => handleDelete(s.id, s.name)} style={{ fontSize: 9, color: 'var(--color-status-danger)' }} title="Archive scenario">
                   Archive
-                </button>
+                </Button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingConfirm != null}
+        title={pendingConfirm?.kind === 'archive' ? 'Archive scenario?' : 'Replace current simulation?'}
+        message={
+          pendingConfirm?.kind === 'archive'
+            ? `Archive scenario "${pendingConfirm.name}"? It will be hidden from the list.`
+            : pendingConfirm
+            ? `Replace current simulation with "${pendingConfirm.name}"? Unsaved changes will be lost.`
+            : ''
+        }
+        confirmLabel={pendingConfirm?.kind === 'archive' ? 'Archive' : 'Replace'}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={handleConfirmPending}
+      />
     </div>
   );
 }

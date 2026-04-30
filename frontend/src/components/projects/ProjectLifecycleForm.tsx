@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 
 import type { EngagementModel, ProjectPriority } from '@/lib/api/project-registry';
+import { Button, DatePicker, DescriptionList, type DescriptionListItem } from '@/components/ds';
 
 interface SelectOption {
   label: string;
@@ -67,15 +68,15 @@ export function ProjectLifecycleForm({
       {/* Step indicator */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
         {['Basics', 'Engagement', 'Confirm'].map((label, i) => (
-          <button
+          <Button
             key={label}
-            type="button"
-            className={`button button--sm ${step === i ? 'button--primary' : 'button--secondary'}`}
+            size="sm"
+            variant={step === i ? 'primary' : 'secondary'}
             onClick={() => onStepChange(i)}
             style={{ flex: 1 }}
           >
             {i + 1}. {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -115,13 +116,13 @@ export function ProjectLifecycleForm({
 
           <label className="field">
             <span className="field__label">Start Date *</span>
-            <input className="field__control" onChange={(e) => onChange('startDate', e.target.value)} type="date" value={values.startDate} />
+            <DatePicker onValueChange={(value) => onChange('startDate', value)} value={values.startDate} />
             {errors.startDate ? <span className="field__error">{errors.startDate}</span> : null}
           </label>
 
           <label className="field">
             <span className="field__label">Planned End Date</span>
-            <input className="field__control" min={values.startDate} onChange={(e) => onChange('plannedEndDate', e.target.value)} type="date" value={values.plannedEndDate} />
+            <DatePicker min={values.startDate} onValueChange={(value) => onChange('plannedEndDate', value)} value={values.plannedEndDate} />
             {errors.plannedEndDate ? <span className="field__error">{errors.plannedEndDate}</span> : null}
           </label>
 
@@ -180,22 +181,23 @@ export function ProjectLifecycleForm({
         <div className="entity-form__grid">
           <div className="field field--full">
             <h4 style={{ marginBottom: 'var(--space-3)' }}>Review & Create</h4>
-            <table className="dash-compact-table">
-              <tbody>
-                <tr><td style={{ fontWeight: 500, width: 160 }}>Name</td><td>{values.name || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>PM</td><td>{managerOptions.find((o) => o.value === values.projectManagerId)?.label || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>DM</td><td>{managerOptions.find((o) => o.value === values.deliveryManagerId)?.label || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Client</td><td>{clientOptions.find((o) => o.value === values.clientId)?.label || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Dates</td><td>{values.startDate || '—'} → {values.plannedEndDate || 'Open-ended'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Engagement</td><td>{ENGAGEMENT_MODELS.find((m) => m.value === values.engagementModel)?.label || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Priority</td><td>{PRIORITIES.find((p) => p.value === values.priority)?.label || 'Medium'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Domain</td><td>{values.domain || '—'}</td></tr>
-                <tr><td style={{ fontWeight: 500 }}>Type</td><td>{values.projectType || '—'}</td></tr>
-                {values.techStack ? <tr><td style={{ fontWeight: 500 }}>Tech Stack</td><td>{values.techStack}</td></tr> : null}
-                {values.tags ? <tr><td style={{ fontWeight: 500 }}>Tags</td><td>{values.tags}</td></tr> : null}
-                {values.description ? <tr><td style={{ fontWeight: 500 }}>Description</td><td style={{ whiteSpace: 'pre-wrap' }}>{values.description}</td></tr> : null}
-              </tbody>
-            </table>
+            <DescriptionList items={(() => {
+              const items: DescriptionListItem[] = [
+                { label: 'Name', value: values.name || '—' },
+                { label: 'PM', value: managerOptions.find((o) => o.value === values.projectManagerId)?.label || '—' },
+                { label: 'DM', value: managerOptions.find((o) => o.value === values.deliveryManagerId)?.label || '—' },
+                { label: 'Client', value: clientOptions.find((o) => o.value === values.clientId)?.label || '—' },
+                { label: 'Dates', value: `${values.startDate || '—'} → ${values.plannedEndDate || 'Open-ended'}` },
+                { label: 'Engagement', value: ENGAGEMENT_MODELS.find((m) => m.value === values.engagementModel)?.label || '—' },
+                { label: 'Priority', value: PRIORITIES.find((p) => p.value === values.priority)?.label || 'Medium' },
+                { label: 'Domain', value: values.domain || '—' },
+                { label: 'Type', value: values.projectType || '—' },
+              ];
+              if (values.techStack) items.push({ label: 'Tech Stack', value: values.techStack });
+              if (values.tags) items.push({ label: 'Tags', value: values.tags });
+              if (values.description) items.push({ label: 'Description', value: <span style={{ whiteSpace: 'pre-wrap' }}>{values.description}</span> });
+              return items;
+            })()} />
           </div>
         </div>
       )}
@@ -204,21 +206,21 @@ export function ProjectLifecycleForm({
       <div className="entity-form__actions" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-3)' }}>
         <div>
           {step > 0 && (
-            <button className="button button--secondary" type="button" onClick={() => onStepChange(step - 1)}>
+            <Button variant="secondary" type="button" onClick={() => onStepChange(step - 1)}>
               ← Previous
-            </button>
+            </Button>
           )}
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {step < 2 && (
-            <button className="button" type="button" onClick={() => onStepChange(step + 1)}>
+            <Button variant="primary" type="button" onClick={() => onStepChange(step + 1)}>
               Next →
-            </button>
+            </Button>
           )}
           {step === 2 && (
-            <button className="button button--primary" disabled={isSubmitting} type="submit">
+            <Button variant="primary" disabled={isSubmitting} type="submit">
               {isSubmitting ? 'Creating...' : 'Create Project'}
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
+import { Button, Table, type Column } from '@/components/ds';
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
 /* ── Generic row shape accepted by the chart ── */
@@ -200,12 +201,12 @@ export function ReconciliationOverviewChart({ data, drillPrefix = '/projects' }:
       {/* Controls */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <button type="button" className={`button button--sm ${view === 'chart' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('chart')}>Chart</button>
-          <button type="button" className={`button button--sm ${view === 'table' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('table')}>Table</button>
+          <Button size="sm" variant={view === 'chart' ? 'primary' : 'secondary'} onClick={() => setView('chart')}>Chart</Button>
+          <Button size="sm" variant={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>Table</Button>
           {chartFilter && view === 'chart' && (
-            <button type="button" className="button button--sm button--secondary" onClick={() => setChartFilter(null)} style={{ marginLeft: 8, borderStyle: 'dashed' }}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setChartFilter(null)} style={{ marginLeft: 8, borderStyle: 'dashed' }}>
               Reset to top 10 ({chartFilter.size} selected)
-            </button>
+            </Button>
           )}
         </div>
         {view === 'table' && (
@@ -221,78 +222,71 @@ export function ReconciliationOverviewChart({ data, drillPrefix = '/projects' }:
 
       {view === 'table' ? (
         <div style={{ flex: 1, overflow: 'auto' }} onContextMenu={handleContextMenu}>
-          <table className="dash-compact-table" style={{ minWidth: 760 }}>
-            <thead>
-              <tr>
-                <th>Project</th>
-                <th style={{ width: 60 }}>Code</th>
-                <th style={NUM}>Planned</th>
-                <th style={NUM}>Actual</th>
-                <th style={NUM}>Variance</th>
-                <th style={NUM}>Covered</th>
-                <th style={NUM}>No Assign</th>
-                <th style={NUM}>No Actual</th>
-                <th style={NUM}>Align %</th>
-                <th style={{ width: 70 }}>Bar</th>
-                <th style={{ width: 30 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r, pageIdx) => {
-                const globalIdx = page * pageSize + pageIdx;
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'project', title: 'Project', getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
+              { key: 'code', title: 'Code', width: 60, getValue: (r) => r.code ?? r.label.slice(0, 12), render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>{r.code ?? r.label.slice(0, 12)}</span> },
+              { key: 'planned', title: 'Planned', align: 'right', getValue: (r) => r.plannedHours, render: (r) => <span style={NUM}>{r.plannedHours}h</span> },
+              { key: 'actual', title: 'Actual', align: 'right', getValue: (r) => r.evidenceHours, render: (r) => <span style={NUM}>{r.evidenceHours}h</span> },
+              { key: 'variance', title: 'Variance', align: 'right', getValue: (r) => r.variance, render: (r) => (
+                <span style={{ ...NUM, fontWeight: 600, color: r.variance < 0 ? 'var(--color-status-danger)' : r.variance > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
+                  {r.variance > 0 ? '+' : ''}{r.variance}h
+                </span>
+              ) },
+              { key: 'covered', title: 'Covered', align: 'right', getValue: (r) => r.matchedHours, render: (r) => <span style={{ ...NUM, color: 'var(--color-status-active)' }}>{r.matchedHours}h</span> },
+              { key: 'noAssign', title: 'No Assign', align: 'right', getValue: (r) => r.unapprovedHours, render: (r) => <span style={{ ...NUM, color: r.unapprovedHours > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{r.unapprovedHours}h</span> },
+              { key: 'noActual', title: 'No Actual', align: 'right', getValue: (r) => r.silentHours, render: (r) => <span style={{ ...NUM, color: r.silentHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{r.silentHours}h</span> },
+              { key: 'align', title: 'Align %', align: 'right', getValue: (r) => r.matchRate, render: (r) => <span style={{ ...NUM, fontWeight: 600, color: matchRateColor(r.matchRate) }}>{r.matchRate}%</span> },
+              { key: 'bar', title: 'Bar', width: 70, render: (r) => (
+                <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(r.matchRate, 100)}%`, borderRadius: 2, background: matchRateColor(r.matchRate) }} />
+                </div>
+              ) },
+              { key: 'go', title: '', width: 30, render: (r) => {
                 const isSelected = selected.has(r.id);
                 return (
-                  <tr
-                    key={r.id}
-                    onMouseDown={(e) => handleRowMouseDown(globalIdx, e)}
-                    onMouseEnter={() => handleRowMouseEnter(globalIdx)}
-                    style={{ cursor: 'pointer', background: isSelected ? 'var(--color-accent)' : undefined, color: isSelected ? 'var(--color-surface)' : undefined, userSelect: 'none' }}
-                  >
-                    <td style={{ fontWeight: 500 }}>{r.label}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>{r.code ?? r.label.slice(0, 12)}</td>
-                    <td style={NUM}>{r.plannedHours}h</td>
-                    <td style={NUM}>{r.evidenceHours}h</td>
-                    <td style={{ ...NUM, fontWeight: 600, color: r.variance < 0 ? 'var(--color-status-danger)' : r.variance > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
-                      {r.variance > 0 ? '+' : ''}{r.variance}h
-                    </td>
-                    <td style={{ ...NUM, color: 'var(--color-status-active)' }}>{r.matchedHours}h</td>
-                    <td style={{ ...NUM, color: r.unapprovedHours > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{r.unapprovedHours}h</td>
-                    <td style={{ ...NUM, color: r.silentHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{r.silentHours}h</td>
-                    <td style={{ ...NUM, fontWeight: 600, color: matchRateColor(r.matchRate) }}>{r.matchRate}%</td>
-                    <td>
-                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(r.matchRate, 100)}%`, borderRadius: 2, background: matchRateColor(r.matchRate) }} />
-                      </div>
-                    </td>
-                    <td><Link to={`${drillPrefix}/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: isSelected ? 'var(--color-surface)' : 'var(--color-accent)' }}>Go</Link></td>
-                  </tr>
+                  <Link to={`${drillPrefix}/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: isSelected ? 'var(--color-surface)' : 'var(--color-accent)' }}>Go</Link>
                 );
-              })}
-            </tbody>
-            {totals && (
-              <tfoot>
-                <tr style={{ fontWeight: 600 }}>
-                  <td style={{ fontSize: 11 }}>{selected.size > 0 ? `${totals.count} selected` : `${data.length} projects`}</td>
-                  <td></td>
-                  <td style={NUM}>{totals.planned.toFixed(1)}h</td>
-                  <td style={NUM}>{totals.actual.toFixed(1)}h</td>
-                  <td style={{ ...NUM, color: totals.variance < 0 ? 'var(--color-status-danger)' : totals.variance > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
+              } },
+            ] as Column<ReconciliationChartRow>[]}
+            rows={pageRows}
+            getRowKey={(r) => r.id}
+            onRowMouseDown={(_row, sliceIndex, e) => handleRowMouseDown(page * pageSize + sliceIndex, e)}
+            onRowMouseEnter={(_row, sliceIndex) => handleRowMouseEnter(page * pageSize + sliceIndex)}
+            rowStyle={(r) => {
+              const isSelected = selected.has(r.id);
+              return {
+                cursor: 'pointer',
+                background: isSelected ? 'var(--color-accent)' : undefined,
+                color: isSelected ? 'var(--color-surface)' : undefined,
+                userSelect: 'none',
+              };
+            }}
+            footer={
+              totals ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 70px 30px', padding: 'var(--space-2) var(--space-3)', fontWeight: 600, background: 'var(--color-surface-alt)', fontSize: 11 }}>
+                  <span>{selected.size > 0 ? `${totals.count} selected` : `${data.length} projects`}</span>
+                  <span />
+                  <span style={NUM}>{totals.planned.toFixed(1)}h</span>
+                  <span style={NUM}>{totals.actual.toFixed(1)}h</span>
+                  <span style={{ ...NUM, color: totals.variance < 0 ? 'var(--color-status-danger)' : totals.variance > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
                     {totals.variance > 0 ? '+' : ''}{totals.variance}h
-                  </td>
-                  <td style={{ ...NUM, color: 'var(--color-status-active)' }}>{totals.matched.toFixed(1)}h</td>
-                  <td style={{ ...NUM, color: totals.unapproved > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{totals.unapproved.toFixed(1)}h</td>
-                  <td style={{ ...NUM, color: totals.silent > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{totals.silent.toFixed(1)}h</td>
-                  <td style={{ ...NUM, color: matchRateColor(totals.avgMatch) }}>{totals.avgMatch}%</td>
-                  <td></td><td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+                  </span>
+                  <span style={{ ...NUM, color: 'var(--color-status-active)' }}>{totals.matched.toFixed(1)}h</span>
+                  <span style={{ ...NUM, color: totals.unapproved > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{totals.unapproved.toFixed(1)}h</span>
+                  <span style={{ ...NUM, color: totals.silent > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{totals.silent.toFixed(1)}h</span>
+                  <span style={{ ...NUM, color: matchRateColor(totals.avgMatch) }}>{totals.avgMatch}%</span>
+                  <span /><span />
+                </div>
+              ) : undefined
+            }
+          />
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              <button type="button" className="button button--sm button--secondary" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Prev</button>
+              <Button type="button" variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Prev</Button>
               <span>Page {page + 1} of {totalPages}</span>
-              <button type="button" className="button button--sm button--secondary" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next</button>
+              <Button type="button" variant="secondary" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           )}
         </div>

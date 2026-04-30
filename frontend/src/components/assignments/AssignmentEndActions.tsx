@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Button, DatePicker } from '@/components/ds';
 
 interface AssignmentEndActionsProps {
   canEnd: boolean;
@@ -37,12 +38,8 @@ export function AssignmentEndActions({
 
       <label className="field">
         <span className="field__label">End Date</span>
-        <input
-          className="field__control"
-          onChange={(event) => setEndDate(event.target.value)}
-          type="date"
-          value={endDate}
-        />
+        <DatePicker onValueChange={(value) => setEndDate(value)} value={endDate}
+ />
       </label>
 
       <label className="field">
@@ -56,14 +53,9 @@ export function AssignmentEndActions({
       </label>
 
       <div className="workflow-panel__actions">
-        <button
-          className="button button--secondary"
-          disabled={!canEnd || isSubmitting || !endDate}
-          onClick={handleEnd}
-          type="button"
-        >
+        <Button variant="secondary" disabled={!canEnd || isSubmitting || !endDate} onClick={handleEnd} type="button">
           {isSubmitting ? 'Submitting...' : 'End assignment'}
-        </button>
+        </Button>
       </div>
     </div>
   );

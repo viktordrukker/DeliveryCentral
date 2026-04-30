@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { formatDistanceToNow } from 'date-fns';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { EmptyState } from '@/components/common/EmptyState';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -18,6 +18,7 @@ import { PortfolioHealthHeatmap } from '@/components/charts/PortfolioHealthHeatm
 import { BurnRateTrendPoint, fetchScorecardHistory, ProjectHealthItem, ProjectScorecardHistoryItem, StaffingGapItem, OpenRequestsByProjectItem } from '@/lib/api/dashboard-delivery-manager';
 import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
 import { useDeliveryManagerDashboard } from '@/features/dashboard/useDeliveryManagerDashboard';
+import { Button, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -64,8 +65,8 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
     setActions(
       <>
         <PeriodSelector onAsOfChange={state.setAsOf} value={state.asOf} />
-        <Link className="button button--secondary button--sm" to="/projects">Projects</Link>
-        <Link className="button button--secondary button--sm" to="/assignments">Assignments</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
         <TipTrigger />
       </>
     );
@@ -158,40 +159,26 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                 {d.portfolioHealth.length === 0 ? (
                   <EmptyState description="No active projects found for this period." title="No portfolio data" />
                 ) : (
-                  <div style={{ overflow: 'auto' }}>
-                    <table className="dash-compact-table">
-                      <thead>
-                        <tr>
-                          <th>Project</th>
-                          <th style={{ width: 70 }}>Code</th>
-                          <th style={{ width: 60 }}>Status</th>
-                          <th style={NUM}>Staff</th>
-                          <th style={{ width: 120 }}>Flags</th>
-                          <th style={{ width: 40 }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.portfolioHealth.map((item) => (
-                          <tr key={item.projectId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/projects/${item.projectId}/dashboard`)}>
-                            <td style={{ fontWeight: 500 }}>{item.name}</td>
-                            <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{item.projectCode}</td>
-                            <td style={{ fontSize: 11 }}>{item.status}</td>
-                            <td style={{ ...NUM, color: item.staffingCount === 0 ? 'var(--color-status-danger)' : 'inherit' }}>{item.staffingCount}</td>
-                            <td>
-                              {item.anomalyFlags.length > 0 ? (
-                                <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>
-                                  {item.anomalyFlags.length} flag{item.anomalyFlags.length !== 1 ? 's' : ''}
-                                </span>
-                              ) : (
-                                <span style={{ color: 'var(--color-status-active)', fontSize: 11 }}>OK</span>
-                              )}
-                            </td>
-                            <td><Link to={`/projects/${item.projectId}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <Table
+                    variant="compact"
+                    columns={[
+                      { key: 'name', title: 'Project', getValue: (item) => item.name, render: (item) => <span style={{ fontWeight: 500 }}>{item.name}</span> },
+                      { key: 'code', title: 'Code', width: 70, getValue: (item) => item.projectCode, render: (item) => <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{item.projectCode}</span> },
+                      { key: 'status', title: 'Status', width: 60, getValue: (item) => item.status, render: (item) => <span style={{ fontSize: 11 }}>{item.status}</span> },
+                      { key: 'staff', title: 'Staff', align: 'right', getValue: (item) => item.staffingCount, render: (item) => <span style={{ ...NUM, color: item.staffingCount === 0 ? 'var(--color-status-danger)' : 'inherit' }}>{item.staffingCount}</span> },
+                      { key: 'flags', title: 'Flags', width: 120, render: (item) => item.anomalyFlags.length > 0 ? (
+                        <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>
+                          {item.anomalyFlags.length} flag{item.anomalyFlags.length !== 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--color-status-active)', fontSize: 11 }}>OK</span>
+                      ) },
+                      { key: 'go', title: '', width: 40, render: (item) => <Link to={`/projects/${item.projectId}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+                    ] as Column<typeof d.portfolioHealth[number]>[]}
+                    rows={d.portfolioHealth}
+                    getRowKey={(item) => item.projectId}
+                    onRowClick={(item) => navigate(`/projects/${item.projectId}/dashboard`)}
+                  />
                 )}
               </SectionCard>
 
@@ -225,12 +212,21 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
           )}
 
           {/* ── DATA FRESHNESS ── */}
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
-          </div>
+
+
+          <DataFreshness
+
+
+            lastFetch={lastFetch}
+
+
+            onRefresh={refetch}
+
+
+            tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />}
+
+
+          />
         </>
       ) : null}
     </PageContainer>
@@ -269,134 +265,109 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
     return () => { active = false; };
   }, [expandedId, asOf, historyMap]);
 
+  const expandedItem = projects.find((p) => p.projectId === expandedId);
+  const expandedHistory = expandedId ? historyMap.get(expandedId) : null;
+
   return (
-    <div style={{ overflow: 'auto' }}>
-      <table className="dash-compact-table">
-        <thead>
-          <tr>
-            <th>Project</th>
-            <th style={{ width: 80 }}>Health</th>
-            <th style={{ width: 60 }}>Staff</th>
-            <th style={{ width: 60 }}>Time</th>
-            <th style={{ width: 60 }}>Timeline</th>
-            <th style={{ width: 100 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((item) => {
+    <div>
+      <Table
+        variant="compact"
+        columns={[
+          { key: 'project', title: 'Project', getValue: (item) => item.name, render: (item) => (
+            <span style={{ fontWeight: 500 }}>
+              <Link to={`/projects/${item.projectId}/dashboard`} style={{ color: 'inherit', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
+                {item.projectCode} — {item.name}
+              </Link>
+            </span>
+          ) },
+          { key: 'health', title: 'Health', width: 80, render: (item) => {
             const h = healthScores.get(item.projectId);
+            return h ? <ProjectHealthBadge grade={h.grade} score={h.score} size="sm" /> : <span style={{ color: 'var(--color-text-muted)' }}>—</span>;
+          } },
+          { key: 'staff', title: 'Staff', width: 60, render: (item) => {
+            const h = healthScores.get(item.projectId);
+            return h ? <Link style={{ textDecoration: 'none' }} to={`/assignments?projectId=${item.projectId}&status=active`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.staffingScore)}</Link> : '—';
+          } },
+          { key: 'time', title: 'Time', width: 60, render: (item) => {
+            const h = healthScores.get(item.projectId);
+            return h ? <Link style={{ textDecoration: 'none' }} to={`/time-management?tab=compliance`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.timeScore)}</Link> : '—';
+          } },
+          { key: 'timeline', title: 'Timeline', width: 60, render: (item) => {
+            const h = healthScores.get(item.projectId);
+            return h ? <Link style={{ textDecoration: 'none' }} to={`/projects/${item.projectId}`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.timelineScore)}</Link> : '—';
+          } },
+          { key: 'actions', title: '', width: 100, render: (item) => {
             const isExpanded = expandedId === item.projectId;
-            const history = historyMap.get(item.projectId);
             return (
-              <>
-                <tr key={item.projectId}>
-                  <td style={{ fontWeight: 500 }}>
-                    <Link to={`/projects/${item.projectId}/dashboard`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                      {item.projectCode} — {item.name}
-                    </Link>
-                  </td>
-                  <td>{h ? <ProjectHealthBadge grade={h.grade} score={h.score} size="sm" /> : <span style={{ color: 'var(--color-text-muted)' }}>{'\u2014'}</span>}</td>
-                  <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/assignments?projectId=${item.projectId}&status=active`}>{scoreIndicator(h.staffingScore)}</Link> : '\u2014'}</td>
-                  <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/time-management?tab=compliance`}>{scoreIndicator(h.timeScore)}</Link> : '\u2014'}</td>
-                  <td>{h ? <Link style={{ textDecoration: 'none' }} to={`/projects/${item.projectId}`}>{scoreIndicator(h.timelineScore)}</Link> : '\u2014'}</td>
-                  <td style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <button
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedId(isExpanded ? null : item.projectId)}
-                      className="button button--secondary button--sm"
-                      style={{ fontSize: 10, padding: '2px 8px' }}
-                      type="button"
-                    >
-                      History {isExpanded ? '\u25B4' : '\u25BE'}
-                    </button>
-                    <Link className="button button--secondary button--sm" style={{ fontSize: 10, padding: '2px 8px' }} to={`/projects/${item.projectId}/dashboard`}>View</Link>
-                  </td>
-                </tr>
-                {isExpanded ? (
-                  <tr key={`${item.projectId}-history`}>
-                    <td colSpan={6} style={{ background: 'var(--color-surface-alt)', padding: '12px 16px' }}>
-                      {history ? (
-                        <div>
-                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>12-Week Health Trend</div>
-                          <ResponsiveContainer height={120} width="100%">
-                            <LineChart data={history.history} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="weekStart" tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
-                              <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${v}%`} />
-                              <Tooltip formatter={(v: unknown) => [`${String(v)}%`, '']} />
-                              <Legend wrapperStyle={{ fontSize: 11 }} />
-                              <Line dataKey="staffingPct" dot={false} name="Staffing" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
-                              <Line dataKey="timePct" dot={false} name="Time" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
-                              <Line dataKey="timelinePct" dot={false} name="Timeline" stroke="var(--color-status-warning)" strokeWidth={2} type="monotone" />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Loading history...</span>
-                      )}
-                    </td>
-                  </tr>
-                ) : null}
-              </>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+                <Button aria-expanded={isExpanded} onClick={() => setExpandedId(isExpanded ? null : item.projectId)} variant="secondary" size="sm" style={{ fontSize: 10, padding: '2px 8px' }} type="button">
+                  History {isExpanded ? '▴' : '▾'}
+                </Button>
+                <Button as={Link} variant="secondary" size="sm" style={{ fontSize: 10, padding: '2px 8px' }} to={`/projects/${item.projectId}/dashboard`}>View</Button>
+              </div>
             );
-          })}
-        </tbody>
-      </table>
+          } },
+        ] as Column<ProjectHealthItem>[]}
+        rows={projects}
+        getRowKey={(item) => item.projectId}
+      />
+      {expandedItem ? (
+        <div style={{ background: 'var(--color-surface-alt)', padding: '12px 16px', marginTop: 'var(--space-1)', borderRadius: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+            12-Week Health Trend — {expandedItem.projectCode} {expandedItem.name}
+          </div>
+          {expandedHistory ? (
+            <ResponsiveContainer height={120} width="100%">
+              <LineChart data={expandedHistory.history} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="weekStart" tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip formatter={(v: unknown) => [`${String(v)}%`, '']} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line dataKey="staffingPct" dot={false} name="Staffing" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
+                <Line dataKey="timePct" dot={false} name="Time" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
+                <Line dataKey="timelinePct" dot={false} name="Timeline" stroke="var(--color-status-warning)" strokeWidth={2} type="monotone" />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>Loading history...</span>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function StaffingGapsTable({ gaps }: { gaps: StaffingGapItem[] }): JSX.Element {
   return (
-    <div style={{ overflow: 'auto' }} data-testid="staffing-gaps-table">
-      <table className="dash-compact-table">
-        <thead>
-          <tr>
-            <th>Project</th>
-            <th style={{ width: 90 }}>Person</th>
-            <th style={{ width: 90 }}>End Date</th>
-            <th style={NUM}>Days Left</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gaps.map((gap) => (
-            <tr key={gap.assignmentId}>
-              <td style={{ fontWeight: 500 }}>{gap.projectCode} — {gap.projectName}</td>
-              <td><Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personId.slice(0, 8)}...</Link></td>
-              <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{gap.endDate}</td>
-              <td style={{ ...NUM, color: gap.daysUntilEnd <= 7 ? 'var(--color-status-danger)' : gap.daysUntilEnd <= 14 ? 'var(--color-status-warning)' : 'var(--color-status-active)', fontWeight: 600 }}>
-                {gap.daysUntilEnd}d
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      testId="staffing-gaps-table"
+      variant="compact"
+      columns={[
+        { key: 'project', title: 'Project', getValue: (gap) => `${gap.projectCode} — ${gap.projectName}`, render: (gap) => <span style={{ fontWeight: 500 }}>{gap.projectCode} — {gap.projectName}</span> },
+        { key: 'person', title: 'Person', width: 90, getValue: (gap) => gap.personId, render: (gap) => <Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personId.slice(0, 8)}...</Link> },
+        { key: 'endDate', title: 'End Date', width: 90, getValue: (gap) => gap.endDate, render: (gap) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{gap.endDate}</span> },
+        { key: 'daysLeft', title: 'Days Left', align: 'right', getValue: (gap) => gap.daysUntilEnd, render: (gap) => <span style={{ ...NUM, color: gap.daysUntilEnd <= 7 ? 'var(--color-status-danger)' : gap.daysUntilEnd <= 14 ? 'var(--color-status-warning)' : 'var(--color-status-active)', fontWeight: 600 }}>{gap.daysUntilEnd}d</span> },
+      ] as Column<StaffingGapItem>[]}
+      rows={gaps}
+      getRowKey={(gap) => gap.assignmentId}
+    />
   );
 }
 
 function OpenRequestsByProjectTable({ rows }: { rows: OpenRequestsByProjectItem[] }): JSX.Element {
   return (
-    <div style={{ overflow: 'auto' }} data-testid="open-requests-by-project-table">
-      <table className="dash-compact-table">
-        <thead>
-          <tr>
-            <th>Project</th>
-            <th style={NUM}>Open Requests</th>
-            <th style={NUM}>Headcount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.projectId}>
-              <td style={{ fontWeight: 500 }}>{row.projectCode} — {row.projectName}</td>
-              <td style={NUM}>{row.openRequestCount}</td>
-              <td style={NUM}>{row.totalHeadcountFulfilled}/{row.totalHeadcountRequired}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      testId="open-requests-by-project-table"
+      variant="compact"
+      columns={[
+        { key: 'project', title: 'Project', getValue: (row) => `${row.projectCode} — ${row.projectName}`, render: (row) => <span style={{ fontWeight: 500 }}>{row.projectCode} — {row.projectName}</span> },
+        { key: 'openCount', title: 'Open Requests', align: 'right', getValue: (row) => row.openRequestCount, render: (row) => <span style={NUM}>{row.openRequestCount}</span> },
+        { key: 'hc', title: 'Headcount', align: 'right', render: (row) => <span style={NUM}>{row.totalHeadcountFulfilled}/{row.totalHeadcountRequired}</span> },
+      ] as Column<OpenRequestsByProjectItem>[]}
+      rows={rows}
+      getRowKey={(row) => row.projectId}
+    />
   );
 }
 

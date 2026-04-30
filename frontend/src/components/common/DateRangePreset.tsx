@@ -10,6 +10,7 @@ import {
   startOfYear,
   format,
 } from 'date-fns';
+import { Button, DatePicker } from '@/components/ds';
 
 interface DateRange {
   from: string; // ISO date yyyy-MM-dd
@@ -60,26 +61,28 @@ export function DateRangePreset({ value, onChange, compact }: DateRangePresetPro
     <div className={`date-range-preset ${compact ? 'date-range-preset--compact' : ''}`}>
       <div className="date-range-preset__presets">
         {PRESETS.map((p, i) => (
-          <button
+          <Button
             key={p.label}
             type="button"
-            className={`date-range-preset__btn ${activePreset === i ? 'date-range-preset__btn--active' : ''}`}
+            variant={activePreset === i ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => applyPreset(i)}
           >
             {p.label}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           type="button"
-          className={`date-range-preset__btn ${showCustom ? 'date-range-preset__btn--active' : ''}`}
+          variant={showCustom ? 'primary' : 'secondary'}
+          size="sm"
           onClick={() => setShowCustom((v) => !v)}
         >
           Custom
-        </button>
+        </Button>
         {hasValue && (
-          <button type="button" className="date-range-preset__btn date-range-preset__btn--clear" onClick={clear}>
+          <Button type="button" variant="link" size="sm" onClick={clear}>
             Clear
-          </button>
+          </Button>
         )}
       </div>
 
@@ -87,21 +90,19 @@ export function DateRangePreset({ value, onChange, compact }: DateRangePresetPro
         <div className="date-range-preset__custom">
           <label className="date-range-preset__field">
             <span>From</span>
-            <input
-              type="date"
+            <DatePicker
               min="1970-01-01"
               max={value.to || undefined}
               value={value.from}
-              onChange={(e) => onChange({ ...value, from: e.target.value })}
+              onValueChange={(next) => onChange({ ...value, from: next })}
             />
           </label>
           <label className="date-range-preset__field">
             <span>To</span>
-            <input
-              type="date"
+            <DatePicker
               min={value.from || '1970-01-01'}
               value={value.to}
-              onChange={(e) => onChange({ ...value, to: e.target.value })}
+              onValueChange={(next) => onChange({ ...value, to: next })}
             />
           </label>
         </div>

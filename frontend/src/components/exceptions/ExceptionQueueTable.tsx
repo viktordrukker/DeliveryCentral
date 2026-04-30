@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 import { ExceptionQueueItem } from '@/lib/api/exceptions';
-import { DataTable } from '@/components/common/DataTable';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { humanizeEnum } from '@/lib/labels';
 import { formatDateTime } from '@/lib/format-date';
+import { Button, DataView, Textarea, type Column } from '@/components/ds';
 
 interface ExceptionQueueTableProps {
   items: ExceptionQueueItem[];
@@ -14,6 +14,16 @@ interface ExceptionQueueTableProps {
   selectedId?: string | null;
 }
 
+/**
+ * Phase DS-4-7 — first migration onto the new <DataView> compound. Same
+ * external API; visual chrome and behavior preserved per the "identical row
+ * sets / sort orders" policy. The inline Resolve/Suppress note textarea
+ * (ExceptionActionCell) is unchanged — DataView's rowActions API shows
+ * simple buttons; this cell is a custom render kept inline.
+ *
+ * Pagination is configured to a very large page size so the table never
+ * paginates in practice (the legacy DataTable rendered all items at once).
+ */
 export function ExceptionQueueTable({
   items,
   onResolve,
@@ -21,60 +31,66 @@ export function ExceptionQueueTable({
   onSuppress,
   selectedId,
 }: ExceptionQueueTableProps): JSX.Element {
+  const columns: Column<ExceptionQueueItem>[] = [
+    {
+      key: 'category',
+      title: 'Category',
+      getValue: (item) => formatCategory(item.category),
+      render: (item) => (
+        <div className="audit-record">
+          <span className="audit-record__primary">
+            {formatCategory(item.category)}
+            {selectedId === item.id ? ' (selected)' : ''}
+          </span>
+          <span className="audit-record__secondary">
+            <StatusBadge status={item.status} variant="dot" />
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'summary',
+      title: 'Related Context',
+      getValue: (item) => item.summary,
+      render: (item) => (
+        <div className="audit-record">
+          <span className="audit-record__primary">{item.summary}</span>
+          <span className="audit-record__secondary">
+            {item.personDisplayName ?? item.personId ?? 'No person'} |{' '}
+            {item.projectName ?? item.projectId ?? item.targetEntityId}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'observedAt',
+      title: 'Observed',
+      getValue: (item) => item.observedAt,
+      render: (item) => formatDateTime(item.observedAt),
+    },
+    ...(onResolve || onSuppress
+      ? [{
+          key: 'actions',
+          title: 'Actions',
+          render: (item: ExceptionQueueItem) =>
+            item.status === 'OPEN' ? (
+              <ExceptionActionCell
+                id={item.id}
+                onResolve={onResolve}
+                onSuppress={onSuppress}
+              />
+            ) : null,
+        }]
+      : []),
+  ];
+
   return (
-    <DataTable
-      columns={[
-        {
-          key: 'category',
-          render: (item) => (
-            <div className="audit-record">
-              <span className="audit-record__primary">
-                {formatCategory(item.category)}
-                {selectedId === item.id ? ' (selected)' : ''}
-              </span>
-              <span className="audit-record__secondary">
-                <StatusBadge status={item.status} variant="dot" />
-              </span>
-            </div>
-          ),
-          title: 'Category',
-        },
-        {
-          key: 'summary',
-          render: (item) => (
-            <div className="audit-record">
-              <span className="audit-record__primary">{item.summary}</span>
-              <span className="audit-record__secondary">
-                {item.personDisplayName ?? item.personId ?? 'No person'} |{' '}
-                {item.projectName ?? item.projectId ?? item.targetEntityId}
-              </span>
-            </div>
-          ),
-          title: 'Related Context',
-        },
-        {
-          key: 'observedAt',
-          render: (item) => formatDateTime(item.observedAt),
-          title: 'Observed',
-        },
-        ...(onResolve || onSuppress
-          ? [{
-              key: 'actions',
-              render: (item: ExceptionQueueItem) =>
-                item.status === 'OPEN' ? (
-                  <ExceptionActionCell
-                    id={item.id}
-                    onResolve={onResolve}
-                    onSuppress={onSuppress}
-                  />
-                ) : null,
-              title: 'Actions',
-            }]
-          : []),
-      ]}
+    <DataView
+      columns={columns}
+      rows={items}
       getRowKey={(item) => item.id}
-      items={items}
       onRowClick={onSelect}
+      pageSizeOptions={[1000]}
     />
   );
 }
@@ -109,8 +125,7 @@ function ExceptionActionCell({ id, onResolve, onSuppress }: ExceptionActionCellP
   if (mode !== 'idle') {
     return (
       <div style={{ minWidth: '220px' }}>
-        <textarea
-          className="field__control"
+        <Textarea
           onChange={(e) => setNote(e.target.value)}
           placeholder={mode === 'resolve' ? 'Resolution note...' : 'Suppression reason...'}
           rows={2}
@@ -118,23 +133,12 @@ function ExceptionActionCell({ id, onResolve, onSuppress }: ExceptionActionCellP
           value={note}
         />
         <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            className="button button--primary"
-            disabled={isSaving || !note.trim()}
-            onClick={(e) => { e.stopPropagation(); void handleConfirm(); }}
-            style={{ fontSize: '11px', padding: '2px 8px' }}
-            type="button"
-          >
+          <Button variant="primary" size="sm" disabled={isSaving || !note.trim()} onClick={(e) => { e.stopPropagation(); void handleConfirm(); }}>
             {isSaving ? '...' : 'Confirm'}
-          </button>
-          <button
-            className="button button--secondary"
-            onClick={(e) => { e.stopPropagation(); setMode('idle'); setNote(''); }}
-            style={{ fontSize: '11px', padding: '2px 8px' }}
-            type="button"
-          >
+          </Button>
+          <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setMode('idle'); setNote(''); }}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -143,24 +147,14 @@ function ExceptionActionCell({ id, onResolve, onSuppress }: ExceptionActionCellP
   return (
     <div style={{ display: 'flex', gap: '4px' }}>
       {onResolve ? (
-        <button
-          className="button button--secondary"
-          onClick={(e) => { e.stopPropagation(); setMode('resolve'); }}
-          style={{ fontSize: '11px', padding: '2px 8px' }}
-          type="button"
-        >
+        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setMode('resolve'); }}>
           Resolve
-        </button>
+        </Button>
       ) : null}
       {onSuppress ? (
-        <button
-          className="button button--secondary"
-          onClick={(e) => { e.stopPropagation(); setMode('suppress'); }}
-          style={{ fontSize: '11px', padding: '2px 8px' }}
-          type="button"
-        >
+        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setMode('suppress'); }}>
           Suppress
-        </button>
+        </Button>
       ) : null}
     </div>
   );

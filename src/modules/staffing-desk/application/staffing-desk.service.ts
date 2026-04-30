@@ -206,7 +206,7 @@ export class StaffingDeskService {
       ARCHIVED: 'COMPLETED',
     };
     const VALID_ENUM = new Set([
-      'CREATED', 'PROPOSED', 'REJECTED', 'BOOKED',
+      'DRAFT', 'CREATED', 'PROPOSED', 'IN_REVIEW', 'REJECTED', 'BOOKED',
       'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED', 'CANCELLED',
     ]);
     const mapped = statusList

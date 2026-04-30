@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
@@ -11,19 +11,30 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
-import { ApiError } from '@/lib/api/http-client';
-import { formatDateShort } from '@/lib/format-date';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { ProposalBuilderDrawer } from '@/components/staffing-requests/ProposalBuilderDrawer';
+import { ProposalReviewPanel } from '@/components/staffing-requests/ProposalReviewPanel';
+import type { SkillMatchCell } from '@/components/staffing-requests/SkillMatchHeatmap';
+import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
+import { ApiError } from '@/lib/api/http-client';
+import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
+import { fetchPersonSkills } from '@/lib/api/skills';
+import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
 import {
-  DerivedStaffingRequestStatus,
-  StaffingRequest,
-  SuggestionCandidate,
   cancelStaffingRequest,
+  duplicateStaffingRequest,
+  fetchProposalSlate,
   fetchStaffingRequestById,
-  fetchStaffingSuggestions,
-  fulfilStaffingRequest,
-  reviewStaffingRequest,
+  type DerivedStaffingRequestStatus,
+  type ProposalSlateDto,
+  type StaffingRequest,
 } from '@/lib/api/staffing-requests';
+import {
+  Button,
+  WorkflowStages,
+  type WorkflowStage,
+  type WorkflowStageStatus,
+} from '@/components/ds';
 
 const DERIVED_STATUS_TONE: Record<
   DerivedStaffingRequestStatus,
@@ -43,23 +54,89 @@ const PRIORITY_LABELS: Record<string, string> = {
   URGENT: 'Urgent',
 };
 
+const PRIORITY_TONE: Record<string, 'info' | 'warning' | 'danger' | 'neutral'> = {
+  LOW: 'neutral',
+  MEDIUM: 'info',
+  HIGH: 'warning',
+  URGENT: 'danger',
+};
+
+const PROJECT_STATUS_TONE: Record<string, 'active' | 'warning' | 'danger' | 'neutral'> = {
+  ACTIVE: 'active',
+  ON_HOLD: 'warning',
+  AT_RISK: 'warning',
+  DRAFT: 'neutral',
+  CLOSED: 'neutral',
+  CANCELLED: 'danger',
+  COMPLETED: 'active',
+};
+
+interface TimelineStageMeta {
+  key: 'DRAFT' | 'OPEN' | 'IN_REVIEW' | 'FULFILLED';
+  label: string;
+}
+
+const TIMELINE_STAGES: readonly TimelineStageMeta[] = [
+  { key: 'DRAFT', label: 'Draft' },
+  { key: 'OPEN', label: 'Open' },
+  { key: 'IN_REVIEW', label: 'In review' },
+  { key: 'FULFILLED', label: 'Filled' },
+];
+
+function buildWorkflowStages(request: StaffingRequest): WorkflowStage[] {
+  const cancelled = request.status === 'CANCELLED';
+  const reachedIndex = (() => {
+    if (cancelled) return -1;
+    const i = TIMELINE_STAGES.findIndex((s) => s.key === request.status);
+    return i;
+  })();
+
+  if (cancelled) {
+    return [
+      {
+        key: 'cancelled',
+        label: 'Cancelled',
+        status: 'blocked' as WorkflowStageStatus,
+        timestamp: request.cancelledAt,
+      },
+    ];
+  }
+
+  return TIMELINE_STAGES.map((stage, index) => {
+    let status: WorkflowStageStatus;
+    if (index < reachedIndex) status = 'done';
+    else if (index === reachedIndex) status = 'current';
+    else status = 'upcoming';
+    let timestamp: string | undefined;
+    if (stage.key === 'DRAFT') timestamp = request.createdAt;
+    if (stage.key === 'FULFILLED' && status !== 'upcoming') timestamp = request.updatedAt;
+    return { key: stage.key, label: stage.label, status, timestamp };
+  });
+}
+
 export function StaffingRequestDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { principal } = useAuth();
+  const { setCurrentLabel } = useDrilldown();
+
   const [request, setRequest] = useState<StaffingRequest | null>(null);
+  const [project, setProject] = useState<ProjectDetails | null>(null);
+  const [slate, setSlate] = useState<ProposalSlateDto | null>(null);
+  const [duplicating, setDuplicating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<number>(0);
 
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const [assignedPersonId, setAssignedPersonId] = useState('');
-  const [suggestions, setSuggestions] = useState<SuggestionCandidate[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [proficiencyCells, setProficiencyCells] = useState<SkillMatchCell[]>([]);
+  const [personNames, setPersonNames] = useState<Record<string, string>>({});
 
   const isRM = hasAnyRole(principal?.roles, RM_MANAGE_ROLES);
-  const isPM = hasAnyRole(principal?.roles, ['project_manager', 'admin']);
-  const { setCurrentLabel } = useDrilldown();
+  const isPM = hasAnyRole(principal?.roles, ['project_manager', 'delivery_manager', 'director', 'admin']);
 
   useEffect(() => {
     if (request?.role) setCurrentLabel(request.role);
@@ -67,54 +144,130 @@ export function StaffingRequestDetailPage(): JSX.Element {
 
   useEffect(() => {
     if (!id) return;
+    let active = true;
     setIsLoading(true);
-    fetchStaffingRequestById(id)
-      .then((data) => {
+    setError(null);
+    void (async () => {
+      try {
+        const data = await fetchStaffingRequestById(id);
+        if (!active) return;
         setRequest(data);
-        if ((data.status === 'OPEN' || data.status === 'IN_REVIEW') && data.skills.length > 0) {
-          setSuggestionsLoading(true);
-          fetchStaffingSuggestions(id)
-            .then((s) => setSuggestions(s))
-            .catch(() => { /* non-critical */ })
-            .finally(() => setSuggestionsLoading(false));
-        }
-      })
-      .catch((err) => {
+        const [projectResult, slateResult] = await Promise.all([
+          fetchProjectById(data.projectId).catch(() => null),
+          fetchProposalSlate(data.id).catch(() => null),
+        ]);
+        if (!active) return;
+        setProject(projectResult);
+        setSlate(slateResult);
+      } catch (err) {
+        if (!active) return;
         if (err instanceof ApiError && err.status === 404) {
           setNotFound(true);
         } else {
           setError('Failed to load staffing request.');
         }
-      })
-      .finally(() => setIsLoading(false));
-  }, [id]);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [id, refreshToken]);
 
-  async function handleReview(): Promise<void> {
-    if (!id) return;
-    setActionLoading(true);
-    try {
-      const updated = await reviewStaffingRequest(id);
-      setRequest(updated);
-    } catch {
-      setError('Failed to take request into review.');
-    } finally {
-      setActionLoading(false);
+  // Build a real proficiency feed for the heatmap by reading each candidate's
+  // PersonSkill records, and resolve their display names. Without the real
+  // PersonSkill feed, the heatmap had to fabricate cells from the (often-empty)
+  // mismatchedSkills field — that is what produced the misleading all-Strong
+  // matrix for manually-added candidates.
+  useEffect(() => {
+    if (!slate || !request) {
+      setProficiencyCells([]);
+      setPersonNames({});
+      return;
     }
+    const requiredSkills = request.skills ?? [];
+    if (slate.candidates.length === 0) {
+      setProficiencyCells([]);
+      setPersonNames({});
+      return;
+    }
+    let active = true;
+    void (async () => {
+      try {
+        // Resolve every distinct person on the slate (candidates + proposer) so
+        // the panel and the "Proposed by" line show display names rather than
+        // raw UUIDs.
+        const personIds = Array.from(
+          new Set([
+            slate.proposedByPersonId,
+            ...slate.candidates.map((c) => c.candidatePersonId),
+          ]),
+        );
+        const perPerson = await Promise.all(
+          personIds.map(async (personId) => ({
+            personId,
+            person: await fetchPersonDirectoryById(personId).catch(() => null),
+          })),
+        );
+        const names: Record<string, string> = {};
+        for (const { personId, person } of perPerson) {
+          if (person?.displayName) names[personId] = person.displayName;
+        }
+
+        const perCandidate = await Promise.all(
+          slate.candidates.map(async (c) => ({
+            candidatePersonId: c.candidatePersonId,
+            skills:
+              requiredSkills.length === 0
+                ? []
+                : await fetchPersonSkills(c.candidatePersonId).catch(() => []),
+          })),
+        );
+        if (!active) return;
+        const cells: SkillMatchCell[] = [];
+        for (const { candidatePersonId, skills } of perCandidate) {
+          const byName = new Map(skills.map((s) => [s.skillName, s.proficiency]));
+          for (const skillName of requiredSkills) {
+            const level = byName.get(skillName);
+            // Skill catalog proficiency is on a 1–4 scale (Skill DTO Min(1)/Max(4)).
+            // Normalise to 0..1 so the heatmap thresholds (>=0.85 Strong, >=0.5
+            // Partial, >0 Weak, 0 Missing) reflect the real level.
+            const proficiency = level === undefined ? 0 : level / 4;
+            cells.push({ candidatePersonId, skillName, proficiency });
+          }
+        }
+        setProficiencyCells(cells);
+        setPersonNames(names);
+      } catch {
+        if (active) {
+          setProficiencyCells([]);
+          setPersonNames({});
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [slate, request]);
+
+  const stages = useMemo(() => (request ? buildWorkflowStages(request) : []), [request]);
+
+  if (isLoading) {
+    return <LoadingState label="Loading staffing request..." variant="skeleton" skeletonType="detail" />;
   }
-
-  async function handleFulfil(): Promise<void> {
-    if (!id || !principal?.personId || !assignedPersonId.trim()) return;
-    setActionLoading(true);
-    setError(null);
-    try {
-      const updated = await fulfilStaffingRequest(id, principal.personId, assignedPersonId.trim());
-      setRequest(updated);
-      setAssignedPersonId('');
-    } catch {
-      setError('Failed to record fulfilment.');
-    } finally {
-      setActionLoading(false);
-    }
+  if (notFound) {
+    return (
+      <PageContainer>
+        <EmptyState
+          description={`No staffing request was found for ${id ?? 'this ID'}.`}
+          title="Request not found"
+        />
+      </PageContainer>
+    );
+  }
+  if (!request) {
+    return <ErrorState description={error ?? 'Unknown error.'} />;
   }
 
   async function handleCancel(): Promise<void> {
@@ -130,248 +283,306 @@ export function StaffingRequestDetailPage(): JSX.Element {
     }
   }
 
-  if (isLoading) return <LoadingState label="Loading staffing request..." variant="skeleton" skeletonType="detail" />;
-  if (notFound) {
-    return (
-      <PageContainer>
-        <EmptyState description={`No staffing request was found for ${id ?? 'this ID'}.`} title="Request not found" />
-      </PageContainer>
-    );
+  async function handleDuplicate(): Promise<void> {
+    if (!request) return;
+    setDuplicating(true);
+    try {
+      const dup = await duplicateStaffingRequest(request.id);
+      navigate(`/staffing-requests/${dup.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not duplicate request.');
+    } finally {
+      setDuplicating(false);
+    }
   }
-  if (!request) return <ErrorState description={error ?? 'Unknown error.'} />;
+
+  const showBuildSlateCta =
+    isRM &&
+    !slate &&
+    (request.status === 'OPEN' || request.status === 'IN_REVIEW' || request.status === 'DRAFT');
+  const canDecideSlate = Boolean(isPM && slate && slate.status === 'OPEN');
 
   return (
     <PageContainer>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/staffing-requests">
-            Back to requests
-          </Link>
+          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+            <Button
+              variant="secondary"
+              disabled={duplicating}
+              onClick={() => void handleDuplicate()}
+              title="One request = one person. Duplicate this request to staff another person on the same role."
+            >
+              {duplicating ? 'Duplicating…' : 'Duplicate request'}
+            </Button>
+            <Button as={Link} variant="secondary" to="/staffing-requests">
+              Back to requests
+            </Button>
+          </div>
         }
-        eyebrow="Supply & Demand"
+        eyebrow="Staffing Request"
         subtitle={request.summary ?? 'No summary provided.'}
         title={`${request.role} — ${request.projectName ?? request.projectId}`}
       />
 
       {error ? <ErrorState description={error} /> : null}
 
-      <SectionCard title="Details">
-        <dl className="detail-list">
-          <dt>Status</dt>
-          <dd>
+      {/* ─── Project context strip — sticky header with the data the PM needs at a glance. */}
+      <SectionCard title="Project context">
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: 'var(--space-2)',
+            fontSize: 12,
+          }}
+        >
+          <ContextField label="Project">
+            <Link to={`/projects/${request.projectId}`}>{project?.name ?? request.projectName ?? request.projectId}</Link>
+          </ContextField>
+          <ContextField label="Project status">
+            {project ? (
+              <StatusBadge
+                label={project.status}
+                tone={PROJECT_STATUS_TONE[project.status] ?? 'neutral'}
+                variant="chip"
+              />
+            ) : (
+              <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+            )}
+          </ContextField>
+          <ContextField label="Project Manager">
+            {project?.projectManagerId ? (
+              <Link to={`/people/${project.projectManagerId}`}>
+                {project.projectManagerDisplayName ?? project.projectManagerId}
+              </Link>
+            ) : (
+              <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+            )}
+          </ContextField>
+          <ContextField label="Delivery Manager">
+            {project?.deliveryManagerId ? (
+              <Link to={`/people/${project.deliveryManagerId}`}>
+                {project.deliveryManagerDisplayName ?? project.deliveryManagerId}
+              </Link>
+            ) : (
+              <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+            )}
+          </ContextField>
+          <ContextField label="Role">{request.role}</ContextField>
+          <ContextField label="Allocation">{request.allocationPercent}%</ContextField>
+          <ContextField label="Date range">
+            {request.startDate} → {request.endDate}
+          </ContextField>
+          <ContextField label="Priority">
+            <StatusBadge
+              label={PRIORITY_LABELS[request.priority] ?? request.priority}
+              tone={PRIORITY_TONE[request.priority] ?? 'neutral'}
+              variant="chip"
+            />
+          </ContextField>
+          <ContextField label="Headcount">
+            {request.headcountFulfilled} / {request.headcountRequired} filled
+          </ContextField>
+          <ContextField label="Derived status">
             <StatusBadge
               label={request.derivedStatus}
               tone={DERIVED_STATUS_TONE[request.derivedStatus]}
               variant="chip"
             />
-          </dd>
-          <dt>Priority</dt>
-          <dd>{PRIORITY_LABELS[request.priority] ?? request.priority}</dd>
-          <dt>Project</dt>
-          <dd>
-            <Link to={`/projects/${request.projectId}`}>{request.projectName ?? request.projectId}</Link>
-          </dd>
-          <dt>Requested By</dt>
-          <dd>
-            <Link to={`/people/${request.requestedByPersonId}`}>{request.requestedByPersonId}</Link>
-          </dd>
-          <dt>Allocation</dt>
-          <dd>{request.allocationPercent}%</dd>
-          <dt>Dates</dt>
-          <dd>
-            {request.startDate} → {request.endDate}
-          </dd>
-          <dt>Headcount</dt>
-          <dd>
-            {request.headcountFulfilled} / {request.headcountRequired} filled
-          </dd>
+          </ContextField>
           {request.skills.length > 0 ? (
-            <>
-              <dt>Skills</dt>
-              <dd>{request.skills.join(', ')}</dd>
-            </>
+            <ContextField label="Required skills">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {request.skills.map((s) => (
+                  <span
+                    key={s}
+                    style={{
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: 'var(--color-surface-alt)',
+                      color: 'var(--color-text)',
+                      fontSize: 11,
+                      border: '1px solid var(--color-border)',
+                    }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </ContextField>
           ) : null}
-        </dl>
+          {request.candidatePersonId ? (
+            <ContextField label="Endorsed by PM">
+              <Link to={`/people/${request.candidatePersonId}`}>{request.candidatePersonId}</Link>
+            </ContextField>
+          ) : null}
+        </div>
       </SectionCard>
 
-      {request.assignmentSummary.totalAssignments > 0 ? (
-        <SectionCard title="Assignment pipeline">
+      {/* ─── Workflow timeline */}
+      <SectionCard title="Workflow timeline">
+        <WorkflowStages stages={stages} ariaLabel="Staffing request workflow" />
+      </SectionCard>
+
+      {/* ─── Workload timeline. Only shown pre-slate — once a slate exists,
+            the per-candidate timeline lives inline in the side-by-side
+            comparison column below (staffing-desk row pattern). */}
+      {!slate ? (
+        <SectionCard title="Timeline">
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: 0.4,
+              marginBottom: 4,
+            }}
+          >
+            {request.candidatePersonId ? 'Endorsed candidate timeline' : 'Assignment slot'}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--color-text-muted)',
+              marginBottom: 'var(--space-1)',
+            }}
+          >
+            {request.candidatePersonId
+              ? `Existing assignments + the proposed allocation overlaid for ${request.startDate} → ${request.endDate}.`
+              : `Proposed allocation for ${request.startDate} → ${request.endDate}. Build a slate to compare candidate timelines side-by-side.`}
+          </div>
+          <WorkloadTimeline
+            personId={request.candidatePersonId ?? undefined}
+            planned={{
+              allocationPercent: request.allocationPercent,
+              startDate: request.startDate,
+              endDate: request.endDate,
+              projectName: project?.name ?? request.projectName ?? 'This request',
+            }}
+            compact
+          />
+        </SectionCard>
+      ) : null}
+
+      {/* ─── Slate review — RM build CTA, or PM review surface (inline) */}
+      <SectionCard title="Proposal slate">
+        {showBuildSlateCta ? (
           <div
             style={{
               display: 'flex',
-              flexWrap: 'wrap',
-              gap: 'var(--space-2)',
-              fontSize: 12,
+              justifyContent: 'flex-end',
+              gap: 'var(--space-1)',
+              marginBottom: 'var(--space-2)',
             }}
           >
-            {Object.entries({
-              Created: request.assignmentSummary.created,
-              Proposed: request.assignmentSummary.proposed,
-              Booked: request.assignmentSummary.booked,
-              Onboarding: request.assignmentSummary.onboarding,
-              Assigned: request.assignmentSummary.assigned,
-              'On-hold': request.assignmentSummary.onHold,
-              Rejected: request.assignmentSummary.rejected,
-              Completed: request.assignmentSummary.completed,
-              Cancelled: request.assignmentSummary.cancelled,
-            })
-              .filter(([, count]) => (count as number) > 0)
-              .map(([label, count]) => (
-                <div
-                  key={label}
-                  style={{
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    background: 'var(--color-surface-alt)',
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>{String(count)}</span>{' '}
-                  <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-                </div>
-              ))}
+            <Button variant="primary" size="sm" onClick={() => setBuilderOpen(true)}>
+              Build proposal slate…
+            </Button>
           </div>
-        </SectionCard>
-      ) : null}
-
-      {request.fulfilments.length > 0 ? (
-        <SectionCard title="Fulfilments">
-          <table className="dash-compact-table">
-            <thead>
-              <tr>
-                <th>Assigned Person</th>
-                <th>Proposed By</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {request.fulfilments.map((f) => (
-                <tr key={f.id}>
-                  <td>
-                    <Link to={`/people/${f.assignedPersonId}`}>{f.assignedPersonId}</Link>
-                  </td>
-                  <td>
-                    <Link to={`/people/${f.proposedByPersonId}`}>{f.proposedByPersonId}</Link>
-                  </td>
-                  <td>{formatDateShort(f.fulfilledAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </SectionCard>
-      ) : null}
-
-      {isRM && (request.status === 'OPEN' || request.status === 'IN_REVIEW') && request.skills.length > 0 ? (
-        <SectionCard title="Skill-Matched Candidates">
-          {suggestionsLoading ? (
-            <LoadingState label="Finding matching candidates..." variant="skeleton" skeletonType="detail" />
-          ) : suggestions.length === 0 ? (
-            <EmptyState description="No candidates matched the required skills." title="No suggestions" />
-          ) : (
-            <div data-testid="skill-suggestions-panel" style={{ overflow: 'auto' }}>
-              <table className="dash-compact-table">
-                <thead>
-                  <tr>
-                    <th>Candidate</th>
-                    <th>Match Score</th>
-                    <th>Available Capacity</th>
-                    <th>Skills Matched</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {suggestions.slice(0, 10).map((c) => (
-                    <tr key={c.personId}>
-                      <td>
-                        <Link to={`/people/${c.personId}`}>{c.displayName}</Link>
-                      </td>
-                      <td>
-                        <span style={{
-                          background: c.score >= 1 ? 'var(--color-status-active)' : c.score >= 0.5 ? 'var(--color-status-warning)' : 'var(--color-status-neutral)',
-                          borderRadius: 3,
-                          color: 'var(--color-surface)',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          padding: '1px 6px',
-                        }}>
-                          {c.score.toFixed(2)}
-                        </span>
-                      </td>
-                      <td>{c.availableCapacityPercent}%</td>
-                      <td style={{ fontSize: 12 }}>
-                        {c.skillBreakdown
-                          .filter((b) => b.proficiencyMatch > 0)
-                          .map((b) => b.skillName)
-                          .join(', ') || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </SectionCard>
-      ) : null}
-
-      {isRM && (request.status === 'OPEN' || request.status === 'IN_REVIEW') ? (
-        <SectionCard title="RM Actions">
-          {request.status === 'OPEN' ? (
-            <button
-              className="button"
-              disabled={actionLoading}
-              onClick={() => void handleReview()}
-              type="button"
-            >
-              Take Into Review
-            </button>
-          ) : null}
-
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginTop: '1rem' }}>
-            <label className="field" style={{ flex: 1 }}>
-              <span className="field__label">Assign Person ID</span>
-              <input
-                className="field__control"
-                onChange={(e) => setAssignedPersonId(e.target.value)}
-                placeholder="Person UUID"
-                type="text"
-                value={assignedPersonId}
+        ) : null}
+        {!slate ? (
+          <EmptyState
+            description={
+              isRM
+                ? 'No slate yet. Build a slate of suggested candidates so the Project Manager can pick one.'
+                : 'The Resource Manager has not yet proposed any candidates for this request.'
+            }
+            title="No proposal slate yet"
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <StatusBadge
+                label={slate.status}
+                tone={slate.status === 'OPEN' ? 'pending' : slate.status === 'DECIDED' ? 'active' : 'neutral'}
+                variant="chip"
               />
-            </label>
-            <button
-              className="button"
-              disabled={actionLoading || !assignedPersonId.trim()}
-              onClick={() => void handleFulfil()}
-              type="button"
-            >
-              Record Fulfilment
-            </button>
+              <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
+                Proposed by{' '}
+                <Link to={`/people/${slate.proposedByPersonId}`}>
+                  {personNames[slate.proposedByPersonId] ?? slate.proposedByPersonId}
+                </Link>{' '}
+                on {new Date(slate.proposedAt).toLocaleString()}
+              </span>
+            </div>
+            <ProposalReviewPanel
+              slate={slate}
+              staffingRequestId={request.id}
+              requiredSkills={request.skills}
+              proficiencyCells={proficiencyCells}
+              personNames={personNames}
+              canDecide={canDecideSlate}
+              plannedOverlay={{
+                allocationPercent: request.allocationPercent,
+                startDate: request.startDate,
+                endDate: request.endDate,
+                projectName: project?.name ?? request.projectName ?? 'This request',
+              }}
+              onPicked={(assignmentId) => {
+                navigate(`/assignments/${assignmentId}`);
+              }}
+              onRejected={() => {
+                setRefreshToken((n) => n + 1);
+              }}
+            />
           </div>
-        </SectionCard>
-      ) : null}
+        )}
+      </SectionCard>
 
       {(isPM || isRM) &&
-        request.status !== 'CANCELLED' &&
-        request.status !== 'FULFILLED' ? (
-        <SectionCard title="Cancel Request">
-          <p style={{ marginBottom: '0.75rem', color: 'var(--color-text-secondary)' }}>
-            Cancelling a request removes it from the RM queue.
+      request.status !== 'CANCELLED' &&
+      request.status !== 'FULFILLED' ? (
+        <SectionCard title="Cancel request" collapsible defaultCollapsed>
+          <p style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-muted)', fontSize: 12 }}>
+            Cancelling removes the request from the RM queue. Use only when the role is no longer needed.
           </p>
-          <button
-            className="button button--danger"
-            disabled={actionLoading}
-            onClick={() => setConfirmCancelOpen(true)}
-            type="button"
-          >
-            Cancel Request
-          </button>
+          <Button variant="danger" disabled={actionLoading} onClick={() => setConfirmCancelOpen(true)} type="button">
+            Cancel request
+          </Button>
           <ConfirmDialog
             open={confirmCancelOpen}
             message="This will cancel the staffing request and remove it from the RM queue. This action cannot be undone."
             onCancel={() => setConfirmCancelOpen(false)}
-            onConfirm={() => { setConfirmCancelOpen(false); void handleCancel(); }}
+            onConfirm={() => {
+              setConfirmCancelOpen(false);
+              void handleCancel();
+            }}
             title="Cancel staffing request?"
           />
         </SectionCard>
       ) : null}
+
+      <ProposalBuilderDrawer
+        open={builderOpen}
+        request={request}
+        onClose={() => setBuilderOpen(false)}
+        onSubmitted={() => {
+          setBuilderOpen(false);
+          setRefreshToken((n) => n + 1);
+        }}
+      />
     </PageContainer>
+  );
+}
+
+function ContextField({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          color: 'var(--color-text-muted)',
+          marginBottom: 2,
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--color-text)' }}>{children}</div>
+    </div>
   );
 }

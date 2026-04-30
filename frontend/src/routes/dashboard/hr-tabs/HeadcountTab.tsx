@@ -1,6 +1,7 @@
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { HeadcountTrendLine } from '@/components/charts/HeadcountTrendLine';
+import { Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -56,30 +57,21 @@ export function HrHeadcountTab({
           ],
         }}
       >
-        <table className="dash-compact-table">
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th style={NUM}>Count</th>
-              <th style={NUM}>% of Total</th>
-              <th style={{ width: 120 }}>Bar</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
-                <td style={{ fontWeight: 500 }}>{row.label}</td>
-                <td style={{ ...NUM, fontWeight: 600 }}>{row.value}</td>
-                <td style={NUM}>{totalHeadcount > 0 ? Math.round((row.value / totalHeadcount) * 100) : 0}%</td>
-                <td>
-                  <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((row.value / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: row.color }} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Table
+          variant="compact"
+          columns={[
+            { key: 'label', title: 'Metric', getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
+            { key: 'value', title: 'Count', align: 'right', getValue: (r) => r.value, render: (r) => <span style={{ ...NUM, fontWeight: 600 }}>{r.value}</span> },
+            { key: 'pct', title: '% of Total', align: 'right', getValue: (r) => totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0, render: (r) => <span style={NUM}>{totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0}%</span> },
+            { key: 'bar', title: 'Bar', width: 120, render: (r) => (
+              <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((r.value / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: r.color }} />
+              </div>
+            ) },
+          ] as Column<typeof rows[number]>[]}
+          rows={rows}
+          getRowKey={(r) => r.label}
+        />
       </SectionCard>
     </>
   );

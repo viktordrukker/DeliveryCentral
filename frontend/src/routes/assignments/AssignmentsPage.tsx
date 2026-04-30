@@ -15,7 +15,8 @@ import { AssignmentsWorkflowTable, type WorkflowTab } from '@/components/assignm
 import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { exportToXlsx } from '@/lib/export';
-import { ASSIGNMENT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { ASSIGNMENT_CREATE_ROLES, DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button } from '@/components/ds';
 
 export function AssignmentsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -26,6 +27,10 @@ export function AssignmentsPage(): JSX.Element {
   const isEmployeeOnly = !authLoading &&
     (principal?.roles ?? []).length > 0 &&
     !hasAnyRole(principal?.roles, ASSIGNMENT_CREATE_ROLES);
+  // "Make Assignment" (the formal /assignments/new flow) is gated to
+  // director/admin per RBAC. Other manager roles use Staffing Requests
+  // instead, so we don't show them a button that would lead to a 403 page.
+  const canCreateAssignment = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
 
   const activeTab: WorkflowTab = filters.tab === 'positions' ? 'positions' : 'assignments';
 
@@ -39,22 +44,18 @@ export function AssignmentsPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button
-          className="button button--secondary button--sm"
-          onClick={() => setColumnsOpen(true)}
-          style={{ fontSize: 10 }}
-          type="button"
-        >
+        <Button variant="secondary" size="sm" onClick={() => setColumnsOpen(true)} style={{ fontSize: 10 }} type="button">
           Columns
-        </button>
+        </Button>
         <SavedFiltersDropdown
           currentFilters={filters}
           onApply={(f) => setFilters(f)}
           storageKey="assignments-saved-filters"
         />
         {state.items.length > 0 && (
-          <button
-            className="button button--secondary button--sm"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={state.isLoading}
             onClick={() => {
               const tabItems = state.items.filter((r) =>
@@ -88,16 +89,18 @@ export function AssignmentsPage(): JSX.Element {
             type="button"
           >
             Export XLSX
-          </button>
+          </Button>
         )}
         {!isEmployeeOnly && (
           <>
-            <Link className="button button--secondary button--sm" to="/assignments/new">
-              Create Assignment
-            </Link>
-            <Link className="button button--sm" to="/staffing-requests/new">
+            {canCreateAssignment ? (
+              <Button as={Link} variant="secondary" size="sm" to="/assignments/new">
+                Create Assignment
+              </Button>
+            ) : null}
+            <Button as={Link} variant="primary" size="sm" to="/staffing-requests/new">
               Create Position
-            </Link>
+            </Button>
           </>
         )}
         <CopyLinkButton />
@@ -108,7 +111,7 @@ export function AssignmentsPage(): JSX.Element {
     // Use primitive/string keys so identity-changing object refs (filters, state.items)
     // don't retrigger the effect on every render and cause infinite loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setActions, state.items.length, state.isLoading, isEmployeeOnly, JSON.stringify(filters), activeTab, setFilters]);
+  }, [setActions, state.items.length, state.isLoading, isEmployeeOnly, canCreateAssignment, JSON.stringify(filters), activeTab, setFilters]);
 
   function handleRowClick(row: { id: string; kind: string }): void {
     if (row.kind === 'assignment') navigate(`/assignments/${row.id}`);
@@ -124,7 +127,7 @@ export function AssignmentsPage(): JSX.Element {
         {!state.isLoading && !state.error ? (
           state.items.length === 0 ? (
             <EmptyState
-              action={!isEmployeeOnly ? { href: '/assignments/new', label: 'Create Assignment' } : undefined}
+              action={canCreateAssignment ? { href: '/assignments/new', label: 'Create Assignment' } : undefined}
               description="No assignments or positions found."
               title="Nothing here yet"
             />

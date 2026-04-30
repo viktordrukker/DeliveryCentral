@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 
 import { exportToXlsx } from '@/lib/export';
+import { Button } from '@/components/ds';
 
 export interface ExportColumn<T> {
   key: string;
@@ -79,16 +80,9 @@ export function ExportButton<T>({ data, columns, filename, label = 'Export' }: P
 
   return (
     <div ref={menuRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="button button--secondary button--sm"
-        disabled={data.length === 0}
-        onClick={() => setOpen((v) => !v)}
-        type="button"
-      >
+      <Button aria-expanded={open} aria-haspopup="menu" variant="secondary" size="sm" disabled={data.length === 0} onClick={() => setOpen((v) => !v)} type="button">
         {label} {'\u25BE'}
-      </button>
+      </Button>
       {open && data.length > 0 ? (
         <div
           role="menu"
@@ -105,22 +99,26 @@ export function ExportButton<T>({ data, columns, filename, label = 'Export' }: P
             padding: 'var(--space-1) 0',
           }}
         >
-          <button
+          <Button
             onClick={() => void downloadXlsx()}
             role="menuitem"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'block', padding: 'var(--space-2) var(--space-3)', textAlign: 'left', width: '100%', color: 'var(--color-text)' }}
+            variant="link"
+            size="sm"
+            style={{ display: 'block', padding: 'var(--space-2) var(--space-3)', textAlign: 'left', width: '100%', color: 'var(--color-text)' }}
             type="button"
           >
             Download XLSX
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={downloadCsv}
             role="menuitem"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'block', padding: 'var(--space-2) var(--space-3)', textAlign: 'left', width: '100%', color: 'var(--color-text)' }}
+            variant="link"
+            size="sm"
+            style={{ display: 'block', padding: 'var(--space-2) var(--space-3)', textAlign: 'left', width: '100%', color: 'var(--color-text)' }}
             type="button"
           >
             Download CSV
-          </button>
+          </Button>
         </div>
       ) : null}
     </div>

@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 
 import { PersonSelect } from '@/components/common/PersonSelect';
+import { Button, DatePicker } from '@/components/ds';
 
 interface SelectOption {
   label: string;
@@ -90,23 +91,15 @@ export function ProjectTeamAssignmentForm({
 
         <label className="field">
           <span className="field__label">Start Date</span>
-          <input
-            className="field__control"
-            onChange={(event) => onChange('startDate', event.target.value)}
-            type="date"
-            value={values.startDate}
-          />
+          <DatePicker onValueChange={(value) => onChange('startDate', value)} value={values.startDate}
+ />
           {errors.startDate ? <span className="field__error">{errors.startDate}</span> : null}
         </label>
 
         <label className="field">
           <span className="field__label">End Date</span>
-          <input
-            className="field__control"
-            onChange={(event) => onChange('endDate', event.target.value)}
-            type="date"
-            value={values.endDate}
-          />
+          <DatePicker onValueChange={(value) => onChange('endDate', value)} value={values.endDate}
+ />
           {errors.endDate ? <span className="field__error">{errors.endDate}</span> : null}
         </label>
 
@@ -122,9 +115,9 @@ export function ProjectTeamAssignmentForm({
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Assigning team...' : 'Assign team'}
-        </button>
+        </Button>
       </div>
     </form>
   );

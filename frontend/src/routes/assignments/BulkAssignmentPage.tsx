@@ -15,6 +15,7 @@ import {
   BulkAssignmentFormValues,
   useBulkAssignmentPage,
 } from '@/features/assignments/useBulkAssignmentPage';
+import { Button } from '@/components/ds';
 
 const initialValues: BulkAssignmentFormValues = {
   actorId: '',
@@ -72,9 +73,9 @@ export function BulkAssignmentPage(): JSX.Element {
     <PageContainer testId="bulk-assignment-page">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/assignments">
+          <Button as={Link} variant="secondary" to="/assignments">
             Back to assignments
-          </Link>
+          </Button>
         }
         eyebrow="Assignments"
         subtitle="Create multiple person-to-project assignments in one batch while keeping per-item results visible."

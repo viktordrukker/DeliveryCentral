@@ -14,6 +14,7 @@ import { fetchAssignments } from '@/lib/api/assignments';
 import { formatDateRange } from '@/lib/format-date';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchMyTimesheetWeek, UpsertEntryInput } from '@/lib/api/timesheets';
+import { Button, IconButton, Modal, Popover, Table, Textarea, type Column } from '@/components/ds';
 
 // ISO week helpers ─────────────────────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ export function TimesheetPage(): JSX.Element {
 
   // Copy last week popover
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
   const [prevWeekData, setPrevWeekData] = useState<'loading' | 'empty' | { projectIds: string[]; entries: Array<{ projectId: string; date: string; hours: number }> } | null>(null);
 
   // Local cell values for controlled inputs: key = "projectId::date"
@@ -502,32 +504,17 @@ export function TimesheetPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button
-          aria-label="Previous week"
-          className="button button--secondary button--sm"
-          onClick={() => navigateWeek(-1)}
-          type="button"
-        >
+        <Button aria-label="Previous week" variant="secondary" size="sm" onClick={() => navigateWeek(-1)} type="button">
           {'\u2190'} Prev
-        </button>
+        </Button>
         <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>{formatWeekLabel(weekStart)}</span>
-        <button
-          aria-label="Next week"
-          className="button button--secondary button--sm"
-          onClick={() => navigateWeek(1)}
-          type="button"
-        >
+        <Button aria-label="Next week" variant="secondary" size="sm" onClick={() => navigateWeek(1)} type="button">
           Next {'\u2192'}
-        </button>
+        </Button>
         {!isReadOnly && (
-          <button
-            className="button button--sm"
-            disabled={week?.status !== 'DRAFT'}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
+          <Button variant="primary" size="sm" disabled={week?.status !== 'DRAFT'} onClick={() => void handleSubmit()} type="button">
             Submit
-          </button>
+          </Button>
         )}
         <TipTrigger />
       </>
@@ -645,55 +632,51 @@ export function TimesheetPage(): JSX.Element {
     <PageContainer testId="timesheet-page" viewport>
       {/* Week Navigation */}
       <div className="timesheet-nav" style={{ position: 'relative' }}>
-        <button
-          aria-label="Previous week"
-          className="button button--secondary"
-          onClick={() => navigateWeek(-1)}
-          type="button"
-        >
+        <Button aria-label="Previous week" variant="secondary" onClick={() => navigateWeek(-1)} type="button">
           \u2190 Prev
-        </button>
-        <button
-          className="button button--secondary"
+        </Button>
+        <Button
+          ref={copyButtonRef}
+          variant="secondary"
           onClick={() => void openCopyPopover()}
           type="button"
           disabled={isReadOnly}
         >
           Copy last week
-        </button>
+        </Button>
         <span className="timesheet-nav__label">{formatWeekLabel(weekStart)}</span>
-        <button
-          aria-label="Next week"
-          className="button button--secondary"
-          onClick={() => navigateWeek(1)}
-          type="button"
-        >
+        <Button aria-label="Next week" variant="secondary" onClick={() => navigateWeek(1)} type="button">
           Next \u2192
-        </button>
+        </Button>
 
-        {/* Copy last week popover */}
-        {copyPopoverOpen && (
-          <div className="copy-week-popover">
-            <div style={{ fontWeight: 600, marginBottom: '8px' }}>Copy from previous week?</div>
-            {prevWeekData === 'loading' && <div style={{ color: 'var(--color-text-secondary)' }}>Loading...</div>}
-            {prevWeekData === 'empty' && <div style={{ color: 'var(--color-text-secondary)' }}>Previous week is empty</div>}
+        {/* Phase DS-2-6 — copy-week popover, anchored to "Copy last week" */}
+        <Popover
+          open={copyPopoverOpen}
+          onClose={() => setCopyPopoverOpen(false)}
+          anchorRef={copyButtonRef}
+          placement="bottom-start"
+        >
+          <div style={{ padding: 'var(--space-3)', minWidth: 240 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Copy from previous week?</div>
+            {prevWeekData === 'loading' && <div style={{ color: 'var(--color-text-muted)' }}>Loading...</div>}
+            {prevWeekData === 'empty' && <div style={{ color: 'var(--color-text-muted)' }}>Previous week is empty</div>}
             {prevWeekData && prevWeekData !== 'loading' && prevWeekData !== 'empty' && (
-              <div className="copy-week-popover__actions">
-                <button className="button" onClick={() => void copyLastWeek(true)} type="button">
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <Button variant="primary" size="sm" onClick={() => void copyLastWeek(true)} type="button">
                   Copy with hours
-                </button>
-                <button className="button button--secondary" onClick={() => void copyLastWeek(false)} type="button">
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => void copyLastWeek(false)} type="button">
                   Copy projects only
-                </button>
+                </Button>
               </div>
             )}
-            <div className="copy-week-popover__actions" style={{ marginTop: '8px' }}>
-              <button className="button button--secondary" onClick={() => setCopyPopoverOpen(false)} type="button">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-2)' }}>
+              <Button variant="ghost" size="sm" onClick={() => setCopyPopoverOpen(false)} type="button">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
-        )}
+        </Popover>
       </div>
 
       {/* Week Status Summary Bar */}
@@ -716,72 +699,48 @@ export function TimesheetPage(): JSX.Element {
 
       {/* Grid */}
       <div className="timesheet-grid-wrapper">
-        <table className="timesheet-grid" role="grid" aria-label="Timesheet grid">
-          <thead>
-            <tr>
-              <th className="col-project">Project</th>
-              {visibleDayIndices.map((di) => {
+        {projectIds.length === 0 ? (
+          <div className="timesheet-grid__empty" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            No projects added. Click &quot;Add Row&quot; to begin.
+          </div>
+        ) : (
+          <Table
+            variant="compact"
+            columns={[
+              {
+                key: 'project',
+                title: 'Project',
+                getValue: (projectId) => projectNameMap.get(projectId) ?? projectId,
+                render: (projectId) => {
+                  const statusInfo = getStatusIcon(weekStatus);
+                  return (
+                    <>
+                      <span style={{ display: 'inline-block', width: '16px', height: '16px', textAlign: 'center', fontSize: '12px', color: statusInfo.color, verticalAlign: 'middle', marginRight: '4px' }}>
+                        {statusInfo.icon}
+                      </span>
+                      <span className="project-name" title={projectNameMap.get(projectId) ?? projectId}>
+                        {projectNameMap.get(projectId) ?? projectId}
+                      </span>
+                    </>
+                  );
+                },
+              },
+              ...visibleDayIndices.map((di) => {
                 const date = weekDays[di];
                 const isToday = date === todayStr;
-                return (
-                  <th key={date} className={isToday ? 'col-today' : ''} style={{ width: '72px' }}>
-                    <div>{DAY_LABELS[di]}</div>
-                    <div style={{ fontSize: '10px', fontWeight: 400, opacity: 0.7 }}>{date.slice(5)}</div>
-                  </th>
-                );
-              })}
-              <th style={{ width: '64px' }}>
-                Total
-                <button
-                  type="button"
-                  onClick={() => setShowWeekend((p) => !p)}
-                  title="Show/hide weekend"
-                  style={{
-                    marginLeft: '4px',
-                    background: 'none',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    lineHeight: 1,
-                    padding: '1px 4px',
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  {showWeekend ? '\u2212' : '+'}
-                </button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {projectIds.length === 0 && (
-              <tr>
-                <td colSpan={visibleDayIndices.length + 2} className="timesheet-grid__empty" style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  No projects added. Click &quot;Add Row&quot; to begin.
-                </td>
-              </tr>
-            )}
-            {projectIds.map((projectId, rowIdx) => {
-              const statusInfo = getStatusIcon(weekStatus);
-              const rowLocked = weekStatus === 'SUBMITTED' || weekStatus === 'APPROVED';
-              return (
-                <tr key={projectId} className={getRowStatusClass(weekStatus)}>
-                  <td className="col-project">
-                    <span style={{ display: 'inline-block', width: '16px', height: '16px', textAlign: 'center', fontSize: '12px', color: statusInfo.color, verticalAlign: 'middle', marginRight: '4px' }}>
-                      {statusInfo.icon}
-                    </span>
-                    <span className="project-name" title={projectNameMap.get(projectId) ?? projectId}>
-                      {projectNameMap.get(projectId) ?? projectId}
-                    </span>
-                  </td>
-                  {visibleDayIndices.map((di) => {
-                    const date = weekDays[di];
+                return {
+                  key: `d-${date}`,
+                  title: <><div>{DAY_LABELS[di]}</div><div style={{ fontSize: '10px', fontWeight: 400, opacity: 0.7 }}>{date.slice(5)}</div></>,
+                  align: 'center' as const,
+                  cellStyle: { width: '72px' },
+                  headerClassName: isToday ? 'col-today' : undefined,
+                  render: (projectId: string, rowIdx: number) => {
                     const cellKey = `${projectId}-${date}`;
                     const stateKey = `${projectId}::${date}`;
                     const val = getCellValue(projectId, date);
                     const isSaving = savingCells.has(cellKey);
                     const hasError = !!cellErrors[stateKey];
-                    const isToday = date === todayStr;
+                    const rowLocked = weekStatus === 'SUBMITTED' || weekStatus === 'APPROVED';
 
                     const wrapperClasses = [
                       'timesheet-cell-wrapper',
@@ -790,7 +749,7 @@ export function TimesheetPage(): JSX.Element {
                     ].filter(Boolean).join(' ');
 
                     return (
-                      <td key={date} className={isToday ? 'col-today' : ''}>
+                      <div className={isToday ? 'col-today' : ''}>
                         <div className={wrapperClasses}>
                           <input
                             ref={(el) => { cellRefs.current[`${rowIdx}-${di}`] = el; }}
@@ -810,89 +769,96 @@ export function TimesheetPage(): JSX.Element {
                           />
                         </div>
                         {hasError && (
-                          <div style={{ fontSize: '10px', color: 'var(--color-error, #d32f2f)', textAlign: 'center' }}>
+                          <div style={{ fontSize: '10px', color: 'var(--color-status-danger)', textAlign: 'center' }}>
                             {cellErrors[stateKey]}
                           </div>
                         )}
-                      </td>
+                      </div>
                     );
-                  })}
-                  <td style={{ textAlign: 'center', fontWeight: 600, fontSize: '13px' }}>
-                    {rowTotal(projectId).toFixed(1)}h
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="col-project" style={{ fontWeight: 700, fontSize: '12px' }}>
-                Day Total
-              </td>
-              {visibleDayIndices.map((di) => {
-                const date = weekDays[di];
-                const dt = dayTotal(date);
-                let color: string | undefined;
-                let suffix = '';
-                if (dt === 0) {
-                  color = 'var(--color-text-tertiary, #aaa)';
-                } else if (dt > 10) {
-                  color = 'var(--color-error, #d32f2f)';
-                  suffix = ' \u26A0';
-                } else if (dt > 8) {
-                  color = 'var(--color-warning, #f57c00)';
-                  suffix = ' \u26A0';
-                }
-                return (
-                  <td key={date} style={{ textAlign: 'center', color }}>
-                    {dt === 0 ? '\u2014' : `${dt.toFixed(1)}${suffix}`}
-                  </td>
-                );
-              })}
-              <td className={`timesheet-grid__grand-total ${getGrandTotalClass(grandTotal)}`} style={{ textAlign: 'center' }}>
-                <strong>{grandTotal.toFixed(1)}h</strong>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+                  },
+                };
+              }),
+              {
+                key: 'rowTotal',
+                title: (
+                  <>
+                    Total
+                    <IconButton
+                      aria-label={showWeekend ? 'Hide weekend' : 'Show weekend'}
+                      size="sm"
+                      onClick={() => setShowWeekend((p) => !p)}
+                      title="Show/hide weekend"
+                      style={{ marginLeft: '4px', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '11px', lineHeight: 1, color: 'var(--color-text-secondary)' }}
+                    >
+                      {showWeekend ? '\u2212' : '+'}
+                    </IconButton>
+                  </>
+                ),
+                align: 'center',
+                cellStyle: { width: '64px' },
+                getValue: (projectId) => rowTotal(projectId),
+                render: (projectId) => <span style={{ fontWeight: 600, fontSize: '13px' }}>{rowTotal(projectId).toFixed(1)}h</span>,
+              },
+            ] as Column<string>[]}
+            rows={projectIds}
+            getRowKey={(projectId) => projectId}
+            rowClassName={() => getRowStatusClass(weekStatus)}
+            footer={
+              <div style={{ display: 'grid', gridTemplateColumns: `1fr ${visibleDayIndices.map(() => '72px').join(' ')} 64px`, padding: 'var(--space-2) var(--space-3)', fontWeight: 700, background: 'var(--color-surface-alt)', fontSize: 12 }}>
+                <span>Day Total</span>
+                {visibleDayIndices.map((di) => {
+                  const date = weekDays[di];
+                  const dt = dayTotal(date);
+                  let color: string | undefined;
+                  let suffix = '';
+                  if (dt === 0) {
+                    color = 'var(--color-text-subtle)';
+                  } else if (dt > 10) {
+                    color = 'var(--color-status-danger)';
+                    suffix = ' \u26A0';
+                  } else if (dt > 8) {
+                    color = 'var(--color-status-warning)';
+                    suffix = ' \u26A0';
+                  }
+                  return (
+                    <span key={date} style={{ textAlign: 'center', color }}>
+                      {dt === 0 ? '\u2014' : `${dt.toFixed(1)}${suffix}`}
+                    </span>
+                  );
+                })}
+                <span className={`timesheet-grid__grand-total ${getGrandTotalClass(grandTotal)}`} style={{ textAlign: 'center' }}>
+                  <strong>{grandTotal.toFixed(1)}h</strong>
+                </span>
+              </div>
+            }
+          />
+        )}
       </div>
 
-      {/* Description popover */}
-      {descPopover && !isReadOnly && (
-        <DescriptionPopover
-          date={descPopover.date}
-          initialValue={descPopover.value}
-          onCancel={() => setDescPopover(null)}
-          onSave={(val) => handleDescriptionSave(descPopover.projectId, descPopover.date, val)}
-          projectId={descPopover.projectId}
-        />
-      )}
+      {/* Phase DS-2-6 — description editor (modal-shaped despite the legacy "popover" name) */}
+      <DescriptionPopover
+        open={descPopover !== null && !isReadOnly}
+        date={descPopover?.date ?? ''}
+        initialValue={descPopover?.value ?? ''}
+        onCancel={() => setDescPopover(null)}
+        onSave={(val) => {
+          if (descPopover) handleDescriptionSave(descPopover.projectId, descPopover.date, val);
+        }}
+        projectId={descPopover?.projectId ?? ''}
+      />
 
       {/* Actions */}
       {!isReadOnly && (
         <div className="timesheet-actions">
-          <button
-            className="button button--secondary"
-            onClick={() => void autoPopulateFromAssignments()}
-            type="button"
-          >
+          <Button variant="secondary" onClick={() => void autoPopulateFromAssignments()} type="button">
             Refresh from Assignments
-          </button>
-          <button
-            className="button button--secondary"
-            onClick={() => void openAddProjectDialog()}
-            type="button"
-          >
+          </Button>
+          <Button variant="secondary" onClick={() => void openAddProjectDialog()} type="button">
             + Add Row
-          </button>
-          <button
-            className="button"
-            disabled={week?.status !== 'DRAFT'}
-            onClick={() => void handleSubmit()}
-            type="button"
-          >
+          </Button>
+          <Button variant="primary" disabled={week?.status !== 'DRAFT'} onClick={() => void handleSubmit()} type="button">
             Submit for Approval
-          </button>
+          </Button>
         </div>
       )}
 
@@ -940,8 +906,8 @@ export function TimesheetPage(): JSX.Element {
               </>
             )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button className="button button--secondary" onClick={() => setAddProjectOpen(false)} type="button">Cancel</button>
-              <button className="button" disabled={!selectedProjectId} onClick={confirmAddProject} type="button">Add</button>
+              <Button variant="secondary" onClick={() => setAddProjectOpen(false)} type="button">Cancel</Button>
+              <Button variant="primary" disabled={!selectedProjectId} onClick={confirmAddProject} type="button">Add</Button>
             </div>
           </div>
         </div>
@@ -953,6 +919,7 @@ export function TimesheetPage(): JSX.Element {
 // ─── Description Popover ──────────────────────────────────────────────────────
 
 interface DescriptionPopoverProps {
+  open: boolean;
   date: string;
   initialValue: string;
   onCancel: () => void;
@@ -960,7 +927,13 @@ interface DescriptionPopoverProps {
   projectId: string;
 }
 
+/**
+ * Phase DS-2-6 \u2014 rebuilt on `<Modal>`. Despite the legacy "Popover" name,
+ * this is functionally a modal: centered overlay, focus trap, aria-modal.
+ * The DS Modal handles backdrop / scroll lock / escape.
+ */
 function DescriptionPopover({
+  open,
   date,
   initialValue,
   onCancel,
@@ -969,28 +942,30 @@ function DescriptionPopover({
 }: DescriptionPopoverProps): JSX.Element {
   const [value, setValue] = useState(initialValue);
 
+  // Reset the textarea every time we re-open with new context.
+  useEffect(() => {
+    if (open) setValue(initialValue);
+  }, [open, initialValue]);
+
   return (
-    <div className="desc-popover-overlay" role="dialog" aria-modal="true">
-      <div className="desc-popover">
-        <h4 className="desc-popover__title">
-          Description \u2014 {projectId} / {date}
-        </h4>
-        <textarea
-          autoFocus
-          className="field__control"
-          onChange={(e) => setValue(e.target.value)}
-          rows={3}
-          value={value}
-        />
-        <div className="desc-popover__actions">
-          <button className="button" onClick={() => onSave(value)} type="button">
-            Save
-          </button>
-          <button className="button button--secondary" onClick={onCancel} type="button">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      open={open}
+      onClose={onCancel}
+      size="sm"
+      title={`Description \u2014 ${projectId} / ${date}`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel} type="button">Cancel</Button>
+          <Button variant="primary" onClick={() => onSave(value)} type="button" data-autofocus="true">Save</Button>
+        </>
+      }
+    >
+      <Textarea
+        autoFocus
+        rows={3}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+    </Modal>
   );
 }

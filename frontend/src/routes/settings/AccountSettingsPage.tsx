@@ -13,6 +13,7 @@ import {
   type NotificationPreference,
 } from '@/lib/api/notification-prefs';
 import { readStoredColorModePreference } from '@/styles/design-tokens';
+import { Button } from '@/components/ds';
 
 const LEGACY_NOTIF_PREFS_KEY = 'dc:notif_prefs';
 
@@ -245,9 +246,9 @@ export function AccountSettingsPage(): JSX.Element {
             />
           </label>
           <div className="form-actions">
-            <button className="button" disabled={isSubmitting} type="submit">
+            <Button variant="primary" disabled={isSubmitting} type="submit">
               {isSubmitting ? 'Saving…' : 'Change password'}
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>

@@ -9,6 +9,7 @@ import {
   fetchSkills,
   type Skill,
 } from '@/lib/api/skills';
+import { Button, IconButton, Table, type Column } from '@/components/ds';
 
 interface SkillMatchPanelProps {
   projectId: string;
@@ -76,22 +77,23 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
         overflow: 'hidden',
       }}
     >
-      <button
+      <Button
+        variant="secondary"
         onClick={() => { void handleExpand(); }}
         style={{
           background: 'var(--color-surface-alt)',
           border: 'none',
-          cursor: 'pointer',
           display: 'block',
           fontWeight: 600,
           padding: '12px 16px',
           textAlign: 'left',
           width: '100%',
+          borderRadius: 0,
         }}
         type="button"
       >
         Skill-Matched Suggestions {expanded ? '▲' : '▼'}
-      </button>
+      </Button>
 
       {expanded ? (
         <div style={{ padding: '16px' }}>
@@ -142,26 +144,20 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
                     }}
                   >
                     {skill?.name ?? id}
-                    <button
+                    <IconButton
+                      aria-label="Remove skill"
+                      size="sm"
                       onClick={() => handleRemoveSkill(id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed', fontSize: '14px', lineHeight: 1 }}
-                      type="button"
+                      style={{ color: 'var(--color-chart-5)', fontSize: '14px', lineHeight: 1 }}
                     >
                       ×
-                    </button>
+                    </IconButton>
                   </span>
                 );
               })}
-              <button
-                className="button button--secondary"
-                data-testid="skill-match-search-btn"
-                disabled={loadingMatch}
-                onClick={() => { void handleSearch(); }}
-                style={{ fontSize: '13px', padding: '4px 12px' }}
-                type="button"
-              >
+              <Button variant="secondary" data-testid="skill-match-search-btn" disabled={loadingMatch} onClick={() => { void handleSearch(); }} style={{ fontSize: '13px', padding: '4px 12px' }} type="button">
                 {loadingMatch ? 'Searching…' : 'Find matches'}
-              </button>
+              </Button>
             </div>
           ) : null}
 
@@ -173,33 +169,23 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
           ) : null}
 
           {candidates.length > 0 ? (
-            <table className="data-table" data-testid="skill-match-results">
-              <thead>
-                <tr>
-                  <th>Person</th>
-                  <th>Matched Skills</th>
-                  <th>Current Allocation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((c) => (
-                  <tr key={c.personId}>
-                    <td>{c.displayName}</td>
-                    <td>{c.matchedSkills.join(', ')}</td>
-                    <td>
-                      <span
-                        style={{
-                          color: c.currentAllocation < 50 ? 'var(--color-status-active)' : c.currentAllocation < 80 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {c.currentAllocation}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div data-testid="skill-match-results">
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (c) => c.displayName, render: (c) => c.displayName },
+                  { key: 'skills', title: 'Matched Skills', getValue: (c) => c.matchedSkills.join(', '), render: (c) => c.matchedSkills.join(', ') },
+                  { key: 'alloc', title: 'Current Allocation', align: 'right', getValue: (c) => c.currentAllocation, render: (c) => (
+                    <span style={{
+                      color: c.currentAllocation < 50 ? 'var(--color-status-active)' : c.currentAllocation < 80 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
+                      fontWeight: 600,
+                    }}>{c.currentAllocation}%</span>
+                  ) },
+                ] as Column<SkillMatchCandidate>[]}
+                rows={candidates}
+                getRowKey={(c) => c.personId}
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -19,6 +19,7 @@ import {
 import type { RadiatorSnapshotDto, SubDimensionScore } from '@/lib/api/project-radiator';
 
 import { AXIS_LABELS } from './ProjectRadiator';
+import { Button } from '@/components/ds';
 
 interface PulseExceptionConsoleProps {
   projectId: string;
@@ -229,14 +230,14 @@ export function PulseExceptionConsole({
           {demoCount > 0 ? ` · ${demoCount} demo ${showDemo ? 'shown' : 'hidden'}` : ''}
         </span>
         {demoCount > 0 ? (
-          <button
+          <Button
+            variant={showDemo ? 'primary' : 'secondary'}
+            size="sm"
             aria-pressed={showDemo}
-            className={showDemo ? 'button--project-detail button--primary' : 'button--project-detail'}
             onClick={() => setShowDemo((v) => !v)}
-            type="button"
           >
             {showDemo ? 'Hide demo 🌱' : 'Show demo 🌱'}
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -328,17 +329,13 @@ export function PulseExceptionConsole({
                 <span />
               )}
               {row.action?.kind === 'link' ? (
-                <Link className="button--project-detail" to={row.action.href}>
+                <Button as={Link} variant="secondary" size="sm" to={row.action.href}>
                   {row.action.label ?? 'Open'}
-                </Link>
+                </Button>
               ) : row.action?.kind === 'mark-reviewed' ? (
-                <button
-                  className="button--project-detail"
-                  onClick={() => void handleMarkReviewed(row)}
-                  type="button"
-                >
+                <Button variant="secondary" size="sm" onClick={() => void handleMarkReviewed(row)}>
                   {row.action.label ?? 'Mark reviewed'}
-                </button>
+                </Button>
               ) : (
                 <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>—</span>
               )}

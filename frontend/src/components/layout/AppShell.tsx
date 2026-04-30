@@ -117,6 +117,9 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
         e.preventDefault();
         toggleSidebarCollapse();
       }
+      if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false);
+      }
       if (DEMO_MODE && (e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         setDemoPanelOpen((open) => !open);
@@ -124,7 +127,17 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
     }
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [sidebarOpen]);
+
+  // DS-5-2 — body-scroll-lock when mobile sidebar drawer is open. Mirrors the
+  // DS Modal scroll-lock behavior so the page underneath doesn't scroll while
+  // the sidebar overlay is open.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [sidebarOpen]);
   const activeRoute = findRoute(location.pathname) ?? visibleRoutes[0];
 
   function closeSidebar(): void {

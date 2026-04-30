@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
+import { DataView } from '@/components/ds';
 
 import { ColumnVisibilityMenu } from '@/components/common/ColumnVisibilityMenu';
-import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
@@ -72,7 +72,8 @@ export function EmployeeDirectoryTable({
   );
 
   return (
-    <DataTable
+    <DataView<PersonDirectoryItem>
+      pageSizeOptions={[1000]}
       columns={columns}
       emptyState={
         <EmptyState
@@ -81,7 +82,7 @@ export function EmployeeDirectoryTable({
         />
       }
       getRowKey={(item) => item.id}
-      items={items}
+      rows={items}
       onRowClick={onRowClick}
       toolbar={(
         <ColumnVisibilityMenu

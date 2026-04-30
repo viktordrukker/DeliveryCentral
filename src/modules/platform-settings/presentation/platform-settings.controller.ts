@@ -35,6 +35,17 @@ export class PlatformSettingsController {
     return this.service.getAll();
   }
 
+  @Get('by-prefix/:prefix')
+  @RequireRoles('admin')
+  @ApiOperation({
+    summary: 'List platform-setting rows under a key prefix (e.g. "assignment.").',
+  })
+  public async getByPrefix(
+    @Param('prefix') prefix: string,
+  ): Promise<{ key: string; value: unknown; isDefault: boolean }[]> {
+    return this.service.getByPrefix(prefix);
+  }
+
   @Patch(':key')
   @RequireRoles('admin')
   @HttpCode(HttpStatus.OK)

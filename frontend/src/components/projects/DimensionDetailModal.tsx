@@ -22,6 +22,13 @@ import {
 } from '@/lib/api/project-radiator';
 
 import { AXIS_LABELS } from './ProjectRadiator';
+import {
+  Button,
+  FormField,
+  Input,
+  Modal,
+  Textarea,
+} from '@/components/ds';
 
 interface DimensionDetailModalProps {
   open: boolean;
@@ -93,6 +100,23 @@ function parseScore(raw: string): number | null {
   return clamp(Math.round(n * 10) / 10, 0, 4);
 }
 
+/**
+ * Phase DS-2-7 Tier C3-#2 — rebuilt on `<Modal>` (not `<FormModal>`) because
+ * the modal has TWO submit paths (Save draft / Save + Submit) plus a Cancel.
+ * `<Modal size="xl">` matches the original 860px max-width (xl = 960 cap).
+ *
+ * UX contract: see [docs/planning/ux-contracts/DimensionDetailModal.md].
+ *
+ * Returns null when `open === false` (preserves the original mount-on-demand
+ * shape). Modal owns aria-modal / role=dialog / focus trap / scroll lock /
+ * escape close / mobile auto-fullscreen.
+ *
+ * The two legacy raw action buttons (Save draft / Save + Submit, both
+ * carrying the project-detail tab style) are migrated to DS `<Button>` —
+ * closes the Group D legacy-button cleanup for this file. Form fields wrap
+ * DS atoms (`<Textarea>` / `<Input>`) inside `<FormField>` for consistent
+ * label/hint/error chrome.
+ */
 export function DimensionDetailModal({
   open,
   projectId,
@@ -241,122 +265,124 @@ export function DimensionDetailModal({
   }).length;
 
   return (
-    <div
-      aria-modal="true"
-      className="confirm-dialog-overlay"
+    <Modal
+      open
+      onClose={onClose}
+      closeOnBackdropClick={!saving}
+      closeOnEscape={!saving}
+      size="xl"
+      title="Detailed status per dimension"
+      description="Add a narrative and/or override the auto-calculated score. Fill only what you need — blank fields stay blank. Overrides require a reason so future PMs can trace intent."
       data-testid="dimension-detail-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !saving) onClose();
-      }}
-      role="dialog"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="secondary" onClick={() => void handleSave(false)} disabled={saving}>
+            {saving ? 'Saving…' : 'Save draft'}
+          </Button>
+          <Button variant="primary" onClick={() => void handleSave(true)} disabled={saving} data-autofocus="true">
+            Save + Submit
+          </Button>
+        </>
+      }
     >
-      <div className="confirm-dialog" style={{ maxHeight: '90vh', maxWidth: 860, overflowY: 'auto', width: '96%' }}>
-        <h3 className="confirm-dialog__title">Detailed status per dimension</h3>
-        <p className="confirm-dialog__message" style={{ marginBottom: 'var(--space-3)' }}>
-          Add a narrative and/or override the auto-calculated score. Fill only what you need —
-          blank fields stay blank. Overrides require a reason so future PMs can trace intent.
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        {quadrantOrder.map((q) => {
+          const subs = groupedByQuadrant[q] ?? [];
+          if (subs.length === 0) return null;
+          return (
+            <div key={q} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <div
+                style={{
+                  color: 'var(--color-text-muted)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {QUADRANT_LABELS[q]}
+              </div>
+              {subs.map((key) => {
+                const sub = subByKey(snapshot, key);
+                const effective = sub?.effectiveScore ?? null;
+                const auto = sub?.autoScore ?? null;
+                const band = bandForScore(effective, cutoffs);
+                const tone = bandColor(band);
+                const isOverridden = sub?.overrideScore !== null && sub?.overrideScore !== undefined;
+                const p = pending[key] ?? { narrative: '', overrideScore: '', overrideReason: '' };
+                const pendingScore = parseScore(p.overrideScore);
+                const pendingBand = pendingScore !== null ? bandForScore(pendingScore, cutoffs) : null;
+                const reasonChars = p.overrideReason.trim().length;
+                const reasonRequired = pendingScore !== null;
+                const reasonValid = !reasonRequired || reasonChars >= MIN_OVERRIDE_REASON;
+                const isFocused = initialFocusKey === key;
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {quadrantOrder.map((q) => {
-            const subs = groupedByQuadrant[q] ?? [];
-            if (subs.length === 0) return null;
-            return (
-              <div key={q} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                <div
-                  style={{
-                    color: 'var(--color-text-muted)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {QUADRANT_LABELS[q]}
-                </div>
-                {subs.map((key) => {
-                  const sub = subByKey(snapshot, key);
-                  const effective = sub?.effectiveScore ?? null;
-                  const auto = sub?.autoScore ?? null;
-                  const band = bandForScore(effective, cutoffs);
-                  const tone = bandColor(band);
-                  const isOverridden = sub?.overrideScore !== null && sub?.overrideScore !== undefined;
-                  const p = pending[key] ?? { narrative: '', overrideScore: '', overrideReason: '' };
-                  const pendingScore = parseScore(p.overrideScore);
-                  const pendingBand = pendingScore !== null ? bandForScore(pendingScore, cutoffs) : null;
-                  const reasonChars = p.overrideReason.trim().length;
-                  const reasonRequired = pendingScore !== null;
-                  const reasonValid = !reasonRequired || reasonChars >= MIN_OVERRIDE_REASON;
-                  const isFocused = initialFocusKey === key;
+                return (
+                  <fieldset
+                    key={key}
+                    ref={(el) => {
+                      rowRefs.current[key] = el;
+                    }}
+                    style={{
+                      border: `1px solid ${isFocused ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                      borderLeft: `3px solid ${tone}`,
+                      borderRadius: 'var(--radius-control)',
+                      margin: 0,
+                      padding: 'var(--space-3)',
+                      ...(isFocused ? { boxShadow: 'var(--shadow-card)' } : {}),
+                    }}
+                  >
+                    <legend style={{ fontSize: 12, fontWeight: 700, padding: '0 6px' }}>
+                      {AXIS_LABELS[key] ?? key}
+                    </legend>
 
-                  return (
-                    <fieldset
-                      key={key}
-                      ref={(el) => {
-                        rowRefs.current[key] = el;
-                      }}
+                    <div
                       style={{
-                        border: `1px solid ${isFocused ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                        borderLeft: `3px solid ${tone}`,
-                        borderRadius: 'var(--radius-control)',
-                        margin: 0,
-                        padding: 'var(--space-3)',
-                        ...(isFocused ? { boxShadow: 'var(--shadow-card)' } : {}),
+                        alignItems: 'center',
+                        color: 'var(--color-text-muted)',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        fontSize: 11,
+                        gap: 'var(--space-2)',
+                        marginBottom: 'var(--space-2)',
                       }}
                     >
-                      <legend style={{ fontSize: 12, fontWeight: 700, padding: '0 6px' }}>
-                        {AXIS_LABELS[key] ?? key}
-                      </legend>
+                      <span>Auto: <strong style={{ color: 'var(--color-text)' }}>{formatScore(auto)}</strong></span>
+                      <span>Effective: <strong style={{ color: 'var(--color-text)' }}>{formatScore(effective)}</strong></span>
+                      {band ? (
+                        <span
+                          style={{
+                            background: tone,
+                            borderRadius: 'var(--radius-control)',
+                            color: 'var(--color-surface)',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            letterSpacing: '0.04em',
+                            padding: '1px 6px',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {bandLabel(band)}
+                        </span>
+                      ) : null}
+                      {isOverridden ? (
+                        <span style={{ color: 'var(--color-status-warning)' }} title={sub?.reason ?? ''}>
+                          ⚙ Overridden
+                        </span>
+                      ) : null}
+                      {sub?.explanation ? (
+                        <span style={{ flex: 1, minWidth: 200 }}>· {sub.explanation}</span>
+                      ) : null}
+                    </div>
 
-                      <div
-                        style={{
-                          alignItems: 'center',
-                          color: 'var(--color-text-muted)',
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          fontSize: 11,
-                          gap: 'var(--space-2)',
-                          marginBottom: 'var(--space-2)',
-                        }}
+                    <div style={{ display: 'grid', gap: 'var(--space-2)', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                      <FormField
+                        label="Narrative"
+                        hint="optional, goes to detailed report"
                       >
-                        <span>Auto: <strong style={{ color: 'var(--color-text)' }}>{formatScore(auto)}</strong></span>
-                        <span>Effective: <strong style={{ color: 'var(--color-text)' }}>{formatScore(effective)}</strong></span>
-                        {band ? (
-                          <span
-                            style={{
-                              background: tone,
-                              borderRadius: 'var(--radius-control)',
-                              color: 'var(--color-surface)',
-                              fontSize: 10,
-                              fontWeight: 600,
-                              letterSpacing: '0.04em',
-                              padding: '1px 6px',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            {bandLabel(band)}
-                          </span>
-                        ) : null}
-                        {isOverridden ? (
-                          <span style={{ color: 'var(--color-status-warning)' }} title={sub?.reason ?? ''}>
-                            ⚙ Overridden
-                          </span>
-                        ) : null}
-                        {sub?.explanation ? (
-                          <span style={{ flex: 1, minWidth: 200 }}>· {sub.explanation}</span>
-                        ) : null}
-                      </div>
-
-                      <div style={{ display: 'grid', gap: 'var(--space-2)', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                        <label className="field">
-                          <span className="field__label">
-                            Narrative{' '}
-                            <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>
-                              — optional, goes to detailed report
-                            </span>
-                          </span>
-                          <textarea
-                            className="field__control"
+                        {(props) => (
+                          <Textarea
                             disabled={saving}
                             maxLength={MAX_NARRATIVE}
                             onChange={(e) => patch(key, { narrative: e.target.value })}
@@ -364,17 +390,19 @@ export function DimensionDetailModal({
                             rows={3}
                             style={{ fontSize: 12, resize: 'vertical' }}
                             value={p.narrative}
+                            {...props}
                           />
-                        </label>
+                        )}
+                      </FormField>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                          <label className="field">
-                            <span className="field__label">
-                              Override score <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>— optional (0.0 – 4.0)</span>
-                            </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                        <FormField
+                          label="Override score"
+                          hint="optional (0.0 – 4.0)"
+                        >
+                          {(props) => (
                             <div style={{ alignItems: 'center', display: 'flex', gap: 6 }}>
-                              <input
-                                className="field__control"
+                              <Input
                                 disabled={saving}
                                 max={4}
                                 min={0}
@@ -384,6 +412,7 @@ export function DimensionDetailModal({
                                 style={{ width: 100 }}
                                 type="number"
                                 value={p.overrideScore}
+                                {...props}
                               />
                               {pendingBand ? (
                                 <span
@@ -402,23 +431,18 @@ export function DimensionDetailModal({
                                 </span>
                               ) : null}
                             </div>
-                          </label>
+                          )}
+                        </FormField>
 
-                          {reasonRequired ? (
-                            <label className="field">
-                              <span className="field__label">
-                                Reason{' '}
-                                <span
-                                  style={{
-                                    color: reasonValid ? 'var(--color-text-muted)' : 'var(--color-status-danger)',
-                                    fontWeight: 400,
-                                  }}
-                                >
-                                  — required ({reasonChars}/{MIN_OVERRIDE_REASON} min)
-                                </span>
-                              </span>
-                              <textarea
-                                className="field__control"
+                        {reasonRequired ? (
+                          <FormField
+                            label="Reason"
+                            required
+                            hint={`required (${reasonChars}/${MIN_OVERRIDE_REASON} min)`}
+                            error={reasonValid ? undefined : `Need ${MIN_OVERRIDE_REASON - reasonChars} more chars`}
+                          >
+                            {(props) => (
+                              <Textarea
                                 disabled={saving}
                                 maxLength={MAX_REASON}
                                 onChange={(e) => patch(key, { overrideReason: e.target.value })}
@@ -426,57 +450,31 @@ export function DimensionDetailModal({
                                 rows={2}
                                 style={{ fontSize: 12, resize: 'vertical' }}
                                 value={p.overrideReason}
+                                {...props}
                               />
-                            </label>
-                          ) : null}
-                        </div>
+                            )}
+                          </FormField>
+                        ) : null}
                       </div>
-                    </fieldset>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-
-        <div
-          style={{
-            color: 'var(--color-text-muted)',
-            fontSize: 11,
-            marginTop: 'var(--space-3)',
-          }}
-        >
-          {changedOverrideCount > 0 ? `${changedOverrideCount} override${changedOverrideCount === 1 ? '' : 's'} pending · ` : ''}
-          {changedNarrativeCount > 0 ? `${changedNarrativeCount} narrative${changedNarrativeCount === 1 ? '' : ' changes'} pending` : 'No pending changes'}
-        </div>
-
-        <div className="confirm-dialog__actions" style={{ marginTop: 'var(--space-2)' }}>
-          <button
-            className="button--project-detail"
-            disabled={saving}
-            onClick={() => void handleSave(false)}
-            type="button"
-          >
-            {saving ? 'Saving...' : 'Save draft'}
-          </button>
-          <button
-            className="button--project-detail button--primary"
-            disabled={saving}
-            onClick={() => void handleSave(true)}
-            type="button"
-          >
-            Save + Submit
-          </button>
-          <button
-            className="button button--secondary"
-            disabled={saving}
-            onClick={onClose}
-            type="button"
-          >
-            Cancel
-          </button>
-        </div>
+                    </div>
+                  </fieldset>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
-    </div>
+
+      <div
+        style={{
+          color: 'var(--color-text-muted)',
+          fontSize: 11,
+          marginTop: 'var(--space-3)',
+        }}
+      >
+        {changedOverrideCount > 0 ? `${changedOverrideCount} override${changedOverrideCount === 1 ? '' : 's'} pending · ` : ''}
+        {changedNarrativeCount > 0 ? `${changedNarrativeCount} narrative${changedNarrativeCount === 1 ? '' : ' changes'} pending` : 'No pending changes'}
+      </div>
+    </Modal>
   );
 }

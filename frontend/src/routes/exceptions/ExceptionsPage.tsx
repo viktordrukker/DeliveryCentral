@@ -8,15 +8,16 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
+import { ListLayout } from '@/components/layout/ListLayout';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
-import { formatDistanceToNow } from 'date-fns';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { ExceptionDetailPanel } from '@/components/exceptions/ExceptionDetailPanel';
 import { ExceptionQueueFilters } from '@/components/exceptions/ExceptionQueueFilters';
 import { ExceptionQueueTable } from '@/components/exceptions/ExceptionQueueTable';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { useExceptionQueue } from '@/features/exceptions/useExceptionQueue';
+import { Button } from '@/components/ds';
 
 export function ExceptionsPage(): JSX.Element {
   const state = useExceptionQueue();
@@ -43,18 +44,17 @@ export function ExceptionsPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <Link className="button button--secondary button--sm" to="/dashboard/planned-vs-actual">
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard/planned-vs-actual">
           Open planned vs actual
-        </Link>
+        </Button>
         <TipTrigger />
       </>
     );
     return () => setActions(null);
   }, [setActions]);
 
-  return (
-    <PageContainer testId="exceptions-page" viewport>
-
+  const banners = (
+    <>
       {!tokenState.hasToken ? (
         <SectionCard title="Authentication">
           <AuthTokenField
@@ -65,22 +65,37 @@ export function ExceptionsPage(): JSX.Element {
           />
         </SectionCard>
       ) : null}
-
-      <FilterBar>
-        <ExceptionQueueFilters
-          isLoading={state.isLoading}
-          onAsOfChange={(value) => state.setFilter('asOf', new Date(value).toISOString())}
-          onCategoryChange={(value) => state.setFilter('category', value)}
-          onProviderChange={(value) => state.setFilter('provider', value)}
-          onStatusFilterChange={(value) => state.setFilter('statusFilter', value)}
-          onTargetEntityIdChange={(value) => state.setFilter('targetEntityId', value)}
-          values={state.filters}
-        />
-      </FilterBar>
-
       {state.isLoading ? <LoadingState label="Loading exceptions..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
+    </>
+  );
 
+  return (
+    <ListLayout
+      testId="exceptions-page"
+      viewport
+      banners={banners}
+      filterBar={
+        <FilterBar>
+          <ExceptionQueueFilters
+            isLoading={state.isLoading}
+            onAsOfChange={(value) => state.setFilter('asOf', new Date(value).toISOString())}
+            onCategoryChange={(value) => state.setFilter('category', value)}
+            onProviderChange={(value) => state.setFilter('provider', value)}
+            onStatusFilterChange={(value) => state.setFilter('statusFilter', value)}
+            onTargetEntityIdChange={(value) => state.setFilter('targetEntityId', value)}
+            values={state.filters}
+          />
+        </FilterBar>
+      }
+      freshness={state.lastUpdated ? (
+        <DataFreshness
+          lastFetch={state.lastUpdated}
+          onRefresh={state.reload}
+          refreshing={state.isLoading}
+        />
+      ) : null}
+    >
       {!state.isLoading && !state.error ? (
         state.data ? (
           <div className="dashboard-main-grid">
@@ -125,10 +140,6 @@ export function ExceptionsPage(): JSX.Element {
         )
       ) : null}
 
-      <div className="data-freshness">
-        {state.lastUpdated ? `Updated ${formatDistanceToNow(state.lastUpdated, { addSuffix: true })}` : 'Loading...'} {'\u00B7'}{' '}
-        <button onClick={state.reload} type="button" disabled={state.isLoading}>{state.isLoading ? 'Refreshing...' : 'Refresh'}</button>
-      </div>
-    </PageContainer>
+    </ListLayout>
   );
 }

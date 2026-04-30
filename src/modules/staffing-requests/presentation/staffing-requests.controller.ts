@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -18,6 +19,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import {
@@ -26,14 +28,24 @@ import {
 } from '@src/infrastructure/public-id';
 
 import {
+  PickProposalCandidateRequestDto,
+  PickProposalCandidateResponseDto,
+  ProposalSlateResponseDto,
+  RejectProposalSlateRequestDto,
+  RejectProposalSlateResponseDto,
+  SubmitProposalSlateRequestDto,
+} from '../application/contracts/proposal-slate.dto';
+import {
   DeriveStaffingRequestStatusService,
   DerivedStaffingRequestResult,
 } from '../application/derive-staffing-request-status.service';
+import { StaffingProposalSlateService } from '../application/staffing-proposal-slate.service';
 import {
   SuggestionCandidate,
   SkillRequirement,
   StaffingSuggestionsService,
 } from '../application/staffing-suggestions.service';
+import { StaffingRequestProposalSlate } from '../domain/entities/staffing-request-proposal-slate.entity';
 import {
   InMemoryStaffingRequestService,
   StaffingRequest,
@@ -48,6 +60,7 @@ export interface StaffingRequestWithDerived extends StaffingRequest {
 
 interface CreateStaffingRequestBody {
   allocationPercent: number;
+  candidatePersonId?: string;
   endDate: string;
   headcountRequired?: number;
   priority: StaffingRequestPriority;
@@ -83,7 +96,31 @@ export class StaffingRequestsController {
     private readonly service: InMemoryStaffingRequestService,
     private readonly suggestionsService: StaffingSuggestionsService,
     private readonly deriveStatusService: DeriveStaffingRequestStatusService,
+    private readonly proposalSlateService: StaffingProposalSlateService,
   ) {}
+
+  private mapSlateResponse(slate: StaffingRequestProposalSlate): ProposalSlateResponseDto {
+    return {
+      id: slate.id,
+      staffingRequestId: slate.staffingRequestId,
+      proposedByPersonId: slate.proposedByPersonId,
+      status: slate.status,
+      proposedAt: slate.proposedAt.toISOString(),
+      expiresAt: slate.expiresAt?.toISOString(),
+      decidedAt: slate.decidedAt?.toISOString(),
+      candidates: slate.candidates.map((c) => ({
+        id: c.id,
+        candidatePersonId: c.candidatePersonId,
+        rank: c.rank,
+        matchScore: c.matchScore,
+        availabilityPercent: c.availabilityPercent,
+        mismatchedSkills: [...c.mismatchedSkills],
+        rationale: c.rationale,
+        decision: c.decision,
+        decidedAt: c.decidedAt?.toISOString(),
+      })),
+    };
+  }
 
   private async enrich(request: StaffingRequest): Promise<StaffingRequestWithDerived> {
     const derived = await this.deriveStatusService.deriveForRequest(
@@ -313,5 +350,147 @@ export class StaffingRequestsController {
       if (msg.includes('not found')) throw new NotFoundException(msg);
       throw new BadRequestException(msg);
     }
+  }
+
+  @Post(':id/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Duplicate a staffing request — creates a fresh DRAFT with the same fields (1 request = 1 person)',
+  })
+  @ApiCreatedResponse({ description: 'Duplicated draft created' })
+  public async duplicate(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<StaffingRequestWithDerived> {
+    try {
+      const result = await this.service.duplicate(id);
+      return this.enrich(result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Duplicate failed.';
+      if (msg.includes('not found')) throw new NotFoundException(msg);
+      throw new BadRequestException(msg);
+    }
+  }
+
+  // ─── Proposal slate endpoints ─────────────────────────────────────────────
+  // The slate aggregate lives on the StaffingRequest. PM creates the request →
+  // RM proposes a slate → PM picks; the assignment is born at pick-time with
+  // the picked person already in BOOKED.
+
+  @Get(':id/proposals')
+  @ApiOperation({ summary: 'Fetch the active proposal slate for this staffing request (or null)' })
+  @ApiOkResponse({ type: ProposalSlateResponseDto })
+  @RequireRoles('employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  public async getProposalSlate(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+  ): Promise<ProposalSlateResponseDto | null> {
+    const slate = await this.proposalSlateService.findByStaffingRequestId(id);
+    return slate ? this.mapSlateResponse(slate) : null;
+  }
+
+  @Post(':id/proposals')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Submit a multi-candidate proposal slate (RM)' })
+  @ApiCreatedResponse({ type: ProposalSlateResponseDto })
+  @RequireRoles('resource_manager', 'delivery_manager', 'admin')
+  public async submitProposalSlate(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Body() request: SubmitProposalSlateRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProposalSlateResponseDto> {
+    if (!Array.isArray(request.candidates) || request.candidates.length === 0) {
+      throw new BadRequestException('candidates must be a non-empty array.');
+    }
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    const slate = await this.proposalSlateService.submit({
+      actorId,
+      actorRoles,
+      staffingRequestId: id,
+      candidates: request.candidates.map((c) => ({
+        candidatePersonId: c.candidatePersonId,
+        rank: c.rank,
+        matchScore: c.matchScore,
+        availabilityPercent: c.availabilityPercent,
+        mismatchedSkills: c.mismatchedSkills,
+        rationale: c.rationale,
+      })),
+      expiresAt: request.expiresAt ? new Date(request.expiresAt) : undefined,
+    });
+    return this.mapSlateResponse(slate);
+  }
+
+  @Post(':id/proposals/:slateId/acknowledge')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Acknowledge proposal slate (PM/DM); request → IN_REVIEW (idempotent)' })
+  @ApiOkResponse({ type: ProposalSlateResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async acknowledgeProposal(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Param('slateId') slateId: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<ProposalSlateResponseDto> {
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    const slate = await this.proposalSlateService.acknowledge({
+      actorId,
+      actorRoles,
+      staffingRequestId: id,
+      slateId,
+    });
+    return this.mapSlateResponse(slate);
+  }
+
+  @Post(':id/proposals/:slateId/pick')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pick a candidate; creates an Assignment at BOOKED' })
+  @ApiOkResponse({ type: PickProposalCandidateResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async pickProposalCandidate(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Param('slateId') slateId: string,
+    @Body() body: PickProposalCandidateRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<PickProposalCandidateResponseDto> {
+    if (!body?.candidateId?.trim()) {
+      throw new BadRequestException('candidateId is required.');
+    }
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    const result = await this.proposalSlateService.pickCandidate({
+      actorId,
+      actorRoles,
+      staffingRequestId: id,
+      slateId,
+      candidateId: body.candidateId,
+    });
+    return { assignmentId: result.assignmentId, slate: this.mapSlateResponse(result.slate) };
+  }
+
+  @Post(':id/proposals/:slateId/reject-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject the slate; sendBack=true returns to OPEN, false → CANCELLED' })
+  @ApiOkResponse({ type: RejectProposalSlateResponseDto })
+  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  public async rejectProposalSlate(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Param('slateId') slateId: string,
+    @Body() body: RejectProposalSlateRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<RejectProposalSlateResponseDto> {
+    if (!body?.reasonCode?.trim()) {
+      throw new BadRequestException('reasonCode is required.');
+    }
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
+    const result = await this.proposalSlateService.rejectAll({
+      actorId,
+      actorRoles,
+      staffingRequestId: id,
+      slateId,
+      reasonCode: body.reasonCode,
+      reason: body.reason,
+      sendBack: Boolean(body.sendBack),
+    });
+    return { slate: this.mapSlateResponse(result.slate), nextRequestStatus: result.nextRequestStatus };
   }
 }

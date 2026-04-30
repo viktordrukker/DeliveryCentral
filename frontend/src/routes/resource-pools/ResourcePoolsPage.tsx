@@ -16,6 +16,8 @@ import {
   useResourcePools,
 } from '@/features/resource-pools/useResourcePools';
 import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button, Table, type Column } from '@/components/ds';
+import type { ResourcePool } from '@/lib/api/resource-pools';
 
 export function ResourcePoolsPage(): JSX.Element {
   const { principal } = useAuth();
@@ -76,8 +78,8 @@ export function ResourcePoolsPage(): JSX.Element {
               filename="resource_pools"
             />
             {canManage ? (
-              <button
-                className="button"
+              <Button
+                variant="primary"
                 onClick={() => {
                   setShowCreate((prev) => !prev);
                   setFormErrors({});
@@ -86,7 +88,7 @@ export function ResourcePoolsPage(): JSX.Element {
                 type="button"
               >
                 {showCreate ? 'Cancel' : 'Create pool'}
-              </button>
+              </Button>
             ) : null}
           </>
         }
@@ -134,9 +136,9 @@ export function ResourcePoolsPage(): JSX.Element {
               />
             </label>
             <div className="form-actions">
-              <button className="button" disabled={state.isSubmitting} type="submit">
+              <Button variant="primary" disabled={state.isSubmitting} type="submit">
                 {state.isSubmitting ? 'Creating…' : 'Create pool'}
-              </button>
+              </Button>
             </div>
           </form>
         </SectionCard>
@@ -169,32 +171,20 @@ export function ResourcePoolsPage(): JSX.Element {
               title="No pools"
             />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="dash-compact-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Code</th>
-                    <th style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Members</th>
-                    <th style={{ textAlign: 'right' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPools.map((pool) => (
-                    <tr key={pool.id} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/resource-pools/${pool.id}`)}>
-                      <td style={{ fontWeight: 500 }}>{pool.name}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{pool.code}</td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{pool.members.length}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/resource-pools/${pool.id}`}>
-                          Go
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'name', title: 'Name', getValue: (p) => p.name, render: (p) => <span style={{ fontWeight: 500 }}>{p.name}</span> },
+                { key: 'code', title: 'Code', getValue: (p) => p.code, render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.code}</span> },
+                { key: 'members', title: 'Members', align: 'right', getValue: (p) => p.members.length, render: (p) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.members.length}</span> },
+                { key: 'go', title: '', align: 'right', render: (p) => (
+                  <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/resource-pools/${p.id}`} onClick={(e) => e.stopPropagation()}>Go</Link>
+                ) },
+              ] as Column<ResourcePool>[]}
+              rows={filteredPools}
+              getRowKey={(p) => p.id}
+              onRowClick={(p) => window.location.assign(`/resource-pools/${p.id}`)}
+            />
           )
         ) : null}
 

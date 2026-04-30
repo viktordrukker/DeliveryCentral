@@ -84,6 +84,7 @@ export class GetAssignmentByIdService {
         ? (allPeopleById.get(assignment.requestedByPersonId)?.displayName ??
            assignment.requestedByPersonId)
         : undefined,
+      requiresDirectorApproval: assignment.requiresDirectorApproval,
       staffingRole: assignment.staffingRole,
       startDate: assignment.validFrom.toISOString(),
       version: assignment.version,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { sendNudge, NudgeRateLimitError } from '@/lib/api/nudge';
+import { Button } from '@/components/ds';
 
 interface Props {
   requestId: string;
@@ -41,17 +42,16 @@ export function NudgeButton({ requestId, approverId, label = 'Nudge approver', s
     }
   }
 
-  const className = `button button--secondary ${size === 'sm' ? 'button--sm' : ''}`.trim();
-
   return (
-    <button
-      className={className}
+    <Button
+      variant="secondary"
+      size={size === 'sm' ? 'sm' : 'md'}
       disabled={busy || disabled}
       onClick={() => void handleClick()}
       title={reason ?? 'Send a reminder to the approver'}
       type="button"
     >
       {busy ? 'Sending\u2026' : disabled ? 'Nudged \u2713' : label}
-    </button>
+    </Button>
   );
 }

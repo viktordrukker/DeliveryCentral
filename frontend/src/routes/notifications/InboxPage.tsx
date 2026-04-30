@@ -8,6 +8,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { fetchInbox, markAllRead, markNotificationRead, InAppNotification } from '@/lib/api/inbox';
+import { Button, IconButton } from '@/components/ds';
 
 function eventIcon(eventType: string): string {
   if (eventType.startsWith('case.')) return '📋';
@@ -84,13 +85,9 @@ export function InboxPage(): JSX.Element {
       <PageHeader
         actions={
           unreadCount > 0 ? (
-            <button
-              className="button button--secondary"
-              onClick={() => void handleMarkAllRead()}
-              type="button"
-            >
+            <Button variant="secondary" onClick={() => void handleMarkAllRead()} type="button">
               Mark all as read
-            </button>
+            </Button>
           ) : null
         }
         eyebrow="Notifications"
@@ -153,25 +150,21 @@ export function InboxPage(): JSX.Element {
                       </div>
                     </div>
                     {!notification.readAt && (
-                      <button
+                      <IconButton
                         aria-label="Mark as read"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleMarkRead(notification.id);
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
                           color: 'var(--color-text-muted)',
                           fontSize: '18px',
                           flexShrink: 0,
-                          padding: '0 4px',
                         }}
-                        type="button"
                       >
                         ×
-                      </button>
+                      </IconButton>
                     )}
                   </div>
                 </li>

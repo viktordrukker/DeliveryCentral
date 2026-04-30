@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import type { PulseActivityItem } from '@/lib/api/project-pulse';
 import { formatDate } from '@/lib/format-date';
+import { Button } from '@/components/ds';
 
 interface PulseActivityStreamProps {
   activity: PulseActivityItem[];
@@ -61,15 +62,15 @@ export function PulseActivityStream({ activity }: PulseActivityStreamProps): JSX
         }}
       >
         {FILTERS.map((f) => (
-          <button
-            aria-pressed={filter === f.key}
-            className={filter === f.key ? 'button--project-detail button--primary' : 'button--project-detail'}
+          <Button
             key={f.key}
+            variant={filter === f.key ? 'primary' : 'secondary'}
+            size="sm"
+            aria-pressed={filter === f.key}
             onClick={() => setFilter(f.key)}
-            type="button"
           >
             {f.label}
-          </button>
+          </Button>
         ))}
       </div>
 

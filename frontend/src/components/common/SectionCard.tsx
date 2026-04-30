@@ -1,6 +1,7 @@
 import { type ReactNode, PropsWithChildren, useState } from 'react';
 
 import { ChartCsvData, ChartExportMenu } from './ChartExportMenu';
+import { IconButton } from '@/components/ds';
 
 interface SectionCardProps {
   chartExport?: ChartCsvData;
@@ -45,15 +46,15 @@ export function SectionCard({
               <ChartExportMenu csvData={chartExport} title={titleStr} />
             ) : null}
             {collapsible ? (
-              <button
+              <IconButton
                 aria-expanded={!collapsed}
                 aria-label={collapsed ? 'Expand section' : 'Collapse section'}
                 onClick={toggleCollapse}
-                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '14px', padding: '2px 6px' }}
-                type="button"
+                size="sm"
+                style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}
               >
                 {collapsed ? '▸' : '▾'}
-              </button>
+              </IconButton>
             ) : null}
           </div>
         </div>

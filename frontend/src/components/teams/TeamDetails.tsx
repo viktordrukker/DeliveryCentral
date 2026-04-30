@@ -7,6 +7,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { TeamMember, TeamSummary } from '@/lib/api/teams';
 import { MemberSelector } from './MemberSelector';
+import { Button } from '@/components/ds';
 
 interface TeamDetailsProps {
   isSubmitting: boolean;
@@ -56,9 +57,9 @@ export function TeamDetails({
       />
       <SectionCard title={team.name}>
         <div className="section-card__actions-row section-card__actions-row--start">
-          <Link className="button button--secondary" to={`/teams/${team.id}/dashboard`}>
+          <Button as={Link} variant="secondary" to={`/teams/${team.id}/dashboard`}>
             Open team dashboard
-          </Link>
+          </Button>
         </div>
         <div className="details-summary-grid">
           <div className="section-card metadata-detail__stat">
@@ -98,14 +99,9 @@ export function TeamDetails({
                       {member.primaryEmail ?? 'No email'}
                     </div>
                   </div>
-                  <button
-                    className="button button--secondary"
-                    disabled={isSubmitting}
-                    onClick={() => setConfirmRemoveMemberId(member.id)}
-                    type="button"
-                  >
+                  <Button variant="secondary" disabled={isSubmitting} onClick={() => setConfirmRemoveMemberId(member.id)} type="button">
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

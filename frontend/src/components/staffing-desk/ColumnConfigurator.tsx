@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import type { ColumnPreset } from '@/lib/hooks/useColumnVisibility';
+import { Button, IconButton } from '@/components/ds';
 
 interface ColumnDef {
   key: string;
@@ -97,8 +98,8 @@ export function ColumnConfigurator({ allColumns, columnOrder, deletePreset, isVi
             <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{visibleCount}/{orderedCols.length} shown</div>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            <button className="button button--secondary button--sm" onClick={reset} type="button" style={{ fontSize: 10 }}>Reset</button>
-            <button className="button button--secondary button--sm" onClick={onClose} type="button">&times;</button>
+            <Button variant="secondary" size="sm" onClick={reset} type="button" style={{ fontSize: 10 }}>Reset</Button>
+            <Button variant="secondary" size="sm" onClick={onClose} type="button">&times;</Button>
           </div>
         </div>
 
@@ -115,13 +116,14 @@ export function ColumnConfigurator({ allColumns, columnOrder, deletePreset, isVi
                   >
                     {p.name}
                   </span>
-                  <button
-                    type="button"
+                  <IconButton
+                    aria-label={`Delete preset ${p.name}`}
+                    size="sm"
                     onClick={() => deletePreset(p.name)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)', fontSize: 12, padding: '0 2px' }}
+                    style={{ color: 'var(--color-text-subtle)', fontSize: 12 }}
                   >
-                    &times;
-                  </button>
+                    ×
+                  </IconButton>
                 </div>
               ))}
             </div>
@@ -134,7 +136,7 @@ export function ColumnConfigurator({ allColumns, columnOrder, deletePreset, isVi
               onChange={(e) => setPresetName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
             />
-            <button className="button button--sm" onClick={handleSave} type="button" style={{ fontSize: 10, padding: '3px 8px' }}>Save</button>
+            <Button variant="primary" size="sm" onClick={handleSave} type="button" style={{ fontSize: 10, padding: '3px 8px' }}>Save</Button>
           </div>
         </div>
 

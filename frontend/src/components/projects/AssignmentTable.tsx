@@ -1,4 +1,4 @@
-import { DataTable } from '@/components/common/DataTable';
+import { DataView } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 
@@ -8,7 +8,8 @@ interface AssignmentTableProps {
 
 export function AssignmentTable({ items }: AssignmentTableProps): JSX.Element {
   return (
-    <DataTable
+    <DataView
+      pageSizeOptions={[1000]}
       columns={[
         {
           key: 'person',
@@ -46,7 +47,7 @@ export function AssignmentTable({ items }: AssignmentTableProps): JSX.Element {
         />
       }
       getRowKey={(item) => item.id}
-      items={items}
+      rows={items}
     />
   );
 }

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon } from '@/components/common/TipBalloon';
+import { Button } from '@/components/ds';
 import {
   type ComputedRag,
   type CreateRagSnapshotRequest,
@@ -38,9 +39,11 @@ function RagSelector({ label, value, onChange, readOnly, tooltip }: {
       </div>
       <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
         {RAG_OPTIONS.map((opt) => (
-          <button
+          <Button
             key={opt.value}
             type="button"
+            variant={value === opt.value ? 'primary' : 'secondary'}
+            size="sm"
             disabled={readOnly}
             onClick={() => onChange(opt.value)}
             style={{
@@ -51,12 +54,11 @@ function RagSelector({ label, value, onChange, readOnly, tooltip }: {
               borderRadius: 'var(--radius-control, 4px)',
               background: value === opt.value ? opt.color : 'transparent',
               color: value === opt.value ? 'var(--color-surface)' : 'var(--color-text)',
-              cursor: readOnly ? 'default' : 'pointer',
               opacity: readOnly ? 0.7 : 1,
             }}
           >
             {opt.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -171,9 +173,9 @@ export function WeeklyStatusForm({ projectId, onSaved }: WeeklyStatusFormProps):
       </div>
 
       <div style={{ marginTop: 'var(--space-3)' }}>
-        <button className="button button--primary" type="submit" disabled={isSubmitting}>
+        <Button variant="primary" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Saving...' : 'Save Weekly Status'}
-        </button>
+        </Button>
       </div>
     </form>
   );

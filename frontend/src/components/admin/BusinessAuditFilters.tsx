@@ -1,4 +1,5 @@
 import { FormEvent } from 'react';
+import { Button, DatePicker } from '@/components/ds';
 
 export interface BusinessAuditFilterValues {
   actionType: string;
@@ -77,22 +78,14 @@ export function BusinessAuditFilters({
 
         <label className="field">
           <span className="field__label">Occurred After</span>
-          <input
-            className="field__control"
-            onChange={(event) => onChange('occurredAfter', event.target.value)}
-            type="date"
-            value={values.occurredAfter}
-          />
+          <DatePicker onValueChange={(value) => onChange('occurredAfter', value)} value={values.occurredAfter}
+ />
         </label>
 
         <label className="field">
           <span className="field__label">Occurred Before</span>
-          <input
-            className="field__control"
-            onChange={(event) => onChange('occurredBefore', event.target.value)}
-            type="date"
-            value={values.occurredBefore}
-          />
+          <DatePicker onValueChange={(value) => onChange('occurredBefore', value)} value={values.occurredBefore}
+ />
         </label>
 
         <label className="field">
@@ -109,12 +102,12 @@ export function BusinessAuditFilters({
       </div>
 
       <div className="entity-form__actions entity-form__actions--split">
-        <button className="button button--secondary" onClick={onReset} type="button">
+        <Button variant="secondary" onClick={onReset} type="button">
           Reset filters
-        </button>
-        <button className="button" disabled={isLoading} type="submit">
+        </Button>
+        <Button variant="primary" disabled={isLoading} type="submit">
           {isLoading ? 'Loading audit records...' : 'Apply filters'}
-        </button>
+        </Button>
       </div>
     </form>
   );

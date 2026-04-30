@@ -13,6 +13,7 @@ import {
   initialTeamFormValues,
   useTeamManagement,
 } from '@/features/teams/useTeamManagement';
+import { Button } from '@/components/ds';
 
 export function TeamsPage(): JSX.Element {
   const [values, setValues] = useState<TeamFormValues>(initialTeamFormValues);
@@ -102,9 +103,9 @@ export function TeamsPage(): JSX.Element {
                   </label>
                 </div>
                 <div className="entity-form__actions">
-                  <button className="button" disabled={state.isSubmitting} type="submit">
+                  <Button variant="primary" disabled={state.isSubmitting} type="submit">
                     {state.isSubmitting ? 'Creating...' : 'Create team'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </SectionCard>

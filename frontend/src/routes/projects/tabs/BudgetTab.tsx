@@ -16,6 +16,7 @@ import {
   upsertProjectBudget,
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
+import { Button } from '@/components/ds';
 
 interface BudgetTabProps {
   projectId: string;
@@ -114,9 +115,9 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
               <span className="field__label">OPEX Budget (Operational)</span>
               <input className="field__control" type="number" min={0} step={1000} value={opex} onChange={(e) => setOpex(e.target.value)} style={{ width: 150 }} />
             </label>
-            <button className="button button--primary" disabled={saving} onClick={() => void handleSaveBudget()} type="button">
+            <Button variant="primary" disabled={saving} onClick={() => void handleSaveBudget()} type="button">
               {saving ? 'Saving...' : 'Save Budget'}
-            </button>
+            </Button>
           </div>
           {saveError ? <div style={{ color: 'var(--color-status-danger)', fontSize: 12, marginTop: 'var(--space-2)' }}>{saveError}</div> : null}
           {saveSuccess ? <div style={{ color: 'var(--color-status-active)', fontSize: 12, marginTop: 'var(--space-2)' }}>{saveSuccess}</div> : null}

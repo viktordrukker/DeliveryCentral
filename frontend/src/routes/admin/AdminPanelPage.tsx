@@ -6,6 +6,7 @@ import { useImpersonation } from '@/app/impersonation-context';
 import { AdminConfigViewer } from '@/components/admin/AdminConfigViewer';
 import { AdminList, AdminListItem } from '@/components/admin/AdminList';
 import { AdminSectionCard } from '@/components/admin/AdminSectionCard';
+import { AssignmentWorkflowSettings } from '@/components/admin/AssignmentWorkflowSettings';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -23,8 +24,15 @@ import {
   updateAdminAccount,
 } from '@/lib/api/admin';
 import { formatFeatureFlag } from '@/lib/labels';
+import { Button, Table, type Column } from '@/components/ds';
 
-type AdminSectionKey = 'accounts' | 'dictionaries' | 'integrations' | 'notifications' | 'settings';
+type AdminSectionKey =
+  | 'accounts'
+  | 'dictionaries'
+  | 'integrations'
+  | 'notifications'
+  | 'settings'
+  | 'assignment-workflow';
 
 interface AdminSectionDefinition {
   description: string;
@@ -57,6 +65,11 @@ const adminSections: AdminSectionDefinition[] = [
     description: 'Environment-driven flags and operational system settings.',
     key: 'settings',
     title: 'System Settings',
+  },
+  {
+    description: 'SLA budgets, Director-approval thresholds, slate bounds, SLOs, matching weights, sweep cadence.',
+    key: 'assignment-workflow',
+    title: 'Assignment Workflow',
   },
 ];
 
@@ -151,7 +164,8 @@ export function AdminPanelPage(): JSX.Element {
               <div className="admin-panel__sidebar-title">Sections</div>
               <div className="admin-panel__sidebar-list">
                 {adminSections.map((section) => (
-                  <button
+                  <Button
+                    variant="secondary"
                     className={`admin-panel__sidebar-item${
                       section.key === selectedSection ? ' admin-panel__sidebar-item--active' : ''
                     }`}
@@ -161,7 +175,7 @@ export function AdminPanelPage(): JSX.Element {
                   >
                     <span className="admin-panel__sidebar-item-title">{section.title}</span>
                     <span className="admin-panel__sidebar-item-description">{section.description}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </aside>
@@ -273,67 +287,48 @@ function AdminAccountsSection({
           <EmptyState description="No local accounts found." title="No accounts" />
         ) : null}
         {!accountsLoading && accounts.length > 0 ? (
-          <div style={{ marginTop: '8px', overflow: 'auto' }}>
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th scope="col">Email</th>
-                  <th scope="col">Roles</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((account) => (
-                  <tr className="data-table__row" key={account.id}>
-                    <td>{account.email}</td>
-                    <td>{account.roles.join(', ')}</td>
-                    <td>
-                      <span style={{ color: account.isEnabled ? 'var(--color-status-active)' : 'var(--color-status-danger)', fontWeight: 600 }}>
-                        {account.isEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          className="button button--secondary"
-                          onClick={() => { void handleToggleEnabled(account); }}
-                          style={{ fontSize: '12px', padding: '2px 8px' }}
-                          type="button"
-                        >
-                          {account.isEnabled ? 'Disable' : 'Enable'}
-                        </button>
-                        {account.personId ? (
-                          <button
-                            className="button button--secondary"
-                            onClick={() => {
-                              startImpersonation({
-                                displayName: account.displayName,
-                                personId: account.personId as string,
-                                roles: account.roles,
-                              });
-                            }}
-                            style={{ fontSize: '12px', padding: '2px 8px' }}
-                            title="View the application as this user"
-                            type="button"
-                          >
-                            View as
-                          </button>
-                        ) : null}
-                        <button
-                          className="button button--danger"
-                          onClick={() => handleDelete(account)}
-                          style={{ fontSize: '12px', padding: '2px 8px' }}
-                          type="button"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ marginTop: '8px' }}>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'email', title: 'Email', getValue: (a) => a.email, render: (a) => a.email },
+                { key: 'roles', title: 'Roles', getValue: (a) => a.roles.join(', '), render: (a) => a.roles.join(', ') },
+                { key: 'status', title: 'Status', getValue: (a) => a.isEnabled ? 'Enabled' : 'Disabled', render: (a) => (
+                  <span style={{ color: a.isEnabled ? 'var(--color-status-active)' : 'var(--color-status-danger)', fontWeight: 600 }}>
+                    {a.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                ) },
+                { key: 'actions', title: 'Actions', render: (a) => (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button variant="secondary" size="sm" onClick={() => { void handleToggleEnabled(a); }} type="button">
+                      {a.isEnabled ? 'Disable' : 'Enable'}
+                    </Button>
+                    {a.personId ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          startImpersonation({
+                            displayName: a.displayName,
+                            personId: a.personId as string,
+                            roles: a.roles,
+                          });
+                        }}
+                        title="View the application as this user"
+                        type="button"
+                      >
+                        View as
+                      </Button>
+                    ) : null}
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(a)} type="button">
+                      Delete
+                    </Button>
+                  </div>
+                ) },
+              ] as Column<AdminAccountItem>[]}
+              rows={accounts}
+              getRowKey={(a) => a.id}
+            />
           </div>
         ) : null}
       </AdminSectionCard>
@@ -399,9 +394,9 @@ function AdminAccountsSection({
             </span>
           </label>
           <div>
-            <button className="button" disabled={accountForm.isSubmitting} type="submit">
+            <Button variant="primary" disabled={accountForm.isSubmitting} type="submit">
               {accountForm.isSubmitting ? 'Creating account...' : 'Create account'}
-            </button>
+            </Button>
           </div>
         </form>
       </SectionCard>
@@ -446,9 +441,9 @@ function renderSection(
             title="Available Dictionaries"
           >
             <div className="section-card__actions-row section-card__actions-row--start">
-              <Link className="button button--secondary" to="/admin/dictionaries">
+              <Button as={Link} variant="secondary" to="/admin/dictionaries">
                 Manage dictionary entries
-              </Link>
+              </Button>
             </div>
             <AdminList
               emptyMessage="No dictionaries were returned."
@@ -491,9 +486,9 @@ function renderSection(
             title="Provider Details"
           >
             <div className="section-card__actions-row section-card__actions-row--start">
-              <Link className="button button--secondary" to="/admin/integrations">
+              <Button as={Link} variant="secondary" to="/admin/integrations">
                 Manage integrations
-              </Link>
+              </Button>
             </div>
             <AdminList
               emptyMessage="No integration details were returned."
@@ -545,9 +540,9 @@ function renderSection(
             title="Notification Templates"
           >
             <div className="section-card__actions-row section-card__actions-row--start">
-              <Link className="button button--secondary" to="/admin/notifications">
+              <Button as={Link} variant="secondary" to="/admin/notifications">
                 Manage notification templates
-              </Link>
+              </Button>
             </div>
             <AdminList
               emptyMessage="No notification templates are configured."
@@ -569,12 +564,12 @@ function renderSection(
             title="Runtime Settings"
           >
             <div className="section-card__actions-row section-card__actions-row--start">
-              <Link className="button button--secondary" to="/admin/monitoring">
+              <Button as={Link} variant="secondary" to="/admin/monitoring">
                 Open monitoring view
-              </Link>
-              <Link className="button button--secondary" to="/admin/audit">
+              </Button>
+              <Button as={Link} variant="secondary" to="/admin/audit">
                 Browse business audit
-              </Link>
+              </Button>
             </div>
             <AdminConfigViewer
               emptyMessage="No system settings were returned."
@@ -585,6 +580,12 @@ function renderSection(
               }))}
             />
           </AdminSectionCard>
+        </div>
+      );
+    case 'assignment-workflow':
+      return (
+        <div className="admin-panel__cards">
+          <AssignmentWorkflowSettings />
         </div>
       );
     default:

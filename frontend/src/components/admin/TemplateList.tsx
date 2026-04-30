@@ -1,4 +1,5 @@
 import { NotificationTemplate } from '@/lib/api/notifications';
+import { Button } from '@/components/ds';
 
 interface TemplateListProps {
   items: NotificationTemplate[];
@@ -14,7 +15,8 @@ export function TemplateList({
   return (
     <div className="dictionary-list">
       {items.map((item) => (
-        <button
+        <Button
+          variant="secondary"
           className={`dictionary-list__item${
             item.templateKey === selectedKey ? ' dictionary-list__item--active' : ''
           }`}
@@ -27,7 +29,7 @@ export function TemplateList({
             <span className="dictionary-list__count">{item.channelKey}</span>
           </div>
           <p className="dictionary-list__meta">{item.eventName}</p>
-        </button>
+        </Button>
       ))}
     </div>
   );

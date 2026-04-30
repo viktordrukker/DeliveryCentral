@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { Button, Input } from '@/components/ds';
+
 type Period = 'today' | 'this-week' | 'this-month' | 'last-month' | 'custom';
 
 interface PeriodSelectorProps {
@@ -40,6 +42,11 @@ const PERIODS: Array<{ id: Period; label: string }> = [
   { id: 'custom', label: 'Custom ▾' },
 ];
 
+/**
+ * Phase DS-3-3 — public API unchanged. The ad-hoc inline-styled buttons are
+ * replaced with DS <Button> atoms (variant flips primary↔secondary based on
+ * the active period). Custom datetime-local input now uses the DS <Input>.
+ */
 export function PeriodSelector({ label = 'Period', onAsOfChange, value }: PeriodSelectorProps): JSX.Element {
   const [activePeriod, setActivePeriod] = useState<Period>('today');
   const [showCustom, setShowCustom] = useState(false);
@@ -59,33 +66,22 @@ export function PeriodSelector({ label = 'Period', onAsOfChange, value }: Period
       <span className="field__label">{label}</span>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
         {PERIODS.map((p) => (
-          <button
+          <Button
             key={p.id}
+            size="sm"
+            variant={activePeriod === p.id ? 'primary' : 'secondary'}
             onClick={() => handlePeriodClick(p.id)}
-            style={{
-              background: activePeriod === p.id ? 'var(--color-accent)' : 'var(--color-surface-alt)',
-              border: '1px solid',
-              borderColor: activePeriod === p.id ? 'var(--color-accent)' : 'var(--color-border)',
-              borderRadius: '4px',
-              color: activePeriod === p.id ? 'var(--color-surface)' : 'var(--color-text)',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: activePeriod === p.id ? 600 : 400,
-              padding: '3px 8px',
-              whiteSpace: 'nowrap',
-            }}
-            type="button"
+            style={{ whiteSpace: 'nowrap' }}
           >
             {p.label}
-          </button>
+          </Button>
         ))}
       </div>
       {showCustom ? (
-        <input
-          className="field__control"
+        <Input
+          type="datetime-local"
           onChange={(e) => onAsOfChange(`${e.target.value}:00.000Z`)}
           style={{ marginTop: '4px', maxWidth: '220px' }}
-          type="datetime-local"
           value={value.slice(0, 16)}
         />
       ) : null}

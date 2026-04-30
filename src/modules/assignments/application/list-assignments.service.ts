@@ -76,6 +76,10 @@ export class ListAssignmentsService {
         staffingRole: assignment.staffingRole,
         startDate: assignment.validFrom.toISOString(),
         version: assignment.version,
+        slaStage: assignment.slaStage ?? null,
+        slaDueAt: assignment.slaDueAt?.toISOString() ?? null,
+        slaBreachedAt: assignment.slaBreachedAt?.toISOString() ?? null,
+        requiresDirectorApproval: assignment.requiresDirectorApproval,
       };
     });
 

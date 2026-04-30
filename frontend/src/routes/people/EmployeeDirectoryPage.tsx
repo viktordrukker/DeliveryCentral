@@ -17,6 +17,7 @@ import { useFilterParams } from '@/hooks/useFilterParams';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button } from '@/components/ds';
 
 const defaultPageSize = 25;
 
@@ -47,8 +48,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
     setActions(
       <>
         {canManagePeople && state.data && (state.data.total > 0 || state.visibleItems.length > 0) ? (
-          <button
-            className="button button--secondary button--sm"
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={state.isLoading}
             onClick={() => {
               exportToXlsx(
@@ -64,16 +66,12 @@ export function EmployeeDirectoryPage(): JSX.Element {
             type="button"
           >
             Export XLSX
-          </button>
+          </Button>
         ) : null}
         {canManagePeople ? (
-          <button
-            className="button button--sm"
-            onClick={() => navigate('/admin/people/new')}
-            type="button"
-          >
+          <Button variant="primary" size="sm" onClick={() => navigate('/admin/people/new')} type="button">
             Create employee
-          </button>
+          </Button>
         ) : null}
         <CopyLinkButton />
         <TipTrigger />
@@ -149,23 +147,13 @@ export function EmployeeDirectoryPage(): JSX.Element {
                   {' '}<TipBalloon tip="Use filters above to narrow by department, pool, or status." arrow="left" />
                 </span>
                 <div className="results-meta__pagination">
-                  <button
-                    className="button button--secondary"
-                    disabled={page <= 1}
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    type="button"
-                  >
+                  <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} type="button">
                     Previous
-                  </button>
+                  </Button>
                   <span>Page {state.data.page}</span>
-                  <button
-                    className="button button--secondary"
-                    disabled={state.data.page * state.data.pageSize >= state.data.total}
-                    onClick={() => setPage((current) => current + 1)}
-                    type="button"
-                  >
+                  <Button variant="secondary" disabled={state.data.page * state.data.pageSize >= state.data.total} onClick={() => setPage((current) => current + 1)} type="button">
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}

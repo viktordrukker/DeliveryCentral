@@ -8,6 +8,7 @@ import {
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
+import { Button, DatePicker } from '@/components/ds';
 
 interface CreateAssignmentFormProps {
   errors: CreateAssignmentFormErrors;
@@ -137,26 +138,18 @@ export function CreateAssignmentForm({
         </Field>
 
         <Field label="Start Date">
-          <input
-            aria-invalid={!!errors.startDate}
-            className="field__control"
-            name="startDate"
-            onChange={(event) => onChange('startDate', event.target.value)}
-            type="date"
-            value={values.startDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.startDate} name="startDate"
+ onValueChange={(value) => onChange('startDate', value)} value={values.startDate}
+ />
           {errors.startDate ? <FieldError message={errors.startDate} /> : null}
         </Field>
 
         <Field label="End Date">
-          <input
-            aria-invalid={!!errors.endDate}
-            className="field__control"
-            name="endDate"
-            onChange={(event) => onChange('endDate', event.target.value)}
-            type="date"
-            value={values.endDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.endDate} name="endDate"
+ onValueChange={(value) => onChange('endDate', value)} value={values.endDate}
+ />
           {errors.endDate ? <FieldError message={errors.endDate} /> : null}
         </Field>
       </div>
@@ -173,24 +166,14 @@ export function CreateAssignmentForm({
       </Field>
 
       <div className="entity-form__actions entity-form__actions--split">
-        <Link className="button button--secondary" to="/assignments">Cancel</Link>
+        <Button as={Link} variant="secondary" to="/assignments">Cancel</Button>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <button
-            className="button button--secondary"
-            disabled={isSubmitting}
-            onClick={(e) => { e.preventDefault(); onSubmitDraft(); }}
-            type="button"
-          >
+          <Button variant="secondary" disabled={isSubmitting} onClick={(e) => { e.preventDefault(); onSubmitDraft(); }} type="button">
             {isSubmitting ? 'Saving...' : 'Save Draft'}
-          </button>
-          <button
-            className="button"
-            disabled={isSubmitting}
-            onClick={(e) => { e.preventDefault(); onSubmit(); }}
-            type="button"
-          >
+          </Button>
+          <Button variant="primary" disabled={isSubmitting} onClick={(e) => { e.preventDefault(); onSubmit(); }} type="button">
             {isSubmitting ? 'Creating...' : 'Create & Request'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

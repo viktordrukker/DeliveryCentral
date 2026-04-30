@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { fetchStaffingDesk, type StaffingDeskQuery, type StaffingDeskRow } from '@/lib/api/staffing-desk';
 import { exportToXlsx } from '@/lib/export';
+import { Button } from '@/components/ds';
 
 interface Props {
   disabled?: boolean;
@@ -41,13 +42,8 @@ export function StaffingDeskExportButton({ disabled, query }: Props): JSX.Elemen
   }
 
   return (
-    <button
-      className="button button--secondary button--sm"
-      disabled={disabled || loading}
-      onClick={handleExport}
-      type="button"
-    >
+    <Button variant="secondary" size="sm" disabled={disabled || loading} onClick={handleExport} type="button">
       {loading ? 'Exporting...' : 'Export XLSX'}
-    </button>
+    </Button>
   );
 }

@@ -8,6 +8,9 @@ export interface TimesheetEntry {
   hours: number;
   capex: boolean;
   description?: string;
+  benchCategory?: string;
+  workLabel?: string;
+  workItemId?: string;
 }
 
 export interface TimesheetWeek {
@@ -29,6 +32,9 @@ export interface UpsertEntryInput {
   hours: number;
   capex?: boolean;
   description?: string;
+  benchCategory?: string;
+  workLabel?: string;
+  workItemId?: string;
 }
 
 export interface TimeReportData {
@@ -57,6 +63,20 @@ export async function upsertTimesheetEntry(entry: UpsertEntryInput): Promise<Tim
 export async function submitTimesheetWeek(weekStart: string): Promise<TimesheetWeek> {
   return httpPost<TimesheetWeek, Record<string, never>>(
     `/timesheets/my/${encodeURIComponent(weekStart)}/submit`,
+    {},
+  );
+}
+
+export async function revokeTimesheetWeek(weekStart: string): Promise<TimesheetWeek> {
+  return httpPost<TimesheetWeek, Record<string, never>>(
+    `/timesheets/my/${encodeURIComponent(weekStart)}/revoke`,
+    {},
+  );
+}
+
+export async function resetTimesheetWeek(weekStart: string): Promise<{ deletedEntries: number }> {
+  return httpPost<{ deletedEntries: number }, Record<string, never>>(
+    `/timesheets/my/${encodeURIComponent(weekStart)}/reset`,
     {},
   );
 }

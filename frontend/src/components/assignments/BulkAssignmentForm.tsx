@@ -6,6 +6,7 @@ import {
 } from '@/features/assignments/useBulkAssignmentPage';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { Button, DatePicker } from '@/components/ds';
 
 interface BulkAssignmentFormProps {
   errors: BulkAssignmentFormErrors;
@@ -90,24 +91,16 @@ export function BulkAssignmentForm({
         </Field>
 
         <Field label="Start Date">
-          <input
-            aria-invalid={!!errors.startDate}
-            className="field__control"
-            onChange={(event) => onValueChange('startDate', event.target.value)}
-            type="date"
-            value={values.startDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.startDate} onValueChange={(value) => onValueChange('startDate', value)} value={values.startDate}
+ />
           {errors.startDate ? <FieldError message={errors.startDate} /> : null}
         </Field>
 
         <Field label="End Date">
-          <input
-            aria-invalid={!!errors.endDate}
-            className="field__control"
-            onChange={(event) => onValueChange('endDate', event.target.value)}
-            type="date"
-            value={values.endDate}
-          />
+          <DatePicker
+ aria-invalid={!!errors.endDate} onValueChange={(value) => onValueChange('endDate', value)} value={values.endDate}
+ />
           {errors.endDate ? <FieldError message={errors.endDate} /> : null}
         </Field>
       </div>
@@ -150,9 +143,9 @@ export function BulkAssignmentForm({
       </div>
 
       <div className="entity-form__actions">
-        <button className="button" disabled={isSubmitting} type="submit">
+        <Button variant="primary" disabled={isSubmitting} type="submit">
           {isSubmitting ? 'Submitting batch...' : 'Submit bulk assignment'}
-        </button>
+        </Button>
       </div>
     </form>
   );

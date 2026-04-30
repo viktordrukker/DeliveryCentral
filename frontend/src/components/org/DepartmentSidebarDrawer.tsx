@@ -6,6 +6,7 @@ import type { FlatOrgNode } from './InteractiveOrgChart';
 import { useAuth } from '@/app/auth-context';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { humanizeEnum, ORG_UNIT_TYPE_LABELS } from '@/lib/labels';
+import { Button } from '@/components/ds';
 const PAGE_SIZE = 15;
 
 interface DepartmentSidebarDrawerProps {
@@ -62,7 +63,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
       {/* Header */}
       <div className="org-chart-drawer__header">
         <h3>{dept.name}</h3>
-        <button className="button button--ghost button--sm" onClick={onClose} type="button">{'\u2715'}</button>
+        <Button variant="secondary" size="sm" onClick={onClose} type="button">{'\u2715'}</Button>
       </div>
 
       {/* Identity */}
@@ -185,26 +186,17 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
           )}
         </div>
         {!showAll && filteredMembers.length > PAGE_SIZE && (
-          <button
-            className="button button--ghost button--sm"
-            onClick={() => setShowAll(true)}
-            type="button"
-            style={{ marginTop: 8, width: '100%', fontSize: 11 }}
-          >
+          <Button variant="secondary" size="sm" onClick={() => setShowAll(true)} type="button" style={{ marginTop: 8, width: '100%', fontSize: 11 }}>
             Show all {filteredMembers.length} members
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Actions */}
       <div className="person-drawer__actions">
-        <Link
-          className="button button--primary"
-          to={`/people?departmentId=${dept.id}`}
-          style={{ width: '100%', textAlign: 'center' }}
-        >
+        <Button as={Link} variant="primary" to={`/people?departmentId=${dept.id}`} style={{ width: '100%', textAlign: 'center' }}>
           View in Directory
-        </Link>
+        </Button>
       </div>
     </div>
   );

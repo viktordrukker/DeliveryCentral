@@ -5,6 +5,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { ProjectStaffingCoverageChart } from '@/components/charts/ProjectStaffingCoverageChart';
 import type { ManagedProjectDashboardItem } from '@/lib/api/dashboard-project-manager';
+import { Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -57,38 +58,19 @@ export function PmOverviewTab({ managedProjects, onRowClick }: Props): JSX.Eleme
             action={{ label: 'Create project', href: '/projects/new' }}
           />
         ) : (
-          <div style={{ overflow: 'auto' }}>
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th style={{ width: 80 }}>Code</th>
-                  <th style={{ width: 70 }}>Status</th>
-                  <th style={NUM}>Staff</th>
-                  <th style={{ width: 40 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {managedProjects.map((p) => (
-                  <tr key={p.id} style={{ cursor: 'pointer' }} onClick={() => onRowClick(p.id)}>
-                    <td style={{ fontWeight: 500 }}>{p.name}</td>
-                    <td style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{p.projectCode}</td>
-                    <td><span style={{ fontSize: 11, fontWeight: 600 }}>{p.status}</span></td>
-                    <td style={NUM}>{p.staffingCount}</td>
-                    <td>
-                      <Link
-                        to={`/projects/${p.id}/dashboard`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 10, color: 'var(--color-accent)' }}
-                      >
-                        Go
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'name', title: 'Project', getValue: (p) => p.name, render: (p) => <span style={{ fontWeight: 500 }}>{p.name}</span> },
+              { key: 'code', title: 'Code', width: 80, getValue: (p) => p.projectCode, render: (p) => <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-muted)' }}>{p.projectCode}</span> },
+              { key: 'status', title: 'Status', width: 70, getValue: (p) => p.status, render: (p) => <span style={{ fontSize: 11, fontWeight: 600 }}>{p.status}</span> },
+              { key: 'staff', title: 'Staff', align: 'right', getValue: (p) => p.staffingCount, render: (p) => <span style={NUM}>{p.staffingCount}</span> },
+              { key: 'go', title: '', width: 40, render: (p) => <Link to={`/projects/${p.id}/dashboard`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
+            ] as Column<ManagedProjectDashboardItem>[]}
+            rows={managedProjects}
+            getRowKey={(p) => p.id}
+            onRowClick={(p) => onRowClick(p.id)}
+          />
         )}
       </SectionCard>
     </>

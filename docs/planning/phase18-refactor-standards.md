@@ -10,23 +10,48 @@ This document defines the mandatory constraints and verification template for ev
 
 Every page refactor MUST use the following shared primitives. Introducing bespoke alternatives is a bug.
 
+> **Phase DS supersedes raw primitives.** Phase DS shipped DS atoms / molecules / surfaces / table at [`@/components/ds`](../../frontend/src/components/ds/) and compound layouts at [`@/components/layout`](../../frontend/src/components/layout/). The full API reference + decision matrix is at [`ds-api-reference.md`](ds-api-reference.md). The tables below cover what's still owned by `@/components/common`.
+
+### DS components (Phase DS — see [`ds-api-reference.md`](ds-api-reference.md))
+
 | Primitive | Import | Usage |
 |-----------|--------|-------|
-| `DataTable` | `@/components/common/DataTable` | All tabular data. No raw `<table>` elements in page files. |
+| `Button` | `@/components/ds` | All actionable buttons. 7 variants × 4 sizes. Polymorphic (`as="a"`, `as={Link}`). No raw `<button>` (DS-7 guardrail). |
+| `IconButton`, `Link` | `@/components/ds` | Icon-only buttons / in-content links. |
+| `Input`, `Textarea`, `Select` | `@/components/ds` | Form atoms. Wrap in `<FormField>` for label/error chrome. |
+| `Checkbox`, `Radio`, `Switch`, `CheckboxGroup`, `RadioGroup` | `@/components/ds` | Boolean inputs and grouped variants. |
+| `DatePicker`, `DateRangePicker`, `Combobox`, `SearchInput` | `@/components/ds` | Specialized form molecules. |
+| `Spinner`, `Skeleton` | `@/components/ds` | Loading affordances. |
+| `Modal`, `FormModal`, `Drawer`, `Sheet`, `Popover`, `MenuPopover` | `@/components/ds` | All overlay surfaces. No `window.confirm` / `window.alert` (DS-7 ERROR-tier). |
+| `Table`, `DataView` | `@/components/ds` | All tabular data. `<DataView>` for the standard case (filter / sort / page / select); `<Table>` for bespoke chrome. No raw `<table>` (DS-7 WARNING with baseline). |
+| `FormField` | `@/components/ds` | Field shell — label + hint + error + required marker. |
+| `DetailLayout` | `@/components/layout/DetailLayout` | Detail-Surface grammar wrapper. Other compound layouts (Dashboard / List / FormPage / Analysis / Admin / AuthShell) scheduled as follow-up. |
+| `ThemeProvider`, `useThemePreference` | `@/components/ds` | Theme infrastructure. |
+
+### Page-grammar primitives (owned by `@/components/common` — composed by DS layouts)
+
+| Primitive | Import | Usage |
+|-----------|--------|-------|
 | `StatusBadge` | `@/components/common/StatusBadge` | All semantic status indicators (active, warning, danger, info, neutral). No inline badge markup. |
 | `SectionCard` | `@/components/common/SectionCard` | All content section framing. |
 | `PageContainer` | `@/components/common/PageContainer` | Layout shell for every page. |
+| `PageHeader` | `@/components/common/PageHeader` | Top-of-page header. Consumed by `<DetailLayout>`. |
+| `Breadcrumb` | `@/components/common/Breadcrumb` | Navigation breadcrumbs on detail pages. Consumed by `<DetailLayout>`. |
+| `TabBar` | `@/components/common/TabBar` | Tab navigation. Consumed by `<DetailLayout>`. |
 | `EmptyState` | `@/components/common/EmptyState` | All empty-data conditions. Must include a forward action (UX Law 2). |
 | `ErrorState` | `@/components/common/ErrorState` | All error conditions. |
 | `LoadingState` | `@/components/common/LoadingState` | All loading states. Use `variant="skeleton"` for dashboards. |
 | `TipBalloon` / `TipTrigger` | `@/components/common/TipBalloon` | Contextual help tooltips. Every dashboard hero and action section should have one. |
-| `FilterBar` | `@/components/common/FilterBar` | URL-persisted filters on list pages. |
-| `ConfirmDialog` | `@/components/common/ConfirmDialog` | All destructive actions. No `window.confirm()`. |
+| `FilterBar` | `@/components/common/FilterBar` | URL-persisted filters on list pages (when not using `<DataView>`'s built-in filter row). |
+| `ConfirmDialog` | `@/components/common/ConfirmDialog` | All destructive actions. Built on the DS `<Modal>`. No `window.confirm()` (DS-7 ERROR-tier). |
 | `design-tokens.ts` | `@/styles/design-tokens.ts` | Source of truth for visual tokens. No raw color literals outside token files. |
 
-### Token guardrail
+### Conformance guardrails
 
-`npm run tokens:check` must pass after every page change. If a new raw color is unavoidable, update `scripts/design-token-baseline.json` with an explicit justification.
+Two ratcheting checkers gate every PR — see [`ds-conformance-ratchet.md`](ds-conformance-ratchet.md):
+
+- **`npm run tokens:check`** — raw-color guardrail. Update `scripts/design-token-baseline.json` with explicit justification when unavoidable.
+- **`npm run ds:check`** — DS conformance. 6 rules (3 ERROR-tier locked at zero, 3 WARNING-tier with baselines). Promotion to ERROR happens automatically once a baseline reaches zero.
 
 ### Route manifest
 

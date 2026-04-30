@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { FilterBar } from '@/components/common/FilterBar';
 import { ChipInput } from '@/components/staffing-desk/ChipInput';
+import { Button, DatePicker } from '@/components/ds';
 
 interface Filters {
   allocMax: string;
@@ -51,12 +52,12 @@ export function StaffingDeskFilterBar({ filters, onReset, setFilters }: Props): 
     <FilterBar
       actions={
         <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-          <button className="button button--secondary button--sm" onClick={() => setShowAdvanced((v) => !v)} type="button">
+          <Button variant="secondary" size="sm" onClick={() => setShowAdvanced((v) => !v)} type="button">
             {showAdvanced ? 'Simple' : 'Advanced'}
-          </button>
-          <button className="button button--secondary button--sm" onClick={onReset} type="button">
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onReset} type="button">
             Reset
-          </button>
+          </Button>
         </div>
       }
     >
@@ -72,11 +73,11 @@ export function StaffingDeskFilterBar({ filters, onReset, setFilters }: Props): 
       <ChipInput label="Status" values={statusValues} onChange={setStatus} suggestions={STATUS_OPTIONS} placeholder="Add status..." />
       <label className="field">
         <span className="field__label">From</span>
-        <input className="field__control" type="date" value={filters.from} onChange={(e) => setFilters({ from: e.target.value })} />
+        <DatePicker value={filters.from} onValueChange={(value) => setFilters({ from: value })} />
       </label>
       <label className="field">
         <span className="field__label">To</span>
-        <input className="field__control" type="date" value={filters.to} onChange={(e) => setFilters({ to: e.target.value })} />
+        <DatePicker value={filters.to} onValueChange={(value) => setFilters({ to: value })} />
       </label>
 
       {/* Tier 2: advanced */}

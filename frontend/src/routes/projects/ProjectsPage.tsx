@@ -4,12 +4,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/auth-context';
 import { PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
-import { DataTable, type DataTableColumn } from '@/components/common/DataTable';
+import { DataView, type Column } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { exportToXlsx } from '@/lib/export';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
+import { ListLayout } from '@/components/layout/ListLayout';
 import { ProjectHealthBadge } from '@/components/common/ProjectHealthBadge';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
@@ -19,6 +19,7 @@ import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
 import { useProjectRegistry } from '@/features/projects/useProjectRegistry';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { Button } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const FILTER_DEFAULTS = { search: '', source: '', sort: '', engagement: '', priority: '' };
@@ -72,8 +73,9 @@ export function ProjectsPage(): JSX.Element {
         <option value="LOW">Low</option>
       </select>
       {hasItems ? (
-        <button
-          className="button button--secondary button--sm"
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={state.isLoading}
           onClick={() => {
             exportToXlsx(
@@ -90,10 +92,10 @@ export function ProjectsPage(): JSX.Element {
           type="button"
         >
           Export XLSX
-        </button>
+        </Button>
       ) : null}
       {canCreateProject ? (
-        <Link className="button button--sm" to="/projects/new">Create project</Link>
+        <Button as={Link} variant="primary" size="sm" to="/projects/new">Create project</Button>
       ) : null}
       <CopyLinkButton />
       <TipTrigger />
@@ -142,7 +144,7 @@ export function ProjectsPage(): JSX.Element {
     setSortByHealth(sortByHealth === null ? 'desc' : sortByHealth === 'desc' ? 'asc' : null);
   }
 
-  const columns = useMemo<DataTableColumn<ProjectDirectoryItem>[]>(() => [
+  const columns = useMemo<Column<ProjectDirectoryItem>[]>(() => [
     {
       key: 'name',
       render: (item) => <span style={{ fontWeight: 500 }}>{item.name}</span>,
@@ -227,13 +229,14 @@ export function ProjectsPage(): JSX.Element {
         );
       },
       title: (
-        <button
-          className="data-table__sort-toggle"
+        <Button
+          variant="link"
+          size="sm"
           onClick={handleHealthSortToggle}
           type="button"
         >
           Health {sortByHealth === 'desc' ? '\u25BC' : sortByHealth === 'asc' ? '\u25B2' : '\u2195'}
-        </button>
+        </Button>
       ),
       width: 90,
     },
@@ -253,30 +256,33 @@ export function ProjectsPage(): JSX.Element {
     },
   ], [healthMap, sortByHealth]);
 
-  return (
-    <PageContainer testId="project-registry-page" viewport>
+  const banners = (
+    <>
       {state.isLoading ? <LoadingState variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
+    </>
+  );
 
+  return (
+    <ListLayout testId="project-registry-page" viewport banners={banners}>
       {!state.isLoading && !state.error ? (
-        sortedItems.length === 0 ? (
-          <EmptyState
-            action={{ href: '/projects/new', label: 'Create Project' }}
-            description="The internal project registry has no matching projects for the current filters."
-            title="No projects yet"
-          />
-        ) : (
-          <DataTable
-            caption="Project registry"
-            columns={columns}
-            getRowKey={(item) => item.id}
-            items={sortedItems}
-            minWidth={700}
-            onRowClick={(item) => navigate(`/projects/${item.id}`)}
-            variant="compact"
-          />
-        )
+        <DataView
+          caption="Project registry"
+          columns={columns}
+          getRowKey={(item) => item.id}
+          rows={sortedItems}
+          onRowClick={(item) => navigate(`/projects/${item.id}`)}
+          variant="compact"
+          pageSizeOptions={[1000]}
+          emptyState={
+            <EmptyState
+              action={{ href: '/projects/new', label: 'Create Project' }}
+              description="The internal project registry has no matching projects for the current filters."
+              title="No projects yet"
+            />
+          }
+        />
       ) : null}
-    </PageContainer>
+    </ListLayout>
   );
 }

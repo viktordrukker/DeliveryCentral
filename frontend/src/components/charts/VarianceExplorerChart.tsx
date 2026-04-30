@@ -11,6 +11,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from 'recharts';
+import { Button, Table, type Column } from '@/components/ds';
 
 /* ── Data shape ── */
 export interface VarianceExplorerRow {
@@ -117,20 +118,20 @@ export function VarianceExplorerChart({ dimensions, drillPrefixes }: VarianceExp
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {(['project', 'person', 'department', 'pool'] as VarianceDimension[]).map((d) => (
-            <button key={d} type="button" className={`button button--sm ${dim === d ? 'button--primary' : 'button--secondary'}`}
+            <Button key={d} size="sm" variant={dim === d ? 'primary' : 'secondary'}
               onClick={() => { setDim(d); setSelected(new Set()); }}>
               {DIM_LABELS[d]}
-            </button>
+            </Button>
           ))}
           <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-text-muted)' }}>|</span>
-          <button type="button" className={`button button--sm ${view === 'chart' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('chart')}>Chart</button>
-          <button type="button" className={`button button--sm ${view === 'table' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('table')}>Table</button>
+          <Button size="sm" variant={view === 'chart' ? 'primary' : 'secondary'} onClick={() => setView('chart')}>Chart</Button>
+          <Button size="sm" variant={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>Table</Button>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', fontSize: 11, color: 'var(--color-text-muted)' }}>
           {selected.size > 0 && (
-            <button type="button" className="button button--sm button--secondary" onClick={() => setSelected(new Set())} style={{ borderStyle: 'dashed' }}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setSelected(new Set())} style={{ borderStyle: 'dashed' }}>
               Clear ({selected.size})
-            </button>
+            </Button>
           )}
           <span>{allRows.length} {DIM_LABELS[dim].toLowerCase()}s</span>
           <span style={{ color: avgGap < 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontWeight: 600 }}>{avgGapLabel}</span>
@@ -185,55 +186,50 @@ export function VarianceExplorerChart({ dimensions, drillPrefixes }: VarianceExp
           </div>
         ) : (
           <div style={{ flex: 1, overflow: 'auto' }}>
-            <table className="dash-compact-table" style={{ minWidth: 500 }}>
-              <thead>
-                <tr>
-                  <th>{DIM_LABELS[dim]}</th>
-                  <th style={NUM}>Planned</th>
-                  <th style={NUM}>Actual</th>
-                  <th style={NUM}>No Actual</th>
-                  <th style={NUM}>Gap</th>
-                  <th style={NUM}>Gap %</th>
-                  <th style={{ width: 70 }}>Bar</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(selected.size > 0 ? allRows.filter((r) => selected.has(r.id)) : allRows).map((r) => {
-                  const gapPct = r.planned > 0 ? Math.round((r.gap / r.planned) * 100) : 0;
-                  const maxHours = Math.max(...allRows.map((x) => Math.max(x.planned, x.actual)), 1);
-                  return (
-                    <tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`${drillPrefixes?.[dim] ?? '/'}/${r.id}`)}>
-                      <td style={{ fontWeight: 500 }}>{r.label}</td>
-                      <td style={NUM}>{r.planned}h</td>
-                      <td style={NUM}>{r.actual}h</td>
-                      <td style={{ ...NUM, color: r.silent > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{r.silent}h</td>
-                      <td style={{ ...NUM, fontWeight: 600, color: r.gap < 0 ? 'var(--color-status-danger)' : r.gap > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
-                        {r.gap > 0 ? '+' : ''}{r.gap}h
-                      </td>
-                      <td style={{ ...NUM, color: gapPct < 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
+            <Table
+              variant="compact"
+              columns={(() => {
+                const maxHours = Math.max(...allRows.map((x) => Math.max(x.planned, x.actual)), 1);
+                return [
+                  { key: 'label', title: DIM_LABELS[dim], getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
+                  { key: 'planned', title: 'Planned', align: 'right', getValue: (r) => r.planned, render: (r) => <span style={NUM}>{r.planned}h</span> },
+                  { key: 'actual', title: 'Actual', align: 'right', getValue: (r) => r.actual, render: (r) => <span style={NUM}>{r.actual}h</span> },
+                  { key: 'silent', title: 'No Actual', align: 'right', getValue: (r) => r.silent, render: (r) => <span style={{ ...NUM, color: r.silent > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{r.silent}h</span> },
+                  { key: 'gap', title: 'Gap', align: 'right', getValue: (r) => r.gap, render: (r) => (
+                    <span style={{ ...NUM, fontWeight: 600, color: r.gap < 0 ? 'var(--color-status-danger)' : r.gap > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}>
+                      {r.gap > 0 ? '+' : ''}{r.gap}h
+                    </span>
+                  ) },
+                  { key: 'gapPct', title: 'Gap %', align: 'right', getValue: (r) => r.planned > 0 ? Math.round((r.gap / r.planned) * 100) : 0, render: (r) => {
+                    const gapPct = r.planned > 0 ? Math.round((r.gap / r.planned) * 100) : 0;
+                    return (
+                      <span style={{ ...NUM, color: gapPct < 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
                         {gapPct > 0 ? '+' : ''}{gapPct}%
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 1, height: 8, alignItems: 'flex-end' }}>
-                          <div style={{ width: `${(r.planned / maxHours) * 100}%`, height: 8, background: 'var(--color-status-neutral)', borderRadius: 1 }} />
-                          <div style={{ width: `${(r.actual / maxHours) * 100}%`, height: 6, background: 'var(--color-chart-5)', borderRadius: 1 }} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{ fontWeight: 600 }}>
-                  <td>Average</td>
-                  <td style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.planned, 0) / allRows.length * 10) / 10 : 0}h</td>
-                  <td style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.actual, 0) / allRows.length * 10) / 10 : 0}h</td>
-                  <td style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.silent, 0) / allRows.length * 10) / 10 : 0}h</td>
-                  <td style={{ ...NUM, color: avgGap < 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{avgGap}h</td>
-                  <td></td><td></td>
-                </tr>
-              </tfoot>
-            </table>
+                      </span>
+                    );
+                  } },
+                  { key: 'bar', title: 'Bar', width: 70, render: (r) => (
+                    <div style={{ display: 'flex', gap: 1, height: 8, alignItems: 'flex-end' }}>
+                      <div style={{ width: `${(r.planned / maxHours) * 100}%`, height: 8, background: 'var(--color-status-neutral)', borderRadius: 1 }} />
+                      <div style={{ width: `${(r.actual / maxHours) * 100}%`, height: 6, background: 'var(--color-chart-5)', borderRadius: 1 }} />
+                    </div>
+                  ) },
+                ] as Column<VarianceExplorerRow>[];
+              })()}
+              rows={selected.size > 0 ? allRows.filter((r) => selected.has(r.id)) : allRows}
+              getRowKey={(r) => r.id}
+              onRowClick={(r) => navigate(`${drillPrefixes?.[dim] ?? '/'}/${r.id}`)}
+              footer={
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: 'var(--space-2) var(--space-3)', fontWeight: 600, background: 'var(--color-surface-alt)' }}>
+                  <span>Average</span>
+                  <span style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.planned, 0) / allRows.length * 10) / 10 : 0}h</span>
+                  <span style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.actual, 0) / allRows.length * 10) / 10 : 0}h</span>
+                  <span style={NUM}>{allRows.length > 0 ? Math.round(allRows.reduce((s, r) => s + r.silent, 0) / allRows.length * 10) / 10 : 0}h</span>
+                  <span style={{ ...NUM, color: avgGap < 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>{avgGap}h</span>
+                  <span /><span />
+                </div>
+              }
+            />
           </div>
         )}
       </div>

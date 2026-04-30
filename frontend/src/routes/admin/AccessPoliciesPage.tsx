@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
+import { Table, type Column } from '@/components/ds';
 import { httpGet } from '@/lib/api/http-client';
 
 interface AbacPolicySummary {
@@ -87,38 +88,22 @@ export function AccessPoliciesPage(): JSX.Element {
             {filtered.length === 0 ? (
               <EmptyState description="No policies match the current filters." title="No matching policies" />
             ) : (
-              <div className="data-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Roles</th>
-                      <th>Resource</th>
-                      <th>Action</th>
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{p.id}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                            {p.roles.map((r) => (
-                              <StatusBadge key={r} label={r} size="small" tone="info" />
-                            ))}
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{p.resource}</td>
-                        <td>
-                          <StatusBadge label={p.action.toUpperCase()} size="small" tone={ACTION_TONE[p.action] ?? 'neutral'} />
-                        </td>
-                        <td style={{ color: 'var(--color-text-muted)' }}>{p.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'id', title: 'ID', getValue: (p) => p.id, render: (p) => <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{p.id}</span> },
+                  { key: 'roles', title: 'Roles', render: (p) => (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {p.roles.map((r) => (<StatusBadge key={r} label={r} size="small" tone="info" />))}
+                    </div>
+                  ) },
+                  { key: 'resource', title: 'Resource', getValue: (p) => p.resource, render: (p) => <span style={{ fontWeight: 600 }}>{p.resource}</span> },
+                  { key: 'action', title: 'Action', getValue: (p) => p.action, render: (p) => <StatusBadge label={p.action.toUpperCase()} size="small" tone={ACTION_TONE[p.action] ?? 'neutral'} /> },
+                  { key: 'description', title: 'Description', getValue: (p) => p.description, render: (p) => <span style={{ color: 'var(--color-text-muted)' }}>{p.description}</span> },
+                ] as Column<AbacPolicySummary>[]}
+                rows={filtered}
+                getRowKey={(p) => p.id}
+              />
             )}
           </SectionCard>
 

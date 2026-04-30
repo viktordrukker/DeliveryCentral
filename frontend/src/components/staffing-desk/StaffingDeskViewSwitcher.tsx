@@ -1,3 +1,5 @@
+import { Button } from '@/components/ds';
+
 interface Props {
   value: string;
   onChange: (view: string) => void;
@@ -12,17 +14,17 @@ export function StaffingDeskViewSwitcher({ value, onChange }: Props): JSX.Elemen
   return (
     <div role="tablist" style={{ display: 'inline-flex', gap: 0, border: '1px solid var(--color-border)', borderRadius: 6, overflow: 'hidden' }}>
       {VIEWS.map((v) => (
-        <button
+        <Button
           key={v.key}
           role="tab"
           aria-selected={value === v.key}
-          className={value === v.key ? 'button button--sm' : 'button button--secondary button--sm'}
+          size="sm"
+          variant={value === v.key ? 'primary' : 'secondary'}
           onClick={() => onChange(v.key)}
           style={{ borderRadius: 0, border: 'none', minWidth: 70 }}
-          type="button"
         >
           {v.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

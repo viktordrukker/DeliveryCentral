@@ -10,7 +10,12 @@ export interface MonthlyEntry {
   projectCode: string;
   projectName: string;
   assignmentId: string | null;
-  benchCategory: string | null;
+  /** Empty string means "not a bench row". */
+  benchCategory: string;
+  /** Free-text label for project-custom rows; '' for assignment-driven rows. */
+  workLabel: string;
+  /** Future Jira/work-item FK; null today. */
+  workItemId: string | null;
   capex: boolean;
   description: string | null;
 }
@@ -126,4 +131,29 @@ export async function fetchPublicHolidays(year?: number, country?: string): Prom
   if (country) params.set('country', country);
   const suffix = params.toString();
   return httpGet<PublicHoliday[]>(`/public-holidays${suffix ? `?${suffix}` : ''}`);
+}
+
+export type MyTimeRowKind = 'BENCH' | 'WORK_LABEL';
+
+export interface RenameMyTimeRowInput {
+  month: string;
+  kind: MyTimeRowKind;
+  projectId?: string;
+  oldLabel: string;
+  newLabel: string;
+}
+
+export interface DeleteMyTimeRowInput {
+  month: string;
+  kind: MyTimeRowKind;
+  projectId?: string;
+  label: string;
+}
+
+export async function renameMyTimeRow(input: RenameMyTimeRowInput): Promise<{ updated: number }> {
+  return httpPost<{ updated: number }, RenameMyTimeRowInput>('/my-time/rename-row', input);
+}
+
+export async function deleteMyTimeRow(input: DeleteMyTimeRowInput): Promise<{ deleted: number }> {
+  return httpPost<{ deleted: number }, DeleteMyTimeRowInput>('/my-time/delete-row', input);
 }

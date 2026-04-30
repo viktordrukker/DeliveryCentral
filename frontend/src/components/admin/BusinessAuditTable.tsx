@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 
 import { ColumnVisibilityMenu } from '@/components/common/ColumnVisibilityMenu';
-import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
-import { VirtualTable } from '@/components/common/VirtualTable';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
 import { BusinessAuditRecord } from '@/lib/api/business-audit';
 import { formatDateTime } from '@/lib/format-date';
+import { Table, type Column } from '@/components/ds';
 
 const VIRTUAL_THRESHOLD = 100;
 
@@ -26,12 +25,13 @@ const COLUMN_LABELS = {
 export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Element {
   const { isVisible, toggleColumn } = useColumnVisibility('business-audit', ALL_COLUMNS);
 
-  const columnDefs = useMemo(
+  const columnDefs: Column<BusinessAuditRecord>[] = useMemo(
     () =>
-      [
+      ([
         {
           key: 'occurredAt',
-          render: (item: BusinessAuditRecord) => (
+          title: COLUMN_LABELS.occurredAt,
+          render: (item) => (
             <div className="audit-record">
               <div className="audit-record__primary">
                 {formatDateTime(item.occurredAt)}
@@ -41,11 +41,11 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
               </div>
             </div>
           ),
-          title: COLUMN_LABELS.occurredAt,
         },
         {
           key: 'action',
-          render: (item: BusinessAuditRecord) => (
+          title: COLUMN_LABELS.action,
+          render: (item) => (
             <div className="audit-record">
               <div className="audit-record__primary">{item.actionType}</div>
               <div className="audit-record__secondary">
@@ -53,67 +53,57 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
               </div>
             </div>
           ),
-          title: COLUMN_LABELS.action,
         },
         {
           key: 'target',
-          render: (item: BusinessAuditRecord) => (
+          title: COLUMN_LABELS.target,
+          render: (item) => (
             <div className="audit-record">
               <div className="audit-record__primary">{item.targetEntityType}</div>
               <div className="audit-record__secondary">{item.targetEntityId ?? 'No target id'}</div>
             </div>
           ),
-          title: COLUMN_LABELS.target,
         },
         {
           key: 'actor',
-          render: (item: BusinessAuditRecord) => (
+          title: COLUMN_LABELS.actor,
+          render: (item) => (
             <span className="audit-record__primary">{item.actorDisplayName ?? item.actorId ?? 'System / unknown'}</span>
           ),
-          title: COLUMN_LABELS.actor,
         },
         {
           key: 'metadata',
-          render: (item: BusinessAuditRecord) => (
+          title: COLUMN_LABELS.metadata,
+          render: (item) => (
             <span className="audit-record__secondary">{summarizeMetadata(item.metadata)}</span>
           ),
-          title: COLUMN_LABELS.metadata,
         },
-      ].filter((col) => isVisible(col.key)),
+      ] satisfies Column<BusinessAuditRecord>[]).filter((col) => isVisible(col.key)),
     [isVisible],
   );
 
   return (
-    items.length > VIRTUAL_THRESHOLD ? (
-      <VirtualTable
-        columns={columnDefs}
-        getRowKey={(item, index) =>
-          `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
-        }
-        items={items}
-      />
-    ) : (
-      <DataTable
-        columns={columnDefs}
-        emptyState={
-          <EmptyState
-            description="No business audit records matched the current investigation filters."
-            title="No business audit records"
-          />
-        }
-        getRowKey={(item, index) =>
-          `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
-        }
-        items={items}
-        toolbar={(
-          <ColumnVisibilityMenu
-            columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key as keyof typeof COLUMN_LABELS] }))}
-            isVisible={isVisible}
-            onToggle={toggleColumn}
-          />
-        )}
-      />
-    )
+    <Table
+      columns={columnDefs}
+      rows={items}
+      getRowKey={(item, index) =>
+        `${item.occurredAt}-${item.actionType}-${item.targetEntityId ?? 'none'}-${index}`
+      }
+      virtualization={items.length > VIRTUAL_THRESHOLD ? { rowHeight: 48, containerHeight: 600 } : undefined}
+      emptyState={
+        <EmptyState
+          description="No business audit records matched the current investigation filters."
+          title="No business audit records"
+        />
+      }
+      toolbar={(
+        <ColumnVisibilityMenu
+          columns={ALL_COLUMNS.map((key) => ({ key, label: COLUMN_LABELS[key as keyof typeof COLUMN_LABELS] }))}
+          isVisible={isVisible}
+          onToggle={toggleColumn}
+        />
+      )}
+    />
   );
 }
 

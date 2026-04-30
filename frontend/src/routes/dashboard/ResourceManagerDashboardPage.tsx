@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 
 import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
@@ -23,6 +23,7 @@ import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-r
 import { ResourcePersonAllocationIndicator } from '@/lib/api/dashboard-resource-manager';
 import { PriorityBadge } from '@/components/staffing/PriorityBadge';
 import { formatDate } from '@/lib/format-date';
+import { Button, DatePicker, Table, type Column } from '@/components/ds';
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 
@@ -130,7 +131,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
             ))}
           </datalist>
         </label>
-        <Link className="button button--secondary button--sm" to="/resource-pools">Resource pools</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/resource-pools">Resource pools</Button>
         <TipTrigger />
       </>
     );
@@ -297,13 +298,14 @@ export function ResourceManagerDashboardPage(): JSX.Element {
                   Allocation per person — hover for detail, identify gaps and overloads
                 </div>
               </div>
-              <button
-                className="button button--sm"
+              <Button
+                size="sm"
+                variant="primary"
                 onClick={() => { setShowModal(true); setQuickForm((p) => ({ ...p, error: null, success: null })); }}
                 type="button"
               >
                 Quick assignment
-              </button>
+              </Button>
             </div>
             <div className="dashboard-hero__chart">
               {heatmapPeople.length > 0 ? (
@@ -319,97 +321,98 @@ export function ResourceManagerDashboardPage(): JSX.Element {
           </div>
 
           {/* ── ACTION ITEMS ── */}
-          {actionItemCount > 0 ? (
-            <div className="dash-action-section" style={{ position: 'relative' }}>
-              <TipBalloon tip="Items needing attention — overallocations, pending approvals, and incoming staffing requests. Click any row to act." arrow="left" />
-              <div className="dash-action-section__header">
-                <span className="dash-action-section__title">Action Items ({actionItemCount})</span>
+          {actionItemCount > 0 ? (() => {
+            interface ActionRow {
+              rowKey: string;
+              kind: 'overalloc' | 'pending' | 'request';
+              index: number;
+              severityLabel: string;
+              severityColor: string;
+              category: string;
+              entity: string;
+              detail: React.ReactNode;
+              alloc: React.ReactNode;
+              action: string;
+              linkTo: string;
+            }
+            const actionRows: ActionRow[] = [
+              ...overallocated.map((item, i) => ({
+                rowKey: `over-${item.personId}`,
+                kind: 'overalloc' as const,
+                index: i + 1,
+                severityLabel: 'High',
+                severityColor: 'var(--color-status-danger)',
+                category: 'Overallocated',
+                entity: item.displayName,
+                detail: (<span style={{ fontSize: 11 }}>{item.teamName}</span>) as React.ReactNode,
+                alloc: (<span style={{ ...NUM, color: 'var(--color-status-danger)', fontWeight: 600 }}>{item.totalAllocationPercent}%</span>) as React.ReactNode,
+                action: 'Rebalance assignments',
+                linkTo: `/people/${item.personId}`,
+              })),
+              ...pendingApprovals.map((item, i) => ({
+                rowKey: `pend-${item.assignmentId}`,
+                kind: 'pending' as const,
+                index: overallocated.length + i + 1,
+                severityLabel: 'Med',
+                severityColor: 'var(--color-status-warning)',
+                category: 'Pending Approval',
+                entity: item.personDisplayName,
+                detail: (<span style={{ fontSize: 11 }}>{item.projectName}</span>) as React.ReactNode,
+                alloc: (<span style={NUM}>{'\u2014'}</span>) as React.ReactNode,
+                action: 'Review & approve',
+                linkTo: `/assignments/${item.assignmentId}`,
+              })),
+              ...incomingRequests.map((req, i) => ({
+                rowKey: `req-${req.id}`,
+                kind: 'request' as const,
+                index: overallocated.length + pendingApprovals.length + i + 1,
+                severityLabel: 'Info',
+                severityColor: 'var(--color-status-info)',
+                category: 'Staffing Request',
+                entity: req.role,
+                detail: (<span style={{ fontSize: 11 }}><PriorityBadge priority={req.priority} /> · starts {req.startDate}</span>) as React.ReactNode,
+                alloc: (<span style={NUM}>{req.headcountFulfilled}/{req.headcountRequired}</span>) as React.ReactNode,
+                action: 'Review & fill',
+                linkTo: `/staffing-requests/${req.id}`,
+              })),
+            ];
+            return (
+              <div className="dash-action-section" style={{ position: 'relative' }}>
+                <TipBalloon tip="Items needing attention — overallocations, pending approvals, and incoming staffing requests. Click any row to act." arrow="left" />
+                <div className="dash-action-section__header">
+                  <span className="dash-action-section__title">Action Items ({actionItemCount})</span>
+                </div>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'idx', title: '#', width: 28, render: (r) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{r.index}</span> },
+                    { key: 'severity', title: 'Severity', width: 70, render: (r) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.severityColor, flexShrink: 0 }} />
+                        <span style={{ color: r.severityColor, fontWeight: 600, fontSize: 11 }}>{r.severityLabel}</span>
+                      </span>
+                    ) },
+                    { key: 'category', title: 'Category', width: 120, render: (r) => r.category },
+                    { key: 'entity', title: 'Entity', render: (r) => <span style={{ fontWeight: 500 }}>{r.entity}</span> },
+                    { key: 'detail', title: 'Detail', width: 140, render: (r) => r.detail },
+                    { key: 'alloc', title: 'Alloc %', align: 'right', render: (r) => r.alloc },
+                    { key: 'action', title: 'Suggested Action', width: 100, render: (r) => <span style={{ fontSize: 11 }}>{r.action}</span> },
+                    { key: 'go', title: '', width: 40, render: (r) => (
+                      <Link to={r.linkTo} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
+                    ) },
+                  ] as Column<ActionRow>[]}
+                  rows={actionRows}
+                  getRowKey={(r) => r.rowKey}
+                  onRowClick={(r) => navigate(r.linkTo)}
+                  footer={
+                    <div style={{ padding: 'var(--space-2) var(--space-3)', fontWeight: 600, fontSize: 11, background: 'var(--color-surface-alt)' }}>
+                      {actionItemCount} total items
+                    </div>
+                  }
+                />
               </div>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table" style={{ minWidth: 700 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 28 }}>#</th>
-                      <th style={{ width: 70 }}>Severity</th>
-                      <th style={{ width: 120 }}>Category</th>
-                      <th>Entity</th>
-                      <th style={{ width: 140 }}>Detail</th>
-                      <th style={NUM}>Alloc %</th>
-                      <th style={{ width: 100 }}>Suggested Action</th>
-                      <th style={{ width: 40 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Overallocated — High severity */}
-                    {overallocated.map((item, i) => (
-                      <tr key={`over-${item.personId}`} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
-                        <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{i + 1}</td>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-danger)', flexShrink: 0 }} />
-                            <span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>High</span>
-                          </span>
-                        </td>
-                        <td>Overallocated</td>
-                        <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                        <td style={{ fontSize: 11 }}>{item.teamName}</td>
-                        <td style={{ ...NUM, color: 'var(--color-status-danger)', fontWeight: 600 }}>{item.totalAllocationPercent}%</td>
-                        <td style={{ fontSize: 11 }}>Rebalance assignments</td>
-                        <td><Link to={`/people/${item.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                      </tr>
-                    ))}
-
-                    {/* Pending approvals — Medium severity */}
-                    {pendingApprovals.map((item, i) => (
-                      <tr key={`pend-${item.assignmentId}`} style={{ cursor: 'pointer' }} onClick={() => navigate(`/assignments/${item.assignmentId}`)}>
-                        <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{overallocated.length + i + 1}</td>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-warning)', flexShrink: 0 }} />
-                            <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>Med</span>
-                          </span>
-                        </td>
-                        <td>Pending Approval</td>
-                        <td style={{ fontWeight: 500 }}>{item.personDisplayName}</td>
-                        <td style={{ fontSize: 11 }}>{item.projectName}</td>
-                        <td style={NUM}>{'\u2014'}</td>
-                        <td style={{ fontSize: 11 }}>Review & approve</td>
-                        <td><Link to={`/assignments/${item.assignmentId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                      </tr>
-                    ))}
-
-                    {/* Incoming requests — Info severity */}
-                    {incomingRequests.map((req, i) => (
-                      <tr key={`req-${req.id}`} style={{ cursor: 'pointer' }} onClick={() => navigate(`/staffing-requests/${req.id}`)}>
-                        <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{overallocated.length + pendingApprovals.length + i + 1}</td>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-status-info)', flexShrink: 0 }} />
-                            <span style={{ color: 'var(--color-status-info)', fontWeight: 600, fontSize: 11 }}>Info</span>
-                          </span>
-                        </td>
-                        <td>Staffing Request</td>
-                        <td style={{ fontWeight: 500 }}>{req.role}</td>
-                        <td style={{ fontSize: 11 }}>
-                          <PriorityBadge priority={req.priority} /> · starts {req.startDate}
-                        </td>
-                        <td style={NUM}>{req.headcountFulfilled}/{req.headcountRequired}</td>
-                        <td style={{ fontSize: 11 }}>Review & fill</td>
-                        <td><Link to={`/staffing-requests/${req.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ fontWeight: 600 }}>
-                      <td></td>
-                      <td colSpan={2} style={{ fontSize: 11 }}>{actionItemCount} total items</td>
-                      <td colSpan={5}></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-status-active)' }}>
               <span style={{ fontSize: 22 }}>{'\u2713'}</span>{' '}
               <span style={{ fontWeight: 600 }}>All clear</span>
@@ -440,38 +443,21 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               headers: ['Team', 'Members', 'Active Assignments', 'Active Projects', 'Overallocated', 'Unassigned'],
               rows: d.teamCapacitySummary.map((t) => ({ Team: t.teamName, Members: String(t.memberCount), 'Active Assignments': String(t.activeAssignmentCount), 'Active Projects': String(t.activeProjectCount), Overallocated: String(t.overallocatedPeopleCount), Unassigned: String(t.unassignedPeopleCount) })),
             }}>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Team</th>
-                      <th style={NUM}>Members</th>
-                      <th style={NUM}>Assignments</th>
-                      <th style={NUM}>Projects</th>
-                      <th style={NUM}>Overalloc</th>
-                      <th style={NUM}>Unassigned</th>
-                      <th style={{ width: 40 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.teamCapacitySummary.map((team) => (
-                      <tr key={team.teamId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/teams/${team.teamId}`)}>
-                        <td style={{ fontWeight: 500 }}>{team.teamName}</td>
-                        <td style={NUM}>{team.memberCount}</td>
-                        <td style={NUM}>{team.activeAssignmentCount}</td>
-                        <td style={NUM}>{team.activeProjectCount}</td>
-                        <td style={{ ...NUM, color: team.overallocatedPeopleCount > 0 ? 'var(--color-status-danger)' : 'inherit', fontWeight: team.overallocatedPeopleCount > 0 ? 600 : 400 }}>
-                          {team.overallocatedPeopleCount}
-                        </td>
-                        <td style={{ ...NUM, color: team.unassignedPeopleCount > 0 ? 'var(--color-status-warning)' : 'inherit' }}>
-                          {team.unassignedPeopleCount}
-                        </td>
-                        <td><Link to={`/teams/${team.teamId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'team', title: 'Team', getValue: (t) => t.teamName, render: (t) => <span style={{ fontWeight: 500 }}>{t.teamName}</span> },
+                  { key: 'members', title: 'Members', align: 'right', getValue: (t) => t.memberCount, render: (t) => <span style={NUM}>{t.memberCount}</span> },
+                  { key: 'assignments', title: 'Assignments', align: 'right', getValue: (t) => t.activeAssignmentCount, render: (t) => <span style={NUM}>{t.activeAssignmentCount}</span> },
+                  { key: 'projects', title: 'Projects', align: 'right', getValue: (t) => t.activeProjectCount, render: (t) => <span style={NUM}>{t.activeProjectCount}</span> },
+                  { key: 'overalloc', title: 'Overalloc', align: 'right', getValue: (t) => t.overallocatedPeopleCount, render: (t) => <span style={{ ...NUM, color: t.overallocatedPeopleCount > 0 ? 'var(--color-status-danger)' : 'inherit', fontWeight: t.overallocatedPeopleCount > 0 ? 600 : 400 }}>{t.overallocatedPeopleCount}</span> },
+                  { key: 'unassigned', title: 'Unassigned', align: 'right', getValue: (t) => t.unassignedPeopleCount, render: (t) => <span style={{ ...NUM, color: t.unassignedPeopleCount > 0 ? 'var(--color-status-warning)' : 'inherit' }}>{t.unassignedPeopleCount}</span> },
+                  { key: 'view', title: '', width: 40, render: (t) => <Link to={`/teams/${t.teamId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
+                ] as Column<typeof d.teamCapacitySummary[number]>[]}
+                rows={d.teamCapacitySummary}
+                getRowKey={(t) => t.teamId}
+                onRowClick={(t) => navigate(`/teams/${t.teamId}`)}
+              />
             </SectionCard>
           )}
 
@@ -481,43 +467,24 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               headers: ['Person', 'Team', 'Indicator', 'Allocation %'],
               rows: d.allocationIndicators.map((i) => ({ Person: i.displayName, Team: i.teamName, Indicator: i.indicator, 'Allocation %': String(i.totalAllocationPercent) })),
             }}>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th>Team</th>
-                      <th style={{ width: 100 }}>Indicator</th>
-                      <th style={NUM}>Alloc %</th>
-                      <th style={{ width: 80 }}>Bar</th>
-                      <th style={{ width: 40 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.allocationIndicators.map((item) => (
-                      <tr key={item.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
-                        <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                        <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.teamName}</td>
-                        <td>
-                          <span style={{ color: indicatorColor(item.indicator), fontWeight: 600, fontSize: 11 }}>{item.indicator}</span>
-                        </td>
-                        <td style={{ ...NUM, fontWeight: 600, color: indicatorColor(item.indicator) }}>{item.totalAllocationPercent}%</td>
-                        <td>
-                          <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%', width: `${Math.min(item.totalAllocationPercent, 100)}%`, borderRadius: 2,
-                              background: indicatorColor(item.indicator),
-                            }} />
-                          </div>
-                        </td>
-                        <td>
-                          <Link to={`/people/${item.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span> },
+                  { key: 'team', title: 'Team', getValue: (i) => i.teamName, render: (i) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{i.teamName}</span> },
+                  { key: 'indicator', title: 'Indicator', width: 100, getValue: (i) => i.indicator, render: (i) => <span style={{ color: indicatorColor(i.indicator), fontWeight: 600, fontSize: 11 }}>{i.indicator}</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.totalAllocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600, color: indicatorColor(i.indicator) }}>{i.totalAllocationPercent}%</span> },
+                  { key: 'bar', title: 'Bar', width: 80, render: (i) => (
+                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(i.totalAllocationPercent, 100)}%`, borderRadius: 2, background: indicatorColor(i.indicator) }} />
+                    </div>
+                  ) },
+                  { key: 'view', title: '', width: 40, render: (i) => <Link to={`/people/${i.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
+                ] as Column<typeof d.allocationIndicators[number]>[]}
+                rows={d.allocationIndicators}
+                getRowKey={(i) => i.personId}
+                onRowClick={(i) => navigate(`/people/${i.personId}`)}
+              />
             </SectionCard>
           )}
 
@@ -527,82 +494,60 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               headers: ['Person', 'Project', 'Status', 'Start Date'],
               rows: d.futureAssignmentPipeline.map((i) => ({ Person: i.personDisplayName, Project: i.projectName, Status: i.approvalState, 'Start Date': i.startDate.slice(0, 10) })),
             }}>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th>Project</th>
-                      <th style={{ width: 90 }}>Status</th>
-                      <th style={{ width: 90 }}>Start Date</th>
-                      <th style={{ width: 40 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.futureAssignmentPipeline.map((item) => (
-                      <tr key={item.assignmentId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/assignments/${item.assignmentId}`)}>
-                        <td style={{ fontWeight: 500 }}>{item.personDisplayName}</td>
-                        <td>{item.projectName}</td>
-                        <td><span style={{ fontSize: 11, fontWeight: 600 }}>{item.approvalState}</span></td>
-                        <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(item.startDate)}</td>
-                        <td><Link to={`/assignments/${item.assignmentId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (i) => i.personDisplayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.personDisplayName}</span> },
+                  { key: 'project', title: 'Project', getValue: (i) => i.projectName, render: (i) => i.projectName },
+                  { key: 'status', title: 'Status', width: 90, getValue: (i) => i.approvalState, render: (i) => <span style={{ fontSize: 11, fontWeight: 600 }}>{i.approvalState}</span> },
+                  { key: 'startDate', title: 'Start Date', width: 90, getValue: (i) => i.startDate, render: (i) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(i.startDate)}</span> },
+                  { key: 'view', title: '', width: 40, render: (i) => <Link to={`/assignments/${i.assignmentId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
+                ] as Column<typeof d.futureAssignmentPipeline[number]>[]}
+                rows={d.futureAssignmentPipeline}
+                getRowKey={(i) => i.assignmentId}
+                onRowClick={(i) => navigate(`/assignments/${i.assignmentId}`)}
+              />
             </SectionCard>
           )}
 
           {/* ── IDLE RESOURCES (quick-assign enabled) ── */}
           {d.peopleWithoutAssignments.length > 0 && (
             <SectionCard title={`Idle Resources (${d.peopleWithoutAssignments.length})`} collapsible>
-              <div style={{ overflow: 'auto' }}>
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th>Team</th>
-                      <th style={NUM}>Alloc %</th>
-                      <th style={{ width: 100 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.peopleWithoutAssignments.map((person) => (
-                      <tr key={person.personId}>
-                        <td style={{ fontWeight: 500 }}>{person.displayName}</td>
-                        <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{person.teamName}</td>
-                        <td style={NUM}>{person.totalAllocationPercent}%</td>
-                        <td>
-                          <button
-                            className="button button--secondary button--sm"
-                            onClick={() => {
-                              setQuickForm((p) => ({ ...p, personId: person.personId }));
-                              setShowModal(true);
-                            }}
-                            type="button"
-                            style={{ fontSize: 10 }}
-                          >
-                            Quick assign
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                  { key: 'team', title: 'Team', getValue: (p) => p.teamName, render: (p) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.teamName}</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.totalAllocationPercent, render: (p) => <span style={NUM}>{p.totalAllocationPercent}%</span> },
+                  { key: 'action', title: '', width: 100, render: (p) => (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuickForm((prev) => ({ ...prev, personId: p.personId }));
+                        setShowModal(true);
+                      }}
+                      style={{ fontSize: 10 }}
+                    >
+                      Quick assign
+                    </Button>
+                  ) },
+                ] as Column<typeof d.peopleWithoutAssignments[number]>[]}
+                rows={d.peopleWithoutAssignments}
+                getRowKey={(p) => p.personId}
+              />
             </SectionCard>
           )}
 
           <RecentActivityRail role="rm" />
 
           {/* ── DATA FRESHNESS ── */}
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers from the server." arrow="top" />
-          </div>
+          <DataFreshness
+            lastFetch={lastFetch}
+            onRefresh={refetch}
+            tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers from the server." arrow="top" />}
+          />
         </>
       ) : null}
 
@@ -612,7 +557,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
           <div style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ margin: 0 }}>Quick Assignment</h2>
-              <button className="button button--secondary" onClick={() => setShowModal(false)} type="button">{'\u2715'} Close</button>
+              <Button variant="secondary" onClick={() => setShowModal(false)} type="button">{'\u2715'} Close</Button>
             </div>
             {quickForm.error ? <ErrorState description={quickForm.error} /> : null}
             {quickForm.success ? <div className="success-banner" style={{ marginBottom: '12px' }}>{quickForm.success}</div> : null}
@@ -649,13 +594,13 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               </label>
               <label className="field">
                 <span className="field__label">Start Date</span>
-                <input className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, startDate: e.target.value }))} required type="date" value={quickForm.startDate} />
+                <DatePicker onValueChange={(value) => setQuickForm((p) => ({ ...p, startDate: value }))} required value={quickForm.startDate} />
               </label>
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <button className="button" disabled={quickForm.isSubmitting} type="submit">
+                <Button variant="primary" disabled={quickForm.isSubmitting} type="submit">
                   {quickForm.isSubmitting ? 'Submitting...' : 'Create assignment'}
-                </button>
-                <button className="button button--secondary" onClick={() => setShowModal(false)} type="button">Cancel</button>
+                </Button>
+                <Button variant="secondary" onClick={() => setShowModal(false)} type="button">Cancel</Button>
               </div>
             </form>
           </div>

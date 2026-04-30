@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import { Button, Modal, Textarea } from '@/components/ds';
 
 interface ConfirmDialogProps {
   confirmLabel?: string;
@@ -8,8 +10,20 @@ interface ConfirmDialogProps {
   open: boolean;
   requireReason?: boolean;
   title: string;
+  /**
+   * Phase DS-2-3 — visual tone of the primary action. `'danger'` styles the
+   * Confirm button as destructive (red). Default: `'default'` (primary blue).
+   * Existing callsites that don't pass `tone` continue to render unchanged.
+   */
+  tone?: 'default' | 'danger';
 }
 
+/**
+ * Phase DS-2-3 — rebuilt on `<Modal>`. Same external API as before so the
+ * 50+ existing callsites work without changes; internally now inherits
+ * focus trap, scroll lock, escape close, mobile auto-fullscreen, and stack
+ * management from the shared overlay infrastructure.
+ */
 export function ConfirmDialog({
   confirmLabel = 'Confirm',
   message,
@@ -18,10 +32,15 @@ export function ConfirmDialog({
   open,
   requireReason = false,
   title,
-}: ConfirmDialogProps): JSX.Element | null {
+  tone = 'default',
+}: ConfirmDialogProps): JSX.Element {
   const [reason, setReason] = useState('');
 
-  if (!open) return null;
+  // Reset the reason field whenever the dialog re-opens — prevents leaking
+  // a previous reason into the next confirm.
+  useEffect(() => {
+    if (open) setReason('');
+  }, [open]);
 
   function handleConfirm(): void {
     onConfirm(requireReason ? reason : undefined);
@@ -34,44 +53,34 @@ export function ConfirmDialog({
   }
 
   return (
-    <div
-      aria-modal="true"
-      className="confirm-dialog-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleCancel();
-      }}
-      role="dialog"
-    >
-      <div className="confirm-dialog">
-        <h3 className="confirm-dialog__title">{title}</h3>
-        <p className="confirm-dialog__message">{message}</p>
-
-        {requireReason ? (
-          <label className="field">
-            <span className="field__label">Reason</span>
-            <textarea
-              className="field__control"
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              value={reason}
-            />
-          </label>
-        ) : null}
-
-        <div className="confirm-dialog__actions">
-          <button
-            className="button"
+    <Modal
+      open={open}
+      onClose={handleCancel}
+      title={title}
+      size="sm"
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant={tone === 'danger' ? 'danger' : 'primary'}
             disabled={requireReason && !reason.trim()}
             onClick={handleConfirm}
-            type="button"
+            data-autofocus="true"
           >
             {confirmLabel}
-          </button>
-          <button className="button button--secondary" onClick={handleCancel} type="button">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <p className="ds-confirm-dialog__message">{message}</p>
+      {requireReason ? (
+        <label className="ds-confirm-dialog__reason">
+          <span className="ds-confirm-dialog__reason-label">Reason</span>
+          <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </label>
+      ) : null}
+    </Modal>
   );
 }

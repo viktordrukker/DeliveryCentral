@@ -11,6 +11,7 @@ import { AllocationPercent } from '../domain/value-objects/allocation-percent';
 import { ApprovalState } from '../domain/value-objects/approval-state';
 import { AssignmentStatus } from '../domain/value-objects/assignment-status';
 import { ProjectAssignmentCreatedEvent } from '../domain/events/project-assignment-created.event';
+import { DirectorApprovalThresholdService } from './director-approval-threshold.service';
 import { AssignmentReferenceRepositoryPort } from './ports/assignment-reference.repository.port';
 
 interface CreateProjectAssignmentCommand {
@@ -19,12 +20,14 @@ interface CreateProjectAssignmentCommand {
   allowOverlapOverride?: boolean;
   draft?: boolean;
   endDate?: string;
+  initialStatus?: 'PROPOSED' | 'BOOKED';
   note?: string;
   overrideReason?: string;
   personId: string;
   projectId: string;
   projectValidated?: boolean;
   personValidated?: boolean;
+  staffingRequestId?: string;
   staffingRole: string;
   startDate: string;
 }
@@ -37,6 +40,7 @@ export class CreateProjectAssignmentService {
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
     private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; relatedEntityId?: string; metadata?: Record<string, unknown> }): Promise<void> },
+    private readonly directorApprovalThresholdService?: DirectorApprovalThresholdService,
   ) {}
 
   public async execute(command: CreateProjectAssignmentCommand): Promise<ProjectAssignment> {
@@ -112,6 +116,23 @@ export class CreateProjectAssignmentService {
       }
     }
 
+    const requiresDirectorApproval = this.directorApprovalThresholdService
+      ? await this.directorApprovalThresholdService.evaluate({
+          allocationPercent: command.allocationPercent,
+          startDate,
+          endDate,
+        })
+      : false;
+
+    // Slate-pick callers pass `initialStatus: 'BOOKED'` so the assignment is
+    // born with the picked person already approved. Direct callers omit it
+    // and inherit the legacy PROPOSED start state.
+    const initialStatus = command.draft
+      ? AssignmentStatus.draft()
+      : command.initialStatus === 'BOOKED'
+        ? AssignmentStatus.booked()
+        : AssignmentStatus.proposed();
+
     const assignment = ProjectAssignment.create({
       allocationPercent: AllocationPercent.from(command.allocationPercent),
       notes: command.note,
@@ -119,8 +140,10 @@ export class CreateProjectAssignmentService {
       projectId: command.projectId,
       requestedAt: new Date(),
       requestedByPersonId: command.actorId,
+      requiresDirectorApproval,
+      staffingRequestId: command.staffingRequestId,
       staffingRole: command.staffingRole,
-      status: AssignmentStatus.proposed(),
+      status: initialStatus,
       validFrom: startDate,
       validTo: endDate,
     });
@@ -136,7 +159,11 @@ export class CreateProjectAssignmentService {
     const historyEntry = AssignmentHistory.create({
       assignmentId: assignment.assignmentId,
       changeReason: 'Initial assignment request created.',
-      changeType: 'STATUS_PROPOSED',
+      changeType: command.draft
+        ? 'STATUS_DRAFT'
+        : command.initialStatus === 'BOOKED'
+          ? 'STATUS_BOOKED'
+          : 'STATUS_PROPOSED',
       changedByPersonId: command.actorId,
       newSnapshot: {
         allocationPercent: command.allocationPercent,

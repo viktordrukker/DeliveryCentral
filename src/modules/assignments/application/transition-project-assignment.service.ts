@@ -24,8 +24,10 @@ export interface TransitionAssignmentCommand {
 }
 
 const STATUS_CHANGE_TYPE: Record<AssignmentStatusValue, string> = {
+  DRAFT: 'STATUS_DRAFT',
   CREATED: 'STATUS_CREATED',
   PROPOSED: 'STATUS_PROPOSED',
+  IN_REVIEW: 'STATUS_IN_REVIEW',
   REJECTED: 'STATUS_REJECTED',
   BOOKED: 'STATUS_BOOKED',
   ONBOARDING: 'STATUS_ONBOARDING',
@@ -36,8 +38,10 @@ const STATUS_CHANGE_TYPE: Record<AssignmentStatusValue, string> = {
 };
 
 const AUDIT_ACTION_TYPE: Record<AssignmentStatusValue, string> = {
+  DRAFT: 'assignment.draft',
   CREATED: 'assignment.created',
   PROPOSED: 'assignment.proposed',
+  IN_REVIEW: 'assignment.in_review',
   REJECTED: 'assignment.rejected',
   BOOKED: 'assignment.booked',
   ONBOARDING: 'assignment.onboarding',
@@ -53,6 +57,7 @@ export class TransitionProjectAssignmentService {
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly assignmentSlaService?: import('./assignment-sla.service').AssignmentSlaService,
   ) {}
 
   public async execute(command: TransitionAssignmentCommand): Promise<ProjectAssignment> {
@@ -79,6 +84,10 @@ export class TransitionProjectAssignmentService {
       reason: command.reason,
       timestamp: command.timestamp,
     });
+
+    if (this.assignmentSlaService) {
+      await this.assignmentSlaService.applyTransition(assignment, command.timestamp ?? new Date());
+    }
 
     const history = AssignmentHistory.create({
       assignmentId: assignment.assignmentId,

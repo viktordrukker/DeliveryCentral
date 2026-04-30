@@ -1,4 +1,5 @@
 import type { PulseReportTier } from '@/lib/api/pulse-report';
+import { Button } from '@/components/ds';
 
 interface ReportingTierPickerProps {
   value: PulseReportTier;
@@ -22,18 +23,17 @@ export function ReportingTierPicker({
       {(['A', 'B'] as const).map((tier) => {
         const active = value === tier;
         return (
-          <button
+          <Button
+            key={tier}
+            variant={active ? 'primary' : 'secondary'}
+            size={compact ? 'xs' : 'sm'}
             aria-checked={active}
             aria-label={`Tier ${tier}: ${labels[tier]}`}
-            className={active ? 'button--project-detail button--primary' : 'button--project-detail'}
-            key={tier}
-            onClick={() => onChange(tier)}
             role="radio"
-            style={compact ? { padding: '2px 8px', fontSize: 10 } : undefined}
-            type="button"
+            onClick={() => onChange(tier)}
           >
             {tier} · {labels[tier]}
-          </button>
+          </Button>
         );
       })}
     </div>

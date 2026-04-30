@@ -1,7 +1,7 @@
 import { EmptyState } from '@/components/common/EmptyState';
-import { DataTable } from '@/components/common/DataTable';
 import { IntegrationSyncHistoryItem } from '@/lib/api/integrations-admin';
 import { formatDateTime } from '@/lib/format-date';
+import { DataView } from '@/components/ds';
 
 interface IntegrationSyncHistoryPanelProps {
   items: IntegrationSyncHistoryItem[];
@@ -11,7 +11,8 @@ export function IntegrationSyncHistoryPanel({
   items,
 }: IntegrationSyncHistoryPanelProps): JSX.Element {
   return (
-    <DataTable
+    <DataView<IntegrationSyncHistoryItem>
+      pageSizeOptions={[1000]}
       columns={[
         {
           key: 'status',
@@ -62,7 +63,7 @@ export function IntegrationSyncHistoryPanel({
       getRowKey={(item, index) =>
         `${item.integrationType}-${item.finishedAt}-${item.resourceType}-${String(index)}`
       }
-      items={items}
+      rows={items}
     />
   );
 }

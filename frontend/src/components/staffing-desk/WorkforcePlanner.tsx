@@ -34,6 +34,7 @@ import { useAuth } from '@/app/auth-context';
 import { getCurrentWeekMonday, addDays } from '@/lib/workload-helpers';
 import { usePlannerSimulation, type ForceAssignReason } from '@/features/staffing-desk/usePlannerSimulation';
 import { useOutsideClick } from '@/hooks/useOutsideClick';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface Props { poolId?: string; orgUnitId?: string }
 
@@ -66,14 +67,9 @@ function FilterChip<T extends string>({ label, options, values, onChange }: {
   const summary = values.length === 0 ? 'none' : allSelected ? 'all' : values.length === 1 ? values[0] : `${values.length} selected`;
   return (
     <div ref={wrapRef} style={{ position: 'relative' }} data-filter-chip>
-      <button
-        type="button"
-        className="button button--secondary button--sm"
-        onClick={() => setOpen((v) => !v)}
-        style={{ fontSize: 10 }}
-      >
+      <Button type="button" variant="secondary" size="sm" onClick={() => setOpen((v) => !v)} style={{ fontSize: 10 }}>
         {label}: {summary} ▾
-      </button>
+      </Button>
       {open && (
         <div
           style={{
@@ -100,9 +96,9 @@ function FilterChip<T extends string>({ label, options, values, onChange }: {
             );
           })}
           <div style={{ display: 'flex', gap: 4, marginTop: 4, borderTop: '1px solid var(--color-border)', paddingTop: 4 }}>
-            <button type="button" className="button button--secondary button--sm" onClick={() => onChange([...options])} style={{ fontSize: 9, flex: 1 }}>All</button>
-            <button type="button" className="button button--secondary button--sm" onClick={() => onChange([])} style={{ fontSize: 9, flex: 1 }}>None</button>
-            <button type="button" className="button button--sm" onClick={() => setOpen(false)} style={{ fontSize: 9, flex: 1 }}>Apply</button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => onChange([...options])} style={{ fontSize: 9, flex: 1 }}>All</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => onChange([])} style={{ fontSize: 9, flex: 1 }}>None</Button>
+            <Button type="button" variant="primary" size="sm" onClick={() => setOpen(false)} style={{ fontSize: 9, flex: 1 }}>Apply</Button>
           </div>
         </div>
       )}
@@ -553,12 +549,12 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
       <div style={S_TOOLBAR}>
         <div style={{ display: 'inline-flex', border: '1px solid var(--color-border)', borderRadius: 6, overflow: 'hidden' }}>
           {HORIZONS.map((h) => (
-            <button key={h.weeks} type="button" className={horizon === h.weeks ? 'button button--sm' : 'button button--secondary button--sm'} style={{ borderRadius: 0, border: 'none', minWidth: 36, fontSize: 10 }} onClick={() => setHorizon(h.weeks)}>{h.label}</button>
+            <Button key={h.weeks} size="sm" variant={horizon === h.weeks ? 'primary' : 'secondary'} style={{ borderRadius: 0, border: 'none', minWidth: 36, fontSize: 10 }} onClick={() => setHorizon(h.weeks)}>{h.label}</Button>
           ))}
         </div>
-        <button className="button button--secondary button--sm" onClick={() => setWeekOffset((o) => o - 4)} type="button" style={{ fontSize: 10 }}>&laquo;</button>
-        <button className="button button--secondary button--sm" onClick={() => setWeekOffset(0)} type="button" style={{ fontSize: 10 }}>Today</button>
-        <button className="button button--secondary button--sm" onClick={() => setWeekOffset((o) => o + 4)} type="button" style={{ fontSize: 10 }}>&raquo;</button>
+        <Button variant="secondary" size="sm" onClick={() => setWeekOffset((o) => o - 4)} type="button" style={{ fontSize: 10 }}>&laquo;</Button>
+        <Button variant="secondary" size="sm" onClick={() => setWeekOffset(0)} type="button" style={{ fontSize: 10 }}>Today</Button>
+        <Button variant="secondary" size="sm" onClick={() => setWeekOffset((o) => o + 4)} type="button" style={{ fontSize: 10 }}>&raquo;</Button>
         <FilterChip
           label="Status"
           options={ALL_STATUSES}
@@ -593,14 +589,14 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
             horizonWeeks={horizon}
             onLoaded={() => setSimulating(true)}
           />
-          <button className={simulating ? 'button button--sm' : 'button button--secondary button--sm'} onClick={() => setSimulating((v) => !v)} type="button" style={{ fontSize: 10 }}>
+          <Button size="sm" variant={simulating ? 'primary' : 'secondary'} onClick={() => setSimulating((v) => !v)} style={{ fontSize: 10 }}>
             {simulating ? 'Simulating' : 'Simulate'}
-          </button>
-          {sim.canUndo && <button className="button button--secondary button--sm" onClick={sim.undo} type="button" style={{ fontSize: 10 }} title={sim.lastActionLabel ?? ''}>↩</button>}
+          </Button>
+          {sim.canUndo && <Button variant="secondary" size="sm" onClick={sim.undo} type="button" style={{ fontSize: 10 }} title={sim.lastActionLabel ?? ''}>↩</Button>}
           {sim.hasChanges && (
             <>
-              <button className="button button--sm" onClick={() => setApplyOpen(true)} type="button" style={{ fontSize: 10 }}>Apply</button>
-              <button className="button button--secondary button--sm" onClick={sim.reset} type="button" style={{ fontSize: 10 }}>Reset</button>
+              <Button variant="primary" size="sm" onClick={() => setApplyOpen(true)} type="button" style={{ fontSize: 10 }}>Apply</Button>
+              <Button variant="secondary" size="sm" onClick={sim.reset} type="button" style={{ fontSize: 10 }}>Reset</Button>
             </>
           )}
         </div>
@@ -624,25 +620,24 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
 
         {/* Project Grid */}
         <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
-          <table style={S_TABLE}>
-            <thead>
-              <tr>
-                <th style={S_NAME_TH} rowSpan={2}>Project</th>
-                {monthHeaders.map((m, i) => <th key={`${m.label}-${i}`} colSpan={m.span} style={S_MONTH_TH}>{m.label}</th>)}
-                <th style={{ ...S_MONTH_TH, minWidth: 108, position: 'sticky', right: 0, zIndex: 3 }} rowSpan={2}>Δ FTE</th>
-              </tr>
-              <tr>
-                {data.weeks.map((w) => (
-                  <th key={w} style={{ ...S_WEEK_TH, background: w === currentWeek ? 'var(--color-accent-bg)' : 'var(--color-surface-alt)' }}>
-                    {format(new Date(w), 'dd')}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {modifiedProjects.map((proj) => (
-                <tr key={proj.projectId}>
-                  <td style={{ ...S_NAME_TD, opacity: proj.status === 'DRAFT' ? 0.7 : 1 }}>
+          {/* Month-header strip — DS Table doesn't support multi-row thead */}
+          <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: '2px solid var(--color-border)', background: 'var(--color-surface-alt)', minWidth: 'max-content' }}>
+            <div style={{ ...S_NAME_TH, borderBottom: 'none', display: 'flex', alignItems: 'center' }}>Project</div>
+            {monthHeaders.map((m, i) => (
+              <div key={`${m.label}-${i}`} style={{ ...S_MONTH_TH, flex: `0 0 ${m.span * 52}px`, minWidth: m.span * 52, borderBottom: 'none' }}>{m.label}</div>
+            ))}
+            <div style={{ ...S_MONTH_TH, minWidth: 108, position: 'sticky', right: 0, zIndex: 3, borderBottom: 'none' }}>Δ FTE</div>
+          </div>
+          <Table
+            variant="compact"
+            columns={[
+              {
+                key: 'project',
+                title: <span style={{ visibility: 'hidden' }}>Project</span>,
+                cellStyle: S_NAME_TD,
+                getValue: (proj) => proj.projectName,
+                render: (proj) => (
+                  <div style={{ opacity: proj.status === 'DRAFT' ? 0.7 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       {proj.status === 'DRAFT' && <StatusBadge label="DRAFT" tone="info" variant="chip" size="small" />}
                       <span>{proj.projectName}</span>
@@ -653,9 +648,16 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                       </span>
                       {proj.endsOn && <span style={{ color: 'var(--color-status-danger)', marginLeft: 4 }}>closes {format(new Date(proj.endsOn), 'dd MMM')}</span>}
                     </div>
-                  </td>
-                  {data.weeks.map((w) => {
-                    const wd = proj.weekData.find((d) => d.weekStart === w);
+                  </div>
+                ),
+              },
+              ...data.weeks.map((w) => ({
+                key: `wk-${w}`,
+                title: <span style={{ ...S_WEEK_TH, background: w === currentWeek ? 'var(--color-accent-bg)' : 'var(--color-surface-alt)', display: 'inline-block', minWidth: 50 }}>{format(new Date(w), 'dd')}</span>,
+                align: 'center' as const,
+                cellStyle: { padding: 0, minWidth: 52, verticalAlign: 'top' as const },
+                render: (proj: PlannerProjectRow) => {
+                  const wd = proj.weekData.find((d) => d.weekStart === w);
                     const isClosing = proj.endsOn && w <= proj.endsOn.slice(0, 10) && addDays(w, 7) > proj.endsOn.slice(0, 10);
                     const movesFrom = sim.moves.filter((m) => m.fromProjectId === proj.projectId && m.weekStart === w);
                     const removedIds = new Set(movesFrom.map((m) => m.personId));
@@ -667,9 +669,8 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                     const chips = showChips ? benchCandidatesFor(primaryDemand) : [];
 
                     return (
-                      <td
-                        key={w}
-                        style={{ ...S_CELL, background: cellBackground(proj, wd, w), cursor: hasContent ? 'pointer' : undefined }}
+                      <div
+                        style={{ ...S_CELL, background: cellBackground(proj, wd, w), cursor: hasContent ? 'pointer' : undefined, minHeight: 28, padding: '2px 2px' }}
                         onDragOver={simulating ? (e) => e.preventDefault() : undefined}
                         onDrop={simulating ? () => handleCellDrop(proj.projectId, proj.projectName, w, primaryDemand) : undefined}
                         onClick={hasContent && wd ? (e) => {
@@ -843,9 +844,11 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                               const initials = c.person.displayName.split(' ').map((s) => s[0]).slice(0, 2).join('');
                               const tone = c.cellClass === 'SUGGESTED' ? 'var(--color-status-active)' : 'var(--color-status-warning)';
                               return (
-                                <button
+                                <Button
                                   key={c.person.personId}
                                   data-stop-cell-click
+                                  variant="secondary"
+                                  size="sm"
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -871,38 +874,53 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                                     fontWeight: 600,
                                     padding: '0 3px',
                                     borderRadius: 3,
-                                    cursor: 'pointer',
                                     lineHeight: 1.6,
                                   }}
                                 >
                                   {initials}·{Math.round(c.score * 100)}
-                                </button>
+                                </Button>
                               );
                             })}
                           </div>
                         )}
-                      </td>
+                      </div>
                     );
-                  })}
-                  {(() => {
-                    const baseProj = data.projects.find((p) => p.projectId === proj.projectId);
-                    const baselineFte = baseProj
-                      ? baseProj.weekData.reduce((s, wd) => s + wd.totalSupplyPercent, 0) / Math.max(1, baseProj.weekData.length) / 100
-                      : 0;
-                    const simulatedFte = proj.weekData.reduce((s, wd) => s + wd.totalSupplyPercent, 0) / Math.max(1, proj.weekData.length) / 100;
-                    const delta = simulatedFte - baselineFte;
-                    const deltaColor = Math.abs(delta) < 0.05 ? 'var(--color-text-muted)' : delta > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)';
-                    return (
-                      <td style={{ padding: '4px 8px', borderBottom: '1px solid var(--color-border)', fontSize: 10, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 108, background: 'var(--color-surface)', position: 'sticky', right: 0 }}>
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: 9 }}>{baselineFte.toFixed(1)} → {simulatedFte.toFixed(1)}</div>
-                        <div style={{ color: deltaColor, fontWeight: 600 }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}</div>
-                      </td>
-                    );
-                  })()}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  },
+              })),
+              {
+                key: 'deltaFte',
+                title: <span style={{ visibility: 'hidden' }}>Δ FTE</span>,
+                align: 'right',
+                cellStyle: {
+                  padding: '4px 8px',
+                  fontSize: 10,
+                  fontVariantNumeric: 'tabular-nums',
+                  minWidth: 108,
+                  background: 'var(--color-surface)',
+                  position: 'sticky',
+                  right: 0,
+                  zIndex: 1,
+                },
+                render: (proj) => {
+                  const baseProj = data.projects.find((p) => p.projectId === proj.projectId);
+                  const baselineFte = baseProj
+                    ? baseProj.weekData.reduce((s, wd) => s + wd.totalSupplyPercent, 0) / Math.max(1, baseProj.weekData.length) / 100
+                    : 0;
+                  const simulatedFte = proj.weekData.reduce((s, wd) => s + wd.totalSupplyPercent, 0) / Math.max(1, proj.weekData.length) / 100;
+                  const delta = simulatedFte - baselineFte;
+                  const deltaColor = Math.abs(delta) < 0.05 ? 'var(--color-text-muted)' : delta > 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)';
+                  return (
+                    <>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 9 }}>{baselineFte.toFixed(1)} → {simulatedFte.toFixed(1)}</div>
+                      <div style={{ color: deltaColor, fontWeight: 600 }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)}</div>
+                    </>
+                  );
+                },
+              },
+            ] as Column<PlannerProjectRow>[]}
+            rows={modifiedProjects}
+            getRowKey={(proj) => proj.projectId}
+          />
         </div>
       </div>
 

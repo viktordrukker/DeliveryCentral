@@ -5,6 +5,15 @@ import { useAuth } from '@/app/auth-context';
 import { createAssignment } from '@/lib/api/assignments';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { PlannerBenchPerson } from '@/lib/api/staffing-desk';
+import {
+  Button,
+  DatePicker,
+  FormField,
+  Input,
+  Modal,
+  Select,
+  Textarea,
+} from '@/components/ds';
 
 interface Props {
   projectId: string;
@@ -15,23 +24,12 @@ interface Props {
   onCreated: () => void;
 }
 
-const S_BACKDROP: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 100,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
-const S_PANEL: React.CSSProperties = {
-  width: 'min(520px, 96vw)', maxHeight: '92vh',
-  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-  borderRadius: 8, boxShadow: 'var(--shadow-modal)',
-  display: 'flex', flexDirection: 'column',
-};
-const S_HEADER: React.CSSProperties = { padding: '12px 16px', borderBottom: '1px solid var(--color-border)' };
-const S_BODY: React.CSSProperties = { padding: '12px 16px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 };
-const S_FOOTER: React.CSSProperties = {
-  padding: '10px 16px', borderTop: '1px solid var(--color-border)',
-  display: 'flex', justifyContent: 'space-between', gap: 8,
-};
-
+/**
+ * Phase DS-2-7 Tier C1 — rebuilt on `<Modal>` (not `<FormModal>`) because
+ * the form has TWO submit paths: "Save draft" and "Create & request".
+ * `<Modal>` gives us focus trap / backdrop / scroll lock / mobile auto-
+ * fullscreen — the dual-action footer is custom.
+ */
 export function PlannerDraftAssignmentModal({ projectId, projectName, startDate, benchPeople, onClose, onCreated }: Props): JSX.Element {
   const { principal } = useAuth();
   const [personId, setPersonId] = useState('');
@@ -47,15 +45,14 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
   const allocPercent = parseInt(alloc, 10) || 0;
   const actorId = principal?.personId ?? '';
 
-  // Sort bench by availability desc, then days-on-bench desc
   const sortedBench = useMemo(() => {
     return [...benchPeople].sort((a, b) => b.availablePercent - a.availablePercent || b.daysOnBench - a.daysOnBench);
   }, [benchPeople]);
 
   const selectedPerson = sortedBench.find((p) => p.personId === personId) ?? null;
 
-  const submit = useCallback(async (e: FormEvent, asDraft: boolean) => {
-    e.preventDefault();
+  const submit = useCallback(async (e: FormEvent | undefined, asDraft: boolean) => {
+    if (e) e.preventDefault();
     if (!actorId) { setError('Not authenticated'); return; }
     if (!personId) { setError('Pick a person'); return; }
     if (!effectiveRole) { setError('Staffing role is required'); return; }
@@ -86,28 +83,47 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
   }, [actorId, personId, effectiveRole, allocPercent, endDate, startDate, note, projectId, onCreated]);
 
   return (
-    <div style={S_BACKDROP} onClick={onClose} role="dialog" aria-modal="true" aria-label="Draft assignment">
-      <div style={S_PANEL} onClick={(e) => e.stopPropagation()}>
-        <div style={S_HEADER}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Draft assignment</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            {projectName} · week of {startDate}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--color-text-subtle)', marginTop: 2 }}>
-            Creates a REQUESTED or DRAFT ProjectAssignment visible in team tabs, staffing desk, and planner.
-          </div>
-        </div>
-
-        <form onSubmit={(e) => void submit(e, false)} style={{ display: 'contents' }}>
-          <div style={S_BODY}>
-            <label className="field" style={{ gap: 4 }}>
-              <span className="field__label">Person *</span>
-              <select
-                className="field__control"
+    <Modal
+      open
+      onClose={onClose}
+      title="Draft assignment"
+      description={`${projectName} · week of ${startDate} — Creates a REQUESTED or DRAFT ProjectAssignment visible in team tabs, staffing desk, and planner.`}
+      size="md"
+      closeOnBackdropClick={!submitting}
+      closeOnEscape={!submitting}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button
+            variant="secondary"
+            onClick={() => void submit(undefined, true)}
+            disabled={submitting || !personId || !effectiveRole}
+            data-testid="draft-save"
+          >
+            {submitting ? 'Saving…' : 'Save draft'}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => void submit(undefined, false)}
+            disabled={submitting || !personId || !effectiveRole}
+            data-testid="draft-request"
+            data-autofocus="true"
+          >
+            {submitting ? 'Creating…' : 'Create & request'}
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={(e) => void submit(e, false)} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <FormField label="Person" required>
+          {(props) => (
+            <>
+              <Select
                 value={personId}
                 onChange={(e) => setPersonId(e.target.value)}
                 required
                 data-testid="draft-person-select"
+                {...props}
               >
                 <option value="">Pick from bench ({sortedBench.length})…</option>
                 {sortedBench.map((p) => (
@@ -115,89 +131,62 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
                     {p.displayName}{p.grade ? ` · ${p.grade}` : ''} · {p.availablePercent}% free · {p.daysOnBench}d bench
                   </option>
                 ))}
-              </select>
+              </Select>
               {selectedPerson && selectedPerson.skills.length > 0 && (
                 <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>
                   Skills: {selectedPerson.skills.slice(0, 6).join(', ')}{selectedPerson.skills.length > 6 ? '…' : ''}
                 </div>
               )}
-            </label>
+            </>
+          )}
+        </FormField>
 
-            <label className="field" style={{ gap: 4 }}>
-              <span className="field__label">Staffing role *</span>
-              <select className="field__control" value={staffingRole} onChange={(e) => setStaffingRole(e.target.value)} required>
-                <option value="">Select a role…</option>
-                {STAFFING_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                <option value="__custom__">Other (custom)</option>
-              </select>
-            </label>
-            {staffingRole === '__custom__' && (
-              <label className="field" style={{ gap: 4 }}>
-                <span className="field__label">Custom role *</span>
-                <input className="field__control" value={customRole} onChange={(e) => setCustomRole(e.target.value)} required />
-              </label>
-            )}
+        <FormField label="Staffing role" required>
+          {(props) => (
+            <Select value={staffingRole} onChange={(e) => setStaffingRole(e.target.value)} required {...props}>
+              <option value="">Select a role…</option>
+              {STAFFING_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value="__custom__">Other (custom)</option>
+            </Select>
+          )}
+        </FormField>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <label className="field" style={{ gap: 4 }}>
-                <span className="field__label">Allocation % *</span>
-                <input
-                  type="number" min={1} max={100}
-                  className="field__control"
-                  value={alloc}
-                  onChange={(e) => setAlloc(e.target.value)}
-                />
-              </label>
-              <label className="field" style={{ gap: 4 }}>
-                <span className="field__label">End date</span>
-                <input
-                  type="date"
-                  className="field__control"
-                  value={endDate}
-                  min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </label>
-            </div>
+        {staffingRole === '__custom__' && (
+          <FormField label="Custom role" required>
+            {(props) => <Input value={customRole} onChange={(e) => setCustomRole(e.target.value)} required {...props} />}
+          </FormField>
+        )}
 
-            <label className="field" style={{ gap: 4 }}>
-              <span className="field__label">Note</span>
-              <textarea
-                className="field__control"
-                rows={2}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Optional context (e.g. tentative — pending client confirmation)"
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <FormField label="Allocation %" required>
+            {(props) => (
+              <Input
+                type="number" min={1} max={100}
+                value={alloc}
+                onChange={(e) => setAlloc(e.target.value)}
+                {...props}
               />
-            </label>
+            )}
+          </FormField>
+          <FormField label="End date">
+            {(props) => <DatePicker value={endDate} min={startDate} onValueChange={setEndDate} {...props} />}
+          </FormField>
+        </div>
 
-            {error && <div style={{ fontSize: 11, color: 'var(--color-status-danger)' }}>{error}</div>}
-          </div>
+        <FormField label="Note">
+          {(props) => (
+            <Textarea
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Optional context (e.g. tentative — pending client confirmation)"
+              {...props}
+            />
+          )}
+        </FormField>
 
-          <div style={S_FOOTER}>
-            <button className="button button--secondary" onClick={onClose} type="button" disabled={submitting}>Cancel</button>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                className="button button--secondary"
-                onClick={(e) => void submit(e as unknown as FormEvent, true)}
-                type="button"
-                disabled={submitting || !personId || !effectiveRole}
-                data-testid="draft-save"
-              >
-                {submitting ? 'Saving…' : 'Save draft'}
-              </button>
-              <button
-                className="button"
-                type="submit"
-                disabled={submitting || !personId || !effectiveRole}
-                data-testid="draft-request"
-              >
-                {submitting ? 'Creating…' : 'Create & request'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && <div style={{ fontSize: 11, color: 'var(--color-status-danger)' }}>{error}</div>}
+      </form>
+    </Modal>
   );
 }

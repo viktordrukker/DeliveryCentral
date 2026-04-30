@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { RadiatorHistoryEntry } from '@/lib/api/project-radiator';
+import { Button } from '@/components/ds';
 
 interface OverallScoreSparklineProps {
   history: RadiatorHistoryEntry[];
@@ -61,13 +62,9 @@ export function OverallScoreSparkline({ history, selectedWeek, onSelectWeek }: O
           Overall score · {data.length} check-in{data.length === 1 ? '' : 's'}
         </span>
         {selectedWeek !== 'current' ? (
-          <button
-            className="button--project-detail"
-            onClick={() => onSelectWeek('current')}
-            type="button"
-          >
+          <Button variant="secondary" size="sm" onClick={() => onSelectWeek('current')}>
             Return to current
-          </button>
+          </Button>
         ) : null}
       </div>
 

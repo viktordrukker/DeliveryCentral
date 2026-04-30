@@ -1,4 +1,5 @@
 import { TeamSummary } from '@/lib/api/teams';
+import { Button } from '@/components/ds';
 
 interface TeamListProps {
   items: TeamSummary[];
@@ -10,7 +11,8 @@ export function TeamList({ items, onSelect, selectedId }: TeamListProps): JSX.El
   return (
     <div className="dictionary-list">
       {items.map((item) => (
-        <button
+        <Button
+          variant="secondary"
           className={`dictionary-list__item${
             item.id === selectedId ? ' dictionary-list__item--active' : ''
           }`}
@@ -28,7 +30,7 @@ export function TeamList({ items, onSelect, selectedId }: TeamListProps): JSX.El
             </span>
           </div>
           <p className="dictionary-list__meta">{item.code}</p>
-        </button>
+        </Button>
       ))}
     </div>
   );

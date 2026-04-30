@@ -22,6 +22,7 @@ import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type Rol
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { fetchProjectDashboard, type ProjectDashboardResponse } from '@/lib/api/project-dashboard';
+import { Table, type Column } from '@/components/ds';
 
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 
@@ -154,23 +155,19 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
           teamAssignments.length === 0 ? (
             <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
           ) : (
-            <table className="dash-compact-table">
-              <thead>
-                <tr><th>Person</th><th>Role</th><th style={{ textAlign: 'right' }}>Alloc %</th><th>From</th><th>To</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {teamAssignments.map((a) => (
-                  <tr key={a.id}>
-                    <td><Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link></td>
-                    <td>{a.staffingRole}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{a.allocationPercent}%</td>
-                    <td>{formatDateShort(a.startDate)}</td>
-                    <td>{a.endDate ? formatDateShort(a.endDate) : '\u2014'}</td>
-                    <td>{a.approvalState}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => <Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link> },
+                { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}>{a.allocationPercent}%</span> },
+                { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
+                { key: 'to', title: 'To', getValue: (a) => a.endDate ?? '', render: (a) => a.endDate ? formatDateShort(a.endDate) : '\u2014' },
+                { key: 'status', title: 'Status', getValue: (a) => a.approvalState, render: (a) => a.approvalState },
+              ] as Column<AssignmentDirectoryItem>[]}
+              rows={teamAssignments}
+              getRowKey={(a) => a.id}
+            />
           )
         ) : null}
       </SectionCard>
@@ -189,22 +186,21 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
 
         {dashboard && dashboard.allocationByPerson.length > 0 ? (
           <SectionCard title="Allocation by Person">
-            <table className="dash-compact-table">
-              <thead><tr><th>Person</th><th style={NUM}>Alloc %</th><th style={{ width: 120 }}>Bar</th></tr></thead>
-              <tbody>
-                {dashboard.allocationByPerson.map((item) => (
-                  <tr key={item.personId} style={{ cursor: 'pointer' }} onClick={() => navigate(`/people/${item.personId}`)}>
-                    <td style={{ fontWeight: 500 }}>{item.displayName}</td>
-                    <td style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</td>
-                    <td>
-                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span> },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.allocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600 }}>{i.allocationPercent}%</span> },
+                { key: 'bar', title: 'Bar', width: 120, render: (i) => (
+                  <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(i.allocationPercent, 100)}%`, borderRadius: 2, background: i.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />
+                  </div>
+                ) },
+              ] as Column<typeof dashboard.allocationByPerson[number]>[]}
+              rows={dashboard.allocationByPerson}
+              getRowKey={(i) => i.personId}
+              onRowClick={(i) => navigate(`/people/${i.personId}`)}
+            />
           </SectionCard>
         ) : (
           <SectionCard title="Allocation by Person">
@@ -240,29 +236,28 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
       </SectionCard>
 
       {/* 6. Activity by Week (collapsible, defaultCollapsed) */}
-      {dashboard && dashboard.evidenceByWeek.some((w) => w.totalHours > 0) ? (
-        <SectionCard title="Activity by Week (12 wk)" collapsible defaultCollapsed>
-          <table className="dash-compact-table">
-            <thead><tr><th>Week</th><th style={NUM}>Hours</th><th style={{ width: 120 }}>Bar</th></tr></thead>
-            <tbody>
-              {dashboard.evidenceByWeek.filter((w) => w.totalHours > 0).map((w) => {
-                const maxH = Math.max(...dashboard.evidenceByWeek.map((wk) => wk.totalHours), 1);
-                return (
-                  <tr key={w.weekStarting}>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(w.weekStarting)}</td>
-                    <td style={{ ...NUM, fontWeight: 600 }}>{w.totalHours}h</td>
-                    <td>
-                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.round((w.totalHours / maxH) * 100)}%`, borderRadius: 2, background: 'var(--color-status-active)' }} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </SectionCard>
-      ) : null}
+      {dashboard && dashboard.evidenceByWeek.some((w) => w.totalHours > 0) ? (() => {
+        const visibleWeeks = dashboard.evidenceByWeek.filter((w) => w.totalHours > 0);
+        const maxH = Math.max(...dashboard.evidenceByWeek.map((wk) => wk.totalHours), 1);
+        return (
+          <SectionCard title="Activity by Week (12 wk)" collapsible defaultCollapsed>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'week', title: 'Week', getValue: (w) => w.weekStarting, render: (w) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(w.weekStarting)}</span> },
+                { key: 'hours', title: 'Hours', align: 'right', getValue: (w) => w.totalHours, render: (w) => <span style={{ ...NUM, fontWeight: 600 }}>{w.totalHours}h</span> },
+                { key: 'bar', title: 'Bar', width: 120, render: (w) => (
+                  <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.round((w.totalHours / maxH) * 100)}%`, borderRadius: 2, background: 'var(--color-status-active)' }} />
+                  </div>
+                ) },
+              ] as Column<typeof visibleWeeks[number]>[]}
+              rows={visibleWeeks}
+              getRowKey={(w) => w.weekStarting}
+            />
+          </SectionCard>
+        );
+      })() : null}
 
       {/* 7. Assign Team (collapsible, defaultCollapsed) */}
       {canManageProject ? (

@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 
+import { IconButton } from '@/components/ds';
+
 /* ══════════════════════════════════════════════════════════════════
    Tips Context — global toggle for "show all tips" mode
    ══════════════════════════════════════════════════════════════════ */
@@ -30,15 +32,15 @@ export function useTips(): TipsContextValue {
 export function TipTrigger(): JSX.Element {
   const { showAll, toggleShowAll } = useTips();
   return (
-    <button
+    <IconButton
       className={`tip-trigger ${showAll ? 'tip-trigger--active' : ''}`}
       onClick={toggleShowAll}
-      type="button"
+      size="sm"
       aria-label={showAll ? 'Hide tips' : 'Show tips'}
       title={showAll ? 'Hide all tips' : 'Show all tips'}
     >
       ?
-    </button>
+    </IconButton>
   );
 }
 

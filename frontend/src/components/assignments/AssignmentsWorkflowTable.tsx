@@ -15,11 +15,6 @@ import {
   S_TABS,
   S_TAB,
   S_TAB_ACTIVE,
-  S_TABLE,
-  S_TH,
-  S_TH_FILTER,
-  S_TD,
-  S_ROW,
   S_TOOLBAR,
   STATUS_OPTS,
   PRIORITY_OPTS,
@@ -27,6 +22,7 @@ import {
   applyInlineFilters,
   computeUniqueValues,
 } from '@/components/staffing-desk/table-shared';
+import { Button, Table, type Column } from '@/components/ds';
 
 export type WorkflowTab = 'assignments' | 'positions';
 
@@ -105,6 +101,20 @@ const POSITION_COLUMNS: ColDef[] = [
 
 /* ── Component ── */
 
+/**
+ * Phase DS-4-12 — drop-in repeat of `StaffingDeskTable`'s migration. Ported
+ * to the DS `<Table>` primitive with `tableLayout="fixed"` + the bespoke
+ * `renderFilterCell` / `cellProps` extensions added there. Same justification:
+ * UX contract requires bespoke filter UX (autocomplete + multiselect-with-
+ * search) and the column configurator with drag-reorder + presets — both
+ * richer than DataView's MVP.
+ *
+ * Preserved: `useColumnVisibility('asn-assignments' | 'asn-positions')`
+ * localStorage keys, ColumnConfigurator, `data-testid="workflow-table"` (now
+ * on the Table wrapper), `tab-assignments` / `tab-positions` on the tab
+ * buttons, the per-tab empty-state copy ("No ${activeTab} found." vs "No rows
+ * match the current filters."), and the bespoke "Next Step" column.
+ */
 export function AssignmentsWorkflowTable({ items, activeTab, onTabChange, onRowClick, columnsOpen, onColumnsClose }: Props): JSX.Element {
   const [assignmentFilters, setAssignmentFilters] = useState<InlineFilterState>({});
   const [positionFilters, setPositionFilters] = useState<InlineFilterState>({});
@@ -140,72 +150,103 @@ export function AssignmentsWorkflowTable({ items, activeTab, onTabChange, onRowC
   const activeFilterCount = Object.values(inlineFilters).filter(Boolean).length;
   const uniqueValuesMap = useMemo(() => computeUniqueValues(rawItems, allCols), [rawItems, allCols]);
 
+  // ── ColDef → Column<StaffingDeskRow> mapping for the DS primitive ────────
+  const dsColumns: Column<StaffingDeskRow>[] = useMemo(
+    () => visibleCols.map((c) => ({
+      key: c.key,
+      title: c.label,
+      width: c.width,
+      align: c.align,
+      getValue: c.getValue,
+      // Wrap render output in `<span>` so the `.cell-truncate > span` CSS rule
+      // applies (display:block + nowrap + ellipsis) — keeps inline children
+      // like `<StatusBadge variant="dot">` on a single line.
+      render: (row) => <span>{c.render(row)}</span>,
+      className: 'cell-truncate',
+    })),
+    [visibleCols],
+  );
+
+  // Per-cell `data-full` for the cell-truncate hover-tooltip CSS attr.
+  const cellProps = useCallback(
+    (row: StaffingDeskRow, column: Column<StaffingDeskRow>): Record<string, string | undefined> => {
+      if (!column.getValue) return {};
+      const val = column.getValue(row);
+      const fullText = val != null ? String(val) : '';
+      return fullText.length > 15 ? { 'data-full': fullText } : {};
+    },
+    [],
+  );
+
+  // Bespoke filter row — one cell per visible column.
+  const renderFilterCell = useCallback(
+    (column: Column<StaffingDeskRow>) => {
+      const colDef = colMap.get(column.key);
+      if (!colDef) return null;
+      const value = inlineFilters[colDef.key] ?? '';
+      return (
+        <FilterCell
+          col={colDef}
+          value={value}
+          onChange={(v) => setFilter(colDef.key, v)}
+          uniqueValues={uniqueValuesMap[colDef.key]}
+        />
+      );
+    },
+    [colMap, inlineFilters, setFilter, uniqueValuesMap],
+  );
+
+  // Per-tab empty-state copy preserved verbatim from the contract.
+  const emptyState = (
+    <div style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>
+      {rawItems.length === 0 ? `No ${activeTab} found.` : 'No rows match the current filters.'}
+    </div>
+  );
+
   return (
     <div>
       <div style={S_TOOLBAR}>
         <div style={S_TABS}>
-          <button
+          <Button
             data-testid="tab-assignments"
-            style={activeTab === 'assignments' ? S_TAB_ACTIVE : S_TAB}
+            variant={activeTab === 'assignments' ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => onTabChange('assignments')}
             type="button"
           >
             Assignments ({assignmentItems.length})
-          </button>
-          <button
+          </Button>
+          <Button
             data-testid="tab-positions"
-            style={activeTab === 'positions' ? S_TAB_ACTIVE : S_TAB}
+            variant={activeTab === 'positions' ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => onTabChange('positions')}
             type="button"
           >
             Positions ({positionItems.length})
-          </button>
+          </Button>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
           {activeFilterCount > 0 && (
-            <button className="button button--secondary button--sm" onClick={() => setInlineFilters({})} type="button" style={{ fontSize: 9 }}>
+            <Button variant="secondary" size="sm" onClick={() => setInlineFilters({})} type="button" style={{ fontSize: 9 }}>
               Clear filters ({activeFilterCount})
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={S_TABLE} data-testid="workflow-table">
-          <colgroup>
-            {visibleCols.map((c) => (
-              <col key={c.key} style={{ width: c.width ?? 120, minWidth: c.width ?? 120 }} />
-            ))}
-          </colgroup>
-          <thead>
-            <tr>
-              {visibleCols.map((c) => (
-                <th key={c.key} style={{ ...S_TH, textAlign: c.align ?? 'left', minWidth: c.width ?? 120, width: c.width ?? 120 }}>{c.label}</th>
-              ))}
-            </tr>
-            <tr>
-              {visibleCols.map((c) => (
-                <th key={`f-${c.key}`} style={S_TH_FILTER}>
-                  <FilterCell col={c} value={inlineFilters[c.key] ?? ''} onChange={(v) => setFilter(c.key, v)} uniqueValues={uniqueValuesMap[c.key]} />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.length === 0 ? (
-              <tr>
-                <td colSpan={visibleCols.length} style={{ padding: 'var(--space-4)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>
-                  {rawItems.length === 0 ? `No ${activeTab} found.` : 'No rows match the current filters.'}
-                </td>
-              </tr>
-            ) : (
-              currentItems.map((row) => (
-                <RowRenderer key={row.id} row={row} visibleCols={visibleCols} onRowClick={onRowClick} />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        testId="workflow-table"
+        variant="compact"
+        tableLayout="fixed"
+        columns={dsColumns}
+        rows={currentItems}
+        getRowKey={(r) => r.id}
+        onRowClick={onRowClick ? (r) => onRowClick(r) : undefined}
+        renderFilterCell={renderFilterCell}
+        cellProps={cellProps}
+        emptyState={emptyState}
+      />
 
       <ColumnConfigurator
         open={!!columnsOpen}
@@ -247,37 +288,4 @@ function FilterCell({ col, value, onChange, uniqueValues }: { col: ColDef; onCha
     default:
       return <NoFilter />;
   }
-}
-
-/* ── Row renderer ── */
-
-function RowRenderer({ row, visibleCols, onRowClick }: {
-  onRowClick?: (item: StaffingDeskRow) => void;
-  row: StaffingDeskRow;
-  visibleCols: ColDef[];
-}): JSX.Element {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <tr
-      style={{ ...S_ROW, background: hovered ? 'var(--color-surface-alt)' : undefined }}
-      onClick={() => onRowClick?.(row)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {visibleCols.map((col) => {
-        const textVal = col.getValue(row);
-        const fullText = textVal != null ? String(textVal) : '';
-        return (
-          <td
-            key={col.key}
-            className="cell-truncate"
-            data-full={fullText.length > 15 ? fullText : undefined}
-            style={{ ...S_TD, textAlign: col.align ?? 'left' }}
-          >
-            <span>{col.render(row)}</span>
-          </td>
-        );
-      })}
-    </tr>
-  );
 }

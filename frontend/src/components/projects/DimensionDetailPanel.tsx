@@ -1,4 +1,5 @@
 import { SectionCard } from '@/components/common/SectionCard';
+import { IconButton, Table, type Column } from '@/components/ds';
 import type { DimensionDetailsJson, SubCriterionValue } from '@/lib/api/project-rag';
 
 type Dimension = 'scope' | 'schedule' | 'budget' | 'business';
@@ -72,23 +73,24 @@ export function DimensionDetailPanel({ dimension, details, onClose }: DimensionD
   const titleNode = (
     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
       <span>{DIMENSION_TITLES[dimension]} Detail</span>
-      <button
-        onClick={onClose}
-        aria-label="Close panel"
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 18,
-          color: 'var(--color-text-muted)',
-          lineHeight: 1,
-          padding: 'var(--space-1)',
-        }}
-      >
-        x
-      </button>
+      <IconButton onClick={onClose} aria-label="Close panel" size="sm">\u00d7</IconButton>
     </span>
   );
+
+  const rows = entries.map(([key, val]) => ({ key, label: SUB_CRITERION_LABELS[key] ?? key, value: val }));
+
+  const columns: Column<{ key: string; label: string; value: SubCriterionValue }>[] = [
+    { key: 'criterion', title: 'Sub-Criterion', getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
+    { key: 'rating', title: 'Rating', width: 110, render: (r) => <RatingBar value={r.value.rating} /> },
+    { key: 'source', title: 'Source', width: 70, getValue: (r) => r.value.auto ? 'Auto' : 'Manual', render: (r) => (
+      r.value.auto ? (
+        <span style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 3, background: 'var(--color-status-info)', color: 'var(--color-surface)' }}>Auto</span>
+      ) : (
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Manual</span>
+      )
+    ) },
+    { key: 'note', title: 'Note', getValue: (r) => r.value.note ?? '', render: (r) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{r.value.note || '\u2014'}</span> },
+  ];
 
   return (
     <div data-testid="dimension-detail-panel" style={{ borderLeft: '3px solid var(--color-accent)' }}>
@@ -98,42 +100,12 @@ export function DimensionDetailPanel({ dimension, details, onClose }: DimensionD
             No sub-criteria data available for this dimension.
           </div>
         ) : (
-          <table className="dash-compact-table" style={{ fontSize: 12, width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ minWidth: 160 }}>Sub-Criterion</th>
-                <th style={{ width: 110 }}>Rating</th>
-                <th style={{ width: 70 }}>Source</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map(([key, val]) => (
-                <tr key={key}>
-                  <td style={{ fontWeight: 500 }}>{SUB_CRITERION_LABELS[key] ?? key}</td>
-                  <td><RatingBar value={val.rating} /></td>
-                  <td>
-                    {val.auto ? (
-                      <span style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        background: 'var(--color-status-info)',
-                        color: 'var(--color-surface)',
-                      }}>
-                        Auto
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Manual</span>
-                    )}
-                  </td>
-                  <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{val.note || '\u2014'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={columns}
+            rows={rows}
+            getRowKey={(r) => r.key}
+          />
         )}
       </SectionCard>
     </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
@@ -7,6 +7,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
+import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
 import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
@@ -20,10 +21,12 @@ import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
 import { useStaffingDeskActions } from '@/features/staffing-desk/useStaffingDeskActions';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import type { StaffingDeskRow } from '@/lib/api/staffing-desk';
+import { Button } from '@/components/ds';
 
 const FILTER_DEFAULTS = {
   allocMax: '',
   allocMin: '',
+  colWidths: '',
   from: '',
   kind: '',
   orgUnitId: '',
@@ -42,6 +45,24 @@ const FILTER_DEFAULTS = {
   view: 'table',
 };
 
+function parseColWidths(serialized: string): Record<string, number> {
+  if (!serialized) return {};
+  const result: Record<string, number> = {};
+  for (const pair of serialized.split(',')) {
+    const [key, value] = pair.split(':');
+    const n = Number(value);
+    if (key && Number.isFinite(n) && n > 0) result[key] = n;
+  }
+  return result;
+}
+
+function serializeColWidths(widths: Record<string, number>): string {
+  return Object.entries(widths)
+    .filter(([, v]) => Number.isFinite(v) && v > 0)
+    .map(([k, v]) => `${k}:${Math.round(v)}`)
+    .join(',');
+}
+
 export function StaffingDeskPage(): JSX.Element {
   const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
   const { setActions } = useTitleBarActions();
@@ -49,8 +70,20 @@ export function StaffingDeskPage(): JSX.Element {
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
+  const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [timelinePopup, setTimelinePopup] = useState<{ personId: string; personName: string } | null>(null);
+
+  // Default-hidden statuses — surfacing rejected/cancelled rows on the
+  // staffing desk creates noise; users explicitly look at active/pending
+  // work here. They can still appear in dedicated audit/history surfaces.
+  const HIDDEN_STATUSES = new Set(['REJECTED', 'CANCELLED']);
+
+  const columnWidths = useMemo(() => parseColWidths(filters.colWidths), [filters.colWidths]);
+  const handleColumnWidthChange = useCallback((columnKey: string, width: number) => {
+    const next = { ...parseColWidths(filters.colWidths), [columnKey]: Math.round(width) };
+    setFilters({ colWidths: serializeColWidths(next) });
+  }, [filters.colWidths, setFilters]);
 
   const state = useStaffingDesk({
     kind: filters.kind,
@@ -78,7 +111,7 @@ export function StaffingDeskPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button className="button button--secondary button--sm" onClick={() => setColumnsOpen(true)} type="button">Columns</button>
+        <Button variant="secondary" size="sm" onClick={() => setColumnsOpen(true)} type="button">Columns</Button>
         <SavedFiltersDropdown currentFilters={filters} onApply={(f) => setFilters(f as Partial<typeof filters>)} />
         <StaffingDeskExportButton
           disabled={state.isLoading || state.totalCount === 0}
@@ -111,22 +144,31 @@ export function StaffingDeskPage(): JSX.Element {
 
       {/* Action buttons below KPIs */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Link className="button button--sm" to="/assignments/new">Make Assignment</Link>
-        <Link className="button button--secondary button--sm" to="/staffing-requests/new">Create Staffing Request</Link>
+        <Button as={Link} variant="primary" size="sm" to="/assignments/new">Make Assignment</Button>
+        <Button variant="secondary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Staffing Request</Button>
+        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">Open full create page</Button>
       </div>
+      <StaffingRequestDrawer
+        open={requestDrawerOpen}
+        onClose={() => setRequestDrawerOpen(false)}
+        onSubmitted={() => state.refetch()}
+        initialValues={filters.project ? { projectId: filters.project } : undefined}
+      />
 
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
       {!state.isLoading && !state.error && filters.view === 'table' && (
         <StaffingDeskTable
-          items={state.items}
+          items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
           onRowClick={setSelectedRow}
           onPersonClick={handlePersonClick}
           activeTab={filters.kind}
           onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
           columnsOpen={columnsOpen}
           onColumnsClose={() => setColumnsOpen(false)}
+          columnWidths={columnWidths}
+          onColumnWidthChange={handleColumnWidthChange}
         />
       )}
 
@@ -145,9 +187,9 @@ export function StaffingDeskPage(): JSX.Element {
             {state.items.length} of {state.totalCount} records
           </span>
           <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
-            <button className="button button--secondary button--sm" disabled={state.page <= 1} onClick={() => setFilters({ page: String(state.page - 1) })} type="button">&larr;</button>
+            <Button variant="secondary" size="sm" disabled={state.page <= 1} onClick={() => setFilters({ page: String(state.page - 1) })} type="button">&larr;</Button>
             <span style={{ minWidth: 80, textAlign: 'center' }}>Page {state.page} of {Math.max(1, Math.ceil(state.totalCount / state.pageSize))}</span>
-            <button className="button button--secondary button--sm" disabled={state.page >= Math.ceil(state.totalCount / state.pageSize)} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</button>
+            <Button variant="secondary" size="sm" disabled={state.page >= Math.ceil(state.totalCount / state.pageSize)} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</Button>
           </div>
           <span style={{ flex: '1 1 0', textAlign: 'right' }}>
             <select className="field__control" style={{ fontSize: 11, padding: '2px 6px', width: 'auto', display: 'inline', minWidth: 0 }} value={filters.pageSize} onChange={(e) => setFilters({ pageSize: e.target.value, page: '1' })}>
@@ -171,7 +213,7 @@ export function StaffingDeskPage(): JSX.Element {
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{timelinePopup.personName}</div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Workload Timeline &mdash; 6 months back, 12 months forward</div>
               </div>
-              <button className="button button--secondary button--sm" onClick={() => setTimelinePopup(null)} type="button">&times;</button>
+              <Button variant="secondary" size="sm" onClick={() => setTimelinePopup(null)} type="button">&times;</Button>
             </div>
             <WorkloadTimeline personId={timelinePopup.personId} />
           </div>

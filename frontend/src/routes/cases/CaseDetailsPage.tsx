@@ -28,6 +28,7 @@ import {
 } from '@/lib/api/cases';
 import { useAuth } from '@/app/auth-context';
 import { useCaseDetails } from '@/features/cases/useCaseDetails';
+import { Button, Table, type Column } from '@/components/ds';
 
 export function CaseDetailsPage(): JSX.Element {
   const { id } = useParams();
@@ -235,9 +236,9 @@ export function CaseDetailsPage(): JSX.Element {
       />
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/cases">
+          <Button as={Link} variant="secondary" to="/cases">
             Back to cases
-          </Link>
+          </Button>
         }
         eyebrow="Cases"
         subtitle="Review linked people and optional staffing context without collapsing case workflow into assignment workflow."
@@ -300,29 +301,15 @@ export function CaseDetailsPage(): JSX.Element {
           {displayCase.status === 'OPEN' || displayCase.status === 'IN_PROGRESS' ? (
             <SectionCard title="Case Actions">
               <div className="entity-form__actions" style={{ gap: '12px', display: 'flex', flexWrap: 'wrap' }}>
-                <button
-                  className="button button--primary"
-                  disabled={isClosing}
-                  onClick={() => setConfirmCloseOpen(true)}
-                  type="button"
-                >
+                <Button variant="primary" disabled={isClosing} onClick={() => setConfirmCloseOpen(true)} type="button">
                   {isClosing ? 'Closing...' : 'Close Case'}
-                </button>
-                <button
-                  className="button button--secondary"
-                  onClick={() => setShowCancelForm((v) => !v)}
-                  type="button"
-                >
+                </Button>
+                <Button variant="secondary" onClick={() => setShowCancelForm((v) => !v)} type="button">
                   Cancel Case
-                </button>
-                <button
-                  className="button button--secondary"
-                  disabled={isArchiving}
-                  onClick={() => setConfirmArchiveOpen(true)}
-                  type="button"
-                >
+                </Button>
+                <Button variant="secondary" disabled={isArchiving} onClick={() => setConfirmArchiveOpen(true)} type="button">
                   {isArchiving ? 'Archiving...' : 'Archive'}
-                </button>
+                </Button>
               </div>
               {showCancelForm ? (
                 <div style={{ marginTop: '12px' }}>
@@ -336,21 +323,12 @@ export function CaseDetailsPage(): JSX.Element {
                     />
                   </label>
                   <div className="entity-form__actions" style={{ marginTop: '8px' }}>
-                    <button
-                      className="button button--primary"
-                      disabled={isCancelling || !cancelReason.trim()}
-                      onClick={() => setConfirmCancelOpen(true)}
-                      type="button"
-                    >
+                    <Button variant="primary" disabled={isCancelling || !cancelReason.trim()} onClick={() => setConfirmCancelOpen(true)} type="button">
                       {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
-                    </button>
-                    <button
-                      className="button button--secondary"
-                      onClick={() => { setShowCancelForm(false); setCancelReason(''); }}
-                      type="button"
-                    >
+                    </Button>
+                    <Button variant="secondary" onClick={() => { setShowCancelForm(false); setCancelReason(''); }} type="button">
                       Dismiss
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -416,71 +394,39 @@ export function CaseDetailsPage(): JSX.Element {
                   title="No steps"
                 />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="dash-compact-table">
-                    <thead>
-                      <tr>
-                        <th>Step</th>
-                        <th>Status</th>
-                        <th>Details</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {steps.map((step) => (
-                        <tr key={step.stepKey}>
-                          <td style={{ fontWeight: 500 }}>{step.displayName}</td>
-                          <td>
-                            {step.status === 'COMPLETED' ? (
-                              <span
-                                style={{
-                                  backgroundColor: 'var(--color-success-bg)',
-                                  border: '1px solid var(--color-status-active)',
-                                  borderRadius: '4px',
-                                  color: 'var(--color-status-active)',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  padding: '1px 6px',
-                                }}
-                              >
-                                Completed
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{step.status}</span>
-                            )}
-                          </td>
-                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                            {step.completedAt ? formatDateTime(step.completedAt) : ''}
-                            {step.dueAt && step.status !== 'COMPLETED' ? `Due ${formatDate(step.dueAt)}` : ''}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                              {step.status !== 'COMPLETED' ? (
-                                <button
-                                  className="button button--secondary"
-                                  disabled={completingStep === step.stepKey}
-                                  onClick={() => { void handleCompleteStep(step.stepKey); }}
-                                  type="button"
-                                >
-                                  {completingStep === step.stepKey ? 'Completing...' : 'Complete'}
-                                </button>
-                              ) : null}
-                              <button
-                                className="button button--secondary"
-                                disabled={removingStep === step.stepKey}
-                                onClick={() => { void handleRemoveStep(step.stepKey); }}
-                                style={{ fontSize: '12px' }}
-                                type="button"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'step', title: 'Step', getValue: (s) => s.displayName, render: (s) => <span style={{ fontWeight: 500 }}>{s.displayName}</span> },
+                    { key: 'status', title: 'Status', getValue: (s) => s.status, render: (s) => (
+                      s.status === 'COMPLETED' ? (
+                        <span style={{ backgroundColor: 'var(--color-success-bg)', border: '1px solid var(--color-status-active)', borderRadius: '4px', color: 'var(--color-status-active)', fontSize: '11px', fontWeight: 600, padding: '1px 6px' }}>Completed</span>
+                      ) : (
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{s.status}</span>
+                      )
+                    ) },
+                    { key: 'details', title: 'Details', getValue: (s) => s.completedAt ?? s.dueAt ?? '', render: (s) => (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        {s.completedAt ? formatDateTime(s.completedAt) : ''}
+                        {s.dueAt && s.status !== 'COMPLETED' ? `Due ${formatDate(s.dueAt)}` : ''}
+                      </span>
+                    ) },
+                    { key: 'actions', title: 'Actions', align: 'right', render: (s) => (
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        {s.status !== 'COMPLETED' ? (
+                          <Button variant="secondary" size="sm" disabled={completingStep === s.stepKey} onClick={() => { void handleCompleteStep(s.stepKey); }} type="button">
+                            {completingStep === s.stepKey ? 'Completing...' : 'Complete'}
+                          </Button>
+                        ) : null}
+                        <Button variant="secondary" size="sm" disabled={removingStep === s.stepKey} onClick={() => { void handleRemoveStep(s.stepKey); }} type="button">
+                          Remove
+                        </Button>
+                      </div>
+                    ) },
+                  ] as Column<CaseStep>[]}
+                  rows={steps}
+                  getRowKey={(s) => s.stepKey}
+                />
               )}
               {(displayCase?.status === 'OPEN' || displayCase?.status === 'IN_PROGRESS') ? (
                 <div style={{ borderTop: '1px solid var(--color-border)', display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px' }}>
@@ -492,14 +438,9 @@ export function CaseDetailsPage(): JSX.Element {
                     type="text"
                     value={newStepName}
                   />
-                  <button
-                    className="button button--primary"
-                    disabled={addingStep || !newStepName.trim()}
-                    onClick={() => { void handleAddStep(); }}
-                    type="button"
-                  >
+                  <Button variant="primary" disabled={addingStep || !newStepName.trim()} onClick={() => { void handleAddStep(); }} type="button">
                     {addingStep ? 'Adding...' : 'Add Step'}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </SectionCard>
@@ -510,26 +451,16 @@ export function CaseDetailsPage(): JSX.Element {
               {!commentsLoading && comments.length === 0 ? (
                 <EmptyState description="No comments yet." title="No comments" />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="dash-compact-table">
-                    <thead>
-                      <tr>
-                        <th>Comment</th>
-                        <th>Author</th>
-                        <th>Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {comments.map((comment) => (
-                        <tr key={comment.id}>
-                          <td style={{ fontWeight: 500 }}>{comment.body}</td>
-                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{comment.authorPersonId}</td>
-                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDateTime(comment.createdAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'body', title: 'Comment', getValue: (c) => c.body, render: (c) => <span style={{ fontWeight: 500 }}>{c.body}</span> },
+                    { key: 'author', title: 'Author', getValue: (c) => c.authorPersonId, render: (c) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.authorPersonId}</span> },
+                    { key: 'date', title: 'Date', getValue: (c) => c.createdAt, render: (c) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDateTime(c.createdAt)}</span> },
+                  ] as Column<CaseComment>[]}
+                  rows={comments}
+                  getRowKey={(c) => c.id}
+                />
               )}
               {principal?.personId ? (
                 <div style={{ borderTop: comments.length > 0 ? '1px solid var(--color-border)' : 'none', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: comments.length > 0 ? '12px' : 0 }}>
@@ -540,15 +471,9 @@ export function CaseDetailsPage(): JSX.Element {
                     rows={3}
                     value={newComment}
                   />
-                  <button
-                    className="button button--primary"
-                    disabled={addingComment || !newComment.trim()}
-                    onClick={() => { void handleAddComment(); }}
-                    style={{ alignSelf: 'flex-end' }}
-                    type="button"
-                  >
+                  <Button variant="primary" disabled={addingComment || !newComment.trim()} onClick={() => { void handleAddComment(); }} style={{ alignSelf: 'flex-end' }} type="button">
                     {addingComment ? 'Posting...' : 'Post Comment'}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </SectionCard>
@@ -589,30 +514,21 @@ export function CaseDetailsPage(): JSX.Element {
                   title="No participants"
                 />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="dash-compact-table">
-                    <thead>
-                      <tr>
-                        <th>Role</th>
-                        <th>Person</th>
-                        <th style={{ textAlign: 'right' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayCase.participants.map((participant) => (
-                        <tr key={`${participant.personId}-${participant.role}`} style={{ cursor: 'pointer' }} onClick={() => window.location.assign(`/people/${participant.personId}`)}>
-                          <td style={{ fontWeight: 500 }}>{participant.role}</td>
-                          <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{participant.personId}</td>
-                          <td style={{ textAlign: 'right' }}>
-                            <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${participant.personId}`}>
-                              Open person
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'role', title: 'Role', getValue: (p) => p.role, render: (p) => <span style={{ fontWeight: 500 }}>{p.role}</span> },
+                    { key: 'person', title: 'Person', getValue: (p) => p.personId, render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.personId}</span> },
+                    { key: 'open', title: '', align: 'right', render: (p) => (
+                      <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${p.personId}`} onClick={(e) => e.stopPropagation()}>
+                        Open person
+                      </Link>
+                    ) },
+                  ] as Column<typeof displayCase.participants[number]>[]}
+                  rows={displayCase.participants}
+                  getRowKey={(p) => `${p.personId}-${p.role}`}
+                  onRowClick={(p) => window.location.assign(`/people/${p.personId}`)}
+                />
               )}
             </SectionCard>
           </div>

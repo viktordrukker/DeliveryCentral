@@ -1,4 +1,7 @@
 import { MetadataDictionaryDetails } from '@/lib/api/metadata';
+import { Table, type Column } from '@/components/ds';
+
+type DictionaryEntry = MetadataDictionaryDetails['entries'][number];
 
 interface MetadataEntryPanelProps {
   dictionary: MetadataDictionaryDetails;
@@ -29,28 +32,17 @@ export function MetadataEntryPanel({ dictionary }: MetadataEntryPanelProps): JSX
       <div className="details-grid">
         <div className="section-card">
           <h3 className="section-card__title">Dictionary Entries</h3>
-          <div className="data-table">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Key</th>
-                  <th scope="col">Value</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dictionary.entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{entry.displayName}</td>
-                    <td>{entry.entryKey}</td>
-                    <td>{entry.entryValue}</td>
-                    <td>{entry.isEnabled ? 'Enabled' : 'Disabled'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'name', title: 'Name', getValue: (e) => e.displayName, render: (e) => e.displayName },
+              { key: 'key', title: 'Key', getValue: (e) => e.entryKey, render: (e) => e.entryKey },
+              { key: 'value', title: 'Value', getValue: (e) => e.entryValue, render: (e) => e.entryValue },
+              { key: 'status', title: 'Status', getValue: (e) => e.isEnabled ? 'Enabled' : 'Disabled', render: (e) => e.isEnabled ? 'Enabled' : 'Disabled' },
+            ] as Column<DictionaryEntry>[]}
+            rows={dictionary.entries}
+            getRowKey={(e) => e.id}
+          />
         </div>
 
         <div className="section-card">

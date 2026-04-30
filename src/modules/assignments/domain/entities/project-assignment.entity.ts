@@ -11,19 +11,27 @@ import {
   InvalidAssignmentTransitionError,
 } from '../value-objects/assignment-status';
 
+export type AssignmentSlaStageValue = 'PROPOSAL' | 'REVIEW' | 'APPROVAL' | 'RM_FINALIZE';
+
 interface ProjectAssignmentProps {
   allocationPercent?: AllocationPercent;
   approvedAt?: Date;
   archivedAt?: Date;
   cancellationReason?: string;
   notes?: string;
+  onboardingDate?: Date;
   onHoldCaseId?: string;
   onHoldReason?: string;
   personId: string;
   projectId: string;
   rejectionReason?: string;
+  rejectionReasonCode?: string;
   requestedAt: Date;
   requestedByPersonId?: string;
+  requiresDirectorApproval?: boolean;
+  slaBreachedAt?: Date;
+  slaDueAt?: Date;
+  slaStage?: AssignmentSlaStageValue;
   staffingRequestId?: string;
   staffingRole: string;
   status: AssignmentStatus;
@@ -85,6 +93,58 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
 
   public get rejectionReason(): string | undefined {
     return this.props.rejectionReason;
+  }
+
+  public get rejectionReasonCode(): string | undefined {
+    return this.props.rejectionReasonCode;
+  }
+
+  public get onboardingDate(): Date | undefined {
+    return this.props.onboardingDate;
+  }
+
+  public get requiresDirectorApproval(): boolean {
+    return this.props.requiresDirectorApproval ?? false;
+  }
+
+  public setRequiresDirectorApproval(value: boolean): void {
+    this.props.requiresDirectorApproval = value;
+  }
+
+  public setRejectionReasonCode(code: string | undefined): void {
+    this.props.rejectionReasonCode = code;
+  }
+
+  public setPersonId(personId: string): void {
+    this.props.personId = personId;
+  }
+
+  public setOnboardingDate(date: Date | undefined): void {
+    this.props.onboardingDate = date;
+  }
+
+  public get slaStage(): AssignmentSlaStageValue | undefined {
+    return this.props.slaStage;
+  }
+
+  public get slaDueAt(): Date | undefined {
+    return this.props.slaDueAt;
+  }
+
+  public get slaBreachedAt(): Date | undefined {
+    return this.props.slaBreachedAt;
+  }
+
+  public setSlaStage(stage: AssignmentSlaStageValue | undefined): void {
+    this.props.slaStage = stage;
+  }
+
+  public setSlaDueAt(dueAt: Date | undefined): void {
+    this.props.slaDueAt = dueAt;
+  }
+
+  public setSlaBreachedAt(breachedAt: Date | undefined): void {
+    this.props.slaBreachedAt = breachedAt;
   }
 
   public get requestedAt(): Date {
@@ -178,6 +238,21 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
       );
     }
 
+    // Director approval gate: when an assignment is BOOKED but still flagged
+    // for director sign-off (allocation/duration tripped the threshold at
+    // creation), it cannot progress further until the directorApprove flow
+    // clears the flag. Cancellation is still allowed so a stuck assignment
+    // can be unwound.
+    if (
+      current === 'BOOKED' &&
+      this.requiresDirectorApproval &&
+      (target === 'ONBOARDING' || target === 'ASSIGNED')
+    ) {
+      throw new InvalidAssignmentTransitionError(
+        `Director approval is still pending for this assignment; cannot transition to ${target}.`,
+      );
+    }
+
     this.applyTransitionSideEffects(target, options);
   }
 
@@ -230,6 +305,14 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
     this.transitionTo('REJECTED', { actorRoles: [], reason: reason ?? 'Rejected' });
   }
 
+  public acknowledgeReview(timestamp: Date = new Date()): void {
+    this.transitionTo('IN_REVIEW', { actorRoles: [], timestamp });
+  }
+
+  public pickCandidate(timestamp: Date = new Date()): void {
+    this.transitionTo('BOOKED', { actorRoles: [], timestamp });
+  }
+
   public activate(): void {
     if (this.props.status.value === 'BOOKED') {
       this.applyTransitionSideEffects('ASSIGNED', { actorRoles: [] });
@@ -267,6 +350,7 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
     const revokableStatuses: AssignmentStatusValue[] = [
       'CREATED',
       'PROPOSED',
+      'IN_REVIEW',
       'BOOKED',
       'ONBOARDING',
       'ASSIGNED',

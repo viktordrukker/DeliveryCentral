@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { Button } from '@/components/ds';
+
 import { useAuth } from '@/app/auth-context';
 import { markSidebarNavigation } from '@/app/drilldown-context';
 import { appRoutes } from '@/app/navigation';
@@ -329,7 +331,8 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
                   {groupItems.map((item) => {
                     const globalIndex = allItems.indexOf(item);
                     return (
-                      <button
+                      <Button
+                        variant="secondary"
                         className={`command-palette__item${globalIndex === activeIndex ? ' command-palette__item--active' : ''}`}
                         key={item.id}
                         onClick={item.onSelect}
@@ -344,7 +347,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
                             {highlight(item.sublabel, query)}
                           </span>
                         ) : null}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

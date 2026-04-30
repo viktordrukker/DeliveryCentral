@@ -38,9 +38,9 @@ const ALL_ROLES: PlatformRole[] = [
 ];
 
 describe('Assignment transition matrix', () => {
-  it('exposes the canonical 9 statuses', () => {
+  it('exposes the canonical 11 statuses (incl. DRAFT and IN_REVIEW from Workflow Overhaul)', () => {
     expect(Object.keys(ASSIGNMENT_STATUS_TRANSITIONS).sort()).toEqual(
-      ['ASSIGNED', 'BOOKED', 'CANCELLED', 'COMPLETED', 'CREATED', 'ONBOARDING', 'ON_HOLD', 'PROPOSED', 'REJECTED'],
+      ['ASSIGNED', 'BOOKED', 'CANCELLED', 'COMPLETED', 'CREATED', 'DRAFT', 'IN_REVIEW', 'ONBOARDING', 'ON_HOLD', 'PROPOSED', 'REJECTED'],
     );
   });
 
@@ -52,10 +52,14 @@ describe('Assignment transition matrix', () => {
   });
 
   describe.each([
+    ['DRAFT', 'CREATED', ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'] satisfies PlatformRole[], false],
     ['CREATED', 'PROPOSED', ['resource_manager', 'delivery_manager'] satisfies PlatformRole[], false],
     ['CREATED', 'CANCELLED', ['project_manager', 'delivery_manager', 'director', 'resource_manager', 'admin'] satisfies PlatformRole[], true],
+    ['PROPOSED', 'IN_REVIEW', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
     ['PROPOSED', 'REJECTED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], true],
     ['PROPOSED', 'BOOKED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
+    ['IN_REVIEW', 'BOOKED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
+    ['IN_REVIEW', 'REJECTED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], true],
     ['BOOKED', 'ONBOARDING', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
     ['BOOKED', 'ASSIGNED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
     ['ONBOARDING', 'ASSIGNED', ['project_manager', 'delivery_manager', 'director', 'admin'] satisfies PlatformRole[], false],
@@ -77,7 +81,8 @@ describe('Assignment transition matrix', () => {
       });
 
       it('is rejected for roles not in the allow-list', () => {
-        const disallowedRoles = ALL_ROLES.filter((role) => !allowedRoles.includes(role));
+        const allowed = allowedRoles as readonly PlatformRole[];
+        const disallowedRoles = ALL_ROLES.filter((role) => !allowed.includes(role));
         if (disallowedRoles.length === 0) return;
         const assignment = makeAssignment(from);
         expect(() =>
@@ -104,9 +109,15 @@ describe('Assignment transition matrix', () => {
   describe.each([
     ['CREATED', 'BOOKED'],
     ['CREATED', 'ASSIGNED'],
+    ['CREATED', 'IN_REVIEW'],
     ['PROPOSED', 'ASSIGNED'],
+    ['IN_REVIEW', 'PROPOSED'],
+    ['IN_REVIEW', 'ONBOARDING'],
+    ['IN_REVIEW', 'ASSIGNED'],
     ['BOOKED', 'PROPOSED'],
+    ['BOOKED', 'IN_REVIEW'],
     ['ASSIGNED', 'PROPOSED'],
+    ['ASSIGNED', 'IN_REVIEW'],
     ['COMPLETED', 'ASSIGNED'],
     ['REJECTED', 'PROPOSED'],
     ['CANCELLED', 'CREATED'],
@@ -133,5 +144,37 @@ describe('Assignment transition matrix', () => {
       requiresReason: undefined,
     });
     expect(findTransition('BOOKED', 'PROPOSED')).toBeUndefined();
+  });
+
+  describe('Workflow Overhaul entity helpers', () => {
+    it('acknowledgeReview() transitions PROPOSED → IN_REVIEW', () => {
+      const assignment = makeAssignment('PROPOSED');
+      assignment.acknowledgeReview(new Date('2026-04-29T10:00:00.000Z'));
+      expect(assignment.status.value).toBe('IN_REVIEW');
+    });
+
+    it('acknowledgeReview() throws if assignment is not PROPOSED', () => {
+      const assignment = makeAssignment('CREATED');
+      expect(() => assignment.acknowledgeReview()).toThrow(InvalidAssignmentTransitionError);
+    });
+
+    it('pickCandidate() transitions IN_REVIEW → BOOKED', () => {
+      const assignment = makeAssignment('IN_REVIEW');
+      const ts = new Date('2026-04-29T10:00:00.000Z');
+      assignment.pickCandidate(ts);
+      expect(assignment.status.value).toBe('BOOKED');
+      expect(assignment.approvedAt).toEqual(ts);
+    });
+
+    it('pickCandidate() throws if assignment is not IN_REVIEW', () => {
+      const assignment = makeAssignment('CREATED');
+      expect(() => assignment.pickCandidate()).toThrow(InvalidAssignmentTransitionError);
+    });
+
+    it('IN_REVIEW assignments can still be amended', () => {
+      const assignment = makeAssignment('IN_REVIEW');
+      expect(() => assignment.amend({ staffingRole: 'Senior Engineer' })).not.toThrow();
+      expect(assignment.staffingRole).toBe('Senior Engineer');
+    });
   });
 });

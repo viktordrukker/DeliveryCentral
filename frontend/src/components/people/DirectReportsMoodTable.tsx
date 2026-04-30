@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { Table, type Column } from '@/components/ds';
 import { fetchMoodHeatmap, MoodHeatmapResponse } from '@/lib/api/pulse';
 
 const MOOD_EMOJI: Record<number, string> = {
@@ -91,57 +92,44 @@ export function DirectReportsMoodTable({ managerId }: DirectReportsMoodTableProp
     };
   });
 
+  const columns: Column<Row>[] = [
+    { key: 'name', title: 'Name', getValue: (r) => r.displayName, render: (r) => <Link to={`/people/${r.id}?tab=360`}>{r.displayName}</Link> },
+    { key: 'currentMood', title: 'Current Mood', getValue: (r) => r.currentMood ?? -1, render: (r) => (
+      r.currentMood !== null ? `${MOOD_EMOJI[r.currentMood] ?? ''} ${r.currentMood}/5` : '—'
+    ) },
+    { key: 'recentMoods', title: 'Last 4 Weeks', render: (r) => (
+      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+        {r.recentMoods.map((mood, i) => (
+          <div
+            key={i}
+            style={{
+              width: '14px',
+              height: '14px',
+              borderRadius: '3px',
+              background: mood !== null ? MOOD_COLORS[mood] : 'var(--color-border)',
+            }}
+            title={mood !== null ? `Mood: ${mood}/5` : 'No data'}
+          />
+        ))}
+      </div>
+    ) },
+    { key: 'alert', title: 'Alert', getValue: (r) => r.alertActive ? 1 : 0, render: (r) => (
+      r.alertActive ? (
+        <span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>⚠ Low mood</span>
+      ) : (
+        <span style={{ color: 'var(--color-status-active)' }}>OK</span>
+      )
+    ) },
+  ];
+
   return (
-    <div className="table-wrapper" data-testid="direct-reports-mood-table">
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Current Mood</th>
-            <th>Last 4 Weeks</th>
-            <th>Alert</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>
-                <Link to={`/people/${row.id}?tab=360`}>{row.displayName}</Link>
-              </td>
-              <td>
-                {row.currentMood !== null
-                  ? `${MOOD_EMOJI[row.currentMood] ?? ''} ${row.currentMood}/5`
-                  : '—'}
-              </td>
-              <td>
-                <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
-                  {row.recentMoods.map((mood, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '3px',
-                        background: mood !== null ? MOOD_COLORS[mood] : 'var(--color-border)',
-                      }}
-                      title={mood !== null ? `Mood: ${mood}/5` : 'No data'}
-                    />
-                  ))}
-                </div>
-              </td>
-              <td>
-                {row.alertActive ? (
-                  <span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>
-                    &#9888; Low mood
-                  </span>
-                ) : (
-                  <span style={{ color: 'var(--color-status-active)' }}>OK</span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div data-testid="direct-reports-mood-table">
+      <Table
+        variant="compact"
+        columns={columns}
+        rows={rows}
+        getRowKey={(r) => r.id}
+      />
     </div>
   );
 }

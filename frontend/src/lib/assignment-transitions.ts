@@ -22,13 +22,23 @@ const BROAD_CANCEL: AssignmentRole[] = ['project_manager', 'delivery_manager', '
 const HOLD_ROLES: AssignmentRole[] = ['project_manager', 'resource_manager', 'hr_manager', 'director', 'admin'];
 
 export const ASSIGNMENT_TRANSITIONS: Record<AssignmentStatusValue, readonly AssignmentTransitionRule[]> = {
+  DRAFT: [
+    { to: 'CREATED', roles: BROAD_CANCEL, label: 'Submit draft', tone: 'primary' },
+    { to: 'CANCELLED', roles: BROAD_CANCEL, requiresReason: true, label: 'Discard draft', tone: 'danger' },
+  ],
   CREATED: [
     { to: 'PROPOSED', roles: ['resource_manager', 'delivery_manager', 'admin'], label: 'Propose candidate', tone: 'primary' },
     { to: 'CANCELLED', roles: BROAD_CANCEL, requiresReason: true, label: 'Cancel', tone: 'danger' },
   ],
   PROPOSED: [
+    { to: 'IN_REVIEW', roles: BROAD_MGR, label: 'Acknowledge — start review', tone: 'primary' },
     { to: 'BOOKED', roles: BROAD_MGR, label: 'Book', tone: 'primary' },
     { to: 'REJECTED', roles: BROAD_MGR, requiresReason: true, label: 'Reject', tone: 'danger' },
+    { to: 'CANCELLED', roles: BROAD_CANCEL, requiresReason: true, label: 'Cancel', tone: 'secondary' },
+  ],
+  IN_REVIEW: [
+    { to: 'BOOKED', roles: BROAD_MGR, label: 'Pick candidate (book)', tone: 'primary' },
+    { to: 'REJECTED', roles: BROAD_MGR, requiresReason: true, label: 'Reject all', tone: 'danger' },
     { to: 'CANCELLED', roles: BROAD_CANCEL, requiresReason: true, label: 'Cancel', tone: 'secondary' },
   ],
   REJECTED: [],
@@ -55,12 +65,26 @@ export const ASSIGNMENT_TRANSITIONS: Record<AssignmentStatusValue, readonly Assi
   CANCELLED: [],
 };
 
+interface AvailableTransitionsOptions {
+  /**
+   * When `true`, BOOKED forward transitions (ONBOARDING / ASSIGNED) are
+   * removed — the director approval gate must clear first. Cancellation
+   * stays available so a stuck assignment can still be unwound.
+   */
+  requiresDirectorApproval?: boolean;
+}
+
 export function availableTransitions(
   current: string,
   userRoles: readonly string[],
+  options: AvailableTransitionsOptions = {},
 ): AssignmentTransitionRule[] {
   const key = current as AssignmentStatusValue;
   const rules = ASSIGNMENT_TRANSITIONS[key];
   if (!rules) return [];
-  return rules.filter((rule) => rule.roles.some((role) => userRoles.includes(role)));
+  const filtered = rules.filter((rule) => rule.roles.some((role) => userRoles.includes(role)));
+  if (options.requiresDirectorApproval && key === 'BOOKED') {
+    return filtered.filter((rule) => rule.to !== 'ONBOARDING' && rule.to !== 'ASSIGNED');
+  }
+  return filtered;
 }

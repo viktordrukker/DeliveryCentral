@@ -44,7 +44,7 @@ export const S_TOOLBAR: React.CSSProperties = { display: 'flex', justifyContent:
 
 /* ── Option arrays ── */
 
-export const STATUS_OPTS = ['CREATED', 'PROPOSED', 'REJECTED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
+export const STATUS_OPTS = ['DRAFT', 'CREATED', 'PROPOSED', 'IN_REVIEW', 'REJECTED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 export const PRIORITY_OPTS = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 export const EMP_STATUS_OPTS = ['ACTIVE', 'LEAVE', 'INACTIVE', 'TERMINATED'];
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
+import { DataView } from '@/components/ds';
 
-import { DataTable } from '@/components/common/DataTable';
 import { EmptyState } from '@/components/common/EmptyState';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
@@ -51,7 +51,8 @@ export function ProjectRegistryTable({
   );
 
   return (
-    <DataTable
+    <DataView<ProjectDirectoryItem>
+      pageSizeOptions={[1000]}
       columns={columns}
       emptyState={
         <EmptyState
@@ -60,7 +61,7 @@ export function ProjectRegistryTable({
         />
       }
       getRowKey={(item) => item.id}
-      items={items}
+      rows={items}
       onRowClick={onRowClick}
     />
   );

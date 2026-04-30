@@ -14,6 +14,7 @@ import {
   ReferenceArea,
   ResponsiveContainer,
 } from 'recharts';
+import { Button, Table, type Column } from '@/components/ds';
 
 /* ------------------------------------------------------------------
    Data shape
@@ -265,16 +266,16 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
       {/* View toggle + controls */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <button type="button" className={`button button--sm ${view === 'chart' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('chart')}>
+          <Button size="sm" variant={view === 'chart' ? 'primary' : 'secondary'} onClick={() => setView('chart')}>
             Chart
-          </button>
-          <button type="button" className={`button button--sm ${view === 'table' ? 'button--primary' : 'button--secondary'}`} onClick={() => setView('table')}>
+          </Button>
+          <Button size="sm" variant={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>
             Table
-          </button>
+          </Button>
           {chartFilter && view === 'chart' && (
-            <button type="button" className="button button--sm button--secondary" onClick={() => setChartFilter(null)} style={{ marginLeft: 8, borderStyle: 'dashed' }}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setChartFilter(null)} style={{ marginLeft: 8, borderStyle: 'dashed' }}>
               Clear filter ({chartFilter.size} weeks)
-            </button>
+            </Button>
           )}
         </div>
         {view === 'table' && (
@@ -296,104 +297,76 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
 
       {view === 'table' ? (
         <div style={{ flex: 1, overflow: 'auto' }} onContextMenu={handleContextMenu}>
-          <table className="dash-compact-table" style={{ minWidth: 820 }}>
-            <thead>
-              <tr>
-                <th style={{ width: 36 }}>W#</th>
-                <th>Week</th>
-                <th style={NUM}>Alloc</th>
-                <th style={NUM}>Idle</th>
-                <th style={NUM}>Total</th>
-                <th style={NUM}>Alloc %</th>
-                <th style={NUM}>Idle %</th>
-                <th style={NUM}>Util %</th>
-                <th style={{ ...NUM, width: 60 }}>vs Tgt</th>
-                <th style={NUM}>WoW {'\u0394'}</th>
-                <th style={NUM}>WoW %</th>
-                <th style={{ width: 24 }}></th>
-                <th style={NUM}>Avg Util</th>
-                <th style={{ width: 80 }}>Bar</th>
-                <th style={{ width: 36 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r, pageIdx) => {
-                const globalIdx = page * pageSize + pageIdx;
-                const isSelected = selected.has(r.week);
-                return (
-                  <tr
-                    key={r.week}
-                    onMouseDown={(e) => handleRowMouseDown(globalIdx, e)}
-                    onMouseEnter={() => handleRowMouseEnter(globalIdx)}
-                    style={{
-                      cursor: 'pointer',
-                      background: isSelected ? 'var(--color-accent, #114b7a)' : undefined,
-                      color: isSelected ? '#fff' : undefined,
-                      userSelect: 'none',
-                    }}
-                  >
-                    <td style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>W{r.weekNo}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.week}</td>
-                    <td style={NUM}>{r.allocated}</td>
-                    <td style={{ ...NUM, color: r.idle > 0 ? 'var(--color-text-muted)' : 'inherit' }}>{r.idle}</td>
-                    <td style={{ ...NUM, fontWeight: 600 }}>{r.total}</td>
-                    <td style={NUM}>{r.allocatedPct}%</td>
-                    <td style={{ ...NUM, color: 'var(--color-text-muted)' }}>{r.idlePct}%</td>
-                    <td style={{
-                      ...NUM, fontWeight: 600,
-                      color: r.utilizationPct >= 85 ? 'var(--color-status-active)' : r.utilizationPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
-                    }}>
-                      {r.utilizationPct}%
-                    </td>
-                    <td style={{ ...NUM, color: devColor(r.targetDev), fontWeight: 600 }}>{r.targetDev > 0 ? '+' : ''}{r.targetDev}</td>
-                    <td style={{ ...NUM, color: trendColor(r.trend) }}>{r.wowChange > 0 ? '+' : ''}{r.wowChange}</td>
-                    <td style={{ ...NUM, color: trendColor(r.trend), fontSize: 11 }}>{r.wowChangePct > 0 ? '+' : ''}{r.wowChangePct}%</td>
-                    <td style={{ textAlign: 'center', color: trendColor(r.trend), fontSize: 13 }}>{trendArrow(r.trend)}</td>
-                    <td style={{ ...NUM, color: 'var(--color-text-muted)', fontSize: 11 }}>{r.runningAvgUtil}%</td>
-                    <td>
-                      <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                        <div style={{
-                          height: '100%', width: `${Math.min(r.utilizationPct, 100)}%`, borderRadius: 2,
-                          background: r.utilizationPct >= 85 ? 'var(--color-status-active)' : r.utilizationPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
-                        }} />
-                      </div>
-                    </td>
-                    <td>
-                      <Link to={`/assignments?from=${r.week}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>
-                        Go
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            {totals && (
-              <tfoot>
-                <tr style={{ fontWeight: 600 }}>
-                  <td></td>
-                  <td style={{ fontSize: 11 }}>{selected.size > 0 ? `${totals.count} selected` : 'All'}</td>
-                  <td style={NUM}>{totals.sumAlloc}</td>
-                  <td style={NUM}>{totals.sumIdle}</td>
-                  <td style={NUM}>{totals.sumTotal}</td>
-                  <td></td><td></td>
-                  <td style={{ ...NUM, color: totals.avgUtil >= 85 ? 'var(--color-status-active)' : totals.avgUtil >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)' }}>
-                    {totals.avgUtil}%
-                  </td>
-                  <td style={{ ...NUM, color: devColor(totals.avgDev) }}>{totals.avgDev > 0 ? '+' : ''}{totals.avgDev}</td>
-                  <td colSpan={4}></td>
-                  <td style={{ ...NUM, color: 'var(--color-text-muted)', fontSize: 11 }}>{totals.avgUtil}%</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'wn', title: 'W#', width: 36, getValue: (r) => r.weekNo, render: (r) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>W{r.weekNo}</span> },
+              { key: 'week', title: 'Week', getValue: (r) => r.week, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r.week}</span> },
+              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (r) => r.allocated, render: (r) => <span style={NUM}>{r.allocated}</span> },
+              { key: 'idle', title: 'Idle', align: 'right', getValue: (r) => r.idle, render: (r) => <span style={{ ...NUM, color: r.idle > 0 ? 'var(--color-text-muted)' : 'inherit' }}>{r.idle}</span> },
+              { key: 'total', title: 'Total', align: 'right', getValue: (r) => r.total, render: (r) => <span style={{ ...NUM, fontWeight: 600 }}>{r.total}</span> },
+              { key: 'allocPct', title: 'Alloc %', align: 'right', getValue: (r) => r.allocatedPct, render: (r) => <span style={NUM}>{r.allocatedPct}%</span> },
+              { key: 'idlePct', title: 'Idle %', align: 'right', getValue: (r) => r.idlePct, render: (r) => <span style={{ ...NUM, color: 'var(--color-text-muted)' }}>{r.idlePct}%</span> },
+              { key: 'util', title: 'Util %', align: 'right', getValue: (r) => r.utilizationPct, render: (r) => (
+                <span style={{ ...NUM, fontWeight: 600, color: r.utilizationPct >= 85 ? 'var(--color-status-active)' : r.utilizationPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)' }}>
+                  {r.utilizationPct}%
+                </span>
+              ) },
+              { key: 'tgt', title: 'vs Tgt', align: 'right', width: 60, getValue: (r) => r.targetDev, render: (r) => <span style={{ ...NUM, color: devColor(r.targetDev), fontWeight: 600 }}>{r.targetDev > 0 ? '+' : ''}{r.targetDev}</span> },
+              { key: 'wow', title: <>WoW \u0394</>, align: 'right', getValue: (r) => r.wowChange, render: (r) => <span style={{ ...NUM, color: trendColor(r.trend) }}>{r.wowChange > 0 ? '+' : ''}{r.wowChange}</span> },
+              { key: 'wowPct', title: 'WoW %', align: 'right', getValue: (r) => r.wowChangePct, render: (r) => <span style={{ ...NUM, color: trendColor(r.trend), fontSize: 11 }}>{r.wowChangePct > 0 ? '+' : ''}{r.wowChangePct}%</span> },
+              { key: 'arrow', title: '', width: 24, align: 'center', render: (r) => <span style={{ color: trendColor(r.trend), fontSize: 13 }}>{trendArrow(r.trend)}</span> },
+              { key: 'runAvg', title: 'Avg Util', align: 'right', getValue: (r) => r.runningAvgUtil, render: (r) => <span style={{ ...NUM, color: 'var(--color-text-muted)', fontSize: 11 }}>{r.runningAvgUtil}%</span> },
+              { key: 'bar', title: 'Bar', width: 80, render: (r) => (
+                <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', width: `${Math.min(r.utilizationPct, 100)}%`, borderRadius: 2,
+                    background: r.utilizationPct >= 85 ? 'var(--color-status-active)' : r.utilizationPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
+                  }} />
+                </div>
+              ) },
+              { key: 'go', title: '', width: 36, render: (r) => (
+                <Link to={`/assignments?from=${r.week}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link>
+              ) },
+            ] as Column<EnrichedRow>[]}
+            rows={pageRows}
+            getRowKey={(r) => r.week}
+            onRowMouseDown={(_row, sliceIndex, e) => handleRowMouseDown(page * pageSize + sliceIndex, e)}
+            onRowMouseEnter={(_row, sliceIndex) => handleRowMouseEnter(page * pageSize + sliceIndex)}
+            rowStyle={(r) => {
+              const isSelected = selected.has(r.week);
+              return {
+                cursor: 'pointer',
+                background: isSelected ? 'var(--color-accent)' : undefined,
+                color: isSelected ? 'var(--color-surface)' : undefined,
+                userSelect: 'none',
+              };
+            }}
+            footer={
+              totals ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 1fr 1fr 1fr 1fr 1fr 1fr 60px 1fr 1fr 24px 1fr 80px 36px', padding: 'var(--space-2) var(--space-3)', fontWeight: 600, background: 'var(--color-surface-alt)', fontSize: 11 }}>
+                  <span />
+                  <span>{selected.size > 0 ? `${totals.count} selected` : 'All'}</span>
+                  <span style={NUM}>{totals.sumAlloc}</span>
+                  <span style={NUM}>{totals.sumIdle}</span>
+                  <span style={NUM}>{totals.sumTotal}</span>
+                  <span /><span />
+                  <span style={{ ...NUM, color: totals.avgUtil >= 85 ? 'var(--color-status-active)' : totals.avgUtil >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)' }}>{totals.avgUtil}%</span>
+                  <span style={{ ...NUM, color: devColor(totals.avgDev) }}>{totals.avgDev > 0 ? '+' : ''}{totals.avgDev}</span>
+                  <span /><span /><span /><span />
+                  <span style={{ ...NUM, color: 'var(--color-text-muted)', fontSize: 11 }}>{totals.avgUtil}%</span>
+                  <span />
+                </div>
+              ) : undefined
+            }
+          />
 
           {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 12, color: 'var(--color-text-muted)' }}>
-              <button type="button" className="button button--sm button--secondary" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Prev</button>
+              <Button type="button" variant="secondary" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Prev</Button>
               <span>Page {page + 1} of {totalPages}</span>
-              <button type="button" className="button button--sm button--secondary" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next</button>
+              <Button type="button" variant="secondary" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Next</Button>
             </div>
           )}
         </div>

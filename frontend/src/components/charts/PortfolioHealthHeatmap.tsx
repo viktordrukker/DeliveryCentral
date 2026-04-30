@@ -1,3 +1,5 @@
+import { Table, type Column } from '@/components/ds';
+
 interface PortfolioProject {
   name: string;
   staffing: 'green' | 'red' | 'yellow';
@@ -10,9 +12,9 @@ interface PortfolioHealthHeatmapProps {
 }
 
 const COLOR_MAP = {
-  green: '#22c55e',
-  red: '#ef4444',
-  yellow: '#f59e0b',
+  green: 'var(--color-status-active)',
+  red: 'var(--color-status-danger)',
+  yellow: 'var(--color-status-warning)',
 };
 
 const LABEL_MAP = {
@@ -21,44 +23,39 @@ const LABEL_MAP = {
   yellow: 'Warning',
 };
 
-export function PortfolioHealthHeatmap({ projects }: PortfolioHealthHeatmapProps): JSX.Element {
+function StatusPill({ status }: { status: 'green' | 'red' | 'yellow' }): JSX.Element {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', fontSize: '13px', width: '100%' }}>
-        <thead>
-          <tr>
-            <th style={{ padding: '6px 10px', textAlign: 'left' }}>Project</th>
-            <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Active assignments covering the project">Staffing</th>
-            <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Approved time submitted against the project">Time</th>
-            <th style={{ padding: '6px 10px', textAlign: 'center' }} title="Project timeline relative to planned end date">Timeline</th>
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((p) => (
-            <tr key={p.name}>
-              <td style={{ padding: '6px 10px' }}>{p.name}</td>
-              {(['staffing', 'time', 'timeline'] as const).map((dim) => (
-                <td key={dim} style={{ padding: '4px 6px', textAlign: 'center' }}>
-                  <span
-                    style={{
-                      backgroundColor: COLOR_MAP[p[dim]],
-                      borderRadius: '4px',
-                      color: '#fff',
-                      display: 'inline-block',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                    }}
-                  >
-                    {LABEL_MAP[p[dim]]}
-                  </span>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+    <span style={{
+      backgroundColor: COLOR_MAP[status],
+      borderRadius: '4px',
+      color: 'var(--color-surface)',
+      display: 'inline-block',
+      fontSize: '11px',
+      fontWeight: 600,
+      padding: '2px 8px',
+    }}>
+      {LABEL_MAP[status]}
+    </span>
+  );
+}
+
+export function PortfolioHealthHeatmap({ projects }: PortfolioHealthHeatmapProps): JSX.Element {
+  const columns: Column<PortfolioProject>[] = [
+    { key: 'name', title: 'Project', getValue: (p) => p.name, render: (p) => p.name },
+    { key: 'staffing', title: <span title="Active assignments covering the project">Staffing</span>, align: 'center', render: (p) => <StatusPill status={p.staffing} /> },
+    { key: 'time', title: <span title="Approved time submitted against the project">Time</span>, align: 'center', render: (p) => <StatusPill status={p.time} /> },
+    { key: 'timeline', title: <span title="Project timeline relative to planned end date">Timeline</span>, align: 'center', render: (p) => <StatusPill status={p.timeline} /> },
+  ];
+
+  return (
+    <div>
+      <Table
+        variant="compact"
+        columns={columns}
+        rows={projects}
+        getRowKey={(p) => p.name}
+      />
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
         <span style={{ fontWeight: 600 }}>Legend:</span>
         {(['green', 'yellow', 'red'] as const).map((status) => (
           <span key={status} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>

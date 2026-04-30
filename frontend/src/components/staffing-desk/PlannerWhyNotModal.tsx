@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { fetchWhyNot, type WhyNotResponse, type WhyNotDisqualifier } from '@/lib/api/staffing-desk';
+import { Button } from '@/components/ds';
 
 interface Props {
   demandId: string;
@@ -96,7 +97,7 @@ export function PlannerWhyNotModal({ demandId, onClose }: Props): JSX.Element {
         </div>
 
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="button button--secondary button--sm" onClick={onClose} type="button">Close</button>
+          <Button variant="secondary" size="sm" onClick={onClose} type="button">Close</Button>
         </div>
       </div>
     </div>

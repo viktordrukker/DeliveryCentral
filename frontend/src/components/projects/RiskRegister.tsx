@@ -9,6 +9,7 @@ import type {
   RiskCategory,
   RiskStatus,
 } from '@/lib/api/project-risks';
+import { Button, Table, type Column } from '@/components/ds';
 
 interface RiskRegisterProps {
   risks: ProjectRiskDto[];
@@ -109,61 +110,35 @@ export function RiskRegister({
       {filtered.length === 0 ? (
         <EmptyState title="No risks found" description="No risks or issues match the current filters." />
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="dash-compact-table" style={{ fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th style={{ width: 28 }}>#</th>
-                <th style={{ width: 88 }}>Severity</th>
-                <th style={{ minWidth: 140 }}>Title</th>
-                <th style={{ width: 100 }}>Category</th>
-                <th style={{ width: 72 }}>Type</th>
-                <th style={{ width: 60, textAlign: 'right' }}>Score</th>
-                <th style={{ width: 90 }}>Strategy</th>
-                <th style={{ width: 120 }}>Owner</th>
-                <th style={{ width: 100 }}>Status</th>
-                <th style={{ width: 80 }}>Due</th>
-                <th style={{ width: 100 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((risk, idx) => {
-                const expanded = expandedId === risk.id;
-                const canResolve = !['RESOLVED', 'CLOSED'].includes(risk.status);
-                const canClose = risk.status === 'RESOLVED';
+        <div>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'index', title: '#', width: 28, align: 'center', getValue: (_r: ProjectRiskDto, i: number) => i + 1, render: (_r: ProjectRiskDto, i: number) => i + 1 },
+              { key: 'severity', title: 'Severity', width: 88, getValue: (r) => r.riskScore, render: (r) => <StatusBadge status={r.riskScore >= 15 ? 'critical' : r.riskScore >= 8 ? 'warning' : 'active'} variant="dot" tone={severityTone(r.riskScore)} /> },
+              { key: 'title', title: 'Title', getValue: (r) => r.title, render: (r) => <span style={{ fontWeight: 500 }}>{r.title}</span> },
+              { key: 'category', title: 'Category', width: 100, getValue: (r) => r.category, render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{humanLabel(r.category)}</span> },
+              { key: 'type', title: 'Type', width: 72, getValue: (r) => r.riskType, render: (r) => <StatusBadge status={r.riskType} variant="chip" tone={r.riskType === 'ISSUE' ? 'danger' : 'info'} /> },
+              { key: 'score', title: 'Score', align: 'right', width: 60, getValue: (r) => r.riskScore, render: (r) => <span style={{ ...NUM, fontWeight: 700 }}>{r.probability}\u00d7{r.impact}={r.riskScore}</span> },
+              { key: 'strategy', title: 'Strategy', width: 90, getValue: (r) => r.strategy ?? '', render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.strategy ? humanLabel(r.strategy) : '\u2014'}</span> },
+              { key: 'owner', title: 'Owner', width: 120, getValue: (r) => r.ownerDisplayName ?? 'Unassigned', render: (r) => <span style={{ fontSize: 11 }}>{r.ownerDisplayName ?? 'Unassigned'}</span> },
+              { key: 'status', title: 'Status', width: 100, getValue: (r) => r.status, render: (r) => <StatusBadge status={r.status} variant="chip" /> },
+              { key: 'due', title: 'Due', width: 80, getValue: (r) => r.dueDate ?? '', render: (r) => <span style={{ color: isOverdue(r.dueDate) ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontSize: 11 }}>{formatDate(r.dueDate)}</span> },
+              { key: 'actions', title: 'Actions', width: 100, render: (r) => {
+                const canResolve = !['RESOLVED', 'CLOSED'].includes(r.status);
+                const canClose = r.status === 'RESOLVED';
                 return (
-                  <tr key={risk.id} style={{ cursor: 'pointer' }} onClick={() => setExpandedId(expanded ? null : risk.id)}>
-                    <td style={{ ...NUM, textAlign: 'center' }}>{idx + 1}</td>
-                    <td><StatusBadge status={risk.riskScore >= 15 ? 'critical' : risk.riskScore >= 8 ? 'warning' : 'active'} variant="dot" tone={severityTone(risk.riskScore)} /></td>
-                    <td style={{ fontWeight: 500 }}>{risk.title}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{humanLabel(risk.category)}</td>
-                    <td><StatusBadge status={risk.riskType} variant="chip" tone={risk.riskType === 'ISSUE' ? 'danger' : 'info'} /></td>
-                    <td style={{ ...NUM, fontWeight: 700 }}>{risk.probability}&times;{risk.impact}={risk.riskScore}</td>
-                    <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{risk.strategy ? humanLabel(risk.strategy) : '\u2014'}</td>
-                    <td style={{ fontSize: 11 }}>{risk.ownerDisplayName ?? 'Unassigned'}</td>
-                    <td><StatusBadge status={risk.status} variant="chip" /></td>
-                    <td style={{ color: isOverdue(risk.dueDate) ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontSize: 11 }}>
-                      {formatDate(risk.dueDate)}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 'var(--space-1)' }} onClick={(e) => e.stopPropagation()}>
-                        {canResolve && (
-                          <button className="button button--secondary button--sm" onClick={() => onResolve(risk.id)}>
-                            Resolve
-                          </button>
-                        )}
-                        {canClose && (
-                          <button className="button button--secondary button--sm" onClick={() => onClose(risk.id)}>
-                            Close
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <div style={{ display: 'flex', gap: 'var(--space-1)' }} onClick={(e) => e.stopPropagation()}>
+                    {canResolve && (<Button variant="secondary" size="sm" onClick={() => onResolve(r.id)}>Resolve</Button>)}
+                    {canClose && (<Button variant="secondary" size="sm" onClick={() => onClose(r.id)}>Close</Button>)}
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
+              } },
+            ] as Column<ProjectRiskDto>[]}
+            rows={filtered}
+            getRowKey={(r) => r.id}
+            onRowClick={(r) => setExpandedId(expandedId === r.id ? null : r.id)}
+          />
 
           {/* Expanded detail row */}
           {expandedId && (() => {

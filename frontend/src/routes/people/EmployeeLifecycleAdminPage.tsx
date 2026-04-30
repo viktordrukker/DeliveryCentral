@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { EmployeeLifecycleForm } from '@/components/people/EmployeeLifecycleForm';
 import { useEmployeeLifecycleAdmin } from '@/features/people/useEmployeeLifecycleAdmin';
+import { Button } from '@/components/ds';
 
 export function EmployeeLifecycleAdminPage(): JSX.Element {
   const navigate = useNavigate();
@@ -42,9 +43,9 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
     <PageContainer testId="employee-lifecycle-admin-page">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/people">
+          <Button as={Link} variant="secondary" to="/people">
             Back to people
-          </Link>
+          </Button>
         }
         eyebrow="Administration"
         subtitle="Create employees through the durable Organization runtime. This flow keeps employee lifecycle actions explicit and auditable."
@@ -100,9 +101,9 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
                 </div>
               </dl>
               <div className="section-card__actions-row section-card__actions-row--start">
-                <Link className="button button--secondary" to={`/people/${state.createdEmployee.id}`}>
+                <Button as={Link} variant="secondary" to={`/people/${state.createdEmployee.id}`}>
                   Open employee details
-                </Link>
+                </Button>
               </div>
             </SectionCard>
           ) : null}

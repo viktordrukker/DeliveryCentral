@@ -1,7 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+const PROJECT_STATUSES_BLOCKED_FOR_NEW_REQUESTS = new Set(['CLOSED', 'ARCHIVED', 'CANCELLED', 'COMPLETED']);
+const STAFFING_ROLES_DICTIONARY_KEY = 'staffing-roles';
 
 export type StaffingRequestStatus = 'CANCELLED' | 'DRAFT' | 'FULFILLED' | 'IN_REVIEW' | 'OPEN';
 export type StaffingRequestPriority = 'HIGH' | 'LOW' | 'MEDIUM' | 'URGENT';
@@ -16,6 +19,7 @@ export interface StaffingRequestFulfilment {
 export interface StaffingRequest {
   allocationPercent: number;
   cancelledAt?: string;
+  candidatePersonId?: string;
   createdAt: string;
   endDate: string;
   fulfilments: StaffingRequestFulfilment[];
@@ -43,6 +47,7 @@ export interface StaffingRequest {
 
 export interface CreateStaffingRequestCommand {
   allocationPercent: number;
+  candidatePersonId?: string;
   endDate: string;
   headcountRequired?: number;
   priority: StaffingRequestPriority;
@@ -68,6 +73,7 @@ export interface ListStaffingRequestsQuery {
 interface PrismaRecord {
   allocationPercent: { toNumber(): number };
   cancelledAt: Date | null;
+  candidatePersonId: string | null;
   createdAt: Date;
   endDate: Date;
   fulfilments: { assignedPersonId: string; fulfilledAt: Date; id: string; proposedByPersonId: string }[];
@@ -91,9 +97,16 @@ export class InMemoryStaffingRequestService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async create(command: CreateStaffingRequestCommand): Promise<StaffingRequest> {
+    await this.assertProjectIsOpenForRequests(command.projectId);
+    await this.assertRoleIsInDictionary(command.role);
+    if (command.skills && command.skills.length > 0) {
+      await this.assertSkillsAreInCatalog(command.skills);
+    }
+
     const record = await this.prisma.staffingRequest.create({
       data: {
         allocationPercent: command.allocationPercent,
+        candidatePersonId: command.candidatePersonId ?? null,
         endDate: new Date(command.endDate),
         headcountRequired: command.headcountRequired ?? 1,
         priority: command.priority,
@@ -109,6 +122,52 @@ export class InMemoryStaffingRequestService {
     });
     const projectName = await this.resolveProjectName(command.projectId);
     return this.toResponse(record as unknown as PrismaRecord, projectName);
+  }
+
+  private async assertProjectIsOpenForRequests(projectId: string): Promise<void> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { status: true, archivedAt: true, name: true },
+    });
+    if (!project) {
+      throw new NotFoundException(`Project ${projectId} not found.`);
+    }
+    if (project.archivedAt || PROJECT_STATUSES_BLOCKED_FOR_NEW_REQUESTS.has(project.status)) {
+      throw new BadRequestException(
+        `Project "${project.name}" is ${project.status.toLowerCase()}; staffing requests cannot be filed against it. Open a Case instead.`,
+      );
+    }
+  }
+
+  private async assertRoleIsInDictionary(role: string): Promise<void> {
+    const dict = await this.prisma.metadataDictionary.findFirst({
+      where: { dictionaryKey: STAFFING_ROLES_DICTIONARY_KEY, archivedAt: null },
+      include: { entries: { where: { isEnabled: true }, select: { entryValue: true } } },
+    });
+    if (!dict) {
+      // Be permissive when the taxonomy hasn't been seeded yet.
+      return;
+    }
+    const allowed = dict.entries.map((e) => e.entryValue);
+    if (!allowed.includes(role)) {
+      throw new BadRequestException(
+        `Role "${role}" is not in the staffing-roles taxonomy. Allowed roles: ${allowed.join(', ')}.`,
+      );
+    }
+  }
+
+  private async assertSkillsAreInCatalog(skills: string[]): Promise<void> {
+    const matches = await this.prisma.skill.findMany({
+      where: { name: { in: skills } },
+      select: { name: true },
+    });
+    const known = new Set(matches.map((s) => s.name));
+    const unknown = skills.filter((s) => !known.has(s));
+    if (unknown.length > 0) {
+      throw new BadRequestException(
+        `Skills are not in the catalog: ${unknown.join(', ')}. Pick from the existing skill library.`,
+      );
+    }
   }
 
   public async list(query: ListStaffingRequestsQuery = {}): Promise<StaffingRequest[]> {
@@ -227,6 +286,33 @@ export class InMemoryStaffingRequestService {
     return this.toResponse(record as unknown as PrismaRecord, projectName);
   }
 
+  public async duplicate(idOrPublicId: string): Promise<StaffingRequest> {
+    const id = await this.resolveInternalId(idOrPublicId);
+    if (!id) throw new NotFoundException('Staffing request not found.');
+    const source = await this.prisma.staffingRequest.findUnique({ where: { id } });
+    if (!source) throw new NotFoundException('Staffing request not found.');
+
+    const record = await this.prisma.staffingRequest.create({
+      data: {
+        allocationPercent: source.allocationPercent,
+        candidatePersonId: source.candidatePersonId ?? null,
+        endDate: source.endDate,
+        headcountRequired: 1,
+        priority: source.priority,
+        projectId: source.projectId,
+        requestedByPersonId: source.requestedByPersonId,
+        role: source.role,
+        skills: source.skills,
+        startDate: source.startDate,
+        status: 'DRAFT',
+        summary: source.summary,
+      },
+      include: { fulfilments: true },
+    });
+    const projectName = await this.resolveProjectName(record.projectId);
+    return this.toResponse(record as unknown as PrismaRecord, projectName);
+  }
+
   public async cancel(idOrPublicId: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
@@ -281,6 +367,7 @@ export class InMemoryStaffingRequestService {
     return {
       allocationPercent: record.allocationPercent.toNumber(),
       cancelledAt: record.cancelledAt ? record.cancelledAt.toISOString() : undefined,
+      candidatePersonId: record.candidatePersonId ?? undefined,
       createdAt: record.createdAt.toISOString(),
       endDate: record.endDate.toISOString().slice(0, 10),
       fulfilments: record.fulfilments.map((f) => ({

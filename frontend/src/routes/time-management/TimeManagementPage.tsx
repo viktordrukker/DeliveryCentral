@@ -22,6 +22,7 @@ import {
   type ComplianceRow,
 } from '@/lib/api/time-management';
 import { useOvertimeSummary } from '@/features/dashboard/useOvertimeSummary';
+import { Button, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -91,16 +92,10 @@ function RejectModal({ open, item, reasons, onConfirm, onCancel }: {
         </label>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" className="button button--secondary button--sm" onClick={onCancel}>Cancel</button>
-          <button
-            type="button"
-            className="button button--sm"
-            style={{ background: 'var(--color-status-danger)', color: '#fff', border: 'none' }}
-            disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())}
-            onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
+          <Button type="button" variant="primary" size="sm" style={{ background: 'var(--color-status-danger)', color: '#fff', border: 'none' }} disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())} onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}>
             Reject
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -166,9 +161,9 @@ export function TimeManagementPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button type="button" className="button button--secondary button--sm" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</button>
+        <Button size="sm" variant="secondary" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</Button>
         <span style={{ fontWeight: 600, fontSize: 14, minWidth: 100, textAlign: 'center' }}>{MONTH_NAMES[month - 1]} {year}</span>
-        <button type="button" className="button button--secondary button--sm" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</button>
+        <Button size="sm" variant="secondary" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</Button>
         <TipTrigger />
       </>
     );
@@ -267,9 +262,9 @@ export function TimeManagementPage(): JSX.Element {
           {/* Tab buttons */}
           <div style={{ display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' }}>
             {(['queue', 'calendar', 'compliance', 'overtime'] as Tab[]).map((t) => (
-              <button key={t} type="button" className={`button button--sm ${tab === t ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab(t)}>
+              <Button key={t} type="button" size="sm" variant={tab === t ? 'primary' : 'secondary'} onClick={() => setTab(t)}>
                 {{ queue: `Approval Queue (${pendingCount})`, calendar: 'Team Calendar', compliance: 'Compliance', overtime: 'Overtime' }[t]}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -278,47 +273,37 @@ export function TimeManagementPage(): JSX.Element {
             <SectionCard title="Approval Queue">
               {queue.length > 0 && (
                 <div style={{ marginBottom: 'var(--space-2)', display: 'flex', gap: 'var(--space-2)' }}>
-                  <button type="button" className="button button--primary button--sm" disabled={selected.size === 0} onClick={handleBulkApprove}>Approve Selected ({selected.size})</button>
-                  <button type="button" className="button button--secondary button--sm" onClick={() => { const pending = queue.filter((q) => q.status === 'SUBMITTED' || q.status === 'PENDING'); setSelected(new Set(pending.map((q) => q.id))); }}>Select All Pending</button>
+                  <Button type="button" variant="primary" size="sm" disabled={selected.size === 0} onClick={handleBulkApprove}>Approve Selected ({selected.size})</Button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => { const pending = queue.filter((q) => q.status === 'SUBMITTED' || q.status === 'PENDING'); setSelected(new Set(pending.map((q) => q.id))); }}>Select All Pending</Button>
                 </div>
               )}
               {queue.length > 0 ? (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 30 }}></th>
-                      <th>Type</th>
-                      <th>Person</th>
-                      <th>Period</th>
-                      <th style={NUM}>Hours/Days</th>
-                      <th>Status</th>
-                      <th style={{ width: 130 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queue.map((item) => {
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'select', title: '', width: 30, render: (item) => {
                       const isPending = item.status === 'SUBMITTED' || item.status === 'PENDING';
+                      return <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} disabled={!isPending} />;
+                    } },
+                    { key: 'type', title: 'Type', render: (item) => <StatusBadge label={item.type === 'timesheet' ? 'Time' : item.leaveType ?? 'Leave'} size="small" tone={item.type === 'timesheet' ? 'info' : 'neutral'} /> },
+                    { key: 'person', title: 'Person', getValue: (item) => item.personName, render: (item) => <span style={{ fontWeight: 500, cursor: 'pointer' }} onClick={() => nav(`/people/${item.personId}`)}>{item.personName}</span> },
+                    { key: 'period', title: 'Period', render: (item) => item.type === 'timesheet' ? `Week of ${item.weekStart}` : `${item.leaveStartDate} – ${item.leaveEndDate}` },
+                    { key: 'hours', title: 'Hours/Days', align: 'right', render: (item) => <span style={NUM}>{item.type === 'timesheet' ? `${item.totalHours}h` : `${item.leaveDays}d`}{item.overtimeHours && item.overtimeHours > 0 ? <span style={{ color: 'var(--color-status-warning)', fontSize: 10 }}> +{item.overtimeHours}h OT</span> : null}</span> },
+                    { key: 'status', title: 'Status', render: (item) => <StatusBadge label={item.status} size="small" tone={item.status === 'APPROVED' ? 'active' : item.status === 'SUBMITTED' || item.status === 'PENDING' ? 'warning' : 'danger'} /> },
+                    { key: 'actions', title: 'Actions', width: 130, render: (item) => {
+                      const isPending = item.status === 'SUBMITTED' || item.status === 'PENDING';
+                      if (!isPending) return null;
                       return (
-                        <tr key={item.id}>
-                          <td><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} disabled={!isPending} /></td>
-                          <td><StatusBadge label={item.type === 'timesheet' ? 'Time' : item.leaveType ?? 'Leave'} size="small" tone={item.type === 'timesheet' ? 'info' : 'neutral'} /></td>
-                          <td style={{ fontWeight: 500, cursor: 'pointer' }} onClick={() => nav(`/people/${item.personId}`)}>{item.personName}</td>
-                          <td>{item.type === 'timesheet' ? `Week of ${item.weekStart}` : `${item.leaveStartDate} – ${item.leaveEndDate}`}</td>
-                          <td style={NUM}>{item.type === 'timesheet' ? `${item.totalHours}h` : `${item.leaveDays}d`}{item.overtimeHours && item.overtimeHours > 0 ? <span style={{ color: 'var(--color-status-warning)', fontSize: 10 }}> +{item.overtimeHours}h OT</span> : null}</td>
-                          <td><StatusBadge label={item.status} size="small" tone={item.status === 'APPROVED' ? 'active' : item.status === 'SUBMITTED' || item.status === 'PENDING' ? 'warning' : 'danger'} /></td>
-                          <td>
-                            {isPending && (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button type="button" className="button button--sm button--primary" onClick={() => handleApprove(item)} style={{ fontSize: 10 }}>Approve</button>
-                                <button type="button" className="button button--sm button--secondary" onClick={() => handleReject(item)} style={{ fontSize: 10 }}>Reject</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <Button type="button" variant="primary" size="sm" onClick={() => handleApprove(item)} style={{ fontSize: 10 }}>Approve</Button>
+                          <Button type="button" variant="secondary" size="sm" onClick={() => handleReject(item)} style={{ fontSize: 10 }}>Reject</Button>
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
+                    } },
+                  ] as Column<typeof queue[number]>[]}
+                  rows={queue}
+                  getRowKey={(item) => item.id}
+                />
               ) : (
                 <EmptyState title="Queue empty" description="No pending approvals for this month." />
               )}
@@ -329,37 +314,43 @@ export function TimeManagementPage(): JSX.Element {
           {tab === 'calendar' && (
             <SectionCard title="Team Absence Calendar">
               {calendar.length > 0 ? (
-                <div style={{ overflow: 'auto' }}>
-                  <table className="dash-compact-table" style={{ minWidth: daysInMonth * 26 + 140, fontSize: 11 }}>
-                    <thead>
-                      <tr>
-                        <th style={{ minWidth: 120, position: 'sticky', left: 0, background: 'var(--color-surface-alt)', zIndex: 2 }}>Person</th>
-                        {Array.from({ length: daysInMonth }, (_, i) => {
-                          const d = new Date(Date.UTC(year, month - 1, i + 1));
-                          const dow = d.getUTCDay();
-                          return <th key={i} style={{ width: 24, textAlign: 'center', fontSize: 9, padding: '2px 0', background: dow === 0 || dow === 6 ? 'var(--color-border)' : 'var(--color-surface-alt)' }}>{i + 1}</th>;
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {calendar.map((person) => {
-                        const dayMap = new Map(person.days.map((d) => [d.date, d.type]));
-                        return (
-                          <tr key={person.personId}>
-                            <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, fontWeight: 500 }}>{person.displayName}</td>
-                            {Array.from({ length: daysInMonth }, (_, i) => {
-                              const dateStr = new Date(Date.UTC(year, month - 1, i + 1)).toISOString().slice(0, 10);
-                              const dow = new Date(Date.UTC(year, month - 1, i + 1)).getUTCDay();
-                              const leaveType = dayMap.get(dateStr);
-                              const bg = leaveType ? (leaveType === 'SICK' ? 'color-mix(in srgb, var(--color-status-danger) 20%, transparent)' : leaveType === 'ANNUAL' ? 'color-mix(in srgb, var(--color-chart-1) 20%, transparent)' : 'color-mix(in srgb, var(--color-chart-5) 20%, transparent)') : dow === 0 || dow === 6 ? 'var(--color-border)' : undefined;
-                              return <td key={i} style={{ textAlign: 'center', fontSize: 9, background: bg, padding: 1 }} title={leaveType ?? ''}>{leaveType ? LEAVE_ICONS[leaveType] ?? 'L' : ''}</td>;
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <Table
+                  variant="compact"
+                  columns={[
+                    {
+                      key: 'person',
+                      title: 'Person',
+                      cellStyle: { position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, fontWeight: 500, minWidth: 120 },
+                      getValue: (p) => p.displayName,
+                      render: (p) => p.displayName,
+                    },
+                    ...Array.from({ length: daysInMonth }, (_, i) => {
+                      const d = new Date(Date.UTC(year, month - 1, i + 1));
+                      const dow = d.getUTCDay();
+                      const dateStr = d.toISOString().slice(0, 10);
+                      return {
+                        key: `d-${i}`,
+                        title: <span style={{ fontSize: 9 }}>{i + 1}</span>,
+                        align: 'center' as const,
+                        cellStyle: { width: 24, padding: 1 },
+                        render: (p: TeamCalendarPerson) => {
+                          const dayMap = new Map(p.days.map((dd) => [dd.date, dd.type]));
+                          const leaveType = dayMap.get(dateStr);
+                          const bg = leaveType
+                            ? (leaveType === 'SICK' ? 'color-mix(in srgb, var(--color-status-danger) 20%, transparent)' : leaveType === 'ANNUAL' ? 'color-mix(in srgb, var(--color-chart-1) 20%, transparent)' : 'color-mix(in srgb, var(--color-chart-5) 20%, transparent)')
+                            : dow === 0 || dow === 6 ? 'var(--color-border)' : undefined;
+                          return (
+                            <span style={{ display: 'inline-block', fontSize: 9, background: bg, padding: 1, minWidth: 22 }} title={leaveType ?? ''}>
+                              {leaveType ? LEAVE_ICONS[leaveType] ?? 'L' : ''}
+                            </span>
+                          );
+                        },
+                      };
+                    }),
+                  ] as Column<TeamCalendarPerson>[]}
+                  rows={calendar}
+                  getRowKey={(p) => p.personId}
+                />
               ) : (
                 <EmptyState title="No leave" description="No team members have approved leave this month." />
               )}
@@ -370,36 +361,23 @@ export function TimeManagementPage(): JSX.Element {
           {tab === 'compliance' && (
             <SectionCard title="Time Compliance">
               {compliance.length > 0 ? (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr>
-                      <th>Person</th>
-                      <th style={NUM}>Reported</th>
-                      <th style={NUM}>Expected</th>
-                      <th style={NUM}>Gaps</th>
-                      <th style={NUM}>OT</th>
-                      <th style={NUM}>Leave</th>
-                      <th style={NUM}>Submitted</th>
-                      <th style={NUM}>Approved</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compliance.map((c) => (
-                      <tr key={c.personId} style={{ cursor: 'pointer' }} onClick={() => nav(`/my-time?person=${c.personId}`)}>
-                        <td style={{ fontWeight: 500 }}>{c.displayName}</td>
-                        <td style={NUM}>{c.reportedHours}h</td>
-                        <td style={NUM}>{c.expectedHours}h</td>
-                        <td style={{ ...NUM, color: c.gapDays > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontWeight: c.gapDays > 0 ? 600 : 400 }}>{c.gapDays}d</td>
-                        <td style={{ ...NUM, color: c.overtimeHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{c.overtimeHours}h</td>
-                        <td style={NUM}>{c.leaveDays}d</td>
-                        <td style={NUM}>{c.submittedWeeks}/{c.totalWeeks}</td>
-                        <td style={NUM}>{c.approvedWeeks}/{c.totalWeeks}</td>
-                        <td><StatusBadge label={c.status === 'compliant' ? 'Compliant' : c.status === 'partial' ? 'Partial' : 'Non-Compliant'} size="small" tone={c.status === 'compliant' ? 'active' : c.status === 'partial' ? 'warning' : 'danger'} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'person', title: 'Person', getValue: (c) => c.displayName, render: (c) => <span style={{ fontWeight: 500 }}>{c.displayName}</span> },
+                    { key: 'reported', title: 'Reported', align: 'right', getValue: (c) => c.reportedHours, render: (c) => <span style={NUM}>{c.reportedHours}h</span> },
+                    { key: 'expected', title: 'Expected', align: 'right', getValue: (c) => c.expectedHours, render: (c) => <span style={NUM}>{c.expectedHours}h</span> },
+                    { key: 'gaps', title: 'Gaps', align: 'right', getValue: (c) => c.gapDays, render: (c) => <span style={{ ...NUM, color: c.gapDays > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontWeight: c.gapDays > 0 ? 600 : 400 }}>{c.gapDays}d</span> },
+                    { key: 'ot', title: 'OT', align: 'right', getValue: (c) => c.overtimeHours, render: (c) => <span style={{ ...NUM, color: c.overtimeHours > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{c.overtimeHours}h</span> },
+                    { key: 'leave', title: 'Leave', align: 'right', getValue: (c) => c.leaveDays, render: (c) => <span style={NUM}>{c.leaveDays}d</span> },
+                    { key: 'submitted', title: 'Submitted', align: 'right', render: (c) => <span style={NUM}>{c.submittedWeeks}/{c.totalWeeks}</span> },
+                    { key: 'approved', title: 'Approved', align: 'right', render: (c) => <span style={NUM}>{c.approvedWeeks}/{c.totalWeeks}</span> },
+                    { key: 'status', title: 'Status', render: (c) => <StatusBadge label={c.status === 'compliant' ? 'Compliant' : c.status === 'partial' ? 'Partial' : 'Non-Compliant'} size="small" tone={c.status === 'compliant' ? 'active' : c.status === 'partial' ? 'warning' : 'danger'} /> },
+                  ] as Column<typeof compliance[number]>[]}
+                  rows={compliance}
+                  getRowKey={(c) => c.personId}
+                  onRowClick={(c) => nav(`/my-time?person=${c.personId}`)}
+                />
               ) : (
                 <EmptyState title="No data" description="No timesheet data for this month." />
               )}
@@ -410,23 +388,20 @@ export function TimeManagementPage(): JSX.Element {
           {tab === 'overtime' && otData && (
             <SectionCard title={`Overtime — ${otData.totalOvertimeHours}h across ${otData.peopleWithOvertime} people`}>
               {otData.personSummaries.filter((p) => p.overtimeHours > 0).length > 0 ? (
-                <table className="dash-compact-table">
-                  <thead>
-                    <tr><th>Person</th><th style={NUM}>Total</th><th style={NUM}>Standard</th><th style={NUM}>Overtime</th><th style={NUM}>Cap</th><th>Status</th></tr>
-                  </thead>
-                  <tbody>
-                    {otData.personSummaries.filter((p) => p.overtimeHours > 0).map((p) => (
-                      <tr key={p.personId} style={{ cursor: 'pointer' }} onClick={() => nav(`/people/${p.personId}`)}>
-                        <td style={{ fontWeight: 500 }}>{p.displayName}</td>
-                        <td style={NUM}>{p.totalHours}h</td>
-                        <td style={NUM}>{p.standardHours}h</td>
-                        <td style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</td>
-                        <td style={NUM}>{p.effectiveThreshold}h/wk</td>
-                        <td><StatusBadge label={p.exceedsThreshold ? 'Over Cap' : 'Within Cap'} size="small" tone={p.exceedsThreshold ? 'danger' : 'active'} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                    { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.totalHours, render: (p) => <span style={NUM}>{p.totalHours}h</span> },
+                    { key: 'std', title: 'Standard', align: 'right', getValue: (p) => p.standardHours, render: (p) => <span style={NUM}>{p.standardHours}h</span> },
+                    { key: 'ot', title: 'Overtime', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</span> },
+                    { key: 'cap', title: 'Cap', align: 'right', getValue: (p) => p.effectiveThreshold, render: (p) => <span style={NUM}>{p.effectiveThreshold}h/wk</span> },
+                    { key: 'status', title: 'Status', render: (p) => <StatusBadge label={p.exceedsThreshold ? 'Over Cap' : 'Within Cap'} size="small" tone={p.exceedsThreshold ? 'danger' : 'active'} /> },
+                  ] as Column<typeof otData.personSummaries[number]>[]}
+                  rows={otData.personSummaries.filter((p) => p.overtimeHours > 0)}
+                  getRowKey={(p) => p.personId}
+                  onRowClick={(p) => nav(`/people/${p.personId}`)}
+                />
               ) : (
                 <EmptyState title="No overtime" description="No overtime recorded in the current period." />
               )}

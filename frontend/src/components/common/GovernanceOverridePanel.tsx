@@ -1,4 +1,5 @@
 import { FormEvent } from 'react';
+import { Button } from '@/components/ds';
 
 interface GovernanceOverridePanelProps {
   actionLabel: string;
@@ -59,9 +60,9 @@ export function GovernanceOverridePanel({
 
         <div className="entity-form__actions entity-form__actions--split">
           <span className="override-panel__confirmation">{confirmLabel}</span>
-          <button className="button" disabled={isSubmitting} type="submit">
+          <Button variant="primary" disabled={isSubmitting} type="submit">
             {isSubmitting ? 'Submitting override...' : actionLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

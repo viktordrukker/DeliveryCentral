@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingState } from '@/components/common/LoadingState';
 import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { checkAllocationConflict } from '@/lib/api/staffing-requests';
+import { Table } from '@/components/ds';
 
 // Generate 12 weeks starting from the current Monday
 function getMondayStr(d: Date): string {
@@ -80,7 +81,7 @@ function AssignmentBar({ assignment, week, conflict }: {
 
 // Droppable cell
 function BoardCell({ personId, week, children, isSelected, cellRef, onKeyDown }: {
-  cellRef?: React.Ref<HTMLTableCellElement>;
+  cellRef?: React.Ref<HTMLDivElement>;
   children: React.ReactNode;
   isSelected?: boolean;
   onKeyDown?: (e: React.KeyboardEvent) => void;
@@ -89,18 +90,18 @@ function BoardCell({ personId, week, children, isSelected, cellRef, onKeyDown }:
 }): JSX.Element {
   const { isOver, setNodeRef } = useDroppable({ id: `${personId}-${week}`, data: { personId, week } });
   return (
-    <td
+    <div
       ref={(node) => {
         setNodeRef(node);
         if (typeof cellRef === 'function') cellRef(node);
-        else if (cellRef && 'current' in cellRef) (cellRef as React.MutableRefObject<HTMLTableCellElement | null>).current = node;
+        else if (cellRef && 'current' in cellRef) (cellRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       onKeyDown={onKeyDown}
       role="gridcell"
       style={{
         background: isOver ? 'var(--color-info-bg)' : undefined,
         border: isSelected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
-        minWidth: '80px',
+        minHeight: '40px',
         outline: 'none',
         padding: '4px',
         verticalAlign: 'top',
@@ -109,7 +110,7 @@ function BoardCell({ personId, week, children, isSelected, cellRef, onKeyDown }:
       tabIndex={0}
     >
       {children}
-    </td>
+    </div>
   );
 }
 
@@ -122,7 +123,7 @@ export function StaffingBoardPage(): JSX.Element {
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
-  const cellRefs = useRef<Map<string, HTMLTableCellElement | null>>(new Map());
+  const cellRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   useEffect(() => {
     setIsLoading(true);
@@ -285,82 +286,61 @@ export function StaffingBoardPage(): JSX.Element {
             >
               Use arrow keys to navigate, Enter to select, arrow keys to move, Escape to cancel
             </p>
-            <table role="grid" style={{ borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed', width: '100%' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid var(--color-border)', minWidth: '120px', padding: '6px', textAlign: 'left' }}>
-                    Person
-                  </th>
-                  {weeks.map((week) => (
-                    <th
-                      key={week}
-                      style={{ border: '1px solid var(--color-border)', fontSize: '0.7rem', minWidth: '80px', padding: '4px', textAlign: 'center' }}
-                    >
-                      {week.slice(5)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {personIds.map((personId, rowIndex) => {
-                  const personAssignments = assignmentsByPerson.get(personId) ?? [];
-                  return (
-                    <tr key={personId}>
-                      <td
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          color: 'var(--color-text)',
-                          fontWeight: 500,
-                          padding: '6px',
-                          position: 'sticky',
-                          left: 0,
-                          background: 'var(--color-surface, white)',
-                          zIndex: 1,
-                        }}
-                      >
-                        {personNames.get(personId) ?? personId}
-                      </td>
-                      {weeks.map((week, colIndex) => {
-                        const weekAssignments = personAssignments.filter((a) =>
-                          assignmentCoversWeek(a, week),
-                        );
-                        const totalAlloc = weekAssignments.reduce((s, a) => s + a.allocationPercent, 0);
-                        const hasConflict = totalAlloc > 100;
-                        const isSel = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
-                        return (
-                          <BoardCell
-                            key={week}
-                            cellRef={(el: HTMLTableCellElement | null) => {
-                              cellRefs.current.set(`${rowIndex}-${colIndex}`, el);
-                            }}
-                            isSelected={isSel}
-                            onKeyDown={(e: React.KeyboardEvent) => handleCellKeyDown(e, rowIndex, colIndex)}
-                            personId={personId}
-                            week={week}
-                          >
-                            {weekAssignments.map((a) => (
-                              <AssignmentBar
-                                key={a.id}
-                                assignment={a}
-                                conflict={hasConflict}
-                                week={week}
-                              />
-                            ))}
-                          </BoardCell>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-                {personIds.length === 0 ? (
-                  <tr>
-                    <td colSpan={weeks.length + 1} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                      No approved assignments found.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+            {personIds.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                No approved assignments found.
+              </div>
+            ) : (
+              <Table
+                variant="compact"
+                columns={[
+                  {
+                    key: 'person',
+                    title: 'Person',
+                    cellStyle: {
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--color-surface)',
+                      zIndex: 1,
+                      fontWeight: 500,
+                      minWidth: '120px',
+                    },
+                    getValue: (id) => personNames.get(id) ?? id,
+                    render: (id) => personNames.get(id) ?? id,
+                  },
+                  ...weeks.map((week, colIndex) => ({
+                    key: `wk-${week}`,
+                    title: <span style={{ fontSize: '0.7rem' }}>{week.slice(5)}</span>,
+                    align: 'center' as const,
+                    cellStyle: { padding: 0, minWidth: '80px' },
+                    render: (personId: string, rowIndex: number) => {
+                      const personAssignments = assignmentsByPerson.get(personId) ?? [];
+                      const weekAssignments = personAssignments.filter((a) => assignmentCoversWeek(a, week));
+                      const totalAlloc = weekAssignments.reduce((s, a) => s + a.allocationPercent, 0);
+                      const hasConflict = totalAlloc > 100;
+                      const isSel = selectedCell?.row === rowIndex && selectedCell?.col === colIndex;
+                      return (
+                        <BoardCell
+                          cellRef={(el: HTMLDivElement | null) => {
+                            cellRefs.current.set(`${rowIndex}-${colIndex}`, el);
+                          }}
+                          isSelected={isSel}
+                          onKeyDown={(e: React.KeyboardEvent) => handleCellKeyDown(e, rowIndex, colIndex)}
+                          personId={personId}
+                          week={week}
+                        >
+                          {weekAssignments.map((a) => (
+                            <AssignmentBar key={a.id} assignment={a} conflict={hasConflict} week={week} />
+                          ))}
+                        </BoardCell>
+                      );
+                    },
+                  })),
+                ]}
+                rows={personIds}
+                getRowKey={(id) => id}
+              />
+            )}
 
             <DragOverlay>
               {draggedAssignment ? (

@@ -49,6 +49,7 @@ import {
   fetchRadiatorSnapshotByWeek,
   refreshRadiator,
 } from '@/lib/api/project-radiator';
+import { Button } from '@/components/ds';
 
 interface RadiatorTabProps {
   project: ProjectDetails;
@@ -446,8 +447,8 @@ function RadiatorTabInner({ project, projectId, reload }: RadiatorTabProps): JSX
             </div>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <button
-              className="button--project-detail"
+            <Button
+              variant="secondary"
               onClick={() => {
                 void refreshRadiator(projectId).then((fresh) => {
                   setSnap(fresh);
@@ -455,26 +456,15 @@ function RadiatorTabInner({ project, projectId, reload }: RadiatorTabProps): JSX
                 }).catch(() => toast.error('Refresh failed'));
               }}
               title="Re-compute from live signals (clears 60s cache)"
-              type="button"
             >
               Refresh now
-            </button>
-            <button
-              className="button--project-detail"
-              disabled={!snap}
-              onClick={() => void handleExportPdf()}
-              type="button"
-            >
+            </Button>
+            <Button variant="secondary" disabled={!snap} onClick={() => void handleExportPdf()}>
               Export PDF
-            </button>
-            <button
-              className="button--project-detail"
-              disabled={!snap}
-              onClick={() => void handleExportPptx()}
-              type="button"
-            >
+            </Button>
+            <Button variant="secondary" disabled={!snap} onClick={() => void handleExportPptx()}>
               Export PPTX
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -577,7 +567,7 @@ function RadiatorTabInner({ project, projectId, reload }: RadiatorTabProps): JSX
             </dl>
             {canManageProject ? (
               <div style={{ marginTop: 12 }}>
-                <button className="button--project-detail" onClick={() => { setEditName(''); setEditDescription(''); setIsEditing(true); }} type="button">Edit</button>
+                <Button variant="secondary" onClick={() => { setEditName(''); setEditDescription(''); setIsEditing(true); }}>Edit</Button>
               </div>
             ) : null}
           </>
@@ -594,8 +584,8 @@ function RadiatorTabInner({ project, projectId, reload }: RadiatorTabProps): JSX
               </label>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button className="button button--primary" disabled={isUpdating} type="submit">{isUpdating ? 'Saving...' : 'Save changes'}</button>
-              <button className="button button--secondary" onClick={() => setIsEditing(false)} type="button">Cancel</button>
+              <Button variant="primary" disabled={isUpdating} type="submit">{isUpdating ? 'Saving...' : 'Save changes'}</Button>
+              <Button variant="secondary" onClick={() => setIsEditing(false)} type="button">Cancel</Button>
             </div>
           </form>
         )}

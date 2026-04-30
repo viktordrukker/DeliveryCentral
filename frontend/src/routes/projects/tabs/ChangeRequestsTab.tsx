@@ -17,6 +17,7 @@ import {
   rejectChangeRequest,
   updateChangeRequest,
 } from '@/lib/api/project-change-requests';
+import { Button, Input, Select, Table, Textarea, type Column } from '@/components/ds';
 
 interface ChangeRequestsTabProps {
   projectId: string;
@@ -202,13 +203,9 @@ export function ChangeRequestsTab({ projectId }: ChangeRequestsTabProps): JSX.El
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <span>Change Requests ({crs.length})</span>
             {canManage && !showCreate ? (
-              <button
-                className="button button--secondary button--sm"
-                onClick={() => setShowCreate(true)}
-                type="button"
-              >
+              <Button variant="secondary" size="sm" onClick={() => setShowCreate(true)} type="button">
                 + New Change Request
-              </button>
+              </Button>
             ) : null}
           </span>
         }
@@ -329,16 +326,12 @@ export function ChangeRequestsTab({ projectId }: ChangeRequestsTabProps): JSX.El
               </label>
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-              <button className="button button--primary" disabled={saving} type="submit">
+              <Button variant="primary" disabled={saving} type="submit">
                 {saving ? 'Saving…' : 'Create'}
-              </button>
-              <button
-                className="button button--secondary"
-                onClick={() => setShowCreate(false)}
-                type="button"
-              >
+              </Button>
+              <Button variant="secondary" onClick={() => setShowCreate(false)} type="button">
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         ) : null}
@@ -352,143 +345,72 @@ export function ChangeRequestsTab({ projectId }: ChangeRequestsTabProps): JSX.El
             }
             title="No change requests"
           />
-        ) : (
-          <table className="dash-compact-table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ width: 30, textAlign: 'left' }}>#</th>
-                <th style={{ textAlign: 'left' }}>Title</th>
-                <th style={{ width: 100, textAlign: 'left' }}>Severity</th>
-                <th style={{ width: 100, textAlign: 'left' }}>Status</th>
-                <th style={{ width: 80, textAlign: 'center' }}>OOB</th>
-                <th style={{ textAlign: 'left' }}>Impact</th>
-                {canManage ? <th style={{ width: 200, textAlign: 'right' }}>Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((cr, idx) => {
-                const isEditing = editId === cr.id;
-                if (isEditing) {
-                  return (
-                    <tr key={cr.id}>
-                      <td>{idx + 1}</td>
-                      <td>
-                        <input
-                          className="field__control"
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          type="text"
-                          value={editTitle}
-                        />
-                        <textarea
-                          className="field__control"
-                          onChange={(e) => setEditDesc(e.target.value)}
-                          rows={2}
-                          style={{ marginTop: 4 }}
-                          value={editDesc}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          className="field__control"
-                          onChange={(e) => setEditSeverity(e.target.value as ChangeRequestSeverity)}
-                          value={editSeverity}
-                        >
-                          {SEVERITY_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>{cr.status}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <input checked={editOob} onChange={(e) => setEditOob(e.target.checked)} type="checkbox" />
-                      </td>
-                      <td style={{ color: 'var(--color-text-muted)' }}>{composeImpact(cr) || '—'}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
-                          <button
-                            className="button button--primary button--sm"
-                            disabled={saving}
-                            onClick={() => void handleSaveEdit()}
-                            type="button"
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="button button--secondary button--sm"
-                            onClick={() => setEditId(null)}
-                            type="button"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-                return (
-                  <tr key={cr.id}>
-                    <td>{idx + 1}</td>
-                    <td style={{ fontWeight: 500 }}>
-                      <div>{cr.title}</div>
-                      {cr.description ? (
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                          {cr.description}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td>
-                      <StatusBadge label={cr.severity} tone={severityTone(cr.severity)} variant="chip" />
-                    </td>
-                    <td>
-                      <StatusBadge label={cr.status} tone={statusTone(cr.status)} variant="chip" />
-                    </td>
-                    <td style={{ textAlign: 'center', fontSize: 11 }}>
-                      {cr.outOfBaseline ? 'Yes' : '—'}
-                    </td>
-                    <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                      {composeImpact(cr) || '—'}
-                    </td>
-                    {canManage ? (
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
-                          {cr.status === 'PROPOSED' ? (
-                            <>
-                              <button
-                                className="button button--primary button--sm"
-                                disabled={saving}
-                                onClick={() => void handleApprove(cr)}
-                                type="button"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                className="button button--secondary button--sm"
-                                disabled={saving}
-                                onClick={() => void handleReject(cr)}
-                                type="button"
-                              >
-                                Reject
-                              </button>
-                              <button
-                                className="button button--secondary button--sm"
-                                onClick={() => beginEdit(cr)}
-                                type="button"
-                              >
-                                Edit
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        ) : (() => {
+          const baseColumns: Column<ProjectChangeRequestDto>[] = [
+            { key: 'index', title: '#', width: 30, render: (_cr: ProjectChangeRequestDto, idx: number) => idx + 1 },
+            { key: 'title', title: 'Title', getValue: (cr) => cr.title, render: (cr) => (
+              editId === cr.id ? (
+                <>
+                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                  <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={2} style={{ marginTop: 4 }} />
+                </>
+              ) : (
+                <>
+                  <div style={{ fontWeight: 500 }}>{cr.title}</div>
+                  {cr.description ? <div style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{cr.description}</div> : null}
+                </>
+              )
+            ) },
+            { key: 'severity', title: 'Severity', width: 100, getValue: (cr) => cr.severity, render: (cr) => (
+              editId === cr.id ? (
+                <Select value={editSeverity} onChange={(e) => setEditSeverity(e.target.value as ChangeRequestSeverity)}>
+                  {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </Select>
+              ) : (
+                <StatusBadge label={cr.severity} tone={severityTone(cr.severity)} variant="chip" />
+              )
+            ) },
+            { key: 'status', title: 'Status', width: 100, getValue: (cr) => cr.status, render: (cr) => (
+              editId === cr.id ? cr.status : <StatusBadge label={cr.status} tone={statusTone(cr.status)} variant="chip" />
+            ) },
+            { key: 'oob', title: 'OOB', width: 80, align: 'center', getValue: (cr) => cr.outOfBaseline ? 1 : 0, render: (cr) => (
+              editId === cr.id
+                ? <input checked={editOob} onChange={(e) => setEditOob(e.target.checked)} type="checkbox" />
+                : <span style={{ fontSize: 11 }}>{cr.outOfBaseline ? 'Yes' : '—'}</span>
+            ) },
+            { key: 'impact', title: 'Impact', getValue: (cr) => composeImpact(cr), render: (cr) => (
+              <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{composeImpact(cr) || '—'}</span>
+            ) },
+          ];
+          if (canManage) {
+            baseColumns.push({ key: 'actions', title: 'Actions', width: 200, align: 'right', render: (cr) => (
+              editId === cr.id ? (
+                <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
+                  <Button variant="primary" size="sm" disabled={saving} onClick={() => void handleSaveEdit()} type="button">Save</Button>
+                  <Button variant="secondary" size="sm" onClick={() => setEditId(null)} type="button">Cancel</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 'var(--space-1)', justifyContent: 'flex-end' }}>
+                  {cr.status === 'PROPOSED' ? (
+                    <>
+                      <Button variant="primary" size="sm" disabled={saving} onClick={() => void handleApprove(cr)} type="button">Approve</Button>
+                      <Button variant="secondary" size="sm" disabled={saving} onClick={() => void handleReject(cr)} type="button">Reject</Button>
+                      <Button variant="secondary" size="sm" onClick={() => beginEdit(cr)} type="button">Edit</Button>
+                    </>
+                  ) : null}
+                </div>
+              )
+            ) });
+          }
+          return (
+            <Table
+              variant="compact"
+              columns={baseColumns}
+              rows={filtered}
+              getRowKey={(cr) => cr.id}
+            />
+          );
+        })()}
       </SectionCard>
     </div>
   );

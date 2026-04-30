@@ -36,6 +36,14 @@ const sharedTokens: TokenMap = {
   '--spacing-card': 'clamp(8px, 0.8vw, 16px)',
   '--spacing-card--compact': '10px',
   '--spacing-section': 'clamp(8px, 1vw, 24px)',
+  // Phase DS — responsive breakpoints (sm ≤640 / md 641–1024 / lg ≥1025)
+  '--bp-sm': '640px',
+  '--bp-md': '1024px',
+  '--bp-lg': '1280px',
+  // Phase DS — minimum touch target on coarse pointers (DS-1-5)
+  '--touch-target-min': '44px',
+  // Phase DS — focus ring width (color is theme-specific, see colorModeTokens)
+  '--focus-ring-width': '2px',
 };
 
 const colorModeTokens: Record<ColorMode, TokenMap> = {
@@ -81,6 +89,7 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-threshold-healthy': '#22c55e',
     '--color-threshold-warning': '#f59e0b',
     '--color-threshold-danger': '#ef4444',
+    '--focus-ring-color': 'rgba(17, 75, 122, 0.45)',
   },
   dark: {
     '--color-bg': '#0f1117',
@@ -124,6 +133,7 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-threshold-healthy': '#4ade80',
     '--color-threshold-warning': '#fbbf24',
     '--color-threshold-danger': '#f87171',
+    '--focus-ring-color': 'rgba(96, 165, 250, 0.55)',
   },
 };
 

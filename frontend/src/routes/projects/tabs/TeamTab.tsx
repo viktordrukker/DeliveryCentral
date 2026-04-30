@@ -16,6 +16,8 @@ import { formatDateShort } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { Button, Table, type Column } from '@/components/ds';
+import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 
@@ -37,6 +39,7 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
   const [rolePlanComparison, setRolePlanComparison] = useState<RolePlanComparisonResult | null>(null);
 
   const [teams, setTeams] = useState<TeamSummary[]>([]);
+  const [requestDrawerOpen, setRequestDrawerOpen] = useState<boolean>(false);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [teamsError, setTeamsError] = useState<string | null>(null);
 
@@ -153,29 +156,38 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
       ) : null}
 
       <SectionCard title="Team Assignments">
+        {canManageProject ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-2)' }}>
+            <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>
+              + Request staffing
+            </Button>
+          </div>
+        ) : null}
+        <StaffingRequestDrawer
+          open={requestDrawerOpen}
+          onClose={() => setRequestDrawerOpen(false)}
+          onSubmitted={() => { void reload(); }}
+          initialValues={{ projectId }}
+        />
         {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (
           teamAssignments.length === 0 ? (
             <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
           ) : (
-            <table className="dash-compact-table">
-              <thead>
-                <tr><th>Person</th><th>Role</th><th style={{ textAlign: 'right' }}>Alloc %</th><th>From</th><th>To</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {teamAssignments.map((a) => (
-                  <tr key={a.id}>
-                    <td><Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link></td>
-                    <td>{a.staffingRole}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{a.allocationPercent}%</td>
-                    <td>{formatDateShort(a.startDate)}</td>
-                    <td>{a.endDate ? formatDateShort(a.endDate) : '\u2014'}</td>
-                    <td>{a.approvalState}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <Table
+              variant="compact"
+              columns={[
+                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => <Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link> },
+                { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{a.allocationPercent}%</span> },
+                { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
+                { key: 'to', title: 'To', getValue: (a) => a.endDate ?? '', render: (a) => a.endDate ? formatDateShort(a.endDate) : '\u2014' },
+                { key: 'status', title: 'Status', getValue: (a) => a.approvalState, render: (a) => a.approvalState },
+              ] as Column<AssignmentDirectoryItem>[]}
+              rows={teamAssignments}
+              getRowKey={(a) => a.id}
+            />
           )
         ) : null}
       </SectionCard>

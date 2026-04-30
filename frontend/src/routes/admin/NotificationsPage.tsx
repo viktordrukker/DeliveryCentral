@@ -18,6 +18,8 @@ import {
   useNotificationTemplates,
 } from '@/features/admin/useNotificationTemplates';
 import { useNotificationQueue } from '@/features/admin/useNotificationQueue';
+import { Button, Table, type Column } from '@/components/ds';
+import type { NotificationQueueItem } from '@/lib/api/notifications';
 
 const STATUS_OPTIONS = [
   { label: 'All', value: '' },
@@ -52,9 +54,9 @@ export function NotificationsPage(): JSX.Element {
     <PageContainer viewport>
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/admin">
+          <Button as={Link} variant="secondary" to="/admin">
             Back to admin panel
-          </Link>
+          </Button>
         }
         eyebrow="Administration"
         subtitle="Review configured notification templates and send safe test messages without exposing channel secrets."
@@ -143,90 +145,56 @@ export function NotificationsPage(): JSX.Element {
                 title="No notifications"
               />
             ) : (
-              <table className="dash-compact-table">
-                <thead>
-                  <tr>
-                    <th>Recipient</th>
-                    <th>Event</th>
-                    <th>Status</th>
-                    <th>Attempts</th>
-                    <th>Requested At</th>
-                    <th>Payload</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {queue.items.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.recipient}</td>
-                      <td>{item.eventName}</td>
-                      <td>
-                        <span className={`status-badge status-badge--${item.status.toLowerCase()}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td>
-                        {item.attemptCount} / {item.maxAttempts}
-                      </td>
-                      <td>{formatDateTime(item.requestedAt)}</td>
-                      <td>
-                        <details>
-                          <summary>Detail</summary>
-                          {item.latestRenderedBody ? (
-                            <>
-                              <p><strong>Rendered body:</strong></p>
-                              <pre className="code-block">{item.latestRenderedBody}</pre>
-                            </>
-                          ) : null}
-                          <p><strong>Payload:</strong></p>
-                          <pre className="code-block">
-                            {JSON.stringify(item.payload, null, 2)}
-                          </pre>
-                        </details>
-                        {item.failureReason ? (
-                          <span className="error-text">{item.failureReason}</span>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'recipient', title: 'Recipient', getValue: (i) => i.recipient, render: (i) => i.recipient },
+                  { key: 'event', title: 'Event', getValue: (i) => i.eventName, render: (i) => i.eventName },
+                  { key: 'status', title: 'Status', getValue: (i) => i.status, render: (i) => (
+                    <span className={`status-badge status-badge--${i.status.toLowerCase()}`}>{i.status}</span>
+                  ) },
+                  { key: 'attempts', title: 'Attempts', getValue: (i) => i.attemptCount, render: (i) => `${i.attemptCount} / ${i.maxAttempts}` },
+                  { key: 'requestedAt', title: 'Requested At', getValue: (i) => i.requestedAt, render: (i) => formatDateTime(i.requestedAt) },
+                  { key: 'payload', title: 'Payload', render: (i) => (
+                    <>
+                      <details>
+                        <summary>Detail</summary>
+                        {i.latestRenderedBody ? (
+                          <>
+                            <p><strong>Rendered body:</strong></p>
+                            <pre className="code-block">{i.latestRenderedBody}</pre>
+                          </>
                         ) : null}
-                      </td>
-                      <td>
-                        {item.status === 'FAILED_TERMINAL' ? (
-                          <button
-                            className="button button--secondary"
-                            disabled={queue.isLoading}
-                            onClick={() => { void queue.handleRequeue(item.id); }}
-                            style={{ fontSize: '11px', padding: '2px 8px' }}
-                            type="button"
-                          >
-                            Requeue
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <p><strong>Payload:</strong></p>
+                        <pre className="code-block">{JSON.stringify(i.payload, null, 2)}</pre>
+                      </details>
+                      {i.failureReason ? <span className="error-text">{i.failureReason}</span> : null}
+                    </>
+                  ) },
+                  { key: 'actions', title: 'Actions', render: (i) => (
+                    i.status === 'FAILED_TERMINAL' ? (
+                      <Button variant="secondary" size="sm" disabled={queue.isLoading} onClick={() => { void queue.handleRequeue(i.id); }} type="button">
+                        Requeue
+                      </Button>
+                    ) : null
+                  ) },
+                ] as Column<NotificationQueueItem>[]}
+                rows={queue.items}
+                getRowKey={(i) => i.id}
+              />
             )}
 
             {queue.totalCount > queue.pageSize ? (
               <div className="pagination">
-                <button
-                  className="button button--secondary"
-                  disabled={queue.page <= 1 || queue.isLoading}
-                  onClick={queue.handlePrevPage}
-                  type="button"
-                >
+                <Button variant="secondary" disabled={queue.page <= 1 || queue.isLoading} onClick={queue.handlePrevPage} type="button">
                   Previous
-                </button>
+                </Button>
                 <span className="pagination__info">
                   Page {queue.page} of {totalPages}
                 </span>
-                <button
-                  className="button button--secondary"
-                  disabled={queue.page >= totalPages || queue.isLoading}
-                  onClick={queue.handleNextPage}
-                  type="button"
-                >
+                <Button variant="secondary" disabled={queue.page >= totalPages || queue.isLoading} onClick={queue.handleNextPage} type="button">
                   Next
-                </button>
+                </Button>
               </div>
             ) : null}
           </>

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
+import { Button } from '@/components/ds';
 
 interface ManagerScopeSectionProps {
   emptyDescription: string;
@@ -49,12 +50,12 @@ export function ManagerScopeSection({
               </dl>
 
               <div className="scope-card__actions">
-                <Link className="button button--secondary" to={`/people/${item.id}`}>
+                <Button as={Link} variant="secondary" to={`/people/${item.id}`}>
                   View person
-                </Link>
-                <Link className="button button--secondary" to={`/assignments?person=${encodeURIComponent(item.displayName)}`}>
+                </Button>
+                <Button as={Link} variant="secondary" to={`/assignments?person=${encodeURIComponent(item.displayName)}`}>
                   View assignments
-                </Link>
+                </Button>
               </div>
             </article>
           ))}

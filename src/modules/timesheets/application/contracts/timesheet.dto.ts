@@ -20,6 +20,9 @@ export class TimesheetEntryDto {
   hours!: number;
   capex!: boolean;
   description?: string;
+  benchCategory?: string;
+  workLabel?: string;
+  workItemId?: string;
 }
 
 export class TimesheetWeekDto {
@@ -64,6 +67,58 @@ export class UpsertEntryDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  benchCategory?: string;
+
+  @IsString()
+  @IsOptional()
+  workLabel?: string;
+
+  @IsString()
+  @IsOptional()
+  workItemId?: string;
+}
+
+export class RenameMyTimeRowDto {
+  @IsString()
+  @IsNotEmpty()
+  month!: string; // YYYY-MM
+
+  @IsString()
+  @IsNotEmpty()
+  kind!: 'BENCH' | 'WORK_LABEL';
+
+  @IsString()
+  @IsOptional()
+  projectId?: string;
+
+  @IsString()
+  @IsOptional()
+  oldLabel?: string;
+
+  @IsString()
+  @IsOptional()
+  newLabel?: string;
+}
+
+export class DeleteMyTimeRowDto {
+  @IsString()
+  @IsNotEmpty()
+  month!: string; // YYYY-MM
+
+  @IsString()
+  @IsNotEmpty()
+  kind!: 'BENCH' | 'WORK_LABEL';
+
+  @IsString()
+  @IsOptional()
+  projectId?: string;
+
+  @IsString()
+  @IsOptional()
+  label?: string;
 }
 
 export class RejectTimesheetDto {

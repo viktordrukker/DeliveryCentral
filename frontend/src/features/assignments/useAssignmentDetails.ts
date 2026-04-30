@@ -36,6 +36,7 @@ interface AssignmentDetailsState {
     target: AssignmentStatusValue,
     request?: TransitionAssignmentRequest,
   ) => Promise<boolean>;
+  refresh: () => Promise<void>;
   successMessage?: string;
 }
 
@@ -209,6 +210,11 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     }
   }
 
+  async function refresh(): Promise<void> {
+    if (!id) return;
+    await loadAssignment(id);
+  }
+
   return {
     data,
     error,
@@ -220,6 +226,7 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     runEndAssignment,
     runRevokeAssignment,
     runTransition,
+    refresh,
     successMessage,
   };
 }

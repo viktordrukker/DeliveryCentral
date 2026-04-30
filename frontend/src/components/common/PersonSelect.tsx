@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
+import { FormField, Select } from '@/components/ds';
 
 interface PersonSelectProps {
   id?: string;
@@ -16,6 +17,13 @@ interface PersonOption {
   id: string;
 }
 
+/**
+ * Phase DS-3-3 — public API unchanged. Internally now composes
+ * <FormField> + the DS <Select> atom (token-driven, mobile-friendly,
+ * theme-aware). Native <select required> semantics preserved so HTML5
+ * form validation still fires; switching to <Combobox> (typeahead) is
+ * a follow-up gated on consumers being OK with the UX change.
+ */
 export function PersonSelect({
   id,
   label,
@@ -53,23 +61,23 @@ export function PersonSelect({
   }, []);
 
   return (
-    <label className="field">
-      <span className="field__label">{label}</span>
-      <select
-        className="field__control"
-        disabled={isLoading}
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        required={required}
-        value={value}
-      >
-        <option value="">{isLoading ? 'Loading…' : 'Select a person…'}</option>
-        {people.map((person) => (
-          <option key={person.id} value={person.id}>
-            {person.displayName}
-          </option>
-        ))}
-      </select>
-    </label>
+    <FormField label={label} required={required} id={id}>
+      {(props) => (
+        <Select
+          disabled={isLoading}
+          onChange={(event) => onChange(event.target.value)}
+          required={required}
+          value={value}
+          {...props}
+        >
+          <option value="">{isLoading ? 'Loading…' : 'Select a person…'}</option>
+          {people.map((person) => (
+            <option key={person.id} value={person.id}>
+              {person.displayName}
+            </option>
+          ))}
+        </Select>
+      )}
+    </FormField>
   );
 }

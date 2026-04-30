@@ -82,6 +82,18 @@ const MOCK_SETTINGS = {
     allowedSources: ['JIRA_WORKLOG', 'MANUAL'],
     retentionDays: null,
   },
+  timeEntry: {
+    benchEnabled: true,
+    benchCategories: ['BENCH-EDU'],
+    copyPreviousEnabled: true,
+    autoFillFromAssignments: true,
+    gapDetectionEnabled: true,
+    standardHoursPerDay: 8,
+    allowSubmitInAdvance: false,
+    allowFutureDateEntry: false,
+    maxHoursPerDay: 12,
+    maxHoursPerWeek: 60,
+  },
 };
 
 function renderPage(): void {

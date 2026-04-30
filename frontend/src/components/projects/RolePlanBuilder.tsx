@@ -9,12 +9,15 @@ import {
   generateRequestsFromPlan,
   upsertRolePlan,
 } from '@/lib/api/project-role-plan';
+import { Button, Input, Select, Table, type Column } from '@/components/ds';
 
 interface RolePlanBuilderProps {
   projectId: string;
   entries: RolePlanEntryDto[];
   onUpdate: () => void;
 }
+
+const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
 const SENIORITY_OPTIONS = ['Junior', 'Mid', 'Senior', 'Lead', 'Architect', 'Manager'];
 const SOURCE_OPTIONS = [
@@ -85,94 +88,63 @@ export function RolePlanBuilder({ projectId, entries, onUpdate }: RolePlanBuilde
     }
   }
 
+  const columns: Column<RolePlanEntryDto>[] = [
+    { key: 'role', title: 'Role', getValue: (e) => e.roleName, render: (e) => <span style={{ fontWeight: 500 }}>{e.roleName}</span> },
+    { key: 'seniority', title: 'Seniority', getValue: (e) => e.seniorityLevel ?? '', render: (e) => e.seniorityLevel || '—' },
+    { key: 'hc', title: 'HC', align: 'right', width: 50, getValue: (e) => e.headcount, render: (e) => <span style={NUM}>{e.headcount}</span> },
+    { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (e) => e.allocationPercent ?? 0, render: (e) => <span style={NUM}>{e.allocationPercent ?? '—'}%</span> },
+    { key: 'source', title: 'Source', width: 80, getValue: (e) => e.source, render: (e) => <StatusBadge status={e.source.toLowerCase()} variant="chip" /> },
+    { key: 'actions', title: '', width: 60, render: (e) => (
+      <Button variant="danger" size="sm" onClick={() => void handleDelete(e.id)} type="button">Remove</Button>
+    ) },
+  ];
+
   return (
     <div>
-      <table className="dash-compact-table">
-        <caption className="sr-only">Project role plan</caption>
-        <thead>
-          <tr>
-            <th scope="col">Role</th>
-            <th scope="col">Seniority</th>
-            <th scope="col" style={{ width: 50, textAlign: 'right' }}>HC</th>
-            <th scope="col" style={{ width: 60, textAlign: 'right' }}>Alloc %</th>
-            <th scope="col" style={{ width: 80 }}>Source</th>
-            <th scope="col" style={{ width: 60 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((e) => (
-            <tr key={e.id}>
-              <td style={{ fontWeight: 500 }}>{e.roleName}</td>
-              <td>{e.seniorityLevel || '\u2014'}</td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{e.headcount}</td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{e.allocationPercent ?? '\u2014'}%</td>
-              <td><StatusBadge status={e.source.toLowerCase()} variant="chip" /></td>
-              <td>
-                <button
-                  className="button button--danger button--sm"
-                  onClick={() => void handleDelete(e.id)}
-                  style={{ fontSize: 10 }}
-                  type="button"
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
+      {entries.length > 0 ? (
+        <Table
+          variant="compact"
+          columns={columns}
+          rows={entries}
+          getRowKey={(e) => e.id}
+        />
+      ) : (
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 'var(--space-3)' }}>
+          No roles defined yet. Add one below to start tracking staffing.
+        </p>
+      )}
 
-          {/* Add row */}
-          <tr style={{ background: 'var(--color-surface-alt)' }}>
-            <td>
-              <input
-                className="field__control"
-                onChange={(e) => setNewRole(e.target.value)}
-                placeholder="Role name..."
-                style={{ fontSize: 12, padding: '2px 6px' }}
-                type="text"
-                value={newRole}
-              />
-            </td>
-            <td>
-              <select className="field__control" onChange={(e) => setNewSeniority(e.target.value)} style={{ fontSize: 12, padding: '2px 6px' }} value={newSeniority}>
-                <option value="">Any</option>
-                {SENIORITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </td>
-            <td>
-              <input className="field__control" onChange={(e) => setNewHC(e.target.value)} style={{ fontSize: 12, padding: '2px 6px', width: 40, textAlign: 'right' }} type="number" min="1" value={newHC} />
-            </td>
-            <td>
-              <input className="field__control" onChange={(e) => setNewAlloc(e.target.value)} style={{ fontSize: 12, padding: '2px 6px', width: 50, textAlign: 'right' }} type="number" min="0" max="100" value={newAlloc} />
-            </td>
-            <td>
-              <select className="field__control" onChange={(e) => setNewSource(e.target.value)} style={{ fontSize: 12, padding: '2px 6px' }} value={newSource}>
-                {SOURCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </td>
-            <td>
-              <button
-                className="button button--sm"
-                disabled={isAdding || !newRole.trim()}
-                onClick={() => void handleAddRole()}
-                style={{ fontSize: 10 }}
-                type="button"
-              >
-                {isAdding ? '...' : 'Add'}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* Add new role row */}
+      <div style={{
+        marginTop: 'var(--space-3)',
+        padding: 'var(--space-2)',
+        background: 'var(--color-surface-alt)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 6,
+        display: 'grid',
+        gridTemplateColumns: '1fr 120px 60px 70px 100px auto',
+        gap: 'var(--space-2)',
+        alignItems: 'end',
+      }}>
+        <Input value={newRole} onChange={(e) => setNewRole(e.target.value)} placeholder="Role name..." />
+        <Select value={newSeniority} onChange={(e) => setNewSeniority(e.target.value)}>
+          <option value="">Any</option>
+          {SENIORITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </Select>
+        <Input type="number" min={1} value={newHC} onChange={(e) => setNewHC(e.target.value)} style={{ textAlign: 'right' }} />
+        <Input type="number" min={0} max={100} value={newAlloc} onChange={(e) => setNewAlloc(e.target.value)} style={{ textAlign: 'right' }} />
+        <Select value={newSource} onChange={(e) => setNewSource(e.target.value)}>
+          {SOURCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
+        <Button variant="primary" size="sm" disabled={isAdding || !newRole.trim()} onClick={() => void handleAddRole()} type="button">
+          {isAdding ? '…' : 'Add'}
+        </Button>
+      </div>
 
       <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-        <button
-          className="button button--primary button--sm"
-          disabled={isGenerating || entries.length === 0}
-          onClick={() => void handleGenerateRequests()}
-          type="button"
-        >
+        <Button variant="primary" size="sm" disabled={isGenerating || entries.length === 0} onClick={() => void handleGenerateRequests()} type="button">
           {isGenerating ? 'Generating...' : 'Generate Requests for Gaps'}
-        </button>
+        </Button>
       </div>
     </div>
   );

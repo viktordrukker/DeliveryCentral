@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { fetchPulseHistory, submitPulse, PulseEntryDto } from '@/lib/api/pulse';
+import { Button } from '@/components/ds';
 
 const MOOD_OPTIONS: Array<{
   value: number;
@@ -105,9 +106,10 @@ export function PulseWidget({ className }: PulseWidgetProps): JSX.Element {
               {MOOD_OPTIONS.map((option) => {
                 const isSelected = selected === option.value;
                 return (
-                  <button
+                  <Button
                     aria-label={`${option.label} (${option.value})`}
                     aria-pressed={isSelected}
+                    variant="secondary"
                     className="pulse-widget__mood-btn"
                     key={option.value}
                     onClick={() => { setSelected(option.value); }}
@@ -122,7 +124,7 @@ export function PulseWidget({ className }: PulseWidgetProps): JSX.Element {
                       {option.emoji}
                     </span>
                     <span className="pulse-widget__mood-label">{option.label}</span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -130,13 +132,15 @@ export function PulseWidget({ className }: PulseWidgetProps): JSX.Element {
 
           {!alreadySubmitted && selected !== null && (
             <>
-              <button
+              <Button
+                variant="link"
+                size="sm"
                 className="pulse-widget__note-toggle"
                 onClick={() => setShowNote((v) => !v)}
                 type="button"
               >
                 {showNote ? 'Hide note' : 'Add a note (optional)'}
-              </button>
+              </Button>
 
               {showNote && (
                 <textarea
@@ -149,14 +153,9 @@ export function PulseWidget({ className }: PulseWidgetProps): JSX.Element {
                 />
               )}
 
-              <button
-                className="button button--primary"
-                disabled={isSubmitting}
-                onClick={() => { void handleSubmit(); }}
-                type="button"
-              >
+              <Button variant="primary" disabled={isSubmitting} onClick={() => { void handleSubmit(); }} type="button">
                 {isSubmitting ? 'Submitting...' : 'Submit'}
-              </button>
+              </Button>
             </>
           )}
 

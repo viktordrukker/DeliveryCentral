@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useBusinessAudit } from '@/features/admin/useBusinessAudit';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
+import { Button } from '@/components/ds';
 
 export function BusinessAuditPage(): JSX.Element {
   const state = useBusinessAudit();
@@ -26,8 +27,8 @@ export function BusinessAuditPage(): JSX.Element {
         actions={
           <>
             {state.data.length > 0 ? (
-              <button
-                className="button button--secondary"
+              <Button
+                variant="secondary"
                 disabled={state.isLoading}
                 onClick={() => {
                   exportToXlsx(
@@ -44,11 +45,11 @@ export function BusinessAuditPage(): JSX.Element {
                 type="button"
               >
                 Export XLSX
-              </button>
+              </Button>
             ) : null}
-            <Link className="button button--secondary" to="/admin">
+            <Button as={Link} variant="secondary" to="/admin">
               Back to admin panel
-            </Link>
+            </Button>
           </>
         }
         eyebrow="Administration"
@@ -103,25 +104,15 @@ export function BusinessAuditPage(): JSX.Element {
 
           {state.totalCount > pageSize ? (
             <div className="pagination">
-              <button
-                className="button button--secondary"
-                disabled={state.page <= 1 || state.isLoading}
-                onClick={state.handlePrevPage}
-                type="button"
-              >
+              <Button variant="secondary" disabled={state.page <= 1 || state.isLoading} onClick={state.handlePrevPage} type="button">
                 Previous
-              </button>
+              </Button>
               <span className="pagination__info">
                 Page {state.page} of {totalPages}
               </span>
-              <button
-                className="button button--secondary"
-                disabled={state.page >= totalPages || state.isLoading}
-                onClick={state.handleNextPage}
-                type="button"
-              >
+              <Button variant="secondary" disabled={state.page >= totalPages || state.isLoading} onClick={state.handleNextPage} type="button">
                 Next
-              </button>
+              </Button>
             </div>
           ) : null}
         </SectionCard>

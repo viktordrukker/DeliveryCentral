@@ -7,17 +7,16 @@ import { PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { TabBar } from '@/components/common/TabBar';
 import { TipBalloon } from '@/components/common/TipBalloon';
+import { DetailLayout } from '@/components/layout/DetailLayout';
 import type { ProjectDetails } from '@/lib/api/project-registry';
 import { useProjectDetails } from '@/features/projects/useProjectDetails';
 import { type ComputedRag, fetchComputedRag } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
+import { Button } from '@/components/ds';
 
 import { RadiatorTab } from './tabs/RadiatorTab';
 import { MilestonesTab } from './tabs/MilestonesTab';
@@ -90,80 +89,81 @@ export function ProjectDetailPage(): JSX.Element {
     ? Math.max(0, Math.ceil((new Date(project.plannedEndDate).getTime() - Date.now()) / 86400000))
     : null;
 
-  return (
-    <PageContainer testId="project-detail-page">
-      <PageHeader
-        actions={
-          id ? (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {canManage ? (
-                <>
-                  <Link className="button--project-detail" to={`/staffing-requests/new?projectId=${id}`}>Staffing request</Link>
-                  <Link className="button--project-detail" to={`/assignments/new?projectId=${id}`}>Quick assign</Link>
-                </>
-              ) : null}
-            </div>
-          ) : null
-        }
-        eyebrow="Projects"
-        subtitle="Project status reporting, staffing, budget, and lifecycle management."
-        title={project?.name ?? 'Project Details'}
-      />
-
+  const banners = (
+    <>
       {state.isLoading && !project ? <LoadingState label="Loading project..." variant="skeleton" skeletonType="detail" /> : null}
       {state.notFound ? (
         <SectionCard><EmptyState description={`No project found for ${id ?? 'the requested id'}.`} title="Project not found" /></SectionCard>
       ) : null}
       {state.error ? <ErrorState description={state.error} /> : null}
+    </>
+  );
 
+  const kpiStrip = project ? (
+    <div className="kpi-strip" aria-label="Key metrics">
+      <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
+        style={{ borderLeft: '3px solid var(--color-accent)' }}>
+        <span className="kpi-strip__value">{humanizeEnum(project.status, PROJECT_STATUS_LABELS)}</span>
+        <span className="kpi-strip__label">Status</span>
+      </Link>
+
+      <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
+        style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+        <TipBalloon tip="People currently assigned to this project." arrow="left" />
+        <span className="kpi-strip__value">{project.assignmentCount}</span>
+        <span className="kpi-strip__label">Active Staff</span>
+      </Link>
+
+      {staffingSummary && staffingSummary.totalPlanned > 0 ? (
+        <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
+          style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
+          <span className="kpi-strip__value">{staffingSummary.fillRate}%</span>
+          <span className="kpi-strip__label">Fill Rate</span>
+        </Link>
+      ) : null}
+
+      {computedRag ? (
+        <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
+          style={{ borderLeft: `3px solid ${computedRag.overallRag === 'GREEN' ? 'var(--color-status-active)' : computedRag.overallRag === 'AMBER' ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
+          <StatusBadge status={computedRag.overallRag.toLowerCase()} label={computedRag.overallRag} variant="chip" />
+          <span className="kpi-strip__label">Overall RAG</span>
+        </Link>
+      ) : null}
+
+      <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
+        style={{ borderLeft: `3px solid ${daysRemaining !== null && daysRemaining <= 7 ? 'var(--color-status-danger)' : daysRemaining !== null && daysRemaining <= 30 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
+        <TipBalloon tip="Calendar days until planned end date." arrow="left" />
+        <span className="kpi-strip__value">{daysRemaining !== null ? `${daysRemaining}d` : '—'}</span>
+        <span className="kpi-strip__label">Days Remaining</span>
+        {daysRemaining !== null && daysRemaining <= 7 ? (
+          <span className="kpi-strip__context" style={{ color: 'var(--color-status-danger)' }}>ending soon</span>
+        ) : null}
+      </Link>
+    </div>
+  ) : null;
+
+  return (
+    <DetailLayout
+      testId="project-detail-page"
+      eyebrow="Projects"
+      title={project?.name ?? 'Project Details'}
+      subtitle="Project status reporting, staffing, budget, and lifecycle management."
+      actions={
+        id && canManage ? (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button as={Link} variant="secondary" size="sm" to={`/staffing-requests/new?projectId=${id}`}>Staffing request</Button>
+            <Button as={Link} variant="secondary" size="sm" to={`/assignments/new?projectId=${id}`}>Quick assign</Button>
+          </div>
+        ) : null
+      }
+      banners={banners}
+      kpiStrip={kpiStrip}
+      tabs={project ? TABS : undefined}
+      activeTab={project ? activeTab : undefined}
+      onTabChange={project ? setTab : undefined}
+    >
       {project ? (
         <>
-          {/* ── KPI Strip ── */}
-          <div className="kpi-strip" aria-label="Key metrics">
-            <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
-              style={{ borderLeft: '3px solid var(--color-accent)' }}>
-              <span className="kpi-strip__value">{humanizeEnum(project.status, PROJECT_STATUS_LABELS)}</span>
-              <span className="kpi-strip__label">Status</span>
-            </Link>
-
-            <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
-              style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
-              <TipBalloon tip="People currently assigned to this project." arrow="left" />
-              <span className="kpi-strip__value">{project.assignmentCount}</span>
-              <span className="kpi-strip__label">Active Staff</span>
-            </Link>
-
-            {staffingSummary && staffingSummary.totalPlanned > 0 ? (
-              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
-                style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-                <span className="kpi-strip__value">{staffingSummary.fillRate}%</span>
-                <span className="kpi-strip__label">Fill Rate</span>
-              </Link>
-            ) : null}
-
-            {computedRag ? (
-              <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
-                style={{ borderLeft: `3px solid ${computedRag.overallRag === 'GREEN' ? 'var(--color-status-active)' : computedRag.overallRag === 'AMBER' ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-                <StatusBadge status={computedRag.overallRag.toLowerCase()} label={computedRag.overallRag} variant="chip" />
-                <span className="kpi-strip__label">Overall RAG</span>
-              </Link>
-            ) : null}
-
-            <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
-              style={{ borderLeft: `3px solid ${daysRemaining !== null && daysRemaining <= 7 ? 'var(--color-status-danger)' : daysRemaining !== null && daysRemaining <= 30 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="Calendar days until planned end date." arrow="left" />
-              <span className="kpi-strip__value">{daysRemaining !== null ? `${daysRemaining}d` : '\u2014'}</span>
-              <span className="kpi-strip__label">Days Remaining</span>
-              {daysRemaining !== null && daysRemaining <= 7 ? (
-                <span className="kpi-strip__context" style={{ color: 'var(--color-status-danger)' }}>ending soon</span>
-              ) : null}
-            </Link>
-          </div>
-
-          {/* ── Tab Bar ── */}
-          <TabBar activeTab={activeTab} onTabChange={setTab} tabs={TABS} />
-
-          {/* ── Tab Content ── */}
           {activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
           {activeTab === 'milestones' ? <MilestonesTab projectId={id!} shape={state.data?.shape} /> : null}
           {activeTab === 'change-requests' ? <ChangeRequestsTab projectId={id!} /> : null}
@@ -180,10 +180,10 @@ export function ProjectDetailPage(): JSX.Element {
           ) : null}
 
           <div className="print-footer print-only">
-            {project.projectCode} {'\u00B7'} Printed {new Date().toLocaleDateString()}
+            {project.projectCode} {'·'} Printed {new Date().toLocaleDateString()}
           </div>
         </>
       ) : null}
-    </PageContainer>
+    </DetailLayout>
   );
 }

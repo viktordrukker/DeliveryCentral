@@ -3,6 +3,7 @@ import { FormEvent } from 'react';
 import { NotificationTestFormValues } from '@/features/admin/useNotificationTemplates';
 import { NotificationTemplate, NotificationTestSendResponse } from '@/lib/api/notifications';
 import { SectionCard } from '@/components/common/SectionCard';
+import { Button } from '@/components/ds';
 
 interface SendTestPanelProps {
   error: string | null;
@@ -88,9 +89,9 @@ export function SendTestPanel({
         ) : null}
 
         <div className="entity-form__actions">
-          <button className="button" disabled={isSubmitting || !template} type="submit">
+          <Button variant="primary" disabled={isSubmitting || !template} type="submit">
             {isSubmitting ? 'Sending test...' : 'Send test'}
-          </button>
+          </Button>
         </div>
       </form>
     </SectionCard>

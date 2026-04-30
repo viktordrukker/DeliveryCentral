@@ -17,6 +17,7 @@ import {
 } from '@/lib/api/webhooks';
 import { useAuth } from '@/app/auth-context';
 import { formatDateShort } from '@/lib/format-date';
+import { Button, Table, type Column } from '@/components/ds';
 
 const ALL_EVENT_TYPES = [
   'case.created',
@@ -152,69 +153,31 @@ export function WebhooksAdminPage(): JSX.Element {
             ))}
           </div>
         </div>
-        <button
-          className="button button--primary"
-          disabled={!form.url || !form.secret || saving}
-          onClick={() => void handleCreate()}
-          style={{ marginTop: '0.75rem' }}
-          type="button"
-        >
+        <Button variant="primary" disabled={!form.url || !form.secret || saving} onClick={() => void handleCreate()} style={{ marginTop: '0.75rem' }} type="button">
           {saving ? 'Adding…' : 'Add Webhook'}
-        </button>
+        </Button>
       </div>
 
       {subscriptions.length === 0 ? (
         <SectionCard><EmptyState description="No webhook subscriptions are configured yet." title="No webhooks" /></SectionCard>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-          <thead>
-            <tr style={{ background: 'var(--color-surface-alt)' }}>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>URL</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Event Types</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Created</th>
-              <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subscriptions.map((sub) => (
-              <tr key={sub.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={{ padding: '8px 12px', wordBreak: 'break-all' }}>{sub.url}</td>
-                <td style={{ padding: '8px 12px' }}>
-                  {sub.eventTypes.length === 0 ? 'all' : sub.eventTypes.join(', ')}
-                </td>
-                <td style={{ padding: '8px 12px' }}>{formatDateShort(sub.createdAt)}</td>
-                <td style={{ padding: '8px 12px' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className="button button--secondary"
-                      onClick={() => void handleTest(sub.id)}
-                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                      type="button"
-                    >
-                      Test
-                    </button>
-                    <button
-                      className="button button--secondary"
-                      onClick={() => void handleViewDeliveries(sub.id)}
-                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                      type="button"
-                    >
-                      Deliveries
-                    </button>
-                    <button
-                      className="button button--danger"
-                      onClick={() => setConfirmDeleteId(sub.id)}
-                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
-                      type="button"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Table
+          variant="compact"
+          columns={[
+            { key: 'url', title: 'URL', getValue: (s) => s.url, render: (s) => <span style={{ wordBreak: 'break-all' }}>{s.url}</span> },
+            { key: 'events', title: 'Event Types', getValue: (s) => s.eventTypes.length === 0 ? 'all' : s.eventTypes.join(', '), render: (s) => s.eventTypes.length === 0 ? 'all' : s.eventTypes.join(', ') },
+            { key: 'created', title: 'Created', getValue: (s) => s.createdAt, render: (s) => formatDateShort(s.createdAt) },
+            { key: 'actions', title: 'Actions', render: (s) => (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button variant="secondary" size="sm" onClick={() => void handleTest(s.id)} type="button">Test</Button>
+                <Button variant="secondary" size="sm" onClick={() => void handleViewDeliveries(s.id)} type="button">Deliveries</Button>
+                <Button variant="danger" size="sm" onClick={() => setConfirmDeleteId(s.id)} type="button">Delete</Button>
+              </div>
+            ) },
+          ] as Column<WebhookSubscription>[]}
+          rows={subscriptions}
+          getRowKey={(s) => s.id}
+        />
       )}
 
       {testResult ? (
@@ -238,26 +201,20 @@ export function WebhooksAdminPage(): JSX.Element {
       {selectedId && deliveries.length > 0 ? (
         <div style={{ marginTop: '1rem' }}>
           <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>Last 10 Delivery Attempts</h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-surface-alt)' }}>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Event</th>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Status</th>
-                <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '1px solid var(--color-border)' }}>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveries.map((d, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--color-surface-alt)' }}>
-                  <td style={{ padding: '6px 10px' }}>{d.eventType}</td>
-                  <td style={{ padding: '6px 10px', color: d.success ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
-                    {d.success ? `OK ${d.statusCode ?? ''}` : `Failed ${d.statusCode ?? ''} ${d.error ?? ''}`}
-                  </td>
-                  <td style={{ padding: '6px 10px' }}>{d.attemptedAt.slice(0, 19).replace('T', ' ')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Table
+            variant="compact"
+            columns={[
+              { key: 'event', title: 'Event', getValue: (d) => d.eventType, render: (d) => d.eventType },
+              { key: 'status', title: 'Status', getValue: (d) => d.success ? 1 : 0, render: (d) => (
+                <span style={{ color: d.success ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
+                  {d.success ? `OK ${d.statusCode ?? ''}` : `Failed ${d.statusCode ?? ''} ${d.error ?? ''}`}
+                </span>
+              ) },
+              { key: 'time', title: 'Time', getValue: (d) => d.attemptedAt, render: (d) => d.attemptedAt.slice(0, 19).replace('T', ' ') },
+            ] as Column<WebhookDeliveryAttempt>[]}
+            rows={deliveries}
+            getRowKey={(_, i) => String(i)}
+          />
         </div>
       ) : null}
       <ConfirmDialog

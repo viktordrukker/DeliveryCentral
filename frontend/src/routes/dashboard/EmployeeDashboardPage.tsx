@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { Table, type Column } from '@/components/ds';
+import { DataFreshness } from '@/components/dashboard/DataFreshness';
 
 import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
@@ -11,15 +12,13 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
-import { formatDate } from '@/lib/format-date';
 import { WorkloadGauge } from '@/components/charts/WorkloadGauge';
 import { WeeklyAllocationArea } from '@/components/charts/WeeklyAllocationArea';
 import { PulseWidget } from '@/components/common/PulseWidget';
 import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
-
-const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 import { HR_DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { Button } from '@/components/ds';
 
 function buildWeeks(count: number, asOf: string): string[] {
   const base = new Date(asOf);
@@ -75,7 +74,7 @@ export function EmployeeDashboardPage(): JSX.Element {
             </select>
           </label>
         ) : null}
-        <Link className="button button--secondary button--sm" to="/my-time">My Time</Link>
+        <Button as={Link} variant="secondary" size="sm" to="/my-time">My Time</Button>
         <TipTrigger />
       </>
     );
@@ -187,29 +186,24 @@ export function EmployeeDashboardPage(): JSX.Element {
             {d.pendingWorkflowItems.itemCount === 0 ? (
               <EmptyState description="No assignment requests are pending your approval or action." title="No pending items" />
             ) : (
-              <table className="dash-compact-table">
-                <thead>
-                  <tr><th>Title</th><th style={{ width: 200 }}>Detail</th></tr>
-                </thead>
-                <tbody>
-                  {d.pendingWorkflowItems.items.map((item) => (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: 500 }}>{item.title}</td>
-                      <td style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.detail ?? '\u2014'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table
+                variant="compact"
+                columns={[
+                  { key: 'title', title: 'Title', getValue: (item) => item.title, render: (item) => <span style={{ fontWeight: 500 }}>{item.title}</span> },
+                  { key: 'detail', title: 'Detail', width: 200, getValue: (item) => item.detail ?? '\u2014', render: (item) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.detail ?? '\u2014'}</span> },
+                ] as Column<typeof d.pendingWorkflowItems.items[number]>[]}
+                rows={d.pendingWorkflowItems.items}
+                getRowKey={(item) => item.id}
+              />
             )}
           </SectionCard>
 
           {/* ── DATA FRESHNESS ── */}
-          <div className="data-freshness">
-            Updated {formatDistanceToNow(lastFetch, { addSuffix: true })} {'\u00B7'}{' '}
-            <button onClick={refetch} type="button">Refresh</button>
-            {' '}
-            <TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />
-          </div>
+          <DataFreshness
+            lastFetch={lastFetch}
+            onRefresh={refetch}
+            tip={<TipBalloon tip="Shows when data was last loaded. Click Refresh to pull the latest numbers." arrow="top" />}
+          />
         </>
       ) : null}
     </PageContainer>

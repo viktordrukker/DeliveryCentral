@@ -200,6 +200,18 @@ export class TimeEntrySettingsDto {
 
   @ApiProperty()
   public standardHoursPerDay!: number;
+
+  @ApiProperty({ description: 'Allow submitting a week before its last day has passed.' })
+  public allowSubmitInAdvance!: boolean;
+
+  @ApiProperty({ description: 'Allow entering hours on dates that have not occurred yet.' })
+  public allowFutureDateEntry!: boolean;
+
+  @ApiProperty({ description: 'Hard cap on hours that can be logged on a single day per row.' })
+  public maxHoursPerDay!: number;
+
+  @ApiProperty({ description: 'Hard cap on total reported hours in a single week (enforced on submit).' })
+  public maxHoursPerWeek!: number;
 }
 
 export class OvertimeSettingsDto {

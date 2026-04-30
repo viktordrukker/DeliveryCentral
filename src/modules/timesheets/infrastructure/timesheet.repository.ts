@@ -60,9 +60,22 @@ export class TimesheetRepository {
     hours: Prisma.Decimal | number,
     capex: boolean,
     description?: string,
+    benchCategory?: string,
+    workLabel?: string,
+    workItemId?: string,
   ): Promise<Prisma.TimesheetEntryGetPayload<Record<string, never>>> {
+    const bench = benchCategory ?? '';
+    const work = workLabel ?? '';
     return this.prisma.timesheetEntry.upsert({
-      where: { timesheetWeekId_projectId_date: { timesheetWeekId, projectId, date } },
+      where: {
+        timesheetWeekId_projectId_benchCategory_workLabel_date: {
+          timesheetWeekId,
+          projectId,
+          benchCategory: bench,
+          workLabel: work,
+          date,
+        },
+      },
       create: {
         timesheetWeekId,
         projectId,
@@ -70,13 +83,62 @@ export class TimesheetRepository {
         hours,
         capex,
         description,
+        benchCategory: bench,
+        workLabel: work,
+        workItemId: workItemId ?? null,
       },
       update: {
         hours,
         capex,
         description,
+        workItemId: workItemId ?? null,
       },
     });
+  }
+
+  public async renameRowInMonth(
+    personId: string,
+    monthStart: Date,
+    monthEnd: Date,
+    kind: 'BENCH' | 'WORK_LABEL',
+    projectId: string | undefined,
+    oldLabel: string,
+    newLabel: string,
+  ): Promise<{ count: number }> {
+    const where: Prisma.TimesheetEntryWhereInput = {
+      timesheetWeek: { personId, status: 'DRAFT' },
+      date: { gte: monthStart, lte: monthEnd },
+    };
+    if (kind === 'BENCH') {
+      where.benchCategory = oldLabel;
+    } else {
+      where.workLabel = oldLabel;
+      if (projectId) where.projectId = projectId;
+    }
+    const data: Prisma.TimesheetEntryUpdateManyMutationInput =
+      kind === 'BENCH' ? { benchCategory: newLabel } : { workLabel: newLabel };
+    return this.prisma.timesheetEntry.updateMany({ where, data });
+  }
+
+  public async deleteRowInMonth(
+    personId: string,
+    monthStart: Date,
+    monthEnd: Date,
+    kind: 'BENCH' | 'WORK_LABEL',
+    projectId: string | undefined,
+    label: string,
+  ): Promise<{ count: number }> {
+    const where: Prisma.TimesheetEntryWhereInput = {
+      timesheetWeek: { personId, status: 'DRAFT' },
+      date: { gte: monthStart, lte: monthEnd },
+    };
+    if (kind === 'BENCH') {
+      where.benchCategory = label;
+    } else {
+      where.workLabel = label;
+      if (projectId) where.projectId = projectId;
+    }
+    return this.prisma.timesheetEntry.deleteMany({ where });
   }
 
   public async findApprovalQueue(query: {

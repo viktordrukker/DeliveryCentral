@@ -7,35 +7,38 @@ import {
 } from 'recharts';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
-import { useAuth } from '@/app/auth-context';
+import { usePlatformSettings } from '@/app/platform-settings-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import {
   fetchMonthlyTimesheet,
   autoFillMonth,
   copyPreviousMonth,
+  renameMyTimeRow,
+  deleteMyTimeRow,
   type MonthlyTimesheetResponse,
 } from '@/lib/api/my-time';
-import { upsertTimesheetEntry, submitTimesheetWeek } from '@/lib/api/timesheets';
+import {
+  upsertTimesheetEntry,
+  submitTimesheetWeek,
+  revokeTimesheetWeek,
+  resetTimesheetWeek,
+} from '@/lib/api/timesheets';
+import { Button, DescriptionList, type DescriptionListItem, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_ABBR = ['', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; // index 0 unused, 1=Mon..7=Sun
-
-const BENCH_CATEGORIES = [
-  { code: 'BENCH-EDU', label: 'Courses & Self-Education' },
-  { code: 'BENCH-INT', label: 'Internal Project' },
-  { code: 'BENCH-PRE', label: 'Pre-Sales Support' },
-  { code: 'BENCH-HR', label: 'Interviewing' },
-  { code: 'BENCH-MEN', label: 'Mentoring' },
-  { code: 'BENCH-ADM', label: 'Administrative' },
-  { code: 'BENCH-TRN', label: 'Transition' },
-];
+// Sentinel projectId for bench entries — bench has no project at the domain level,
+// but the DB column is non-null, so we route bench rows through a fixed nil-style UUID.
+// This makes bench self-contained: a person with zero project assignments can still log bench hours.
+const BENCH_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 
 const LEAVE_LABELS: Record<string, string> = {
   ANNUAL: 'Vacation', SICK: 'Sick', OT_OFF: 'OT Off', PERSONAL: 'Personal',
@@ -51,9 +54,12 @@ interface GridRow {
   code: string;
   group: 'project' | 'bench' | 'overtime' | 'leave' | 'gap';
   projectId: string;
-  benchCategory: string | null;
+  benchCategory: string;     // '' for non-bench rows
+  workLabel: string;         // '' for project auto rows and bench rows; user text for project-custom rows
+  /** Project this row sits under in the hierarchy (for grouping). */
+  parentProjectId: string | null;
   editable: boolean;
-  custom: boolean; // user-added row
+  custom: boolean; // user-added row (no server entry yet)
 }
 
 function mStr(y: number, m: number): string { return `${y}-${String(m).padStart(2, '0')}`; }
@@ -63,6 +69,7 @@ function dowOf(y: number, m: number, d: number): number { return new Date(Date.U
 
 export function MyTimePage(): JSX.Element {
   const { setActions } = useTitleBarActions();
+  const { settings: platform } = usePlatformSettings();
   const nav = useNavigate();
   const [year, setYear] = useState(() => new Date().getUTCFullYear());
   const [month, setMonth] = useState(() => new Date().getUTCMonth() + 1);
@@ -75,6 +82,33 @@ export function MyTimePage(): JSX.Element {
   const [customRows, setCustomRows] = useState<GridRow[]>([]);
   const [localEdits, setLocalEdits] = useState<Map<string, number>>(new Map()); // key = rowKey:dateStr → hours
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Time-entry validation rules (loaded from platform settings).
+  const allowSubmitInAdvance = platform?.timeEntry?.allowSubmitInAdvance ?? false;
+  const allowFutureDateEntry = platform?.timeEntry?.allowFutureDateEntry ?? false;
+  const maxHoursPerDay = platform?.timeEntry?.maxHoursPerDay ?? 12;
+  const maxHoursPerWeek = platform?.timeEntry?.maxHoursPerWeek ?? 60;
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Confirms for week-level destructive actions.
+  const [resetCandidate, setResetCandidate] = useState<{ weekStart: string } | null>(null);
+  const [revokeCandidate, setRevokeCandidate] = useState<{ weekStart: string } | null>(null);
+  // Inline add — when set, an `add-draft` row appears in place of its trigger.
+  const [draftLine, setDraftLine] = useState<
+    | { scope: 'bench' }
+    | { scope: 'overtime' }
+    | { scope: 'project'; projectId: string }
+    | null
+  >(null);
+  const [draftLabel, setDraftLabel] = useState('');
+  // Inline label edit — when set, that row's label cell renders as <input>.
+  const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
+  // Delete confirm.
+  const [deleteCandidate, setDeleteCandidate] = useState<
+    | { rowKey: string; label: string; kind: 'BENCH' | 'WORK_LABEL'; projectId?: string; persistedHours: number }
+    | null
+  >(null);
 
   const refetch = useCallback(() => setTick((t) => t + 1), []);
   const ms = mStr(year, month);
@@ -99,9 +133,9 @@ export function MyTimePage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <button type="button" className="button button--secondary button--sm" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</button>
+        <Button size="sm" variant="secondary" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</Button>
         <span style={{ fontWeight: 600, fontSize: 14, minWidth: 100, textAlign: 'center' }}>{MONTH_NAMES[month - 1]} {year}</span>
-        <button type="button" className="button button--secondary button--sm" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</button>
+        <Button size="sm" variant="secondary" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</Button>
         <TipTrigger />
       </>
     );
@@ -117,35 +151,68 @@ export function MyTimePage(): JSX.Element {
     return map;
   }, [data]);
 
-  // Build grid rows: projects, then bench, then overtime mirror, then leave (auto), then gap (computed)
+  // Build grid rows: project auto + project-custom (under parent) + bench + overtime + leave (auto).
+  // Each row's identity tuple is (projectId, benchCategory, workLabel) — matches the DB unique key.
   const gridRows = useMemo((): GridRow[] => {
     if (!data) return [];
     const rows: GridRow[] = [];
 
-    // Project assignment rows
+    // Collapse multiple assignments to the same project into one auto row per project.
+    const projectAssignmentSeen = new Set<string>();
     for (const a of data.assignmentRows.filter((r) => !r.isBench)) {
-      rows.push({ key: `proj:${a.assignmentId}`, label: a.projectName, code: a.projectCode, group: 'project', projectId: a.projectId, benchCategory: null, editable: true, custom: false });
+      if (projectAssignmentSeen.has(a.projectId)) continue;
+      projectAssignmentSeen.add(a.projectId);
+      rows.push({
+        key: `proj:${a.projectId}`,
+        label: a.projectName, code: a.projectCode,
+        group: 'project', projectId: a.projectId,
+        benchCategory: '', workLabel: '',
+        parentProjectId: a.projectId,
+        editable: true, custom: false,
+      });
     }
 
-    // Custom project rows (user-added sub-lines)
-    for (const cr of customRows.filter((r) => r.group === 'project')) rows.push(cr);
-
-    // Bench rows — always show if any bench data or custom bench rows exist
-    const hasBench = data.entries.some((e) => e.benchCategory) || customRows.some((r) => r.group === 'bench');
-    if (hasBench || data.assignmentRows.some((r) => r.isBench)) {
-      // Show each distinct bench category from entries
-      const usedCategories = new Set(data.entries.filter((e) => e.benchCategory).map((e) => e.benchCategory!));
-      for (const cat of usedCategories) {
-        const info = BENCH_CATEGORIES.find((b) => b.code === cat);
-        rows.push({ key: `bench:${cat}`, label: info?.label ?? cat, code: cat, group: 'bench', projectId: '', benchCategory: cat, editable: true, custom: false });
-      }
+    // Project-custom rows (user-added work-label rows under a specific project).
+    // Server-derived: any entry with workLabel != '' becomes a row keyed by (projectId, workLabel).
+    const wlblKeys = new Set<string>();
+    for (const e of data.entries) {
+      if (!e.workLabel) continue;
+      const key = `wlbl:${e.projectId}:${e.workLabel}`;
+      if (wlblKeys.has(key)) continue;
+      wlblKeys.add(key);
+      rows.push({
+        key, label: e.workLabel, code: e.projectCode,
+        group: 'project', projectId: e.projectId,
+        benchCategory: '', workLabel: e.workLabel,
+        parentProjectId: e.projectId,
+        editable: true, custom: false,
+      });
     }
-    // Custom bench rows
+    for (const cr of customRows.filter((r) => r.group === 'project' && r.workLabel.length > 0)) {
+      if (!wlblKeys.has(cr.key)) rows.push(cr);
+    }
+
+    // Bench rows — labels live in `benchCategory` on entries.
+    // Bench has no project; storage uses BENCH_PROJECT_ID sentinel so the DB column stays non-null.
+    const benchKeys = new Set<string>();
+    for (const e of data.entries) {
+      if (!e.benchCategory) continue;
+      const key = `bench:${e.benchCategory}`;
+      if (benchKeys.has(key)) continue;
+      benchKeys.add(key);
+      rows.push({
+        key, label: e.benchCategory, code: e.benchCategory,
+        group: 'bench', projectId: BENCH_PROJECT_ID,
+        benchCategory: e.benchCategory, workLabel: '',
+        parentProjectId: null,
+        editable: true, custom: false,
+      });
+    }
     for (const cr of customRows.filter((r) => r.group === 'bench')) {
-      if (!rows.some((r) => r.key === cr.key)) rows.push(cr);
+      if (!benchKeys.has(cr.key)) rows.push(cr);
     }
 
-    // Overtime rows (added via button, like project/bench)
+    // Overtime rows (added via button, like project/bench).
     if (showOT) {
       for (const cr of customRows.filter((r) => r.group === 'overtime')) rows.push(cr);
     }
@@ -153,30 +220,30 @@ export function MyTimePage(): JSX.Element {
     return rows;
   }, [data, customRows, showOT]);
 
-  // Get hours for a cell (from server data + local edits)
+  // Resolve a row's (projectId, benchCategory, workLabel) identity. Returns null
+  // for non-data rows (overtime placeholder rows that have no server entry path).
+  function rowIdentity(rowKey: string): { projectId: string; benchCategory: string; workLabel: string } | null {
+    const row = gridRows.find((r) => r.key === rowKey);
+    if (!row) return null;
+    return { projectId: row.projectId, benchCategory: row.benchCategory, workLabel: row.workLabel };
+  }
+
+  // Get hours for a cell (from server data + local edits).
   function getCellHours(rowKey: string, ds: string): number {
     const editKey = `${rowKey}:${ds}`;
     if (localEdits.has(editKey)) return localEdits.get(editKey)!;
     if (!data) return 0;
-
-    // Parse row key
-    if (rowKey.startsWith('proj:')) {
-      const assignmentId = rowKey.slice(5);
-      const row = data.assignmentRows.find((a) => a.assignmentId === assignmentId);
-      if (!row) return 0;
-      const entry = data.entries.find((e) => e.date === ds && e.projectId === row.projectId && !e.benchCategory);
-      return entry?.hours ?? 0;
-    }
-    if (rowKey.startsWith('bench:')) {
-      const cat = rowKey.slice(6);
-      const entry = data.entries.find((e) => e.date === ds && e.benchCategory === cat);
-      return entry?.hours ?? 0;
-    }
-    if (rowKey.startsWith('ot:')) {
-      // OT entries stored with a description prefix or separate — for now, no server-side OT rows
-      return 0;
-    }
-    return 0;
+    if (rowKey.startsWith('ot:')) return 0; // overtime is UI-only today
+    const id = rowIdentity(rowKey);
+    if (!id) return 0;
+    const entry = data.entries.find(
+      (e) =>
+        e.date === ds &&
+        e.projectId === id.projectId &&
+        e.benchCategory === id.benchCategory &&
+        e.workLabel === id.workLabel,
+    );
+    return entry?.hours ?? 0;
   }
 
   // Compute day totals (all editable rows)
@@ -192,8 +259,12 @@ export function MyTimePage(): JSX.Element {
 
   // Handle cell edit
   function handleCellChange(rowKey: string, ds: string, value: string): void {
-    const hours = value === '' ? 0 : parseFloat(value);
-    if (isNaN(hours) || hours < 0 || hours > 24) return;
+    const raw = value === '' ? 0 : parseFloat(value);
+    if (isNaN(raw) || raw < 0) return;
+    if (raw > maxHoursPerDay) {
+      toast.warning(`Daily cap is ${maxHoursPerDay}h — value clamped.`);
+    }
+    const hours = Math.min(raw, maxHoursPerDay);
     const editKey = `${rowKey}:${ds}`;
     setLocalEdits((prev) => { const next = new Map(prev); next.set(editKey, hours); return next; });
 
@@ -203,32 +274,13 @@ export function MyTimePage(): JSX.Element {
   }
 
   async function saveCell(rowKey: string, ds: string, hours: number): Promise<void> {
-    // Determine projectId and benchCategory from rowKey
-    let projectId = '';
-    let benchCategory: string | undefined;
-
-    if (rowKey.startsWith('proj:') || rowKey.startsWith('custom-proj:')) {
-      const assignmentId = rowKey.replace('proj:', '').replace('custom-proj:', '');
-      const row = data?.assignmentRows.find((a) => a.assignmentId === assignmentId);
-      projectId = row?.projectId ?? '';
-      if (!projectId) {
-        // Custom project row — find from customRows
-        const cr = customRows.find((r) => r.key === rowKey);
-        projectId = cr?.projectId ?? '';
-      }
-    } else if (rowKey.startsWith('bench:') || rowKey.startsWith('custom-bench:')) {
-      benchCategory = rowKey.replace('bench:', '').replace('custom-bench:', '');
-      // Use the first project or a bench project
-      projectId = data?.assignmentRows[0]?.projectId ?? '';
-    } else if (rowKey.startsWith('ot:')) {
-      const assignmentId = rowKey.slice(3);
-      const row = data?.assignmentRows.find((a) => a.assignmentId === assignmentId);
-      projectId = row?.projectId ?? '';
+    const id = rowIdentity(rowKey);
+    if (!id || !id.projectId) {
+      toast.error('Cannot save — no project to bind this row to.');
+      return;
     }
 
-    if (!projectId) return;
-
-    // Calculate the Monday of the week containing this date
+    // Calculate the Monday of the week containing this date.
     const date = new Date(ds);
     const dow = date.getUTCDay();
     const mondayOffset = dow === 0 ? -6 : 1 - dow;
@@ -237,36 +289,28 @@ export function MyTimePage(): JSX.Element {
     const weekStart = monday.toISOString().slice(0, 10);
 
     try {
-      await upsertTimesheetEntry({ weekStart, date: ds, projectId, hours, capex: false });
+      await upsertTimesheetEntry({
+        weekStart,
+        date: ds,
+        projectId: id.projectId,
+        hours,
+        capex: false,
+        benchCategory: id.benchCategory || undefined,
+        workLabel: id.workLabel || undefined,
+      });
     } catch {
       toast.error('Failed to save entry');
     }
   }
 
-  // Add custom row
-  function addCustomRow(group: 'project' | 'bench' | 'overtime'): void {
-    if (group === 'bench') {
-      const unused = BENCH_CATEGORIES.filter((b) => !gridRows.some((r) => r.benchCategory === b.code));
-      if (unused.length === 0) { toast.info('All bench categories already added'); return; }
-      const choice = unused[0];
-      setCustomRows((prev) => [...prev, {
-        key: `custom-bench:${choice.code}`,
-        label: choice.label,
-        code: choice.code,
-        group: 'bench',
-        projectId: data?.assignmentRows[0]?.projectId ?? '',
-        benchCategory: choice.code,
-        editable: true,
-        custom: true,
-      }]);
-    } else if (group === 'overtime') {
-      // OT rows — pick any assignment (project or bench) to add overtime for
+  // Inline add — clicking "+ Add ..." swaps the trigger row for a focused input.
+  function startAddLine(scope: 'bench' | 'overtime' | { project: string }): void {
+    if (scope === 'overtime') {
+      // Overtime preserves the legacy picker-style behavior (no free-text label) so
+      // existing assignment-based OT flows keep working until OT is redesigned.
       const allAssignments = data?.assignmentRows ?? [];
       const alreadyAdded = new Set(customRows.filter((r) => r.group === 'overtime').map((r) => r.key));
-      // Project assignments first, then bench
       const projAvailable = allAssignments.filter((a) => !a.isBench && !alreadyAdded.has(`ot:${a.assignmentId}`));
-      const benchAvailable = !alreadyAdded.has('ot:bench');
-
       if (projAvailable.length > 0) {
         const choice = projAvailable[0];
         setCustomRows((prev) => [...prev, {
@@ -275,40 +319,178 @@ export function MyTimePage(): JSX.Element {
           code: choice.projectCode,
           group: 'overtime',
           projectId: choice.projectId,
-          benchCategory: null,
+          benchCategory: '',
+          workLabel: '',
+          parentProjectId: choice.projectId,
           editable: true,
           custom: true,
         }]);
-      } else if (benchAvailable) {
+      } else if (!alreadyAdded.has('ot:bench')) {
         setCustomRows((prev) => [...prev, {
           key: 'ot:bench',
           label: 'OT: Bench / Internal',
           code: 'OT-BENCH',
           group: 'overtime',
           projectId: allAssignments[0]?.projectId ?? '',
-          benchCategory: 'BENCH-ADM',
+          benchCategory: '',
+          workLabel: '',
+          parentProjectId: null,
           editable: true,
           custom: true,
         }]);
       } else {
         toast.info('All overtime lines already added');
+      }
+      return;
+    }
+    setDraftLabel('');
+    setDraftLine(typeof scope === 'string' ? { scope } : { scope: 'project', projectId: scope.project });
+  }
+
+  function commitDraftLine(): void {
+    if (!draftLine) return;
+    const label = draftLabel.trim();
+    if (!label) { setDraftLine(null); return; }
+
+    if (draftLine.scope === 'bench') {
+      const key = `bench:${label}`;
+      if (gridRows.some((r) => r.key === key)) {
+        toast.info('That line already exists');
+        setDraftLine(null);
         return;
       }
-    } else {
-      const label = prompt('Work line description (e.g., "Bug fixes", "Documentation"):');
-      if (!label) return;
-      const projRow = data?.assignmentRows.find((r) => !r.isBench);
-      if (!projRow) { toast.error('No project assignment found'); return; }
+      // Bench has no project — use the BENCH sentinel id, not whatever assignment happens to exist.
       setCustomRows((prev) => [...prev, {
-        key: `custom-proj:${projRow.assignmentId}-${Date.now()}`,
-        label,
-        code: projRow.projectCode,
-        group: 'project',
-        projectId: projRow.projectId,
-        benchCategory: null,
-        editable: true,
-        custom: true,
+        key, label, code: label,
+        group: 'bench',
+        projectId: BENCH_PROJECT_ID,
+        benchCategory: label,
+        workLabel: '',
+        parentProjectId: null,
+        editable: true, custom: true,
       }]);
+    } else if (draftLine.scope === 'project') {
+      const project = data?.assignmentRows.find((a) => a.projectId === draftLine.projectId);
+      if (!project) { toast.error('Cannot find that project to bind the row to.'); setDraftLine(null); return; }
+      const key = `wlbl:${project.projectId}:${label}`;
+      if (gridRows.some((r) => r.key === key)) {
+        toast.info('That line already exists for this project');
+        setDraftLine(null);
+        return;
+      }
+      setCustomRows((prev) => [...prev, {
+        key, label, code: project.projectCode,
+        group: 'project',
+        projectId: project.projectId,
+        benchCategory: '',
+        workLabel: label,
+        parentProjectId: project.projectId,
+        editable: true, custom: true,
+      }]);
+    }
+    setDraftLine(null);
+    setDraftLabel('');
+  }
+
+  // Inline rename — Enter on the editing input commits.
+  async function commitRename(rowKey: string): Promise<void> {
+    const row = gridRows.find((r) => r.key === rowKey);
+    if (!row) { setEditingRowKey(null); return; }
+    const next = editingLabel.trim();
+    setEditingRowKey(null);
+    if (!next || next === row.label) return;
+
+    const oldLabel = row.label;
+    const isBench = row.group === 'bench';
+    const newKey = isBench ? `bench:${next}` : `wlbl:${row.projectId}:${next}`;
+    if (gridRows.some((r) => r.key === newKey)) {
+      toast.info('A line with that name already exists');
+      return;
+    }
+
+    // Component state — relabel any draft custom row immediately.
+    setCustomRows((prev) => prev.map((r) =>
+      r.key !== rowKey ? r : {
+        ...r,
+        key: newKey,
+        label: next,
+        benchCategory: isBench ? next : '',
+        workLabel: isBench ? '' : next,
+      },
+    ));
+
+    // Re-key any pending local edits so we don't lose unsaved hours.
+    setLocalEdits((prev) => {
+      const out = new Map<string, number>();
+      for (const [k, v] of prev) {
+        if (k.startsWith(`${rowKey}:`)) out.set(`${newKey}:${k.substring(rowKey.length + 1)}`, v);
+        else out.set(k, v);
+      }
+      return out;
+    });
+
+    // Backend rename — only if the row already has persisted entries.
+    const hasPersisted = (data?.entries ?? []).some(
+      (e) => e.projectId === row.projectId && e.benchCategory === row.benchCategory && e.workLabel === row.workLabel,
+    );
+    if (hasPersisted) {
+      try {
+        await renameMyTimeRow({
+          month: ms,
+          kind: isBench ? 'BENCH' : 'WORK_LABEL',
+          projectId: isBench ? undefined : row.projectId,
+          oldLabel,
+          newLabel: next,
+        });
+        refetch();
+      } catch {
+        toast.error('Failed to rename row');
+      }
+    }
+  }
+
+  // Trash icon → if persisted, ask to confirm; if draft-only, drop immediately.
+  function startDelete(rowKey: string): void {
+    const row = gridRows.find((r) => r.key === rowKey);
+    if (!row) return;
+    const isBench = row.group === 'bench';
+    const hours = (data?.entries ?? [])
+      .filter((e) => e.projectId === row.projectId && e.benchCategory === row.benchCategory && e.workLabel === row.workLabel)
+      .reduce((s, e) => s + e.hours, 0);
+    if (hours <= 0) {
+      // Component-state-only — drop immediately, no backend call.
+      setCustomRows((prev) => prev.filter((r) => r.key !== rowKey));
+      setLocalEdits((prev) => {
+        const out = new Map<string, number>();
+        for (const [k, v] of prev) if (!k.startsWith(`${rowKey}:`)) out.set(k, v);
+        return out;
+      });
+      return;
+    }
+    setDeleteCandidate({
+      rowKey,
+      label: row.label,
+      kind: isBench ? 'BENCH' : 'WORK_LABEL',
+      projectId: isBench ? undefined : row.projectId,
+      persistedHours: Math.round(hours * 10) / 10,
+    });
+  }
+
+  async function confirmDelete(): Promise<void> {
+    const c = deleteCandidate;
+    if (!c) return;
+    setDeleteCandidate(null);
+    try {
+      await deleteMyTimeRow({ month: ms, kind: c.kind, projectId: c.projectId, label: c.label });
+      setCustomRows((prev) => prev.filter((r) => r.key !== c.rowKey));
+      setLocalEdits((prev) => {
+        const out = new Map<string, number>();
+        for (const [k, v] of prev) if (!k.startsWith(`${c.rowKey}:`)) out.set(k, v);
+        return out;
+      });
+      refetch();
+    } catch {
+      toast.error('Failed to delete row');
     }
   }
 
@@ -353,6 +535,8 @@ export function MyTimePage(): JSX.Element {
     if (!isWorkingDay(d)) return false;
     const ds = dateStr(year, month, d);
     if (leaveDays.has(ds)) return false;
+    // Future-date rule: blocked unless the platform setting allows it.
+    if (!allowFutureDateEntry && ds > todayStr) return false;
     // Check week status
     const date = new Date(Date.UTC(year, month - 1, d));
     const weekStatus = data?.weeks.find((w) => {
@@ -402,8 +586,8 @@ export function MyTimePage(): JSX.Element {
 
           {/* ── Action bar ── */}
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" className="button button--secondary button--sm" onClick={handleAutoFill}>Fill from Assignments</button>
-            <button type="button" className="button button--secondary button--sm" onClick={handleCopyPrevious}>Copy Last Month</button>
+            <Button type="button" variant="secondary" size="sm" onClick={handleAutoFill}>Fill from Assignments</Button>
+            <Button type="button" variant="secondary" size="sm" onClick={handleCopyPrevious}>Copy Last Month</Button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, cursor: 'pointer', marginLeft: 'var(--space-2)' }}>
               <input type="checkbox" checked={showOT} onChange={(e) => setShowOT(e.target.checked)} />
               <span style={{ color: showOT ? 'var(--color-status-warning)' : 'var(--color-text-muted)', fontWeight: showOT ? 600 : 400 }}>Overtime Rows</span>
@@ -411,281 +595,490 @@ export function MyTimePage(): JSX.Element {
             <div style={{ flex: 1 }} />
             <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
               {(['calendar', 'leave', 'summary'] as Tab[]).map((t) => (
-                <button key={t} type="button" className={`button button--sm ${tab === t ? 'button--primary' : 'button--secondary'}`} onClick={() => setTab(t)}>
+                <Button key={t} size="sm" variant={tab === t ? 'primary' : 'secondary'} onClick={() => setTab(t)}>
                   {{ calendar: 'Calendar', leave: 'Leave', summary: 'Summary' }[t]}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
           {/* ── CALENDAR TAB ── */}
-          {tab === 'calendar' && (
-            <div style={{ overflow: 'auto' }}>
-              <table className="dash-compact-table" style={{ minWidth: dc * 34 + 220, fontSize: 11, borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ position: 'sticky', left: 0, background: 'var(--color-surface-alt)', zIndex: 3, minWidth: 200, borderRight: '2px solid var(--color-border)' }}>Work Line</th>
-                    {Array.from({ length: dc }, (_, i) => {
+          {tab === 'calendar' && (() => {
+            type CalendarRow =
+              | { kind: 'section-header'; key: string; group: 'project' | 'bench' | 'overtime'; label: string; tone?: 'warning' }
+              | { kind: 'project-header'; key: string; projectId: string; projectName: string; projectCode: string }
+              | { kind: 'data'; key: string; row: GridRow }
+              | { kind: 'add-trigger'; key: string; scope: 'bench' | 'overtime' | { project: string }; tone?: 'warning' }
+              | { kind: 'add-draft'; key: string }
+              | { kind: 'leave'; key: string; type: string }
+              | { kind: 'footer-day-total'; key: string }
+              | { kind: 'footer-gap'; key: string };
+
+            const projectAutoRows = gridRows.filter((r) => r.group === 'project' && r.workLabel.length === 0);
+            const projectWorkRows = gridRows.filter((r) => r.group === 'project' && r.workLabel.length > 0);
+            const benchRows = gridRows.filter((r) => r.group === 'bench');
+            const overtimeRows = gridRows.filter((r) => r.group === 'overtime');
+            const leaveTypes = Array.from(new Set(data.leaveDays.filter((l) => l.status === 'APPROVED').map((l) => l.type)));
+
+            // Build the nested calendar tree.
+            const calendarRows: CalendarRow[] = [];
+            calendarRows.push({ kind: 'section-header', key: 'sh-project', group: 'project', label: 'PROJECT TIME' });
+
+            const projectIds = Array.from(new Set([
+              ...projectAutoRows.map((r) => r.projectId),
+              ...projectWorkRows.map((r) => r.projectId),
+            ]));
+            if (projectIds.length === 0) {
+              calendarRows.push({ kind: 'add-trigger', key: 'add-no-project', scope: 'bench' });
+            }
+            for (const pid of projectIds) {
+              const auto = projectAutoRows.find((r) => r.projectId === pid);
+              const projectName = auto?.label ?? data.assignmentRows.find((a) => a.projectId === pid)?.projectName ?? pid;
+              const projectCode = auto?.code ?? data.assignmentRows.find((a) => a.projectId === pid)?.projectCode ?? '';
+              calendarRows.push({ kind: 'project-header', key: `ph:${pid}`, projectId: pid, projectName, projectCode });
+              if (auto) calendarRows.push({ kind: 'data', key: auto.key, row: auto });
+              for (const wr of projectWorkRows.filter((r) => r.projectId === pid)) {
+                calendarRows.push({ kind: 'data', key: wr.key, row: wr });
+              }
+              if (draftLine && draftLine.scope === 'project' && draftLine.projectId === pid) {
+                calendarRows.push({ kind: 'add-draft', key: `add-draft-proj:${pid}` });
+              } else {
+                calendarRows.push({ kind: 'add-trigger', key: `add-trig-proj:${pid}`, scope: { project: pid } });
+              }
+            }
+
+            calendarRows.push({ kind: 'section-header', key: 'sh-bench', group: 'bench', label: 'BENCH TIME' });
+            for (const row of benchRows) calendarRows.push({ kind: 'data', key: row.key, row });
+            if (draftLine && draftLine.scope === 'bench') {
+              calendarRows.push({ kind: 'add-draft', key: 'add-draft-bench' });
+            } else {
+              calendarRows.push({ kind: 'add-trigger', key: 'add-trig-bench', scope: 'bench' });
+            }
+
+            if (showOT) {
+              calendarRows.push({ kind: 'section-header', key: 'sh-ot', group: 'overtime', label: 'OVERTIME (exception-based approval)', tone: 'warning' });
+              for (const row of overtimeRows) calendarRows.push({ kind: 'data', key: row.key, row });
+              calendarRows.push({ kind: 'add-trigger', key: 'add-trig-ot', scope: 'overtime', tone: 'warning' });
+            }
+            for (const t of leaveTypes) calendarRows.push({ kind: 'leave', key: `leave-${t}`, type: t });
+
+            // Footer rows live INSIDE the table now so they share the same colgroup widths.
+            calendarRows.push({ kind: 'footer-day-total', key: 'footer-day-total' });
+            calendarRows.push({ kind: 'footer-gap', key: 'footer-gap' });
+
+            const projectMonthTotal = (projectId: string): number => {
+              let total = 0;
+              for (const r of gridRows.filter((g) => g.projectId === projectId && g.group === 'project')) {
+                for (let i = 0; i < dc; i++) total += getCellHours(r.key, dateStr(year, month, i + 1));
+              }
+              return Math.round(total * 10) / 10;
+            };
+
+            const dayCellRender = (cr: CalendarRow, dayNum: number): React.ReactNode => {
+              const ds = dateStr(year, month, dayNum);
+              if (cr.kind === 'leave') {
+                const isThisLeave = data.leaveDays.some((l) => l.date === ds && l.type === cr.type && l.status === 'APPROVED');
+                return isThisLeave ? <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-chart-1)' }}>{STD_HOURS}</span> : '';
+              }
+              if (cr.kind === 'footer-day-total') {
+                const dt = dayTotal(dayNum);
+                const dow = dowOf(year, month, dayNum);
+                const isWE = dow === 0 || dow === 6;
+                return <span style={{ fontSize: 10, fontWeight: 700, color: dt > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)' }}>{isWE ? '' : dt > 0 ? dt : ''}</span>;
+              }
+              if (cr.kind === 'footer-gap') {
+                if (!isWorkingDay(dayNum) || leaveDays.has(ds)) return null;
+                const gap = STD_HOURS - dayTotal(dayNum);
+                if (gap > 0) return <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-status-danger)' }}>{`-${gap}`}</span>;
+                if (gap === 0) return <span style={{ fontSize: 10, color: 'var(--color-status-active)' }}>{'\u2713'}</span>;
+                return null;
+              }
+              if (cr.kind !== 'data') return null;
+              const row = cr.row;
+              const hours = getCellHours(row.key, ds);
+              const editable = isDayEditable(dayNum) && row.editable;
+              const hasLeave = leaveDays.has(ds);
+              if (row.group === 'project') {
+                if (hasLeave) return <span style={{ fontSize: 8, color: 'var(--color-chart-1)' }} title={LEAVE_LABELS[leaveDays.get(ds)!] ?? ''}>{LEAVE_LABELS[leaveDays.get(ds)!]?.charAt(0) ?? 'L'}</span>;
+                if (!isWorkingDay(dayNum)) return <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{'\u2013'}</span>;
+                return editable ? (
+                  <input type="text" inputMode="decimal" value={hours || ''}
+                    onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
+                    style={{ width: 34, height: 26, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 13, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0 }}
+                    onFocus={(e) => e.target.select()} />
+                ) : <span style={{ fontSize: 13, ...NUM }}>{hours || ''}</span>;
+              }
+              if (row.group === 'bench') {
+                if (!isWorkingDay(dayNum) || leaveDays.has(ds)) return <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{'\u2013'}</span>;
+                return editable ? (
+                  <input type="text" inputMode="decimal" value={hours || ''} onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
+                    style={{ width: 34, height: 26, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 13, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0 }}
+                    onFocus={(e) => e.target.select()} />
+                ) : <span style={{ fontSize: 13, ...NUM }}>{hours || ''}</span>;
+              }
+              // overtime
+              if (!isWorkingDay(dayNum)) return <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{'\u2013'}</span>;
+              return editable ? (
+                <input type="text" inputMode="decimal" value={hours || ''} onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
+                  style={{ width: 34, height: 26, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 13, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0, color: 'var(--color-status-warning)' }}
+                  onFocus={(e) => e.target.select()} />
+              ) : <span style={{ fontSize: 13, ...NUM, color: 'var(--color-status-warning)' }}>{hours || ''}</span>;
+            };
+
+            const dayCellBg = (cr: CalendarRow, dayNum: number): string | undefined => {
+              const ds = dateStr(year, month, dayNum);
+              if (cr.kind === 'leave') {
+                const isThisLeave = data.leaveDays.some((l) => l.date === ds && l.type === cr.type && l.status === 'APPROVED');
+                return isThisLeave ? 'color-mix(in srgb, var(--color-chart-1) 15%, transparent)' : cellBg(dayNum);
+              }
+              if (cr.kind === 'footer-day-total') {
+                const dow = dowOf(year, month, dayNum);
+                return dow === 0 || dow === 6 ? 'var(--color-border)' : 'var(--color-surface-alt)';
+              }
+              if (cr.kind === 'footer-gap') {
+                if (!isWorkingDay(dayNum) || leaveDays.has(ds)) return cellBg(dayNum);
+                const gap = STD_HOURS - dayTotal(dayNum);
+                return gap > 0 ? 'color-mix(in srgb, var(--color-status-danger) 8%, transparent)' : 'color-mix(in srgb, var(--color-status-danger) 5%, transparent)';
+              }
+              if (cr.kind === 'project-header') return 'var(--color-surface-alt)';
+              if (cr.kind !== 'data') return undefined;
+              if (cr.row.group === 'overtime') {
+                return isWorkingDay(dayNum) ? 'color-mix(in srgb, var(--color-status-warning) 4%, transparent)' : 'var(--color-border)';
+              }
+              return cellBg(dayNum);
+            };
+
+            const totalRender = (cr: CalendarRow): React.ReactNode => {
+              if (cr.kind === 'leave') {
+                return data.leaveDays.filter((l) => l.type === cr.type && l.status === 'APPROVED').length * STD_HOURS;
+              }
+              if (cr.kind === 'footer-day-total') return s.reportedHours;
+              if (cr.kind === 'footer-gap') return s.gapHours > 0 ? `-${s.gapHours}` : '\u2713';
+              if (cr.kind === 'project-header') {
+                const t = projectMonthTotal(cr.projectId);
+                return t > 0 ? `${t}` : '';
+              }
+              if (cr.kind !== 'data') return null;
+              const row = cr.row;
+              let rowTotal = 0;
+              for (let i = 0; i < dc; i++) {
+                rowTotal += getCellHours(row.key, dateStr(year, month, i + 1));
+              }
+              return rowTotal > 0 ? `${Math.round(rowTotal * 10) / 10}` : '';
+            };
+
+            return (
+              <div style={{ overflow: 'auto' }}>
+                <Table
+                  variant="compact"
+                  tableLayout="fixed"
+                  minWidth={200 + dc * 40 + 64}
+                  columns={[
+                    {
+                      key: 'workLine',
+                      title: 'Work Line',
+                      width: 200,
+                      cellStyle: { position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, whiteSpace: 'nowrap', borderRight: '2px solid var(--color-border)' },
+                      headerClassName: 'mytime-sticky-header',
+                      render: (cr) => {
+                        if (cr.kind === 'data') {
+                          const row = cr.row;
+                          // Auto project row (assignment-derived) — non-editable label, indent 16.
+                          if (row.group === 'project' && row.workLabel.length === 0) {
+                            return (
+                              <span style={{ paddingLeft: 16, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ color: 'var(--color-text-muted)', fontSize: 9 }}>{row.code}</span>
+                                <span style={{ fontWeight: 500 }}>{row.label}</span>
+                              </span>
+                            );
+                          }
+                          if (row.group === 'bench' || row.group === 'project') {
+                            const isEditing = editingRowKey === row.key;
+                            const indent = row.group === 'project' && row.workLabel.length > 0 ? 32 : 16;
+                            if (isEditing) {
+                              return (
+                                <input
+                                  autoFocus
+                                  value={editingLabel}
+                                  onChange={(e) => setEditingLabel(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); void commitRename(row.key); }
+                                    else if (e.key === 'Escape') { e.preventDefault(); setEditingRowKey(null); }
+                                  }}
+                                  onBlur={() => void commitRename(row.key)}
+                                  style={{ width: `calc(100% - ${indent}px)`, height: 26, fontSize: 13, padding: '0 4px', marginLeft: indent, border: '1px solid var(--color-border-strong)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                                />
+                              );
+                            }
+                            return (
+                              <span style={{ paddingLeft: indent, display: 'inline-flex', alignItems: 'center', gap: 4, width: '100%' }}>
+                                <span style={{ color: row.group === 'bench' ? 'var(--color-status-neutral)' : 'var(--color-text-subtle)', fontSize: 9 }}>{'\u25CB'}</span>
+                                <span
+                                  onClick={() => { setEditingRowKey(row.key); setEditingLabel(row.label); }}
+                                  style={{ cursor: 'text', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  title="Click to rename"
+                                >{row.label}</span>
+                                <button
+                                  type="button"
+                                  className="mytime-row-delete"
+                                  onClick={(e) => { e.stopPropagation(); startDelete(row.key); }}
+                                  aria-label={`Delete ${row.label}`}
+                                  title="Delete this line"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 4px', lineHeight: 1 }}
+                                >{'\u2715'}</button>
+                              </span>
+                            );
+                          }
+                          // overtime (legacy assignment-based)
+                          return (
+                            <span>
+                              <span style={{ color: 'var(--color-status-warning)', fontSize: 9, marginRight: 4 }}>{'\u25B2'}</span>
+                              <span>{row.label}</span>
+                            </span>
+                          );
+                        }
+                        if (cr.kind === 'project-header') {
+                          return (
+                            <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: 9, fontWeight: 400 }}>{cr.projectCode}</span>
+                              <span>{cr.projectName}</span>
+                            </span>
+                          );
+                        }
+                        if (cr.kind === 'leave') {
+                          return (
+                            <span>
+                              <span style={{ color: 'var(--color-chart-1)', fontSize: 9, marginRight: 4 }}>{'\u25A0'}</span>
+                              <span style={{ color: 'var(--color-chart-1)' }}>{LEAVE_LABELS[cr.type] ?? cr.type}</span>
+                            </span>
+                          );
+                        }
+                        if (cr.kind === 'footer-day-total') {
+                          return <span style={{ fontWeight: 700, fontSize: 10 }}>Day Total</span>;
+                        }
+                        if (cr.kind === 'footer-gap') {
+                          return <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--color-status-danger)' }}>Gap</span>;
+                        }
+                        return null;
+                      },
+                    },
+                    ...Array.from({ length: dc }, (_, i) => {
                       const d = i + 1;
                       const dow = dowOf(year, month, d);
                       const ds = dateStr(year, month, d);
                       const isWE = dow === 0 || dow === 6;
                       const isH = holidays.has(ds);
-                      return (
-                        <th key={d} style={{ width: 32, textAlign: 'center', background: isWE ? 'var(--color-border)' : isH ? 'color-mix(in srgb, var(--color-status-info) 20%, var(--color-surface-alt))' : 'var(--color-surface-alt)', padding: '1px 0', fontSize: 9 }}
-                          title={isH ? holidayNames.get(ds) ?? '' : ''}>
+                      return {
+                        key: `d-${d}`,
+                        title: <span title={isH ? holidayNames.get(ds) ?? '' : ''} style={{ display: 'inline-block', background: isWE ? 'var(--color-border)' : isH ? 'color-mix(in srgb, var(--color-status-info) 20%, var(--color-surface-alt))' : undefined, padding: '1px 0', fontSize: 11, width: '100%' }}>
                           <div>{DAY_ABBR[dow === 0 ? 7 : dow]}</div>
-                          <div style={{ fontSize: 10, fontWeight: 600 }}>{d}</div>
-                        </th>
-                      );
-                    })}
-                    <th style={{ ...NUM, minWidth: 44, background: 'var(--color-surface-alt)' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* ── PROJECT ROWS ── */}
-                  {gridRows.filter((r) => r.group === 'project').length > 0 && (
-                    <tr><td colSpan={dc + 2} style={{ background: 'var(--color-surface-alt)', fontWeight: 700, fontSize: 10, padding: '4px 8px', color: 'var(--color-text-muted)', letterSpacing: '0.05em', position: 'sticky', left: 0 }}>
-                      PROJECT TIME
-                      <button type="button" onClick={() => addCustomRow('project')} style={{ marginLeft: 8, fontSize: 9, background: 'none', border: '1px dashed var(--color-border)', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', color: 'var(--color-accent)' }}>+ Add Line</button>
-                    </td></tr>
-                  )}
-                  {gridRows.filter((r) => r.group === 'project').map((row) => {
-                    let rowTotal = 0;
-                    return (
-                      <tr key={row.key}>
-                        <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, whiteSpace: 'nowrap', borderRight: '2px solid var(--color-border)' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: 9, marginRight: 4 }}>{row.code}</span>
-                          <span style={{ fontWeight: 500 }}>{row.label}</span>
-                          {row.custom && <span style={{ fontSize: 8, color: 'var(--color-accent)', marginLeft: 4 }}>custom</span>}
-                        </td>
-                        {Array.from({ length: dc }, (_, i) => {
-                          const d = i + 1;
-                          const ds = dateStr(year, month, d);
-                          const hours = getCellHours(row.key, ds);
-                          rowTotal += hours;
-                          const editable = isDayEditable(d) && row.editable;
-                          const hasLeave = leaveDays.has(ds);
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>{d}</div>
+                        </span>,
+                        align: 'center' as const,
+                        width: 40,
+                        cellStyle: { padding: 0 },
+                        render: (cr: CalendarRow) => {
+                          const bg = dayCellBg(cr, d);
                           return (
-                            <td key={d} style={{ textAlign: 'center', padding: 0, background: cellBg(d) }}>
-                              {hasLeave ? (
-                                <span style={{ fontSize: 8, color: 'var(--color-chart-1)' }} title={LEAVE_LABELS[leaveDays.get(ds)!] ?? ''}>{LEAVE_LABELS[leaveDays.get(ds)!]?.charAt(0) ?? 'L'}</span>
-                              ) : !isWorkingDay(d) ? (
-                                <span style={{ color: 'var(--color-text-subtle)', fontSize: 9 }}>{'\u2013'}</span>
-                              ) : editable ? (
-                                <input
-                                  type="text" inputMode="decimal"
-                                  value={hours || ''}
-                                  onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
-                                  style={{ width: 30, height: 22, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 11, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0 }}
-                                  onFocus={(e) => e.target.select()}
-                                />
-                              ) : (
-                                <span style={{ fontSize: 11, ...NUM }}>{hours || ''}</span>
-                              )}
-                            </td>
+                            <div style={{ background: bg, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {dayCellRender(cr, d)}
+                            </div>
                           );
-                        })}
-                        <td style={{ ...NUM, fontWeight: 600, fontSize: 11 }}>{rowTotal > 0 ? `${Math.round(rowTotal * 10) / 10}` : ''}</td>
-                      </tr>
-                    );
-                  })}
-
-                  {/* ── BENCH ROWS ── */}
-                  <tr><td colSpan={dc + 2} style={{ background: 'var(--color-surface-alt)', fontWeight: 700, fontSize: 10, padding: '4px 8px', color: 'var(--color-text-muted)', letterSpacing: '0.05em', position: 'sticky', left: 0 }}>
-                    BENCH TIME
-                    <button type="button" onClick={() => addCustomRow('bench')} style={{ marginLeft: 8, fontSize: 9, background: 'none', border: '1px dashed var(--color-border)', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', color: 'var(--color-accent)' }}>+ Add Line</button>
-                  </td></tr>
-                  {gridRows.filter((r) => r.group === 'bench').map((row) => {
-                    let rowTotal = 0;
-                    return (
-                      <tr key={row.key}>
-                        <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface)', zIndex: 1, whiteSpace: 'nowrap', borderRight: '2px solid var(--color-border)', paddingLeft: 16 }}>
-                          <span style={{ color: 'var(--color-status-neutral)', fontSize: 9, marginRight: 4 }}>{'\u25CB'}</span>
-                          <span>{row.label}</span>
-                        </td>
-                        {Array.from({ length: dc }, (_, i) => {
-                          const d = i + 1;
-                          const ds = dateStr(year, month, d);
-                          const hours = getCellHours(row.key, ds);
-                          rowTotal += hours;
-                          const editable = isDayEditable(d);
-                          return (
-                            <td key={d} style={{ textAlign: 'center', padding: 0, background: cellBg(d) }}>
-                              {!isWorkingDay(d) || leaveDays.has(ds) ? (
-                                <span style={{ color: 'var(--color-text-subtle)', fontSize: 9 }}>{'\u2013'}</span>
-                              ) : editable ? (
-                                <input type="text" inputMode="decimal" value={hours || ''} onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
-                                  style={{ width: 30, height: 22, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 11, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0 }}
-                                  onFocus={(e) => e.target.select()} />
-                              ) : (
-                                <span style={{ fontSize: 11, ...NUM }}>{hours || ''}</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td style={{ ...NUM, fontWeight: 600, fontSize: 11 }}>{rowTotal > 0 ? `${Math.round(rowTotal * 10) / 10}` : ''}</td>
-                      </tr>
-                    );
-                  })}
-                  {gridRows.filter((r) => r.group === 'bench').length === 0 && (
-                    <tr><td colSpan={dc + 2} style={{ color: 'var(--color-text-subtle)', fontSize: 10, fontStyle: 'italic', paddingLeft: 16 }}>No bench lines — click "+ Add Line" above</td></tr>
-                  )}
-
-                  {/* ── OVERTIME ROWS (toggle-controlled) ── */}
-                  {showOT && (
-                    <>
-                      <tr><td colSpan={dc + 2} style={{ background: 'color-mix(in srgb, var(--color-status-warning) 10%, var(--color-surface-alt))', fontWeight: 700, fontSize: 10, padding: '4px 8px', color: 'var(--color-status-warning)', letterSpacing: '0.05em', position: 'sticky', left: 0 }}>
-                        OVERTIME (exception-based approval)
-                        <button type="button" onClick={() => addCustomRow('overtime')} style={{ marginLeft: 8, fontSize: 9, background: 'none', border: '1px dashed var(--color-status-warning)', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', color: 'var(--color-status-warning)' }}>+ Add OT Line</button>
-                      </td></tr>
-                      {gridRows.filter((r) => r.group === 'overtime').map((row) => {
-                        let rowTotal = 0;
-                        return (
-                          <tr key={row.key} style={{ background: 'color-mix(in srgb, var(--color-status-warning) 4%, transparent)' }}>
-                            <td style={{ position: 'sticky', left: 0, background: 'color-mix(in srgb, var(--color-status-warning) 4%, var(--color-surface))', zIndex: 1, whiteSpace: 'nowrap', borderRight: '2px solid var(--color-border)' }}>
-                              <span style={{ color: 'var(--color-status-warning)', fontSize: 9, marginRight: 4 }}>{'\u25B2'}</span>
-                              <span>{row.label}</span>
-                            </td>
-                            {Array.from({ length: dc }, (_, i) => {
-                              const d = i + 1;
-                              const ds = dateStr(year, month, d);
-                              const hours = getCellHours(row.key, ds);
-                              rowTotal += hours;
-                              const editable = isDayEditable(d);
-                              return (
-                                <td key={d} style={{ textAlign: 'center', padding: 0, background: isWorkingDay(d) ? 'color-mix(in srgb, var(--color-status-warning) 4%, transparent)' : 'var(--color-border)' }}>
-                                  {!isWorkingDay(d) ? <span style={{ color: 'var(--color-text-subtle)', fontSize: 9 }}>{'\u2013'}</span> : editable ? (
-                                    <input type="text" inputMode="decimal" value={hours || ''} onChange={(e) => handleCellChange(row.key, ds, e.target.value)}
-                                      style={{ width: 30, height: 22, textAlign: 'center', border: 'none', background: 'transparent', fontSize: 11, fontVariantNumeric: 'tabular-nums', outline: 'none', padding: 0, color: 'var(--color-status-warning)' }}
-                                      onFocus={(e) => e.target.select()} />
-                                  ) : <span style={{ fontSize: 11, ...NUM, color: 'var(--color-status-warning)' }}>{hours || ''}</span>}
-                                </td>
-                              );
-                            })}
-                            <td style={{ ...NUM, fontWeight: 600, fontSize: 11, color: 'var(--color-status-warning)' }}>{rowTotal > 0 ? `${Math.round(rowTotal * 10) / 10}` : ''}</td>
-                          </tr>
-                        );
-                      })}
-                      {gridRows.filter((r) => r.group === 'overtime').length === 0 && (
-                        <tr><td colSpan={dc + 2} style={{ color: 'var(--color-text-subtle)', fontSize: 10, fontStyle: 'italic', paddingLeft: 16, background: 'color-mix(in srgb, var(--color-status-warning) 2%, transparent)' }}>No overtime lines — click "+ Add OT Line" to report overtime hours</td></tr>
-                      )}
-                    </>
-                  )}
-
-                  {/* ── LEAVE ROW (auto-populated, read-only) ── */}
-                  {Array.from(new Set(data.leaveDays.filter((l) => l.status === 'APPROVED').map((l) => l.type))).map((type) => (
-                    <tr key={`leave-${type}`} style={{ background: 'color-mix(in srgb, var(--color-chart-1) 4%, transparent)' }}>
-                      <td style={{ position: 'sticky', left: 0, background: 'color-mix(in srgb, var(--color-chart-1) 4%, var(--color-surface))', zIndex: 1, whiteSpace: 'nowrap', borderRight: '2px solid var(--color-border)' }}>
-                        <span style={{ color: 'var(--color-chart-1)', fontSize: 9, marginRight: 4 }}>{'\u25A0'}</span>
-                        <span style={{ color: 'var(--color-chart-1)' }}>{LEAVE_LABELS[type] ?? type}</span>
-                      </td>
-                      {Array.from({ length: dc }, (_, i) => {
-                        const d = i + 1;
-                        const ds = dateStr(year, month, d);
-                        const isThisLeave = data.leaveDays.some((l) => l.date === ds && l.type === type && l.status === 'APPROVED');
-                        return (
-                          <td key={d} style={{ textAlign: 'center', padding: 0, background: isThisLeave ? 'color-mix(in srgb, var(--color-chart-1) 15%, transparent)' : cellBg(d) }}>
-                            {isThisLeave ? <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-chart-1)' }}>{STD_HOURS}</span> : ''}
-                          </td>
-                        );
-                      })}
-                      <td style={{ ...NUM, fontWeight: 600, fontSize: 11, color: 'var(--color-chart-1)' }}>
-                        {data.leaveDays.filter((l) => l.type === type && l.status === 'APPROVED').length * STD_HOURS}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-
-                {/* ── FOOTER: Day total + Gap row ── */}
-                <tfoot>
-                  <tr style={{ fontWeight: 600 }}>
-                    <td style={{ position: 'sticky', left: 0, background: 'var(--color-surface-alt)', zIndex: 2, borderRight: '2px solid var(--color-border)', fontSize: 10 }}>Day Total</td>
-                    {Array.from({ length: dc }, (_, i) => {
-                      const d = i + 1;
-                      const dt = dayTotal(d);
-                      const dow = dowOf(year, month, d);
-                      const isWE = dow === 0 || dow === 6;
+                        },
+                      };
+                    }),
+                    {
+                      key: 'total',
+                      title: 'Total',
+                      align: 'right',
+                      width: 64,
+                      cellStyle: { paddingRight: 8 },
+                      render: (cr) => {
+                        if (cr.kind === 'leave') return <span style={{ ...NUM, fontWeight: 600, fontSize: 13, color: 'var(--color-chart-1)' }}>{totalRender(cr)}</span>;
+                        if (cr.kind === 'data' && cr.row.group === 'overtime') return <span style={{ ...NUM, fontWeight: 600, fontSize: 13, color: 'var(--color-status-warning)' }}>{totalRender(cr)}</span>;
+                        if (cr.kind === 'data') return <span style={{ ...NUM, fontWeight: 600, fontSize: 13 }}>{totalRender(cr)}</span>;
+                        if (cr.kind === 'project-header') return <span style={{ ...NUM, fontWeight: 600, fontSize: 13, color: 'var(--color-text-muted)' }}>{totalRender(cr)}</span>;
+                        if (cr.kind === 'footer-day-total') return <span style={{ ...NUM, fontWeight: 700, fontSize: 13 }}>{totalRender(cr)}</span>;
+                        if (cr.kind === 'footer-gap') return <span style={{ ...NUM, fontWeight: 700, fontSize: 13, color: s.gapHours > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>{totalRender(cr)}</span>;
+                        return null;
+                      },
+                    },
+                  ] as Column<CalendarRow>[]}
+                  rows={calendarRows}
+                  getRowKey={(cr) => cr.key}
+                  rowStyle={(cr) => {
+                    if (cr.kind === 'data' && cr.row.group === 'overtime') return { background: 'color-mix(in srgb, var(--color-status-warning) 4%, transparent)' };
+                    if (cr.kind === 'leave') return { background: 'color-mix(in srgb, var(--color-chart-1) 4%, transparent)' };
+                    if (cr.kind === 'project-header') return { background: 'var(--color-surface-alt)' };
+                    if (cr.kind === 'footer-day-total') return { background: 'var(--color-surface-alt)', fontWeight: 700 };
+                    if (cr.kind === 'footer-gap') return { background: 'color-mix(in srgb, var(--color-status-danger) 5%, transparent)' };
+                    return undefined;
+                  }}
+                  fullSpanRow={(cr) => {
+                    if (cr.kind === 'section-header') {
+                      const isOT = cr.tone === 'warning';
                       return (
-                        <td key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, background: isWE ? 'var(--color-border)' : 'var(--color-surface-alt)', color: dt > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)' }}>
-                          {isWE ? '' : dt > 0 ? dt : ''}
-                        </td>
+                        <div style={{
+                          background: isOT ? 'color-mix(in srgb, var(--color-status-warning) 10%, var(--color-surface-alt))' : 'var(--color-surface-alt)',
+                          fontWeight: 700,
+                          fontSize: 10,
+                          padding: '4px 8px',
+                          color: isOT ? 'var(--color-status-warning)' : 'var(--color-text-muted)',
+                          letterSpacing: '0.05em',
+                        }}>
+                          {cr.label}
+                        </div>
                       );
-                    })}
-                    <td style={{ ...NUM, fontWeight: 700, fontSize: 11, background: 'var(--color-surface-alt)' }}>{s.reportedHours}</td>
-                  </tr>
-                  {/* GAP ROW — fixed, non-editable, auto-calculated */}
-                  <tr style={{ background: 'color-mix(in srgb, var(--color-status-danger) 5%, transparent)' }}>
-                    <td style={{ position: 'sticky', left: 0, background: 'color-mix(in srgb, var(--color-status-danger) 5%, var(--color-surface))', zIndex: 2, borderRight: '2px solid var(--color-border)', fontSize: 10, fontWeight: 600, color: 'var(--color-status-danger)' }}>Gap</td>
-                    {Array.from({ length: dc }, (_, i) => {
-                      const d = i + 1;
-                      const ds = dateStr(year, month, d);
-                      if (!isWorkingDay(d) || leaveDays.has(ds)) return <td key={d} style={{ background: cellBg(d) }} />;
-                      const dt = dayTotal(d);
-                      const gap = STD_HOURS - dt;
+                    }
+                    if (cr.kind === 'add-trigger') {
+                      const isOT = cr.tone === 'warning';
+                      const label = cr.scope === 'overtime' ? '+ Add OT line'
+                                  : cr.scope === 'bench' ? '+ Add line'
+                                  : '+ Add work';
+                      const indent = cr.scope === 'bench' ? 16
+                                    : typeof cr.scope === 'object' ? 32
+                                    : 0;
                       return (
-                        <td key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: gap > 0 ? 700 : 400, color: gap > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)', background: gap > 0 ? 'color-mix(in srgb, var(--color-status-danger) 8%, transparent)' : undefined }}>
-                          {gap > 0 ? `-${gap}` : gap === 0 ? '\u2713' : ''}
-                        </td>
+                        <div style={{ paddingLeft: indent, padding: `2px 8px 2px ${8 + indent}px` }}>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            onClick={() => startAddLine(cr.scope)}
+                            style={{
+                              fontSize: 10,
+                              border: `1px dashed ${isOT ? 'var(--color-status-warning)' : 'var(--color-border)'}`,
+                              borderRadius: 3,
+                              padding: '1px 8px',
+                              color: isOT ? 'var(--color-status-warning)' : 'var(--color-accent)',
+                            }}
+                          >{label}</Button>
+                        </div>
                       );
-                    })}
-                    <td style={{ ...NUM, fontWeight: 700, fontSize: 11, color: s.gapHours > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>{s.gapHours > 0 ? `-${s.gapHours}` : '\u2713'}</td>
-                  </tr>
-                </tfoot>
-              </table>
+                    }
+                    if (cr.kind === 'add-draft') {
+                      const placeholder = draftLine?.scope === 'bench' ? 'Bench activity, e.g. "Self-paced training"'
+                                        : draftLine?.scope === 'project' ? 'Work item, e.g. "Bug fixes" or "PROJ-123"'
+                                        : 'Add line';
+                      const indent = draftLine?.scope === 'bench' ? 16 : 32;
+                      return (
+                        <div style={{ padding: `4px 8px 4px ${8 + indent}px`, background: 'color-mix(in srgb, var(--color-accent) 5%, var(--color-surface))' }}>
+                          <input
+                            autoFocus
+                            value={draftLabel}
+                            onChange={(e) => setDraftLabel(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); commitDraftLine(); }
+                              else if (e.key === 'Escape') { e.preventDefault(); setDraftLine(null); }
+                            }}
+                            onBlur={() => { if (!draftLabel.trim()) setDraftLine(null); else commitDraftLine(); }}
+                            placeholder={placeholder}
+                            style={{
+                              width: '100%', maxWidth: 320, height: 24,
+                              fontSize: 11, padding: '0 6px',
+                              border: '1px solid var(--color-border-strong)',
+                              borderRadius: 'var(--radius-control)',
+                              background: 'var(--color-surface)', color: 'var(--color-text)',
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                    return undefined;
+                  }}
+                />
 
               {/* Week status + submit controls */}
               <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
                 {data.weeks.map((w) => {
                   const statusColor = w.status === 'APPROVED' ? 'var(--color-status-active)' : w.status === 'SUBMITTED' ? 'var(--color-status-warning)' : w.status === 'REJECTED' ? 'var(--color-status-danger)' : 'var(--color-border)';
+                  // Submit-in-advance gate: block until weekStart + 6 has passed (when setting is off).
+                  const wkLastDay = new Date(new Date(w.weekStart).getTime() + 6 * 86400000);
+                  const advanceBlocked = !allowSubmitInAdvance && wkLastDay > new Date();
+                  const submitTooltip = advanceBlocked
+                    ? `Submitting before the week\'s last day (${wkLastDay.toISOString().slice(0,10)}) is disabled. Ask an admin to enable "Allow submit in advance".`
+                    : '';
                   return (
-                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-control)', border: `2px solid ${statusColor}`, background: `color-mix(in srgb, ${statusColor} 6%, var(--color-surface))`, fontSize: 11 }}>
+                    <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-control)', border: `2px solid ${statusColor}`, background: `color-mix(in srgb, ${statusColor} 6%, var(--color-surface))`, fontSize: 12 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
                       <span style={{ fontWeight: 500 }}>Week of {w.weekStart}</span>
                       {w.status === 'DRAFT' && (
-                        <button type="button" className="button button--primary button--sm" style={{ fontSize: 10, marginLeft: 4 }}
-                          onClick={async () => {
-                            try {
-                              if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
-                              // Flush any pending edits for this week
-                              for (const [editKey, hrs] of localEdits) {
-                                const [, ds] = editKey.split(':').length > 2 ? [editKey.substring(0, editKey.lastIndexOf(':')), editKey.substring(editKey.lastIndexOf(':') + 1)] : editKey.split(':');
-                                if (!ds) continue;
-                                const d = new Date(ds);
-                                const wkStart = new Date(w.weekStart);
-                                if (d >= wkStart && d < new Date(wkStart.getTime() + 7 * 86400000)) {
-                                  const rk = editKey.substring(0, editKey.lastIndexOf(':'));
-                                  await saveCell(rk, ds, hrs);
+                        <>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={advanceBlocked}
+                            title={submitTooltip}
+                            style={{ fontSize: 11, marginLeft: 4 }}
+                            onClick={async () => {
+                              try {
+                                if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+                                for (const [editKey, hrs] of localEdits) {
+                                  const [, ds] = editKey.split(':').length > 2 ? [editKey.substring(0, editKey.lastIndexOf(':')), editKey.substring(editKey.lastIndexOf(':') + 1)] : editKey.split(':');
+                                  if (!ds) continue;
+                                  const d = new Date(ds);
+                                  const wkStart = new Date(w.weekStart);
+                                  if (d >= wkStart && d < new Date(wkStart.getTime() + 7 * 86400000)) {
+                                    const rk = editKey.substring(0, editKey.lastIndexOf(':'));
+                                    await saveCell(rk, ds, hrs);
+                                  }
                                 }
-                              }
-                              await submitTimesheetWeek(w.weekStart);
-                              toast.success(`Week of ${w.weekStart} submitted`);
-                              refetch();
-                            } catch { toast.error('Submit failed'); }
-                          }}>
-                          Submit
-                        </button>
+                                await submitTimesheetWeek(w.weekStart);
+                                toast.success(`Week of ${w.weekStart} submitted`);
+                                refetch();
+                              } catch (e) { toast.error(e instanceof Error ? e.message : 'Submit failed'); }
+                            }}>
+                            Submit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            style={{ fontSize: 11 }}
+                            onClick={() => setResetCandidate({ weekStart: w.weekStart })}
+                          >
+                            Reset
+                          </Button>
+                        </>
                       )}
                       {w.status === 'SUBMITTED' && (
-                        <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 10 }}>Pending approval</span>
+                        <>
+                          <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>Pending approval</span>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            style={{ fontSize: 11, marginLeft: 4 }}
+                            onClick={() => setRevokeCandidate({ weekStart: w.weekStart })}
+                          >
+                            Revoke
+                          </Button>
+                        </>
                       )}
                       {w.status === 'APPROVED' && (
-                        <span style={{ color: 'var(--color-status-active)', fontWeight: 600, fontSize: 10 }}>{'\u2713'} Approved</span>
+                        <span style={{ color: 'var(--color-status-active)', fontWeight: 600, fontSize: 11 }}>{'\u2713'} Approved</span>
                       )}
                       {w.status === 'REJECTED' && (
                         <>
-                          <span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 10 }}>Rejected — edit and resubmit</span>
-                          <button type="button" className="button button--primary button--sm" style={{ fontSize: 10, marginLeft: 4 }}
+                          <span style={{ color: 'var(--color-status-danger)', fontWeight: 600, fontSize: 11 }}>Rejected — edit and resubmit</span>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            disabled={advanceBlocked}
+                            title={submitTooltip}
+                            style={{ fontSize: 11, marginLeft: 4 }}
                             onClick={async () => {
                               try {
                                 if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
                                 await submitTimesheetWeek(w.weekStart);
                                 toast.success(`Week of ${w.weekStart} resubmitted`);
                                 refetch();
-                              } catch { toast.error('Resubmit failed'); }
+                              } catch (e) { toast.error(e instanceof Error ? e.message : 'Resubmit failed'); }
                             }}>
                             Resubmit
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>
@@ -693,29 +1086,28 @@ export function MyTimePage(): JSX.Element {
                 })}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── LEAVE TAB ── */}
           {tab === 'leave' && (
             <SectionCard title="Leave Requests">
               {data.leaveDays.length > 0 ? (
-                <table className="dash-compact-table">
-                  <thead><tr><th>Date</th><th>Type</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {data.leaveDays.map((l, i) => (
-                      <tr key={i}>
-                        <td>{l.date}</td>
-                        <td><StatusBadge label={LEAVE_LABELS[l.type] ?? l.type} size="small" tone={l.type === 'SICK' ? 'danger' : l.type === 'ANNUAL' ? 'info' : 'neutral'} /></td>
-                        <td><StatusBadge label={l.status} size="small" tone={l.status === 'APPROVED' ? 'active' : l.status === 'PENDING' ? 'warning' : 'danger'} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  variant="compact"
+                  columns={[
+                    { key: 'date', title: 'Date', getValue: (l) => l.date, render: (l) => l.date },
+                    { key: 'type', title: 'Type', getValue: (l) => l.type, render: (l) => <StatusBadge label={LEAVE_LABELS[l.type] ?? l.type} size="small" tone={l.type === 'SICK' ? 'danger' : l.type === 'ANNUAL' ? 'info' : 'neutral'} /> },
+                    { key: 'status', title: 'Status', getValue: (l) => l.status, render: (l) => <StatusBadge label={l.status} size="small" tone={l.status === 'APPROVED' ? 'active' : l.status === 'PENDING' ? 'warning' : 'danger'} /> },
+                  ] as Column<typeof data.leaveDays[number]>[]}
+                  rows={data.leaveDays}
+                  getRowKey={(_, i) => `leave-${i}`}
+                />
               ) : (
                 <EmptyState title="No leave" description="No leave requests for this month." />
               )}
               <div style={{ marginTop: 'var(--space-3)' }}>
-                <button type="button" className="button button--primary button--sm" onClick={() => nav('/leave')}>+ New Leave Request</button>
+                <Button type="button" variant="primary" size="sm" onClick={() => nav('/leave')}>+ New Leave Request</Button>
               </div>
             </SectionCard>
           )}
@@ -724,19 +1116,17 @@ export function MyTimePage(): JSX.Element {
           {tab === 'summary' && (
             <SectionCard title="Monthly Summary">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-                <table className="dash-compact-table">
-                  <tbody>
-                    <tr><td>Working Days</td><td style={NUM}>{s.workingDays}</td></tr>
-                    <tr><td>Expected Hours</td><td style={NUM}>{s.expectedHours}h</td></tr>
-                    <tr><td>Reported Hours</td><td style={{ ...NUM, fontWeight: 600 }}>{s.reportedHours}h</td></tr>
-                    <tr><td style={{ paddingLeft: 16 }}>Standard</td><td style={NUM}>{s.standardHours}h</td></tr>
-                    <tr><td style={{ paddingLeft: 16 }}>Overtime</td><td style={{ ...NUM, color: s.overtimeHours > 0 ? 'var(--color-status-warning)' : undefined }}>{s.overtimeHours}h</td></tr>
-                    <tr><td style={{ paddingLeft: 16 }}>Leave</td><td style={NUM}>{s.leaveHours}h</td></tr>
-                    <tr><td style={{ paddingLeft: 16 }}>Bench</td><td style={NUM}>{s.benchHours}h</td></tr>
-                    <tr><td>Gap</td><td style={{ ...NUM, color: s.gapHours > 0 ? 'var(--color-status-danger)' : undefined, fontWeight: 600 }}>{s.gapHours}h ({s.gapDays} days)</td></tr>
-                    <tr><td>Utilization</td><td style={{ ...NUM, fontWeight: 600 }}>{s.utilizationPercent}%</td></tr>
-                  </tbody>
-                </table>
+                <DescriptionList items={[
+                  { label: 'Working Days', value: <span style={NUM}>{s.workingDays}</span> },
+                  { label: 'Expected Hours', value: <span style={NUM}>{s.expectedHours}h</span> },
+                  { label: 'Reported Hours', value: <span style={{ ...NUM, fontWeight: 600 }}>{s.reportedHours}h</span> },
+                  { label: <span style={{ paddingLeft: 16 }}>Standard</span>, value: <span style={NUM}>{s.standardHours}h</span> },
+                  { label: <span style={{ paddingLeft: 16 }}>Overtime</span>, value: <span style={{ ...NUM, color: s.overtimeHours > 0 ? 'var(--color-status-warning)' : undefined }}>{s.overtimeHours}h</span> },
+                  { label: <span style={{ paddingLeft: 16 }}>Leave</span>, value: <span style={NUM}>{s.leaveHours}h</span> },
+                  { label: <span style={{ paddingLeft: 16 }}>Bench</span>, value: <span style={NUM}>{s.benchHours}h</span> },
+                  { label: 'Gap', value: <span style={{ ...NUM, color: s.gapHours > 0 ? 'var(--color-status-danger)' : undefined, fontWeight: 600 }}>{s.gapHours}h ({s.gapDays} days)</span> },
+                  { label: 'Utilization', value: <span style={{ ...NUM, fontWeight: 600 }}>{s.utilizationPercent}%</span> },
+                ] as DescriptionListItem[]} />
                 <div style={{ height: Math.max(180, s.byProject.length * 32 + 40) }}>
                   {s.byProject.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -763,10 +1153,85 @@ export function MyTimePage(): JSX.Element {
           {/* ── Data Freshness ── */}
           <div className="data-freshness">
             {MONTH_NAMES[month - 1]} {year} · {s.workingDays} working days · {data.holidays.length} holidays
-            <button type="button" className="button button--secondary button--sm" onClick={refetch} style={{ marginLeft: 'var(--space-2)' }}>{'\u21bb'} Refresh</button>
+            <Button type="button" variant="secondary" size="sm" onClick={refetch} style={{ marginLeft: 'var(--space-2)' }}>{'\u21bb'} Refresh</Button>
           </div>
         </>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteCandidate !== null}
+        title="Delete this line?"
+        message={
+          deleteCandidate
+            ? `Delete "${deleteCandidate.label}" and its ${deleteCandidate.persistedHours}h of reported hours? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={() => { void confirmDelete(); }}
+      />
+
+      <ConfirmDialog
+        open={resetCandidate !== null}
+        title="Reset this week?"
+        message={
+          resetCandidate
+            ? `Clear every entry for the week of ${resetCandidate.weekStart}? Custom rows you added in the UI stay; only the saved hours are wiped. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Reset"
+        tone="danger"
+        onCancel={() => setResetCandidate(null)}
+        onConfirm={async () => {
+          const c = resetCandidate;
+          setResetCandidate(null);
+          if (!c) return;
+          try {
+            await resetTimesheetWeek(c.weekStart);
+            toast.success(`Week of ${c.weekStart} reset`);
+            // Drop any pending edits inside this week so they don't immediately re-save.
+            const wkStart = new Date(c.weekStart);
+            const wkEnd = new Date(wkStart.getTime() + 7 * 86400000);
+            setLocalEdits((prev) => {
+              const out = new Map<string, number>();
+              for (const [k, v] of prev) {
+                const ds = k.substring(k.lastIndexOf(':') + 1);
+                const d = new Date(ds);
+                if (!(d >= wkStart && d < wkEnd)) out.set(k, v);
+              }
+              return out;
+            });
+            refetch();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Reset failed');
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={revokeCandidate !== null}
+        title="Revoke submission?"
+        message={
+          revokeCandidate
+            ? `Pull the week of ${revokeCandidate.weekStart} back to DRAFT so you can edit it? Your manager will need to approve again after you re-submit.`
+            : ''
+        }
+        confirmLabel="Revoke"
+        onCancel={() => setRevokeCandidate(null)}
+        onConfirm={async () => {
+          const c = revokeCandidate;
+          setRevokeCandidate(null);
+          if (!c) return;
+          try {
+            await revokeTimesheetWeek(c.weekStart);
+            toast.success(`Week of ${c.weekStart} returned to draft`);
+            refetch();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Revoke failed');
+          }
+        }}
+      />
     </PageContainer>
   );
 }
