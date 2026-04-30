@@ -133,13 +133,14 @@ jobs:
             export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
             docker compose -p dc-staging -f docker-compose.prod.yml pull
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build migrate
-            # Capture exit code from `wait` (returns the container's exit code)
-            # so we can surface migrate stdout/stderr in the workflow log when
-            # the migration fails, instead of just seeing 'exit 1'.
-            # || true absorbs compose-wait's non-zero exit (which would otherwise
-            # trigger set -e before we get to the if-block) so we can capture
-            # the failing container's exit code from stdout and surface its logs.
-            MIGRATE_EXIT=\$(docker compose -p dc-staging -f docker-compose.prod.yml wait migrate || true)
+            # Read migrate container exit via `docker inspect` (compose-wait's
+            # stdout is the verbose 'container "X" exited with status code N'
+            # message, not a parseable integer; previous attempt at parsing
+            # stdout always tripped the failure branch even on exit=0). The
+            # `|| true` absorbs compose-wait's own non-zero so set -e doesn't
+            # kill the script before we can inspect.
+            docker compose -p dc-staging -f docker-compose.prod.yml wait migrate || true
+            MIGRATE_EXIT=\$(docker inspect dc-staging-migrate-1 --format '{{.State.ExitCode}}')
             if [ "\$MIGRATE_EXIT" != "0" ]; then
               echo "::group::migrate container logs (exit=\$MIGRATE_EXIT)"
               docker compose -p dc-staging -f docker-compose.prod.yml logs --no-color --tail=400 migrate || true
