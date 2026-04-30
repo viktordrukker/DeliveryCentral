@@ -433,8 +433,16 @@ function createBankScaleDataset(): SeedDataset {
     const isDraft = !isClosed && index >= 1080;
     const status = isClosed ? 'CLOSED' : isDraft ? 'DRAFT' : 'ACTIVE';
     const startsOn = addDays(new Date('2025-01-01T00:00:00.000Z'), index % 365);
+    // For CLOSED projects, anchor endsOn to a fixed past date but ensure it
+    // never falls before startsOn (the schema check constraint
+    // `Project_startsOn_before_endsOn_check` rejects inverted ranges).
+    // Mathematically possible without this guard when index % 160 puts the
+    // anchored endsOn earlier in the year than the (index % 365)-derived
+    // startsOn — e.g. index=1371 produced startsOn=2025-10-04 / endsOn=
+    // 2025-10-01.
+    const closedEndsOn = addDays(new Date('2026-01-01T00:00:00.000Z'), -(index % 160) - 1);
     const endsOn = isClosed
-      ? addDays(new Date('2026-01-01T00:00:00.000Z'), -(index % 160) - 1)
+      ? (closedEndsOn > startsOn ? closedEndsOn : addDays(startsOn, 7))
       : addDays(startsOn, 180 + (index % 120));
 
     projects.push({
