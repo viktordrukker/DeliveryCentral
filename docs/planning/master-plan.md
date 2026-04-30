@@ -138,7 +138,7 @@ Every subsequent commit is deployable to the VPS from day one.
 | `docker-compose.prod.yml` (Caddy, no source mounts, all secrets from env) | ✅ |
 | `Caddyfile` (reverse proxy, Let's Encrypt, `$CADDY_DOMAIN`) | ✅ |
 | `bitnami/openldap` in `docker-compose.yml` tools profile | ✅ |
-| `.github/workflows/deploy.yml` (build → GHCR → SSH → health check → rollback) | ✅ |
+| `.github/workflows/build-and-stage.yml` + `promote-to-prod.yml` (build → GHCR → SSH → health check → rollback; manual prod promotion since 2026-04-28, originally `deploy.yml`) | ✅ |
 | `.github/workflows/ci.yml` (backend + frontend + build-check jobs) | ✅ |
 | `.github/pull_request_template.md` (JTBD-anchored checklist) | ✅ |
 | `.env.example` (all feature toggles, superadmin seed vars, grouped) | ✅ |
@@ -344,7 +344,8 @@ Created:
   frontend/nginx.conf
   docker-compose.prod.yml
   Caddyfile
-  .github/workflows/deploy.yml
+  .github/workflows/build-and-stage.yml             — originally deploy.yml; split 2026-04-28
+  .github/workflows/promote-to-prod.yml             — manual prod promotion (2026-04-28)
   .github/pull_request_template.md
   docs/planning/agent-handoff-wsl.md                — detailed WSL agent brief
   docs/planning/master-plan.md                      — this file

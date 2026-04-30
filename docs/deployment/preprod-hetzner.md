@@ -1,16 +1,18 @@
 # Pre-Prod on Hetzner — Runbook
 
-Single-tenant demo environment. CI builds images in GHCR; `deploy.yml` SSHes
-into a Hetzner VPS and runs `docker compose -f docker-compose.prod.yml pull`
-→ `up -d`. Monitoring and GitHub-issue auto-filing are opt-in via the
-`monitoring` compose profile.
+Single-tenant demo environment. CI builds images in GHCR; `build-and-stage.yml`
+SSHes into a Hetzner VPS and runs `docker compose -f docker-compose.prod.yml pull`
+→ `up -d`. Production deploys are manual — pick a tag via `promote-to-prod.yml`.
+Monitoring and GitHub-issue auto-filing are opt-in via the `monitoring` compose
+profile.
 
 Files referenced below live in the repo root unless noted:
 [docker-compose.prod.yml](../../docker-compose.prod.yml),
 [Caddyfile](../../Caddyfile),
 [.env.preprod.example](../../.env.preprod.example),
 [ops/issue-reporter/report.sh](../../ops/issue-reporter/report.sh),
-[.github/workflows/deploy.yml](../../.github/workflows/deploy.yml).
+[.github/workflows/build-and-stage.yml](../../.github/workflows/build-and-stage.yml),
+[.github/workflows/promote-to-prod.yml](../../.github/workflows/promote-to-prod.yml).
 
 ---
 
@@ -186,11 +188,13 @@ In GitHub → repo → Settings:
     pasted into `/home/deploy/.ssh/authorized_keys`
   - `STAGING_CADDY_DOMAIN` — `preprod.<domain>`
 
-The existing `deploy-staging` job in [.github/workflows/deploy.yml](../../.github/workflows/deploy.yml)
-now doubles as the pre-prod deploy. Every push to `main` rebuilds the backend
-and frontend images, pushes them to GHCR, SSHes in, pulls, runs migrate, and
-brings up backend / frontend / caddy with a `/api/health` + `/api/health/deep`
-smoke gate.
+The `deploy-staging` job in [.github/workflows/build-and-stage.yml](../../.github/workflows/build-and-stage.yml)
+doubles as the pre-prod deploy. Every push to `main` rebuilds the backend and
+frontend images, pushes them to GHCR, SSHes in, pulls, runs migrate, and brings
+up backend / frontend / caddy with a `/api/health` + `/api/health/deep` smoke
+gate. After health checks pass, the deploy writes
+`/opt/deliverycentral-staging/.staging-tag` and `.staging-tag-deployed-at` —
+the prod-promote workflow reads these to enforce its freshness gate.
 
 ## 9. Logs and day-to-day ops
 
@@ -231,6 +235,12 @@ When you stand up a separate prod box:
 1. Provision a second VPS, run steps 2–5 with a different `CADDY_DOMAIN`.
 2. Set repo variable `PRODUCTION_DEPLOY_ENABLED=true` plus the `VPS_HOST`,
    `VPS_USER`, `VPS_SSH_KEY`, `CADDY_DOMAIN` secrets.
-3. The existing `deploy-production` job in
-   [.github/workflows/deploy.yml](../../.github/workflows/deploy.yml) picks up
-   the next push, gated by the staging-freshness rule already wired in.
+3. Promote a build to production via
+   [.github/workflows/promote-to-prod.yml](../../.github/workflows/promote-to-prod.yml):
+   Actions → "promote-to-prod" → **Run workflow** → enter the 7-char SHA tag of
+   a staging-validated build (`gh run list -w build-and-stage.yml` lists recent
+   green runs; the tag is the first 7 chars of the commit SHA). The workflow
+   gates: image tag exists in GHCR → staging deployed exactly that tag within
+   `freshness_hours` (default 6, max 72 with a justification) → GitHub
+   `production` environment approval (if Required reviewers is enabled in repo
+   settings) → SSH deploy + health check + rollback on failure.

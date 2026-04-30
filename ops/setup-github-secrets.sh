@@ -14,7 +14,7 @@
 #   - Pushes 8 secrets via `gh secret set`
 #   - Pushes 2 repository variables via `gh variable set`
 #   - Reminds you to enable Environments (staging, production) in repo settings
-#     so the deploy.yml gates work
+#     so the build-and-stage.yml + promote-to-prod.yml gates work
 
 set -euo pipefail
 

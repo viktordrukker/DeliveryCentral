@@ -1,0 +1,281 @@
+name: promote-to-prod
+
+# Manual prod deploy. Pick a previously-built image tag and promote it.
+# Builds are tagged with the 7-char commit SHA — see build-and-stage.yml.
+#
+# Gates (in order):
+#   1. validate-tag             — image tag exists in GHCR (both backend + frontend)
+#   2. verify-staging-freshness — staging deployed exactly that tag within
+#                                 freshness_hours (default 6, max 72)
+#   3. environment: production  — GitHub Required Reviewers (configure in repo
+#                                 settings → Environments → production)
+#   4. deploy-production        — SSH-based deploy with health check + rollback
+#
+# Picking a tag: see https://github.com/${{ github.repository_owner }}?tab=packages
+# (filter by deliverycentral-backend / -frontend) or run `gh run list -w build-and-stage.yml`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: '7-char SHA tag to promote (e.g. 1b17bac).'
+        required: true
+        type: string
+      freshness_hours:
+        description: 'Max age of matching staging deploy (default 6, max 72). Override > 6 requires reason.'
+        required: false
+        type: string
+        default: '6'
+      freshness_override_reason:
+        description: 'Justification when freshness_hours > 6 (logged for audit).'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: promote-to-prod
+  cancel-in-progress: false
+
+jobs:
+  validate-tag:
+    name: Validate inputs & GHCR manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Validate inputs
+        env:
+          TAG: ${{ inputs.image_tag }}
+          HOURS: ${{ inputs.freshness_hours }}
+          REASON: ${{ inputs.freshness_override_reason }}
+        run: |
+          set -e
+          if ! [[ "$TAG" =~ ^[0-9a-f]{7}$ ]]; then
+            echo "::error::image_tag must be a 7-char lowercase hex SHA (got '$TAG')"
+            exit 1
+          fi
+          if ! [[ "$HOURS" =~ ^[0-9]+$ ]]; then
+            echo "::error::freshness_hours must be a non-negative integer (got '$HOURS')"
+            exit 1
+          fi
+          if [ "$HOURS" -lt 1 ] || [ "$HOURS" -gt 72 ]; then
+            echo "::error::freshness_hours must be in [1, 72] (got '$HOURS')"
+            exit 1
+          fi
+          if [ "$HOURS" -gt 6 ] && [ -z "$REASON" ]; then
+            echo "::error::freshness_override_reason is required when freshness_hours > 6"
+            exit 1
+          fi
+          echo "::notice title=Promote inputs OK::tag=$TAG hours=$HOURS reason='$REASON'"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inspect backend manifest
+        run: docker manifest inspect "ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ inputs.image_tag }}"
+
+      - name: Inspect frontend manifest
+        run: docker manifest inspect "ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:${{ inputs.image_tag }}"
+
+  verify-staging-freshness:
+    name: Verify staging deployed this tag recently
+    runs-on: ubuntu-latest
+    needs: [validate-tag]
+    if: vars.STAGING_DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Read marker and check freshness
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          REQUESTED_TAG: ${{ inputs.image_tag }}
+          MAX_HOURS: ${{ inputs.freshness_hours }}
+          REASON: ${{ inputs.freshness_override_reason }}
+        run: |
+          set -e
+          MARKER=$(ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<'REMOTE'
+            set -e
+            T=/opt/deliverycentral-staging/.staging-tag
+            A=/opt/deliverycentral-staging/.staging-tag-deployed-at
+            if [ ! -f "$T" ] || [ ! -f "$A" ]; then
+              echo "MISSING"
+              exit 0
+            fi
+            echo "TAG=$(cat "$T")"
+            echo "AT=$(cat "$A")"
+          REMOTE
+          )
+
+          if echo "$MARKER" | grep -qx 'MISSING'; then
+            echo "::error::Staging marker files not found on the VM. Re-run build-and-stage to refresh staging."
+            exit 1
+          fi
+
+          STAGING_TAG=$(echo "$MARKER" | awk -F= '/^TAG=/{print $2}')
+          STAGING_AT=$(echo  "$MARKER" | awk -F= '/^AT=/{print $2}')
+
+          if [ -z "$STAGING_TAG" ] || [ -z "$STAGING_AT" ]; then
+            echo "::error::Marker file unreadable: $MARKER"
+            exit 1
+          fi
+
+          if [ "$STAGING_TAG" != "$REQUESTED_TAG" ]; then
+            echo "::error::Staging is on tag '$STAGING_TAG' but promote requested '$REQUESTED_TAG'. Either pick the staging tag, or redeploy staging with the requested tag first."
+            exit 1
+          fi
+
+          NOW_EPOCH=$(date -u +%s)
+          AT_EPOCH=$(date -u -d "$STAGING_AT" +%s)
+          AGE_S=$(( NOW_EPOCH - AT_EPOCH ))
+          MAX_S=$(( MAX_HOURS * 3600 ))
+          AGE_H=$(( AGE_S / 3600 ))
+
+          if [ "$AGE_S" -gt "$MAX_S" ]; then
+            echo "::error::Staging tag $STAGING_TAG is ~${AGE_H}h old (deployed $STAGING_AT) — older than the ${MAX_HOURS}h freshness gate. Re-run build-and-stage or raise freshness_hours with a reason."
+            exit 1
+          fi
+
+          if [ "$MAX_HOURS" -gt 6 ]; then
+            echo "::notice title=Freshness override accepted::tag=$STAGING_TAG age=${AGE_H}h within override window of ${MAX_HOURS}h. Reason: $REASON"
+          else
+            echo "::notice title=Staging fresh::tag=$STAGING_TAG age=${AGE_H}h within ${MAX_HOURS}h"
+          fi
+
+  deploy-production:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [validate-tag, verify-staging-freshness]
+    environment: production
+    if: |
+      always() &&
+      !cancelled() &&
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+      needs.validate-tag.result == 'success' &&
+      (needs.verify-staging-freshness.result == 'success' ||
+       needs.verify-staging-freshness.result == 'skipped')
+
+    steps:
+      - name: Warn if freshness check skipped
+        if: needs.verify-staging-freshness.result == 'skipped'
+        run: |
+          echo "::warning title=Freshness check skipped::vars.STAGING_DEPLOY_ENABLED is not 'true'. Production is deploying without a staging cross-check."
+
+      - name: Checkout repo (full history for short-SHA resolution)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve full SHA from tag
+        id: sha
+        run: |
+          set -e
+          FULL_SHA=$(git rev-parse "${{ inputs.image_tag }}^{commit}")
+          echo "full_sha=$FULL_SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${{ inputs.image_tag }} → $FULL_SHA"
+
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        env:
+          PROD_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via SSH (production)
+        env:
+          PROD_HOST: ${{ secrets.VPS_HOST }}
+          PROD_DOMAIN: ${{ secrets.CADDY_DOMAIN }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DEPLOY_SHA: ${{ steps.sha.outputs.full_sha }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$PROD_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral
+
+            # Sync the working tree to the BUILD being deployed (not latest main)
+            # so docker-compose.prod.yml + ops/templates/* match the image tag.
+            git fetch origin
+            git reset --hard "$DEPLOY_SHA"
+            rm -f docker-compose.override.yml
+
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            CURRENT_BACKEND=\$(docker inspect dc-prod-backend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            CURRENT_FRONTEND=\$(docker inspect dc-prod-frontend-1 --format '{{.Config.Image}}' 2>/dev/null || echo '')
+            echo "\$CURRENT_BACKEND"  > .previous-backend-image
+            echo "\$CURRENT_FRONTEND" > .previous-frontend-image
+
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
+            docker compose -p dc-prod -f docker-compose.prod.yml pull
+
+            docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
+            docker compose -p dc-prod -f docker-compose.prod.yml wait migrate
+            docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
+            echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
+
+            # Self-healing Caddy refresh — see build-and-stage.yml for rationale.
+            TEMPLATE_PATH=/opt/deliverycentral/ops/templates/data-stack.Caddyfile
+            DEPLOYED_PATH=/opt/deliverycentral-data/Caddyfile
+            if [ ! -f "\$TEMPLATE_PATH" ]; then
+              echo "::warning::Caddy template missing at \$TEMPLATE_PATH — skipping refresh."
+            elif [ ! -f "\$DEPLOYED_PATH" ]; then
+              echo "::warning::Deployed Caddyfile missing at \$DEPLOYED_PATH — skipping refresh (run ops/bootstrap-app.sh once first)."
+            elif diff -q "\$TEMPLATE_PATH" "\$DEPLOYED_PATH" >/dev/null 2>&1; then
+              echo "Caddy template unchanged — no refresh needed"
+            else
+              echo "Caddy template differs from deployed copy — validating + refreshing..."
+              docker cp "\$TEMPLATE_PATH" dc-data-caddy-1:/tmp/Caddyfile.new
+              if docker exec dc-data-caddy-1 caddy validate --config /tmp/Caddyfile.new --adapter caddyfile; then
+                cp "\$TEMPLATE_PATH" "\$DEPLOYED_PATH"
+                docker exec dc-data-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+                echo "✓ Caddy reloaded with new config"
+              else
+                echo "::error::caddy validate FAILED on new template — leaving deployed Caddyfile unchanged"
+                docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+                exit 1
+              fi
+              docker exec dc-data-caddy-1 rm -f /tmp/Caddyfile.new || true
+            fi
+
+            sleep 15
+            rollback() {
+              echo "Health check failed — rolling back to previous images"
+              if [ -n "\$CURRENT_BACKEND" ] && [ -n "\$CURRENT_FRONTEND" ]; then
+                export BACKEND_IMAGE="\$CURRENT_BACKEND"
+                export FRONTEND_IMAGE="\$CURRENT_FRONTEND"
+                docker compose -p dc-prod -f docker-compose.prod.yml pull
+                docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
+              else
+                echo "::warning::No previous images recorded (first deploy?). Cannot roll back automatically."
+              fi
+              exit 1
+            }
+            curl -sf "https://$PROD_DOMAIN/api/health" || rollback
+            curl -sf "https://$PROD_DOMAIN/api/health/deep" | grep -q '"status":"ready"' || rollback
+
+            echo "Promote $IMAGE_TAG successful"
+          EOF

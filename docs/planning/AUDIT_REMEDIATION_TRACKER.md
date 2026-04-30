@@ -714,8 +714,8 @@ Move cursor to STAGE 8.
 
 <!-- HANDOFF 2026-04-25: STAGE 9 partial. OBS-01 done (recursive redactor on log payload; matches password/passwd/secret/token/jwt/otp/cookie/authorization/apikey/api_key/backupcode/sessionid/set-cookie). OBS-02 doc note added (DMD-028 — OutboxEvent intentionally dormant on CX13; verified zero application writers). OBS-04 partial (inline retry sleep capped at 200ms — request handlers no longer block on long backoffs; full nextAttemptAt preserved for the future OBS-03 worker). INFRA-04 done (mem_limit/cpus/logging on backend + frontend in docker-compose.prod.yml). DEFERRED to dedicated session: INFRA-01 + INFRA-11 (deploy.yml + ops/backup.sh — touches CI workflow + on-host script + secret material; needs ops review and test against a real Hetzner Storage Box). OBS-03 (retry worker — needs reconstruction of channel/template/adapter from a persisted RETRYING delivery; deserves its own session with test coverage). -->
 
-- [-] **INFRA-01** — Pre-migration backup in deploy workflow  *(DEFERRED — deploy.yml + on-host script + storage credentials need a dedicated ops session)*
-  - **Files:** `.github/workflows/deploy.yml`, `ops/backup.sh`
+- [-] **INFRA-01** — Pre-migration backup in deploy workflow  *(DEFERRED — deploy workflows + on-host script + storage credentials need a dedicated ops session)*
+  - **Files:** `.github/workflows/build-and-stage.yml`, `.github/workflows/promote-to-prod.yml`, `ops/backup.sh` _(DM-R-33 split the original `deploy.yml`; the pre-migration step belongs in `promote-to-prod.yml`'s `deploy-production` job, just before `prisma migrate deploy` runs on the VM)_
   - **Action:** Add a step before `prisma migrate deploy`: ssh to VPS, run `/opt/backups/backup.sh prod-pre-migration <git-sha>`. Extend `backup.sh` to accept a tag suffix used in the dump filename. After dump, immediately offload to S3/Backblaze/Hetzner Storage Box and **delete local copy** (CX13 has only 40 GB SSD — keep local retention to last 2 dumps max).
   - **Verify:** YAML valid. Test the script locally with a small DB.
   - **Conflict-risk:** LOW
