@@ -704,7 +704,7 @@ async function seedTimesheets(): Promise<void> {
       entryDate.setDate(monday.getDate() + dayOffset);
 
       await prismaSeed.timesheetEntry.upsert({
-        where: { timesheetWeekId_projectId_date: { timesheetWeekId: ethanWeekId, projectId: prj101, date: entryDate } },
+        where: { timesheetWeekId_projectId_benchCategory_workLabel_date: { timesheetWeekId: ethanWeekId, projectId: prj101, benchCategory: '', workLabel: '', date: entryDate } },
         create: {
           id: `66666666-ae00-0001-${String(weekIdx).padStart(4, '0')}-${String(dayOffset + 1).padStart(12, '0')}`,
           timesheetWeekId: ethanWeekId,
@@ -717,7 +717,7 @@ async function seedTimesheets(): Promise<void> {
       });
 
       await prismaSeed.timesheetEntry.upsert({
-        where: { timesheetWeekId_projectId_date: { timesheetWeekId: ethanWeekId, projectId: prj102, date: entryDate } },
+        where: { timesheetWeekId_projectId_benchCategory_workLabel_date: { timesheetWeekId: ethanWeekId, projectId: prj102, benchCategory: '', workLabel: '', date: entryDate } },
         create: {
           id: `66666666-ae00-0002-${String(weekIdx).padStart(4, '0')}-${String(dayOffset + 1).padStart(12, '0')}`,
           timesheetWeekId: ethanWeekId,
@@ -753,7 +753,7 @@ async function seedTimesheets(): Promise<void> {
       entryDate.setDate(monday.getDate() + dayOffset);
 
       await prismaSeed.timesheetEntry.upsert({
-        where: { timesheetWeekId_projectId_date: { timesheetWeekId: lucasWeekId, projectId: prj101, date: entryDate } },
+        where: { timesheetWeekId_projectId_benchCategory_workLabel_date: { timesheetWeekId: lucasWeekId, projectId: prj101, benchCategory: '', workLabel: '', date: entryDate } },
         create: {
           id: `66666666-ae00-0003-${String(weekIdx).padStart(4, '0')}-${String(dayOffset + 1).padStart(12, '0')}`,
           timesheetWeekId: lucasWeekId,
