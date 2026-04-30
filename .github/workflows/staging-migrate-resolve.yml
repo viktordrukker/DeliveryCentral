@@ -74,6 +74,7 @@ jobs:
       - name: Run prisma migrate resolve via SSH
         env:
           STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          GHCR_OWNER: ${{ github.repository_owner }}
           NAME: ${{ inputs.migration_name }}
           RESOLUTION: ${{ inputs.resolution }}
         run: |
@@ -81,9 +82,12 @@ jobs:
             set -e
             cd /opt/deliverycentral-staging
 
+            # Compose interpolates BACKEND_IMAGE / FRONTEND_IMAGE — use the
+            # :latest tag (always pushed alongside the SHA tag in build-and-stage).
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:latest
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:latest
+
             # Run a one-shot migrate container with the resolve subcommand.
-            # --rm so the container goes away after; --no-deps so it doesn't
-            # try to start the postgres dependency (postgres is already up).
             docker compose -p dc-staging -f docker-compose.prod.yml run --rm \
               --entrypoint sh \
               migrate -c "
@@ -94,10 +98,13 @@ jobs:
       - name: Show migration status after resolve
         env:
           STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          GHCR_OWNER: ${{ github.repository_owner }}
         run: |
           ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
             set -e
             cd /opt/deliverycentral-staging
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:latest
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:latest
             docker compose -p dc-staging -f docker-compose.prod.yml run --rm \
               --entrypoint sh \
               migrate -c "npx prisma migrate status" || true
