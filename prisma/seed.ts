@@ -262,6 +262,30 @@ async function seedMetadata(): Promise<void> {
       entityType: 'TimesheetWeek',
       isSystemManaged: false,
     },
+    {
+      id: '42222222-0000-0000-0000-000000000301',
+      dictionaryKey: 'assignment-rejection-reasons',
+      displayName: 'Assignment Rejection Reasons',
+      description: 'Reason codes a PM/DM/Director can cite when rejecting a proposal slate.',
+      entityType: 'ProjectAssignment',
+      isSystemManaged: false,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000302',
+      dictionaryKey: 'case-kind-assignment-escalation',
+      displayName: 'Assignment Escalation Case Kinds',
+      description: 'Case kinds offered when escalating an assignment issue (PM-initiated).',
+      entityType: 'CaseRecord',
+      isSystemManaged: false,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000401',
+      dictionaryKey: 'staffing-roles',
+      displayName: 'Staffing Roles',
+      description: 'Normalized role taxonomy used on StaffingRequest and ProjectAssignment.staffingRole.',
+      entityType: 'StaffingRequest',
+      isSystemManaged: false,
+    },
   ];
 
   for (const dict of dictionaries) {
@@ -317,6 +341,61 @@ async function seedMetadata(): Promise<void> {
     { id: '43333333-0000-0000-0000-000000000402', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'WRONG_PROJECT',   entryValue: 'WRONG_PROJECT',   displayName: 'Wrong Project',   sortOrder: 2, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000403', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'MISSING_EVIDENCE', entryValue: 'MISSING_EVIDENCE', displayName: 'Missing Evidence', sortOrder: 3, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000404', metadataDictionaryId: '42222222-0000-0000-0000-000000000201', entryKey: 'OTHER',           entryValue: 'OTHER',           displayName: 'Other',           sortOrder: 4, isEnabled: true },
+    // Assignment rejection reasons (Workflow Overhaul Phase 1)
+    { id: '43333333-0000-0000-0000-000000000501', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'SKILL_GAP',       entryValue: 'SKILL_GAP',       displayName: 'Skill Gap',          sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000502', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'AVAILABILITY',    entryValue: 'AVAILABILITY',    displayName: 'Availability',       sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000503', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'GRADE_MISMATCH',  entryValue: 'GRADE_MISMATCH',  displayName: 'Grade Mismatch',     sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000504', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'BUDGET',          entryValue: 'BUDGET',          displayName: 'Budget',             sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000505', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'CULTURAL_FIT',    entryValue: 'CULTURAL_FIT',    displayName: 'Cultural Fit',       sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000506', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'TIMING',          entryValue: 'TIMING',          displayName: 'Timing',             sortOrder: 6, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000507', metadataDictionaryId: '42222222-0000-0000-0000-000000000301', entryKey: 'OTHER',           entryValue: 'OTHER',           displayName: 'Other',              sortOrder: 7, isEnabled: true },
+    // Case kinds for assignment escalation (Workflow Overhaul Phase 1)
+    { id: '43333333-0000-0000-0000-000000000601', metadataDictionaryId: '42222222-0000-0000-0000-000000000302', entryKey: 'PERFORMANCE',           entryValue: 'PERFORMANCE',           displayName: 'Performance',             sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000602', metadataDictionaryId: '42222222-0000-0000-0000-000000000302', entryKey: 'TIME_MISMATCH',         entryValue: 'TIME_MISMATCH',         displayName: 'Time Mismatch',           sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000603', metadataDictionaryId: '42222222-0000-0000-0000-000000000302', entryKey: 'SKILL_GAP_DISCOVERED',  entryValue: 'SKILL_GAP_DISCOVERED',  displayName: 'Skill Gap Discovered',    sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000604', metadataDictionaryId: '42222222-0000-0000-0000-000000000302', entryKey: 'BEHAVIORAL',            entryValue: 'BEHAVIORAL',            displayName: 'Behavioral',              sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000605', metadataDictionaryId: '42222222-0000-0000-0000-000000000302', entryKey: 'OTHER',                 entryValue: 'OTHER',                 displayName: 'Other',                   sortOrder: 5, isEnabled: true },
+    // Staffing roles (StaffingRequest)
+    { id: '43333333-0000-0000-0000-000000000701', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SOFTWARE_ENGINEER',          entryValue: 'Software Engineer',          displayName: 'Software Engineer',          sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000702', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SENIOR_SOFTWARE_ENGINEER',   entryValue: 'Senior Software Engineer',   displayName: 'Senior Software Engineer',   sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000703', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'LEAD_ENGINEER',              entryValue: 'Lead Engineer',              displayName: 'Lead Engineer',              sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000704', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'STAFF_ENGINEER',             entryValue: 'Staff Engineer',             displayName: 'Staff Engineer',             sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000705', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'PRINCIPAL_ENGINEER',         entryValue: 'Principal Engineer',         displayName: 'Principal Engineer',         sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000706', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'FRONTEND_ENGINEER',          entryValue: 'Frontend Engineer',          displayName: 'Frontend Engineer',          sortOrder: 6, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000707', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'BACKEND_ENGINEER',           entryValue: 'Backend Engineer',           displayName: 'Backend Engineer',           sortOrder: 7, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000708', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'FULL_STACK_ENGINEER',        entryValue: 'Full-Stack Engineer',        displayName: 'Full-Stack Engineer',        sortOrder: 8, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000709', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'MOBILE_ENGINEER',            entryValue: 'Mobile Engineer',            displayName: 'Mobile Engineer',            sortOrder: 9, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000710', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'DEVOPS_ENGINEER',            entryValue: 'DevOps Engineer',            displayName: 'DevOps Engineer',            sortOrder: 10, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000711', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SRE_ENGINEER',               entryValue: 'SRE Engineer',               displayName: 'SRE Engineer',               sortOrder: 11, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000712', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'PLATFORM_ENGINEER',          entryValue: 'Platform Engineer',          displayName: 'Platform Engineer',          sortOrder: 12, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000713', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'DATA_ENGINEER',              entryValue: 'Data Engineer',              displayName: 'Data Engineer',              sortOrder: 13, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000714', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'ML_ENGINEER',                entryValue: 'ML Engineer',                displayName: 'ML Engineer',                sortOrder: 14, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000715', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'QA_ENGINEER',                entryValue: 'QA Engineer',                displayName: 'QA Engineer',                sortOrder: 15, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000716', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SDET',                       entryValue: 'SDET',                       displayName: 'SDET',                       sortOrder: 16, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000717', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'AUTOMATION_ENGINEER',        entryValue: 'Automation Engineer',        displayName: 'Automation Engineer',        sortOrder: 17, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000718', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SECURITY_ENGINEER',          entryValue: 'Security Engineer',          displayName: 'Security Engineer',          sortOrder: 18, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000719', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'CLOUD_ARCHITECT',            entryValue: 'Cloud Architect',            displayName: 'Cloud Architect',            sortOrder: 19, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000720', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SOLUTIONS_ARCHITECT',        entryValue: 'Solutions Architect',        displayName: 'Solutions Architect',        sortOrder: 20, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000721', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'TECHNICAL_ARCHITECT',        entryValue: 'Technical Architect',        displayName: 'Technical Architect',        sortOrder: 21, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000722', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'ENGINEERING_MANAGER',        entryValue: 'Engineering Manager',        displayName: 'Engineering Manager',        sortOrder: 22, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000723', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'TECH_LEAD',                  entryValue: 'Tech Lead',                  displayName: 'Tech Lead',                  sortOrder: 23, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000724', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'TEAM_LEAD',                  entryValue: 'Team Lead',                  displayName: 'Team Lead',                  sortOrder: 24, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000725', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SCRUM_MASTER',               entryValue: 'Scrum Master',               displayName: 'Scrum Master',               sortOrder: 25, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000726', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'AGILE_COACH',                entryValue: 'Agile Coach',                displayName: 'Agile Coach',                sortOrder: 26, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000727', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'PROJECT_MANAGER',            entryValue: 'Project Manager',            displayName: 'Project Manager',            sortOrder: 27, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000728', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'DELIVERY_MANAGER',           entryValue: 'Delivery Manager',           displayName: 'Delivery Manager',           sortOrder: 28, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000729', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'PRODUCT_OWNER',              entryValue: 'Product Owner',              displayName: 'Product Owner',              sortOrder: 29, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000730', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'PRODUCT_MANAGER',            entryValue: 'Product Manager',            displayName: 'Product Manager',            sortOrder: 30, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000731', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'BUSINESS_ANALYST',           entryValue: 'Business Analyst',           displayName: 'Business Analyst',           sortOrder: 31, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000732', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SYSTEMS_ANALYST',            entryValue: 'Systems Analyst',            displayName: 'Systems Analyst',            sortOrder: 32, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000733', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'UX_DESIGNER',                entryValue: 'UX Designer',                displayName: 'UX Designer',                sortOrder: 33, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000734', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'UI_DESIGNER',                entryValue: 'UI Designer',                displayName: 'UI Designer',                sortOrder: 34, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000735', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'UX_RESEARCHER',              entryValue: 'UX Researcher',              displayName: 'UX Researcher',              sortOrder: 35, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000736', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'TECHNICAL_WRITER',           entryValue: 'Technical Writer',           displayName: 'Technical Writer',           sortOrder: 36, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000737', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'RELEASE_MANAGER',            entryValue: 'Release Manager',            displayName: 'Release Manager',            sortOrder: 37, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000738', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'DATABASE_ADMINISTRATOR',     entryValue: 'Database Administrator',     displayName: 'Database Administrator',     sortOrder: 38, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000739', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SUPPORT_ENGINEER',           entryValue: 'Support Engineer',           displayName: 'Support Engineer',           sortOrder: 39, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000740', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'INTEGRATION_SPECIALIST',     entryValue: 'Integration Specialist',     displayName: 'Integration Specialist',     sortOrder: 40, isEnabled: true },
   ];
 
   for (const entry of entries) {
@@ -397,6 +476,13 @@ async function seedFullNotificationInfrastructure(): Promise<void> {
     { id: '72222222-2222-2222-2222-222222222009', templateKey: 'case-closed-email',          eventName: 'case.closed',          displayName: 'Case Closed Email',          channelId: emailChannel.id, subjectTemplate: 'Case closed: {{caseId}}',                bodyTemplate: 'Case {{caseId}} has been closed.' },
     // Employee terminated (Teams channel)
     { id: '72222222-2222-2222-2222-222222222011', templateKey: 'employee-terminated-teams',   eventName: 'employee.terminated',  displayName: 'Employee Terminated Teams',  channelId: teamsChannel.id, subjectTemplate: 'Employee terminated',                    bodyTemplate: 'Employee {{personId}} has been terminated.' },
+    // Workflow Overhaul Phase WO-3 — proposal slate + SLA + escalation
+    { id: '72222222-2222-2222-2222-222222222020', templateKey: 'assignment-proposal-submitted-email',          eventName: 'assignment.proposal_submitted',           displayName: 'Proposal Slate Submitted',          channelId: emailChannel.id, subjectTemplate: 'New proposal slate for assignment {{assignmentId}}', bodyTemplate: 'A proposal slate of {{candidateCount}} candidate(s) has been submitted for assignment {{assignmentId}}. Review on the assignment page.' },
+    { id: '72222222-2222-2222-2222-222222222021', templateKey: 'assignment-proposal-acknowledged-email',       eventName: 'assignment.proposal_acknowledged',        displayName: 'Proposal Acknowledged',             channelId: emailChannel.id, subjectTemplate: 'Reviewer engaged with your proposal',                bodyTemplate: 'The reviewer has acknowledged the proposal slate for assignment {{assignmentId}} and started review.' },
+    { id: '72222222-2222-2222-2222-222222222022', templateKey: 'assignment-proposal-director-approval-email',  eventName: 'assignment.proposal_director_approval_requested', displayName: 'Director Approval Requested', channelId: emailChannel.id, subjectTemplate: 'Director approval needed for assignment {{assignmentId}}', bodyTemplate: 'Assignment {{assignmentId}} has crossed the configured threshold and requires Director sign-off before onboarding.' },
+    { id: '72222222-2222-2222-2222-222222222023', templateKey: 'assignment-onboarding-scheduled-email',        eventName: 'assignment.onboarding_scheduled',         displayName: 'Onboarding Scheduled',              channelId: emailChannel.id, subjectTemplate: 'Onboarding scheduled for assignment {{assignmentId}}',  bodyTemplate: 'Onboarding for assignment {{assignmentId}} is scheduled on {{onboardingDate}}.' },
+    { id: '72222222-2222-2222-2222-222222222024', templateKey: 'assignment-sla-breached-email',                eventName: 'assignment.sla_breached',                 displayName: 'Assignment SLA Breached',           channelId: emailChannel.id, subjectTemplate: '⚠️ SLA breach: assignment {{assignmentId}} (stage {{slaStage}})', bodyTemplate: 'Assignment {{assignmentId}} has breached the SLA at stage {{slaStage}}. Please act on the approval queue.' },
+    { id: '72222222-2222-2222-2222-222222222025', templateKey: 'assignment-escalated-to-case-email',           eventName: 'assignment.escalated_to_case',            displayName: 'Assignment Escalated to Case',      channelId: emailChannel.id, subjectTemplate: 'Assignment {{assignmentId}} escalated to case {{caseId}}',  bodyTemplate: 'A case ({{caseId}}) has been opened to track an issue on assignment {{assignmentId}}.' },
   ];
 
   for (const tmpl of templates) {
@@ -459,6 +545,34 @@ async function seedPlatformSettings(): Promise<void> {
     'dashboard.evidenceInactiveDaysThreshold': 14,
     'dashboard.nearingClosureDaysThreshold': 30,
     'budgetSimulation.enabled': true,
+    // Workflow Overhaul Phase 1 — §J configurable assignment workflow defaults
+    'assignment.timeToFillTargetDays': 30,
+    'assignment.sla.proposalDays': 2,
+    'assignment.sla.reviewDays': 1,
+    'assignment.sla.approvalDays': 2,
+    'assignment.sla.rmFinalizeDays': 1,
+    'assignment.sla.warningPercents': [50, 75],
+    'assignment.sla.postBreachPercents': [],
+    'assignment.sla.sweepIntervalMinutes': 15,
+    'assignment.directorApproval.allocationPercentMin': 80,
+    'assignment.directorApproval.durationMonthsMin': 12,
+    'assignment.approvalQueue.defaultWindowDays': 30,
+    'assignment.slate.minCandidates': 1,
+    'assignment.slate.maxCandidates': 5,
+    'assignment.slo.approvalP50Hours': 24,
+    'assignment.slo.approvalP95Hours': 72,
+    'assignment.slo.breachRateMaxPercent': 5,
+    'assignment.matching.weights.skill': 25,
+    'assignment.matching.weights.proficiency': 15,
+    'assignment.matching.weights.importance': 15,
+    'assignment.matching.weights.availability': 15,
+    'assignment.matching.weights.recency': 5,
+    'assignment.matching.weights.grade': 10,
+    'assignment.matching.weights.domain': 5,
+    'assignment.matching.weights.language': 3,
+    'assignment.matching.weights.tz': 2,
+    'assignment.matching.weights.cert': 5,
+    'assignment.nudge.cooldownHours': 24,
   };
 
   for (const [key, value] of Object.entries(defaults)) {
@@ -1745,10 +1859,23 @@ async function main(): Promise<void> {
       workEvidenceSources: bankScaleDataset.workEvidenceSources,
     });
 
-     
+    // Global-config seeds (profile-agnostic — query-driven, no hardcoded
+    // phase2 UUIDs). Cover the new schema's metadata-driven entities:
+    // dictionaries (incl. assignment-rejection-reasons / case-kind-assignment-
+    // escalation / staffing-roles from Workflow Overhaul Phase 1), skill
+    // catalog, case types, radiator thresholds, platform settings, and the
+    // full notification channel/template/request graph. Per-project entities
+    // (BudgetApproval, ProjectMilestones, ProjectChangeRequests at scale)
+    // remain to be added with bank-scale-flavored generators.
+    await seedMetadata();
+    await seedPlatformSettings();
+    await seedSkills();
+    await seedCaseTypes();
+    await seedRadiatorThresholds();
+
     console.log('Bank-scale dataset seeded.', bankScaleProfileSummary);
     await seedSuperadmin();
-    await seedNotificationInfrastructure();
+    await seedFullNotificationInfrastructure();
     return;
   }
 

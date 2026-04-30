@@ -127,8 +127,10 @@ enum RolePlanSource {
 }
 
 enum AssignmentStatus {
+  DRAFT
   CREATED
   PROPOSED
+  IN_REVIEW
   REJECTED
   BOOKED
   ONBOARDING
@@ -136,6 +138,27 @@ enum AssignmentStatus {
   ON_HOLD
   COMPLETED
   CANCELLED
+}
+
+enum AssignmentSlaStage {
+  PROPOSAL
+  REVIEW
+  APPROVAL
+  RM_FINALIZE
+}
+
+enum StaffingRequestProposalSlateStatus {
+  OPEN
+  DECIDED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum StaffingRequestProposalCandidateDecision {
+  PENDING
+  PICKED
+  DECLINED
+  AUTO_DECLINED
 }
 
 enum ApprovalDecision {
@@ -240,6 +263,8 @@ model Person {
   projectAssignments                     ProjectAssignment[]                 @relation("AssignmentPerson")
   assignmentApprovalsMade                AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
   assignmentHistoryEntries               AssignmentHistory[]                 @relation("AssignmentHistoryChangedBy")
+  staffingRequestProposalSlatesProposed  StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateProposedBy")
+  staffingRequestProposalCandidacies     StaffingRequestProposalCandidate[]  @relation("StaffingRequestProposalCandidatePerson")
   workEvidenceRecords                    WorkEvidence[]
   caseRecords                            CaseRecord[]                        @relation("CaseSubjectPerson")
   ownedCaseRecords                       CaseRecord[]                        @relation("CaseOwnerPerson")
@@ -648,45 +673,54 @@ model ExternalSyncState {
 
 // Assignment is planned staffing truth and intentionally independent from work evidence.
 model ProjectAssignment {
-  id                  String               @id @default(uuid()) @db.Uuid
-  personId            String               @db.Uuid
-  projectId           String               @db.Uuid
-  workstreamId        String?              @db.Uuid
-  staffingRequestId   String?
-  requestedByPersonId String?              @db.Uuid
-  assignmentCode      String?              @unique
-  staffingRole        String
-  status              AssignmentStatus     @default(CREATED)
-  allocationPercent   Decimal?             @db.Decimal(5, 2)
-  requestedAt         DateTime             @default(now()) @db.Timestamptz(3)
-  approvedAt          DateTime? @db.Timestamptz(3)
-  validFrom           DateTime @db.Timestamptz(3)
-  validTo             DateTime? @db.Timestamptz(3)
-  notes               String?
-  rejectionReason     String?
-  cancellationReason  String?
-  onHoldReason        String?
-  onHoldCaseId        String?              @db.Uuid
-  version             Int                  @default(1)
-  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
-  archivedAt          DateTime? @db.Timestamptz(3)
-  person              Person               @relation("AssignmentPerson", fields: [personId], references: [id])
-  project             Project              @relation(fields: [projectId], references: [id])
-  staffingRequest     StaffingRequest?     @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
-  requestedBy         Person?              @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
-  approvals           AssignmentApproval[]
-  historyEntries      AssignmentHistory[]
-  caseRecords         CaseRecord[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  personId                 String                    @db.Uuid
+  projectId                String                    @db.Uuid
+  workstreamId             String?                   @db.Uuid
+  staffingRequestId        String?
+  requestedByPersonId      String?                   @db.Uuid
+  assignmentCode           String?                   @unique
+  staffingRole             String
+  status                   AssignmentStatus          @default(CREATED)
+  allocationPercent        Decimal?                  @db.Decimal(5, 2)
+  requestedAt              DateTime                  @default(now()) @db.Timestamptz(3)
+  approvedAt               DateTime?                 @db.Timestamptz(3)
+  validFrom                DateTime                  @db.Timestamptz(3)
+  validTo                  DateTime?                 @db.Timestamptz(3)
+  onboardingDate           DateTime?                 @db.Timestamptz(3)
+  notes                    String?
+  rejectionReason          String?
+  rejectionReasonCode      String?
+  cancellationReason       String?
+  onHoldReason             String?
+  onHoldCaseId             String?                   @db.Uuid
+  requiresDirectorApproval Boolean                   @default(false)
+  slaStage                 AssignmentSlaStage?
+  slaDueAt                 DateTime?                 @db.Timestamptz(3)
+  slaBreachedAt            DateTime?                 @db.Timestamptz(3)
+  version                  Int                       @default(1)
+  createdAt                DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                  @updatedAt @db.Timestamptz(3)
+  archivedAt               DateTime?                 @db.Timestamptz(3)
+  person                   Person                    @relation("AssignmentPerson", fields: [personId], references: [id])
+  project                  Project                   @relation(fields: [projectId], references: [id])
+  staffingRequest          StaffingRequest?          @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
+  requestedBy              Person?                   @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
+  approvals                AssignmentApproval[]
+  historyEntries           AssignmentHistory[]
+  caseRecords              CaseRecord[]
 
   @@unique([personId, projectId, validFrom])
   @@index([personId, status, validFrom, validTo])
   @@index([projectId, status, validFrom, validTo])
   @@index([staffingRequestId])
   @@index([requestedByPersonId])
+  @@index([slaStage, slaDueAt])
+  @@index([status, slaDueAt])
 
   @@map("ProjectAssignment")
 }
+
 
 model AssignmentApproval {
   id                String            @id @default(uuid()) @db.Uuid
@@ -1255,12 +1289,16 @@ model TimesheetEntry {
   date            DateTime      @db.Date
   hours           Decimal       @db.Decimal(5, 2)
   capex           Boolean       @default(false)
-  benchCategory   String?
+  // Empty string '' is the sentinel for "not set" so the composite unique key works without
+  // partial-index gymnastics around Postgres NULLS-DISTINCT semantics.
+  benchCategory   String        @default("")
+  workLabel       String        @default("")
+  workItemId      String?
   description     String?
   createdAt       DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
 
-  @@unique([timesheetWeekId, projectId, date])
+  @@unique([timesheetWeekId, projectId, benchCategory, workLabel, date])
   @@map("timesheet_entries")
 }
 
@@ -1495,6 +1533,7 @@ model StaffingRequest {
   allocationPercent   Decimal                     @db.Decimal(5, 2)
   headcountRequired   Int                         @default(1)
   headcountFulfilled  Int                         @default(0)
+  candidatePersonId   String?                     @db.Uuid
   priority            StaffingRequestPriority     @default(MEDIUM)
   status              StaffingRequestStatus       @default(DRAFT)
   startDate           DateTime                    @db.Date
@@ -1504,12 +1543,58 @@ model StaffingRequest {
   updatedAt           DateTime                    @updatedAt @db.Timestamptz(3)
   fulfilments         StaffingRequestFulfilment[]
   assignments         ProjectAssignment[]         @relation("StaffingRequestAssignments")
+  proposalSlate       StaffingRequestProposalSlate?
   version              Int                                 @default(1)
 
   @@index([projectId, status])
   @@index([requestedByPersonId, status])
   @@index([status, priority, startDate])
   @@map("staffing_requests")
+}
+
+model StaffingRequestProposalSlate {
+  id                 String                                @id @default(uuid()) @db.Uuid
+  staffingRequestId  String                                @unique @db.Uuid
+  proposedByPersonId String                                @db.Uuid
+  status             StaffingRequestProposalSlateStatus    @default(OPEN)
+  proposedAt         DateTime                              @default(now()) @db.Timestamptz(3)
+  expiresAt          DateTime?                             @db.Timestamptz(3)
+  decidedAt          DateTime?                             @db.Timestamptz(3)
+  createdAt          DateTime                              @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                              @updatedAt @db.Timestamptz(3)
+  staffingRequest    StaffingRequest                       @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
+  proposedBy         Person                                @relation("StaffingRequestProposalSlateProposedBy", fields: [proposedByPersonId], references: [id], onDelete: Restrict)
+  candidates         StaffingRequestProposalCandidate[]
+
+  @@index([staffingRequestId])
+  @@index([status, proposedAt])
+  @@index([proposedByPersonId])
+
+  @@map("StaffingRequestProposalSlate")
+}
+
+model StaffingRequestProposalCandidate {
+  id                  String                                       @id @default(uuid()) @db.Uuid
+  slateId             String                                       @db.Uuid
+  candidatePersonId   String                                       @db.Uuid
+  rank                Int
+  matchScore          Decimal                                      @db.Decimal(6, 3)
+  availabilityPercent Decimal?                                     @db.Decimal(5, 2)
+  mismatchedSkills    String[]
+  rationale           String?
+  decision            StaffingRequestProposalCandidateDecision     @default(PENDING)
+  decidedAt           DateTime?                                    @db.Timestamptz(3)
+  createdAt           DateTime                                     @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                                     @updatedAt @db.Timestamptz(3)
+  slate               StaffingRequestProposalSlate                 @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  candidate           Person                                       @relation("StaffingRequestProposalCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
+
+  @@unique([slateId, candidatePersonId])
+  @@index([slateId, rank])
+  @@index([candidatePersonId])
+  @@index([slateId, decision])
+
+  @@map("StaffingRequestProposalCandidate")
 }
 
 model StaffingRequestFulfilment {

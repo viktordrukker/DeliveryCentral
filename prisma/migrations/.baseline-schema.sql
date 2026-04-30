@@ -84,12 +84,50 @@ CREATE TYPE public."ApprovalDecision" AS ENUM (
 
 
 --
+-- Name: AssignmentProposalCandidateDecision; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."AssignmentProposalCandidateDecision" AS ENUM (
+    'PENDING',
+    'PICKED',
+    'DECLINED',
+    'AUTO_DECLINED'
+);
+
+
+--
+-- Name: AssignmentProposalSlateStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."AssignmentProposalSlateStatus" AS ENUM (
+    'OPEN',
+    'DECIDED',
+    'EXPIRED',
+    'WITHDRAWN'
+);
+
+
+--
+-- Name: AssignmentSlaStage; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."AssignmentSlaStage" AS ENUM (
+    'PROPOSAL',
+    'REVIEW',
+    'APPROVAL',
+    'RM_FINALIZE'
+);
+
+
+--
 -- Name: AssignmentStatus; Type: TYPE; Schema: public; Owner: -
 --
 
 CREATE TYPE public."AssignmentStatus" AS ENUM (
+    'DRAFT',
     'CREATED',
     'PROPOSED',
+    'IN_REVIEW',
     'REJECTED',
     'BOOKED',
     'ONBOARDING',
@@ -1142,6 +1180,43 @@ CREATE TABLE public."AssignmentHistory" (
 
 
 --
+-- Name: AssignmentProposalCandidate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."AssignmentProposalCandidate" (
+    id uuid NOT NULL,
+    "slateId" uuid NOT NULL,
+    "candidatePersonId" uuid NOT NULL,
+    rank integer NOT NULL,
+    "matchScore" numeric(6,3) NOT NULL,
+    "availabilityPercent" numeric(5,2),
+    "mismatchedSkills" text[],
+    rationale text,
+    decision public."AssignmentProposalCandidateDecision" DEFAULT 'PENDING'::public."AssignmentProposalCandidateDecision" NOT NULL,
+    "decidedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL
+);
+
+
+--
+-- Name: AssignmentProposalSlate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."AssignmentProposalSlate" (
+    id uuid NOT NULL,
+    "assignmentId" uuid NOT NULL,
+    "proposedByPersonId" uuid NOT NULL,
+    status public."AssignmentProposalSlateStatus" DEFAULT 'OPEN'::public."AssignmentProposalSlateStatus" NOT NULL,
+    "proposedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "expiresAt" timestamp(3) with time zone,
+    "decidedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL
+);
+
+
+--
 -- Name: AuditLog; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1906,6 +1981,12 @@ CREATE TABLE public."ProjectAssignment" (
     "staffingRequestId" text,
     "workstreamId" uuid,
     "tenantId" uuid,
+    "onboardingDate" timestamp(3) with time zone,
+    "rejectionReasonCode" text,
+    "requiresDirectorApproval" boolean DEFAULT false NOT NULL,
+    "slaStage" public."AssignmentSlaStage",
+    "slaDueAt" timestamp(3) with time zone,
+    "slaBreachedAt" timestamp(3) with time zone,
     CONSTRAINT "ProjectAssignment_allocationPercent_range_check" CHECK ((("allocationPercent" IS NULL) OR (("allocationPercent" >= (0)::numeric) AND ("allocationPercent" <= (100)::numeric)))),
     CONSTRAINT "ProjectAssignment_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
@@ -3076,8 +3157,10 @@ CREATE TABLE public.timesheet_entries (
     description text,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "benchCategory" text,
+    "benchCategory" text DEFAULT ''::text NOT NULL,
     id_new uuid DEFAULT gen_random_uuid(),
+    "workLabel" text DEFAULT ''::text NOT NULL,
+    "workItemId" text,
     CONSTRAINT timesheet_entries_hours_nonnegative_check CHECK (((hours >= (0)::numeric) AND (hours <= (24)::numeric)))
 );
 
@@ -3241,6 +3324,22 @@ ALTER TABLE ONLY public."AssignmentApproval"
 
 ALTER TABLE ONLY public."AssignmentHistory"
     ADD CONSTRAINT "AssignmentHistory_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: AssignmentProposalCandidate AssignmentProposalCandidate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalCandidate"
+    ADD CONSTRAINT "AssignmentProposalCandidate_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: AssignmentProposalSlate AssignmentProposalSlate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalSlate"
+    ADD CONSTRAINT "AssignmentProposalSlate_pkey" PRIMARY KEY (id);
 
 
 --
@@ -4140,6 +4239,69 @@ CREATE INDEX "AssignmentHistory_assignmentId_occurredAt_idx" ON public."Assignme
 --
 
 CREATE INDEX "AssignmentHistory_changedByPersonId_idx" ON public."AssignmentHistory" USING btree ("changedByPersonId");
+
+
+--
+-- Name: AssignmentProposalCandidate_candidatePersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalCandidate_candidatePersonId_idx" ON public."AssignmentProposalCandidate" USING btree ("candidatePersonId");
+
+
+--
+-- Name: AssignmentProposalCandidate_slateId_candidatePersonId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "AssignmentProposalCandidate_slateId_candidatePersonId_key" ON public."AssignmentProposalCandidate" USING btree ("slateId", "candidatePersonId");
+
+
+--
+-- Name: AssignmentProposalCandidate_slateId_decision_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalCandidate_slateId_decision_idx" ON public."AssignmentProposalCandidate" USING btree ("slateId", decision);
+
+
+--
+-- Name: AssignmentProposalCandidate_slateId_picked_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "AssignmentProposalCandidate_slateId_picked_unique" ON public."AssignmentProposalCandidate" USING btree ("slateId") WHERE (decision = 'PICKED'::public."AssignmentProposalCandidateDecision");
+
+
+--
+-- Name: AssignmentProposalCandidate_slateId_rank_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalCandidate_slateId_rank_idx" ON public."AssignmentProposalCandidate" USING btree ("slateId", rank);
+
+
+--
+-- Name: AssignmentProposalSlate_assignmentId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalSlate_assignmentId_idx" ON public."AssignmentProposalSlate" USING btree ("assignmentId");
+
+
+--
+-- Name: AssignmentProposalSlate_assignmentId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "AssignmentProposalSlate_assignmentId_key" ON public."AssignmentProposalSlate" USING btree ("assignmentId");
+
+
+--
+-- Name: AssignmentProposalSlate_proposedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalSlate_proposedByPersonId_idx" ON public."AssignmentProposalSlate" USING btree ("proposedByPersonId");
+
+
+--
+-- Name: AssignmentProposalSlate_status_proposedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentProposalSlate_status_proposedAt_idx" ON public."AssignmentProposalSlate" USING btree (status, "proposedAt");
 
 
 --
@@ -5060,10 +5222,24 @@ CREATE INDEX "ProjectAssignment_requestedByPersonId_idx" ON public."ProjectAssig
 
 
 --
+-- Name: ProjectAssignment_slaStage_slaDueAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectAssignment_slaStage_slaDueAt_idx" ON public."ProjectAssignment" USING btree ("slaStage", "slaDueAt");
+
+
+--
 -- Name: ProjectAssignment_staffingRequestId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "ProjectAssignment_staffingRequestId_idx" ON public."ProjectAssignment" USING btree ("staffingRequestId");
+
+
+--
+-- Name: ProjectAssignment_status_slaDueAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectAssignment_status_slaDueAt_idx" ON public."ProjectAssignment" USING btree (status, "slaDueAt");
 
 
 --
@@ -6138,10 +6314,10 @@ CREATE UNIQUE INDEX timesheet_entries_id_new_key ON public.timesheet_entries USI
 
 
 --
--- Name: timesheet_entries_timesheetWeekId_projectId_date_key; Type: INDEX; Schema: public; Owner: -
+-- Name: timesheet_entries_timesheetWeekId_projectId_benchCategory_w_key; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX "timesheet_entries_timesheetWeekId_projectId_date_key" ON public.timesheet_entries USING btree ("timesheetWeekId", "projectId", date);
+CREATE UNIQUE INDEX "timesheet_entries_timesheetWeekId_projectId_benchCategory_w_key" ON public.timesheet_entries USING btree ("timesheetWeekId", "projectId", "benchCategory", "workLabel", date);
 
 
 --
@@ -6615,6 +6791,38 @@ ALTER TABLE ONLY public."AssignmentHistory"
 
 ALTER TABLE ONLY public."AssignmentHistory"
     ADD CONSTRAINT "AssignmentHistory_changedByPersonId_fkey" FOREIGN KEY ("changedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: AssignmentProposalCandidate AssignmentProposalCandidate_candidatePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalCandidate"
+    ADD CONSTRAINT "AssignmentProposalCandidate_candidatePersonId_fkey" FOREIGN KEY ("candidatePersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: AssignmentProposalCandidate AssignmentProposalCandidate_slateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalCandidate"
+    ADD CONSTRAINT "AssignmentProposalCandidate_slateId_fkey" FOREIGN KEY ("slateId") REFERENCES public."AssignmentProposalSlate"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: AssignmentProposalSlate AssignmentProposalSlate_assignmentId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalSlate"
+    ADD CONSTRAINT "AssignmentProposalSlate_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: AssignmentProposalSlate AssignmentProposalSlate_proposedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentProposalSlate"
+    ADD CONSTRAINT "AssignmentProposalSlate_proposedByPersonId_fkey" FOREIGN KEY ("proposedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
