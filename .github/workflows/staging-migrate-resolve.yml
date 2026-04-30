@@ -1,0 +1,104 @@
+name: staging-migrate-resolve
+
+# One-off helper to call `prisma migrate resolve` on the staging DB.
+#
+# When a deploy is killed mid-migration (cancelled run, OOM, network drop)
+# Prisma leaves a row in `_prisma_migrations` with `finished_at = NULL`.
+# Subsequent `prisma migrate deploy` invocations refuse to proceed with
+# error P3009 until that row is resolved. This workflow wraps the
+# resolve command behind a workflow_dispatch trigger so we don't need
+# local SSH to recover.
+#
+# Usage:
+#   gh workflow run staging-migrate-resolve.yml \
+#     -f migration_name=20260429_wo_phase1_slate_and_in_review \
+#     -f resolution=rolled-back
+#
+# Resolution choices:
+#   rolled-back: marks migration as not applied. Use when the DB is
+#                clean (no partial schema changes left behind).
+#   applied:     marks migration as applied without running. Use when
+#                the migration's effects are already in the DB and
+#                Prisma's metadata is the only thing out of sync.
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_name:
+        description: 'Migration directory name (e.g. 20260429_wo_phase1_slate_and_in_review).'
+        required: true
+        type: string
+      resolution:
+        description: 'rolled-back | applied'
+        required: true
+        type: choice
+        options:
+          - rolled-back
+          - applied
+        default: rolled-back
+
+concurrency:
+  group: staging-migrate-resolve
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: prisma migrate resolve --${{ inputs.resolution }} ${{ inputs.migration_name }}
+    runs-on: ubuntu-latest
+    environment: staging
+    if: vars.STAGING_DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: Validate migration name
+        env:
+          NAME: ${{ inputs.migration_name }}
+        run: |
+          set -e
+          if ! [[ "$NAME" =~ ^[0-9]{8}_[a-z0-9_]+$ ]]; then
+            echo "::error::migration_name must look like '20260429_some_snake_case' (got '$NAME')"
+            exit 1
+          fi
+
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Run prisma migrate resolve via SSH
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          NAME: ${{ inputs.migration_name }}
+          RESOLUTION: ${{ inputs.resolution }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral-staging
+
+            # Run a one-shot migrate container with the resolve subcommand.
+            # --rm so the container goes away after; --no-deps so it doesn't
+            # try to start the postgres dependency (postgres is already up).
+            docker compose -p dc-staging -f docker-compose.prod.yml run --rm \
+              --entrypoint sh \
+              migrate -c "
+                npx prisma migrate resolve --$RESOLUTION '$NAME'
+              "
+          EOF
+
+      - name: Show migration status after resolve
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral-staging
+            docker compose -p dc-staging -f docker-compose.prod.yml run --rm \
+              --entrypoint sh \
+              migrate -c "npx prisma migrate status" || true
+          EOF
