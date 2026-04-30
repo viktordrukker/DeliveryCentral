@@ -1888,6 +1888,11 @@ async function main(): Promise<void> {
 
     console.log('Bank-scale dataset seeded.', bankScaleProfileSummary);
     await seedSuperadmin();
+    // Role-coverage test accounts. The 7 named people they reference are now
+    // fully present in bank-scale's people set: 5 already came in via
+    // [...demoPeople] and the remaining 2 (Diana Walsh, Carlos Vega) are
+    // appended in bank-scale-profile's `namedTestRolePeople`.
+    await seedPhase2Accounts();
     await seedFullNotificationInfrastructure();
     return;
   }

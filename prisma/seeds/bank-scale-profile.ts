@@ -143,8 +143,19 @@ function personIndexToName(index: number): { familyName: string; givenName: stri
   };
 }
 
+// Two named people from the phase2 dataset that aren't in demoPeople. Adding
+// them here lets `seedPhase2Accounts()` succeed against the bank-scale dataset
+// — the LocalAccount rows it creates reference these UUIDs as personId FKs.
+// Without these, only 5 of the 7 role-test accounts (director, hr_manager,
+// resource_manager, project_manager, delivery_manager, employee, dual-role)
+// would resolve.
+const namedTestRolePeople = [
+  { id: '11111111-1111-1111-2222-000000000001', personNumber: 'P-013', givenName: 'Diana',  familyName: 'Walsh', displayName: 'Diana Walsh',  primaryEmail: 'diana.walsh@example.com',  grade: 'G12', employmentStatus: 'ACTIVE', hiredAt: new Date('2022-06-01T00:00:00Z'), role: 'HR Manager' },
+  { id: '11111111-1111-1111-2222-000000000003', personNumber: 'P-015', givenName: 'Carlos', familyName: 'Vega',  displayName: 'Carlos Vega',  primaryEmail: 'carlos.vega@example.com',  grade: 'G12', employmentStatus: 'ACTIVE', hiredAt: new Date('2021-07-15T00:00:00Z'), role: 'Delivery Manager' },
+];
+
 function createBankScaleDataset(): SeedDataset {
-  const people: Array<Record<string, any>> = [...demoPeople];
+  const people: Array<Record<string, any>> = [...demoPeople, ...namedTestRolePeople];
   const orgUnits: Array<Record<string, any>> = [...demoOrgUnits];
   const positions: Array<Record<string, any>> = [...demoPositions];
   const personOrgMemberships: Array<Record<string, any>> = [...demoPersonOrgMemberships];
