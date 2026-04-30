@@ -16,7 +16,11 @@ services:
     pull_policy: always
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      # DM-R-20: opt-in cutover. When MIGRATE_DATABASE_URL is set, migrate
+      # connects as `app_migrator` (DDL-permitted; required once DM-R-21's
+      # event-trigger DDL lockout is active). When unset, falls back to the
+      # legacy DATABASE_URL — matches the dev compose pattern.
+      DATABASE_URL: ${MIGRATE_DATABASE_URL:-${DATABASE_URL}}
     networks: [dc-shared]
     # Wait for the shared postgres (in the data stack) to accept connections,
     # then run idempotent migrate deploy. `restart: no` ensures we don't loop
@@ -33,7 +37,10 @@ services:
       PORT: 3000
       API_PREFIX: ${API_PREFIX:-api}
       CORS_ORIGIN: ${CORS_ORIGIN}
-      DATABASE_URL: ${DATABASE_URL}
+      # DM-R-20: opt-in cutover. When RUNTIME_DATABASE_URL is set, backend
+      # connects as `app_runtime` (DML only — DDL is denied at the DB layer).
+      # When unset, falls back to the legacy DATABASE_URL.
+      DATABASE_URL: ${RUNTIME_DATABASE_URL:-${DATABASE_URL}}
       AUTH_ISSUER: ${AUTH_ISSUER}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
