@@ -133,7 +133,17 @@ jobs:
             export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
             docker compose -p dc-staging -f docker-compose.prod.yml pull
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build migrate
-            docker compose -p dc-staging -f docker-compose.prod.yml wait migrate
+            # Capture exit code from `wait` (returns the container's exit code)
+            # so we can surface migrate stdout/stderr in the workflow log when
+            # the migration fails, instead of just seeing 'exit 1'.
+            MIGRATE_EXIT=\$(docker compose -p dc-staging -f docker-compose.prod.yml wait migrate)
+            if [ "\$MIGRATE_EXIT" != "0" ]; then
+              echo "::group::migrate container logs (exit=\$MIGRATE_EXIT)"
+              docker compose -p dc-staging -f docker-compose.prod.yml logs --no-color --tail=400 migrate || true
+              echo "::endgroup::"
+              echo "::error::Migrate container exited with code \$MIGRATE_EXIT — see logs above"
+              exit 1
+            fi
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral-staging/.current-sha
 
