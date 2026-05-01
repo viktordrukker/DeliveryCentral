@@ -233,7 +233,24 @@ jobs:
             docker compose -p dc-prod -f docker-compose.prod.yml pull
 
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
-            docker compose -p dc-prod -f docker-compose.prod.yml wait migrate
+            # Read migrate container exit via `docker inspect` (compose-wait's
+            # stdout is the verbose 'container "X" exited with status code N'
+            # message, not a parseable integer; previous attempt at parsing
+            # stdout always tripped the failure branch even on exit=0). The
+            # `|| true` absorbs compose-wait's own non-zero so set -e doesn't
+            # kill the script before we can inspect.
+            #
+            # On non-zero, dump the migrate container's logs into the workflow
+            # output so the regression cause is visible without needing SSH.
+            docker compose -p dc-prod -f docker-compose.prod.yml wait migrate || true
+            MIGRATE_EXIT=\$(docker inspect dc-prod-migrate-1 --format '{{.State.ExitCode}}')
+            if [ "\$MIGRATE_EXIT" != "0" ]; then
+              echo "::group::migrate container logs (exit=\$MIGRATE_EXIT)"
+              docker compose -p dc-prod -f docker-compose.prod.yml logs --no-color --tail=400 migrate || true
+              echo "::endgroup::"
+              echo "::error::Migrate container exited with code \$MIGRATE_EXIT — see logs above"
+              exit 1
+            fi
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
 
