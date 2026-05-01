@@ -2,10 +2,19 @@
 -- Adds PMBOK-aligned 16-axis radiator: milestones, change requests, EVM columns, overrides, thresholds.
 
 -- CreateEnum
-CREATE TYPE "MilestoneStatus" AS ENUM ('PLANNED', 'IN_PROGRESS', 'HIT', 'MISSED');
-CREATE TYPE "ChangeRequestStatus" AS ENUM ('PROPOSED', 'APPROVED', 'REJECTED', 'WITHDRAWN');
-CREATE TYPE "ChangeRequestSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
-CREATE TYPE "ThresholdDirection" AS ENUM ('HIGHER_IS_BETTER', 'LOWER_IS_BETTER');
+-- DM-R-11 (2026-05-01): `ChangeRequestStatus` and `ChangeRequestSeverity`
+-- are also created idempotently in the `20260330_dm_r_11_orphan_recovery`
+-- migration so that the earlier `20260417_dm3_relation_closure` ALTERs
+-- can succeed on a fresh DB. Wrapping these in DO blocks here so a fresh
+-- replay does not double-create.
+DO $$ BEGIN CREATE TYPE "MilestoneStatus" AS ENUM ('PLANNED', 'IN_PROGRESS', 'HIT', 'MISSED');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "ChangeRequestStatus" AS ENUM ('PROPOSED', 'APPROVED', 'REJECTED', 'WITHDRAWN');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "ChangeRequestSeverity" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "ThresholdDirection" AS ENUM ('HIGHER_IS_BETTER', 'LOWER_IS_BETTER');
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 1. Rename businessRag -> peopleRag on project_rag_snapshots
 ALTER TABLE "project_rag_snapshots" RENAME COLUMN "businessRag" TO "peopleRag";
@@ -54,7 +63,8 @@ CREATE INDEX "project_milestones_projectId_status_idx" ON "project_milestones"("
 ALTER TABLE "project_milestones" ADD CONSTRAINT "project_milestones_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- 6. Create project_change_requests table
-CREATE TABLE "project_change_requests" (
+-- DM-R-11: idempotent — already created in `20260330_dm_r_11_orphan_recovery`.
+CREATE TABLE IF NOT EXISTS "project_change_requests" (
     "id"                UUID NOT NULL DEFAULT gen_random_uuid(),
     "projectId"         UUID NOT NULL,
     "title"             TEXT NOT NULL,
@@ -72,12 +82,16 @@ CREATE TABLE "project_change_requests" (
     "updatedAt"         TIMESTAMP(3) NOT NULL,
     CONSTRAINT "project_change_requests_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "project_change_requests_projectId_status_idx" ON "project_change_requests"("projectId", "status");
-CREATE INDEX "project_change_requests_projectId_createdAt_idx" ON "project_change_requests"("projectId", "createdAt");
-ALTER TABLE "project_change_requests" ADD CONSTRAINT "project_change_requests_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- DM-R-11: indexes already created in `20260330_dm_r_11_orphan_recovery`; the FK is unique to this migration.
+CREATE INDEX IF NOT EXISTS "project_change_requests_projectId_status_idx" ON "project_change_requests"("projectId", "status");
+CREATE INDEX IF NOT EXISTS "project_change_requests_projectId_createdAt_idx" ON "project_change_requests"("projectId", "createdAt");
+DO $$ BEGIN
+  ALTER TABLE "project_change_requests" ADD CONSTRAINT "project_change_requests_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 7. Create project_radiator_overrides table
-CREATE TABLE "project_radiator_overrides" (
+-- DM-R-11: idempotent — already created in `20260330_dm_r_11_orphan_recovery`.
+CREATE TABLE IF NOT EXISTS "project_radiator_overrides" (
     "id"                   UUID NOT NULL DEFAULT gen_random_uuid(),
     "snapshotId"           UUID NOT NULL,
     "subDimensionKey"      TEXT NOT NULL,
@@ -88,11 +102,14 @@ CREATE TABLE "project_radiator_overrides" (
     "createdAt"            TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "project_radiator_overrides_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "project_radiator_overrides_snapshotId_idx" ON "project_radiator_overrides"("snapshotId");
-ALTER TABLE "project_radiator_overrides" ADD CONSTRAINT "project_radiator_overrides_snapshotId_fkey" FOREIGN KEY ("snapshotId") REFERENCES "project_rag_snapshots"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX IF NOT EXISTS "project_radiator_overrides_snapshotId_idx" ON "project_radiator_overrides"("snapshotId");
+DO $$ BEGIN
+  ALTER TABLE "project_radiator_overrides" ADD CONSTRAINT "project_radiator_overrides_snapshotId_fkey" FOREIGN KEY ("snapshotId") REFERENCES "project_rag_snapshots"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 8. Create radiator_threshold_configs table
-CREATE TABLE "radiator_threshold_configs" (
+-- DM-R-11: idempotent — already created in `20260330_dm_r_11_orphan_recovery`.
+CREATE TABLE IF NOT EXISTS "radiator_threshold_configs" (
     "id"                UUID NOT NULL DEFAULT gen_random_uuid(),
     "subDimensionKey"   TEXT NOT NULL,
     "thresholdScore4"   DOUBLE PRECISION NOT NULL,
@@ -104,4 +121,4 @@ CREATE TABLE "radiator_threshold_configs" (
     "updatedAt"         TIMESTAMP(3) NOT NULL,
     CONSTRAINT "radiator_threshold_configs_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "radiator_threshold_configs_subDimensionKey_key" ON "radiator_threshold_configs"("subDimensionKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "radiator_threshold_configs_subDimensionKey_key" ON "radiator_threshold_configs"("subDimensionKey");

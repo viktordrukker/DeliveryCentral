@@ -333,21 +333,39 @@ When changing any design pattern, component API, page grammar, token, or CSS cla
 
 ## 10. Seed Data Reference
 
-Phase 2 seed profile creates the canonical test dataset. It seeds ALL DB-backed entities including metadata dictionaries, notification infrastructure, platform settings, skills, timesheets, pulse entries, case steps, and in-app notifications. Seed command:
+The `it-company` profile is the canonical scenario (200 people / 40 projects / 5-year history) and the default for every environment. The 5 supported profiles are: `it-company`, `phase2`, `demo`, `life-demo`, `investor-demo` (full table in `prisma/seed.ts`).
+
+### One-liner per environment
+
 ```bash
-docker compose exec -e SEED_PROFILE=phase2 backend sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"
+# Dev — direct, no auth gate.
+docker compose exec -e SEED_PROFILE=it-company backend \
+  sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"
+
+# Staging — Github Actions, gated by Required Reviewers on the `staging` env.
+gh workflow run staging-seed.yml -f profile=it-company
+
+# Production — Github Actions, gated by Required Reviewers on `production`
+# AND a literal confirm string. WIPES every populated table.
+gh workflow run prod-seed.yml -f profile=it-company -f confirm=WIPE-PROD-DB
 ```
 
-Key test accounts (full list in `docs/planning/current-state.md`):
+After staging/prod seed, the workflow itself hits `/api/health/deep` and asserts `"status":"ready"`; the run fails if it isn't.
+
+### IT-Company test accounts (default profile)
+
 | Role | Email | Password |
 |------|-------|----------|
-| admin | admin@deliverycentral.local | DeliveryCentral@Admin1 |
-| director | noah.bennett@example.com | DirectorPass1! |
-| hr_manager | diana.walsh@example.com | HrManagerPass1! |
-| resource_manager | sophia.kim@example.com | ResourceMgrPass1! |
-| project_manager | lucas.reed@example.com | ProjectMgrPass1! |
-| delivery_manager | carlos.vega@example.com | DeliveryMgrPass1! |
-| employee | ethan.brooks@example.com | EmployeePass1! |
+| admin (superadmin person) | `admin@deliverycentral.local` | `DeliveryCentral@Admin1` |
+| director (Engineering) | `noah.bennett@itco.local` | `DirectorPass1!` |
+| hr_manager | `diana.walsh@itco.local` | `HrManagerPass1!` |
+| resource_manager | `sophia.kim@itco.local` | `ResourceMgrPass1!` |
+| project_manager | `lucas.reed@itco.local` | `ProjectMgrPass1!` |
+| delivery_manager | `carlos.vega@itco.local` | `DeliveryMgrPass1!` |
+| employee | `ethan.brooks@itco.local` | `EmployeePass1!` |
+| dual-role RM+HR | `emma.garcia@itco.local` | `DualRolePass1!` |
+
+Phase2 retains its legacy `*@example.com` accounts (same passwords). Other profiles' accounts are listed in their respective `prisma/seeds/*.ts` files.
 
 ---
 

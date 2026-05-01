@@ -22,7 +22,6 @@ on:
         type: choice
         options:
           - it-company
-          - enterprise
           - phase2
           - demo
           - life-demo

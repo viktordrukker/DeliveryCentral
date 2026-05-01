@@ -46,6 +46,10 @@ CREATE TYPE "AggregateType" AS ENUM (
 
 -- The `domain_outbox_pending` view (DM-7-3) selects aggregateType, so
 -- Postgres blocks ALTER TABLE. Drop the view, alter, recreate.
+-- DM-R-11 (2026-05-01): also drop `employee_activity_view` (DM-7-4)
+-- whose WHERE clause references `aggregateType`. PG cannot ALTER a
+-- column that any view depends on. Recreated below the ALTERs.
+DROP VIEW IF EXISTS "employee_activity_view";
 DROP VIEW IF EXISTS "domain_outbox_pending";
 
 ALTER TABLE "AuditLog"
@@ -72,3 +76,18 @@ CREATE OR REPLACE VIEW "domain_outbox_pending" AS
   FROM "DomainEvent"
   WHERE "publishedAt" IS NULL
   ORDER BY "chainSeq" ASC;
+
+-- DM-R-11: recreate `employee_activity_view` (was DROPped above).
+CREATE OR REPLACE VIEW "employee_activity_view" AS
+  SELECT
+    id,
+    "aggregateId"    AS "personId",
+    "eventName"      AS "eventType",
+    "createdAt"      AS "occurredAt",
+    "actorId",
+    COALESCE(payload ->> 'summary', '')  AS summary,
+    NULLIF(payload ->> 'relatedEntityId', '')::uuid AS "relatedEntityId",
+    payload          AS metadata,
+    "createdAt"
+  FROM "DomainEvent"
+  WHERE "aggregateType" = 'Person';
