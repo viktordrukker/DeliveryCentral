@@ -55,7 +55,7 @@ const PEL  = 'bbbb000f'; // ProjectExternalLink
 const ESS  = 'bbbb0010'; // ExternalSyncState
 const SRQ  = 'bbbb0011'; // StaffingRequest
 const SRF  = 'bbbb0012'; // StaffingRequestFulfilment
-const ACT  = 'bbbb0013'; // EmployeeActivityEvent (skipped)
+const _ACT = 'bbbb0013'; // EmployeeActivityEvent (skipped — kept for namespace registry)
 const RAG  = 'bbbb0014'; // ProjectRagSnapshot
 const MIL  = 'bbbb0015'; // ProjectMilestone
 const CR   = 'bbbb0016'; // ProjectChangeRequest
@@ -69,9 +69,9 @@ const LR   = 'bbbb001d'; // LeaveRequest
 const NOT  = 'bbbb001e'; // InAppNotification
 const CSE  = 'bbbb001f'; // CaseRecord
 const CSP  = 'bbbb0020'; // CaseStep
-const CSU  = 'bbbb0021'; // CaseParticipant
+const _CSU = 'bbbb0021'; // CaseParticipant (no participant rows seeded)
 const RET  = 'bbbb0022'; // ProjectRetrospective
-const PVE  = 'bbbb0023'; // ProjectVendorEngagement
+const _PVE = 'bbbb0023'; // ProjectVendorEngagement (skipped — Vendor model not seeded)
 
 // ---------------------------------------------------------------------------
 // Time anchors
@@ -321,8 +321,8 @@ for (let i = 0; i < 9; i++) {
   }));
 }
 
-// 1 more Delivery Manager (2 total including Carlos)
-const dm2 = pushPerson({
+// 1 more Delivery Manager (2 total including Carlos) — pushed for headcount; not referenced by name.
+const _dm2 = pushPerson({
   givenName: 'Felipe', familyName: 'Costa',
   primaryEmail: 'felipe.costa@itco.local', grade: 'G11', role: 'Delivery Manager',
   skillsets: ['DELIVERY'], employmentStatus: 'ACTIVE',
@@ -787,8 +787,8 @@ const assignments: AssignmentDef[] = [];
 // IC pools
 const beIcs = midEngs.filter((_, i) => i % 4 === 0).concat(seniorEngs.filter((_, i) => i % 3 === 0)).slice(0, 25);
 const feIcs = midEngs.filter((_, i) => i % 4 === 1).concat(seniorEngs.filter((_, i) => i % 3 === 1)).concat(designers).slice(0, 25);
-const mobileIcs = midEngs.filter((_, i) => i % 4 === 2).concat(juniorEngs.slice(0, 5)).concat(qaEngs).slice(0, 18);
-const devopsIcs = devOps.concat(seniorEngs.filter((_, i) => i % 5 === 0)).slice(0, 8);
+const _mobileIcs = midEngs.filter((_, i) => i % 4 === 2).concat(juniorEngs.slice(0, 5)).concat(qaEngs).slice(0, 18);
+const _devopsIcs = devOps.concat(seniorEngs.filter((_, i) => i % 5 === 0)).slice(0, 8);
 
 const allEngIcs = [...seniorEngs, ...midEngs, ...juniorEngs, ...architects];
 
@@ -1187,7 +1187,9 @@ const projectBudgets = projects.map((p, idx) => {
     actualCost: actual,
     plannedToDate: planned,
     eac: isActive ? Math.floor(baseBudget * 1.05) : baseBudget,
-    currencyCode: 'AUD',
+    // currencyCode stays null — staging DB does not always have the
+    // 'AUD' Currency row (DM-R-11 schema/migration drift). The schema
+    // allows null and downstream UI defaults to AUD anyway.
     updatedAt: NOW,
   };
 });
@@ -1199,7 +1201,7 @@ let prpSeq = 0;
 const prpid = (): string => ns(PRP, ++prpSeq);
 
 const projectRolePlans: Array<Record<string, unknown>> = [];
-projects.forEach((p, idx) => {
+projects.forEach((p) => {
   const roles = ['Lead Engineer', 'Senior Engineer', 'Engineer', 'QA Engineer'];
   roles.forEach((roleName, ri) => {
     projectRolePlans.push({

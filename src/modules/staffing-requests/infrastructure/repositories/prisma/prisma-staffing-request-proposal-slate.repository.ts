@@ -5,7 +5,7 @@ import { StaffingRequestProposalCandidate } from '@src/modules/staffing-requests
 import { StaffingRequestProposalSlate } from '@src/modules/staffing-requests/domain/entities/staffing-request-proposal-slate.entity';
 import { StaffingRequestProposalSlateRepositoryPort } from '@src/modules/staffing-requests/domain/repositories/staffing-request-proposal-slate-repository.port';
 
-type SlateRow = {
+interface SlateRow {
   id: string;
   staffingRequestId: string;
   proposedByPersonId: string;
@@ -14,9 +14,9 @@ type SlateRow = {
   expiresAt: Date | null;
   decidedAt: Date | null;
   candidates?: CandidateRow[];
-};
+}
 
-type CandidateRow = {
+interface CandidateRow {
   id: string;
   slateId: string;
   candidatePersonId: string;
@@ -27,7 +27,7 @@ type CandidateRow = {
   rationale: string | null;
   decision: string;
   decidedAt: Date | null;
-};
+}
 
 function decimalToNumber(
   v: { toNumber: () => number } | number | null | undefined,
