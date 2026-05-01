@@ -230,6 +230,23 @@ jobs:
 
             export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
             export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
+
+            # DM-R-11 (2026-05-01): DM-R-21's DDL event trigger denies CREATE
+            # TYPE / CREATE TABLE for any session_user except postgres or
+            # app_migrator. Prod's default DATABASE_URL connects as
+            # `prod_user` (DML scope), so migrate fails on any new DDL.
+            # Build MIGRATE_DATABASE_URL using the postgres superuser (which
+            # the trigger explicitly allows) and let docker-compose pick it
+            # up via the `MIGRATE_DATABASE_URL` env var the migrate service
+            # already reads. Idempotent — overrides only the migrate side.
+            POSTGRES_SUPERUSER_PASSWORD=\$(grep '^POSTGRES_SUPERUSER_PASSWORD=' /opt/deliverycentral-data/.env | head -1 | cut -d= -f2- | tr -d '"')
+            if [ -n "\$POSTGRES_SUPERUSER_PASSWORD" ]; then
+              export MIGRATE_DATABASE_URL="postgresql://postgres:\$POSTGRES_SUPERUSER_PASSWORD@postgres:5432/workload_tracking_prod?schema=public"
+              echo "Using MIGRATE_DATABASE_URL=postgresql://postgres:***@postgres:5432/workload_tracking_prod (DM-R-21-compatible)"
+            else
+              echo "::warning::POSTGRES_SUPERUSER_PASSWORD not found in /opt/deliverycentral-data/.env — migrate will use the per-stack DATABASE_URL and will be denied DDL by DM-R-21."
+            fi
+
             docker compose -p dc-prod -f docker-compose.prod.yml pull
 
             # DM-R-11 (2026-05-01): if a previous deploy left a migration in
