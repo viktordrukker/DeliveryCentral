@@ -1,27 +1,27 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 import { ExceptionQueueCategory, ExceptionQueueStatus } from './exception-queue.dto';
 
 export class ExceptionQueueQueryDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public asOf?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public category?: ExceptionQueueCategory;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public limit?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsIn(['m365', 'radius'])
   public provider?: 'm365' | 'radius';
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public status?: ExceptionQueueStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public targetEntityId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional() @IsOptional() @IsString()
   public targetEntityType?: string;
 }
-

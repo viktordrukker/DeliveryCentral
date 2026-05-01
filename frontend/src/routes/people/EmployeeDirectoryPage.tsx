@@ -140,10 +140,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
             {state.data && state.data.total > 0 ? (
               <div className="results-meta">
                 <span>
-                  Showing {state.visibleItems.length}
                   {state.visibleItems.length === state.data.items.length
-                    ? ` of ${state.data.total}`
-                    : ` filtered`} people
+                    ? `Showing ${(state.data.page - 1) * state.data.pageSize + 1}–${Math.min(state.data.page * state.data.pageSize, state.data.total)} of ${state.data.total}`
+                    : `Showing ${state.visibleItems.length} filtered`} people
                   {' '}<TipBalloon tip="Use filters above to narrow by department, pool, or status." arrow="left" />
                 </span>
                 <div className="results-meta__pagination">

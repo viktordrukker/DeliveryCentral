@@ -578,7 +578,9 @@ export function DataView<TRow>(props: DataViewProps<TRow>): JSX.Element {
   const footer = (
     <div className="ds-data-view__footer">
       <span className="ds-data-view__footer-summary">
-        {totalCount === 0 ? '0 rows' : `${pagedRows.length} of ${totalCount} rows`}
+        {totalCount === 0
+          ? '0 rows'
+          : `${(pagination.page - 1) * pagination.pageSize + 1}–${Math.min(pagination.page * pagination.pageSize, totalCount)} of ${totalCount} rows`}
       </span>
       <div className="ds-data-view__pagination">
         <Button
