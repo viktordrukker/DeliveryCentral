@@ -114,6 +114,43 @@ import {
   realisticWorkEvidenceSources,
 } from './seeds/realistic-dataset';
 
+import {
+  generateItCompanyCaseSteps,
+  generateItCompanyLeaveRequests,
+  generateItCompanyNotifications,
+  generateItCompanyPulseEntries,
+  generateItCompanyTimesheets,
+  itCompanyAccounts,
+  itCompanyAssignmentApprovals,
+  itCompanyAssignmentHistory,
+  itCompanyAssignments,
+  itCompanyCases,
+  itCompanyDatasetSummary,
+  itCompanyExternalSyncStates,
+  itCompanyOrgUnits,
+  itCompanyPeople,
+  itCompanyPersonOrgMemberships,
+  itCompanyPersonSkillAssignments,
+  itCompanyPositions,
+  itCompanyProjectBudgets,
+  itCompanyProjectChangeRequests,
+  itCompanyProjectExternalLinks,
+  itCompanyProjectMilestones,
+  itCompanyProjectRagSnapshots,
+  itCompanyProjectRetrospectives,
+  itCompanyProjectRisks,
+  itCompanyProjectRolePlans,
+  itCompanyProjects,
+  itCompanyReportingLines,
+  itCompanyResourcePoolMemberships,
+  itCompanyResourcePools,
+  itCompanyStaffingRequestFulfilments,
+  itCompanyStaffingRequests,
+  itCompanyWorkEvidence,
+  itCompanyWorkEvidenceLinks,
+  itCompanyWorkEvidenceSources,
+} from './seeds/it-company-profile';
+
 const prisma = new PrismaClient();
 const prismaSeed = prisma as any;
 
@@ -620,10 +657,13 @@ async function seedSkills(): Promise<void> {
   ];
 
   for (const skill of skills) {
+    // Migration history bit-rot (DM-R-11): live DB has `(tenantId, name)` unique
+    // composite instead of `name @unique` declared in schema. Upserting by `id`
+    // (the primary key) sidesteps the drift until the schema is aligned.
     await prismaSeed.skill.upsert({
-      where: { name: skill.name },
+      where: { id: skill.id },
       create: skill,
-      update: { category: skill.category },
+      update: { name: skill.name, category: skill.category },
     });
   }
 
@@ -645,11 +685,17 @@ async function seedSkills(): Promise<void> {
   ];
 
   for (const ps of personSkills) {
-    await prismaSeed.personSkill.upsert({
-      where: { personId_skillId: { personId: ps.personId, skillId: ps.skillId } },
-      create: ps,
-      update: { proficiency: ps.proficiency },
-    });
+    // PersonSkill rows reference phase2 personIds. For non-phase2 profiles,
+    // those persons do not exist — skip silently rather than abort the seed.
+    try {
+      await prismaSeed.personSkill.upsert({
+        where: { personId_skillId: { personId: ps.personId, skillId: ps.skillId } },
+        create: ps,
+        update: { proficiency: ps.proficiency },
+      });
+    } catch {
+      // person does not exist in this profile — fine.
+    }
   }
 
    
@@ -919,6 +965,11 @@ async function clearExistingData(): Promise<void> {
   // affect >1000 rows unless `public.allow_bulk` is true; without this the
   // seed's own rollback path fails the second a profile inserts more than
   // 1000 rows of any aggregate before erroring (see commit f096b04 trail).
+  // DM-R-31c honeypot canary rows must be preserved — every DELETE on the
+  // 3 sentinel rows trips a tripwire that aborts the transaction.
+  const HONEYPOT_PERSON_ID            = '00000000-dead-beef-0000-000000000001';
+  const HONEYPOT_PROJECT_ID           = '00000000-dead-beef-0000-000000000002';
+  const HONEYPOT_PROJECT_ASSIGNMENT_ID = '00000000-dead-beef-0000-000000000003';
   await prisma.$transaction(
     async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL public.allow_bulk = 'true'`);
@@ -945,9 +996,9 @@ async function clearExistingData(): Promise<void> {
       await t.workEvidenceLink.deleteMany();
       await t.workEvidence.deleteMany();
       await t.workEvidenceSource.deleteMany();
-      await t.assignmentHistory.deleteMany();
-      await t.assignmentApproval.deleteMany();
-      await t.projectAssignment.deleteMany();
+      await t.assignmentHistory.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      await t.assignmentApproval.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      await t.projectAssignment.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
       await t.externalSyncState.deleteMany();
       await t.projectExternalLink.deleteMany();
       await t.staffingRequestFulfilment.deleteMany();
@@ -961,7 +1012,7 @@ async function clearExistingData(): Promise<void> {
       await t.projectMilestone.deleteMany();
       await t.projectChangeRequest.deleteMany();
       await t.radiatorThresholdConfig.deleteMany();
-      await t.project.deleteMany();
+      await t.project.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ID } } });
       await t.personResourcePoolMembership.deleteMany();
       await t.resourcePool.deleteMany();
       await t.reportingLine.deleteMany();
@@ -977,7 +1028,7 @@ async function clearExistingData(): Promise<void> {
       await t.overtimeException.deleteMany();
       await t.overtimePolicy.deleteMany();
       await t.personCostRate.deleteMany();
-      await t.person.deleteMany();
+      await t.person.deleteMany({ where: { id: { not: HONEYPOT_PERSON_ID } } });
       await t.passwordResetToken.deleteMany();
       await t.refreshToken.deleteMany();
       await t.localAccount.deleteMany();
@@ -1349,10 +1400,17 @@ async function seedBudgetEvmData(): Promise<void> {
 }
 
 async function seedRadiatorThresholds(): Promise<void> {
-  // Demonstrate customized thresholds — tighter CPI for fixed-price projects
+  // updatedByPersonId references a phase2 admin. For non-phase2 profiles
+  // that person doesn't exist; fall back to whatever Person row exists or
+  // skip the FK link entirely.
+  const fallbackUpdater = await prisma.person.findFirst({ where: { primaryEmail: 'noah.bennett@example.com' } })
+    ?? await prisma.person.findFirst({ where: { primaryEmail: 'noah.bennett@itco.local' } })
+    ?? await prisma.person.findFirst({ select: { id: true } });
+  const updatedByPersonId = fallbackUpdater?.id ?? null;
+
   const thresholds = [
-    { subDimensionKey: 'costPerformanceIndex', thresholdScore4: 0.98, thresholdScore3: 0.95, thresholdScore2: 0.9, thresholdScore1: 0.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId: '11111111-1111-1111-1111-111111111004' },
-    { subDimensionKey: 'teamMood',             thresholdScore4: 4.2,  thresholdScore3: 3.7,  thresholdScore2: 3.2, thresholdScore1: 2.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId: '11111111-1111-1111-1111-111111111004' },
+    { subDimensionKey: 'costPerformanceIndex', thresholdScore4: 0.98, thresholdScore3: 0.95, thresholdScore2: 0.9, thresholdScore1: 0.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId },
+    { subDimensionKey: 'teamMood',             thresholdScore4: 4.2,  thresholdScore3: 3.7,  thresholdScore2: 3.2, thresholdScore1: 2.8, direction: 'HIGHER_IS_BETTER' as const, updatedByPersonId },
   ];
 
   for (const t of thresholds) {
@@ -1363,7 +1421,7 @@ async function seedRadiatorThresholds(): Promise<void> {
     });
   }
 
-   
+
   console.log(`Seeded ${thresholds.length} custom radiator threshold configs.`);
 }
 
@@ -1771,9 +1829,87 @@ async function seedRealisticAccounts(): Promise<void> {
       },
     });
 
-     
+
     console.log(`  Account seeded: ${account.email} [${account.roles.join(', ')}]`);
   }
+}
+
+async function seedItCompanyAccounts(): Promise<void> {
+  const adminPersonId = '00000000-0000-0000-0000-000000000001';
+
+  // Admin person mirrors the realistic helper so the standard
+  // admin@deliverycentral.local login keeps working across profiles.
+  await prisma.person.upsert({
+    where: { id: adminPersonId },
+    create: {
+      id: adminPersonId,
+      givenName: 'System',
+      familyName: 'Administrator',
+      displayName: 'System Administrator',
+      primaryEmail: 'admin@deliverycentral.local',
+      employmentStatus: 'ACTIVE',
+    },
+    update: {},
+  });
+
+  for (const account of itCompanyAccounts) {
+    const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
+    if (existing) {
+
+      console.log(`  Account already exists, skipping: ${account.email}`);
+      continue;
+    }
+
+    const passwordHash = await bcrypt.hash(account.password, 12);
+    await prisma.localAccount.create({
+      data: {
+        email: account.email,
+        displayName: account.displayName,
+        passwordHash,
+        roles: account.roles,
+        source: 'local',
+        personId: account.personId,
+        twoFactorEnabled: false,
+        backupCodesHash: [],
+        mustChangePw: false,
+      },
+    });
+
+
+    console.log(`  Account seeded: ${account.email} [${account.roles.join(', ')}]`);
+  }
+}
+
+async function seedItCompanyPersonSkills(): Promise<void> {
+  // Skills are stored with explicit IDs by seedSkills(). Match on the
+  // catalog `name` so the generator can use display names ("TypeScript")
+  // instead of internal keys.
+  const allSkills = await prismaSeed.skill.findMany({ select: { id: true, name: true } }) as Array<{ id: string; name: string }>;
+  const skillIdByLowerName = new Map<string, string>();
+  for (const s of allSkills) {
+    skillIdByLowerName.set(s.name.toLowerCase(), s.id);
+  }
+
+  let count = 0;
+  for (const a of itCompanyPersonSkillAssignments) {
+    const skillId = skillIdByLowerName.get(a.skillName.toLowerCase());
+    if (!skillId) continue;
+    count += 1;
+    try {
+      await prismaSeed.personSkill.create({
+        data: {
+          id: `cccc0004-bp00-0000-${String(count).padStart(4, '0')}-000000000000`,
+          personId: a.personId,
+          skillId,
+          proficiency: a.proficiency,
+        },
+      });
+    } catch {
+      // Skip duplicates (composite unique on personId+skillId)
+    }
+  }
+
+  console.log(`  Person skills: ${count} assignments`);
 }
 
 async function createManyInChunks(table: string, data: unknown[], chunkSize = 1000): Promise<void> {
@@ -1815,7 +1951,7 @@ function parseSeedProfile(argv: string[]): string {
     return argv[profileFlagIndex + 1];
   }
 
-  return process.env.SEED_PROFILE ?? 'enterprise';
+  return process.env.SEED_PROFILE ?? 'it-company';
 }
 
 async function main(): Promise<void> {
@@ -1847,53 +1983,6 @@ async function main(): Promise<void> {
     console.log('Demo dataset seeded.', demoDatasetSummary);
     await seedSuperadmin();
     await seedNotificationInfrastructure();
-    return;
-  }
-
-  if (profile === 'bank-scale') {
-    const { bankScaleDataset, bankScaleProfileSummary } = await import('./seeds/bank-scale-profile');
-    await seedDataset({
-      assignmentApprovals: bankScaleDataset.assignmentApprovals,
-      assignmentHistory: bankScaleDataset.assignmentHistory,
-      assignments: bankScaleDataset.assignments,
-      externalSyncStates: bankScaleDataset.externalSyncStates,
-      orgUnits: bankScaleDataset.orgUnits,
-      people: bankScaleDataset.people,
-      personOrgMemberships: bankScaleDataset.personOrgMemberships,
-      positions: bankScaleDataset.positions,
-      projectExternalLinks: bankScaleDataset.projectExternalLinks,
-      projects: bankScaleDataset.projects,
-      reportingLines: bankScaleDataset.reportingLines,
-      resourcePoolMemberships: bankScaleDataset.resourcePoolMemberships,
-      resourcePools: bankScaleDataset.resourcePools,
-      summary: bankScaleDataset.summary,
-      workEvidence: bankScaleDataset.workEvidence,
-      workEvidenceLinks: bankScaleDataset.workEvidenceLinks,
-      workEvidenceSources: bankScaleDataset.workEvidenceSources,
-    });
-
-    // Global-config seeds (profile-agnostic — query-driven, no hardcoded
-    // phase2 UUIDs). Cover the new schema's metadata-driven entities:
-    // dictionaries (incl. assignment-rejection-reasons / case-kind-assignment-
-    // escalation / staffing-roles from Workflow Overhaul Phase 1), skill
-    // catalog, case types, radiator thresholds, platform settings, and the
-    // full notification channel/template/request graph. Per-project entities
-    // (BudgetApproval, ProjectMilestones, ProjectChangeRequests at scale)
-    // remain to be added with bank-scale-flavored generators.
-    await seedMetadata();
-    await seedPlatformSettings();
-    await seedSkills();
-    await seedCaseTypes();
-    await seedRadiatorThresholds();
-
-    console.log('Bank-scale dataset seeded.', bankScaleProfileSummary);
-    await seedSuperadmin();
-    // Role-coverage test accounts. The 7 named people they reference are now
-    // fully present in bank-scale's people set: 5 already came in via
-    // [...demoPeople] and the remaining 2 (Diana Walsh, Carlos Vega) are
-    // appended in bank-scale-profile's `namedTestRolePeople`.
-    await seedPhase2Accounts();
-    await seedFullNotificationInfrastructure();
     return;
   }
 
@@ -2101,6 +2190,111 @@ async function main(): Promise<void> {
 
     // Accounts
     await seedRealisticAccounts();
+    return;
+  }
+
+  if (profile === 'it-company') {
+    await seedDataset({
+      assignmentApprovals: itCompanyAssignmentApprovals,
+      assignmentHistory: itCompanyAssignmentHistory,
+      assignments: itCompanyAssignments,
+      externalSyncStates: itCompanyExternalSyncStates,
+      orgUnits: itCompanyOrgUnits,
+      people: itCompanyPeople,
+      personOrgMemberships: itCompanyPersonOrgMemberships,
+      positions: itCompanyPositions,
+      projectExternalLinks: itCompanyProjectExternalLinks,
+      projects: itCompanyProjects,
+      reportingLines: itCompanyReportingLines,
+      resourcePoolMemberships: itCompanyResourcePoolMemberships,
+      resourcePools: itCompanyResourcePools,
+      summary: itCompanyDatasetSummary,
+      workEvidence: itCompanyWorkEvidence,
+      workEvidenceLinks: itCompanyWorkEvidenceLinks,
+      workEvidenceSources: itCompanyWorkEvidenceSources,
+    });
+
+    // Staffing requests + fulfilments
+    await createManyInChunks('staffingRequest', itCompanyStaffingRequests);
+    await createManyInChunks('staffingRequestFulfilment', itCompanyStaffingRequestFulfilments);
+
+    // Per-project context: milestones, change requests, RAG snapshots,
+    // budgets, role plans, risks, retrospectives, vendor engagements.
+    await createManyInChunks('projectMilestone', itCompanyProjectMilestones);
+    await createManyInChunks('projectChangeRequest', itCompanyProjectChangeRequests);
+    await createManyInChunks('projectRagSnapshot', itCompanyProjectRagSnapshots);
+    await createManyInChunks('projectBudget', itCompanyProjectBudgets);
+    await createManyInChunks('projectRolePlan', itCompanyProjectRolePlans);
+    await createManyInChunks('projectRisk', itCompanyProjectRisks);
+    await createManyInChunks('projectRetrospective', itCompanyProjectRetrospectives);
+
+    // Timesheets — last 12 weeks for everyone, +8 weeks history for actives.
+    const { weeks: itWeeks, entries: itEntries } = generateItCompanyTimesheets();
+    await createManyInChunks('timesheetWeek', itWeeks);
+    await createManyInChunks('timesheetEntry', itEntries);
+
+    // Pulse — 12 weeks for ICs.
+    const itPulse = generateItCompanyPulseEntries();
+    await createManyInChunks('pulseEntry', itPulse);
+
+    // Leave — historical + 1 PENDING + 1 REJECTED for queue testing.
+    const itLeave = generateItCompanyLeaveRequests();
+    await createManyInChunks('leaveRequest', itLeave);
+
+    // Cases — 12 records across ONBOARDING / OFFBOARDING / PERFORMANCE / TRANSFER.
+    await seedCaseTypes();
+    const onboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'ONBOARDING' } }) as { id: string } | null;
+    const performanceType = await prismaSeed.caseType.findFirst({ where: { key: 'PERFORMANCE' } }) as { id: string } | null;
+    const offboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'OFFBOARDING' } }) as { id: string } | null;
+    const transferType = await prismaSeed.caseType.findFirst({ where: { key: 'TRANSFER' } }) as { id: string } | null;
+
+    const itCaseTypeMap: Record<string, string> = {
+      ONBOARDING: onboardingType?.id ?? '',
+      PERFORMANCE: performanceType?.id ?? '',
+      OFFBOARDING: offboardingType?.id ?? '',
+      TRANSFER: transferType?.id ?? '',
+    };
+
+    for (const c of itCompanyCases) {
+      await prismaSeed.caseRecord.create({
+        data: {
+          id: c.id,
+          caseNumber: c.caseNumber,
+          caseTypeId: itCaseTypeMap[c.caseTypeKey],
+          subjectPersonId: c.subjectPersonId,
+          ownerPersonId: c.ownerPersonId,
+          status: c.status,
+          summary: c.summary,
+        },
+      });
+    }
+
+    const itCaseSteps = generateItCompanyCaseSteps();
+    await createManyInChunks('caseStep', itCaseSteps);
+
+    // In-app notifications for every role-test account.
+    const itNotifications = generateItCompanyNotifications();
+    await createManyInChunks('inAppNotification', itNotifications);
+
+    // Profile-agnostic infrastructure (idempotent upserts).
+    await seedMetadata();
+    await seedPlatformSettings();
+    await seedSkills();
+    await seedRadiatorThresholds();
+    await seedFullNotificationInfrastructure();
+
+    await seedItCompanyPersonSkills();
+
+
+    console.log('IT-Company dataset seeded.', itCompanyDatasetSummary);
+    console.log(`  Timesheets: ${itWeeks.length} weeks, ${itEntries.length} entries`);
+    console.log(`  Pulse entries: ${itPulse.length}`);
+    console.log(`  Leave requests: ${itLeave.length}`);
+    console.log(`  Case steps: ${itCaseSteps.length}`);
+    console.log(`  Notifications: ${itNotifications.length}`);
+
+    await seedSuperadmin();
+    await seedItCompanyAccounts();
     return;
   }
 

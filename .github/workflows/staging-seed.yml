@@ -11,7 +11,7 @@ name: staging-seed
 # already has.
 #
 # Picking a profile: see `prisma/seed.ts` for the available datasets.
-# `bank-scale` is the largest (multi-thousand-row stress dataset).
+# `it-company` is the canonical 200-person scenario and the default.
 
 on:
   workflow_dispatch:
@@ -21,13 +21,13 @@ on:
         required: true
         type: choice
         options:
-          - bank-scale
+          - it-company
           - enterprise
           - phase2
           - demo
           - life-demo
           - investor-demo
-        default: bank-scale
+        default: it-company
 
 concurrency:
   group: staging-seed

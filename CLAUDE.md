@@ -382,4 +382,4 @@ Key test accounts (full list in `docs/planning/current-state.md`):
 | `frontend/src/routes/dashboard/DashboardPage.tsx` | **Canonical dashboard reference** (Workload Overview) |
 | `src/modules/identity-access/application/` | RBAC guard, roles decorator, self-scope decorator |
 | `prisma/schema.prisma` | DB schema (53 models) |
-| `prisma/seed.ts` | Seed script (5 profiles: demo, phase2, bank-scale, life-demo, investor-demo) |
+| `prisma/seed.ts` | Seed script (5 profiles: demo, phase2, life-demo, investor-demo, it-company — `it-company` is the default) |

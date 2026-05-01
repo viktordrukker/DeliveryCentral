@@ -68,7 +68,7 @@ services:
       AUTH_2FA_TOTP_ISSUER: ${AUTH_2FA_TOTP_ISSUER:-DeliveryCentral}
       # Seed admin credentials — read at app boot by AppConfig validator (rejects
       # default value in production) and by `dist/prisma/seed.js` when seeding.
-      SEED_PROFILE: ${SEED_PROFILE:-phase2}
+      SEED_PROFILE: ${SEED_PROFILE:-it-company}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
       SEED_ADMIN_DISPLAY_NAME: ${SEED_ADMIN_DISPLAY_NAME}

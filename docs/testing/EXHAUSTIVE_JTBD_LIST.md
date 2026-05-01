@@ -1,6 +1,7 @@
 # Exhaustive JTBD Verification List — DeliveryCentral
 
 **Created:** 2026-04-11
+**Last updated:** 2026-04-30 (added Workforce Planner, Project/Portfolio Radiator, /my-time, /time-management, new admin surfaces)
 **Method:** Derived from codebase analysis of all routes, endpoints, components, and seed data
 
 ---
@@ -19,7 +20,15 @@
 | E-07 | Mark notification read | Click × on notification | Item removed, badge count decreases |
 | E-08 | Navigate to assignment detail | Click "View assignment" link | Assignment detail page loads with correct data |
 
-### Timesheet
+### My Time (consolidated work surface)
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| E-28 | Open My Time | Navigate to /my-time | Page renders with monthly timesheet, leave, gaps, summary tabs/sections |
+| E-29 | See month-level hours summary | /my-time → summary section | Total logged, planned, gap deltas displayed |
+| E-30 | See time gaps | /my-time → gaps section | Days with missing entries flagged |
+| E-31 | Submit leave from My Time | /my-time → leave section → request | Leave request created without leaving page |
+
+### Timesheet (legacy weekly view — still mounted at /timesheets, navVisible:false)
 | ID | JTBD | Test Steps | Verify |
 |----|------|-----------|--------|
 | E-09 | See current week timesheet | Navigate to /timesheets | Grid shows Mon-Sun for current week |
@@ -75,11 +84,19 @@
 |----|------|-----------|--------|
 | PM-05 | View projects list | Navigate to /projects | 12 projects with status badges |
 | PM-06 | Create project | /projects/new → fill name, PM, start date, description → submit | Project created, redirect to detail page |
-| PM-07 | View project detail | Click project name | 6-tab detail page (Summary, Team, Timeline, Evidence, Budget, History) |
+| PM-07 | View project detail | Click project name | 8-tab detail page: Lifecycle, Team, TeamVendors, Milestones, RisksIssues, ChangeRequests, Budget, Radiator |
 | PM-08 | Activate draft project | Open DRAFT project → click "Activate" | Status changes to ACTIVE |
 | PM-09 | Close project | Open ACTIVE project → click "Close project" | Status changes to CLOSED |
-| PM-10 | View project dashboard | Click "Open project dashboard" | Dashboard with evidence charts, allocation breakdown |
-| PM-11 | View project health | Check health badge on project list | Green/yellow/red emoji indicator |
+| PM-10 | View project dashboard | Click "Open project dashboard" or navigate to /projects/:id/dashboard | Dashboard with evidence charts, allocation breakdown |
+| PM-11 | View project health | Check health badge on project list | Radiator band badge (GREEN/AMBER/RED/CRITICAL) |
+| PM-25 | Open Radiator tab | Project detail → Radiator tab | 16-axis radar chart renders (Scope/Schedule/Budget/People × 4 sub-axes) |
+| PM-26 | View radiator history | Radiator tab → week selector | Prior weekly snapshot loads with axis values |
+| PM-27 | Override sub-score | Radiator tab → click axis → override + reason | Override saved, axis recomputed, audit entry created |
+| PM-28 | Open Risks/Issues tab | Project detail → RisksIssues tab | Risk + issue lists with status, owner, mitigation |
+| PM-29 | Open Change Requests tab | Project detail → ChangeRequests tab | CR list with type, status, impact |
+| PM-30 | Open Milestones tab | Project detail → Milestones tab | Milestone list with target/actual dates |
+| PM-31 | Open Lifecycle tab | Project detail → Lifecycle tab | Phase history + transitions |
+| PM-32 | Open Team Vendors tab | Project detail → TeamVendors tab | Vendor allocations on the project |
 
 ### Assignments
 | ID | JTBD | Test Steps | Verify |
@@ -106,6 +123,15 @@
 | PM-23 | Create staffing request | /staffing-requests/new → fill → submit | Request created with DRAFT status |
 | PM-24 | Submit request | Open DRAFT → click Submit | Status changes to OPEN |
 
+### Time Management (timesheet manager surface)
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| PM-33 | Open Time Management | Navigate to /time-management | Page renders with approval queue, leave queue, compliance, overtime sections |
+| PM-34 | Approve a submitted timesheet | Time Management → approval queue → row → Approve | Timesheet status flips to APPROVED, queue count decreases |
+| PM-35 | Reject a timesheet with reason | Approval queue → row → Reject → enter reason | Status flips to REJECTED, reason stored, submitter notified |
+| PM-36 | Approve a leave request | Leave queue → row → Approve | Leave status flips to APPROVED |
+| PM-37 | Review compliance flags | Compliance section | Late, missing, or overage entries flagged with rule reference |
+
 ---
 
 ## RESOURCE MANAGER (sophia.kim@example.com / ResourceMgrPass1!)
@@ -125,7 +151,19 @@
 | RM-06 | View workload planning | Navigate to /workload/planning | 12-week forward timeline |
 | RM-07 | Check allocation conflict | Drag assignment on staffing board | Conflict highlighted in red if > 100% |
 
-### Staffing Board
+### Staffing Desk (primary console — replaces standalone Staffing Board)
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| RM-16 | Open Staffing Desk | Navigate to /staffing-desk | Default table view: assignments, requests, supply-demand gap, timeline |
+| RM-17 | Filter desk by project/role | Apply filters in title bar | Table updates, URL persists filter state |
+| RM-18 | Switch to Planner view | /staffing-desk?view=planner | 12-week multi-week grid renders with bench sidebar + anomaly strip |
+| RM-19 | Auto-match an open request | Planner → click "Auto match" on an open demand | Modal shows chain/qualified/fallback suggestions tiered by solver |
+| RM-20 | Switch matching strategy | Planner → strategy selector → choose BEST_FIT / UTILIZE_BENCH / CHEAPEST / GROWTH / BALANCED | Suggestions reorder per strategy weighting |
+| RM-21 | Save scenario | Planner → save scenario with name | Scenario persists (PlannerScenario), reload restores grid + filters |
+| RM-22 | Drag assignment across weeks | Planner → drag bar to different week | Multi-week coverage reflows, conflict highlight in red if > 100% |
+| RM-23 | Inspect HC diagnostic | Planner → hover cell with red/amber tint | Tooltip explains over/under-coverage with raw HC math |
+
+### Staffing Board (legacy view — still mounted at /staffing-board, navVisible:false)
 | ID | JTBD | Test Steps | Verify |
 |----|------|-----------|--------|
 | RM-08 | View staffing board | Navigate to /staffing-board | 12-week grid with person swimlanes |
@@ -219,6 +257,13 @@
 | DM-09 | View capitalisation report | Navigate to /reports/capitalisation | CAPEX/OPEX table, charts |
 | DM-10 | Export capitalisation XLSX | Click Export XLSX | File downloads |
 
+### Portfolio Radiator
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| DM-11 | Open Portfolio Radiator | Navigate to /dashboards/portfolio-radiator | Table of all projects × Scope/Schedule/Budget/People scores with overall band |
+| DM-12 | Drill from portfolio to project | Click a project row | Lands on /projects/:id Radiator tab |
+| DM-13 | Sort portfolio by axis | Click axis column header | Rows reorder, lowest/highest scores surfaced |
+
 ---
 
 ## DIRECTOR (noah.bennett@example.com / DirectorPass1!)
@@ -237,6 +282,7 @@
 | DIR-05 | Access all pages | Check sidebar for all sections | All groups visible |
 | DIR-06 | View business audit | Navigate to /admin/audit | Audit records visible |
 | DIR-07 | View exceptions | Navigate to /exceptions | Exception queue visible |
+| DIR-08 | View Portfolio Radiator | Navigate to /dashboards/portfolio-radiator | Org-wide radiator scores across all 12 projects |
 
 ---
 
@@ -286,6 +332,41 @@
 | ADM-15 | View notification templates | Navigate to /admin/notifications | 15 templates listed |
 | ADM-16 | View notification queue | Check queue section | Queue with status filters |
 
+### Radiator Configuration
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-17 | Open radiator thresholds | Navigate to /admin/radiator-thresholds | 16-axis threshold table renders (GREEN/AMBER/RED/CRITICAL bands) |
+| ADM-18 | Edit a threshold | Change a band boundary → Save | PATCH 200, value persists, change reflected in next radiator snapshot |
+
+### Organization Config
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-19 | Open Organization Config | Navigate to /admin/organization-config | Reporting cadence, exception thresholds, governance + risk cadence sections visible |
+| ADM-20 | Update a cadence | Change a cadence value → Save | Value persists on refresh |
+
+### Vendors
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-21 | View vendors | Navigate to /admin/vendors | Vendor list with name, contact, status |
+| ADM-22 | Create vendor | Fill form → Save | Vendor appears in list, available for project staffing |
+
+### HRIS Integration
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-23 | Open HRIS config | Navigate to /admin/hris | Provider selector (BambooHR / Workday) + connection form |
+| ADM-24 | Trigger HRIS sync | Click Sync | Sync runs (or surfaces appropriate error), last-sync timestamp updates |
+
+### Access Policies (ABAC)
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-25 | View access policies | Navigate to /admin/access-policies | Policy list per role + resource |
+| ADM-26 | Edit a policy | Toggle a permission → Save | Change persists, takes effect for impersonated user |
+
+### Metadata / Admin
+| ID | JTBD | Test Steps | Verify |
+|----|------|-----------|--------|
+| ADM-27 | Open metadata admin | Navigate to /metadata-admin | Validation rules, admin config sections visible |
+
 ---
 
 ## CROSS-ROLE WORKFLOWS
@@ -300,12 +381,12 @@
 
 ---
 
-**TOTAL JTBDs: 107**
-- Employee: 27
-- Project Manager: 24
-- Resource Manager: 15
+**TOTAL JTBDs: 145**
+- Employee: 31 (added /my-time E-28..E-31)
+- Project Manager: 37 (added Radiator + project tabs PM-25..PM-32, Time Management PM-33..PM-37)
+- Resource Manager: 23 (added Staffing Desk + Workforce Planner RM-16..RM-23)
 - HR Manager: 24
-- Delivery Manager: 10
-- Director: 7
-- Admin: 16
+- Delivery Manager: 13 (added Portfolio Radiator DM-11..DM-13)
+- Director: 8 (added Portfolio Radiator DIR-08)
+- Admin: 27 (added radiator thresholds, org config, vendors, HRIS, access policies, metadata-admin ADM-17..ADM-27)
 - Cross-role: 5

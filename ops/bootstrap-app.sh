@@ -416,7 +416,7 @@ seed_if_empty() {
         ok "$label already has $n persons — skipping seed"
     else
         echo "    -> seeding $label (this takes ~30s)"
-        docker exec -e SEED_PROFILE=phase2 "$container" node dist/prisma/seed.js 2>&1 | tail -5 \
+        docker exec -e SEED_PROFILE=it-company "$container" node dist/prisma/seed.js 2>&1 | tail -5 \
             && ok "$label seeded"
     fi
 }

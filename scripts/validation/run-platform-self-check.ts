@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 
 import { signPlatformJwt } from '../../src/modules/identity-access/application/platform-jwt';
 
@@ -131,7 +130,11 @@ async function main(): Promise<void> {
   results.push(...endpointChecks);
 
   if (args.includeTestBaseline) {
-    results.push(runBaselineTestCommand());
+    results.push({
+      detail: 'No curated baseline suite is wired up — bank-scale perf spec was retired with the seed profile.',
+      name: 'Test baseline health',
+      status: 'warn',
+    });
   } else {
     results.push({
       detail: 'Skipped. Re-run with --include-test-baseline to execute the curated backend baseline suite.',
@@ -200,35 +203,6 @@ function buildAuthChecks(): CheckResult[] {
   });
 
   return results;
-}
-
-function runBaselineTestCommand(): CheckResult {
-  const command =
-    'npm test -- --runInBand test/performance/bank-scale-profile.performance.spec.ts';
-
-  try {
-    execSync(command, {
-      cwd: process.cwd(),
-      stdio: 'pipe',
-    });
-
-    return {
-      detail: 'Curated backend baseline suite passed.',
-      name: 'Test baseline health',
-      status: 'pass',
-    };
-  } catch (error) {
-    const detail =
-      error instanceof Error && 'stdout' in error
-        ? String((error as any).stdout ?? '').trim() || error.message
-        : 'Baseline test command failed.';
-
-    return {
-      detail,
-      name: 'Test baseline health',
-      status: 'fail',
-    };
-  }
 }
 
 async function authGetJson(path: string, token: string, name: string): Promise<CheckResult> {

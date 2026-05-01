@@ -5,7 +5,7 @@ This directory contains deterministic seed modules used by `prisma/seed.ts`.
 Current seeds:
 
 - `demo-dataset.ts` for local development, demos, and UI work
-- `bank-scale-profile.ts` for scale-oriented staffing and performance smoke validation
+- `it-company-profile.ts` for the canonical 200-person custom-software-development scenario (default)
 
 Future additions may include:
 
