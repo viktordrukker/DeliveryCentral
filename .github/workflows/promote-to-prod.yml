@@ -232,6 +232,24 @@ jobs:
             export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
             docker compose -p dc-prod -f docker-compose.prod.yml pull
 
+            # DM-R-11 (2026-05-01): if a previous deploy left a migration in
+            # `_prisma_migrations` with `finished_at = NULL` (P3009 — failed
+            # state), Prisma refuses to apply any further migrations. Mark
+            # every such row as rolled-back so the next `migrate deploy`
+            # retries it. Idempotent on a healthy DB (no rows match).
+            FAILED_MIGRATIONS=\$(docker exec dc-data-postgres-1 psql -U postgres -d workload_tracking_prod -tAc \
+              "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL AND rolled_back_at IS NULL" 2>/dev/null || true)
+            if [ -n "\$FAILED_MIGRATIONS" ]; then
+              echo "::warning::Detected previously-failed migrations in _prisma_migrations:"
+              echo "\$FAILED_MIGRATIONS" | sed 's/^/  - /'
+              echo "Marking each as rolled-back so migrate deploy retries them."
+              echo "\$FAILED_MIGRATIONS" | while read -r m; do
+                [ -n "\$m" ] || continue
+                docker exec dc-data-postgres-1 psql -U postgres -d workload_tracking_prod -c \
+                  "UPDATE _prisma_migrations SET rolled_back_at = NOW() WHERE migration_name = '\$m' AND finished_at IS NULL"
+              done
+            fi
+
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
             # Read migrate container exit via `docker inspect` (compose-wait's
             # stdout is the verbose 'container "X" exited with status code N'
