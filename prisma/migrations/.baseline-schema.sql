@@ -84,30 +84,6 @@ CREATE TYPE public."ApprovalDecision" AS ENUM (
 
 
 --
--- Name: AssignmentProposalCandidateDecision; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public."AssignmentProposalCandidateDecision" AS ENUM (
-    'PENDING',
-    'PICKED',
-    'DECLINED',
-    'AUTO_DECLINED'
-);
-
-
---
--- Name: AssignmentProposalSlateStatus; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public."AssignmentProposalSlateStatus" AS ENUM (
-    'OPEN',
-    'DECIDED',
-    'EXPIRED',
-    'WITHDRAWN'
-);
-
-
---
 -- Name: AssignmentSlaStage; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -595,6 +571,30 @@ CREATE TYPE public."StaffingRequestPriority" AS ENUM (
     'MEDIUM',
     'HIGH',
     'URGENT'
+);
+
+
+--
+-- Name: StaffingRequestProposalCandidateDecision; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."StaffingRequestProposalCandidateDecision" AS ENUM (
+    'PENDING',
+    'PICKED',
+    'DECLINED',
+    'AUTO_DECLINED'
+);
+
+
+--
+-- Name: StaffingRequestProposalSlateStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."StaffingRequestProposalSlateStatus" AS ENUM (
+    'OPEN',
+    'DECIDED',
+    'EXPIRED',
+    'WITHDRAWN'
 );
 
 
@@ -1176,43 +1176,6 @@ CREATE TABLE public."AssignmentHistory" (
     "previousSnapshot" jsonb,
     "newSnapshot" jsonb,
     "occurredAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-
---
--- Name: AssignmentProposalCandidate; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."AssignmentProposalCandidate" (
-    id uuid NOT NULL,
-    "slateId" uuid NOT NULL,
-    "candidatePersonId" uuid NOT NULL,
-    rank integer NOT NULL,
-    "matchScore" numeric(6,3) NOT NULL,
-    "availabilityPercent" numeric(5,2),
-    "mismatchedSkills" text[],
-    rationale text,
-    decision public."AssignmentProposalCandidateDecision" DEFAULT 'PENDING'::public."AssignmentProposalCandidateDecision" NOT NULL,
-    "decidedAt" timestamp(3) with time zone,
-    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
-);
-
-
---
--- Name: AssignmentProposalSlate; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."AssignmentProposalSlate" (
-    id uuid NOT NULL,
-    "assignmentId" uuid NOT NULL,
-    "proposedByPersonId" uuid NOT NULL,
-    status public."AssignmentProposalSlateStatus" DEFAULT 'OPEN'::public."AssignmentProposalSlateStatus" NOT NULL,
-    "proposedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "expiresAt" timestamp(3) with time zone,
-    "decidedAt" timestamp(3) with time zone,
-    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
 );
 
 
@@ -2087,6 +2050,43 @@ CREATE TABLE public."ResourcePool" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone
+);
+
+
+--
+-- Name: StaffingRequestProposalCandidate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."StaffingRequestProposalCandidate" (
+    id uuid NOT NULL,
+    "slateId" uuid NOT NULL,
+    "candidatePersonId" uuid NOT NULL,
+    rank integer NOT NULL,
+    "matchScore" numeric(6,3) NOT NULL,
+    "availabilityPercent" numeric(5,2),
+    "mismatchedSkills" text[],
+    rationale text,
+    decision public."StaffingRequestProposalCandidateDecision" DEFAULT 'PENDING'::public."StaffingRequestProposalCandidateDecision" NOT NULL,
+    "decidedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL
+);
+
+
+--
+-- Name: StaffingRequestProposalSlate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."StaffingRequestProposalSlate" (
+    id uuid NOT NULL,
+    "staffingRequestId" text NOT NULL,
+    "proposedByPersonId" uuid NOT NULL,
+    status public."StaffingRequestProposalSlateStatus" DEFAULT 'OPEN'::public."StaffingRequestProposalSlateStatus" NOT NULL,
+    "proposedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "expiresAt" timestamp(3) with time zone,
+    "decidedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL
 );
 
 
@@ -3135,6 +3135,7 @@ CREATE TABLE public.staffing_requests (
     "publicId" character varying(32),
     "tenantId" uuid,
     version integer DEFAULT 1 NOT NULL,
+    "candidatePersonId" uuid,
     CONSTRAINT "staffing_requests_allocationPercent_range_check" CHECK ((("allocationPercent" >= (0)::numeric) AND ("allocationPercent" <= (100)::numeric))),
     CONSTRAINT "staffing_requests_headcountFulfilled_nonnegative_check" CHECK ((("headcountFulfilled" >= 0) AND ("headcountFulfilled" <= "headcountRequired"))),
     CONSTRAINT "staffing_requests_headcountRequired_positive_check" CHECK (("headcountRequired" >= 1)),
@@ -3324,22 +3325,6 @@ ALTER TABLE ONLY public."AssignmentApproval"
 
 ALTER TABLE ONLY public."AssignmentHistory"
     ADD CONSTRAINT "AssignmentHistory_pkey" PRIMARY KEY (id);
-
-
---
--- Name: AssignmentProposalCandidate AssignmentProposalCandidate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalCandidate"
-    ADD CONSTRAINT "AssignmentProposalCandidate_pkey" PRIMARY KEY (id);
-
-
---
--- Name: AssignmentProposalSlate AssignmentProposalSlate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalSlate"
-    ADD CONSTRAINT "AssignmentProposalSlate_pkey" PRIMARY KEY (id);
 
 
 --
@@ -3652,6 +3637,22 @@ ALTER TABLE ONLY public."ReportingLine"
 
 ALTER TABLE ONLY public."ResourcePool"
     ADD CONSTRAINT "ResourcePool_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
+    ADD CONSTRAINT "StaffingRequestProposalCandidate_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: StaffingRequestProposalSlate StaffingRequestProposalSlate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalSlate"
+    ADD CONSTRAINT "StaffingRequestProposalSlate_pkey" PRIMARY KEY (id);
 
 
 --
@@ -4239,69 +4240,6 @@ CREATE INDEX "AssignmentHistory_assignmentId_occurredAt_idx" ON public."Assignme
 --
 
 CREATE INDEX "AssignmentHistory_changedByPersonId_idx" ON public."AssignmentHistory" USING btree ("changedByPersonId");
-
-
---
--- Name: AssignmentProposalCandidate_candidatePersonId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalCandidate_candidatePersonId_idx" ON public."AssignmentProposalCandidate" USING btree ("candidatePersonId");
-
-
---
--- Name: AssignmentProposalCandidate_slateId_candidatePersonId_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "AssignmentProposalCandidate_slateId_candidatePersonId_key" ON public."AssignmentProposalCandidate" USING btree ("slateId", "candidatePersonId");
-
-
---
--- Name: AssignmentProposalCandidate_slateId_decision_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalCandidate_slateId_decision_idx" ON public."AssignmentProposalCandidate" USING btree ("slateId", decision);
-
-
---
--- Name: AssignmentProposalCandidate_slateId_picked_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "AssignmentProposalCandidate_slateId_picked_unique" ON public."AssignmentProposalCandidate" USING btree ("slateId") WHERE (decision = 'PICKED'::public."AssignmentProposalCandidateDecision");
-
-
---
--- Name: AssignmentProposalCandidate_slateId_rank_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalCandidate_slateId_rank_idx" ON public."AssignmentProposalCandidate" USING btree ("slateId", rank);
-
-
---
--- Name: AssignmentProposalSlate_assignmentId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalSlate_assignmentId_idx" ON public."AssignmentProposalSlate" USING btree ("assignmentId");
-
-
---
--- Name: AssignmentProposalSlate_assignmentId_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "AssignmentProposalSlate_assignmentId_key" ON public."AssignmentProposalSlate" USING btree ("assignmentId");
-
-
---
--- Name: AssignmentProposalSlate_proposedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalSlate_proposedByPersonId_idx" ON public."AssignmentProposalSlate" USING btree ("proposedByPersonId");
-
-
---
--- Name: AssignmentProposalSlate_status_proposedAt_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "AssignmentProposalSlate_status_proposedAt_idx" ON public."AssignmentProposalSlate" USING btree (status, "proposedAt");
 
 
 --
@@ -5478,6 +5416,69 @@ CREATE UNIQUE INDEX "ResourcePool_code_key" ON public."ResourcePool" USING btree
 --
 
 CREATE INDEX "ResourcePool_orgUnitId_idx" ON public."ResourcePool" USING btree ("orgUnitId");
+
+
+--
+-- Name: StaffingRequestProposalCandidate_candidatePersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalCandidate_candidatePersonId_idx" ON public."StaffingRequestProposalCandidate" USING btree ("candidatePersonId");
+
+
+--
+-- Name: StaffingRequestProposalCandidate_slateId_candidatePersonId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "StaffingRequestProposalCandidate_slateId_candidatePersonId_key" ON public."StaffingRequestProposalCandidate" USING btree ("slateId", "candidatePersonId");
+
+
+--
+-- Name: StaffingRequestProposalCandidate_slateId_decision_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalCandidate_slateId_decision_idx" ON public."StaffingRequestProposalCandidate" USING btree ("slateId", decision);
+
+
+--
+-- Name: StaffingRequestProposalCandidate_slateId_picked_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "StaffingRequestProposalCandidate_slateId_picked_unique" ON public."StaffingRequestProposalCandidate" USING btree ("slateId") WHERE (decision = 'PICKED'::public."StaffingRequestProposalCandidateDecision");
+
+
+--
+-- Name: StaffingRequestProposalCandidate_slateId_rank_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalCandidate_slateId_rank_idx" ON public."StaffingRequestProposalCandidate" USING btree ("slateId", rank);
+
+
+--
+-- Name: StaffingRequestProposalSlate_proposedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalSlate_proposedByPersonId_idx" ON public."StaffingRequestProposalSlate" USING btree ("proposedByPersonId");
+
+
+--
+-- Name: StaffingRequestProposalSlate_staffingRequestId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalSlate_staffingRequestId_idx" ON public."StaffingRequestProposalSlate" USING btree ("staffingRequestId");
+
+
+--
+-- Name: StaffingRequestProposalSlate_staffingRequestId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "StaffingRequestProposalSlate_staffingRequestId_key" ON public."StaffingRequestProposalSlate" USING btree ("staffingRequestId");
+
+
+--
+-- Name: StaffingRequestProposalSlate_status_proposedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalSlate_status_proposedAt_idx" ON public."StaffingRequestProposalSlate" USING btree (status, "proposedAt");
 
 
 --
@@ -6794,38 +6795,6 @@ ALTER TABLE ONLY public."AssignmentHistory"
 
 
 --
--- Name: AssignmentProposalCandidate AssignmentProposalCandidate_candidatePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalCandidate"
-    ADD CONSTRAINT "AssignmentProposalCandidate_candidatePersonId_fkey" FOREIGN KEY ("candidatePersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- Name: AssignmentProposalCandidate AssignmentProposalCandidate_slateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalCandidate"
-    ADD CONSTRAINT "AssignmentProposalCandidate_slateId_fkey" FOREIGN KEY ("slateId") REFERENCES public."AssignmentProposalSlate"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: AssignmentProposalSlate AssignmentProposalSlate_assignmentId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalSlate"
-    ADD CONSTRAINT "AssignmentProposalSlate_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: AssignmentProposalSlate AssignmentProposalSlate_proposedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."AssignmentProposalSlate"
-    ADD CONSTRAINT "AssignmentProposalSlate_proposedByPersonId_fkey" FOREIGN KEY ("proposedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
 -- Name: AuditLog AuditLog_actorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7383,6 +7352,38 @@ ALTER TABLE ONLY public."ReportingLine"
 
 ALTER TABLE ONLY public."ResourcePool"
     ADD CONSTRAINT "ResourcePool_orgUnitId_fkey" FOREIGN KEY ("orgUnitId") REFERENCES public."OrgUnit"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_candidatePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
+    ADD CONSTRAINT "StaffingRequestProposalCandidate_candidatePersonId_fkey" FOREIGN KEY ("candidatePersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_slateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
+    ADD CONSTRAINT "StaffingRequestProposalCandidate_slateId_fkey" FOREIGN KEY ("slateId") REFERENCES public."StaffingRequestProposalSlate"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: StaffingRequestProposalSlate StaffingRequestProposalSlate_proposedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalSlate"
+    ADD CONSTRAINT "StaffingRequestProposalSlate_proposedByPersonId_fkey" FOREIGN KEY ("proposedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: StaffingRequestProposalSlate StaffingRequestProposalSlate_staffingRequestId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalSlate"
+    ADD CONSTRAINT "StaffingRequestProposalSlate_staffingRequestId_fkey" FOREIGN KEY ("staffingRequestId") REFERENCES public.staffing_requests(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --

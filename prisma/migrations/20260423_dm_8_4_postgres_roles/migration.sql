@@ -39,8 +39,16 @@ BEGIN
 END
 $$;
 
+-- DM-R-11 (2026-05-01): use current_database() so this works against
+-- any DB name (workload_tracking dev, workload_tracking_prod / _staging,
+-- ephemeral CI test DBs). Original literal `workload_tracking` was the
+-- dev-only name and made fresh-DB migrate fail.
+
 -- --------------------------------------- app_reader (SELECT everywhere)
-GRANT CONNECT ON DATABASE workload_tracking TO app_reader;
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_reader';
+END $$;
 GRANT USAGE ON SCHEMA public TO app_reader;
 GRANT SELECT ON ALL TABLES    IN SCHEMA public TO app_reader;
 GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO app_reader;
@@ -48,7 +56,10 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES    TO app_reade
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO app_reader;
 
 -- --------------------------------------- app_auditor (audit only)
-GRANT CONNECT ON DATABASE workload_tracking TO app_auditor;
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_auditor';
+END $$;
 GRANT USAGE ON SCHEMA public TO app_auditor;
 GRANT SELECT ON "AuditLog"         TO app_auditor;
 GRANT SELECT ON migration_audit    TO app_auditor;
@@ -58,7 +69,10 @@ GRANT SELECT ON honeypot_alerts    TO app_auditor;
 GRANT SELECT ON capacity_audit     TO app_auditor;
 
 -- --------------------------------------- app_platform_admin (BYPASSRLS)
-GRANT CONNECT ON DATABASE workload_tracking TO app_platform_admin;
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_platform_admin';
+END $$;
 GRANT USAGE ON SCHEMA public TO app_platform_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_platform_admin;
 GRANT USAGE                          ON ALL SEQUENCES IN SCHEMA public TO app_platform_admin;
@@ -66,7 +80,10 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE O
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO app_platform_admin;
 
 -- --------------------------------------- app_reporting (SELECT + separate pool)
-GRANT CONNECT ON DATABASE workload_tracking TO app_reporting;
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_reporting';
+END $$;
 GRANT USAGE ON SCHEMA public TO app_reporting;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_reporting;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_reporting;

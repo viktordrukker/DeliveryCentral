@@ -34,8 +34,15 @@ END
 $$;
 
 -- ---------------------------------------------------------------- connect
-GRANT CONNECT ON DATABASE workload_tracking TO app_runtime;
-GRANT CONNECT ON DATABASE workload_tracking TO app_migrator;
+-- DM-R-11 (2026-05-01): use current_database() so this works against
+-- workload_tracking (dev), workload_tracking_prod, workload_tracking_staging,
+-- and any name a fresh CI ephemeral DB picks. The original literal
+-- `workload_tracking` was the dev-only name and made fresh-DB migrate fail.
+DO $$
+BEGIN
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_runtime';
+  EXECUTE 'GRANT CONNECT ON DATABASE ' || quote_ident(current_database()) || ' TO app_migrator';
+END $$;
 
 -- ------------------------------------------------------------- schema use
 GRANT USAGE          ON SCHEMA public TO app_runtime;
@@ -61,8 +68,19 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO app_migrator
 -- --------------------------------- append-only invariant on audit tables
 -- DM-R-22 hash-chain will add BEFORE UPDATE/DELETE triggers for forensic
 -- coverage; role-level revokes here are the first defense line.
-REVOKE UPDATE, DELETE ON "AuditLog"        FROM app_runtime;
-REVOKE UPDATE, DELETE ON "migration_audit" FROM app_runtime;
+-- DM-R-11 (2026-05-01): conditional REVOKE — `migration_audit` is
+-- created by sibling `20260418_dm_r_7_migration_audit` which sorts AFTER
+-- this one (`_20_` < `_7_` lexicographically). On a fresh DB the table
+-- doesn't exist yet; on every populated DB it does and the REVOKE runs.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'AuditLog') THEN
+    EXECUTE 'REVOKE UPDATE, DELETE ON "AuditLog" FROM app_runtime';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'migration_audit') THEN
+    EXECUTE 'REVOKE UPDATE, DELETE ON "migration_audit" FROM app_runtime';
+  END IF;
+END $$;
 -- Future: REVOKE UPDATE, DELETE ON "DomainEvent" FROM app_runtime;  (DM-7)
 -- Future: REVOKE UPDATE, DELETE ON "ddl_audit"   FROM app_runtime;  (DM-R-21)
 

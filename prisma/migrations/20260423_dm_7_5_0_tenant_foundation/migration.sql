@@ -45,12 +45,29 @@ DECLARE
     'LocalAccount', 'CaseRecord', 'in_app_notifications',
     'DomainEvent', 'AuditLog', 'OutboxEvent',
     'leave_requests', 'staffing_requests', 'timesheet_weeks',
-    'WorkEvidence'
+    'WorkEvidence', 'ProjectAssignment', 'skills'
+    -- DM-R-11 (2026-05-01): added ProjectAssignment + skills here so
+    -- that `dm_7_5_5_rls_policies` (which lists them) finds the
+    -- column. The original list omitted them; the columns were added
+    -- piecemeal by `dm_7_5_6a_tenant_unique_flips` and
+    -- `dm_7_5_7_skill_tenant_unique` later in the chain.
   ];
 BEGIN
+  -- DM-R-11 (2026-05-01): bypass DM-R-23 mass-mutation guard + skip
+  -- DM-R-31c honeypot rows so this migration is safe to re-run after
+  -- the rename (`dm_7_5_tenant_foundation` → `dm_7_5_0_tenant_foundation`).
+  PERFORM set_config('public.allow_bulk', 'true', true);
   FOREACH tname IN ARRAY tenant_tables LOOP
     EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS "tenantId" uuid', tname);
-    EXECUTE format('UPDATE %I SET "tenantId" = $1 WHERE "tenantId" IS NULL', tname) USING default_tenant;
+    -- DM-R-11: cast id::text on both sides since some pre-DM-2 tables
+    -- (in_app_notifications, leave_requests, …) still have id as TEXT
+    -- while honeypot.rowId is UUID.
+    EXECUTE format(
+      'UPDATE %I SET "tenantId" = $1
+         WHERE "tenantId" IS NULL
+           AND id::text NOT IN (SELECT "rowId"::text FROM "honeypot" WHERE "tableName" = %L)',
+      tname, tname
+    ) USING default_tenant;
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON %I ("tenantId")', tname || '_tenantId_idx', tname);
   END LOOP;
 END
@@ -66,7 +83,12 @@ DECLARE
     'LocalAccount', 'CaseRecord', 'in_app_notifications',
     'DomainEvent', 'AuditLog', 'OutboxEvent',
     'leave_requests', 'staffing_requests', 'timesheet_weeks',
-    'WorkEvidence'
+    'WorkEvidence', 'ProjectAssignment', 'skills'
+    -- DM-R-11 (2026-05-01): added ProjectAssignment + skills here so
+    -- that `dm_7_5_5_rls_policies` (which lists them) finds the
+    -- column. The original list omitted them; the columns were added
+    -- piecemeal by `dm_7_5_6a_tenant_unique_flips` and
+    -- `dm_7_5_7_skill_tenant_unique` later in the chain.
   ];
   fkname text;
 BEGIN
