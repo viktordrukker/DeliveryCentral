@@ -134,8 +134,10 @@ export function NotificationsPage(): JSX.Element {
           <>
             <div className="results-meta">
               <span>
-                {queue.totalCount} request{queue.totalCount === 1 ? '' : 's'} &mdash; page{' '}
-                {queue.page} of {totalPages}
+                {queue.totalCount === 0
+                  ? '0 requests'
+                  : `${(queue.page - 1) * queue.pageSize + 1}–${Math.min(queue.page * queue.pageSize, queue.totalCount)} of ${queue.totalCount} requests`}
+                {' '}&mdash; page {queue.page} of {totalPages}
               </span>
             </div>
 

@@ -184,7 +184,7 @@ export function StaffingDeskPage(): JSX.Element {
           background: 'var(--color-surface-alt)', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)',
         }}>
           <span style={{ flex: '1 1 0', textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
-            {state.items.length} of {state.totalCount} records
+            {(state.page - 1) * state.pageSize + 1}&ndash;{Math.min(state.page * state.pageSize, state.totalCount)} of {state.totalCount} records
           </span>
           <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
             <Button variant="secondary" size="sm" disabled={state.page <= 1} onClick={() => setFilters({ page: String(state.page - 1) })} type="button">&larr;</Button>

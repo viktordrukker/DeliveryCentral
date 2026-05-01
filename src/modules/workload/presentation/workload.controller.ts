@@ -1,5 +1,6 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
@@ -7,15 +8,15 @@ import { WorkloadService } from '../application/workload.service';
 import { WorkloadMatrixResponse, WorkloadPlanningResponse } from '../application/contracts/workload.dto';
 
 class WorkloadMatrixQueryDto {
-  poolId?: string;
-  orgUnitId?: string;
-  managerId?: string;
+  @IsOptional() @IsString() poolId?: string;
+  @IsOptional() @IsString() orgUnitId?: string;
+  @IsOptional() @IsString() managerId?: string;
 }
 
 class WorkloadPlanningQueryDto {
-  from?: string;
-  to?: string;
-  poolId?: string;
+  @IsOptional() @IsString() from?: string;
+  @IsOptional() @IsString() to?: string;
+  @IsOptional() @IsString() poolId?: string;
 }
 
 @ApiTags('workload')

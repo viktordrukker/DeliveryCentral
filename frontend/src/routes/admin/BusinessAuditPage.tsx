@@ -87,8 +87,10 @@ export function BusinessAuditPage(): JSX.Element {
         <SectionCard title="Business Audit Records">
           <div className="results-meta">
             <span>
-              {state.totalCount} record{state.totalCount === 1 ? '' : 's'} total &mdash; page{' '}
-              {state.page} of {totalPages}
+              {state.totalCount === 0
+                ? '0 records'
+                : `${(state.page - 1) * pageSize + 1}–${Math.min(state.page * pageSize, state.totalCount)} of ${state.totalCount} records`}
+              {' '}&mdash; page {state.page} of {totalPages}
             </span>
             <span>Business events only. Technical logs stay in monitoring.</span>
           </div>
