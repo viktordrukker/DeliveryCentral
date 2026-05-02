@@ -859,6 +859,86 @@ async function createManyInChunks(table: string, data: unknown[], chunkSize = 10
   }
 }
 
+/**
+ * Wipes "operating data" only — Person/Project/Assignment/WorkEvidence and
+ * everything that references them — but PRESERVES:
+ *   - the admin Person + LocalAccount (so the wizard-created admin survives)
+ *   - Tenant rows (the wizard's tenant step already populated this)
+ *   - infrastructure layer: skills, dictionaries, notification templates,
+ *     radiator thresholds, platform_settings (already populated by the
+ *     wizard's infrastructure runner before this step)
+ *   - DM-R-31c honeypot canaries (deleting them trips the tripwire)
+ *
+ * Used by the wizard's `demo` profile when the DB is non-empty: a re-run
+ * needs the dataset to land fresh-and-complete, not a half-overwritten
+ * mix of old rows missing newly-added columns and new rows with the
+ * latest schema. The seed-time CLI keeps using the wider clearExistingData
+ * which also wipes the infra layer.
+ */
+async function clearOperatingData(): Promise<void> {
+  const HONEYPOT_PERSON_ID             = '00000000-dead-beef-0000-000000000001';
+  const HONEYPOT_PROJECT_ID            = '00000000-dead-beef-0000-000000000002';
+  const HONEYPOT_PROJECT_ASSIGNMENT_ID = '00000000-dead-beef-0000-000000000003';
+  const ADMIN_PERSON_ID                = '00000000-0000-0000-0000-000000000001';
+
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL public.allow_bulk = 'true'`);
+      const t = tx as any;
+
+      // Operating data — everything the demo dataset writes.
+      await t.employeeActivityEvent.deleteMany();
+      await t.workEvidenceLink.deleteMany();
+      await t.workEvidence.deleteMany();
+      await t.workEvidenceSource.deleteMany();
+      await t.assignmentHistory.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      await t.assignmentApproval.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      await t.projectAssignment.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      await t.externalSyncState.deleteMany();
+      await t.projectExternalLink.deleteMany();
+      await t.staffingRequestFulfilment.deleteMany();
+      await t.staffingRequest.deleteMany();
+      await t.projectRadiatorOverride.deleteMany();
+      await t.projectRisk.deleteMany();
+      await t.projectRolePlan.deleteMany();
+      await t.projectRagSnapshot.deleteMany();
+      await t.projectVendorEngagement.deleteMany();
+      await t.projectBudget.deleteMany();
+      await t.projectMilestone.deleteMany();
+      await t.projectChangeRequest.deleteMany();
+      await t.project.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ID } } });
+      await t.personResourcePoolMembership.deleteMany();
+      await t.resourcePool.deleteMany();
+      await t.reportingLine.deleteMany();
+      await t.personOrgMembership.deleteMany();
+      await t.position.deleteMany();
+      await t.orgUnit.deleteMany();
+      await t.personSkill.deleteMany();
+      await t.personCostRate.deleteMany();
+      await t.timesheetEntry.deleteMany();
+      await t.timesheetWeek.deleteMany();
+      await t.pulseEntry.deleteMany();
+      await t.inAppNotification.deleteMany();
+      await t.leaveRequest.deleteMany();
+      await t.leaveBalance.deleteMany();
+      await t.overtimeException.deleteMany();
+      await t.caseParticipant.deleteMany();
+      await t.caseStep.deleteMany();
+      await t.caseRecord.deleteMany();
+      // LocalAccounts referencing non-admin people would orphan, so wipe
+      // every account except the wizard-created admin (its personId is the
+      // canonical 0000-...-0001).
+      await t.localAccount.deleteMany({ where: { personId: { not: ADMIN_PERSON_ID } } });
+      // Person last — every operating table above had to be cleared first
+      // because of FK references.
+      await t.person.deleteMany({
+        where: { AND: [{ id: { not: HONEYPOT_PERSON_ID } }, { id: { not: ADMIN_PERSON_ID } }] },
+      });
+    },
+    { timeout: 120000, maxWait: 10000 },
+  );
+}
+
 async function seedDataset(dataset: SeedDataset): Promise<void> {
   await createManyInChunks('person', dataset.people);
   await createManyInChunks(
@@ -1055,6 +1135,7 @@ if (require.main === module) {
 // runners import them directly from there.
 export {
   clearExistingData,
+  clearOperatingData,
   seedSuperadmin,
   seedMetadata,
   seedSkills,
