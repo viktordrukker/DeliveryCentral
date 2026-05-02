@@ -43,33 +43,62 @@ export function SetupWizardPage(): JSX.Element {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        // Global CSS locks html/body/#root to height: 100dvh + overflow: hidden
+        // so the AppShell can manage its own scroll regions. The wizard is
+        // pre-auth and renders outside the shell, so it has to be its own
+        // scroll container — otherwise long forms (Integrations, Monitoring)
+        // get clipped at the viewport with no way to reach Continue.
+        height: '100dvh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
         backgroundColor: 'background.default',
-        py: 4,
-        px: 2,
+        py: { xs: 2, sm: 4 },
+        px: { xs: 1, sm: 2 },
       }}
     >
-      <Card sx={{ width: '100%', maxWidth: 720 }}>
+      <Card sx={{ width: '100%', maxWidth: 720, my: 'auto' }}>
         <CardContent sx={{ p: 0 }}>
           <Box
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               borderBottom: '1px solid',
               borderColor: 'divider',
               backgroundColor: 'background.default',
             }}
           >
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+              spacing={1}
+              mb={1}
+            >
               <Typography variant="overline" color="text.secondary">
                 DeliveryCentral install wizard
               </Typography>
               <DiagnosticBundleButton token={state.token} runId={state.runId} />
             </Stack>
             {state.screen !== 'token-prompt' && (
-              <Stepper activeStep={Math.max(0, activeIndex)} alternativeLabel sx={{ mt: 1 }}>
+              <Stepper
+                activeStep={Math.max(0, activeIndex)}
+                alternativeLabel
+                sx={{
+                  mt: 1,
+                  // Stepper labels under alternativeLabel collide on narrow
+                  // viewports — shrink the label font and let it wrap so the
+                  // 8-step row stays readable down to ~360px.
+                  '& .MuiStepLabel-label': {
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    lineHeight: 1.2,
+                  },
+                  '& .MuiStepConnector-root': {
+                    top: { xs: 10, sm: 12 },
+                  },
+                }}
+              >
                 {STEP_ORDER.map((s) => (
                   <Step key={s}>
                     <StepLabel>{STEP_LABELS[s]}</StepLabel>
@@ -80,7 +109,7 @@ export function SetupWizardPage(): JSX.Element {
             {state.loading && <LinearProgress sx={{ mt: 2 }} />}
           </Box>
 
-          <Box sx={{ p: 4 }}>{renderScreen(wiz)}</Box>
+          <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>{renderScreen(wiz)}</Box>
         </CardContent>
       </Card>
     </Box>
