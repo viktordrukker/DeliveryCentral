@@ -14,6 +14,7 @@ export class ApplyDemoSeedsRunner {
   public async run(runId: string): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const seed = require('../../../../../prisma/seed') as {
+      clearOperatingData: () => Promise<void>;
       seedDataset: (dataset: unknown) => Promise<void>;
       seedItCompanyAccounts: () => Promise<void>;
       seedItCompanyPersonSkills: () => Promise<void>;
@@ -41,6 +42,17 @@ export class ApplyDemoSeedsRunner {
       workEvidenceSources: profile.itCompanyWorkEvidenceSources,
     };
 
+    // Demo dataset uses deterministic UUIDs. Running it on a DB that already
+    // holds the same dataset (or a slightly different copy from a prior
+    // schema version) would either trip a unique-id conflict on bulk insert
+    // or, if we silently skipped duplicates, leave stale rows missing newly
+    // added columns. Wipe operating data first — narrower than the seed-time
+    // `clearExistingData` so the wizard-created admin, Tenant, and the
+    // infrastructure layer (skills, dictionaries, notification templates,
+    // platform_settings) all survive.
+    await this.logger.wrap(runId, 'seed', 'seed.demo.clearOperatingData', () =>
+      seed.clearOperatingData(),
+    );
     await this.logger.wrap(runId, 'seed', 'seed.demo.dataset', () => seed.seedDataset(dataset));
     await this.logger.wrap(runId, 'seed', 'seed.demo.itCompanyAccounts', () =>
       seed.seedItCompanyAccounts(),
