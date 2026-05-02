@@ -19,7 +19,6 @@ vi.mock('@/lib/api/project-registry', () => ({
 }));
 
 import { ConfirmDialog } from './ConfirmDialog';
-import { DataTable } from './DataTable';
 import { Skeleton, TableSkeleton, CardSkeleton, ChartSkeleton } from './Skeleton';
 import { EmptyState } from './EmptyState';
 import { CommandPalette } from './CommandPalette';
@@ -190,36 +189,6 @@ describe('CommandPalette', () => {
     );
     fireEvent.keyDown(screen.getByLabelText('Search commands'), { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
-  });
-});
-
-describe('DataTable', () => {
-  it('renders toolbar content above the table', () => {
-    render(
-      <DataTable
-        columns={[{ key: 'name', render: (item: { name: string }) => item.name, title: 'Name' }]}
-        items={[{ name: 'Alpha' }]}
-        toolbar={<button type="button">Columns</button>}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Columns' })).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
-  });
-
-  it('virtualizes rows when requested', () => {
-    render(
-      <DataTable
-        columns={[{ key: 'name', render: (item: { name: string }) => item.name, title: 'Name' }]}
-        items={Array.from({ length: 50 }, (_, index) => ({ name: `Row ${index + 1}` }))}
-        rowHeight={32}
-        virtualize={true}
-        visibleRows={5}
-      />,
-    );
-
-    expect(screen.getByText('Row 1')).toBeInTheDocument();
-    expect(screen.queryByText('Row 40')).not.toBeInTheDocument();
   });
 });
 

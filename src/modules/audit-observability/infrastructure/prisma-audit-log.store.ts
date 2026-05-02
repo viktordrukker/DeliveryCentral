@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { $Enums, Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -14,7 +14,12 @@ export class PrismaAuditLogStore {
     void this.prisma.auditLog
       .create({
         data: {
-          aggregateType: record.targetEntityType,
+          // Pre-existing drift: AuditLogRecord.targetEntityType is a free-form
+          // string ('PROJECT', 'ASSIGNMENT', 'Project', etc.) but the DB column
+          // is the AggregateType enum. Postgres rejects unmatched values; this
+          // path swallows the rejection in .catch() below. Phase 2 work: align
+          // writers to the enum or widen the column.
+          aggregateType: record.targetEntityType as $Enums.AggregateType,
           aggregateId: record.targetEntityId ?? record.subjectId ?? '00000000-0000-0000-0000-000000000000',
           eventName: record.actionType,
           actorId: record.actorId ?? null,

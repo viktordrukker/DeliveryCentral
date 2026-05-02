@@ -19,7 +19,8 @@ interface BatchAssignmentConfirmModalProps {
  * focus trap / scroll lock / mobile fullscreen / submit-loading / cancel
  * dirty-guard. Public API unchanged.
  */
-export function BatchAssignmentConfirmModal({ items, onCancel, onSuccess, open }: BatchAssignmentConfirmModalProps): JSX.Element {
+export function BatchAssignmentConfirmModal({ items, onCancel, onSuccess, open }: BatchAssignmentConfirmModalProps): JSX.Element | null {
+  if (!open) return null;
   return (
     <BatchInner items={items} onCancel={onCancel} onSuccess={onSuccess} open={open} />
   );

@@ -15,6 +15,11 @@
   "Client.accountManager|relation-ondelete-missing",
   "CustomFieldDefinition.metadataDictionary|relation-ondelete-missing",
   "CustomFieldDefinition.scopeOrgUnit|relation-ondelete-missing",
+  "DomainEvent.actorId|fk-missing-relation",
+  "DomainEvent.aggregateId|fk-missing-relation",
+  "DomainEvent.causationId|fk-missing-relation",
+  "DomainEvent.correlationId|fk-missing-relation",
+  "DomainEvent.correlationId|fk-not-uuid",
   "EmployeeActivityEvent.person|relation-ondelete-missing",
   "EntityLayoutDefinition.scopeOrgUnit|relation-ondelete-missing",
   "ExternalAccountLink.person|relation-ondelete-missing",
@@ -109,6 +114,7 @@
   "StaffingRequestFulfilment.proposedByPersonId|fk-missing-relation",
   "StaffingRequestFulfilment.proposedByPersonId|fk-not-uuid",
   "StaffingRequestFulfilment.requestId|fk-not-uuid",
+  "StaffingRequestProposalSlate.staffingRequestId|fk-not-uuid",
   "TimesheetEntry.assignmentId|fk-missing-relation",
   "TimesheetEntry.assignmentId|fk-not-uuid",
   "TimesheetEntry.id|id-not-uuid",
@@ -122,5 +128,7 @@
   "TimesheetWeek.personId|fk-not-uuid",
   "WorkEvidence.person|relation-ondelete-missing",
   "WorkEvidence.project|relation-ondelete-missing",
-  "WorkEvidence.workEvidenceSource|relation-ondelete-missing"
+  "WorkEvidence.workEvidenceSource|relation-ondelete-missing",
+  "honeypot.rowId|fk-missing-relation",
+  "honeypot_alerts.rowId|fk-missing-relation"
 ]

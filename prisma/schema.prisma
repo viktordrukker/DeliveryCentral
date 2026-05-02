@@ -248,12 +248,12 @@ model Person {
   timezone                               String?
   skillsets                              String[]                            @default([])
   employmentStatus                       PersonEmploymentStatus              @default(ACTIVE)
-  hiredAt                                DateTime? @db.Timestamptz(3)
-  terminatedAt                           DateTime? @db.Timestamptz(3)
+  hiredAt                                DateTime?                           @db.Timestamptz(3)
+  terminatedAt                           DateTime?                           @db.Timestamptz(3)
   createdAt                              DateTime                            @default(now()) @db.Timestamptz(3)
   updatedAt                              DateTime                            @updatedAt @db.Timestamptz(3)
-  archivedAt                             DateTime? @db.Timestamptz(3)
-  deletedAt                              DateTime? @db.Timestamptz(3)
+  archivedAt                             DateTime?                           @db.Timestamptz(3)
+  deletedAt                              DateTime?                           @db.Timestamptz(3)
   positionsHeld                          Position[]                          @relation("PositionOccupant")
   orgMemberships                         PersonOrgMembership[]
   managerReportingLines                  ReportingLine[]                     @relation("ReportingLineManager")
@@ -303,11 +303,14 @@ model Person {
   employmentEvents                       EmploymentEvent[]                   @relation("EmploymentEvent_person")
   employmentEventsRecorded               EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
   projectRetrospectivesFacilitated       ProjectRetrospective[]
-  version              Int                                 @default(1)
+  version                                Int                                 @default(1)
+  tenantId                               String?                             @db.Uuid
+  Tenant                                 Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([employmentStatus, archivedAt])
   @@index([familyName, givenName])
-
+  @@index([tenantId])
+  @@index([displayName(ops: raw("gin_trgm_ops"))], map: "Person_displayName_trgm_idx", type: Gin)
   @@map("Person")
 }
 
@@ -336,7 +339,6 @@ model PersonExternalIdentityLink {
   @@index([personId])
   @@index([externalPrincipalName])
   @@index([resolvedManagerPersonId])
-
   @@map("PersonExternalIdentityLink")
 }
 
@@ -358,7 +360,7 @@ model M365DirectoryReconciliationRecord {
   sourceAccountEnabled    Boolean?
   sourceUpdatedAt         DateTime? @db.Timestamptz(3)
   lastSeenAt              DateTime? @db.Timestamptz(3)
-  lastEvaluatedAt         DateTime @db.Timestamptz(3)
+  lastEvaluatedAt         DateTime  @db.Timestamptz(3)
   createdAt               DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
   person                  Person?   @relation("M365ReconciliationSubject", fields: [personId], references: [id], onDelete: SetNull)
@@ -369,13 +371,12 @@ model M365DirectoryReconciliationRecord {
   @@index([personId])
   @@index([lastEvaluatedAt])
   @@index([resolvedManagerPersonId])
-
   @@map("M365DirectoryReconciliationRecord")
 }
 
 model ExternalAccountLink {
-  id                   String    @id @default(uuid()) @db.Uuid
-  personId             String?   @db.Uuid
+  id                   String                        @id @default(uuid()) @db.Uuid
+  personId             String?                       @db.Uuid
   provider             String
   sourceType           ExternalAccountSourceType
   externalAccountId    String
@@ -384,18 +385,17 @@ model ExternalAccountLink {
   externalEmail        String?
   matchedByStrategy    String?
   accountPresenceState ExternalAccountPresenceState?
-  sourceUpdatedAt      DateTime? @db.Timestamptz(3)
-  lastSeenAt           DateTime? @db.Timestamptz(3)
-  createdAt            DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
-  person               Person?   @relation(fields: [personId], references: [id])
+  sourceUpdatedAt      DateTime?                     @db.Timestamptz(3)
+  lastSeenAt           DateTime?                     @db.Timestamptz(3)
+  createdAt            DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                      @updatedAt @db.Timestamptz(3)
+  archivedAt           DateTime?                     @db.Timestamptz(3)
+  person               Person?                       @relation(fields: [personId], references: [id])
 
   @@unique([provider, externalAccountId])
   @@index([provider, personId])
   @@index([externalUsername])
   @@index([externalEmail])
-
   @@map("ExternalAccountLink")
 }
 
@@ -415,7 +415,7 @@ model RadiusReconciliationRecord {
   sourceType           String
   sourceUpdatedAt      DateTime? @db.Timestamptz(3)
   lastSeenAt           DateTime? @db.Timestamptz(3)
-  lastEvaluatedAt      DateTime @db.Timestamptz(3)
+  lastEvaluatedAt      DateTime  @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
   person               Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
@@ -424,7 +424,6 @@ model RadiusReconciliationRecord {
   @@index([provider, category])
   @@index([personId])
   @@index([lastEvaluatedAt])
-
   @@map("RadiusReconciliationRecord")
 }
 
@@ -437,11 +436,11 @@ model OrgUnit {
   parentOrgUnitId        String?                  @db.Uuid
   managerPersonId        String?                  @db.Uuid
   validFrom              DateTime                 @default(now()) @db.Timestamptz(3)
-  validTo                DateTime? @db.Timestamptz(3)
+  validTo                DateTime?                @db.Timestamptz(3)
   createdAt              DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime                 @updatedAt @db.Timestamptz(3)
-  archivedAt             DateTime? @db.Timestamptz(3)
-  deletedAt              DateTime? @db.Timestamptz(3)
+  archivedAt             DateTime?                @db.Timestamptz(3)
+  deletedAt              DateTime?                @db.Timestamptz(3)
   parentOrgUnit          OrgUnit?                 @relation("OrgUnitHierarchy", fields: [parentOrgUnitId], references: [id])
   childOrgUnits          OrgUnit[]                @relation("OrgUnitHierarchy")
   manager                Person?                  @relation("OrgUnitManager", fields: [managerPersonId], references: [id])
@@ -452,12 +451,14 @@ model OrgUnit {
   customFieldDefinitions CustomFieldDefinition[]
   entityLayouts          EntityLayoutDefinition[]
   overtimePolicies       OvertimePolicy[]
-  version              Int                                 @default(1)
+  version                Int                      @default(1)
+  tenantId               String?                  @db.Uuid
+  Tenant                 Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([parentOrgUnitId])
   @@index([managerPersonId])
   @@index([status, archivedAt])
-
+  @@index([tenantId])
   @@map("OrgUnit")
 }
 
@@ -470,10 +471,10 @@ model Position {
   description          String?
   isManagerial         Boolean               @default(false)
   validFrom            DateTime              @default(now()) @db.Timestamptz(3)
-  validTo              DateTime? @db.Timestamptz(3)
+  validTo              DateTime?             @db.Timestamptz(3)
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?             @db.Timestamptz(3)
   orgUnit              OrgUnit               @relation(fields: [orgUnitId], references: [id])
   occupant             Person?               @relation("PositionOccupant", fields: [occupantPersonId], references: [id])
   personOrgMemberships PersonOrgMembership[]
@@ -481,7 +482,6 @@ model Position {
   @@unique([orgUnitId, code])
   @@index([occupantPersonId])
   @@index([orgUnitId, validFrom, validTo])
-
   @@map("Position")
 }
 
@@ -491,7 +491,7 @@ model PersonOrgMembership {
   orgUnitId  String    @db.Uuid
   positionId String?   @db.Uuid
   isPrimary  Boolean   @default(false)
-  validFrom  DateTime @db.Timestamptz(3)
+  validFrom  DateTime  @db.Timestamptz(3)
   validTo    DateTime? @db.Timestamptz(3)
   createdAt  DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
@@ -504,7 +504,6 @@ model PersonOrgMembership {
   @@index([personId, validFrom, validTo])
   @@index([orgUnitId, validFrom, validTo])
   @@index([positionId])
-
   @@map("PersonOrgMembership")
 }
 
@@ -515,11 +514,11 @@ model ReportingLine {
   relationshipType ReportingLineType
   authority        ReportingAuthority @default(VIEWER)
   isPrimary        Boolean            @default(false)
-  validFrom        DateTime @db.Timestamptz(3)
-  validTo          DateTime? @db.Timestamptz(3)
+  validFrom        DateTime           @db.Timestamptz(3)
+  validTo          DateTime?          @db.Timestamptz(3)
   createdAt        DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime           @updatedAt @db.Timestamptz(3)
-  archivedAt       DateTime? @db.Timestamptz(3)
+  archivedAt       DateTime?          @db.Timestamptz(3)
   manager          Person             @relation("ReportingLineManager", fields: [managerPersonId], references: [id])
   subject          Person             @relation("ReportingLineSubject", fields: [subjectPersonId], references: [id])
 
@@ -527,7 +526,6 @@ model ReportingLine {
   @@index([subjectPersonId, relationshipType, validFrom, validTo])
   @@index([managerPersonId, relationshipType, validFrom, validTo])
   @@index([isPrimary, validTo])
-
   @@map("ReportingLine")
 }
 
@@ -539,14 +537,13 @@ model ResourcePool {
   description       String?
   createdAt         DateTime                       @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime                       @updatedAt @db.Timestamptz(3)
-  archivedAt        DateTime? @db.Timestamptz(3)
+  archivedAt        DateTime?                      @db.Timestamptz(3)
   orgUnit           OrgUnit?                       @relation(fields: [orgUnitId], references: [id])
   personMemberships PersonResourcePoolMembership[]
   overtimePolicies  OvertimePolicy[]
 
   @@index([orgUnitId])
   @@index([archivedAt])
-
   @@map("ResourcePool")
 }
 
@@ -554,18 +551,17 @@ model PersonResourcePoolMembership {
   id             String       @id @default(uuid()) @db.Uuid
   personId       String       @db.Uuid
   resourcePoolId String       @db.Uuid
-  validFrom      DateTime @db.Timestamptz(3)
-  validTo        DateTime? @db.Timestamptz(3)
+  validFrom      DateTime     @db.Timestamptz(3)
+  validTo        DateTime?    @db.Timestamptz(3)
   createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
-  archivedAt     DateTime? @db.Timestamptz(3)
+  archivedAt     DateTime?    @db.Timestamptz(3)
   person         Person       @relation(fields: [personId], references: [id])
   resourcePool   ResourcePool @relation(fields: [resourcePoolId], references: [id])
 
   @@unique([personId, resourcePoolId, validFrom])
   @@index([personId, validFrom, validTo])
   @@index([resourcePoolId, validFrom, validTo])
-
   @@map("PersonResourcePoolMembership")
 }
 
@@ -593,17 +589,17 @@ model Project {
   leadPmPersonId        String?                   @db.Uuid
   settingsOverride      Json                      @default("{}")
   hasLiveSpcRates       Boolean                   @default(false)
-  startsOn              DateTime? @db.Timestamptz(3)
-  endsOn                DateTime? @db.Timestamptz(3)
-  baselineEndsOn        DateTime? @db.Timestamptz(3)
-  forecastEndsOn        DateTime? @db.Timestamptz(3)
+  startsOn              DateTime?                 @db.Timestamptz(3)
+  endsOn                DateTime?                 @db.Timestamptz(3)
+  baselineEndsOn        DateTime?                 @db.Timestamptz(3)
+  forecastEndsOn        DateTime?                 @db.Timestamptz(3)
   criticalPathFloatDays Int?
   baselineRequirements  Int?
   version               Int                       @default(1)
   createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                  @updatedAt @db.Timestamptz(3)
-  archivedAt            DateTime? @db.Timestamptz(3)
-  deletedAt             DateTime? @db.Timestamptz(3)
+  archivedAt            DateTime?                 @db.Timestamptz(3)
+  deletedAt             DateTime?                 @db.Timestamptz(3)
   projectManager        Person?                   @relation("ProjectManager", fields: [projectManagerId], references: [id])
   deliveryManager       Person?                   @relation("DeliveryManager", fields: [deliveryManagerId], references: [id])
   client                Client?                   @relation(fields: [clientId], references: [id])
@@ -621,6 +617,8 @@ model Project {
   retrospective         ProjectRetrospective?
   technologies          ProjectTechnology[]
   tagList               ProjectTag[]
+  tenantId              String?                   @db.Uuid
+  Tenant                Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([status, archivedAt])
   @@index([name])
@@ -629,7 +627,8 @@ model Project {
   @@index([clientId])
   @@index([shape])
   @@index([programId])
-
+  @@index([tenantId])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "Project_name_trgm_idx", type: Gin)
   @@map("Project")
 }
 
@@ -644,15 +643,14 @@ model ProjectExternalLink {
   providerEnvironment String?
   createdAt           DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
-  archivedAt          DateTime? @db.Timestamptz(3)
-  lastSeenAt          DateTime? @db.Timestamptz(3)
+  archivedAt          DateTime?          @db.Timestamptz(3)
+  lastSeenAt          DateTime?          @db.Timestamptz(3)
   project             Project            @relation(fields: [projectId], references: [id])
   syncState           ExternalSyncState?
 
   @@unique([provider, externalProjectKey])
   @@index([projectId])
   @@index([provider, archivedAt])
-
   @@map("ProjectExternalLink")
 }
 
@@ -660,8 +658,8 @@ model ExternalSyncState {
   id                     String              @id @default(uuid()) @db.Uuid
   projectExternalLinkId  String              @unique @db.Uuid
   syncStatus             SyncStatus          @default(IDLE)
-  lastSyncedAt           DateTime? @db.Timestamptz(3)
-  lastSuccessfulSyncedAt DateTime? @db.Timestamptz(3)
+  lastSyncedAt           DateTime?           @db.Timestamptz(3)
+  lastSuccessfulSyncedAt DateTime?           @db.Timestamptz(3)
   lastError              String?
   lastPayloadFingerprint String?
   createdAt              DateTime            @default(now()) @db.Timestamptz(3)
@@ -673,42 +671,44 @@ model ExternalSyncState {
 
 // Assignment is planned staffing truth and intentionally independent from work evidence.
 model ProjectAssignment {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  personId                 String                    @db.Uuid
-  projectId                String                    @db.Uuid
-  workstreamId             String?                   @db.Uuid
+  id                       String               @id @default(uuid()) @db.Uuid
+  personId                 String               @db.Uuid
+  projectId                String               @db.Uuid
+  workstreamId             String?              @db.Uuid
   staffingRequestId        String?
-  requestedByPersonId      String?                   @db.Uuid
-  assignmentCode           String?                   @unique
+  requestedByPersonId      String?              @db.Uuid
+  assignmentCode           String?              @unique
   staffingRole             String
-  status                   AssignmentStatus          @default(CREATED)
-  allocationPercent        Decimal?                  @db.Decimal(5, 2)
-  requestedAt              DateTime                  @default(now()) @db.Timestamptz(3)
-  approvedAt               DateTime?                 @db.Timestamptz(3)
-  validFrom                DateTime                  @db.Timestamptz(3)
-  validTo                  DateTime?                 @db.Timestamptz(3)
-  onboardingDate           DateTime?                 @db.Timestamptz(3)
+  status                   AssignmentStatus     @default(CREATED)
+  allocationPercent        Decimal?             @db.Decimal(5, 2)
+  requestedAt              DateTime             @default(now()) @db.Timestamptz(3)
+  approvedAt               DateTime?            @db.Timestamptz(3)
+  validFrom                DateTime             @db.Timestamptz(3)
+  validTo                  DateTime?            @db.Timestamptz(3)
+  onboardingDate           DateTime?            @db.Timestamptz(3)
   notes                    String?
   rejectionReason          String?
   rejectionReasonCode      String?
   cancellationReason       String?
   onHoldReason             String?
-  onHoldCaseId             String?                   @db.Uuid
-  requiresDirectorApproval Boolean                   @default(false)
+  onHoldCaseId             String?              @db.Uuid
+  requiresDirectorApproval Boolean              @default(false)
   slaStage                 AssignmentSlaStage?
-  slaDueAt                 DateTime?                 @db.Timestamptz(3)
-  slaBreachedAt            DateTime?                 @db.Timestamptz(3)
-  version                  Int                       @default(1)
-  createdAt                DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime                  @updatedAt @db.Timestamptz(3)
-  archivedAt               DateTime?                 @db.Timestamptz(3)
-  person                   Person                    @relation("AssignmentPerson", fields: [personId], references: [id])
-  project                  Project                   @relation(fields: [projectId], references: [id])
-  staffingRequest          StaffingRequest?          @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
-  requestedBy              Person?                   @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
+  slaDueAt                 DateTime?            @db.Timestamptz(3)
+  slaBreachedAt            DateTime?            @db.Timestamptz(3)
+  version                  Int                  @default(1)
+  createdAt                DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
+  archivedAt               DateTime?            @db.Timestamptz(3)
+  person                   Person               @relation("AssignmentPerson", fields: [personId], references: [id])
+  project                  Project              @relation(fields: [projectId], references: [id])
+  staffingRequest          StaffingRequest?     @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
+  requestedBy              Person?              @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
   approvals                AssignmentApproval[]
   historyEntries           AssignmentHistory[]
   caseRecords              CaseRecord[]
+  tenantId                 String?              @db.Uuid
+  Tenant                   Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([personId, projectId, validFrom])
   @@index([personId, status, validFrom, validTo])
@@ -717,10 +717,9 @@ model ProjectAssignment {
   @@index([requestedByPersonId])
   @@index([slaStage, slaDueAt])
   @@index([status, slaDueAt])
-
+  @@index([tenantId])
   @@map("ProjectAssignment")
 }
-
 
 model AssignmentApproval {
   id                String            @id @default(uuid()) @db.Uuid
@@ -729,7 +728,7 @@ model AssignmentApproval {
   sequenceNumber    Int               @default(1)
   decision          ApprovalDecision  @default(PENDING)
   decisionReason    String?
-  decisionAt        DateTime? @db.Timestamptz(3)
+  decisionAt        DateTime?         @db.Timestamptz(3)
   createdAt         DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
   assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
@@ -738,7 +737,6 @@ model AssignmentApproval {
   @@unique([assignmentId, sequenceNumber])
   @@index([assignmentId, decision])
   @@index([decidedByPersonId])
-
   @@map("AssignmentApproval")
 }
 
@@ -756,7 +754,6 @@ model AssignmentHistory {
 
   @@index([assignmentId, occurredAt])
   @@index([changedByPersonId])
-
   @@map("AssignmentHistory")
 }
 
@@ -768,12 +765,11 @@ model WorkEvidenceSource {
   displayName         String
   createdAt           DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
-  archivedAt          DateTime? @db.Timestamptz(3)
+  archivedAt          DateTime?      @db.Timestamptz(3)
   workEvidenceRecords WorkEvidence[]
 
   @@unique([provider, sourceType, connectionKey])
   @@index([provider, archivedAt])
-
   @@map("WorkEvidenceSource")
 }
 
@@ -785,8 +781,8 @@ model WorkEvidence {
   projectId            String?            @db.Uuid
   sourceRecordKey      String
   evidenceType         WorkEvidenceType
-  recordedAt           DateTime @db.Timestamptz(3)
-  occurredOn           DateTime? @db.Timestamptz(3)
+  recordedAt           DateTime           @db.Timestamptz(3)
+  occurredOn           DateTime?          @db.Timestamptz(3)
   durationMinutes      Int?
   status               WorkEvidenceStatus @default(CAPTURED)
   capex                Boolean            @default(false)
@@ -795,35 +791,36 @@ model WorkEvidence {
   trace                Json?
   createdAt            DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?          @db.Timestamptz(3)
   person               Person?            @relation(fields: [personId], references: [id])
   project              Project?           @relation(fields: [projectId], references: [id])
   workEvidenceSource   WorkEvidenceSource @relation(fields: [workEvidenceSourceId], references: [id])
   links                WorkEvidenceLink[]
-  version              Int                                 @default(1)
+  version              Int                @default(1)
+  tenantId             String?            @db.Uuid
+  Tenant               Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([workEvidenceSourceId, sourceRecordKey])
   @@index([personId, recordedAt])
   @@index([projectId, recordedAt])
   @@index([workEvidenceSourceId, recordedAt])
   @@index([status, archivedAt])
-
+  @@index([tenantId])
   @@map("WorkEvidence")
 }
 
 model WorkEvidenceLink {
-  id             String       @id @default(uuid()) @db.Uuid
-  workEvidenceId String       @db.Uuid
+  id             String               @id @default(uuid()) @db.Uuid
+  workEvidenceId String               @db.Uuid
   provider       String
   externalKey    String
   externalUrl    String?
   linkType       WorkEvidenceLinkType
-  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
-  workEvidence   WorkEvidence @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  workEvidence   WorkEvidence         @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
 
   @@unique([workEvidenceId, provider, externalKey])
   @@index([provider, externalKey])
-
   @@map("WorkEvidenceLink")
 }
 
@@ -835,12 +832,11 @@ model CaseType {
   workflowDefinitionId String?             @db.Uuid
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?           @db.Timestamptz(3)
   caseRecords          CaseRecord[]
   workflowDefinition   WorkflowDefinition? @relation(fields: [workflowDefinitionId], references: [id])
 
   @@index([archivedAt])
-
   @@map("CaseType")
 }
 
@@ -854,13 +850,13 @@ model CaseRecord {
   relatedAssignmentId     String?             @db.Uuid
   status                  CaseStatus          @default(OPEN)
   openedAt                DateTime            @default(now()) @db.Timestamptz(3)
-  dueAt                   DateTime? @db.Timestamptz(3)
-  closedAt                DateTime? @db.Timestamptz(3)
+  dueAt                   DateTime?           @db.Timestamptz(3)
+  closedAt                DateTime?           @db.Timestamptz(3)
   summary                 String?
   payload                 Json?
   createdAt               DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
-  archivedAt              DateTime? @db.Timestamptz(3)
+  archivedAt              DateTime?           @db.Timestamptz(3)
   caseType                CaseType            @relation(fields: [caseTypeId], references: [id])
   subjectPerson           Person              @relation("CaseSubjectPerson", fields: [subjectPersonId], references: [id])
   ownerPerson             Person              @relation("CaseOwnerPerson", fields: [ownerPersonId], references: [id])
@@ -871,14 +867,16 @@ model CaseRecord {
   overtimeExceptions      OvertimeException[]
   overtimePolicyApprovals OvertimePolicy[]    @relation("OvertimePolicyApprovalCase")
   relatedProjectRisks     ProjectRisk[]       @relation("ProjectRiskRelatedCase")
-  version              Int                                 @default(1)
+  version                 Int                 @default(1)
+  tenantId                String?             @db.Uuid
+  Tenant                  Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([caseTypeId, status])
   @@index([subjectPersonId, status])
   @@index([ownerPersonId, status])
   @@index([relatedProjectId])
   @@index([relatedAssignmentId])
-
+  @@index([tenantId])
   @@map("CaseRecord")
 }
 
@@ -890,8 +888,8 @@ model CaseStep {
   displayName               String
   status                    CaseStatus               @default(OPEN)
   assignedToPersonId        String?                  @db.Uuid
-  dueAt                     DateTime? @db.Timestamptz(3)
-  completedAt               DateTime? @db.Timestamptz(3)
+  dueAt                     DateTime?                @db.Timestamptz(3)
+  completedAt               DateTime?                @db.Timestamptz(3)
   payload                   Json?
   createdAt                 DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt                 DateTime                 @updatedAt @db.Timestamptz(3)
@@ -903,7 +901,6 @@ model CaseStep {
   @@index([caseRecordId])
   @@index([assignedToPersonId, status])
   @@index([workflowStateDefinitionId])
-
   @@map("CaseStep")
 }
 
@@ -918,7 +915,6 @@ model CaseParticipant {
 
   @@unique([caseRecordId, personId, role])
   @@index([personId, role])
-
   @@map("CaseParticipant")
 }
 
@@ -932,7 +928,7 @@ model MetadataDictionary {
   isSystemManaged        Boolean                 @default(false)
   createdAt              DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime                @updatedAt @db.Timestamptz(3)
-  archivedAt             DateTime? @db.Timestamptz(3)
+  archivedAt             DateTime?               @db.Timestamptz(3)
   scopeOrgUnit           OrgUnit?                @relation(fields: [scopeOrgUnitId], references: [id])
   entries                MetadataEntry[]
   customFieldDefinitions CustomFieldDefinition[]
@@ -940,7 +936,6 @@ model MetadataDictionary {
   @@unique([entityType, dictionaryKey, scopeOrgUnitId])
   @@index([entityType, archivedAt])
   @@index([scopeOrgUnitId])
-
   @@map("MetadataDictionary")
 }
 
@@ -954,12 +949,11 @@ model MetadataEntry {
   isEnabled            Boolean            @default(true)
   createdAt            DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?          @db.Timestamptz(3)
   metadataDictionary   MetadataDictionary @relation(fields: [metadataDictionaryId], references: [id], onDelete: Cascade)
 
   @@unique([metadataDictionaryId, entryKey])
   @@index([metadataDictionaryId, isEnabled, archivedAt])
-
   @@map("MetadataEntry")
 }
 
@@ -978,7 +972,7 @@ model CustomFieldDefinition {
   isEnabled            Boolean             @default(true)
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?           @db.Timestamptz(3)
   metadataDictionary   MetadataDictionary? @relation(fields: [metadataDictionaryId], references: [id])
   scopeOrgUnit         OrgUnit?            @relation(fields: [scopeOrgUnitId], references: [id])
   customFieldValues    CustomFieldValue[]
@@ -987,7 +981,6 @@ model CustomFieldDefinition {
   @@index([entityType, isEnabled, archivedAt])
   @@index([metadataDictionaryId])
   @@index([scopeOrgUnitId])
-
   @@map("CustomFieldDefinition")
 }
 
@@ -999,13 +992,12 @@ model CustomFieldValue {
   value                   Json
   createdAt               DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
-  archivedAt              DateTime? @db.Timestamptz(3)
+  archivedAt              DateTime?             @db.Timestamptz(3)
   customFieldDefinition   CustomFieldDefinition @relation(fields: [customFieldDefinitionId], references: [id], onDelete: Cascade)
 
   @@unique([entityType, entityId, customFieldDefinitionId])
   @@index([entityType, entityId, archivedAt])
   @@index([customFieldDefinitionId])
-
   @@map("CustomFieldValue")
 }
 
@@ -1019,13 +1011,12 @@ model WorkflowDefinition {
   definition  Json?
   createdAt   DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime                  @updatedAt @db.Timestamptz(3)
-  archivedAt  DateTime? @db.Timestamptz(3)
+  archivedAt  DateTime?                 @db.Timestamptz(3)
   caseTypes   CaseType[]
   states      WorkflowStateDefinition[]
 
   @@unique([entityType, workflowKey, version])
   @@index([entityType, status, archivedAt])
-
   @@map("WorkflowDefinition")
 }
 
@@ -1045,7 +1036,6 @@ model WorkflowStateDefinition {
 
   @@unique([workflowDefinitionId, stateKey])
   @@index([workflowDefinitionId, sequenceNumber])
-
   @@map("WorkflowStateDefinition")
 }
 
@@ -1066,7 +1056,6 @@ model EntityLayoutDefinition {
   @@unique([entityType, layoutKey, version, scopeOrgUnitId])
   @@index([entityType, isDefault, archivedAt])
   @@index([scopeOrgUnitId])
-
   @@map("EntityLayoutDefinition")
 }
 
@@ -1087,46 +1076,53 @@ model EmployeeActivityEvent {
   @@index([personId, occurredAt])
   @@index([eventType])
   @@index([actorId])
-
   @@map("EmployeeActivityEvent")
 }
 
 model AuditLog {
-  id            String   @id @default(uuid()) @db.Uuid
-  aggregateType String
-  aggregateId   String   @db.Uuid
+  id            String        @id @default(uuid()) @db.Uuid
+  aggregateType AggregateType
+  aggregateId   String        @db.Uuid
   eventName     String
-  actorId       String?  @db.Uuid
+  actorId       String?       @db.Uuid
   correlationId String?
   payload       Json
-  createdAt     DateTime @default(now()) @db.Timestamptz(3)
-  actor         Person?  @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  prevHash      String?
+  rowHash       String?
+  chainSeq      BigInt        @default(autoincrement())
+  tenantId      String?       @db.Uuid
+  actor         Person?       @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  Tenant        Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([aggregateType, aggregateId])
   @@index([createdAt])
   @@index([correlationId])
   @@index([actorId])
-
+  @@index([tenantId])
+  @@index([aggregateType, aggregateId], map: "idx_audit_log_aggregate")
   @@map("AuditLog")
 }
 
 model OutboxEvent {
-  id            String    @id @default(uuid()) @db.Uuid
+  id            String            @id @default(uuid()) @db.Uuid
   topic         String
   eventName     String
   aggregateType String
-  aggregateId   String    @db.Uuid
+  aggregateId   String            @db.Uuid
   correlationId String?
   payload       Json
   status        OutboxEventStatus @default(PENDING)
-  availableAt   DateTime  @default(now()) @db.Timestamptz(3)
-  publishedAt   DateTime? @db.Timestamptz(3)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  availableAt   DateTime          @default(now()) @db.Timestamptz(3)
+  publishedAt   DateTime?         @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  tenantId      String?           @db.Uuid
+  Tenant        Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([status, availableAt])
   @@index([aggregateType, aggregateId])
   @@index([createdAt])
-
+  @@index([tenantId])
   @@map("OutboxEvent")
 }
 
@@ -1137,7 +1133,7 @@ model IntegrationSyncState {
   resourceType String
   scopeKey     String
   lastCursor   String?
-  lastSyncedAt DateTime? @db.Timestamptz(3)
+  lastSyncedAt DateTime?  @db.Timestamptz(3)
   lastStatus   SyncStatus @default(IDLE)
   lastError    String?
   createdAt    DateTime   @default(now()) @db.Timestamptz(3)
@@ -1145,7 +1141,6 @@ model IntegrationSyncState {
 
   @@unique([provider, resourceType, scopeKey])
   @@index([provider, resourceType, lastStatus])
-
   @@map("IntegrationSyncState")
 }
 
@@ -1163,7 +1158,6 @@ model NotificationChannel {
   deliveries  NotificationDelivery[]
 
   @@index([kind, isEnabled])
-
   @@map("NotificationChannel")
 }
 
@@ -1178,13 +1172,12 @@ model NotificationTemplate {
   isSystemManaged      Boolean               @default(true)
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
-  archivedAt           DateTime? @db.Timestamptz(3)
+  archivedAt           DateTime?             @db.Timestamptz(3)
   channel              NotificationChannel   @relation(fields: [channelId], references: [id])
   notificationRequests NotificationRequest[]
 
   @@index([eventName, archivedAt])
   @@index([channelId, archivedAt])
-
   @@map("NotificationTemplate")
 }
 
@@ -1200,8 +1193,8 @@ model NotificationRequest {
   maxAttempts   Int                       @default(1)
   failureReason String?
   requestedAt   DateTime                  @default(now()) @db.Timestamptz(3)
-  deliveredAt   DateTime? @db.Timestamptz(3)
-  nextAttemptAt DateTime? @db.Timestamptz(3)
+  deliveredAt   DateTime?                 @db.Timestamptz(3)
+  nextAttemptAt DateTime?                 @db.Timestamptz(3)
   createdAt     DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime                  @updatedAt @db.Timestamptz(3)
   channel       NotificationChannel       @relation(fields: [channelId], references: [id])
@@ -1212,7 +1205,6 @@ model NotificationRequest {
   @@index([status, nextAttemptAt])
   @@index([recipient, requestedAt])
   @@index([templateId])
-
   @@map("NotificationRequest")
 }
 
@@ -1228,7 +1220,7 @@ model NotificationDelivery {
   providerMessageId     String?
   failureReason         String?
   attemptedAt           DateTime                   @default(now()) @db.Timestamptz(3)
-  nextAttemptAt         DateTime? @db.Timestamptz(3)
+  nextAttemptAt         DateTime?                  @db.Timestamptz(3)
   createdAt             DateTime                   @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                   @updatedAt @db.Timestamptz(3)
   notificationRequest   NotificationRequest        @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
@@ -1238,7 +1230,6 @@ model NotificationDelivery {
   @@index([status, attemptedAt])
   @@index([status, nextAttemptAt])
   @@index([channelId])
-
   @@map("NotificationDelivery")
 }
 
@@ -1260,9 +1251,9 @@ model TimesheetWeek {
   personId          String
   weekStart         DateTime         @db.Date
   status            TimesheetStatus  @default(DRAFT)
-  submittedAt       DateTime? @db.Timestamptz(3)
+  submittedAt       DateTime?        @db.Timestamptz(3)
   approvedBy        String?
-  approvedAt        DateTime? @db.Timestamptz(3)
+  approvedAt        DateTime?        @db.Timestamptz(3)
   rejectedReason    String?
   totalHours        Decimal?         @db.Decimal(5, 2)
   standardHours     Decimal?         @db.Decimal(5, 2)
@@ -1273,9 +1264,12 @@ model TimesheetWeek {
   createdAt         DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
   entries           TimesheetEntry[]
+  tenantId          String?          @db.Uuid
+  Tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([personId, weekStart])
   @@index([personId, weekStart])
+  @@index([tenantId])
   @@map("timesheet_weeks")
 }
 
@@ -1307,30 +1301,32 @@ model TimesheetEntry {
 // =============================================================================
 
 model LocalAccount {
-  id                  String    @id @default(uuid()) @db.Uuid
-  personId            String?   @unique @db.Uuid
-  email               String    @unique
+  id                  String             @id @default(uuid()) @db.Uuid
+  personId            String?            @unique @db.Uuid
+  email               String             @unique
   displayName         String
   passwordHash        String
-  roles               String[]  @default([])
+  roles               String[]           @default([])
   source              LocalAccountSource @default(local)
-  twoFactorEnabled    Boolean   @default(false)
+  twoFactorEnabled    Boolean            @default(false)
   twoFactorSecret     String?
   backupCodesHash     String[]
-  failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime? @db.Timestamptz(3)
-  lastLoginAt         DateTime? @db.Timestamptz(3)
-  mustChangePw        Boolean   @default(false)
-  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+  failedLoginAttempts Int                @default(0)
+  lockedUntil         DateTime?          @db.Timestamptz(3)
+  lastLoginAt         DateTime?          @db.Timestamptz(3)
+  mustChangePw        Boolean            @default(false)
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
 
   refreshTokens  RefreshToken[]
   passwordResets PasswordResetToken[]
   person         Person?              @relation(fields: [personId], references: [id], onDelete: SetNull)
+  tenantId       String?              @db.Uuid
+  Tenant         Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([email])
   @@index([personId])
-
+  @@index([tenantId])
   @@map("LocalAccount")
 }
 
@@ -1338,7 +1334,7 @@ model RefreshToken {
   id        String    @id @default(uuid()) @db.Uuid
   accountId String    @db.Uuid
   tokenHash String    @unique
-  expiresAt DateTime @db.Timestamptz(3)
+  expiresAt DateTime  @db.Timestamptz(3)
   revokedAt DateTime? @db.Timestamptz(3)
   userAgent String?
   ipAddress String?
@@ -1349,7 +1345,6 @@ model RefreshToken {
   @@index([accountId])
   @@index([tokenHash])
   @@index([expiresAt])
-
   @@map("RefreshToken")
 }
 
@@ -1357,7 +1352,7 @@ model PasswordResetToken {
   id        String    @id @default(uuid()) @db.Uuid
   accountId String    @db.Uuid
   tokenHash String    @unique
-  expiresAt DateTime @db.Timestamptz(3)
+  expiresAt DateTime  @db.Timestamptz(3)
   usedAt    DateTime? @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
@@ -1365,7 +1360,6 @@ model PasswordResetToken {
 
   @@index([tokenHash])
   @@index([accountId])
-
   @@map("PasswordResetToken")
 }
 
@@ -1386,25 +1380,25 @@ model PeriodLock {
 }
 
 model ProjectBudget {
-  id              String   @id @default(uuid())
-  idNew           String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  publicId        String?  @unique @db.VarChar(32)
+  id              String           @id @default(uuid())
+  idNew           String           @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId        String?          @unique @db.VarChar(32)
   projectId       String
-  workstreamId    String?  @db.Uuid
+  workstreamId    String?          @db.Uuid
   fiscalYear      Int
-  capexBudget     Decimal  @default(0) @db.Decimal(15, 2)
-  opexBudget      Decimal  @default(0) @db.Decimal(15, 2)
-  vendorBudget    Decimal? @db.Decimal(15, 2)
-  earnedValue     Decimal? @db.Decimal(15, 2)
-  actualCost      Decimal? @db.Decimal(15, 2)
-  plannedToDate   Decimal? @db.Decimal(15, 2)
-  eac             Decimal? @db.Decimal(15, 2)
-  capexCorrectPct Decimal? @db.Decimal(5, 4)
-  currencyCode    String?  @db.VarChar(3)
-  currency        Currency? @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  capexBudget     Decimal          @default(0) @db.Decimal(15, 2)
+  opexBudget      Decimal          @default(0) @db.Decimal(15, 2)
+  vendorBudget    Decimal?         @db.Decimal(15, 2)
+  earnedValue     Decimal?         @db.Decimal(15, 2)
+  actualCost      Decimal?         @db.Decimal(15, 2)
+  plannedToDate   Decimal?         @db.Decimal(15, 2)
+  eac             Decimal?         @db.Decimal(15, 2)
+  capexCorrectPct Decimal?         @db.Decimal(5, 4)
+  currencyCode    String?          @db.VarChar(3)
+  currency        Currency?        @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
   approvals       BudgetApproval[]
-  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
-  version              Int                                 @default(1)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+  version         Int              @default(1)
 
   @@unique([projectId, fiscalYear])
   @@index([currencyCode])
@@ -1412,16 +1406,16 @@ model ProjectBudget {
 }
 
 model PersonCostRate {
-  id            String   @id @default(uuid())
-  idNew         String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  publicId      String?  @unique @db.VarChar(32)
+  id            String             @id @default(uuid())
+  idNew         String             @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId      String?            @unique @db.VarChar(32)
   personId      String
-  effectiveFrom DateTime @db.Date
-  hourlyRate    Decimal  @db.Decimal(10, 2)
+  effectiveFrom DateTime           @db.Date
+  hourlyRate    Decimal            @db.Decimal(10, 2)
   rateType      PersonCostRateType @default(INTERNAL)
-  currencyCode  String?  @db.VarChar(3)
-  currency      Currency? @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
-  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  currencyCode  String?            @db.VarChar(3)
+  currency      Currency?          @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
 
   @@index([currencyCode])
   @@map("person_cost_rates")
@@ -1452,9 +1446,12 @@ model InAppNotification {
   link              String?
   readAt            DateTime? @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  tenantId          String?   @db.Uuid
+  Tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([recipientPersonId, createdAt])
   @@index([recipientPersonId, readAt])
+  @@index([tenantId])
   @@map("in_app_notifications")
 }
 
@@ -1492,18 +1489,18 @@ enum SetupRunLogLevel {
 }
 
 model SetupRun {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  runId           String          @map("run_id") @db.Uuid
-  stepKey         String          @map("step_key")
-  status          SetupRunStatus  @default(PENDING)
-  startedAt       DateTime?       @map("started_at") @db.Timestamptz(3)
-  finishedAt      DateTime?       @map("finished_at") @db.Timestamptz(3)
-  errorPayload    Json?           @map("error_payload")
-  actorId         String?         @map("actor_id") @db.Uuid
-  payloadRedacted Json?           @map("payload_redacted")
-  version         Int             @default(1)
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String         @map("run_id") @db.Uuid
+  stepKey         String         @map("step_key")
+  status          SetupRunStatus @default(PENDING)
+  startedAt       DateTime?      @map("started_at") @db.Timestamptz(3)
+  finishedAt      DateTime?      @map("finished_at") @db.Timestamptz(3)
+  errorPayload    Json?          @map("error_payload")
+  actorId         String?        @map("actor_id") @db.Uuid
+  payloadRedacted Json?          @map("payload_redacted")
+  version         Int            @default(1)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@unique([runId, stepKey])
   @@index([runId])
@@ -1540,7 +1537,10 @@ model Skill {
   category     String?
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   personSkills PersonSkill[]
+  tenantId     String?       @db.Uuid
+  Tenant       Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
+  @@index([tenantId])
   @@map("skills")
 }
 
@@ -1579,78 +1579,79 @@ enum StaffingRequestPriority {
 }
 
 model StaffingRequest {
-  id                  String                      @id @default(uuid())
-  idNew               String                      @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  publicId            String?                     @unique @db.VarChar(32)
+  id                  String                        @id @default(uuid())
+  idNew               String                        @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId            String?                       @unique @db.VarChar(32)
   projectId           String
   requestedByPersonId String
   role                String
   skills              String[]
   summary             String?
-  allocationPercent   Decimal                     @db.Decimal(5, 2)
-  headcountRequired   Int                         @default(1)
-  headcountFulfilled  Int                         @default(0)
-  candidatePersonId   String?                     @db.Uuid
-  priority            StaffingRequestPriority     @default(MEDIUM)
-  status              StaffingRequestStatus       @default(DRAFT)
-  startDate           DateTime                    @db.Date
-  endDate             DateTime                    @db.Date
-  cancelledAt         DateTime? @db.Timestamptz(3)
-  createdAt           DateTime                    @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                    @updatedAt @db.Timestamptz(3)
+  allocationPercent   Decimal                       @db.Decimal(5, 2)
+  headcountRequired   Int                           @default(1)
+  headcountFulfilled  Int                           @default(0)
+  candidatePersonId   String?                       @db.Uuid
+  priority            StaffingRequestPriority       @default(MEDIUM)
+  status              StaffingRequestStatus         @default(DRAFT)
+  startDate           DateTime                      @db.Date
+  endDate             DateTime                      @db.Date
+  cancelledAt         DateTime?                     @db.Timestamptz(3)
+  createdAt           DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                      @updatedAt @db.Timestamptz(3)
   fulfilments         StaffingRequestFulfilment[]
-  assignments         ProjectAssignment[]         @relation("StaffingRequestAssignments")
+  assignments         ProjectAssignment[]           @relation("StaffingRequestAssignments")
   proposalSlate       StaffingRequestProposalSlate?
-  version              Int                                 @default(1)
+  version             Int                           @default(1)
+  tenantId            String?                       @db.Uuid
+  Tenant              Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([projectId, status])
   @@index([requestedByPersonId, status])
   @@index([status, priority, startDate])
+  @@index([tenantId])
   @@map("staffing_requests")
 }
 
 model StaffingRequestProposalSlate {
-  id                 String                                @id @default(uuid()) @db.Uuid
-  staffingRequestId  String                                @unique @db.Uuid
-  proposedByPersonId String                                @db.Uuid
-  status             StaffingRequestProposalSlateStatus    @default(OPEN)
-  proposedAt         DateTime                              @default(now()) @db.Timestamptz(3)
-  expiresAt          DateTime?                             @db.Timestamptz(3)
-  decidedAt          DateTime?                             @db.Timestamptz(3)
-  createdAt          DateTime                              @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                              @updatedAt @db.Timestamptz(3)
-  staffingRequest    StaffingRequest                       @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
-  proposedBy         Person                                @relation("StaffingRequestProposalSlateProposedBy", fields: [proposedByPersonId], references: [id], onDelete: Restrict)
+  id                 String                             @id @default(uuid()) @db.Uuid
+  staffingRequestId  String                             @unique
+  proposedByPersonId String                             @db.Uuid
+  status             StaffingRequestProposalSlateStatus @default(OPEN)
+  proposedAt         DateTime                           @default(now()) @db.Timestamptz(3)
+  expiresAt          DateTime?                          @db.Timestamptz(3)
+  decidedAt          DateTime?                          @db.Timestamptz(3)
+  createdAt          DateTime                           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                           @updatedAt @db.Timestamptz(3)
+  staffingRequest    StaffingRequest                    @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
+  proposedBy         Person                             @relation("StaffingRequestProposalSlateProposedBy", fields: [proposedByPersonId], references: [id], onDelete: Restrict)
   candidates         StaffingRequestProposalCandidate[]
 
   @@index([staffingRequestId])
   @@index([status, proposedAt])
   @@index([proposedByPersonId])
-
   @@map("StaffingRequestProposalSlate")
 }
 
 model StaffingRequestProposalCandidate {
-  id                  String                                       @id @default(uuid()) @db.Uuid
-  slateId             String                                       @db.Uuid
-  candidatePersonId   String                                       @db.Uuid
+  id                  String                                   @id @default(uuid()) @db.Uuid
+  slateId             String                                   @db.Uuid
+  candidatePersonId   String                                   @db.Uuid
   rank                Int
-  matchScore          Decimal                                      @db.Decimal(6, 3)
-  availabilityPercent Decimal?                                     @db.Decimal(5, 2)
+  matchScore          Decimal                                  @db.Decimal(6, 3)
+  availabilityPercent Decimal?                                 @db.Decimal(5, 2)
   mismatchedSkills    String[]
   rationale           String?
-  decision            StaffingRequestProposalCandidateDecision     @default(PENDING)
-  decidedAt           DateTime?                                    @db.Timestamptz(3)
-  createdAt           DateTime                                     @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                                     @updatedAt @db.Timestamptz(3)
-  slate               StaffingRequestProposalSlate                 @relation(fields: [slateId], references: [id], onDelete: Cascade)
-  candidate           Person                                       @relation("StaffingRequestProposalCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
+  decision            StaffingRequestProposalCandidateDecision @default(PENDING)
+  decidedAt           DateTime?                                @db.Timestamptz(3)
+  createdAt           DateTime                                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                                 @updatedAt @db.Timestamptz(3)
+  slate               StaffingRequestProposalSlate             @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  candidate           Person                                   @relation("StaffingRequestProposalCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
 
   @@unique([slateId, candidatePersonId])
   @@index([slateId, rank])
   @@index([candidatePersonId])
   @@index([slateId, decision])
-
   @@map("StaffingRequestProposalCandidate")
 }
 
@@ -1671,10 +1672,12 @@ model StaffingRequestFulfilment {
 enum LeaveRequestType {
   ANNUAL
   SICK
+  PARENTAL
+  COMPASSIONATE
+  UNPAID
   OTHER
   OT_OFF
   PERSONAL
-  PARENTAL
   BEREAVEMENT
   STUDY
 }
@@ -1683,6 +1686,7 @@ enum LeaveRequestStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
 }
 
 model LeaveRequest {
@@ -1696,13 +1700,16 @@ model LeaveRequest {
   notes      String?
   status     LeaveRequestStatus @default(PENDING)
   reviewedBy String?
-  reviewedAt DateTime? @db.Timestamptz(3)
+  reviewedAt DateTime?          @db.Timestamptz(3)
   createdAt  DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime           @updatedAt @db.Timestamptz(3)
-  version              Int                                 @default(1)
+  version    Int                @default(1)
+  tenantId   String?            @db.Uuid
+  Tenant     Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([personId, status])
   @@index([status])
+  @@index([tenantId])
   @@map("leave_requests")
 }
 
@@ -1800,26 +1807,32 @@ model Client {
   updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
   accountManager         Person?   @relation("ClientAccountManager", fields: [accountManagerPersonId], references: [id])
   projects               Project[]
+  tenantId               String?   @db.Uuid
+  Tenant                 Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([isActive])
+  @@index([tenantId])
   @@map("clients")
 }
 
 model Vendor {
-  id           String                    @id @default(uuid()) @db.Uuid
-  name         String                    @unique
-  contactName  String?
-  contactEmail String?
-  contractType VendorContractType        @default(STAFF_AUGMENTATION)
-  skillAreas   String[]                  @default([])
-  notes        String?
-  isActive     Boolean                   @default(true)
-  createdAt    DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime                  @updatedAt @db.Timestamptz(3)
-  engagements  ProjectVendorEngagement[]
+  id             String                    @id @default(uuid()) @db.Uuid
+  name           String                    @unique
+  contactName    String?
+  contactEmail   String?
+  contractType   VendorContractType        @default(STAFF_AUGMENTATION)
+  skillAreas     String[]                  @default([])
+  notes          String?
+  isActive       Boolean                   @default(true)
+  createdAt      DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                  @updatedAt @db.Timestamptz(3)
+  engagements    ProjectVendorEngagement[]
   skillAreasList VendorSkillArea[]
+  tenantId       String?                   @db.Uuid
+  Tenant         Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([isActive])
+  @@index([tenantId])
   @@map("vendors")
 }
 
@@ -1833,8 +1846,8 @@ model ProjectVendorEngagement {
   blendedDayRate Decimal?               @db.Decimal(10, 2)
   currencyCode   String?                @db.VarChar(3)
   currency       Currency?              @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
-  startDate      DateTime? @db.Timestamptz(3)
-  endDate        DateTime? @db.Timestamptz(3)
+  startDate      DateTime?              @db.Timestamptz(3)
+  endDate        DateTime?              @db.Timestamptz(3)
   status         VendorEngagementStatus @default(ACTIVE)
   notes          String?
   createdAt      DateTime               @default(now()) @db.Timestamptz(3)
@@ -1858,8 +1871,8 @@ model ProjectRolePlan {
   seniorityLevel     String?
   headcount          Int            @default(1)
   allocationPercent  Decimal?       @db.Decimal(5, 2)
-  plannedStartDate   DateTime? @db.Timestamptz(3)
-  plannedEndDate     DateTime? @db.Timestamptz(3)
+  plannedStartDate   DateTime?      @db.Timestamptz(3)
+  plannedEndDate     DateTime?      @db.Timestamptz(3)
   requiredSkillIds   String[]       @default([])
   source             RolePlanSource @default(INTERNAL)
   standardHourlyRate Decimal?       @db.Decimal(10, 2)
@@ -2014,15 +2027,15 @@ enum ExternalAccountPresenceState {
 /// currency code here. The dev default is AUD; multi-tenant deploys
 /// override via `isDefault`. Minor units drive display precision.
 model Currency {
-  code        String   @id @db.VarChar(3)
-  name        String
-  minorUnit   Int      @default(2)
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  code      String   @id @db.VarChar(3)
+  name      String
+  minorUnit Int      @default(2)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  projectBudgets              ProjectBudget[]
-  personCostRates             PersonCostRate[]
-  projectVendorEngagements    ProjectVendorEngagement[]
+  projectBudgets           ProjectBudget[]
+  personCostRates          PersonCostRate[]
+  projectVendorEngagements ProjectVendorEngagement[]
 
   @@map("Currency")
 }
@@ -2035,21 +2048,21 @@ enum BudgetApprovalStatus {
 }
 
 model BudgetApproval {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectBudgetId     String
-  status              BudgetApprovalStatus  @default(PENDING)
-  requestedByPersonId String                @db.Uuid
-  decidedByPersonId   String?               @db.Uuid
-  decisionAt          DateTime?             @db.Timestamptz(3)
+  status              BudgetApprovalStatus @default(PENDING)
+  requestedByPersonId String               @db.Uuid
+  decidedByPersonId   String?              @db.Uuid
+  decisionAt          DateTime?            @db.Timestamptz(3)
   decisionReason      String?
-  requestedAt         DateTime              @default(now()) @db.Timestamptz(3)
+  requestedAt         DateTime             @default(now()) @db.Timestamptz(3)
   requestedChange     Json?
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
 
-  projectBudget       ProjectBudget         @relation(fields: [projectBudgetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  requestedByPerson   Person                @relation("BudgetApproval_requestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  decidedByPerson     Person?               @relation("BudgetApproval_decidedBy", fields: [decidedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  projectBudget     ProjectBudget @relation(fields: [projectBudgetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requestedByPerson Person        @relation("BudgetApproval_requestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  decidedByPerson   Person?       @relation("BudgetApproval_decidedBy", fields: [decidedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([projectBudgetId])
   @@index([status])
@@ -2075,7 +2088,7 @@ model Contact {
   createdAt DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt DateTime    @updatedAt @db.Timestamptz(3)
 
-  person    Person      @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([personId])
   @@index([kind])
@@ -2103,8 +2116,8 @@ model EmploymentEvent {
   recordedByPersonId String?             @db.Uuid
   createdAt          DateTime            @default(now()) @db.Timestamptz(3)
 
-  person             Person              @relation("EmploymentEvent_person", fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  recordedByPerson   Person?             @relation("EmploymentEvent_recordedBy", fields: [recordedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  person           Person  @relation("EmploymentEvent_person", fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  recordedByPerson Person? @relation("EmploymentEvent_recordedBy", fields: [recordedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([personId, occurredOn])
   @@index([kind])
@@ -2129,12 +2142,12 @@ model EmploymentEvent {
 // `Vendor.skillAreas` (all text[] denormalized). Zero rows populate
 // the text[] columns currently; DM-6b-1 drops them.
 model ProjectTechnology {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  projectId   String   @db.Uuid
-  technology  String
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId  String   @db.Uuid
+  technology String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([projectId, technology])
   @@index([technology])
@@ -2142,12 +2155,12 @@ model ProjectTechnology {
 }
 
 model ProjectTag {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  projectId  String   @db.Uuid
-  tag        String
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String   @db.Uuid
+  tag       String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([projectId, tag])
   @@index([tag])
@@ -2155,12 +2168,12 @@ model ProjectTag {
 }
 
 model VendorSkillArea {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vendorId   String   @db.Uuid
-  skillArea  String
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId  String   @db.Uuid
+  skillArea String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([vendorId, skillArea])
   @@index([skillArea])
@@ -2172,18 +2185,18 @@ model VendorSkillArea {
 // table; those columns remain for the transition release and are
 // dropped in DM-6b-1.
 model ProjectRetrospective {
-  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  projectId               String   @unique @db.Uuid
-  outcomeRating           String?
-  lessonsLearned          String?
-  wouldStaffSameWay       Boolean?
-  retrospectiveDate       DateTime? @db.Date
-  facilitatedByPersonId   String?  @db.Uuid
-  createdAt               DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId             String    @unique @db.Uuid
+  outcomeRating         String?
+  lessonsLearned        String?
+  wouldStaffSameWay     Boolean?
+  retrospectiveDate     DateTime? @db.Date
+  facilitatedByPersonId String?   @db.Uuid
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
 
-  project                 Project  @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  facilitatedByPerson     Person?  @relation(fields: [facilitatedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  facilitatedByPerson Person? @relation(fields: [facilitatedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([projectId])
   @@map("project_retrospectives")
@@ -2223,7 +2236,7 @@ model ProjectChangeRequest {
   impactBudget      String?
   requesterPersonId String?               @db.Uuid
   decidedByPersonId String?               @db.Uuid
-  decidedAt         DateTime? @db.Timestamptz(3)
+  decidedAt         DateTime?             @db.Timestamptz(3)
   createdAt         DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
   project           Project               @relation(fields: [projectId], references: [id])
@@ -2287,9 +2300,9 @@ model ProjectRisk {
   ownerPersonId       String?            @db.Uuid
   assigneePersonId    String?            @db.Uuid
   raisedAt            DateTime           @default(now()) @db.Timestamptz(3)
-  dueDate             DateTime? @db.Timestamptz(3)
-  resolvedAt          DateTime? @db.Timestamptz(3)
-  lastReviewedAt      DateTime? @db.Timestamptz(3)
+  dueDate             DateTime?          @db.Timestamptz(3)
+  resolvedAt          DateTime?          @db.Timestamptz(3)
+  lastReviewedAt      DateTime?          @db.Timestamptz(3)
   reviewCadence       RiskReviewCadence?
   convertedFromRiskId String?            @db.Uuid
   relatedCaseId       String?            @db.Uuid
@@ -2301,13 +2314,14 @@ model ProjectRisk {
   owner               Person?            @relation("ProjectRiskOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
   assignee            Person?            @relation("ProjectRiskAssignee", fields: [assigneePersonId], references: [id], onDelete: SetNull)
   relatedCase         CaseRecord?        @relation("ProjectRiskRelatedCase", fields: [relatedCaseId], references: [id], onDelete: SetNull)
-  version              Int                                 @default(1)
+  version             Int                @default(1)
 
   @@index([projectId, status])
   @@index([projectId, riskType])
   @@index([ownerPersonId])
   @@index([assigneePersonId])
   @@index([relatedCaseId])
+  @@index([title(ops: raw("gin_trgm_ops"))], map: "project_risks_title_trgm_idx", type: Gin)
   @@map("project_risks")
 }
 
@@ -2361,7 +2375,7 @@ model UndoAction {
   actionType     String
   entityId       String    @db.Uuid
   inversePayload Json
-  expiresAt      DateTime @db.Timestamptz(3)
+  expiresAt      DateTime  @db.Timestamptz(3)
   consumedAt     DateTime? @db.Timestamptz(3)
   createdAt      DateTime  @default(now()) @db.Timestamptz(3)
 
@@ -2428,4 +2442,189 @@ model PulseReport {
   @@unique([projectId, weekStarting])
   @@index([projectId])
   @@map("pulse_reports")
+}
+
+// =====================================================================
+// DM-7 multi-tenant + DM-R-22 hash-chain audit / DM-R-31 honeypot canaries
+//
+// These tables exist in the database but are NOT consumed via the Prisma
+// Client. Tenant + DomainEvent are written by raw SQL in
+// `setup.service.ts` and `domain-event.service.ts`. capacity_audit /
+// ddl_audit / migration_audit / honeypot / honeypot_alerts are populated
+// by Postgres triggers (DM-R-21, DM-R-22, DM-R-31, DM-8-10).
+//
+// They are declared here only so `prisma migrate diff --exit-code`
+// recognises them as part of the schema. Application code MUST NOT use
+// `prisma.tenant.*` / `prisma.domainEvent.*` etc. — RLS, partitioning,
+// triggers, and the DM-R-22 hash chain make Prisma Client unsafe.
+// =====================================================================
+
+enum AggregateType {
+  Person
+  Tenant
+  Project
+  Client
+  Vendor
+  OrgUnit
+  ResourcePool
+  ProjectAssignment
+  StaffingRequest
+  CaseRecord
+  TimesheetWeek
+  LeaveRequest
+  Notification
+  DomainEvent
+  Skill
+  PeriodLock
+  PersonCostRate
+  ProjectBudget
+  ProjectRisk
+  ProjectRagSnapshot
+  ProjectChangeRequest
+  ProjectMilestone
+  ProjectRadiatorOverride
+  EmploymentEvent
+  Contact
+  BudgetApproval
+  Migration
+}
+
+model Tenant {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String    @unique
+  name        String
+  isActive    Boolean   @default(true)
+  suspendedAt DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  AuditLog          AuditLog[]
+  CaseRecord        CaseRecord[]
+  DomainEvent       DomainEvent[]
+  LocalAccount      LocalAccount[]
+  OrgUnit           OrgUnit[]
+  OutboxEvent       OutboxEvent[]
+  Person            Person[]
+  Project           Project[]
+  ProjectAssignment ProjectAssignment[]
+  WorkEvidence      WorkEvidence[]
+  Client            Client[]
+  InAppNotification InAppNotification[]
+  LeaveRequest      LeaveRequest[]
+  Skill             Skill[]
+  StaffingRequest   StaffingRequest[]
+  TimesheetWeek     TimesheetWeek[]
+  Vendor            Vendor[]
+
+  @@map("Tenant")
+}
+
+/// DomainEvent is a partitioned table with a BEFORE INSERT hash-chain trigger.
+/// Writes go through raw SQL in src/modules/audit-observability/application/domain-event.service.ts.
+model DomainEvent {
+  id            String        @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType AggregateType
+  aggregateId   String        @db.Uuid
+  eventName     String
+  actorId       String?       @db.Uuid
+  correlationId String?
+  causationId   String?       @db.Uuid
+  payload       Json
+  publishedAt   DateTime?     @db.Timestamptz(6)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  prevHash      String?
+  rowHash       String?
+  chainSeq      BigInt        @default(autoincrement())
+  tenantId      String?       @db.Uuid
+  Tenant        Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@id([id, createdAt])
+  @@index([aggregateType, aggregateId], map: "DomainEvent_aggregate_idx")
+  @@index([createdAt(sort: Desc)])
+  @@index([eventName])
+  @@index([tenantId])
+  @@map("DomainEvent")
+}
+
+/// DM-8-10 — periodic capacity snapshot per audit table. Trigger-populated.
+model capacity_audit {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recordedAt   DateTime @default(now()) @db.Timestamptz(6)
+  tableName    String
+  rowCount     BigInt
+  relSizeBytes BigInt?
+  notes        String?
+
+  @@index([tableName, recordedAt(sort: Desc)], map: "capacity_audit_table_recorded_idx")
+  @@map("capacity_audit")
+}
+
+/// DM-R-21 — every DDL statement is recorded by an event trigger. Hash-chained.
+model ddl_audit {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurred_at     DateTime @default(now()) @db.Timestamptz(6)
+  sessionUser     String
+  currentUser     String
+  applicationName String?
+  commandTag      String
+  objectType      String?
+  objectIdentity  String?
+  query           String?
+  inFunction      String?
+  prevHash        String?
+  rowHash         String?
+  chainSeq        BigInt   @default(autoincrement())
+
+  @@index([occurred_at(sort: Desc)])
+  @@index([sessionUser])
+  @@map("ddl_audit")
+}
+
+/// DM-R-7 — every migrate run logs here. Hash-chained.
+model migration_audit {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recorded_at    DateTime @default(now()) @db.Timestamptz(6)
+  migration_mode String
+  migrations     String?
+  os_user        String?
+  git_email      String?
+  git_sha        String?
+  agent_id       String?
+  hostname       String?
+  success        Boolean
+  notes          String?
+  prevHash       String?
+  rowHash        String?
+  chainSeq       BigInt   @default(autoincrement())
+
+  @@index([recorded_at(sort: Desc)])
+  @@map("migration_audit")
+}
+
+/// DM-R-31 — honeypot canary rows. The dm_r_31_honeypot_guard trigger
+/// raises an alert into honeypot_alerts on UPDATE/DELETE attempts.
+model honeypot {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tableName String
+  rowId     String   @db.Uuid
+  intent    String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([tableName, rowId])
+  @@map("honeypot")
+}
+
+model honeypot_alerts {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurredAt      DateTime @default(now()) @db.Timestamptz(6)
+  tableName       String
+  rowId           String   @db.Uuid
+  operation       String
+  sessionUser     String
+  currentUser     String
+  applicationName String?
+  query           String?
+
+  @@index([occurredAt(sort: Desc)])
+  @@map("honeypot_alerts")
 }

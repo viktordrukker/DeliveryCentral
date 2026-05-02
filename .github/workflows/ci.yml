@@ -69,12 +69,16 @@ jobs:
       # byte-level schema hash baseline catches those too.
       - name: pg_dump schema → sha256 → compare to committed baseline
         run: |
+          # pg_dump rejects Prisma's `?schema=public` URI query param. Strip it.
+          PG_DUMP_URL="${DATABASE_URL%%\?*}"
           pg_dump --schema-only --no-owner --no-privileges \
             --no-comments --no-publications --no-subscriptions \
-            "$DATABASE_URL" \
+            "$PG_DUMP_URL" \
             | grep -v "^-- " \
             | grep -v "^SET " \
             | grep -v "^SELECT pg_catalog" \
+            | grep -v '^\\restrict ' \
+            | grep -v '^\\unrestrict ' \
             | sed '/^$/d' \
             > /tmp/current-schema.sql
           CURRENT_HASH=$(sha256sum /tmp/current-schema.sql | awk '{print $1}')
