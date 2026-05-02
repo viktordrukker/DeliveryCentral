@@ -75,6 +75,8 @@ jobs:
             | grep -v "^-- " \
             | grep -v "^SET " \
             | grep -v "^SELECT pg_catalog" \
+            | grep -v '^\\restrict ' \
+            | grep -v '^\\unrestrict ' \
             | sed '/^$/d' \
             > /tmp/current-schema.sql
           CURRENT_HASH=$(sha256sum /tmp/current-schema.sql | awk '{print $1}')
