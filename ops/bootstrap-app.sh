@@ -21,7 +21,7 @@
 #   - On fresh DBs: applies baseline schema + marks 92 migrations as applied
 #     (workaround for migration history bit-rot — DM-R-11 / repo memory)
 #   - Pulls GHCR images, brings up prod + staging app stacks
-#   - On empty DBs: runs the phase2 seed
+#   - On empty DBs: runs the it-company seed
 #   - Installs daily backup cron, verifies health, prints summary
 
 set -euo pipefail
@@ -395,7 +395,7 @@ docker restart dc-data-caddy-1 >/dev/null
 ok "caddy restarted to discover upstreams"
 
 # -----------------------------------------------------------------------------
-step "9/10  Seed phase2 dataset (if DBs are empty)"
+step "9/10  Seed it-company dataset (if DBs are empty)"
 
 # Wait for backend to become healthy before seeding (Prisma client startup).
 for project in dc-prod dc-staging; do
