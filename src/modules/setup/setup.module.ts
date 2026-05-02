@@ -5,6 +5,7 @@ import { PrismaModule } from '@src/shared/persistence/prisma.module';
 import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
 
 import { DiagnosticBundleService } from './application/diagnostic-bundle.service';
+import { MonitoringSnippetService } from './application/monitoring-snippet.service';
 import { PreflightChecksService } from './application/preflight-checks';
 import { SetupLoggerService } from './application/setup-logger.service';
 import { SetupService } from './application/setup.service';
@@ -27,6 +28,7 @@ import { SetupController } from './presentation/setup.controller';
     SetupTokenGuard,
     PreflightChecksService,
     DiagnosticBundleService,
+    MonitoringSnippetService,
     ApplyInfrastructureSeedsRunner,
     ApplyDemoSeedsRunner,
     ApplyAdminOnlySeedsRunner,

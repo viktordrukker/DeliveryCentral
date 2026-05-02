@@ -19,6 +19,7 @@ import { Public } from '@src/modules/identity-access/application/public.decorato
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { DiagnosticBundleService } from '../application/diagnostic-bundle.service';
+import { MonitoringSnippetService, type SnippetTarget } from '../application/monitoring-snippet.service';
 import { SetupTokenGuard } from '../application/setup-guard';
 import { SetupService, type SetupStatus } from '../application/setup.service';
 import { SetupTokenService } from '../application/setup-token.service';
@@ -41,6 +42,7 @@ export class SetupController {
   public constructor(
     private readonly service: SetupService,
     private readonly diagnostics: DiagnosticBundleService,
+    private readonly snippets: MonitoringSnippetService,
     private readonly token: SetupTokenService,
   ) {}
 
@@ -198,6 +200,33 @@ export class SetupController {
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(gzipped);
+  }
+
+  /**
+   * Monitoring config snippet download. Returns a copy-pasteable shipper
+   * config (OTLP collector / Splunk HEC / Datadog / syslog / fluent-bit)
+   * filled in with the endpoints + tokens captured by the wizard's
+   * `monitoring` step. Token-gated like every other /setup/* endpoint
+   * AND admin-callable post-setup via the same path (admin Settings
+   * surfaces a "Download config snippet" link too).
+   */
+  @Get('monitoring/snippet')
+  @Public()
+  @UseGuards(SetupTokenGuard)
+  public async monitoringSnippet(
+    @Query('target') target: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const allowed: SnippetTarget[] = ['otlp', 'splunk', 'datadog', 'syslog', 'fluentbit'];
+    if (!allowed.includes(target as SnippetTarget)) {
+      throw new BadRequestException(
+        `Unsupported snippet target. Use one of: ${allowed.join(', ')}.`,
+      );
+    }
+    const snippet = await this.snippets.build(target as SnippetTarget);
+    res.setHeader('Content-Type', `${snippet.contentType}; charset=utf-8`);
+    res.setHeader('Content-Disposition', `attachment; filename="${snippet.filename}"`);
+    res.send(snippet.body);
   }
 
   // ─── Admin-only Reset ────────────────────────────────────────────────────
