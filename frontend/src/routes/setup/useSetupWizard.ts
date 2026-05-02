@@ -177,6 +177,26 @@ export function useSetupWizard(): UseSetupWizardReturn {
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        // Backend invalidates the in-memory token on every restart and
+        // expires it after 24h. When the wizard hits a 401, fall back to
+        // the token-prompt screen so the operator can paste a fresh token
+        // (no DevTools workaround needed).
+        const status = (err as { status?: number }).status;
+        const looksLikeBadToken =
+          status === 401 ||
+          /setup token/i.test(message) ||
+          /unauthor/i.test(message);
+        if (looksLikeBadToken) {
+          writeStoredToken(null);
+          setState((s) => ({
+            ...s,
+            loading: false,
+            token: null,
+            screen: 'token-prompt',
+            error: 'Setup token rejected — paste a fresh token from `docker logs <backend> | grep SETUP_TOKEN`.',
+          }));
+          throw err;
+        }
         setState((s) => ({ ...s, loading: false, error: message }));
         throw err;
       }
