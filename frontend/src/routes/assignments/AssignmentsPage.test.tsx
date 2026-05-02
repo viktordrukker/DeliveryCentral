@@ -97,20 +97,24 @@ describe('AssignmentsPage', () => {
 
     renderWithRouter();
 
-    expect(await screen.findByText(/Pending approval/)).toBeInTheDocument();
+    // renderNextStep('PROPOSED', 'assignment') → "Review proposal";
+    // renderNextStep('ASSIGNED', 'assignment') → "In progress".
+    expect(await screen.findByText(/Review proposal/)).toBeInTheDocument();
     expect(screen.getByText(/In progress/)).toBeInTheDocument();
   });
 
   it('shows Next Step column for positions', async () => {
     mockedFetch.mockResolvedValue(buildResponse([
-      buildRow({ id: 'r1', kind: 'request', status: 'OPEN', personId: null, personName: null }),
-      buildRow({ id: 'r2', kind: 'request', status: 'IN_REVIEW', personId: null, personName: null }),
+      buildRow({ id: 'r1', kind: 'request', status: 'CREATED', personId: null, personName: null }),
+      buildRow({ id: 'r2', kind: 'request', status: 'PROPOSED', personId: null, personName: null }),
     ]));
 
     renderWithRouter('/assignments?tab=positions');
 
-    expect(await screen.findByText(/Review candidates/)).toBeInTheDocument();
-    expect(screen.getByText(/Assign person/)).toBeInTheDocument();
+    // renderNextStep('CREATED', 'request') → "Propose candidate";
+    // renderNextStep('PROPOSED', 'request') → "Review proposal".
+    expect(await screen.findByText(/Propose candidate/)).toBeInTheDocument();
+    expect(screen.getByText(/Review proposal/)).toBeInTheDocument();
   });
 
   it('navigates to assignment detail on row click', async () => {
