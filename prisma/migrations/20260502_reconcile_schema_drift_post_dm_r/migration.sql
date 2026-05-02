@@ -1,3 +1,10 @@
+-- AlterEnum: add code-referenced enum values that pre-existed in app
+-- code (project-pulse.service.ts) but were never added to the DB enum.
+-- Doing it here in the same forward-only reconcile pass.
+ALTER TYPE "AggregateType" ADD VALUE 'ProjectChangeRequest';
+ALTER TYPE "AggregateType" ADD VALUE 'ProjectMilestone';
+ALTER TYPE "AggregateType" ADD VALUE 'ProjectRadiatorOverride';
+
 -- DropForeignKey
 ALTER TABLE "AssignmentApproval" DROP CONSTRAINT "AssignmentApproval_assignmentId_fkey";
 
