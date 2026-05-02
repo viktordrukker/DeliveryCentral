@@ -720,17 +720,8 @@ async function seedSuperadmin(): Promise<void> {
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'DeliveryCentral@Admin1';
   const displayName = process.env.SEED_ADMIN_DISPLAY_NAME ?? 'System Administrator';
 
-  const existing = await prisma.localAccount.findUnique({ where: { email } });
-
-  if (existing) {
-     
-    console.log(`Superadmin account already exists: ${email}`);
-    return;
-  }
-
   const adminPersonId = '00000000-0000-0000-0000-000000000001';
 
-  // Create a Person record for the admin so they have a personId
   await prisma.person.upsert({
     where: { id: adminPersonId },
     create: {
@@ -741,13 +732,21 @@ async function seedSuperadmin(): Promise<void> {
       primaryEmail: email,
       employmentStatus: 'ACTIVE',
     },
-    update: {},
+    update: { primaryEmail: email },
   });
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.localAccount.create({
-    data: {
+  // Upsert by personId — handles three cases:
+  //  1. Fresh install: row doesn't exist, create it.
+  //  2. Re-seed with same email: existing row, update fields.
+  //  3. Wizard runs against a DB that already has an admin (different email)
+  //     tied to this personId — update to the wizard's chosen credentials.
+  // The previous email-only findUnique missed case 3 and tripped the
+  // unique-personId constraint when the operator picked a new email.
+  await prisma.localAccount.upsert({
+    where: { personId: adminPersonId },
+    create: {
       email,
       displayName,
       passwordHash,
@@ -758,9 +757,15 @@ async function seedSuperadmin(): Promise<void> {
       backupCodesHash: [],
       mustChangePw: false,
     },
+    update: {
+      email,
+      displayName,
+      passwordHash,
+      roles: ['admin'],
+    },
   });
 
-   
+
   console.log(`Superadmin seeded: ${email}`);
 }
 
