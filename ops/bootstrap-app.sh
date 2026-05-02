@@ -21,8 +21,12 @@
 #   - On fresh DBs: applies baseline schema + marks 92 migrations as applied
 #     (workaround for migration history bit-rot — DM-R-11 / repo memory)
 #   - Pulls GHCR images, brings up prod + staging app stacks
-#   - On empty DBs: runs the it-company seed
-#   - Installs daily backup cron, verifies health, prints summary
+#   - Installs daily backup cron, verifies health, prints the wizard URL
+#
+# Data seeding is handled by the in-app setup wizard at https://<domain>/setup
+# after the bootstrap completes. The wizard collects admin credentials, picks
+# an install profile (Demo / Quick-start preset / Full clean), and runs the
+# seed in-process against the running backend. See memory/project-setup-wizard.md.
 
 set -euo pipefail
 
@@ -395,37 +399,15 @@ docker restart dc-data-caddy-1 >/dev/null
 ok "caddy restarted to discover upstreams"
 
 # -----------------------------------------------------------------------------
-step "9/10  Seed it-company dataset (if DBs are empty)"
-
-# Wait for backend to become healthy before seeding (Prisma client startup).
-for project in dc-prod dc-staging; do
-    for i in $(seq 1 30); do
-        h=$(docker inspect "${project}-backend-1" --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-        [ "$h" = "healthy" ] && break
-        [ "$i" -eq 30 ] && die "${project}-backend never became healthy"
-        sleep 2
-    done
-done
-
-seed_if_empty() {
-    local container="$1" db="$2" label="$3"
-    local n
-    n=$(docker exec -e PGPASSWORD="$POSTGRES_SUPERUSER_PASSWORD" dc-data-postgres-1 \
-        psql -U postgres -d "$db" -tAc "SELECT count(*) FROM \"Person\"" 2>/dev/null || echo 0)
-    if [ "${n:-0}" -gt 0 ]; then
-        ok "$label already has $n persons — skipping seed"
-    else
-        echo "    -> seeding $label (this takes ~30s)"
-        docker exec -e SEED_PROFILE=it-company "$container" node dist/prisma/seed.js 2>&1 | tail -5 \
-            && ok "$label seeded"
-    fi
-}
-
-seed_if_empty dc-prod-backend-1    workload_tracking_prod    "dc-prod"
-seed_if_empty dc-staging-backend-1 workload_tracking_staging "dc-staging"
+# NOTE: data seeding is no longer the bootstrap's job. The first browser hit
+# to https://$PROD_DOMAIN/ (or /setup directly) lands on the in-app setup
+# wizard, which collects admin credentials, validates the schema, and runs
+# one of the install paths (Demo / Quick-start preset / Full clean) against
+# the running backend. Token is printed to `docker logs dc-prod-backend-1`
+# at first boot. See memory/project-setup-wizard.md for the design.
 
 # -----------------------------------------------------------------------------
-step "10/10  Backup cron + health verification"
+step "9/9   Backup cron + health verification"
 cp "$REPO_ROOT/ops/backup.sh" /opt/backups/backup.sh
 chmod +x /opt/backups/backup.sh
 ( crontab -l 2>/dev/null | grep -v 'deliverycentral-backup'; \
@@ -453,21 +435,17 @@ echo
 echo "  Production:  https://$PROD_DOMAIN"
 echo "  Staging:     https://$STAGING_DOMAIN"
 echo
-echo "  Admin login (PROD):"
-echo "    email:    $ADMIN_EMAIL"
-echo "    password: $PROD_ADMIN_PW"
+printf "${C_BOLD}  Next step: complete first-run setup via the in-app wizard.${C_OFF}\n"
 echo
-echo "  Admin login (STAGING):"
-echo "    email:    $ADMIN_EMAIL"
-echo "    password: $STAGING_ADMIN_PW"
+echo "  1. Browse to:        https://$PROD_DOMAIN/setup"
+echo "  2. Fetch the token:  docker logs dc-prod-backend-1 2>&1 | grep SETUP_TOKEN"
+echo "  3. Paste the token, walk the 8 wizard screens, pick an install path"
+echo "     (Demo / Quick-start preset / Full clean). Repeat at /setup on the"
+echo "     staging URL."
 echo
-echo "  Phase2 seed accounts (same passwords as docs):"
-echo "    director:        noah.bennett@example.com   / DirectorPass1!"
-echo "    hr_manager:      diana.walsh@example.com    / HrManagerPass1!"
-echo "    resource_mgr:    sophia.kim@example.com     / ResourceMgrPass1!"
-echo "    project_mgr:     lucas.reed@example.com     / ProjectMgrPass1!"
-echo "    delivery_mgr:    carlos.vega@example.com    / DeliveryMgrPass1!"
-echo "    employee:        ethan.brooks@example.com   / EmployeePass1!"
+echo "  The wizard collects admin credentials, validates the schema, applies"
+echo "  any pending migrations, and runs the chosen seed. See"
+echo "  memory/project-setup-wizard.md for the design and recovery flows."
 echo
 echo "  Monitor / Logs basic auth (when --profile monitoring is up):"
 echo "    user: admin"
@@ -477,7 +455,7 @@ echo
 echo "  Backups: /opt/backups/  (daily at 03:00 UTC, log: /var/log/dc-backup.log)"
 echo "  Restore drill: bash ops/restore-from-backup.sh --file /opt/backups/prod-<date>.sql.gz --target-db restore_test"
 echo
-warn "Save the admin + monitor passwords to a password manager NOW. They are also"
-warn "  in /opt/deliverycentral{,-staging,-data}/.env (chmod 600) but not anywhere else."
+warn "Save the monitor password to a password manager NOW. It's also in"
+warn "  /opt/deliverycentral-data/.env (chmod 600) but not anywhere else."
 echo
-printf "${C_GRN}${C_BOLD}First deploy complete.${C_OFF}\n"
+printf "${C_GRN}${C_BOLD}Bootstrap complete — open the wizard URL to finish setup.${C_OFF}\n"

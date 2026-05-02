@@ -31,23 +31,6 @@ on:
         required: false
         type: string
         default: ''
-      run_seed:
-        description: 'Run prisma seed after the prod deploy succeeds? WIPES every populated table.'
-        required: false
-        type: boolean
-        default: false
-      seed_profile:
-        description: 'Seed profile (only `it-company` is wired up; legacy profiles deleted DM-R-11).'
-        required: false
-        type: choice
-        options:
-          - it-company
-        default: it-company
-      seed_confirm:
-        description: 'Required when run_seed=true. Type WIPE-PROD-DB to confirm. Anything else aborts.'
-        required: false
-        type: string
-        default: ''
 
 concurrency:
   group: promote-to-prod
@@ -248,61 +231,12 @@ jobs:
             export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
             export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:$IMAGE_TAG
 
-            # DM-R-11 (2026-05-01): DM-R-21's DDL event trigger denies CREATE
-            # TYPE / CREATE TABLE for any session_user except postgres or
-            # app_migrator. Prod's default DATABASE_URL connects as
-            # `prod_user` (DML scope), so migrate fails on any new DDL.
-            # Build MIGRATE_DATABASE_URL using the postgres superuser (which
-            # the trigger explicitly allows) and let docker-compose pick it
-            # up via the `MIGRATE_DATABASE_URL` env var the migrate service
-            # already reads. Idempotent — overrides only the migrate side.
-            POSTGRES_SUPERUSER_PASSWORD=\$(grep '^POSTGRES_SUPERUSER_PASSWORD=' /opt/deliverycentral-data/.env | head -1 | cut -d= -f2- | tr -d '"')
-            if [ -n "\$POSTGRES_SUPERUSER_PASSWORD" ]; then
-              export MIGRATE_DATABASE_URL="postgresql://postgres:\$POSTGRES_SUPERUSER_PASSWORD@postgres:5432/workload_tracking_prod?schema=public"
-              echo "Using MIGRATE_DATABASE_URL=postgresql://postgres:***@postgres:5432/workload_tracking_prod (DM-R-21-compatible)"
-            else
-              echo "::warning::POSTGRES_SUPERUSER_PASSWORD not found in /opt/deliverycentral-data/.env — migrate will use the per-stack DATABASE_URL and will be denied DDL by DM-R-21."
-            fi
-
             docker compose -p dc-prod -f docker-compose.prod.yml pull
-
-            # DM-R-11 (2026-05-01): if a previous deploy left a migration in
-            # `_prisma_migrations` with `finished_at = NULL` (P3009 — failed
-            # state), Prisma refuses to apply any further migrations. Mark
-            # every such row as rolled-back so the next `migrate deploy`
-            # retries it. Idempotent on a healthy DB (no rows match).
-            FAILED_MIGRATIONS=\$(docker exec dc-data-postgres-1 psql -U postgres -d workload_tracking_prod -tAc \
-              "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NULL AND rolled_back_at IS NULL" 2>/dev/null || true)
-            if [ -n "\$FAILED_MIGRATIONS" ]; then
-              echo "::warning::Detected previously-failed migrations in _prisma_migrations:"
-              echo "\$FAILED_MIGRATIONS" | sed 's/^/  - /'
-              echo "Marking each as rolled-back so migrate deploy retries them."
-              echo "\$FAILED_MIGRATIONS" | while read -r m; do
-                [ -n "\$m" ] || continue
-                docker exec dc-data-postgres-1 psql -U postgres -d workload_tracking_prod -c \
-                  "UPDATE _prisma_migrations SET rolled_back_at = NOW() WHERE migration_name = '\$m' AND finished_at IS NULL"
-              done
-            fi
-
-            docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build migrate
-            # Read migrate container exit via `docker inspect` (compose-wait's
-            # stdout is the verbose 'container "X" exited with status code N'
-            # message, not a parseable integer; previous attempt at parsing
-            # stdout always tripped the failure branch even on exit=0). The
-            # `|| true` absorbs compose-wait's own non-zero so set -e doesn't
-            # kill the script before we can inspect.
-            #
-            # On non-zero, dump the migrate container's logs into the workflow
-            # output so the regression cause is visible without needing SSH.
-            docker compose -p dc-prod -f docker-compose.prod.yml wait migrate || true
-            MIGRATE_EXIT=\$(docker inspect dc-prod-migrate-1 --format '{{.State.ExitCode}}')
-            if [ "\$MIGRATE_EXIT" != "0" ]; then
-              echo "::group::migrate container logs (exit=\$MIGRATE_EXIT)"
-              docker compose -p dc-prod -f docker-compose.prod.yml logs --no-color --tail=400 migrate || true
-              echo "::endgroup::"
-              echo "::error::Migrate container exited with code \$MIGRATE_EXIT — see logs above"
-              exit 1
-            fi
+            # NOTE: migrations are NOT applied here. Routine deploys leave
+            # the schema alone; if the new image ships pending migrations,
+            # the admin's Pending-Migrations banner (Phase 7) surfaces them
+            # for one-click apply. Fresh installs run /setup wizard which
+            # applies migrations in-process via spawnSync.
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
 
@@ -348,56 +282,3 @@ jobs:
 
             echo "Promote $IMAGE_TAG successful"
           EOF
-
-      - name: Validate seed_confirm (when run_seed=true)
-        if: inputs.run_seed == true
-        env:
-          CONFIRM: ${{ inputs.seed_confirm }}
-        run: |
-          if [ "$CONFIRM" != "WIPE-PROD-DB" ]; then
-            echo "::error::run_seed=true but seed_confirm did not equal the literal 'WIPE-PROD-DB'. Aborting before any data is touched."
-            exit 1
-          fi
-          echo "seed_confirm OK — proceeding to seed."
-
-      - name: Run prisma seed on production (if requested)
-        # Consolidated: a single workflow_dispatch with run_seed=true deploys
-        # AND seeds under one production environment approval. The deploy is
-        # already green at this point (health check above passed); this step
-        # only runs after that, so a partial seed cannot prevent the new
-        # image from being live.
-        if: inputs.run_seed == true
-        env:
-          PROD_HOST: ${{ secrets.VPS_HOST }}
-          PROD_DOMAIN: ${{ secrets.CADDY_DOMAIN }}
-          SEED_PROFILE: ${{ inputs.seed_profile }}
-        run: |
-          ssh -o StrictHostKeyChecking=accept-new -l deploy "$PROD_HOST" bash <<EOF
-            set -e
-            cd /opt/deliverycentral
-
-            # Inject seed sources into the running container (production
-            # image strips them — only schema.prisma + migrations are baked).
-            docker exec dc-prod-backend-1 rm -rf /app/prisma/seeds
-            docker exec dc-prod-backend-1 mkdir -p /app/prisma/seeds
-            docker cp tsconfig.json dc-prod-backend-1:/app/tsconfig.json
-            docker cp prisma/seed.ts dc-prod-backend-1:/app/prisma/seed.ts
-            for f in prisma/seeds/*.ts prisma/seeds/README.md; do
-              [ -f "\$f" ] && docker cp "\$f" "dc-prod-backend-1:/app/prisma/seeds/\$(basename \$f)"
-            done
-
-            docker compose -p dc-prod -f docker-compose.prod.yml exec -T \
-              -e HOME=/tmp \
-              -e NODE_ENV=development \
-              -e SEED_PROFILE=$SEED_PROFILE \
-              backend sh -c '
-                set -e
-                cd /app
-                npm install --no-save --no-audit ts-node@10 typescript@5 >/dev/null 2>&1
-                NODE_ENV=production node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
-              '
-          EOF
-
-          curl -sf "https://$PROD_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
-            || { echo "::error::deep health failed after seed"; exit 1; }
-          echo "::notice title=Prod seed complete::profile=${{ inputs.seed_profile }}"
