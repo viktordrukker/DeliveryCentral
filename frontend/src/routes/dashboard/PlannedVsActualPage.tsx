@@ -432,6 +432,7 @@ export function PlannedVsActualPage(): JSX.Element {
           {/* ── WHAT NEEDS ATTENTION ── */}
           <SectionCard title={`What Needs Attention (${actionItems.length})`}>
             <DataView<PvaActionItem>
+              testId="action-data-table"
               columns={actionCols}
               rows={filteredActionItems}
               getRowKey={(item) => item.id}

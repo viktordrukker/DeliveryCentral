@@ -23,6 +23,7 @@ export function TabBar({ activeTab, onTabChange, tabs }: TabBarProps): JSX.Eleme
           onClick={() => onTabChange(tab.id)}
           role="tab"
           type="button"
+          data-testid={`tab-${tab.id}`}
         >
           {tab.label}
         </Button>
