@@ -7,6 +7,7 @@ import { DrilldownProvider } from '@/app/drilldown-context';
 import { TitleBarProvider, useTitleBarActions } from '@/app/title-bar-context';
 import { CommandPalette, RecentPage } from '@/components/common/CommandPalette';
 import { TipsProvider } from '@/components/common/TipBalloon';
+import { PendingMigrationsBanner } from '@/components/system/PendingMigrationsBanner';
 import { DrilldownBar } from './DrilldownBar';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { PageTitleBar } from './PageTitleBar';
@@ -202,6 +203,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
         </nav>
       </aside>
       <div className="app-shell__main">
+        <PendingMigrationsBanner />
         <ImpersonationBanner />
         <div className="app-shell__topbar">
           <button

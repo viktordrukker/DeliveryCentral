@@ -7,6 +7,7 @@ import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-
 import { DiagnosticBundleService } from './application/diagnostic-bundle.service';
 import { MonitoringSnippetService } from './application/monitoring-snippet.service';
 import { PreflightChecksService } from './application/preflight-checks';
+import { SystemStateService } from './application/system-state.service';
 import { SetupLoggerService } from './application/setup-logger.service';
 import { SetupService } from './application/setup.service';
 import { SetupTokenGuard } from './application/setup-guard';
@@ -17,10 +18,11 @@ import { ApplyInfrastructureSeedsRunner } from './application/seed-runners/apply
 import { SETUP_RUNS_REPOSITORY } from './application/tokens';
 import { PrismaSetupRunsRepository } from './infrastructure/prisma-setup-runs.repository';
 import { SetupController } from './presentation/setup.controller';
+import { AdminSystemController, SystemController } from './presentation/system.controller';
 
 @Module({
   imports: [PrismaModule, AppConfigModule, PlatformSettingsModule],
-  controllers: [SetupController],
+  controllers: [SetupController, SystemController, AdminSystemController],
   providers: [
     SetupService,
     SetupTokenService,
@@ -29,6 +31,7 @@ import { SetupController } from './presentation/setup.controller';
     PreflightChecksService,
     DiagnosticBundleService,
     MonitoringSnippetService,
+    SystemStateService,
     ApplyInfrastructureSeedsRunner,
     ApplyDemoSeedsRunner,
     ApplyAdminOnlySeedsRunner,
@@ -37,6 +40,6 @@ import { SetupController } from './presentation/setup.controller';
       useClass: PrismaSetupRunsRepository,
     },
   ],
-  exports: [SetupService, SetupTokenService],
+  exports: [SetupService, SetupTokenService, SystemStateService],
 })
 export class SetupModule {}

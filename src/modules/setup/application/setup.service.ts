@@ -17,6 +17,7 @@ import { PreflightChecksService, type PreflightResult } from './preflight-checks
 import { RequireSetupCompleteGuard } from './require-setup-complete.guard';
 import { SetupLoggerService } from './setup-logger.service';
 import { SetupTokenService } from './setup-token.service';
+import { SystemStateService } from './system-state.service';
 import { ApplyAdminOnlySeedsRunner } from './seed-runners/apply-admin-only-seeds';
 import { ApplyDemoSeedsRunner } from './seed-runners/apply-demo-seeds';
 import { ApplyInfrastructureSeedsRunner } from './seed-runners/apply-infrastructure-seeds';
@@ -82,6 +83,7 @@ export class SetupService {
     private readonly infraRunner: ApplyInfrastructureSeedsRunner,
     private readonly demoRunner: ApplyDemoSeedsRunner,
     private readonly adminRunner: ApplyAdminOnlySeedsRunner,
+    private readonly systemState: SystemStateService,
     @Inject(SETUP_RUNS_REPOSITORY) private readonly repo: SetupRunsRepositoryPort,
   ) {}
 
@@ -180,6 +182,7 @@ export class SetupService {
           await this.tryAutoFixSchemaDiff(runId, targetClient);
 
           await this.markStepCompleted(runId, 'migrations', {});
+          await this.systemState.refresh();
         } finally {
           await targetClient.$disconnect();
           await clusterClient.$disconnect();

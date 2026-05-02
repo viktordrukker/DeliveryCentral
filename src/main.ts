@@ -8,6 +8,7 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 import { PrismaService } from './shared/persistence/prisma.service';
 import { SetupTokenService } from './modules/setup/application/setup-token.service';
+import { SystemStateService } from './modules/setup/application/system-state.service';
 import { AppConfig } from './shared/config/app-config';
 import { StructuredLoggerService } from './shared/observability/logger.service';
 
@@ -167,6 +168,22 @@ async function initialiseSetupWizard(
           'warn',
         );
       }
+    }
+
+    // 3. Pending-migration probe (Phase 7). Populates SystemStateService so
+    //    the admin shell can render the "N migrations are pending" banner.
+    //    Non-blocking — the app keeps serving even with pending migrations
+    //    (those endpoints that depend on the new schema will fail per-call).
+    try {
+      const stateService = app.get(SystemStateService);
+      await stateService.refresh();
+    } catch (err) {
+      log(
+        `System-state probe failed (assuming healthy): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+        'warn',
+      );
     }
   } catch (err) {
     log(
