@@ -77,7 +77,13 @@ async function requestJson<TResponse>(
     },
   });
 
-  if (response.status === 401 && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
+  if (
+    response.status === 401 &&
+    !path.includes('/auth/refresh') &&
+    !path.includes('/auth/login') &&
+    !path.startsWith('/setup/') &&
+    !path.startsWith('/setup?')
+  ) {
     const newToken = await attemptTokenRefresh();
 
     if (newToken) {

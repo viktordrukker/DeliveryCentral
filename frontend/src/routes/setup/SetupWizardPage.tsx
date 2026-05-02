@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, LinearProgress, Stack, Step, StepLabel, Stepper, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, LinearProgress, Stack, Step, StepLabel, Stepper, Typography } from '@mui/material';
 
 import { DiagnosticBundleButton } from './components/DiagnosticBundleButton';
 import { AdminAccountScreen } from './screens/AdminAccountScreen';
@@ -62,11 +62,24 @@ export function SetupWizardPage(): JSX.Element {
               backgroundColor: 'background.default',
             }}
           >
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1} flexWrap="wrap" gap={1}>
               <Typography variant="overline" color="text.secondary">
                 DeliveryCentral install wizard
               </Typography>
-              <DiagnosticBundleButton token={state.token} runId={state.runId} />
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                {state.screen !== 'token-prompt' && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="inherit"
+                    onClick={wiz.reset}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Change token
+                  </Button>
+                )}
+                <DiagnosticBundleButton token={state.token} runId={state.runId} />
+              </Stack>
             </Stack>
             {state.screen !== 'token-prompt' && (
               <Stepper activeStep={Math.max(0, activeIndex)} alternativeLabel sx={{ mt: 1 }}>
