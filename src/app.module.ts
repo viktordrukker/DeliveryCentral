@@ -25,6 +25,8 @@ import { PlatformSettingsModule } from './modules/platform-settings/platform-set
 import { PulseModule } from './modules/pulse/pulse.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SetupModule } from './modules/setup/setup.module';
+import { RequireSetupCompleteGuard } from './modules/setup/application/require-setup-complete.guard';
 import { StaffingDeskModule } from './modules/staffing-desk/staffing-desk.module';
 import { StaffingRequestsModule } from './modules/staffing-requests/staffing-requests.module';
 import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.module';
@@ -71,8 +73,12 @@ import { PublicIdModule } from './infrastructure/public-id';
     LeaveRequestsModule,
     OvertimeModule,
     ReportsModule,
+    SetupModule,
   ],
   providers: [
+    // Order matters: setup-complete check first so a fresh install funnels
+    // straight to /setup before any auth or rate-limit logic kicks in.
+    { provide: APP_GUARD, useClass: RequireSetupCompleteGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

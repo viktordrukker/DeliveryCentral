@@ -331,30 +331,23 @@ When changing any design pattern, component API, page grammar, token, or CSS cla
 
 ---
 
-## 10. Seed Data Reference
+## 10. Setup wizard + seed reference
+
+The canonical install path is the in-app **Setup Wizard** at `https://<host>/setup`. Operators stand up a fresh deployment, hit the URL, paste the one-time setup token from `docker logs`, and walk through 8 screens (preflight → migrations → tenant → admin → integrations → monitoring → seed → complete). The wizard handles `CREATE DATABASE` / migration application / schema-diff auto-fix / seeding, with verbose logs and a single-click diagnostic bundle. See `memory/project-setup-wizard.md` for the design rationale.
 
 `it-company` is the **only** seed profile (200 people / 40 projects / 5-year history). Legacy profiles (`demo`, `phase2`, `life-demo`, `investor-demo`, `realistic`/`enterprise`) were retired with the DM-R-11 closure because their datasets pre-dated several schema additions and would have produced rows missing fields the runtime now requires. The `prisma/seeds/demo-dataset.ts` file still exists because in-memory test fixtures depend on it, but it is **no longer a seed-time profile**.
 
-### Pipelines (consolidated since 2026-05-01)
+### Pipelines
 
-Two workflows handle every environment-touching action end-to-end. Each is one dispatch, no mid-flow approvals.
+Build + deploy is the only thing CI/CD does. **Migrations + seed live in the wizard** (or, post-setup, in the admin "Apply migrations" banner — Phase 7). New deployments arm the wizard via `CLEAN_INSTALL=true` in the env file; routine deploys leave existing data alone and surface a banner to admins when a new image ships pending migrations.
 
 ```bash
-# Staging — build, deploy, and (optionally) seed in one shot.
-# Auto-fires on push to main with run_seed=false. For a fresh seed:
-gh workflow run build-and-stage.yml -f run_seed=true -f seed_profile=it-company
+# Push to main → auto build + deploy to staging.
+git push origin main
 
-# Production — promote a previously-built tag, deploy, and (optionally) seed.
-# Single Required Reviewers gate at the `production` environment covers
-# both deploy and seed. Add seed_confirm only when seeding.
-gh workflow run promote-to-prod.yml \
-  -f image_tag=<7-char-sha> \
-  -f run_seed=true \
-  -f seed_profile=it-company \
-  -f seed_confirm=WIPE-PROD-DB
+# Promote a previously-built tag to prod.
+gh workflow run promote-to-prod.yml -f image_tag=<7-char-sha>
 ```
-
-The legacy `staging-seed.yml` and `prod-seed.yml` workflows were removed on 2026-05-01 — `build-and-stage.yml` and `promote-to-prod.yml` now own the full pipeline.
 
 ### Dev path
 

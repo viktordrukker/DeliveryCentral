@@ -1472,6 +1472,63 @@ model PlatformSetting {
 }
 
 // =============================================================================
+// In-app first-run setup wizard
+// =============================================================================
+
+enum SetupRunStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
+
+enum SetupRunLogLevel {
+  TRACE
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+model SetupRun {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String          @map("run_id") @db.Uuid
+  stepKey         String          @map("step_key")
+  status          SetupRunStatus  @default(PENDING)
+  startedAt       DateTime?       @map("started_at") @db.Timestamptz(3)
+  finishedAt      DateTime?       @map("finished_at") @db.Timestamptz(3)
+  errorPayload    Json?           @map("error_payload")
+  actorId         String?         @map("actor_id") @db.Uuid
+  payloadRedacted Json?           @map("payload_redacted")
+  version         Int             @default(1)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([runId, stepKey])
+  @@index([runId])
+  @@index([status, startedAt])
+  @@map("setup_runs")
+}
+
+model SetupRunLog {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String           @map("run_id") @db.Uuid
+  stepKey         String           @map("step_key")
+  sequence        Int
+  level           SetupRunLogLevel @default(INFO)
+  event           String
+  payloadRedacted Json?            @map("payload_redacted")
+  durationMs      Int?             @map("duration_ms")
+  occurredAt      DateTime         @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([runId, sequence])
+  @@index([runId, stepKey])
+  @@index([level, occurredAt])
+  @@map("setup_run_logs")
+}
+
+// =============================================================================
 // Skills Registry
 // =============================================================================
 

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { SetupResetSection } from './SetupResetSection';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
@@ -191,6 +192,7 @@ export function SettingsPage(): JSX.Element {
 
       {!isLoading && !loadError && settings ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <SetupResetSection />
           {SECTIONS.map((section) => (
             <SettingsSection
               key={section.id}
