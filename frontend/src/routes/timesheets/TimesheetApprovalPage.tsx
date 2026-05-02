@@ -356,6 +356,7 @@ function TimesheetReadOnlyGrid({ week }: { week: TimesheetWeek }): JSX.Element {
     <div className="timesheet-readonly-grid">
       <Table
         variant="compact"
+        caption="Timesheet detail"
         columns={[
           { key: 'project', title: 'Project', getValue: (id) => id, render: (id) => id },
           ...weekDays.map((date, i) => ({
