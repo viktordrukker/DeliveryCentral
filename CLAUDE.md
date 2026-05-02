@@ -333,24 +333,37 @@ When changing any design pattern, component API, page grammar, token, or CSS cla
 
 ## 10. Seed Data Reference
 
-The `it-company` profile is the canonical scenario (200 people / 40 projects / 5-year history) and the default for every environment. The 5 supported profiles are: `it-company`, `phase2`, `demo`, `life-demo`, `investor-demo` (full table in `prisma/seed.ts`).
+`it-company` is the **only** seed profile (200 people / 40 projects / 5-year history). Legacy profiles (`demo`, `phase2`, `life-demo`, `investor-demo`, `realistic`/`enterprise`) were retired with the DM-R-11 closure because their datasets pre-dated several schema additions and would have produced rows missing fields the runtime now requires. The `prisma/seeds/demo-dataset.ts` file still exists because in-memory test fixtures depend on it, but it is **no longer a seed-time profile**.
 
-### One-liner per environment
+### Pipelines (consolidated since 2026-05-01)
+
+Two workflows handle every environment-touching action end-to-end. Each is one dispatch, no mid-flow approvals.
 
 ```bash
-# Dev — direct, no auth gate.
-docker compose exec -e SEED_PROFILE=it-company backend \
-  sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"
+# Staging — build, deploy, and (optionally) seed in one shot.
+# Auto-fires on push to main with run_seed=false. For a fresh seed:
+gh workflow run build-and-stage.yml -f run_seed=true -f seed_profile=it-company
 
-# Staging — Github Actions, gated by Required Reviewers on the `staging` env.
-gh workflow run staging-seed.yml -f profile=it-company
-
-# Production — Github Actions, gated by Required Reviewers on `production`
-# AND a literal confirm string. WIPES every populated table.
-gh workflow run prod-seed.yml -f profile=it-company -f confirm=WIPE-PROD-DB
+# Production — promote a previously-built tag, deploy, and (optionally) seed.
+# Single Required Reviewers gate at the `production` environment covers
+# both deploy and seed. Add seed_confirm only when seeding.
+gh workflow run promote-to-prod.yml \
+  -f image_tag=<7-char-sha> \
+  -f run_seed=true \
+  -f seed_profile=it-company \
+  -f seed_confirm=WIPE-PROD-DB
 ```
 
-After staging/prod seed, the workflow itself hits `/api/health/deep` and asserts `"status":"ready"`; the run fails if it isn't.
+The legacy `staging-seed.yml` and `prod-seed.yml` workflows were removed on 2026-05-01 — `build-and-stage.yml` and `promote-to-prod.yml` now own the full pipeline.
+
+### Dev path
+
+```bash
+docker compose exec -e SEED_PROFILE=it-company backend \
+  sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"
+```
+
+After every staging/prod seed, the workflow hits `/api/health/deep` and asserts `"status":"ready"`; the run fails if it isn't. See `/memory/project-seeding-flow.md` for why the pipeline is shaped this way.
 
 ### IT-Company test accounts (default profile)
 
@@ -400,4 +413,4 @@ Phase2 retains its legacy `*@example.com` accounts (same passwords). Other profi
 | `frontend/src/routes/dashboard/DashboardPage.tsx` | **Canonical dashboard reference** (Workload Overview) |
 | `src/modules/identity-access/application/` | RBAC guard, roles decorator, self-scope decorator |
 | `prisma/schema.prisma` | DB schema (53 models) |
-| `prisma/seed.ts` | Seed script (5 profiles: demo, phase2, life-demo, investor-demo, it-company — `it-company` is the default) |
+| `prisma/seed.ts` | Seed script (sole profile: `it-company`; legacy profiles deleted DM-R-11 closure) |

@@ -31,6 +31,23 @@ on:
         required: false
         type: string
         default: ''
+      run_seed:
+        description: 'Run prisma seed after the prod deploy succeeds? WIPES every populated table.'
+        required: false
+        type: boolean
+        default: false
+      seed_profile:
+        description: 'Seed profile (only `it-company` is wired up; legacy profiles deleted DM-R-11).'
+        required: false
+        type: choice
+        options:
+          - it-company
+        default: it-company
+      seed_confirm:
+        description: 'Required when run_seed=true. Type WIPE-PROD-DB to confirm. Anything else aborts.'
+        required: false
+        type: string
+        default: ''
 
 concurrency:
   group: promote-to-prod
@@ -331,3 +348,56 @@ jobs:
 
             echo "Promote $IMAGE_TAG successful"
           EOF
+
+      - name: Validate seed_confirm (when run_seed=true)
+        if: inputs.run_seed == true
+        env:
+          CONFIRM: ${{ inputs.seed_confirm }}
+        run: |
+          if [ "$CONFIRM" != "WIPE-PROD-DB" ]; then
+            echo "::error::run_seed=true but seed_confirm did not equal the literal 'WIPE-PROD-DB'. Aborting before any data is touched."
+            exit 1
+          fi
+          echo "seed_confirm OK — proceeding to seed."
+
+      - name: Run prisma seed on production (if requested)
+        # Consolidated: a single workflow_dispatch with run_seed=true deploys
+        # AND seeds under one production environment approval. The deploy is
+        # already green at this point (health check above passed); this step
+        # only runs after that, so a partial seed cannot prevent the new
+        # image from being live.
+        if: inputs.run_seed == true
+        env:
+          PROD_HOST: ${{ secrets.VPS_HOST }}
+          PROD_DOMAIN: ${{ secrets.CADDY_DOMAIN }}
+          SEED_PROFILE: ${{ inputs.seed_profile }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$PROD_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral
+
+            # Inject seed sources into the running container (production
+            # image strips them — only schema.prisma + migrations are baked).
+            docker exec dc-prod-backend-1 rm -rf /app/prisma/seeds
+            docker exec dc-prod-backend-1 mkdir -p /app/prisma/seeds
+            docker cp tsconfig.json dc-prod-backend-1:/app/tsconfig.json
+            docker cp prisma/seed.ts dc-prod-backend-1:/app/prisma/seed.ts
+            for f in prisma/seeds/*.ts prisma/seeds/README.md; do
+              [ -f "\$f" ] && docker cp "\$f" "dc-prod-backend-1:/app/prisma/seeds/\$(basename \$f)"
+            done
+
+            docker compose -p dc-prod -f docker-compose.prod.yml exec -T \
+              -e HOME=/tmp \
+              -e NODE_ENV=development \
+              -e SEED_PROFILE=$SEED_PROFILE \
+              backend sh -c '
+                set -e
+                cd /app
+                npm install --no-save --no-audit ts-node@10 typescript@5 >/dev/null 2>&1
+                NODE_ENV=production node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
+              '
+          EOF
+
+          curl -sf "https://$PROD_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
+            || { echo "::error::deep health failed after seed"; exit 1; }
+          echo "::notice title=Prod seed complete::profile=${{ inputs.seed_profile }}"

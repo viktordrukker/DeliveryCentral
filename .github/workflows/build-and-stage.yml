@@ -20,7 +20,20 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      run_seed:
+        description: 'Run prisma seed after deploy?'
+        required: false
+        type: boolean
+        default: false
+      seed_profile:
+        description: 'Seed profile (only `it-company` is wired up; legacy profiles deleted DM-R-11).'
+        required: false
+        type: choice
+        options:
+          - it-company
+        default: it-company
 
 concurrency:
   group: build-and-stage-${{ github.ref }}
@@ -187,6 +200,46 @@ jobs:
             echo "$IMAGE_TAG" > /opt/deliverycentral-staging/.staging-tag
             date -u +%FT%TZ  > /opt/deliverycentral-staging/.staging-tag-deployed-at
           EOF
+
+      - name: Run prisma seed on staging (if requested)
+        # Consolidated: a single workflow_dispatch with `run_seed=true` builds,
+        # deploys, AND seeds without an intermediate approval. Push triggers
+        # never seed (auto-promote should not wipe data).
+        if: github.event_name == 'workflow_dispatch' && inputs.run_seed == true
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_CADDY_DOMAIN }}
+          SEED_PROFILE: ${{ inputs.seed_profile }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral-staging
+
+            # Inject seed sources into the running container (production image
+            # bakes only what runtime needs; seed.ts + seeds/* are stripped).
+            docker exec dc-staging-backend-1 rm -rf /app/prisma/seeds
+            docker exec dc-staging-backend-1 mkdir -p /app/prisma/seeds
+            docker cp tsconfig.json dc-staging-backend-1:/app/tsconfig.json
+            docker cp prisma/seed.ts dc-staging-backend-1:/app/prisma/seed.ts
+            for f in prisma/seeds/*.ts prisma/seeds/README.md; do
+              [ -f "\$f" ] && docker cp "\$f" "dc-staging-backend-1:/app/prisma/seeds/\$(basename \$f)"
+            done
+
+            docker compose -p dc-staging -f docker-compose.prod.yml exec -T \
+              -e HOME=/tmp \
+              -e NODE_ENV=development \
+              -e SEED_PROFILE=$SEED_PROFILE \
+              backend sh -c '
+                set -e
+                cd /app
+                npm install --no-save --no-audit ts-node@10 typescript@5 >/dev/null 2>&1
+                NODE_ENV=production node_modules/.bin/ts-node --transpile-only --project tsconfig.json prisma/seed.ts
+              '
+          EOF
+
+          curl -sf "https://$STAGING_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
+            || { echo "::error::deep health failed after seed"; exit 1; }
+          echo "::notice title=Staging seed complete::profile=${{ inputs.seed_profile }}"
 
       - name: Staging deploy summary
         run: |
