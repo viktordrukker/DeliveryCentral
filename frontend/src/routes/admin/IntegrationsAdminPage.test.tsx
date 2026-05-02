@@ -80,7 +80,10 @@ describe('IntegrationsAdminPage', () => {
     renderWithRouter();
 
     await screen.findByText('Integrations');
-    await user.click(screen.getByRole('button', { name: 'Trigger sync' }));
+    // useIntegrationAdmin starts with selectedProvider=null; the Trigger
+    // sync action only renders once a provider is picked. Pick JIRA first.
+    await user.click(screen.getByRole('button', { name: /JIRA/i }));
+    await user.click(await screen.findByRole('button', { name: 'Trigger sync' }));
 
     await waitFor(() => {
       expect(mockedTriggerAdminJiraSync).toHaveBeenCalled();

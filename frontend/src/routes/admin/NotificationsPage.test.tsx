@@ -94,7 +94,9 @@ describe('NotificationsPage', () => {
     const user = userEvent.setup();
     renderWithRouter();
 
-    await screen.findByText('Notification Templates');
+    // The page header renders before the templates+SendTestPanel load. Wait
+    // for the Send Test card itself before interacting with its inputs.
+    await screen.findByRole('heading', { name: 'Send Test' });
 
     await user.clear(screen.getByLabelText('Recipient'));
     await user.type(screen.getByLabelText('Recipient'), 'teams-channel-alias');
