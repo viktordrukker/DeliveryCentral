@@ -47,22 +47,33 @@ describe('AssignmentDetailsPage', () => {
     mockedTransitionAssignment.mockReset();
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // SectionCard persists collapse state in localStorage; reset between
+    // tests so each one starts with collapsible sections defaultCollapsed.
+    window.localStorage.clear();
   });
 
   it('renders dynamic transition buttons for the current status', async () => {
     mockedFetchAssignmentById.mockResolvedValue(buildAssignmentDetails());
 
+    const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
-    // PROPOSED is a legacy pre-BOOKED state — the page surfaces it via the
-    // AssignmentInconsistencyBanner (WO-1 reshape removed PROPOSED from the
-    // visible workflow stages) and exposes Book, Reject, Cancel transitions
-    // to project_manager via AssignmentWorkflowActions.
-    expect(await screen.findByText(/Legacy workflow assignment/i)).toBeInTheDocument();
+    // PROPOSED is a legacy pre-BOOKED state. The page surfaces it twice:
+    // (a) AssignmentInconsistencyBanner with role="status",
+    // (b) the nextStep card whose title reads "Legacy workflow assignment".
+    // Use findAllByText to accept both matches; the banner is the canonical signal.
+    const legacyMatches = await screen.findAllByText(/Legacy workflow assignment/i);
+    expect(legacyMatches.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Lifecycle History')).toBeInTheDocument();
+
+    // Transition buttons live inside <SectionCard collapsible defaultCollapsed
+    // title="All workflow actions"> — expand it before the assertions.
+    for (const btn of screen.getAllByRole('button', { name: 'Expand section' })) {
+      await user.click(btn);
+    }
     expect(screen.getByTestId('transition-booked')).toBeInTheDocument();
     expect(screen.getByTestId('transition-rejected')).toBeInTheDocument();
     expect(screen.getByTestId('transition-cancelled')).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle History')).toBeInTheDocument();
   });
 
   it('runs book transition and revalidates', async () => {
@@ -98,6 +109,11 @@ describe('AssignmentDetailsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
+    // Expand "All workflow actions" so transition-* testids are in the DOM.
+    await screen.findByText('Lifecycle History');
+    for (const btn of screen.getAllByRole('button', { name: 'Expand section' })) {
+      await user.click(btn);
+    }
     await user.click(await screen.findByTestId('transition-booked'));
     const bookDialog = await screen.findByRole('dialog');
     await user.click(within(bookDialog).getByRole('button', { name: 'Book' }));
@@ -147,6 +163,10 @@ describe('AssignmentDetailsPage', () => {
     const user = userEvent.setup();
     renderWithRouter('/assignments/asn-1');
 
+    await screen.findByText('Lifecycle History');
+    for (const btn of screen.getAllByRole('button', { name: 'Expand section' })) {
+      await user.click(btn);
+    }
     await user.click(await screen.findByTestId('transition-rejected'));
     const rejectDialog = await screen.findByRole('dialog');
     await user.type(within(rejectDialog).getByLabelText('Reason'), 'Capacity unavailable.');
@@ -195,7 +215,11 @@ describe('AssignmentDetailsPage', () => {
     // change-reason from history is rendered inside the Lifecycle History
     // section, which is collapsible+defaultCollapsed; expand it first.
     const user = userEvent.setup();
-    expect(await screen.findByText('Completed')).toBeInTheDocument();
+    // The "Completed" stage label appears under the WorkflowStages list with
+    // data-stage-status="done". Use that as the unique anchor — multiple
+    // generic matches exist (next-step copy, history snapshot strings).
+    const completedStage = await screen.findByLabelText(/Stage \d: Completed \(done\)/);
+    expect(completedStage).toBeInTheDocument();
     expect(screen.queryByTestId('transition-booked')).not.toBeInTheDocument();
     expect(screen.queryByTestId('transition-rejected')).not.toBeInTheDocument();
     expect(screen.queryByTestId('transition-cancelled')).not.toBeInTheDocument();
