@@ -108,7 +108,7 @@ export class SetupService {
     const active = await this.repo.findActiveRun();
     return {
       required: true,
-      tokenRequired: !this.token.isActive() ? true : true,
+      tokenRequired: !this.token.isActive(),
       runId: active?.runId ?? null,
       nextStep: active?.latestStep ?? null,
       completedAt: null,
