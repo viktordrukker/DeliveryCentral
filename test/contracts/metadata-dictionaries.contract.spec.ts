@@ -26,6 +26,12 @@ describe('metadata dictionary API contract', () => {
               count: async () => 0,
               findMany: async () => [],
             },
+            // assignment-sla-sweep.service.onModuleInit calls
+            // loadIntervalMs() which reads platformSetting at app boot.
+            platformSetting: {
+              findUnique: async () => null,
+              findMany: async () => [],
+            },
           }),
         ),
     );

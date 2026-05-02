@@ -54,8 +54,11 @@ describe('AssignmentDetailsPage', () => {
 
     renderWithRouter('/assignments/asn-1');
 
-    // PROPOSED state → Book, Reject, Cancel are available to project_manager
-    expect((await screen.findAllByText('PROPOSED')).length).toBeGreaterThan(0);
+    // PROPOSED is a legacy pre-BOOKED state — the page surfaces it via the
+    // AssignmentInconsistencyBanner (WO-1 reshape removed PROPOSED from the
+    // visible workflow stages) and exposes Book, Reject, Cancel transitions
+    // to project_manager via AssignmentWorkflowActions.
+    expect(await screen.findByText(/Legacy workflow assignment/i)).toBeInTheDocument();
     expect(screen.getByTestId('transition-booked')).toBeInTheDocument();
     expect(screen.getByTestId('transition-rejected')).toBeInTheDocument();
     expect(screen.getByTestId('transition-cancelled')).toBeInTheDocument();
@@ -106,7 +109,9 @@ describe('AssignmentDetailsPage', () => {
     });
 
     expect(await screen.findByText(/Assignment moved to booked\./)).toBeInTheDocument();
-    expect(screen.getAllByText('BOOKED').length).toBeGreaterThan(0);
+    // After the transition the page shows the BOOKED workflow stage active.
+    // The legacy banner is gone since BOOKED isn't in the legacy pre-booked set.
+    expect(screen.queryByText(/Legacy workflow assignment/i)).not.toBeInTheDocument();
   });
 
   it('runs reject transition with a required reason', async () => {
@@ -154,7 +159,9 @@ describe('AssignmentDetailsPage', () => {
     });
 
     expect(await screen.findByText(/Assignment moved to rejected\./)).toBeInTheDocument();
-    expect(screen.getAllByText('REJECTED').length).toBeGreaterThan(0);
+    // REJECTED is a terminal state — the page no longer offers transitions.
+    expect(screen.queryByTestId('transition-booked')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('transition-rejected')).not.toBeInTheDocument();
   });
 
   it('renders completed history and no further transitions when completed', async () => {
@@ -182,10 +189,21 @@ describe('AssignmentDetailsPage', () => {
 
     renderWithRouter('/assignments/asn-1');
 
-    expect((await screen.findAllByText('COMPLETED')).length).toBeGreaterThan(0);
+    // COMPLETED is a terminal state. The page renders the WorkflowStages with
+    // every stage marked 'done' (Booked / Onboarding / Assigned / Completed
+    // are visible labels), and no transition buttons are offered. The
+    // change-reason from history is rendered inside the Lifecycle History
+    // section, which is collapsible+defaultCollapsed; expand it first.
+    const user = userEvent.setup();
+    expect(await screen.findByText('Completed')).toBeInTheDocument();
     expect(screen.queryByTestId('transition-booked')).not.toBeInTheDocument();
     expect(screen.queryByTestId('transition-rejected')).not.toBeInTheDocument();
     expect(screen.queryByTestId('transition-cancelled')).not.toBeInTheDocument();
+    // Two collapsible sections start collapsed: "All workflow actions" and
+    // "Lifecycle History". Expand both — order is layout, not domain critical.
+    for (const btn of screen.getAllByRole('button', { name: 'Expand section' })) {
+      await user.click(btn);
+    }
     expect(screen.getAllByText('Rolled off cleanly.').length).toBeGreaterThan(0);
   });
 });

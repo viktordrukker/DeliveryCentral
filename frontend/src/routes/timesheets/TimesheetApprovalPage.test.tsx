@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -129,20 +129,15 @@ describe('TimesheetApprovalPage', () => {
     await screen.findByTestId('timesheet-approval-page');
 
     // Click the Reject button in the table row
-    const rejectButtons = screen.getAllByRole('button', { name: 'Reject' });
-    await user.click(rejectButtons[0]);
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
 
-    // Wait for dialog to appear
-    expect(await screen.findByText('Reject Timesheet')).toBeInTheDocument();
+    // Scope all subsequent queries to the dialog so we can't accidentally
+    // grab the row's Reject button after the dialog opens.
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Reject Timesheet')).toBeInTheDocument();
 
-    // Type reason in the textarea (labeled "Reason")
-    const reasonInput = screen.getByRole('textbox', { name: 'Reason' });
-    await user.type(reasonInput, 'Missing project code');
-
-    // Click the dialog's confirm button (Reject label)
-    const dialogRejectBtn = screen.getAllByRole('button', { name: 'Reject' });
-    // The dialog confirm button should now be enabled
-    await user.click(dialogRejectBtn[dialogRejectBtn.length - 1]);
+    await user.type(within(dialog).getByRole('textbox', { name: 'Reason' }), 'Missing project code');
+    await user.click(within(dialog).getByRole('button', { name: 'Reject' }));
 
     await waitFor(() => {
       expect(mockedRejectTimesheet).toHaveBeenCalledWith('week-1', 'Missing project code');
