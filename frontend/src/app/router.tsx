@@ -31,6 +31,8 @@ import {
 import { AuthProvider } from './auth-context';
 import { ImpersonationProvider } from './impersonation-context';
 import { AppShell } from '@/components/layout/AppShell';
+import { SetupGate } from '@/app/setup-gate';
+import { SetupWizardPage } from '@/routes/setup/SetupWizardPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
 import { FeatureGuard } from '@/routes/FeatureGuard';
@@ -331,24 +333,30 @@ const dashboardChildren = [
 
 export const appRouter = createBrowserRouter([
   {
-    element: <AuthProvider><LoginPage /></AuthProvider>,
+    element: <SetupGate><SetupWizardPage /></SetupGate>,
+    path: '/setup',
+  },
+  {
+    element: <SetupGate><AuthProvider><LoginPage /></AuthProvider></SetupGate>,
     path: '/login',
   },
   {
-    element: <AuthProvider><ForgotPasswordPage /></AuthProvider>,
+    element: <SetupGate><AuthProvider><ForgotPasswordPage /></AuthProvider></SetupGate>,
     path: '/forgot-password',
   },
   {
-    element: <AuthProvider><ResetPasswordPage /></AuthProvider>,
+    element: <SetupGate><AuthProvider><ResetPasswordPage /></AuthProvider></SetupGate>,
     path: '/reset-password',
   },
   {
     element: (
-      <AuthProvider>
-        <ProtectedRoute>
-          <TwoFactorSetupPage />
-        </ProtectedRoute>
-      </AuthProvider>
+      <SetupGate>
+        <AuthProvider>
+          <ProtectedRoute>
+            <TwoFactorSetupPage />
+          </ProtectedRoute>
+        </AuthProvider>
+      </SetupGate>
     ),
     path: '/auth/2fa-setup',
   },
@@ -358,15 +366,17 @@ export const appRouter = createBrowserRouter([
       { element: <NotFoundPage />, path: '*' },
     ],
     element: (
-      <AuthProvider>
-        <ImpersonationProvider>
-          <ProtectedRoute>
-            <ErrorBoundary>
-              <AppShell routes={appRoutes} />
-            </ErrorBoundary>
-          </ProtectedRoute>
-        </ImpersonationProvider>
-      </AuthProvider>
+      <SetupGate>
+        <AuthProvider>
+          <ImpersonationProvider>
+            <ProtectedRoute>
+              <ErrorBoundary>
+                <AppShell routes={appRoutes} />
+              </ErrorBoundary>
+            </ProtectedRoute>
+          </ImpersonationProvider>
+        </AuthProvider>
+      </SetupGate>
     ),
     path: '/',
   },
