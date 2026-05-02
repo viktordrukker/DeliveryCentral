@@ -26,10 +26,21 @@ describe('metadata dictionary API contract', () => {
               count: async () => 0,
               findMany: async () => [],
             },
-            // assignment-sla-sweep.service.onModuleInit calls
-            // loadIntervalMs() which reads platformSetting at app boot.
+            // Two app paths read platformSetting at boot/per-request:
+            //  - assignment-sla-sweep.service.onModuleInit -> findUnique('sla.sweep.intervalMs')
+            //  - require-setup-complete.guard -> findUnique('setup.completedAt')
+            // The guard returns 503 unless setup.completedAt is non-null;
+            // mark it complete so contract tests can hit business endpoints.
             platformSetting: {
-              findUnique: async () => null,
+              findUnique: async ({ where }: { where: { key: string } }) => {
+                if (where?.key === 'setup.completedAt') {
+                  return {
+                    key: 'setup.completedAt',
+                    value: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+                  };
+                }
+                return null;
+              },
               findMany: async () => [],
             },
           }),
