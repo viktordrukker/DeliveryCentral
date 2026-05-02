@@ -116,7 +116,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: RM_DASHBOARD_ROLES, description: 'Capacity-oriented dashboard for managed teams, idle resources, and pipeline.', group: 'dashboard', navVisible: true, path: '/dashboard/resource-manager', title: 'RM Dashboard' },
   { allowedRoles: HR_DASHBOARD_ROLES, description: 'Organization-centric dashboard for headcount, distribution, and people-data quality.', group: 'dashboard', navVisible: true, path: '/dashboard/hr', title: 'HR Dashboard' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Team delivery dashboard for anomaly drilldown and delivery metrics.', group: 'dashboard', navVisible: true, path: '/dashboard/delivery-manager', title: 'Delivery Dashboard' },
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, path: '/dashboard/director' },
+  { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Executive dashboard for delivery health, capacity, and portfolio risk.', group: 'dashboard', navVisible: true, path: '/dashboard/director', title: 'Director Dashboard' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Portfolio-wide radiator scores across all projects.', group: 'dashboard', navVisible: true, path: '/dashboards/portfolio-radiator', title: 'Portfolio Radiator' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure scoring thresholds for the 16-axis project radiator.', group: 'admin', navVisible: true, path: '/admin/radiator-thresholds', title: 'Radiator Thresholds' },
   { allowedRoles: ADMIN_ROLES, description: 'Organization-wide reporting cadence, exception thresholds, governance and risk cadence.', group: 'admin', navVisible: true, path: '/admin/organization-config', title: 'Organization Config' },
