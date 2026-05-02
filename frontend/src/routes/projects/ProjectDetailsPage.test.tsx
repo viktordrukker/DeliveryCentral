@@ -369,10 +369,12 @@ describe('ProjectDetailPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithRouter('/projects/prj-1');
+    renderWithRouter('/projects/prj-1?tab=lifecycle');
 
     await screen.findByRole('heading', { name: 'Northstar Modernization' });
-    // Expand Lifecycle Controls (collapsed by default)
+    // ProjectLifecycleControls is on the Lifecycle tab (moved out of Radiator
+    // in the workflow overhaul). The card itself isn't collapsible, so the
+    // expandSection helper safely no-ops once we're on the right tab.
     await expandSection('Lifecycle Controls');
     await user.click(await screen.findByRole('button', { name: 'Activate project' }));
 
@@ -406,7 +408,7 @@ describe('ProjectDetailPage', () => {
 
     const user = userEvent.setup();
 
-    renderWithRouter('/projects/prj-1');
+    renderWithRouter('/projects/prj-1?tab=lifecycle');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await expandSection('Lifecycle Controls');
@@ -458,7 +460,7 @@ describe('ProjectDetailPage', () => {
 
     const user = userEvent.setup();
 
-    renderWithRouter('/projects/prj-1');
+    renderWithRouter('/projects/prj-1?tab=lifecycle');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await expandSection('Lifecycle Controls');
@@ -508,7 +510,7 @@ describe('ProjectDetailPage', () => {
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['director']));
 
     const user = userEvent.setup();
-    renderWithRouter('/projects/prj-1');
+    renderWithRouter('/projects/prj-1?tab=lifecycle');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await expandSection('Lifecycle Controls');
@@ -531,7 +533,7 @@ describe('ProjectDetailPage', () => {
     mockedFetchProjectById.mockResolvedValue(buildActiveProject());
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['project_manager']));
 
-    renderWithRouter('/projects/prj-1');
+    renderWithRouter('/projects/prj-1?tab=lifecycle');
 
     await screen.findByRole('heading', { name: 'Atlas ERP Rollout' });
     await expandSection('Lifecycle Controls');
