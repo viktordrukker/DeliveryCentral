@@ -53,7 +53,7 @@ describe('work evidence domain invariants', () => {
     expect(evidence.projectId).toBe('project-1');
     expect(evidence.links).toHaveLength(1);
     expect(assignment.personId).toBe('person-1');
-    expect(assignment.status.value).toBe('APPROVED');
+    expect(assignment.status.value).toBe('BOOKED');
   });
 
   it('preserves explicit source identity and traceability', () => {
