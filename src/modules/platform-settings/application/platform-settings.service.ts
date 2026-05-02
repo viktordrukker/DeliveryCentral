@@ -100,6 +100,25 @@ const DEFAULTS: Record<string, unknown> = {
   'assignment.matching.weights.tz': 2,
   'assignment.matching.weights.cert': 5,
   'assignment.nudge.cooldownHours': 24,
+  // ─── Setup wizard sentinels ─────────────────────────────────────────
+  'setup.completedAt': null,
+  'setup.profile': null,
+  'setup.tenantId': null,
+  // ─── Monitoring forwarder configs (wizard step 6) ──────────────────
+  'monitoring.otlp.enabled': false,
+  'monitoring.otlp.endpoint': '',
+  'monitoring.otlp.headers': '',
+  'monitoring.splunk.enabled': false,
+  'monitoring.splunk.hecUrl': '',
+  'monitoring.splunk.token': '',
+  'monitoring.datadog.enabled': false,
+  'monitoring.datadog.apiKey': '',
+  'monitoring.datadog.region': 'US1',
+  'monitoring.syslog.enabled': false,
+  'monitoring.syslog.host': '',
+  'monitoring.syslog.port': 514,
+  // ─── DB role credentials (wizard EMPTY_POSTGRES branch) ────────────
+  'db.prodUserPassword': null,
 };
 
 @Injectable()
@@ -241,6 +260,17 @@ export class PlatformSettingsService {
   }
 
   public defaultFor(key: string): unknown {
+    return DEFAULTS[key] ?? null;
+  }
+
+  /**
+   * Flat key/value read for callers that don't want the structured
+   * SettingsResponseDto. Falls through to DEFAULTS when no row exists.
+   * Used by SetupService for sentinel keys like `setup.completedAt`.
+   */
+  public async getRawValue(key: string): Promise<unknown> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key } });
+    if (row) return row.value;
     return DEFAULTS[key] ?? null;
   }
 

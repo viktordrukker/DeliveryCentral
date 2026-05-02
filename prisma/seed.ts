@@ -448,6 +448,36 @@ async function seedPlatformSettings(): Promise<void> {
     'assignment.matching.weights.tz': 2,
     'assignment.matching.weights.cert': 5,
     'assignment.nudge.cooldownHours': 24,
+    // ─── Setup wizard sentinels ────────────────────────────────────────
+    // Written by the wizard's `complete` step. `setup.completedAt = null`
+    // means a fresh install or a Reset, which causes the SetupGuard to
+    // gate the app behind /setup.
+    'setup.completedAt': null,
+    'setup.profile': null,         // 'demo' | 'preset' | 'clean'
+    'setup.tenantId': null,        // populated after the tenant step
+    // ─── Monitoring forwarder configs (collected in wizard step 6) ────
+    // The actual exporter wiring is out-of-scope; the wizard captures
+    // endpoints + tokens so the operator's external pipeline can pick
+    // them up and so /api/setup/monitoring/snippet?target=… can render
+    // copy-pasteable shipper configs.
+    'monitoring.otlp.enabled': false,
+    'monitoring.otlp.endpoint': '',
+    'monitoring.otlp.headers': '',
+    'monitoring.splunk.enabled': false,
+    'monitoring.splunk.hecUrl': '',
+    'monitoring.splunk.token': '',
+    'monitoring.datadog.enabled': false,
+    'monitoring.datadog.apiKey': '',
+    'monitoring.datadog.region': 'US1',
+    'monitoring.syslog.enabled': false,
+    'monitoring.syslog.host': '',
+    'monitoring.syslog.port': 514,
+    // ─── Database ownership credentials ───────────────────────────────
+    // Generated + persisted by the wizard's EMPTY_POSTGRES branch when
+    // it issues `CREATE ROLE prod_user`. Only readable to superuser
+    // sessions (the wizard re-uses it on subsequent boots to verify
+    // the role still works). NEVER printed to logs.
+    'db.prodUserPassword': null,
   };
 
   for (const [key, value] of Object.entries(defaults)) {
@@ -993,20 +1023,40 @@ async function main(): Promise<void> {
 // clearExistingData() again. The guarantee is "no partial seeded state
 // survives a failed seed", which is the property the original
 // transaction wrap was intended to provide.
-main()
-  .catch(async (error: unknown) => {
-     
-    console.error('Seed failed — rolling back to empty state via clearExistingData().', error);
-    try {
-      await clearExistingData();
-       
-      console.error('DM-R-10: rollback complete. DB is empty.');
-    } catch (rollbackError) {
-       
-      console.error('DM-R-10: rollback ALSO failed; DB may be partially seeded.', rollbackError);
-    }
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Only auto-invoke main() when this file is the entry point (e.g. via
+// `ts-node prisma/seed.ts`). When the in-app SetupModule imports the
+// helpers below at runtime, we DO NOT want main() to fire.
+if (require.main === module) {
+  main()
+    .catch(async (error: unknown) => {
+      console.error('Seed failed — rolling back to empty state via clearExistingData().', error);
+      try {
+        await clearExistingData();
+        console.error('DM-R-10: rollback complete. DB is empty.');
+      } catch (rollbackError) {
+        console.error('DM-R-10: rollback ALSO failed; DB may be partially seeded.', rollbackError);
+      }
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
+// Helpers exported for the in-app SetupModule (src/modules/setup/). The
+// wizard re-runs these against the runtime backend's DB to support the
+// `clean` / `preset` / `demo` install profiles without shelling out.
+// Dataset arrays live in `prisma/seeds/it-company-profile.ts` — setup
+// runners import them directly from there.
+export {
+  clearExistingData,
+  seedSuperadmin,
+  seedMetadata,
+  seedSkills,
+  seedRadiatorThresholds,
+  seedFullNotificationInfrastructure,
+  seedPlatformSettings,
+  seedItCompanyAccounts,
+  seedItCompanyPersonSkills,
+  seedDataset,
+};
