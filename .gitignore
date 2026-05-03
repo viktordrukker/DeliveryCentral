@@ -24,3 +24,10 @@ frontend/dist/
 
 # DM-R-25 weekly base backups — local only.
 .basebackups/
+
+# Local planning artefacts — generated/edited locally, not part of the repo.
+# Avoids `git add -A` accidentally sweeping them into commits.
+docs/planning/CLAUDE_CODE_TASKS.md
+docs/planning/HARDEN_BRIEF.md
+docs/planning/HARDEN_WIRING_MAP.md
+docs/planning/workforce-ops-benchmark-synthesis.md
