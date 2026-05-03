@@ -314,7 +314,7 @@ jobs:
 
       # INFRA-05 — scan the backend image alongside the frontend.
       - name: Scan backend image for vulnerabilities
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e2f6a1c0a7f1bf99 # v0.24
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: deliverycentral-backend:ci
           format: table
@@ -334,7 +334,7 @@ jobs:
           tags: deliverycentral-frontend:ci
 
       - name: Scan frontend image for vulnerabilities
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e2f6a1c0a7f1bf99 # v0.24
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: deliverycentral-frontend:ci
           format: table
