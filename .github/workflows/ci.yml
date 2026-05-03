@@ -288,6 +288,18 @@ jobs:
       - name: Apply migrations to the ephemeral DB
         run: npx prisma migrate deploy --schema=prisma/schema.prisma
 
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Mark setup complete (RequireSetupCompleteGuard gate)
+        # Integration tests boot the full Nest app; the global
+        # RequireSetupCompleteGuard returns 503 until platformSetting has a
+        # non-null setup.completedAt. Plant it here so business endpoints
+        # are reachable. Table is mapped to platform_settings (snake_case).
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d dc_test -c \
+            "INSERT INTO platform_settings (key, value, \"updatedAt\") VALUES ('setup.completedAt', to_jsonb(now()::text), now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;"
+
       - name: DB Jest suite
         run: npm run test:db
 
@@ -361,7 +373,7 @@ jobs:
 
       # INFRA-05 — scan the backend image alongside the frontend.
       - name: Scan backend image for vulnerabilities
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e2f6a1c0a7f1bf99 # v0.24
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: deliverycentral-backend:ci
           format: table
@@ -381,7 +393,7 @@ jobs:
           tags: deliverycentral-frontend:ci
 
       - name: Scan frontend image for vulnerabilities
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e2f6a1c0a7f1bf99 # v0.24
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: deliverycentral-frontend:ci
           format: table
