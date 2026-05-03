@@ -247,6 +247,28 @@ jobs:
     name: Backend DB-coupled checks
     runs-on: ubuntu-latest
     needs: [backend-fast]
+    # Ephemeral Postgres so the integration / repository test suites can
+    # actually run. The job has historically been failing with "Set
+    # DATABASE_URL or TEST_DATABASE_URL before running app-backed tests"
+    # because the service wasn't wired. Mirror the schema-drift-check
+    # block — same image, same connection shape.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dc_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dc_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -262,6 +284,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to the ephemeral DB
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
 
       - name: DB Jest suite
         run: npm run test:db
@@ -270,6 +295,25 @@ jobs:
     name: Backend slow checks
     runs-on: ubuntu-latest
     needs: [backend-db]
+    # Same Postgres-backed infra as backend-db; the slow suite (performance
+    # tests) hits the same app-Prisma path and bails without DATABASE_URL.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dc_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dc_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -285,6 +329,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to the ephemeral DB
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
 
       - name: Slow Jest suite
         run: npm run test:slow
