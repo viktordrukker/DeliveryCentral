@@ -82,7 +82,10 @@ describe('IntegrationsAdminPage', () => {
     await screen.findByText('Integrations');
     // useIntegrationAdmin starts with selectedProvider=null; the Trigger
     // sync action only renders once a provider is picked. Pick JIRA first.
-    await user.click(screen.getByRole('button', { name: /JIRA/i }));
+    // Use findByRole (async) since integration buttons render after the
+    // fetchAdminIntegrations promise resolves — the page heading shows up
+    // first, but the JIRA button arrives a tick later.
+    await user.click(await screen.findByRole('button', { name: /JIRA/i }));
     await user.click(await screen.findByRole('button', { name: 'Trigger sync' }));
 
     await waitFor(() => {
