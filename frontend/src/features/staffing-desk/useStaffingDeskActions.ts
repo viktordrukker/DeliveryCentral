@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 
-import { approveAssignment, rejectAssignment, endAssignment } from '@/lib/api/assignments';
+import { bookAssignment, cancelAssignment, completeAssignment } from '@/lib/api/assignments';
 import { reviewStaffingRequest, fulfilStaffingRequest, cancelStaffingRequest, releaseStaffingRequest } from '@/lib/api/staffing-requests';
+import { showUndoToast } from '@/lib/undo-toast';
 
 export interface StaffingDeskActions {
   approveAssignment: (id: string, reason?: string) => Promise<void>;
@@ -31,16 +32,35 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
 
   return {
     approveAssignment: useCallback(
-      (id: string, reason?: string) => wrap('Assignment approved', () => approveAssignment(id, { reason: reason ?? '' })),
+      (id: string, reason?: string) => wrap('Assignment approved', () => bookAssignment(id, { reason: reason ?? '' })),
       [wrap],
     ),
     rejectAssignment: useCallback(
-      (id: string, reason: string) => wrap('Assignment rejected', () => rejectAssignment(id, { reason })),
-      [wrap],
+      (id: string, reason: string) =>
+        cancelAssignment(id, { reason })
+          .then((result) => {
+            refetch();
+            showUndoToast({
+              undoActionId: result.undoActionId,
+              successMessage: 'Assignment rejected.',
+              onUndone: () => refetch(),
+            });
+          })
+          .catch((err: unknown) => {
+            toast.error(err instanceof Error ? err.message : 'Assignment rejected failed.');
+          }),
+      [refetch],
     ),
     endAssignment: useCallback(
-      (id: string, reason: string, endDate?: string) =>
-        wrap('Assignment ended', () => endAssignment(id, { reason, endDate: endDate ?? new Date().toISOString().slice(0, 10) })),
+      (id: string, reason: string, endDate?: string) => {
+        // Legacy `endDate` parameter: forward as suffix on reason so the
+        // canonical handler captures the operator's back-dated intent in
+        // the audit trail. See HD-1 cutover audit.
+        const merged = endDate
+          ? `${reason || 'completed'} (endDate=${endDate})`
+          : reason;
+        return wrap('Assignment ended', () => completeAssignment(id, { reason: merged }));
+      },
       [wrap],
     ),
     reviewRequest: useCallback(

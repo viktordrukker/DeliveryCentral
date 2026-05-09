@@ -2,6 +2,20 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+/**
+ * Minimal `$transaction` runner used when no PrismaService is injected
+ * (in-memory unit tests). Invokes the closure with `undefined` as the
+ * tx; the in-memory repos accept-and-ignore that, so write order
+ * matches the production tx code path one-for-one.
+ *
+ * Production DI always passes the real PrismaService — see
+ * `assignments.module.ts` factory wiring.
+ */
+const PASSTHROUGH_TX_RUNNER = {
+  $transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(undefined),
+} as unknown as PrismaService;
 
 import { AssignmentApproval } from '../domain/entities/assignment-approval.entity';
 import { AssignmentHistory } from '../domain/entities/assignment-history.entity';
@@ -36,12 +50,17 @@ interface CreateProjectAssignmentCommand {
 export class CreateProjectAssignmentService {
   public constructor(
     private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    prisma?: PrismaService,
     private readonly assignmentReferenceRepository?: AssignmentReferenceRepositoryPort,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
     private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; relatedEntityId?: string; metadata?: Record<string, unknown> }): Promise<void> },
     private readonly directorApprovalThresholdService?: DirectorApprovalThresholdService,
-  ) {}
+  ) {
+    this.prisma = prisma ?? PASSTHROUGH_TX_RUNNER;
+  }
+
+  private readonly prisma: PrismaService;
 
   public async execute(command: CreateProjectAssignmentCommand): Promise<ProjectAssignment> {
     const startDate = new Date(command.startDate);
@@ -184,33 +203,39 @@ export class CreateProjectAssignmentService {
       staffingRole: command.staffingRole,
     });
 
-    // FIXME(DATA-05): These three writes are not atomic. Repository ports don't share a Prisma tx.
-    // If appendApproval or appendHistory fails after assignment.save, we leave a partial record.
-    // Proper fix requires either: (a) adding `tx` parameter through the port, or (b) consolidating
-    // into a single repository.createWithApproval(...) method that internally uses prisma.$transaction.
-    // For now: order is safe (assignment first), and FK Restrict on AssignmentApproval/History
-    // prevents downstream cascades. Failures are visible via the structured exception filter.
-    await this.projectAssignmentRepository.save(assignment);
-    await this.projectAssignmentRepository.appendApproval(initialApproval);
-    await this.projectAssignmentRepository.appendHistory(historyEntry);
+    // HD-0.2 (replaces the legacy DATA-05 partial-failure window). All writes
+    // — assignment, initial approval, history entry, and the optional
+    // override-applied history — share a single `prisma.$transaction` so any
+    // failure rolls back the whole set. FK Restrict on AssignmentApproval /
+    // AssignmentHistory still applies, but is no longer the only safety net.
+    const overrideReason =
+      conflicts.length > 0 && command.allowOverlapOverride
+        ? command.overrideReason?.trim() ?? ''
+        : undefined;
 
-    if (conflicts.length > 0 && command.allowOverlapOverride) {
-      const overrideReason = command.overrideReason?.trim() ?? '';
-      await this.projectAssignmentRepository.appendHistory(
-        AssignmentHistory.create({
-          assignmentId: assignment.assignmentId,
-          changeReason: overrideReason,
-          changeType: 'ASSIGNMENT_OVERRIDE_APPLIED',
-          changedByPersonId: command.actorId,
-          newSnapshot: {
-            conflictingAssignmentIds: conflicts.map((item) => item.assignmentId.value),
-            overrideType: 'OVERLAPPING_PERSON_PROJECT_ASSIGNMENT',
-            status: assignment.status.value,
-          },
-          occurredAt: new Date(),
-        }),
-      );
-    }
+    await this.prisma.$transaction(async (tx) => {
+      await this.projectAssignmentRepository.save(assignment, tx);
+      await this.projectAssignmentRepository.appendApproval(initialApproval, tx);
+      await this.projectAssignmentRepository.appendHistory(historyEntry, tx);
+
+      if (overrideReason !== undefined) {
+        await this.projectAssignmentRepository.appendHistory(
+          AssignmentHistory.create({
+            assignmentId: assignment.assignmentId,
+            changeReason: overrideReason,
+            changeType: 'ASSIGNMENT_OVERRIDE_APPLIED',
+            changedByPersonId: command.actorId,
+            newSnapshot: {
+              conflictingAssignmentIds: conflicts.map((item) => item.assignmentId.value),
+              overrideType: 'OVERLAPPING_PERSON_PROJECT_ASSIGNMENT',
+              status: assignment.status.value,
+            },
+            occurredAt: new Date(),
+          }),
+          tx,
+        );
+      }
+    });
 
     this.auditLogger?.record({
       actionType: 'assignment.created',

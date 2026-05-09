@@ -98,6 +98,13 @@ export function SidebarNav({
 
   function renderNavItem(item: { description: string; path: string; title: string }): JSX.Element {
     const iconKey = getIconKey(item.path, item.title);
+    // HD-9 Chunk 5 — onboarding-tour anchor keys; the tour's
+    // `data-tour="..."` selectors target these specific nav rows.
+    const tourAnchor: string | undefined =
+      item.path === '/' ? 'dashboard-link'
+      : item.path === '/my-time' ? 'my-time-link'
+      : item.path === '/notifications' ? 'notifications-link'
+      : undefined;
     return (
       <div className="sidebar-nav__item-row" key={item.path} style={{ alignItems: 'center', display: 'flex' }}>
         <NavLink
@@ -107,6 +114,7 @@ export function SidebarNav({
               ? 'sidebar-nav__item sidebar-nav__item--active'
               : 'sidebar-nav__item'
           }
+          data-tour={tourAnchor}
           onClick={() => { markSidebarNavigation(); onNavigate?.(); }}
           style={{ alignItems: 'center', display: 'flex', flex: 1, gap: '8px' }}
           title={item.description}
@@ -143,7 +151,7 @@ export function SidebarNav({
           </>
         )}
       </div>
-      <nav className="sidebar-nav__menu" aria-label="Primary navigation">
+      <nav className="sidebar-nav__menu" aria-label="Primary navigation" data-tour="sidebar-overview">
         {!collapsed && pinnedItems.length > 0 ? (
           <SidebarSection defaultOpen label="Favorites">
             {pinnedItems.map((item) => renderNavItem(item))}

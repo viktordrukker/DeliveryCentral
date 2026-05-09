@@ -3,6 +3,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TeamMoodHeatmap } from '@/components/charts/TeamMoodHeatmap';
 import { DirectReportsMoodTable } from '@/components/people/DirectReportsMoodTable';
+import { PulseTrendCard } from '@/components/pulse/PulseTrendCard';
 import type { MoodHeatmapResponse } from '@/lib/api/pulse';
 
 interface Props {
@@ -30,6 +31,7 @@ export function HrWellbeingTab({
 }: Props): JSX.Element {
   return (
     <>
+      <PulseTrendCard weeks={4} />
       <SectionCard title="Team Mood Heatmap" collapsible>
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <label className="field">

@@ -20,6 +20,7 @@ import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { useEmployeeDetails } from '@/features/people/useEmployeeDetails';
 import { useReportingLineManagement } from '@/features/people/useReportingLineManagement';
 import { deactivateEmployee, terminateEmployee } from '@/lib/api/person-directory';
+import { showUndoToast } from '@/lib/undo-toast';
 import { terminateReportingLine } from '@/lib/api/reporting-lines';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -116,6 +117,14 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       setLifecycleStatus(response.status);
       setDeactivateSuccess(`Employee ${response.name} deactivated.`);
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+      showUndoToast({
+        undoActionId: response.undoActionId,
+        successMessage: `Employee ${response.name} deactivated.`,
+        onUndone: () => {
+          setLifecycleStatus('ACTIVE');
+          window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+        },
+      });
     } catch (error) {
       setDeactivateError(
         error instanceof Error ? error.message : 'Failed to deactivate employee.',

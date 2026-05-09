@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { createEmployee, fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchMetadataDictionaries, fetchMetadataDictionaryById } from '@/lib/api/metadata';
 import { fetchOrgChart } from '@/lib/api/org-chart';
+import { fetchSkills, upsertPersonSkills } from '@/lib/api/skills';
 import { renderRoute } from '@test/render-route';
 import { EmployeeLifecycleAdminPage } from './EmployeeLifecycleAdminPage';
 
@@ -39,11 +40,23 @@ vi.mock('@/lib/api/org-chart', async () => {
   };
 });
 
+vi.mock('@/lib/api/skills', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/skills')>('@/lib/api/skills');
+
+  return {
+    ...actual,
+    fetchSkills: vi.fn(),
+    upsertPersonSkills: vi.fn(),
+  };
+});
+
 const mockedCreateEmployee = vi.mocked(createEmployee);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchMetadataDictionaries = vi.mocked(fetchMetadataDictionaries);
 const mockedFetchMetadataDictionaryById = vi.mocked(fetchMetadataDictionaryById);
 const mockedFetchOrgChart = vi.mocked(fetchOrgChart);
+const mockedFetchSkills = vi.mocked(fetchSkills);
+const mockedUpsertPersonSkills = vi.mocked(upsertPersonSkills);
 
 describe('EmployeeLifecycleAdminPage', () => {
   beforeEach(() => {
@@ -52,6 +65,8 @@ describe('EmployeeLifecycleAdminPage', () => {
     mockedFetchMetadataDictionaries.mockReset();
     mockedFetchMetadataDictionaryById.mockReset();
     mockedFetchOrgChart.mockReset();
+    mockedFetchSkills.mockReset();
+    mockedUpsertPersonSkills.mockReset();
     window.localStorage.clear();
 
     mockedFetchPersonDirectory.mockResolvedValue({
@@ -79,7 +94,6 @@ describe('EmployeeLifecycleAdminPage', () => {
       items: [
         buildDictionarySummary('dict-grade', 'grade', 'Grade'),
         buildDictionarySummary('dict-role', 'role', 'Role'),
-        buildDictionarySummary('dict-skillset', 'skillset', 'Skillset'),
       ],
     });
     mockedFetchMetadataDictionaryById.mockImplementation(async (id: string) => {
@@ -89,19 +103,18 @@ describe('EmployeeLifecycleAdminPage', () => {
         ]);
       }
 
-      if (id === 'dict-role') {
-        return buildDictionaryDetails('dict-role', 'role', 'Role', [
-          buildEntry('entry-role', 'Delivery Manager', 'DELIVERY_MANAGER'),
-        ]);
-      }
-
-      return buildDictionaryDetails('dict-skillset', 'skillset', 'Skillset', [
-        buildEntry('entry-skill', 'Data Engineering', 'DATA_ENGINEERING'),
+      return buildDictionaryDetails('dict-role', 'role', 'Role', [
+        buildEntry('entry-role', 'Delivery Manager', 'DELIVERY_MANAGER'),
       ]);
     });
+    mockedFetchSkills.mockResolvedValue([
+      { id: 'skill-react', name: 'React', category: 'Frontend', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'skill-aws', name: 'AWS', category: 'Cloud', createdAt: '2026-01-01T00:00:00Z' },
+    ]);
+    mockedUpsertPersonSkills.mockResolvedValue([]);
   });
 
-  it('renders and submits the create employee flow', async () => {
+  it('creates an employee and writes picked skills to PersonSkill (not legacy Person.skillsets)', async () => {
     mockedCreateEmployee.mockResolvedValue({
       email: 'casey.nguyen@example.com',
       grade: 'SENIOR_CONSULTANT',
@@ -109,7 +122,7 @@ describe('EmployeeLifecycleAdminPage', () => {
       name: 'Casey Nguyen',
       orgUnitId: 'org-app',
       role: 'DELIVERY_MANAGER',
-      skillsets: ['DATA_ENGINEERING'],
+      skillsets: [],
       status: 'INACTIVE',
     });
 
@@ -122,7 +135,7 @@ describe('EmployeeLifecycleAdminPage', () => {
     await user.selectOptions(screen.getByLabelText('Org Unit'), 'org-app');
     await user.selectOptions(screen.getByLabelText('Grade'), 'SENIOR_CONSULTANT');
     await user.selectOptions(screen.getByLabelText('Role'), 'DELIVERY_MANAGER');
-    await user.click(screen.getByLabelText(/Data Engineering/i));
+    await user.selectOptions(screen.getByTestId('skill-selector'), 'skill-react');
     await user.click(screen.getByRole('button', { name: 'Create employee' }));
 
     // ConfirmDialog now shows — click Confirm to proceed
@@ -135,11 +148,48 @@ describe('EmployeeLifecycleAdminPage', () => {
         name: 'Casey Nguyen',
         orgUnitId: 'org-app',
         role: 'DELIVERY_MANAGER',
-        skillsets: ['DATA_ENGINEERING'],
       });
     });
 
+    // The legacy `skillsets` field must not be sent to the create endpoint.
+    expect(mockedCreateEmployee.mock.calls[0]?.[0]).not.toHaveProperty('skillsets');
+
+    // PersonSkill rows must be written for each picked skill.
+    await waitFor(() => {
+      expect(mockedUpsertPersonSkills).toHaveBeenCalledWith('employee-1', [
+        { skillId: 'skill-react', proficiency: 3, certified: false },
+      ]);
+    });
+
     expect(await screen.findByText('Employee Profile')).toBeInTheDocument();
+  });
+
+  it('does not call upsertPersonSkills when no skills are picked', async () => {
+    mockedCreateEmployee.mockResolvedValue({
+      email: 'no.skills@example.com',
+      grade: null,
+      id: 'employee-2',
+      name: 'No Skills',
+      orgUnitId: 'org-app',
+      role: null,
+      skillsets: [],
+      status: 'INACTIVE',
+    });
+
+    const { user } = renderWithRouter();
+
+    await screen.findByText('Employee Lifecycle Admin');
+    await user.type(screen.getByLabelText('Name'), 'No Skills');
+    await user.type(screen.getByLabelText('Email'), 'no.skills@example.com');
+    await user.selectOptions(screen.getByLabelText('Org Unit'), 'org-app');
+    await user.click(screen.getByRole('button', { name: 'Create employee' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+
+    await waitFor(() => {
+      expect(mockedCreateEmployee).toHaveBeenCalled();
+    });
+
+    expect(mockedUpsertPersonSkills).not.toHaveBeenCalled();
   });
 
   it('shows validation errors after confirming the dialog', async () => {

@@ -1,4 +1,5 @@
 import { RepositoryPort } from '@src/shared/domain/repository-port';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { AssignmentApproval } from '../entities/assignment-approval.entity';
 import { AssignmentHistory } from '../entities/assignment-history.entity';
@@ -6,8 +7,12 @@ import { ProjectAssignment } from '../entities/project-assignment.entity';
 import { AssignmentId } from '../value-objects/assignment-id';
 
 export interface ProjectAssignmentRepositoryPort extends RepositoryPort<ProjectAssignment> {
-  appendApproval(approval: AssignmentApproval): Promise<void>;
-  appendHistory(historyEntry: AssignmentHistory): Promise<void>;
+  /** Save the aggregate, optionally inside an existing transaction. */
+  save(aggregate: ProjectAssignment, tx?: TransactionContext): Promise<void>;
+  /** Delete the aggregate, optionally inside an existing transaction. */
+  delete(id: string, tx?: TransactionContext): Promise<void>;
+  appendApproval(approval: AssignmentApproval, tx?: TransactionContext): Promise<void>;
+  appendHistory(historyEntry: AssignmentHistory, tx?: TransactionContext): Promise<void>;
   findAll(): Promise<ProjectAssignment[]>;
   findActiveByProjectId(projectId: string, asOf: Date): Promise<ProjectAssignment[]>;
   findApprovalsByAssignmentId(assignmentId: AssignmentId): Promise<AssignmentApproval[]>;

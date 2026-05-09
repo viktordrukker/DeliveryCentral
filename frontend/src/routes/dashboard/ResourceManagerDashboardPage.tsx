@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 
 import { useAuth } from '@/app/auth-context';
@@ -11,7 +11,6 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
-import { Sparkline } from '@/components/charts/Sparkline';
 import { TeamCapacityHeatmap } from '@/components/charts/TeamCapacityHeatmap';
 import { ResourcePoolUtilizationDonut } from '@/components/charts/ResourcePoolUtilizationDonut';
 import { DemandPipelineChart } from '@/components/charts/DemandPipelineChart';
@@ -21,22 +20,19 @@ import { createAssignment } from '@/lib/api/assignments';
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { ResourcePersonAllocationIndicator } from '@/lib/api/dashboard-resource-manager';
-import { PriorityBadge } from '@/components/staffing/PriorityBadge';
-import { formatDate } from '@/lib/format-date';
-import { Button, DatePicker, Table, type Column } from '@/components/ds';
+import { Button } from '@/components/ds';
+
+import { RmActionItems } from './rm-sections/RmActionItems';
+import {
+  RmAllocationIndicatorsTable,
+  RmFuturePipelineTable,
+  RmIdleResourcesTable,
+} from './rm-sections/RmDetailTables';
+import { RmKpiStrip } from './rm-sections/RmKpiStrip';
+import { RmQuickAssignModal, type QuickAssignForm } from './rm-sections/RmQuickAssignModal';
+import { RmTeamCapacitySection } from './rm-sections/RmTeamCapacitySection';
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
-
-interface QuickAssignForm {
-  allocationPercent: string;
-  error: string | null;
-  isSubmitting: boolean;
-  personId: string;
-  projectId: string;
-  staffingRole: string;
-  startDate: string;
-  success: string | null;
-}
 
 /** Build 8 week labels starting from asOf */
 function buildWeekLabels(asOf: string): string[] {
@@ -59,18 +55,20 @@ function allocationByWeek(
   return weeks.map(() => indicator.totalAllocationPercent);
 }
 
-const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
-
-function indicatorColor(ind: string): string {
-  if (ind === 'OVERALLOCATED') return 'var(--color-status-danger)';
-  if (ind === 'UNDERALLOCATED') return 'var(--color-status-warning)';
-  return 'var(--color-status-active)';
-}
+const INITIAL_QUICK_ASSIGN: QuickAssignForm = {
+  allocationPercent: '100',
+  error: null,
+  isSubmitting: false,
+  personId: '',
+  projectId: '',
+  staffingRole: '',
+  startDate: '',
+  success: null,
+};
 
 /* ── Component ───────────────────────────────────────────────────── */
 
 export function ResourceManagerDashboardPage(): JSX.Element {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal, isLoading: authLoading } = useAuth();
   const { setActions } = useTitleBarActions();
@@ -79,16 +77,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
   const [showModal, setShowModal] = useState(false);
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
   const [lastFetch, setLastFetch] = useState(new Date());
-  const [quickForm, setQuickForm] = useState<QuickAssignForm>({
-    allocationPercent: '100',
-    error: null,
-    isSubmitting: false,
-    personId: '',
-    projectId: '',
-    staffingRole: '',
-    startDate: '',
-    success: null,
-  });
+  const [quickForm, setQuickForm] = useState<QuickAssignForm>(INITIAL_QUICK_ASSIGN);
 
   useEffect(() => {
     void fetchProjectDirectory({ status: 'ACTIVE' }).then((res) => setProjects(res.items));
@@ -163,16 +152,10 @@ export function ResourceManagerDashboardPage(): JSX.Element {
         staffingRole: quickForm.staffingRole,
         startDate: `${quickForm.startDate}T00:00:00.000Z`,
       });
-      setQuickForm((prev) => ({
-        ...prev,
-        allocationPercent: '100',
-        isSubmitting: false,
-        personId: '',
-        projectId: '',
-        staffingRole: '',
-        startDate: '',
+      setQuickForm({
+        ...INITIAL_QUICK_ASSIGN,
         success: 'Assignment request created.',
-      }));
+      });
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
     } catch (err) {
       setQuickForm((prev) => ({
@@ -192,7 +175,6 @@ export function ResourceManagerDashboardPage(): JSX.Element {
   const overallocated = d?.allocationIndicators.filter((i) => i.indicator === 'OVERALLOCATED') ?? [];
   const pendingApprovals = d?.pendingAssignmentApprovals ?? [];
   const incomingRequests = d?.incomingRequests ?? [];
-  const actionItemCount = overallocated.length + pendingApprovals.length + incomingRequests.length;
 
   // Heatmap
   const weeks = buildWeekLabels(state.asOf);
@@ -234,56 +216,21 @@ export function ResourceManagerDashboardPage(): JSX.Element {
 
       {d ? (
         <>
-          {d.person.displayName && <h2 style={{ margin: '0 0 var(--space-2)', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{d.person.displayName}</h2>}
+          {d.person.displayName && (
+            <h2 style={{ margin: '0 0 var(--space-2)', fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>
+              {d.person.displayName}
+            </h2>
+          )}
 
-          {/* ── KPI STRIP ── */}
-          <div className="kpi-strip" aria-label="Key metrics">
-            <Link className="kpi-strip__item" to="/workload"
-              style={{ borderLeft: `3px solid ${utilPct >= 85 ? 'var(--color-status-active)' : utilPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-              <TipBalloon tip="Ratio of assigned people to total headcount. Target is 80%. Green = healthy, amber = watch, red = low." arrow="left" />
-              <span className="kpi-strip__value">{utilPct}%</span>
-              <span className="kpi-strip__label">Utilization</span>
-              <div className="kpi-strip__progress">
-                <div className="kpi-strip__progress-fill" style={{ width: `${Math.min(utilPct, 100)}%`, background: utilPct >= 85 ? 'var(--color-status-active)' : utilPct >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)' }} />
-              </div>
-              {utilSpark.length > 3 && <div className="kpi-strip__sparkline"><Sparkline data={utilSpark} height={24} width={72} /></div>}
-            </Link>
-
-            <Link className="kpi-strip__item" to="/teams" style={{ borderLeft: '3px solid var(--color-accent)' }}>
-              <TipBalloon tip="Teams you manage directly. Click to view the full teams list." arrow="left" />
-              <span className="kpi-strip__value">{d.summary.managedTeamCount}</span>
-              <span className="kpi-strip__label">Managed Teams</span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="/people" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
-              <TipBalloon tip="Total headcount across all teams you manage." arrow="left" />
-              <span className="kpi-strip__value">{totalPeople}</span>
-              <span className="kpi-strip__label">Managed People</span>
-              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
-                {allocatedPeople} assigned · {idlePeople} idle
-              </span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="/people?filter=idle"
-              style={{ borderLeft: `3px solid ${idlePeople > 5 ? 'var(--color-status-warning)' : idlePeople === 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="People with no active assignment. High counts indicate underutilized capacity. Zero means no spare capacity." arrow="left" />
-              <span className="kpi-strip__value">{idlePeople}</span>
-              <span className="kpi-strip__label">Idle Resources</span>
-              <span className="kpi-strip__context" style={{ color: idlePeople === 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
-                {idlePeople === 0 ? 'No spare capacity' : 'available to assign'}
-              </span>
-            </Link>
-
-            <Link className="kpi-strip__item" to="/assignments"
-              style={{ borderLeft: `3px solid ${overallocated.length > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
-              <TipBalloon tip="People allocated above 100%. Red means immediate rebalancing is needed." arrow="left" />
-              <span className="kpi-strip__value">{overallocated.length}</span>
-              <span className="kpi-strip__label">Overallocated</span>
-              <span className="kpi-strip__context" style={{ color: overallocated.length > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>
-                {overallocated.length === 0 ? 'All clear' : 'needs rebalancing'}
-              </span>
-            </Link>
-          </div>
+          <RmKpiStrip
+            utilPct={utilPct}
+            utilSpark={utilSpark}
+            managedTeamCount={d.summary.managedTeamCount}
+            totalPeople={totalPeople}
+            allocatedPeople={allocatedPeople}
+            idlePeople={idlePeople}
+            overallocatedCount={overallocated.length}
+          />
 
           {/* ── HERO: Team Capacity Heatmap ── */}
           <div className="dashboard-hero" style={{ position: 'relative' }}>
@@ -320,109 +267,25 @@ export function ResourceManagerDashboardPage(): JSX.Element {
             </div>
           </div>
 
-          {/* ── ACTION ITEMS ── */}
-          {actionItemCount > 0 ? (() => {
-            interface ActionRow {
-              rowKey: string;
-              kind: 'overalloc' | 'pending' | 'request';
-              index: number;
-              severityLabel: string;
-              severityColor: string;
-              category: string;
-              entity: string;
-              detail: React.ReactNode;
-              alloc: React.ReactNode;
-              action: string;
-              linkTo: string;
-            }
-            const actionRows: ActionRow[] = [
-              ...overallocated.map((item, i) => ({
-                rowKey: `over-${item.personId}`,
-                kind: 'overalloc' as const,
-                index: i + 1,
-                severityLabel: 'High',
-                severityColor: 'var(--color-status-danger)',
-                category: 'Overallocated',
-                entity: item.displayName,
-                detail: (<span style={{ fontSize: 11 }}>{item.teamName}</span>) as React.ReactNode,
-                alloc: (<span style={{ ...NUM, color: 'var(--color-status-danger)', fontWeight: 600 }}>{item.totalAllocationPercent}%</span>) as React.ReactNode,
-                action: 'Rebalance assignments',
-                linkTo: `/people/${item.personId}`,
-              })),
-              ...pendingApprovals.map((item, i) => ({
-                rowKey: `pend-${item.assignmentId}`,
-                kind: 'pending' as const,
-                index: overallocated.length + i + 1,
-                severityLabel: 'Med',
-                severityColor: 'var(--color-status-warning)',
-                category: 'Pending Approval',
-                entity: item.personDisplayName,
-                detail: (<span style={{ fontSize: 11 }}>{item.projectName}</span>) as React.ReactNode,
-                alloc: (<span style={NUM}>{'\u2014'}</span>) as React.ReactNode,
-                action: 'Review & approve',
-                linkTo: `/assignments/${item.assignmentId}`,
-              })),
-              ...incomingRequests.map((req, i) => ({
-                rowKey: `req-${req.id}`,
-                kind: 'request' as const,
-                index: overallocated.length + pendingApprovals.length + i + 1,
-                severityLabel: 'Info',
-                severityColor: 'var(--color-status-info)',
-                category: 'Staffing Request',
-                entity: req.role,
-                detail: (<span style={{ fontSize: 11 }}><PriorityBadge priority={req.priority} /> · starts {req.startDate}</span>) as React.ReactNode,
-                alloc: (<span style={NUM}>{req.headcountFulfilled}/{req.headcountRequired}</span>) as React.ReactNode,
-                action: 'Review & fill',
-                linkTo: `/staffing-requests/${req.id}`,
-              })),
-            ];
-            return (
-              <div className="dash-action-section" style={{ position: 'relative' }}>
-                <TipBalloon tip="Items needing attention — overallocations, pending approvals, and incoming staffing requests. Click any row to act." arrow="left" />
-                <div className="dash-action-section__header">
-                  <span className="dash-action-section__title">Action Items ({actionItemCount})</span>
-                </div>
-                <Table
-                  variant="compact"
-                  columns={[
-                    { key: 'idx', title: '#', width: 28, render: (r) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{r.index}</span> },
-                    { key: 'severity', title: 'Severity', width: 70, render: (r) => (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.severityColor, flexShrink: 0 }} />
-                        <span style={{ color: r.severityColor, fontWeight: 600, fontSize: 11 }}>{r.severityLabel}</span>
-                      </span>
-                    ) },
-                    { key: 'category', title: 'Category', width: 120, render: (r) => r.category },
-                    { key: 'entity', title: 'Entity', render: (r) => <span style={{ fontWeight: 500 }}>{r.entity}</span> },
-                    { key: 'detail', title: 'Detail', width: 140, render: (r) => r.detail },
-                    { key: 'alloc', title: 'Alloc %', align: 'right', render: (r) => r.alloc },
-                    { key: 'action', title: 'Suggested Action', width: 100, render: (r) => <span style={{ fontSize: 11 }}>{r.action}</span> },
-                    { key: 'go', title: '', width: 40, render: (r) => (
-                      <Link to={r.linkTo} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
-                    ) },
-                  ] as Column<ActionRow>[]}
-                  rows={actionRows}
-                  getRowKey={(r) => r.rowKey}
-                  onRowClick={(r) => navigate(r.linkTo)}
-                  footer={
-                    <div style={{ padding: 'var(--space-2) var(--space-3)', fontWeight: 600, fontSize: 11, background: 'var(--color-surface-alt)' }}>
-                      {actionItemCount} total items
-                    </div>
-                  }
-                />
-              </div>
-            );
-          })() : (
-            <div style={{ textAlign: 'center', padding: 'var(--space-4)', color: 'var(--color-status-active)' }}>
-              <span style={{ fontSize: 22 }}>{'\u2713'}</span>{' '}
-              <span style={{ fontWeight: 600 }}>All clear</span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-muted)', marginLeft: 8 }}>No overallocations, pending approvals, or open requests</span>
-            </div>
-          )}
+          <RmActionItems
+            overallocated={overallocated}
+            pendingApprovals={pendingApprovals}
+            incomingRequests={incomingRequests}
+          />
 
           {/* ── SUPPORTING CHARTS GRID ── */}
           <div className="dashboard-main-grid">
-            <SectionCard title="Resource Pool Utilization" collapsible chartExport={{ headers: ['Status', 'Count'], rows: [{ Status: 'Allocated', Count: String(allocatedPeople) }, { Status: 'Idle', Count: String(idlePeople) }] }}>
+            <SectionCard
+              title="Resource Pool Utilization"
+              collapsible
+              chartExport={{
+                headers: ['Status', 'Count'],
+                rows: [
+                  { Status: 'Allocated', Count: String(allocatedPeople) },
+                  { Status: 'Idle', Count: String(idlePeople) },
+                ],
+              }}
+            >
               <ResourcePoolUtilizationDonut allocated={allocatedPeople} idle={idlePeople} />
             </SectionCard>
 
@@ -437,108 +300,19 @@ export function ResourceManagerDashboardPage(): JSX.Element {
             )}
           </div>
 
-          {/* ── TEAM CAPACITY BY ORG UNIT ── */}
-          {d.teamCapacitySummary.length > 0 && (
-            <SectionCard title="Team Capacity by Org Unit" collapsible chartExport={{
-              headers: ['Team', 'Members', 'Active Assignments', 'Active Projects', 'Overallocated', 'Unassigned'],
-              rows: d.teamCapacitySummary.map((t) => ({ Team: t.teamName, Members: String(t.memberCount), 'Active Assignments': String(t.activeAssignmentCount), 'Active Projects': String(t.activeProjectCount), Overallocated: String(t.overallocatedPeopleCount), Unassigned: String(t.unassignedPeopleCount) })),
-            }}>
-              <Table
-                variant="compact"
-                columns={[
-                  { key: 'team', title: 'Team', getValue: (t) => t.teamName, render: (t) => <span style={{ fontWeight: 500 }}>{t.teamName}</span> },
-                  { key: 'members', title: 'Members', align: 'right', getValue: (t) => t.memberCount, render: (t) => <span style={NUM}>{t.memberCount}</span> },
-                  { key: 'assignments', title: 'Assignments', align: 'right', getValue: (t) => t.activeAssignmentCount, render: (t) => <span style={NUM}>{t.activeAssignmentCount}</span> },
-                  { key: 'projects', title: 'Projects', align: 'right', getValue: (t) => t.activeProjectCount, render: (t) => <span style={NUM}>{t.activeProjectCount}</span> },
-                  { key: 'overalloc', title: 'Overalloc', align: 'right', getValue: (t) => t.overallocatedPeopleCount, render: (t) => <span style={{ ...NUM, color: t.overallocatedPeopleCount > 0 ? 'var(--color-status-danger)' : 'inherit', fontWeight: t.overallocatedPeopleCount > 0 ? 600 : 400 }}>{t.overallocatedPeopleCount}</span> },
-                  { key: 'unassigned', title: 'Unassigned', align: 'right', getValue: (t) => t.unassignedPeopleCount, render: (t) => <span style={{ ...NUM, color: t.unassignedPeopleCount > 0 ? 'var(--color-status-warning)' : 'inherit' }}>{t.unassignedPeopleCount}</span> },
-                  { key: 'view', title: '', width: 40, render: (t) => <Link to={`/teams/${t.teamId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
-                ] as Column<typeof d.teamCapacitySummary[number]>[]}
-                rows={d.teamCapacitySummary}
-                getRowKey={(t) => t.teamId}
-                onRowClick={(t) => navigate(`/teams/${t.teamId}`)}
-              />
-            </SectionCard>
-          )}
+          <RmTeamCapacitySection rows={d.teamCapacitySummary} />
 
-          {/* ── ALL ALLOCATION INDICATORS ── */}
-          {d.allocationIndicators.length > 0 && (
-            <SectionCard title="All Allocation Indicators" collapsible chartExport={{
-              headers: ['Person', 'Team', 'Indicator', 'Allocation %'],
-              rows: d.allocationIndicators.map((i) => ({ Person: i.displayName, Team: i.teamName, Indicator: i.indicator, 'Allocation %': String(i.totalAllocationPercent) })),
-            }}>
-              <Table
-                variant="compact"
-                columns={[
-                  { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span> },
-                  { key: 'team', title: 'Team', getValue: (i) => i.teamName, render: (i) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{i.teamName}</span> },
-                  { key: 'indicator', title: 'Indicator', width: 100, getValue: (i) => i.indicator, render: (i) => <span style={{ color: indicatorColor(i.indicator), fontWeight: 600, fontSize: 11 }}>{i.indicator}</span> },
-                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.totalAllocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600, color: indicatorColor(i.indicator) }}>{i.totalAllocationPercent}%</span> },
-                  { key: 'bar', title: 'Bar', width: 80, render: (i) => (
-                    <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(i.totalAllocationPercent, 100)}%`, borderRadius: 2, background: indicatorColor(i.indicator) }} />
-                    </div>
-                  ) },
-                  { key: 'view', title: '', width: 40, render: (i) => <Link to={`/people/${i.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
-                ] as Column<typeof d.allocationIndicators[number]>[]}
-                rows={d.allocationIndicators}
-                getRowKey={(i) => i.personId}
-                onRowClick={(i) => navigate(`/people/${i.personId}`)}
-              />
-            </SectionCard>
-          )}
+          <RmAllocationIndicatorsTable rows={d.allocationIndicators} />
 
-          {/* ── FUTURE PIPELINE ── */}
-          {d.futureAssignmentPipeline.length > 0 && (
-            <SectionCard title={`Future Pipeline (${d.futureAssignmentPipeline.length})`} collapsible chartExport={{
-              headers: ['Person', 'Project', 'Status', 'Start Date'],
-              rows: d.futureAssignmentPipeline.map((i) => ({ Person: i.personDisplayName, Project: i.projectName, Status: i.approvalState, 'Start Date': i.startDate.slice(0, 10) })),
-            }}>
-              <Table
-                variant="compact"
-                columns={[
-                  { key: 'person', title: 'Person', getValue: (i) => i.personDisplayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.personDisplayName}</span> },
-                  { key: 'project', title: 'Project', getValue: (i) => i.projectName, render: (i) => i.projectName },
-                  { key: 'status', title: 'Status', width: 90, getValue: (i) => i.approvalState, render: (i) => <span style={{ fontSize: 11, fontWeight: 600 }}>{i.approvalState}</span> },
-                  { key: 'startDate', title: 'Start Date', width: 90, getValue: (i) => i.startDate, render: (i) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(i.startDate)}</span> },
-                  { key: 'view', title: '', width: 40, render: (i) => <Link to={`/assignments/${i.assignmentId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link> },
-                ] as Column<typeof d.futureAssignmentPipeline[number]>[]}
-                rows={d.futureAssignmentPipeline}
-                getRowKey={(i) => i.assignmentId}
-                onRowClick={(i) => navigate(`/assignments/${i.assignmentId}`)}
-              />
-            </SectionCard>
-          )}
+          <RmFuturePipelineTable rows={d.futureAssignmentPipeline} />
 
-          {/* ── IDLE RESOURCES (quick-assign enabled) ── */}
-          {d.peopleWithoutAssignments.length > 0 && (
-            <SectionCard title={`Idle Resources (${d.peopleWithoutAssignments.length})`} collapsible>
-              <Table
-                variant="compact"
-                columns={[
-                  { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
-                  { key: 'team', title: 'Team', getValue: (p) => p.teamName, render: (p) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{p.teamName}</span> },
-                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.totalAllocationPercent, render: (p) => <span style={NUM}>{p.totalAllocationPercent}%</span> },
-                  { key: 'action', title: '', width: 100, render: (p) => (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setQuickForm((prev) => ({ ...prev, personId: p.personId }));
-                        setShowModal(true);
-                      }}
-                      style={{ fontSize: 10 }}
-                    >
-                      Quick assign
-                    </Button>
-                  ) },
-                ] as Column<typeof d.peopleWithoutAssignments[number]>[]}
-                rows={d.peopleWithoutAssignments}
-                getRowKey={(p) => p.personId}
-              />
-            </SectionCard>
-          )}
+          <RmIdleResourcesTable
+            rows={d.peopleWithoutAssignments}
+            onQuickAssign={(personId) => {
+              setQuickForm((prev) => ({ ...prev, personId }));
+              setShowModal(true);
+            }}
+          />
 
           <RecentActivityRail role="rm" />
 
@@ -551,61 +325,15 @@ export function ResourceManagerDashboardPage(): JSX.Element {
         </>
       ) : null}
 
-      {/* ── QUICK ASSIGN MODAL ── */}
-      {showModal ? (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0 }}>Quick Assignment</h2>
-              <Button variant="secondary" onClick={() => setShowModal(false)} type="button">{'\u2715'} Close</Button>
-            </div>
-            {quickForm.error ? <ErrorState description={quickForm.error} /> : null}
-            {quickForm.success ? <div className="success-banner" style={{ marginBottom: '12px' }}>{quickForm.success}</div> : null}
-            <form onSubmit={(e) => { void handleQuickAssign(e); }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <label className="field">
-                <span className="field__label">Person</span>
-                {managedPeople.length > 0 ? (
-                  <select className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, personId: e.target.value }))} required value={quickForm.personId}>
-                    <option value="">Select person...</option>
-                    {managedPeople.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
-                  </select>
-                ) : (
-                  <input className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, personId: e.target.value }))} placeholder="Person UUID" required type="text" value={quickForm.personId} />
-                )}
-              </label>
-              <label className="field">
-                <span className="field__label">Project</span>
-                {projects.length > 0 ? (
-                  <select className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, projectId: e.target.value }))} required value={quickForm.projectId}>
-                    <option value="">Select project...</option>
-                    {projects.map((proj) => <option key={proj.id} value={proj.id}>{proj.name} ({proj.projectCode})</option>)}
-                  </select>
-                ) : (
-                  <input className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, projectId: e.target.value }))} placeholder="Project UUID" required type="text" value={quickForm.projectId} />
-                )}
-              </label>
-              <label className="field">
-                <span className="field__label">Staffing Role</span>
-                <input className="field__control" onChange={(e) => setQuickForm((p) => ({ ...p, staffingRole: e.target.value }))} placeholder="e.g. Lead Engineer" required type="text" value={quickForm.staffingRole} />
-              </label>
-              <label className="field">
-                <span className="field__label">Allocation %</span>
-                <input className="field__control" max={100} min={1} onChange={(e) => setQuickForm((p) => ({ ...p, allocationPercent: e.target.value }))} required type="number" value={quickForm.allocationPercent} />
-              </label>
-              <label className="field">
-                <span className="field__label">Start Date</span>
-                <DatePicker onValueChange={(value) => setQuickForm((p) => ({ ...p, startDate: value }))} required value={quickForm.startDate} />
-              </label>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <Button variant="primary" disabled={quickForm.isSubmitting} type="submit">
-                  {quickForm.isSubmitting ? 'Submitting...' : 'Create assignment'}
-                </Button>
-                <Button variant="secondary" onClick={() => setShowModal(false)} type="button">Cancel</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      <RmQuickAssignModal
+        open={showModal}
+        form={quickForm}
+        managedPeople={managedPeople}
+        projects={projects}
+        onClose={() => setShowModal(false)}
+        onChange={(patch) => setQuickForm((prev) => ({ ...prev, ...patch }))}
+        onSubmit={(e) => { void handleQuickAssign(e); }}
+      />
     </PageContainer>
   );
 }

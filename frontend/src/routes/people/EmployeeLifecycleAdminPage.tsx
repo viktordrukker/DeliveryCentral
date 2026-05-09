@@ -74,7 +74,7 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
                 onSubmit={handleSubmitRequest}
                 orgUnitOptions={state.orgUnitOptions}
                 roleOptions={state.roleOptions}
-                skillsetOptions={state.skillsetOptions}
+                skillOptions={state.skillOptions}
                 values={state.values}
               />
             )}
@@ -111,7 +111,7 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
       ) : null}
 
       <ConfirmDialog
-        message="This will permanently create a new employee record. The action cannot be undone."
+        message="The employee will be created in INACTIVE status and the assigned line manager will be notified. You can deactivate or terminate the record later."
         onCancel={handleCancel}
         onConfirm={() => void handleConfirm()}
         open={confirmOpen}

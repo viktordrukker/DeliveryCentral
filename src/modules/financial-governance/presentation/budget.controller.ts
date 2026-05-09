@@ -8,7 +8,9 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Post,
   Put,
+  Req,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
@@ -17,8 +19,11 @@ import {
 } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { Idempotent } from '@src/shared/http/idempotent.decorator';
 
+import { DecideBudgetChangeService } from '../application/decide-budget-change.service';
 import { FinancialService } from '../application/financial.service';
+import { RequestBudgetChangeService } from '../application/request-budget-change.service';
 import {
   CreatePersonCostRateDto,
   PersonCostRateDto,
@@ -28,11 +33,17 @@ import {
 } from '../application/contracts/financial.dto';
 
 const BUDGET_ROLES = ['admin', 'project_manager', 'delivery_manager', 'director'] as const;
+const BUDGET_REQUEST_ROLES = ['admin', 'project_manager', 'delivery_manager'] as const;
+const BUDGET_DECIDE_ROLES = ['admin', 'director'] as const;
 
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectBudgetController {
-  public constructor(private readonly service: FinancialService) {}
+  public constructor(
+    private readonly service: FinancialService,
+    private readonly requestBudgetChangeService: RequestBudgetChangeService,
+    private readonly decideBudgetChangeService: DecideBudgetChangeService,
+  ) {}
 
   @Put(':id/budget')
   @RequireRoles(...BUDGET_ROLES)
@@ -50,6 +61,88 @@ export class ProjectBudgetController {
         error instanceof Error ? error.message : 'Failed to upsert project budget.',
       );
     }
+  }
+
+  @Post(':id/budget-change-requests')
+  @RequireRoles(...BUDGET_REQUEST_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @Idempotent()
+  @ApiOperation({
+    summary:
+      'HD-6 — request a project budget change (does not mutate the live budget; awaits Director decision).',
+  })
+  @ApiOkResponse({ description: 'Pending budget approval row.' })
+  public async requestBudgetChange(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Body() dto: { fiscalYear: number; capexBudget: number; opexBudget: number; reason?: string },
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<{ approvalId: string; requestedChange: { capexBudget: number; opexBudget: number } }> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    try {
+      return await this.requestBudgetChangeService.execute({
+        actorId,
+        projectId,
+        fiscalYear: dto.fiscalYear,
+        capexBudget: dto.capexBudget,
+        opexBudget: dto.opexBudget,
+        reason: dto.reason,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to request budget change.',
+      );
+    }
+  }
+
+  @Post(':id/budget-change-requests/:approvalId/approve')
+  @RequireRoles(...BUDGET_DECIDE_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'HD-6 — Director approves a pending budget-change request. Applies the change atomically.',
+  })
+  @ApiOkResponse({ description: 'Decision result with the post-decision budget.' })
+  public async approveBudgetChange(
+    @Param('id', ParseUUIDPipe) _projectId: string,
+    @Param('approvalId', ParseUUIDPipe) approvalId: string,
+    @Body() body: { reason?: string } | undefined,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<unknown> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    return this.decideBudgetChangeService.execute({
+      actorId,
+      approvalId,
+      decision: 'APPROVE',
+      reason: body?.reason,
+    });
+  }
+
+  @Post(':id/budget-change-requests/:approvalId/reject')
+  @RequireRoles(...BUDGET_DECIDE_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'HD-6 — Director rejects a pending budget-change request. Reason required; live budget stays unchanged.',
+  })
+  @ApiOkResponse({ description: 'Decision result with the unchanged budget.' })
+  public async rejectBudgetChange(
+    @Param('id', ParseUUIDPipe) _projectId: string,
+    @Param('approvalId', ParseUUIDPipe) approvalId: string,
+    @Body() body: { reason: string },
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<unknown> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    return this.decideBudgetChangeService.execute({
+      actorId,
+      approvalId,
+      decision: 'REJECT',
+      reason: body?.reason,
+    });
   }
 
   @Get(':id/budget-dashboard')

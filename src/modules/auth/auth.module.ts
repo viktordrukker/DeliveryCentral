@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
@@ -9,6 +11,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 
 @Module({
+  imports: [PlatformSettingsModule],
   controllers: [AuthController],
   providers: [AuthService, TokenService, TwoFactorService, PasswordService, LocalStrategy, JwtAccessStrategy],
   exports: [TokenService],

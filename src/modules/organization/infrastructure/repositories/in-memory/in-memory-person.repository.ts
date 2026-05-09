@@ -1,11 +1,13 @@
 import { Person } from '@src/modules/organization/domain/entities/person.entity';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 export class InMemoryPersonRepository implements PersonRepositoryPort {
   public constructor(private readonly items: Person[] = []) {}
 
-  public async delete(id: string): Promise<void> {
+  // In-memory impl ignores `tx` — there is no atomic boundary to honor.
+  public async delete(id: string, _tx?: TransactionContext): Promise<void> {
     const index = this.items.findIndex((item) => item.id === id);
     if (index >= 0) {
       this.items.splice(index, 1);
@@ -33,7 +35,7 @@ export class InMemoryPersonRepository implements PersonRepositoryPort {
     return [...this.items];
   }
 
-  public async save(aggregate: Person): Promise<void> {
+  public async save(aggregate: Person, _tx?: TransactionContext): Promise<void> {
     const existingIndex = this.items.findIndex((item) => item.id === aggregate.id);
     if (existingIndex >= 0) {
       this.items.splice(existingIndex, 1, aggregate);

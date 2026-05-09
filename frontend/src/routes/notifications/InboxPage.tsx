@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -80,15 +81,34 @@ export function InboxPage(): JSX.Element {
     }
   }
 
+  const exportColumns = useMemo<ExportColumn<InAppNotification>[]>(
+    () => [
+      { key: 'createdAt', label: 'Received', accessor: (n) => n.createdAt },
+      { key: 'eventType', label: 'Event', accessor: (n) => n.eventType },
+      { key: 'title', label: 'Title', accessor: (n) => n.title },
+      { key: 'body', label: 'Body', accessor: (n) => n.body ?? '' },
+      { key: 'readAt', label: 'Read at', accessor: (n) => n.readAt ?? '' },
+      { key: 'link', label: 'Link', accessor: (n) => n.link ?? '' },
+    ],
+    [],
+  );
+
   return (
     <PageContainer testId="inbox-page">
       <PageHeader
         actions={
-          unreadCount > 0 ? (
-            <Button variant="secondary" onClick={() => void handleMarkAllRead()} type="button">
-              Mark all as read
-            </Button>
-          ) : null
+          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+            <ExportButton
+              data={notifications}
+              columns={exportColumns}
+              filename="notifications-inbox"
+            />
+            {unreadCount > 0 ? (
+              <Button variant="secondary" onClick={() => void handleMarkAllRead()} type="button">
+                Mark all as read
+              </Button>
+            ) : null}
+          </div>
         }
         eyebrow="Notifications"
         subtitle="Your inbox — all in-app notifications for your account."

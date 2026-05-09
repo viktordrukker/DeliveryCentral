@@ -1,6 +1,10 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
+import { AuditReadInterceptor } from './shared/http/audit-read.interceptor';
+import { DeprecatedEndpointInterceptor } from './shared/http/deprecated-endpoint.interceptor';
+import { IdempotencyInterceptor } from './shared/http/idempotency.interceptor';
 
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -12,6 +16,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FinancialGovernanceModule } from './modules/financial-governance/financial-governance.module';
 import { ExceptionsModule } from './modules/exceptions/exceptions.module';
 import { HealthModule } from './modules/health/health.module';
+import { HelpCenterModule } from './modules/help-center/help-center.module';
+import { UndoModule } from './modules/undo/undo.module';
 import { IdentityAccessModule } from './modules/identity-access/identity-access.module';
 import { RequestPrincipalMiddleware } from './modules/identity-access/application/request-principal.middleware';
 import { IntegrationsHubModule } from './modules/integrations-hub/integrations-hub.module';
@@ -48,6 +54,8 @@ import { PublicIdModule } from './infrastructure/public-id';
     ObservabilityModule,
     AdminModule,
     HealthModule,
+    HelpCenterModule,
+    UndoModule,
     DashboardModule,
     ExceptionsModule,
     IdentityAccessModule,
@@ -80,6 +88,18 @@ import { PublicIdModule } from './infrastructure/public-id';
     // straight to /setup before any auth or rate-limit logic kicks in.
     { provide: APP_GUARD, useClass: RequireSetupCompleteGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Surfaces `Deprecation` / `Sunset` / `Link` headers + a structured warn
+    // log on every call to a `@DeprecatedEndpoint(...)`-marked handler so
+    // adoption progress is visible during the HD-1 staffing cutover.
+    { provide: APP_INTERCEPTOR, useClass: DeprecatedEndpointInterceptor },
+    // Writes an AuditLog row after a successful GET marked with `@AuditRead`.
+    // See `docs/architecture/audit-vs-activity.md` — read-side reveals are
+    // the one non-mutating action that still warrants forensic audit. (HD-0.7)
+    { provide: APP_INTERCEPTOR, useClass: AuditReadInterceptor },
+    // Replays cached responses for `@Idempotent`-marked endpoints when
+    // the caller supplies a matching `Idempotency-Key` header. Concurrent
+    // duplicates get 409; same key + different body also 409. (HD-0.4)
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
   ],
 })
 export class AppModule implements NestModule {

@@ -12,7 +12,8 @@ export type ProjectStatus =
   | 'CLOSED'
   | 'COMPLETED'
   | 'DRAFT'
-  | 'ON_HOLD';
+  | 'ON_HOLD'
+  | 'PENDING_APPROVAL';
 
 export type EngagementModel = 'TIME_AND_MATERIAL' | 'FIXED_PRICE' | 'MANAGED_SERVICE' | 'INTERNAL';
 export type ProjectPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -56,9 +57,39 @@ export class Project extends AggregateRoot<ProjectProps> {
     this.props.status = 'ARCHIVED';
   }
 
-  public activate(): void {
+  /**
+   * HD-2 — submit a DRAFT project for Director approval. From this state
+   * the only forward transitions are `activate()` (Director approves) or
+   * `rejectActivation()` (Director rejects, returns to DRAFT for revision).
+   */
+  public submitForApproval(): void {
     if (this.status !== 'DRAFT') {
-      throw new Error('Project can only be activated from DRAFT.');
+      throw new Error('Only DRAFT projects can be submitted for approval.');
+    }
+    this.props.status = 'PENDING_APPROVAL';
+  }
+
+  /**
+   * HD-2 — restore a PENDING_APPROVAL project to DRAFT after a rejection
+   * decision. PM may then revise + resubmit.
+   */
+  public rejectActivation(): void {
+    if (this.status !== 'PENDING_APPROVAL') {
+      throw new Error('Only PENDING_APPROVAL projects can be rejected.');
+    }
+    this.props.status = 'DRAFT';
+  }
+
+  /**
+   * Activates the project. After HD-2 the canonical caller is
+   * `DecideProjectActivationService` which transitions from PENDING_APPROVAL
+   * after a Director decision; the DRAFT→ACTIVE direct path remains
+   * supported for legacy admin/seed callers (with a one-line audit-log
+   * tag in the calling service).
+   */
+  public activate(): void {
+    if (this.status !== 'DRAFT' && this.status !== 'PENDING_APPROVAL') {
+      throw new Error('Project can only be activated from DRAFT or PENDING_APPROVAL.');
     }
 
     this.props.status = 'ACTIVE';
@@ -73,6 +104,20 @@ export class Project extends AggregateRoot<ProjectProps> {
     }
 
     this.props.status = 'CLOSED';
+  }
+
+  // HD-8 / Chunk 8.4a — privileged "unclose" used by the project.close
+  // undo executor. The public close-state graph treats CLOSED as
+  // semi-terminal (no public reopen path); the safety boundary for
+  // calling this is the undo token itself (TTL + actor check).
+  // Restores to ACTIVE, which is the only legal predecessor of CLOSED.
+  public restoreFromClose(): void {
+    if (this.props.status !== 'CLOSED') {
+      throw new Error(
+        `restoreFromClose requires current status CLOSED, got ${this.props.status}.`,
+      );
+    }
+    this.props.status = 'ACTIVE';
   }
 
   public enrich(details: {

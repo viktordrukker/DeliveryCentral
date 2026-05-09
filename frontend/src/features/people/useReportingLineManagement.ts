@@ -30,18 +30,35 @@ interface ReportingLineManagementState {
   values: ReportingLineFormValues;
 }
 
-const initialValues: ReportingLineFormValues = {
-  endDate: '',
-  managerId: '',
-  startDate: '',
-  type: 'SOLID',
-};
+/**
+ * Default the start date to today (UTC) so a typical "assign now" save
+ * doesn't silently land as a future-dated row that the resolver excludes
+ * from `currentLineManager`. Past confusion: an empty default + a
+ * tomorrow-pick produced a `validFrom > now()` row, so the page header
+ * kept showing "No line manager assigned" even after a successful save.
+ */
+function todayUtcIsoDate(): string {
+  const now = new Date();
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(now.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function buildInitialValues(): ReportingLineFormValues {
+  return {
+    endDate: '',
+    managerId: '',
+    startDate: todayUtcIsoDate(),
+    type: 'SOLID',
+  };
+}
 
 export function useReportingLineManagement(
   personId?: string,
 ): ReportingLineManagementState {
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
-  const [values, setValues] = useState<ReportingLineFormValues>(initialValues);
+  const [values, setValues] = useState<ReportingLineFormValues>(buildInitialValues());
   const [errors, setErrors] =
     useState<Partial<Record<keyof ReportingLineFormValues, string>>>({});
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +74,10 @@ export function useReportingLineManagement(
     setIsLoadingManagers(true);
     setError(null);
 
-    void fetchPersonDirectory({ page: 1, pageSize: 100 })
+    // pageSize=500 mirrors the Create-Employee form. The IT-Company seed
+    // has 200 people; pageSize=100 would silently drop managers from
+    // page 2 of the directory and the dropdown wouldn't include them.
+    void fetchPersonDirectory({ page: 1, pageSize: 500 })
       .then((response) => {
         if (!active) {
           return;
@@ -134,7 +154,7 @@ export function useReportingLineManagement(
           ? `Scheduled ${managerLabel} as line manager effective ${startDateLabel}.`
           : `Assigned ${managerLabel} as line manager effective ${startDateLabel}.`,
       );
-      setValues(initialValues);
+      setValues(buildInitialValues());
       setErrors({});
     } catch (submitError) {
       setError(

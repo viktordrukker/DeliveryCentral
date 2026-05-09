@@ -396,4 +396,20 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
   public synchronizeVersion(version: number): void {
     this.props.version = version;
   }
+
+  // HD-8 / Chunk 8.2 — privileged "uncancel" used by the assignment.cancel
+  // undo executor. Bypasses the public state machine (CANCELLED is
+  // terminal there); the safety boundary is the undo token itself
+  // (TTL-bounded, single actor, idempotent at the service layer).
+  // Only allowed when current status is CANCELLED — calling this on
+  // any other state is a programmer error and throws.
+  public restoreFromCancellation(target: AssignmentStatusValue): void {
+    if (this.props.status.value !== 'CANCELLED') {
+      throw new Error(
+        `restoreFromCancellation requires current status CANCELLED, got ${this.props.status.value}.`,
+      );
+    }
+    this.props.status = AssignmentStatus.from(target);
+    this.props.cancellationReason = undefined;
+  }
 }

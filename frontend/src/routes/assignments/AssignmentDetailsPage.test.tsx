@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import {
-  endAssignment,
   fetchAssignmentById,
   transitionAssignment,
 } from '@/lib/api/assignments';
@@ -15,10 +14,7 @@ vi.mock('@/lib/api/assignments', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/assignments')>('@/lib/api/assignments');
   return {
     ...actual,
-    approveAssignment: vi.fn(),
-    endAssignment: vi.fn(),
     fetchAssignmentById: vi.fn(),
-    rejectAssignment: vi.fn(),
     transitionAssignment: vi.fn(),
   };
 });
@@ -36,14 +32,12 @@ vi.mock('@/lib/api/business-audit', () => ({
 }));
 
 const mockedFetchAssignmentById = vi.mocked(fetchAssignmentById);
-const mockedEndAssignment = vi.mocked(endAssignment);
 const mockedTransitionAssignment = vi.mocked(transitionAssignment);
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
 
 describe('AssignmentDetailsPage', () => {
   beforeEach(() => {
     mockedFetchAssignmentById.mockReset();
-    mockedEndAssignment.mockReset();
     mockedTransitionAssignment.mockReset();
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     vi.spyOn(window, 'confirm').mockReturnValue(true);

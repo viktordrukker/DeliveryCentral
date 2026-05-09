@@ -42,8 +42,12 @@ export interface EmployeeLifecycleRecord {
   name: string;
   orgUnitId: string;
   role?: string | null;
+  /** @deprecated Legacy free-text categories. Reads only — writes go through PersonSkill (see lib/api/skills.ts). To be dropped in DM-6b-1. */
   skillsets: string[];
   status: string;
+  // HD-8 / Chunk 8.4 — populated only after a successful deactivate.
+  // Pass back to `POST /undo/:id/consume` to restore the person to ACTIVE.
+  undoActionId?: string;
 }
 
 export interface CreateEmployeeRequest {
@@ -56,7 +60,6 @@ export interface CreateEmployeeRequest {
   name: string;
   orgUnitId: string;
   role?: string;
-  skillsets?: string[];
 }
 
 export interface PersonDirectoryQuery {

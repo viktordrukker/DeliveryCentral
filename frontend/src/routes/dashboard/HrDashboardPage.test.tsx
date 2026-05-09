@@ -31,6 +31,7 @@ vi.mock('@/lib/api/pulse', () => ({
   fetchPulseHistory: vi.fn(),
   submitPulse: vi.fn(),
   fetchPerson360: vi.fn(),
+  fetchPulseTeamTrend: vi.fn().mockResolvedValue({ scopePersonCount: 0, weeks: [] }),
 }));
 
 vi.mock('@/lib/api/resource-pools', () => ({

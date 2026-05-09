@@ -8,6 +8,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+
 import { CreateWorkEvidenceRequestDto } from '../application/contracts/create-work-evidence.request';
 import { ListWorkEvidenceQueryDto } from '../application/contracts/list-work-evidence.query';
 import {
@@ -37,6 +39,7 @@ export class WorkEvidenceController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Create a manual or internal work evidence record' })
   @ApiCreatedResponse({ type: WorkEvidenceResponseDto })
   public async createWorkEvidence(
@@ -63,6 +66,7 @@ export class WorkEvidenceController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
   @ApiOperation({ summary: 'Update a manual/internal work evidence record' })
   @ApiOkResponse({ type: WorkEvidenceResponseDto })
   @ApiNotFoundResponse({ description: 'Work evidence not found.' })

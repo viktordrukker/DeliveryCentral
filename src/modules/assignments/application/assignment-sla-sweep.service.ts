@@ -3,6 +3,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { MetricsService } from '@src/shared/observability/metrics.service';
 
 interface BreachedRow {
   id: string;
@@ -13,8 +14,19 @@ interface BreachedRow {
   requestedByPersonId: string | null;
 }
 
+interface PreBreachCandidateRow extends BreachedRow {
+  requestedAt: Date;
+  slaWarnedAt50pct: Date | null;
+  slaWarnedAt75pct: Date | null;
+}
+
 const KEY_INTERVAL = 'assignment.sla.sweepIntervalMinutes';
 const DEFAULT_INTERVAL_MINUTES = 15;
+
+// HD-10 — pre-breach warning thresholds. Hardcoded; later iterations
+// can pull from PlatformSetting if we need per-tenant tuning.
+const PRE_BREACH_LEVEL_50 = 0.5;
+const PRE_BREACH_LEVEL_75 = 0.75;
 
 @Injectable()
 export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy {
@@ -26,6 +38,7 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
     private readonly prisma: PrismaService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
     private readonly auditLogger?: AuditLoggerService,
+    private readonly metrics?: MetricsService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -47,16 +60,43 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
     }
   }
 
-  /** Public sweep entry point. Returns the number of newly-breached assignments. */
-  public async sweep(now: Date = new Date()): Promise<{ breached: number }> {
+  // HD-10 — Public sweep entry point. Two responsibilities now:
+  //   1. Hard breach (existing) — slaDueAt has elapsed, fire ONCE.
+  //   2. Pre-breach warning (new) — elapsed-fraction crosses 50% then
+  //      75%, each fires ONCE, deduplicated via slaWarnedAt{50,75}pct
+  //      timestamps. Pre-breach rows that ALSO breach this tick fall
+  //      through into the breach branch (no double-emit) because
+  //      findPreBreachCandidates excludes slaDueAt < now.
+  public async sweep(
+    now: Date = new Date(),
+  ): Promise<{ breached: number; warned50: number; warned75: number }> {
+    this.metrics?.incSlaSweepTick();
     const breached = await this.findBreached(now);
-    if (breached.length === 0) return { breached: 0 };
-
     for (const row of breached) {
       await this.markBreached(row.id, now);
       await this.recordBreach(row);
+      this.metrics?.incSlaBreached(row.slaStage ?? 'UNKNOWN');
     }
-    return { breached: breached.length };
+
+    const candidates = await this.findPreBreachCandidates(now);
+    let warned50 = 0;
+    let warned75 = 0;
+    for (const row of candidates) {
+      const fraction = this.elapsedFraction(now, row.requestedAt, row.slaDueAt!);
+      if (fraction >= PRE_BREACH_LEVEL_75 && !row.slaWarnedAt75pct) {
+        await this.markWarned(row.id, '75pct', now);
+        await this.recordPreBreach(row, '75pct', fraction);
+        this.metrics?.incSlaPreBreachWarned('75pct', row.slaStage ?? 'UNKNOWN');
+        warned75 += 1;
+      } else if (fraction >= PRE_BREACH_LEVEL_50 && !row.slaWarnedAt50pct) {
+        await this.markWarned(row.id, '50pct', now);
+        await this.recordPreBreach(row, '50pct', fraction);
+        this.metrics?.incSlaPreBreachWarned('50pct', row.slaStage ?? 'UNKNOWN');
+        warned50 += 1;
+      }
+    }
+
+    return { breached: breached.length, warned50, warned75 };
   }
 
   private async tickSafe(): Promise<void> {
@@ -66,6 +106,11 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
       const result = await this.sweep();
       if (result.breached > 0) {
         this.logger.log(`Marked ${result.breached} assignment(s) as SLA-breached.`);
+      }
+      if (result.warned50 > 0 || result.warned75 > 0) {
+        this.logger.log(
+          `Emitted SLA pre-breach warnings: ${result.warned50} at 50%, ${result.warned75} at 75%.`,
+        );
       }
     } catch (err) {
       this.logger.warn(
@@ -113,6 +158,105 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
       where: { id: assignmentId },
       data: { slaBreachedAt: breachedAt },
     });
+  }
+
+  // HD-10 — find assignments whose SLA is still pending (slaDueAt in
+  // the future, no breach yet) but whose elapsed-fraction may have
+  // crossed a warning threshold. We fetch a superset by date math
+  // and filter precisely in `sweep()` so the SQL stays simple.
+  private async findPreBreachCandidates(now: Date): Promise<PreBreachCandidateRow[]> {
+    return (await this.prisma.projectAssignment.findMany({
+      where: {
+        slaDueAt: { gt: now },
+        slaBreachedAt: null,
+        slaStage: { not: null },
+        OR: [{ slaWarnedAt50pct: null }, { slaWarnedAt75pct: null }],
+      },
+      select: {
+        id: true,
+        slaStage: true,
+        slaDueAt: true,
+        personId: true,
+        projectId: true,
+        requestedByPersonId: true,
+        requestedAt: true,
+        slaWarnedAt50pct: true,
+        slaWarnedAt75pct: true,
+      },
+    })) as unknown as PreBreachCandidateRow[];
+  }
+
+  private elapsedFraction(now: Date, start: Date, due: Date): number {
+    const total = due.getTime() - start.getTime();
+    if (total <= 0) return 1;
+    const elapsed = now.getTime() - start.getTime();
+    if (elapsed <= 0) return 0;
+    return elapsed / total;
+  }
+
+  private async markWarned(
+    assignmentId: string,
+    level: '50pct' | '75pct',
+    warnedAt: Date,
+  ): Promise<void> {
+    const data: { slaWarnedAt50pct?: Date; slaWarnedAt75pct?: Date } = {};
+    if (level === '50pct') data.slaWarnedAt50pct = warnedAt;
+    if (level === '75pct') {
+      data.slaWarnedAt75pct = warnedAt;
+      // Crossing 75% implies 50% was also crossed; if 50pct hasn't
+      // been stamped yet (e.g., a long gap between sweeps), backfill
+      // it so deduplication still holds.
+      data.slaWarnedAt50pct = warnedAt;
+    }
+    await this.prisma.projectAssignment.update({
+      where: { id: assignmentId },
+      data,
+    });
+  }
+
+  private async recordPreBreach(
+    row: PreBreachCandidateRow,
+    level: '50pct' | '75pct',
+    fraction: number,
+  ): Promise<void> {
+    this.auditLogger?.record({
+      actionType: 'assignment.sla_pre_breach',
+      actorId: 'system',
+      category: 'assignment',
+      changeSummary: `Assignment ${row.id} crossed SLA ${level} pre-breach threshold at stage ${row.slaStage}.`,
+      details: {
+        assignmentId: row.id,
+        slaStage: row.slaStage,
+        slaDueAt: row.slaDueAt?.toISOString(),
+        personId: row.personId,
+        projectId: row.projectId,
+        warnLevel: level,
+        elapsedFraction: Math.round(fraction * 1000) / 1000,
+      },
+      metadata: {
+        slaStage: row.slaStage,
+        warnLevel: level,
+      },
+      targetEntityId: row.id,
+      targetEntityType: 'ASSIGNMENT',
+    });
+
+    await this.notificationEventTranslator
+      ?.assignmentSlaPreBreach?.({
+        assignmentId: row.id,
+        slaStage: row.slaStage ?? 'UNKNOWN',
+        warnLevel: level,
+        recipientPersonIds: [row.requestedByPersonId, row.personId].filter(
+          (id): id is string => Boolean(id),
+        ),
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `Failed to dispatch SLA pre-breach notification for ${row.id}: ${
+            err instanceof Error ? err.message : 'unknown'
+          }`,
+        );
+      });
   }
 
   private async recordBreach(row: BreachedRow): Promise<void> {

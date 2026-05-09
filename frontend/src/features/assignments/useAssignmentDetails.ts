@@ -10,14 +10,14 @@ import {
   RevokeAssignmentRequest,
   TransitionAssignmentRequest,
   amendAssignment,
-  approveAssignment,
-  endAssignment,
+  bookAssignment,
+  cancelAssignment,
+  completeAssignment,
   EndAssignmentRequest,
   fetchAssignmentById,
-  rejectAssignment,
-  revokeAssignment,
   transitionAssignment,
 } from '@/lib/api/assignments';
+import { showUndoToast } from '@/lib/undo-toast';
 
 interface AssignmentDetailsState {
   data?: AssignmentDetails;
@@ -93,15 +93,26 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
 
     try {
       if (decision === 'approve') {
-        await approveAssignment(id, request);
+        await bookAssignment(id, { reason: request.comment ?? request.reason });
         setSuccessMessage('Assignment approved successfully.');
+        window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+        await loadAssignment(id);
       } else {
-        await rejectAssignment(id, request);
+        const result = await cancelAssignment(id, {
+          reason: request.reason ?? request.comment,
+        });
         setSuccessMessage('Assignment rejected successfully.');
+        window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+        await loadAssignment(id);
+        showUndoToast({
+          undoActionId: result.undoActionId,
+          successMessage: 'Assignment cancelled.',
+          onUndone: async () => {
+            window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+            await loadAssignment(id);
+          },
+        });
       }
-
-      window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
-      await loadAssignment(id);
       return true;
     } catch (decisionError) {
       setError(decisionError instanceof Error ? decisionError.message : 'Assignment action failed.');
@@ -122,7 +133,13 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      await endAssignment(id, request);
+      // Legacy `endDate` body field (back-dated completion) is forwarded
+      // into the canonical reason so the audit trail captures the operator's
+      // intent. The canonical handler treats validTo as "now".
+      const reason = request.endDate
+        ? `${request.reason ?? 'completed'} (endDate=${request.endDate})`
+        : request.reason;
+      await completeAssignment(id, { reason });
       setSuccessMessage('Assignment ended successfully.');
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
@@ -173,10 +190,20 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      await transitionAssignment(id, target, request);
+      const result = await transitionAssignment(id, target, request);
       setSuccessMessage(`Assignment moved to ${target.replace('_', ' ').toLowerCase()}.`);
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
+      if (target === 'CANCELLED') {
+        showUndoToast({
+          undoActionId: result.undoActionId,
+          successMessage: 'Assignment cancelled.',
+          onUndone: async () => {
+            window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+            await loadAssignment(id);
+          },
+        });
+      }
       return true;
     } catch (transitionError) {
       setError(transitionError instanceof Error ? transitionError.message : 'Transition failed.');
@@ -197,10 +224,18 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      await revokeAssignment(id, request);
+      const result = await cancelAssignment(id, { reason: request.reason });
       setSuccessMessage('Assignment revoked.');
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
+      showUndoToast({
+        undoActionId: result.undoActionId,
+        successMessage: 'Assignment revoked.',
+        onUndone: async () => {
+          window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
+          await loadAssignment(id);
+        },
+      });
       return true;
     } catch (revokeError) {
       setError(revokeError instanceof Error ? revokeError.message : 'Revoke failed.');

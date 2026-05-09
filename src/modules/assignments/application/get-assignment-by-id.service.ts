@@ -21,9 +21,19 @@ export class GetAssignmentByIdService {
       return null;
     }
 
-    const [dbPeople, dbProjects] = await Promise.all([
+    const [dbPeople, dbProjects, rateCardRow] = await Promise.all([
       this.prisma.person.findMany({ select: { id: true, displayName: true } }),
       this.prisma.project.findMany({ select: { id: true, name: true } }),
+      // HD-3 — read the pinned rate card columns; the entity doesn't
+      // surface them, so a thin Prisma select is the cleanest path.
+      this.prisma.projectAssignment.findUnique({
+        where: { id: assignment.assignmentId.value },
+        select: {
+          appliedRateCardEntryId: true,
+          effectiveBillRate: true,
+          effectiveBillCurrency: true,
+        },
+      }),
     ]);
     const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
     const allProjectsById = new Map(dbProjects.map((p) => [p.id, p]));
@@ -88,6 +98,12 @@ export class GetAssignmentByIdService {
       staffingRole: assignment.staffingRole,
       startDate: assignment.validFrom.toISOString(),
       version: assignment.version,
+      appliedRateCardEntryId: rateCardRow?.appliedRateCardEntryId ?? undefined,
+      effectiveBillRate:
+        rateCardRow?.effectiveBillRate !== null && rateCardRow?.effectiveBillRate !== undefined
+          ? Number(rateCardRow.effectiveBillRate)
+          : undefined,
+      effectiveBillCurrency: rateCardRow?.effectiveBillCurrency ?? undefined,
     };
   }
 }

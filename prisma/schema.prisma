@@ -50,11 +50,199 @@ enum RiskReviewCadence {
 
 enum ProjectStatus {
   DRAFT
+  // HD-2: PM submits a DRAFT for Director approval; activation is gated on
+  // approval. The legacy DRAFT→ACTIVE direct transition remains an admin
+  // break-glass path so existing automation/seeds keep working until the
+  // pre-existing rows are reclassified.
+  PENDING_APPROVAL
   ACTIVE
   ON_HOLD
   CLOSED
   COMPLETED
   ARCHIVED
+}
+
+// HD-2: paired record for every project activation decision. Mirrors the
+// shape of `BudgetApproval` so the audit trail is consistent across
+// approval surfaces.
+enum ProjectActivationDecision {
+  APPROVED
+  REJECTED
+}
+
+// HD-4 — ResponsibilityRule enums (J4).
+//
+// 7 actions covering everything currently hardcoded in HD-2/HD-5/HD-6
+// plus the assignment-side gates that were already wired before HD.
+enum ResponsibilityActionKind {
+  PROJECT_ACTIVATION_APPROVAL
+  BUDGET_CHANGE_APPROVAL
+  ASSIGNMENT_DIRECTOR_APPROVAL
+  ASSIGNMENT_OVERRIDE_APPROVAL
+  PERSON_RELEASE_HR_APPROVAL
+  PERSON_RELEASE_DIRECTOR_APPROVAL
+  PROJECT_CLOSE_APPROVAL
+}
+
+// 7 scopes — TENANT is the catch-all, the others narrow rules down.
+// `scopeValue` semantics depend on the scope:
+//   TENANT           — NULL
+//   ORG_UNIT         — orgUnit.id (UUID)
+//   CLIENT           — client.id (UUID)
+//   PROJECT          — project.id (UUID)
+//   PROJECT_TYPE     — engagementModel string ('TIME_AND_MATERIAL', …)
+//   THRESHOLD_AMOUNT — numeric stringified currency value (the rule
+//                      fires when the action's amount is ≥ scopeValue)
+//   ROLE_GRADE       — grade dictionary key (e.g. 'g13')
+enum ResponsibilityScope {
+  TENANT
+  ORG_UNIT
+  CLIENT
+  PROJECT
+  PROJECT_TYPE
+  THRESHOLD_AMOUNT
+  ROLE_GRADE
+}
+
+// 4 resolution modes — see ResponsibilityRule model docstring.
+enum ResponsibilityResolutionMode {
+  ROLE
+  PERSON
+  PM_SOLO
+  SKIP
+}
+
+// HD-5 — Per J3 the release flow is dual-approval: RM initiates,
+// HR Manager AND Director both approve, then RM finalizes (cascade
+// ends assignments + sets Person.terminatedAt). The request and its
+// approvals live in two paired tables to keep the audit trail clean.
+enum PersonReleaseStatus {
+  PENDING_APPROVAL // request open, awaiting HR + Director approvals
+  APPROVED         // both approvals captured; awaiting RM finalize
+  REJECTED         // either HR or Director rejected
+  CANCELLED        // RM withdrew the request
+  COMPLETED        // RM finalized; Person terminated, assignments cancelled
+}
+
+enum ReleaseApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+model PersonReleaseRequest {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  personId              String                  @db.Uuid
+  initiatedByPersonId   String                  @db.Uuid
+  reason                String                  // free-text explanation
+  reasonCode            String?                 @db.VarChar(60)        // optional dictionary key (release-reasons)
+  targetTerminationDate DateTime                @db.Date
+  status                PersonReleaseStatus     @default(PENDING_APPROVAL)
+  cancelledAt           DateTime?               @db.Timestamptz(3)
+  completedAt           DateTime?               @db.Timestamptz(3)
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  version               Int                     @default(1)
+  person                Person                  @relation("PersonReleaseRequestSubject", fields: [personId], references: [id], onDelete: Restrict)
+  initiatedBy           Person                  @relation("PersonReleaseRequestInitiator", fields: [initiatedByPersonId], references: [id], onDelete: Restrict)
+  approvals             PersonReleaseApproval[]
+  tenantId              String?                 @db.Uuid
+  Tenant                Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([personId, status])
+  @@index([status, targetTerminationDate])
+  @@index([tenantId])
+  @@map("person_release_requests")
+}
+
+model PersonReleaseApproval {
+  id            String                   @id @default(uuid()) @db.Uuid
+  requestId     String                   @db.Uuid
+  // Role that gave this approval (`hr_manager` or `director`). The
+  // @@unique below keeps a single role from voting twice on the same
+  // request; the service layer enforces the role-set membership.
+  role          String                   @db.VarChar(40)
+  actorPersonId String                   @db.Uuid
+  decision      ReleaseApprovalDecision
+  reason        String?
+  decidedAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  request       PersonReleaseRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actor         Person                   @relation("PersonReleaseApprovalActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
+
+  @@unique([requestId, role])
+  @@index([requestId])
+  @@index([actorPersonId])
+  @@map("person_release_approvals")
+}
+
+model ProjectActivationApproval {
+  id              String                       @id @default(uuid()) @db.Uuid
+  projectId       String                       @db.Uuid
+  requestedAt     DateTime                     @default(now()) @db.Timestamptz(3)
+  requestedById   String                       @db.Uuid
+  decidedAt       DateTime?                    @db.Timestamptz(3)
+  decidedById     String?                      @db.Uuid
+  decision        ProjectActivationDecision?
+  reason          String?
+  project         Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedBy     Person                       @relation("ProjectActivationApproval_requestedBy", fields: [requestedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  decidedBy       Person?                      @relation("ProjectActivationApproval_decidedBy", fields: [decidedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenantId        String?                      @db.Uuid
+  Tenant          Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, requestedAt])
+  @@index([decidedAt])
+  @@index([tenantId])
+  @@map("project_activation_approvals")
+}
+
+// HD-4 — ResponsibilityRule (J4). A configurable matrix that decides
+// "who is responsible for action X in scope Y". The resolver walks rules
+// in priority order and returns the first match's `mode + target`.
+//
+// `actionKind` is what the caller is doing (PROJECT_ACTIVATION_APPROVAL,
+// BUDGET_CHANGE_APPROVAL, …). `scopeKind` is the dimension being matched
+// (TENANT default, ORG_UNIT, CLIENT, PROJECT, PROJECT_TYPE,
+// THRESHOLD_AMOUNT, ROLE_GRADE). `mode` is how the resolver should turn
+// the rule into a list of approvers:
+//   ROLE      — anyone with `targetRole` in the principal claim.
+//   PERSON    — exactly `targetPersonId`.
+//   PM_SOLO   — the project's PM acts alone (no separate approver).
+//   SKIP      — approval is NOT required at all in this scope.
+model ResponsibilityRule {
+  id              String                            @id @default(uuid()) @db.Uuid
+  // What action this rule governs.
+  actionKind      ResponsibilityActionKind
+  // Dimension being matched. The resolver picks rules that satisfy the
+  // caller's context (e.g. `scopeKind=ORG_UNIT, scopeValue=<unitId>`).
+  scopeKind       ResponsibilityScope
+  // Opaque value tied to `scopeKind`. UUID for ORG_UNIT/CLIENT/PROJECT;
+  // numeric stringified threshold for THRESHOLD_AMOUNT; string for
+  // PROJECT_TYPE/ROLE_GRADE; NULL for TENANT (the catch-all).
+  scopeValue      String?
+  // Resolution mode, see model docstring.
+  mode            ResponsibilityResolutionMode
+  // Populated when `mode='ROLE'`. Must match a value in
+  // `frontend/src/app/route-manifest.ts` PLATFORM_ROLES.
+  targetRole      String?
+  // Populated when `mode='PERSON'`. Stable point-of-contact assignment.
+  targetPersonId  String?                            @db.Uuid
+  targetPerson    Person?                            @relation("ResponsibilityRuleTargetPerson", fields: [targetPersonId], references: [id], onDelete: SetNull)
+  // Lower number = higher priority. The resolver returns the first
+  // `isActive=true` rule per `(actionKind, scopeKind)`. Default 100;
+  // tenants override with overrides at 1..99.
+  priority        Int                                @default(100)
+  isActive        Boolean                            @default(true)
+  notes           String?
+  tenantId        String?                            @db.Uuid
+  Tenant          Tenant?                            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt       DateTime                           @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                           @updatedAt @db.Timestamptz(3)
+  archivedAt      DateTime?                          @db.Timestamptz(3)
+
+  @@index([actionKind, scopeKind, isActive, priority])
+  @@index([targetPersonId])
+  @@index([tenantId])
+  @@map("responsibility_rules")
 }
 
 enum EngagementModel {
@@ -259,6 +447,7 @@ model Person {
   managerReportingLines                  ReportingLine[]                     @relation("ReportingLineManager")
   subjectReportingLines                  ReportingLine[]                     @relation("ReportingLineSubject")
   resourcePoolMemberships                PersonResourcePoolMembership[]
+  personSkills                           PersonSkill[]
   requestedAssignments                   ProjectAssignment[]                 @relation("AssignmentRequestedBy")
   projectAssignments                     ProjectAssignment[]                 @relation("AssignmentPerson")
   assignmentApprovalsMade                AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
@@ -274,6 +463,13 @@ model Person {
   managedProjects                        Project[]                           @relation("ProjectManager")
   deliveryManagedProjects                Project[]                           @relation("DeliveryManager")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
+  releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
+  releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
+  releaseApprovalsGiven                  PersonReleaseApproval[]             @relation("PersonReleaseApprovalActor")
+  responsibilityRulesAsTarget            ResponsibilityRule[]                @relation("ResponsibilityRuleTargetPerson")
+  helpArticlesAuthored                   HelpArticle[]                       @relation("HelpArticleAuthor")
+  helpFeedback                           HelpFeedback[]                      @relation("HelpFeedbackActor")
+  onboardingTourProgress                 OnboardingTourProgress[]            @relation("OnboardingTourPerson")
   externalIdentityLinks                  PersonExternalIdentityLink[]
   externalAccountLinks                   ExternalAccountLink[]
   activityEvents                         EmployeeActivityEvent[]
@@ -299,6 +495,8 @@ model Person {
   undoActionsRegistered                  UndoAction[]                        @relation("UndoActionActor")
   budgetApprovalsRequested               BudgetApproval[]                    @relation("BudgetApproval_requestedBy")
   budgetApprovalsDecided                 BudgetApproval[]                    @relation("BudgetApproval_decidedBy")
+  projectActivationApprovalsRequested    ProjectActivationApproval[]         @relation("ProjectActivationApproval_requestedBy")
+  projectActivationApprovalsDecided      ProjectActivationApproval[]         @relation("ProjectActivationApproval_decidedBy")
   contacts                               Contact[]
   employmentEvents                       EmploymentEvent[]                   @relation("EmploymentEvent_person")
   employmentEventsRecorded               EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
@@ -604,6 +802,7 @@ model Project {
   deliveryManager       Person?                   @relation("DeliveryManager", fields: [deliveryManagerId], references: [id])
   client                Client?                   @relation(fields: [clientId], references: [id])
   externalLinks         ProjectExternalLink[]
+  activationApprovals   ProjectActivationApproval[]
   assignments           ProjectAssignment[]
   workEvidenceRecords   WorkEvidence[]
   caseRecords           CaseRecord[]
@@ -696,6 +895,19 @@ model ProjectAssignment {
   slaStage                 AssignmentSlaStage?
   slaDueAt                 DateTime?            @db.Timestamptz(3)
   slaBreachedAt            DateTime?            @db.Timestamptz(3)
+  // HD-10 — pre-breach warning timestamps. Each is set exactly once
+  // when the SLA elapsed-fraction crosses 50% or 75% so the sweep
+  // can deduplicate notifications across ticks.
+  slaWarnedAt50pct         DateTime?            @db.Timestamptz(3)
+  slaWarnedAt75pct         DateTime?            @db.Timestamptz(3)
+  // HD-3 — bill-rate pinning. When the resolver picks a rate card
+  // entry at BOOKED transition, both the entry id and the resolved
+  // hourly rate get written here so margin math can read a stable
+  // value even if the underlying card later mutates.
+  appliedRateCardEntryId   String?              @db.Uuid
+  appliedRateCardEntry     RateCardEntry?       @relation("AssignmentRateCardEntry", fields: [appliedRateCardEntryId], references: [id], onDelete: SetNull)
+  effectiveBillRate        Decimal?             @db.Decimal(10, 2)
+  effectiveBillCurrency    String?              @db.VarChar(3)
   version                  Int                  @default(1)
   createdAt                DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
@@ -1104,6 +1316,37 @@ model AuditLog {
   @@map("AuditLog")
 }
 
+// HD-0.4 — Idempotency key store. Front-door cache for write requests
+// that opt in via the `Idempotency-Key` HTTP header. The interceptor
+// looks up `(key, method, path, actorId)` on entry; cached COMPLETED
+// rows replay the stored response, PENDING rows return 409 (concurrent
+// duplicate), and a fresh write reserves the row before running the
+// handler then stamps the response payload on success.
+model IdempotencyKey {
+  id             String                @id @default(uuid()) @db.Uuid
+  // The header value. Caller-supplied, treated as opaque.
+  idempotencyKey String                @map("idempotency_key")
+  method         String
+  path           String
+  actorId        String?               @db.Uuid @map("actor_id")
+  // Cryptographic hash of the request body so a same-key + different-body
+  // attempt can be rejected explicitly rather than silently replaying
+  // the wrong response.
+  requestHash    String                @map("request_hash")
+  status         IdempotencyKeyStatus  @default(PENDING)
+  responseStatus Int?                  @map("response_status")
+  responseBody   Json?                 @map("response_body")
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3) @map("created_at")
+  completedAt    DateTime?             @db.Timestamptz(3) @map("completed_at")
+  // Rows expire 24h after creation; a sweep job (future work) prunes
+  // them. The interceptor treats expired rows as absent.
+  expiresAt      DateTime              @db.Timestamptz(3) @map("expires_at")
+
+  @@unique([idempotencyKey, method, path, actorId], map: "uq_idempotency_key_actor_route")
+  @@index([expiresAt], map: "idx_idempotency_key_expires_at")
+  @@map("idempotency_keys")
+}
+
 model OutboxEvent {
   id            String            @id @default(uuid()) @db.Uuid
   topic         String
@@ -1115,6 +1358,11 @@ model OutboxEvent {
   status        OutboxEventStatus @default(PENDING)
   availableAt   DateTime          @default(now()) @db.Timestamptz(3)
   publishedAt   DateTime?         @db.Timestamptz(3)
+  // HD-0.3 retry bookkeeping for OutboxEventPublisher.
+  // attempts: dispatch attempts so far (capped by outbox.maxAttempts).
+  // lastError: most recent failure message for ops triage.
+  attempts      Int               @default(0)
+  lastError     String?
   createdAt     DateTime          @default(now()) @db.Timestamptz(3)
   tenantId      String?           @db.Uuid
   Tenant        Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -1421,6 +1669,66 @@ model PersonCostRate {
   @@map("person_cost_rates")
 }
 
+// HD-3 — Bill-rate resolution (J2). A `RateCard` is a tenant-scoped or
+// client-scoped collection of `RateCardEntry` rows; each entry maps a
+// (role, grade, optional required skills) tuple to an hourly bill
+// rate. The resolver walks 5 layers of precedence at assignment-book
+// time and pins the chosen entry on `ProjectAssignment.appliedRateCardEntryId`
+// so margin math has a stable reference.
+model RateCard {
+  id            String           @id @default(uuid()) @db.Uuid
+  // Stable, human-readable handle. Used in admin UIs + pinned audit refs.
+  name          String
+  // Three-letter ISO currency code; rate values are interpreted in this currency.
+  currencyCode  String           @db.VarChar(3)
+  currency      Currency         @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  // Scope. A card targets either a specific client OR is the tenant default (clientId NULL).
+  // The resolver checks client-scoped cards before falling back to tenant default.
+  clientId      String?          @db.Uuid
+  client        Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // Activation window. The resolver only considers cards whose [validFrom, validTo]
+  // covers the assignment's `validFrom`. NULL `validTo` = open-ended.
+  validFrom     DateTime         @db.Date
+  validTo       DateTime?        @db.Date
+  isActive      Boolean          @default(true)
+  notes         String?
+  tenantId      String?          @db.Uuid
+  Tenant        Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
+  archivedAt    DateTime?        @db.Timestamptz(3)
+  entries       RateCardEntry[]
+
+  @@index([clientId, isActive])
+  @@index([tenantId])
+  @@map("rate_cards")
+}
+
+model RateCardEntry {
+  id              String     @id @default(uuid()) @db.Uuid
+  rateCardId      String     @db.Uuid
+  rateCard        RateCard   @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+  // Match keys. `staffingRole` is required, `grade` is required (matches
+  // tenant `MetadataDictionary{key:'grade'}` per J8), `requiredSkills`
+  // is an optional positive-match list — the assignment's person must
+  // hold ALL listed skills for the entry to apply.
+  staffingRole    String
+  grade           String
+  requiredSkills  String[]   @default([])
+  // Hourly bill rate in the parent card's currency.
+  hourlyRate      Decimal    @db.Decimal(10, 2)
+  notes           String?
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime   @updatedAt @db.Timestamptz(3)
+  archivedAt      DateTime?  @db.Timestamptz(3)
+  pinnedAssignments ProjectAssignment[] @relation("AssignmentRateCardEntry")
+
+  @@unique([rateCardId, staffingRole, grade])
+  @@index([rateCardId, isActive])
+  @@map("rate_card_entries")
+}
+
 model PulseEntry {
   id          String   @id @default(uuid())
   idNew       String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
@@ -1466,6 +1774,117 @@ model PlatformSetting {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   @@map("platform_settings")
+}
+
+// HD-9 — Help Center MVP (J11). Four append-light tables back the
+// in-app help surface: an article catalog, route-pinned tips, per-user
+// feedback, and per-user onboarding-tour progress. Tour DEFINITIONS
+// live in code (a tenant-overridable JSON catalog); only progress is
+// row-shaped. Admin edit + onboarding-tour FE land in later HD-9 chunks.
+model HelpArticle {
+  id             String        @id @default(uuid()) @db.Uuid
+  // Stable URL handle. Lower-snake-case, used in `/help/:slug`.
+  slug           String        @unique
+  title          String
+  // Short blurb shown on the list view. Plain text only.
+  summary        String
+  // Full article body. Markdown — renderer is a later chunk.
+  body           String
+  // Flat-tag categorization. Power users can filter the list by tag.
+  // Nested categories deferred to a future iteration.
+  tags           String[]      @default([])
+  isPublished    Boolean       @default(false)
+  authorPersonId String?       @db.Uuid
+  author         Person?       @relation("HelpArticleAuthor", fields: [authorPersonId], references: [id], onDelete: SetNull)
+  tenantId       String?       @db.Uuid
+  Tenant         Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+  archivedAt     DateTime?     @db.Timestamptz(3)
+  feedbacks      HelpFeedback[]
+  tips           HelpTip[]
+
+  @@index([isPublished, archivedAt])
+  @@index([tenantId])
+  @@index([authorPersonId])
+  @@map("help_articles")
+}
+
+// Route-pinned contextual tip. The frontend's `TipBalloon` component
+// can be swapped from hard-coded strings to data-fed via these rows.
+// `key` is the stable identifier the FE references (e.g.
+// `staffing.desk.cell.dropzone`); `routePath` lets ops show only
+// route-relevant tips on each page.
+model HelpTip {
+  id             String        @id @default(uuid()) @db.Uuid
+  key            String        @unique
+  routePath      String
+  title          String
+  body           String
+  // Optional deep-link to a full article. NULL = standalone tip.
+  articleId      String?       @db.Uuid
+  article        HelpArticle?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  displayOrder   Int           @default(100)
+  isActive       Boolean       @default(true)
+  tenantId       String?       @db.Uuid
+  Tenant         Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
+  archivedAt     DateTime?     @db.Timestamptz(3)
+
+  @@index([routePath, isActive])
+  @@index([articleId])
+  @@index([tenantId])
+  @@map("help_tips")
+}
+
+// Reader feedback on an article. Multiple feedback rows per
+// (article, actor) are allowed so a user can revise their take as the
+// article improves; the FE shows the most recent one in admin views.
+model HelpFeedback {
+  id             String        @id @default(uuid()) @db.Uuid
+  articleId      String        @db.Uuid
+  article        HelpArticle   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  actorPersonId  String?       @db.Uuid
+  actor          Person?       @relation("HelpFeedbackActor", fields: [actorPersonId], references: [id], onDelete: SetNull)
+  wasHelpful     Boolean
+  comment        String?
+  tenantId       String?       @db.Uuid
+  Tenant         Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([articleId, createdAt])
+  @@index([actorPersonId])
+  @@index([tenantId])
+  @@map("help_feedback")
+}
+
+// Per-user progress through a named onboarding tour. The tour itself
+// (its steps + their target routes) lives in code/seed; this row only
+// captures which steps the user has completed for a given key.
+//
+// `dismissedAt` and `completedAt` are mutually exclusive in spirit but
+// the schema doesn't enforce that — `dismissedAt` means the user
+// clicked "skip", `completedAt` means they ran every step. The FE
+// uses either as a "don't show this tour again" signal.
+model OnboardingTourProgress {
+  id              String     @id @default(uuid()) @db.Uuid
+  personId        String     @db.Uuid
+  person          Person     @relation("OnboardingTourPerson", fields: [personId], references: [id], onDelete: Cascade)
+  // Tour identifier. Stable, lowercase, kebab-case. e.g. `staffing-desk-101`.
+  tourKey         String
+  completedSteps  String[]   @default([])
+  dismissedAt     DateTime?  @db.Timestamptz(3)
+  completedAt     DateTime?  @db.Timestamptz(3)
+  tenantId        String?    @db.Uuid
+  Tenant          Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime   @updatedAt @db.Timestamptz(3)
+
+  @@unique([personId, tourKey])
+  @@index([tourKey])
+  @@index([tenantId])
+  @@map("onboarding_tour_progress")
 }
 
 // =============================================================================
@@ -1547,7 +1966,8 @@ model Skill {
 model PersonSkill {
   id          String   @id @default(uuid())
   idNew       String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  personId    String
+  personId    String   @db.Uuid
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
   skillId     String
   skill       Skill    @relation(fields: [skillId], references: [id])
   proficiency Int
@@ -1807,6 +2227,7 @@ model Client {
   updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
   accountManager         Person?   @relation("ClientAccountManager", fields: [accountManagerPersonId], references: [id])
   projects               Project[]
+  rateCards              RateCard[]
   tenantId               String?   @db.Uuid
   Tenant                 Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
@@ -1997,6 +2418,16 @@ enum LocalAccountSource {
 }
 
 // DM-4-2 batch 4 — promoted from `OutboxEvent.status: String`.
+// HD-0.4 — IdempotencyKey row status.
+//   PENDING   — handler in flight; concurrent duplicates get 409.
+//   COMPLETED — handler succeeded; replay the stamped response.
+//   FAILED    — handler raised; no replay (caller should retry fresh).
+enum IdempotencyKeyStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 enum OutboxEventStatus {
   PENDING
   PUBLISHED
@@ -2036,6 +2467,7 @@ model Currency {
   projectBudgets           ProjectBudget[]
   personCostRates          PersonCostRate[]
   projectVendorEngagements ProjectVendorEngagement[]
+  rateCards                RateCard[]
 
   @@map("Currency")
 }
@@ -2505,8 +2937,16 @@ model Tenant {
   OrgUnit           OrgUnit[]
   OutboxEvent       OutboxEvent[]
   Person            Person[]
-  Project           Project[]
-  ProjectAssignment ProjectAssignment[]
+  Project                   Project[]
+  ProjectActivationApproval ProjectActivationApproval[]
+  PersonReleaseRequest      PersonReleaseRequest[]
+  ProjectAssignment         ProjectAssignment[]
+  RateCard                  RateCard[]
+  ResponsibilityRule        ResponsibilityRule[]
+  HelpArticle               HelpArticle[]
+  HelpTip                   HelpTip[]
+  HelpFeedback              HelpFeedback[]
+  OnboardingTourProgress    OnboardingTourProgress[]
   WorkEvidence      WorkEvidence[]
   Client            Client[]
   InAppNotification InAppNotification[]

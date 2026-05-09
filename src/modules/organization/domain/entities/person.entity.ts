@@ -162,6 +162,21 @@ export class Person extends AggregateRoot<PersonProps> {
     );
   }
 
+  // HD-8 / Chunk 8.4a — privileged "reactivate" used by the
+  // person.deactivate undo executor. The public Person API
+  // intentionally does not offer a reactivate flow (HR ergonomics +
+  // audit clarity); the safety boundary here is the undo token's TTL
+  // and actor check. Refuses on TERMINATED rows because termination
+  // is a different lifecycle with its own dual-approval flow (HD-5).
+  public restoreFromDeactivation(): void {
+    if (this.props.employmentStatus !== 'INACTIVE') {
+      throw new Error(
+        `restoreFromDeactivation requires current status INACTIVE, got ${this.props.employmentStatus}.`,
+      );
+    }
+    this.props.employmentStatus = 'ACTIVE';
+  }
+
   private static normalizeEmail(email: string): string {
     const normalizedEmail = email.trim().toLowerCase();
 

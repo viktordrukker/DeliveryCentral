@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -157,6 +158,22 @@ export function TimeManagementPage(): JSX.Element {
     return () => { active = false; };
   }, [ms, tick]);
 
+  const queueExportColumns = useMemo<ExportColumn<ApprovalQueueItem>[]>(
+    () => [
+      { key: 'type', label: 'Type', accessor: (r) => r.type },
+      { key: 'personName', label: 'Person', accessor: (r) => r.personName },
+      { key: 'status', label: 'Status', accessor: (r) => r.status },
+      { key: 'weekStart', label: 'Week start', accessor: (r) => r.weekStart ?? '' },
+      { key: 'totalHours', label: 'Total hours', accessor: (r) => r.totalHours ?? '' },
+      { key: 'overtimeHours', label: 'Overtime', accessor: (r) => r.overtimeHours ?? '' },
+      { key: 'leaveType', label: 'Leave type', accessor: (r) => r.leaveType ?? '' },
+      { key: 'leaveStartDate', label: 'Leave start', accessor: (r) => r.leaveStartDate ?? '' },
+      { key: 'leaveEndDate', label: 'Leave end', accessor: (r) => r.leaveEndDate ?? '' },
+      { key: 'submittedAt', label: 'Submitted', accessor: (r) => r.submittedAt ?? '' },
+    ],
+    [],
+  );
+
   // Title bar
   useEffect(() => {
     setActions(
@@ -164,11 +181,16 @@ export function TimeManagementPage(): JSX.Element {
         <Button size="sm" variant="secondary" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</Button>
         <span style={{ fontWeight: 600, fontSize: 14, minWidth: 100, textAlign: 'center' }}>{MONTH_NAMES[month - 1]} {year}</span>
         <Button size="sm" variant="secondary" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</Button>
+        <ExportButton
+          data={queue}
+          columns={queueExportColumns}
+          filename={`time-mgmt-queue-${ms}`}
+        />
         <TipTrigger />
       </>
     );
     return () => setActions(null);
-  }, [setActions, year, month]);
+  }, [setActions, year, month, queue, queueExportColumns, ms]);
 
   // KPIs
   const pendingCount = queue.filter((q) => q.status === 'SUBMITTED' || q.status === 'PENDING').length;

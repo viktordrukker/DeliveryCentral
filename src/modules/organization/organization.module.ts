@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '../audit-observability/application/audit-logger.service';
+import { ResponsibilityResolverService } from '../identity-access/application/responsibility-resolver.service';
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -17,7 +18,12 @@ import { TerminateReportingLineService } from './application/terminate-reporting
 import { CreateTeamService } from './application/create-team.service';
 import { CreateEmployeeService } from './application/create-employee.service';
 import { DeactivateEmployeeService } from './application/deactivate-employee.service';
+import { PersonDeactivateUndoExecutor } from './application/person-deactivate-undo.executor';
+import { UndoActionExecutorRegistry } from '@src/modules/undo/application/undo-action-executor.registry';
+import { UndoService } from '@src/modules/undo/application/undo.service';
+import { DecidePersonReleaseService } from './application/decide-person-release.service';
 import { EmployeeActivityService } from './application/employee-activity.service';
+import { OpenPersonReleaseRequestService } from './application/open-person-release-request.service';
 import { TerminateEmployeeService } from './application/terminate-employee.service';
 import { ManagerScopeQueryService } from './application/manager-scope-query.service';
 import { OrgChartQueryService } from './application/org-chart-query.service';
@@ -38,6 +44,7 @@ import { PrismaPersonDirectoryQueryRepository } from './infrastructure/queries/p
 import { ManagerScopeController } from './presentation/manager-scope.controller';
 import { OrgChartController } from './presentation/org-chart.controller';
 import { PersonDirectoryController } from './presentation/person-directory.controller';
+import { PersonReleaseRequestController } from './presentation/person-release-request.controller';
 import { ReportingLinesController } from './presentation/reporting-lines.controller';
 import { TeamsController } from './presentation/teams.controller';
 
@@ -52,6 +59,7 @@ import { TeamsController } from './presentation/teams.controller';
     PersonDirectoryController,
     ManagerScopeController,
     OrgChartController,
+    PersonReleaseRequestController,
     ReportingLinesController,
     TeamsController,
   ],
@@ -167,18 +175,21 @@ import { TeamsController } from './presentation/teams.controller';
         personRepository: InMemoryPersonRepository,
         orgUnitRepository: InMemoryOrgUnitRepository,
         personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
+        prisma: PrismaService,
         auditLogger: AuditLoggerService,
       ) =>
         new CreateEmployeeService(
           personRepository,
           orgUnitRepository,
           personOrgMembershipRepository,
+          prisma,
           auditLogger,
         ),
       inject: [
         InMemoryPersonRepository,
         InMemoryOrgUnitRepository,
         InMemoryPersonOrgMembershipRepository,
+        PrismaService,
         AuditLoggerService,
       ],
     },
@@ -187,7 +198,23 @@ import { TeamsController } from './presentation/teams.controller';
       useFactory: (
         personRepository: InMemoryPersonRepository,
         auditLogger: AuditLoggerService,
-      ) => new DeactivateEmployeeService(personRepository, auditLogger),
+        undoService: UndoService,
+      ) =>
+        new DeactivateEmployeeService(
+          personRepository,
+          auditLogger,
+          undefined,
+          undefined,
+          undoService,
+        ),
+      inject: [InMemoryPersonRepository, AuditLoggerService, UndoService],
+    },
+    {
+      provide: PersonDeactivateUndoExecutor,
+      useFactory: (
+        personRepository: InMemoryPersonRepository,
+        auditLogger: AuditLoggerService,
+      ) => new PersonDeactivateUndoExecutor(personRepository, auditLogger),
       inject: [InMemoryPersonRepository, AuditLoggerService],
     },
     {
@@ -233,6 +260,51 @@ import { TeamsController } from './presentation/teams.controller';
         new TerminateReportingLineService(reportingLineRepository),
       inject: [InMemoryReportingLineRepository],
     },
+    {
+      provide: OpenPersonReleaseRequestService,
+      useFactory: (
+        personRepository: InMemoryPersonRepository,
+        prisma: PrismaService,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        responsibilityResolver: ResponsibilityResolverService,
+      ) =>
+        new OpenPersonReleaseRequestService(
+          personRepository,
+          prisma,
+          auditLogger,
+          notificationEventTranslator,
+          responsibilityResolver,
+        ),
+      inject: [
+        InMemoryPersonRepository,
+        PrismaService,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+        ResponsibilityResolverService,
+      ],
+    },
+    {
+      provide: DecidePersonReleaseService,
+      useFactory: (
+        prisma: PrismaService,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        responsibilityResolver: ResponsibilityResolverService,
+      ) =>
+        new DecidePersonReleaseService(
+          prisma,
+          auditLogger,
+          notificationEventTranslator,
+          responsibilityResolver,
+        ),
+      inject: [
+        PrismaService,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+        ResponsibilityResolverService,
+      ],
+    },
     EmployeeActivityService,
   ],
   exports: [
@@ -254,4 +326,12 @@ import { TeamsController } from './presentation/teams.controller';
     UpdateTeamMemberService,
   ],
 })
-export class OrganizationModule {}
+export class OrganizationModule {
+  // HD-8 / Chunk 8.4a — register the person-deactivate undo executor.
+  public constructor(
+    registry: UndoActionExecutorRegistry,
+    deactivateExecutor: PersonDeactivateUndoExecutor,
+  ) {
+    registry.register(deactivateExecutor);
+  }
+}

@@ -27,6 +27,14 @@ export interface PreloadedAssignment {
 export interface WorkloadTimelineProps {
   /** Compact mode: shorter height, no legend, smaller labels — for table embedding */
   compact?: boolean;
+  /**
+   * When the timeline is rendered on a page that *already represents* an
+   * existing assignment (e.g. AssignmentDetails), pass that assignment's id
+   * here so it is filtered out of the fetched workload list. Without this the
+   * same record is drawn twice — once from `fetchAssignments` and once from
+   * the `planned` overlay.
+   */
+  excludeAssignmentId?: string;
   /** Pre-loaded assignments — when provided, skips the API fetch entirely */
   preloadedAssignments?: PreloadedAssignment[];
   /**
@@ -51,6 +59,7 @@ interface NormalizedAssignment {
 
 export function WorkloadTimeline({
   compact,
+  excludeAssignmentId,
   preloadedAssignments,
   personId,
   personStatus,
@@ -79,16 +88,20 @@ export function WorkloadTimeline({
   }, [personId, preloadedAssignments]);
 
   const assignments: NormalizedAssignment[] = useMemo(() => {
-    if (preloadedAssignments) return preloadedAssignments;
-    return fetchedAssignments.map((a) => ({
-      allocationPercent: a.allocationPercent,
-      assignmentId: a.id,
-      endDate: a.endDate,
-      projectName: a.project.displayName,
-      startDate: a.startDate,
-      status: a.approvalState,
-    }));
-  }, [preloadedAssignments, fetchedAssignments]);
+    const source = preloadedAssignments
+      ? preloadedAssignments
+      : fetchedAssignments.map((a) => ({
+          allocationPercent: a.allocationPercent,
+          assignmentId: a.id,
+          endDate: a.endDate,
+          projectName: a.project.displayName,
+          startDate: a.startDate,
+          status: a.approvalState,
+        }));
+    return excludeAssignmentId
+      ? source.filter((a) => a.assignmentId !== excludeAssignmentId)
+      : source;
+  }, [preloadedAssignments, fetchedAssignments, excludeAssignmentId]);
 
   const segments: TimelineSegment[] = useMemo(() => {
     const items: TimelineSegment[] = assignments.map((a, i) => ({

@@ -2,11 +2,13 @@ import { Project } from '@src/modules/project-registry/domain/entities/project.e
 import { ProjectRepositoryPort } from '@src/modules/project-registry/domain/repositories/project-repository.port';
 import { ProjectId } from '@src/modules/project-registry/domain/value-objects/project-id';
 import { ProjectLifecycleConflictError } from '@src/modules/project-registry/application/project-lifecycle-conflict.error';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 export class InMemoryProjectRepository implements ProjectRepositoryPort {
   public constructor(private readonly items: Project[] = []) {}
 
-  public async delete(id: string): Promise<void> {
+  // In-memory impl ignores `tx` — there is no atomic boundary to honor.
+  public async delete(id: string, _tx?: TransactionContext): Promise<void> {
     const index = this.items.findIndex((item) => item.id === id);
     if (index >= 0) {
       this.items.splice(index, 1);
@@ -44,7 +46,7 @@ export class InMemoryProjectRepository implements ProjectRepositoryPort {
     return this.cloneProject(project);
   }
 
-  public async save(aggregate: Project): Promise<void> {
+  public async save(aggregate: Project, _tx?: TransactionContext): Promise<void> {
     const index = this.items.findIndex((item) => item.id === aggregate.id);
     if (index >= 0) {
       const persisted = this.items[index];

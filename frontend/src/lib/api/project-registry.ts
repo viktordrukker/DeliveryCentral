@@ -106,6 +106,9 @@ export interface ProjectClosureResponse {
     bySkillset: ProjectWorkspendBucket[];
     totalMandays: number;
   };
+  // HD-8 / Chunk 8.4 — populated only after a successful (non-override) close.
+  // Pass back to `POST /undo/:id/consume` to restore the project to ACTIVE.
+  undoActionId?: string;
 }
 
 export interface AssignProjectTeamRequest {

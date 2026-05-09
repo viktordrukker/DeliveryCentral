@@ -15,6 +15,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
@@ -23,7 +24,6 @@ import { ApproveProjectAssignmentService } from '../application/approve-project-
 import { DirectorApproveService } from '../application/director-approve.service';
 import { ScheduleOnboardingService } from '../application/schedule-onboarding.service';
 import { BulkCreateProjectAssignmentsService } from '../application/bulk-create-project-assignments.service';
-import { AssignmentDecisionRequestDto } from '../application/contracts/assignment-decision.request';
 import {
   AssignmentDetailsDto,
   AssignmentDirectoryResponseDto,
@@ -37,7 +37,6 @@ import {
 } from '../application/contracts/bulk-project-assignment.response';
 import { CreateProjectAssignmentRequestDto } from '../application/contracts/create-project-assignment.request';
 import { CreateProjectAssignmentOverrideRequestDto } from '../application/contracts/create-project-assignment-override.request';
-import { EndProjectAssignmentRequestDto } from '../application/contracts/end-project-assignment.request';
 import { ProjectAssignmentResponseDto } from '../application/contracts/project-assignment.response';
 import { CreateProjectAssignmentService } from '../application/create-project-assignment.service';
 import { EndProjectAssignmentService } from '../application/end-project-assignment.service';
@@ -59,12 +58,17 @@ class AmendAssignmentRequestDto {
   validTo?: string;
 }
 
-class RevokeAssignmentRequestDto {
-  reason?: string;
-}
-
 class TransitionRequestDto {
+  // HD-8 / Chunk 8.2 — decorators required so the global whitelist
+  // ValidationPipe doesn't silently strip these fields. Cancel
+  // transitions in particular require `reason` at the domain layer
+  // and were silently failing before the pipe was satisfied.
+  @IsOptional()
+  @IsString()
   caseId?: string;
+
+  @IsOptional()
+  @IsString()
   reason?: string;
 }
 
@@ -227,73 +231,6 @@ export class AssignmentsController {
     }
   }
 
-  @Post(':id/approve')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Approve a requested project assignment' })
-  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'resource_manager', 'director', 'admin')
-  public async approveAssignment(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: AssignmentDecisionRequestDto,
-    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
-  ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
-    return this.mapAssignmentResponse(
-      await this.withAssignmentErrors(() =>
-        this.approveProjectAssignmentService.execute({
-          actorId,
-          assignmentId: id,
-          comment: request.comment,
-        }),
-      ),
-    );
-  }
-
-  @Post(':id/reject')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reject a requested project assignment' })
-  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'resource_manager', 'director', 'admin')
-  public async rejectAssignment(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: AssignmentDecisionRequestDto,
-    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
-  ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
-    return this.mapAssignmentResponse(
-      await this.withAssignmentErrors(() =>
-        this.rejectProjectAssignmentService.execute({
-          actorId,
-          assignmentId: id,
-          reason: request.reason ?? request.comment,
-        }),
-      ),
-    );
-  }
-
-  @Post(':id/end')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'End an approved or active project assignment' })
-  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'resource_manager', 'director', 'admin')
-  public async endAssignment(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: EndProjectAssignmentRequestDto,
-    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
-  ): Promise<ProjectAssignmentResponseDto> {
-    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
-    return this.mapAssignmentResponse(
-      await this.withAssignmentErrors(() =>
-        this.endProjectAssignmentService.execute({
-          actorId,
-          assignmentId: id,
-          endDate: request.endDate,
-          reason: request.reason,
-        }),
-      ),
-    );
-  }
-
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Amend an active or approved project assignment' })
@@ -312,26 +249,6 @@ export class AssignmentsController {
           notes: request.notes,
           staffingRole: request.staffingRole,
           validTo: request.validTo,
-        }),
-      ),
-    );
-  }
-
-  @Post(':id/revoke')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Revoke an assignment, removing it from active staffing' })
-  @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @ApiNotFoundResponse({ description: 'Assignment not found' })
-  @RequireRoles('project_manager', 'resource_manager', 'director', 'admin')
-  public async revokeAssignment(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: RevokeAssignmentRequestDto,
-  ): Promise<ProjectAssignmentResponseDto> {
-    return this.mapAssignmentResponse(
-      await this.withAssignmentErrors(() =>
-        this.revokeProjectAssignmentService.execute({
-          assignmentId: id,
-          reason: request.reason,
         }),
       ),
     );
@@ -503,21 +420,23 @@ export class AssignmentsController {
   ): Promise<ProjectAssignmentResponseDto> {
     const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
     const actorRoles = (httpRequest.principal?.roles ?? []) as PlatformRole[];
-    return this.mapAssignmentResponse(
-      await this.withAssignmentErrors(() =>
-        this.transitionProjectAssignmentService.execute({
-          actorId,
-          actorRoles,
-          assignmentId: id,
-          caseId: request.caseId,
-          reason: request.reason,
-          target,
-        }),
-      ),
+    const result = await this.withAssignmentErrors(() =>
+      this.transitionProjectAssignmentService.execute({
+        actorId,
+        actorRoles,
+        assignmentId: id,
+        caseId: request.caseId,
+        reason: request.reason,
+        target,
+      }),
     );
+    return this.mapAssignmentResponse(result.assignment, result.undoActionId);
   }
 
-  private mapAssignmentResponse(assignment: ProjectAssignment): ProjectAssignmentResponseDto {
+  private mapAssignmentResponse(
+    assignment: ProjectAssignment,
+    undoActionId: string | null = null,
+  ): ProjectAssignmentResponseDto {
     return {
       allocationPercent: assignment.allocationPercent?.value ?? 0,
       endDate: assignment.validTo?.toISOString(),
@@ -530,12 +449,13 @@ export class AssignmentsController {
       startDate: assignment.validFrom.toISOString(),
       status: assignment.status.value,
       version: assignment.version,
+      ...(undoActionId ? { undoActionId } : {}),
     };
   }
 
-  private async withAssignmentErrors(
-    work: () => Promise<ProjectAssignment>,
-  ): Promise<ProjectAssignment> {
+  private async withAssignmentErrors<T>(
+    work: () => Promise<T>,
+  ): Promise<T> {
     try {
       return await work();
     } catch (error) {

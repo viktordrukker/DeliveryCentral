@@ -22,6 +22,7 @@ export class ApplyInfrastructureSeedsRunner {
       seedMetadata: () => Promise<void>;
       seedSkills: () => Promise<void>;
       seedRadiatorThresholds: () => Promise<void>;
+      seedResponsibilityRules: () => Promise<void>;
       seedFullNotificationInfrastructure: () => Promise<void>;
       seedPlatformSettings: () => Promise<void>;
     };
@@ -33,6 +34,9 @@ export class ApplyInfrastructureSeedsRunner {
     await this.logger.wrap(runId, 'seed', 'seed.infrastructure.skills', () => seed.seedSkills());
     await this.logger.wrap(runId, 'seed', 'seed.infrastructure.radiatorThresholds', () =>
       seed.seedRadiatorThresholds(),
+    );
+    await this.logger.wrap(runId, 'seed', 'seed.infrastructure.responsibilityRules', () =>
+      seed.seedResponsibilityRules(),
     );
     await this.logger.wrap(runId, 'seed', 'seed.infrastructure.notificationInfrastructure', () =>
       seed.seedFullNotificationInfrastructure(),

@@ -3,6 +3,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AppConfig } from '@src/shared/config/app-config';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+import { ResponsibilityResolverService } from '@src/modules/identity-access/application/responsibility-resolver.service';
 
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
@@ -14,8 +15,13 @@ import { InMemoryOrgUnitRepository } from '../organization/infrastructure/reposi
 import { InMemoryPersonOrgMembershipRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person-org-membership.repository';
 import { OrganizationModule } from '../organization/organization.module';
 import { ActivateProjectService } from './application/activate-project.service';
+import { DecideProjectActivationService } from './application/decide-project-activation.service';
+import { SubmitProjectForApprovalService } from './application/submit-project-for-approval.service';
 import { AssignProjectTeamService } from './application/assign-project-team.service';
 import { CloseProjectService } from './application/close-project.service';
+import { ProjectCloseUndoExecutor } from './application/project-close-undo.executor';
+import { UndoActionExecutorRegistry } from '@src/modules/undo/application/undo-action-executor.registry';
+import { UndoService } from '@src/modules/undo/application/undo.service';
 import { CreateProjectService } from './application/create-project.service';
 import { GetProjectByIdService } from './application/get-project-by-id.service';
 import { ProjectDashboardQueryService } from './application/project-dashboard-query.service';
@@ -155,6 +161,54 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       inject: [InMemoryProjectRepository, AuditLoggerService, NotificationEventTranslatorService],
     },
     {
+      provide: SubmitProjectForApprovalService,
+      useFactory: (
+        projectRepository: InMemoryProjectRepository,
+        prisma: PrismaService,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        responsibilityResolver: ResponsibilityResolverService,
+      ) =>
+        new SubmitProjectForApprovalService(
+          projectRepository,
+          prisma,
+          auditLogger,
+          notificationEventTranslator,
+          responsibilityResolver,
+        ),
+      inject: [
+        InMemoryProjectRepository,
+        PrismaService,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+        ResponsibilityResolverService,
+      ],
+    },
+    {
+      provide: DecideProjectActivationService,
+      useFactory: (
+        projectRepository: InMemoryProjectRepository,
+        prisma: PrismaService,
+        auditLogger: AuditLoggerService,
+        notificationEventTranslator: NotificationEventTranslatorService,
+        responsibilityResolver: ResponsibilityResolverService,
+      ) =>
+        new DecideProjectActivationService(
+          projectRepository,
+          prisma,
+          auditLogger,
+          notificationEventTranslator,
+          responsibilityResolver,
+        ),
+      inject: [
+        InMemoryProjectRepository,
+        PrismaService,
+        AuditLoggerService,
+        NotificationEventTranslatorService,
+        ResponsibilityResolverService,
+      ],
+    },
+    {
       provide: CloseProjectService,
       useFactory: (
         projectRepository: InMemoryProjectRepository,
@@ -164,6 +218,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         appConfig: AppConfig,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
+        undoService: UndoService,
       ) =>
         new CloseProjectService(
           projectRepository,
@@ -173,6 +228,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
           appConfig,
           auditLogger,
           notificationEventTranslator,
+          undoService,
         ),
       inject: [
         InMemoryProjectRepository,
@@ -182,7 +238,16 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         AppConfig,
         AuditLoggerService,
         NotificationEventTranslatorService,
+        UndoService,
       ],
+    },
+    {
+      provide: ProjectCloseUndoExecutor,
+      useFactory: (
+        repository: InMemoryProjectRepository,
+        auditLogger: AuditLoggerService,
+      ) => new ProjectCloseUndoExecutor(repository, auditLogger),
+      inject: [InMemoryProjectRepository, AuditLoggerService],
     },
     {
       provide: ProjectDirectoryQueryService,
@@ -283,6 +348,8 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
   ],
   exports: [
     ActivateProjectService,
+    SubmitProjectForApprovalService,
+    DecideProjectActivationService,
     AssignProjectTeamService,
     CloseProjectService,
     CreateProjectService,
@@ -297,4 +364,12 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     UpdateProjectService,
   ],
 })
-export class ProjectRegistryModule {}
+export class ProjectRegistryModule {
+  // HD-8 / Chunk 8.4a — register the project-close undo executor at boot.
+  public constructor(
+    registry: UndoActionExecutorRegistry,
+    closeExecutor: ProjectCloseUndoExecutor,
+  ) {
+    registry.register(closeExecutor);
+  }
+}

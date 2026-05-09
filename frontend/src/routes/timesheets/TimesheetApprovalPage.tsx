@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ErrorState } from '@/components/common/ErrorState';
+import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -58,10 +59,31 @@ export function TimesheetApprovalPage(): JSX.Element {
   // Filters
   const [filters, setFilters] = useFilterParams({ from: '', person: '', status: 'SUBMITTED', to: '' });
 
+  const exportColumns = useMemo<ExportColumn<TimesheetWeek>[]>(
+    () => [
+      { key: 'weekStart', label: 'Week start', accessor: (w) => w.weekStart },
+      { key: 'person', label: 'Person', accessor: (w) => personNames[w.personId] ?? w.personId },
+      { key: 'status', label: 'Status', accessor: (w) => w.status },
+      { key: 'totalHours', label: 'Total hours', accessor: totalHours },
+      { key: 'submittedAt', label: 'Submitted', accessor: (w) => w.submittedAt ?? '' },
+      { key: 'approvedAt', label: 'Approved', accessor: (w) => w.approvedAt ?? '' },
+    ],
+    [personNames],
+  );
+
   useEffect(() => {
-    setActions(<TipTrigger />);
+    setActions(
+      <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+        <ExportButton
+          data={weeks}
+          columns={exportColumns}
+          filename={`timesheet-approvals-${filters.status || 'all'}`}
+        />
+        <TipTrigger />
+      </div>,
+    );
     return () => setActions(null);
-  }, [setActions]);
+  }, [setActions, weeks, exportColumns, filters.status]);
 
   // Selected for bulk approve
   const [selected, setSelected] = useState<Set<string>>(new Set());

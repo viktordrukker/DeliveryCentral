@@ -6,6 +6,7 @@ import { AppConfig } from '@src/shared/config/app-config';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { signPlatformJwt } from '@src/modules/identity-access/application/platform-jwt';
 import { isPlatformRole } from '@src/modules/identity-access/domain/platform-role';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
 export interface TokenPair {
   accessToken: string;
@@ -17,7 +18,20 @@ export class TokenService {
   public constructor(
     private readonly prisma: PrismaService,
     private readonly appConfig: AppConfig,
+    private readonly platformSettings: PlatformSettingsService,
   ) {}
+
+  private async resolveAccessTokenExpiresInSeconds(): Promise<number> {
+    try {
+      const raw = await this.platformSettings.getRawValue('security.sessionTimeoutMinutes');
+      if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+        return Math.floor(raw * 60);
+      }
+    } catch {
+      // ignore — fall back to env-configured default
+    }
+    return this.appConfig.authAccessTokenExpiresIn;
+  }
 
   public async issueTokenPair(
     accountId: string,
@@ -38,7 +52,7 @@ export class TokenService {
         audience: this.appConfig.authAudience,
         issuer: this.appConfig.authIssuer,
         secret: this.appConfig.authJwtSecret,
-        expiresInSeconds: this.appConfig.authAccessTokenExpiresIn,
+        expiresInSeconds: await this.resolveAccessTokenExpiresInSeconds(),
       },
     );
 

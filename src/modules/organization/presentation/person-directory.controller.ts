@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiConflictResponse,
@@ -24,6 +25,7 @@ import {
 
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { AuditRead } from '@src/shared/http/audit-read.decorator';
 
 import { CreateEmployeeRequestDto } from '../application/contracts/create-employee.request';
 import { EmployeeResponseDto } from '../application/contracts/employee.response';
@@ -71,10 +73,15 @@ export class PersonDirectoryController {
   @ApiOkResponse({ type: EmployeeResponseDto })
   @ApiNotFoundResponse({ description: 'Employee not found.' })
   @RequireRoles('hr_manager', 'director', 'admin')
-  public async deactivateEmployee(@Param('id', ParseUUIDPipe) id: string): Promise<EmployeeResponseDto> {
-    return this.mapEmployeeResponse(
-      await this.withEmployeeErrors(() => this.deactivateEmployeeService.execute(id)),
+  public async deactivateEmployee(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { principal?: { personId?: string; userId?: string } },
+  ): Promise<EmployeeResponseDto> {
+    const actorId = req.principal?.personId ?? req.principal?.userId;
+    const result = await this.withEmployeeErrors(() =>
+      this.deactivateEmployeeService.execute(id, actorId),
     );
+    return this.mapEmployeeResponse(result.person, result.undoActionId);
   }
 
   @Post(':id/terminate')
@@ -136,6 +143,11 @@ export class PersonDirectoryController {
   @Get(':id')
   @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @AllowSelfScope({ param: 'id' })
+  @AuditRead({
+    actionType: 'person.directory.read',
+    category: 'organization',
+    targetEntity: { entityType: 'PERSON', idFrom: { kind: 'param', name: 'id' } },
+  })
   @ApiOperation({ summary: 'Get a person directory record by id' })
   @ApiOkResponse({ type: PersonDirectoryItemDto })
   @ApiNotFoundResponse({ description: 'Person not found.' })
@@ -161,7 +173,10 @@ export class PersonDirectoryController {
     return this.employeeActivityService.listByPerson(id, limit ? parseInt(limit, 10) : 50);
   }
 
-  private mapEmployeeResponse(person: Person): EmployeeResponseDto {
+  private mapEmployeeResponse(
+    person: Person,
+    undoActionId: string | null = null,
+  ): EmployeeResponseDto {
     return {
       email: person.primaryEmail ?? '',
       grade: person.grade,
@@ -171,10 +186,11 @@ export class PersonDirectoryController {
       role: person.role,
       skillsets: person.skillsets,
       status: person.status,
+      ...(undoActionId ? { undoActionId } : {}),
     };
   }
 
-  private async withEmployeeErrors(work: () => Promise<Person>): Promise<Person> {
+  private async withEmployeeErrors<T>(work: () => Promise<T>): Promise<T> {
     try {
       return await work();
     } catch (error) {

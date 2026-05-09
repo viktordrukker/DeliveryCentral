@@ -6,9 +6,14 @@ import { NotificationPreferencesService } from './application/notification-prefe
 import { InAppNotificationRepository } from './infrastructure/in-app-notification.repository';
 import { InboxController } from './presentation/inbox.controller';
 import { MeNotificationPrefsController } from './presentation/me-notification-prefs.controller';
+import { NotificationChannelsController } from './presentation/notification-channels.controller';
 
 @Module({
-  controllers: [InboxController, MeNotificationPrefsController],
+  controllers: [
+    InboxController,
+    MeNotificationPrefsController,
+    NotificationChannelsController,
+  ],
   providers: [
     {
       provide: InAppNotificationRepository,

@@ -235,7 +235,12 @@ describe('EmployeeDetailsPage', () => {
 
     await screen.findByText('Reporting Line Management');
     await user.selectOptions(screen.getByLabelText('Manager'), 'm1');
-    await user.type(screen.getByLabelText('Start Date'), '2026-07-01');
+    // Start Date defaults to today (UTC) per useReportingLineManagement —
+    // clear before typing the test-specific date so the input doesn't
+    // concatenate today's value with the typed override.
+    const startDateInput = screen.getByLabelText('Start Date') as HTMLInputElement;
+    await user.clear(startDateInput);
+    await user.type(startDateInput, '2026-07-01');
     await user.click(screen.getByRole('button', { name: 'Save reporting line' }));
 
     expect(mockedCreateReportingLine).toHaveBeenCalledWith({
@@ -273,6 +278,9 @@ describe('EmployeeDetailsPage', () => {
     renderWithRouter('/people/p1');
 
     await screen.findByText('Reporting Line Management');
+    // Clear the today-by-default start date so the empty-date validation
+    // path is exercised; without this, only the missing-manager error fires.
+    await user.clear(screen.getByLabelText('Start Date') as HTMLInputElement);
     await user.click(screen.getByRole('button', { name: 'Save reporting line' }));
 
     expect(screen.getByText('Manager is required.')).toBeInTheDocument();

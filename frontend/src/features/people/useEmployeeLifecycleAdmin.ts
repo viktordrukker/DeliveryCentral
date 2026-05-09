@@ -14,6 +14,7 @@ import {
   fetchMetadataDictionaryById,
 } from '@/lib/api/metadata';
 import { OrgChartNode, fetchOrgChart } from '@/lib/api/org-chart';
+import { Skill, fetchSkills, upsertPersonSkills } from '@/lib/api/skills';
 
 interface SelectOption {
   label: string;
@@ -33,7 +34,7 @@ interface EmployeeLifecycleAdminState {
   managerOptions: SelectOption[];
   orgUnitOptions: SelectOption[];
   roleOptions: SelectOption[];
-  skillsetOptions: SelectOption[];
+  skillOptions: SelectOption[];
   successMessage: string | null;
   values: EmployeeLifecycleFormValues;
 }
@@ -48,8 +49,10 @@ export const initialEmployeeLifecycleFormValues: EmployeeLifecycleFormValues = {
   name: '',
   orgUnitId: '',
   role: '',
-  skillsets: [],
+  skillIds: [],
 };
+
+const DEFAULT_NEW_HIRE_PROFICIENCY = 3;
 
 export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
   const [values, setValues] = useState(initialEmployeeLifecycleFormValues);
@@ -57,7 +60,7 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
   const [managerOptions, setManagerOptions] = useState<SelectOption[]>([]);
   const [gradeDictionary, setGradeDictionary] = useState<MetadataDictionaryDetails | null>(null);
   const [roleDictionary, setRoleDictionary] = useState<MetadataDictionaryDetails | null>(null);
-  const [skillsetDictionary, setSkillsetDictionary] = useState<MetadataDictionaryDetails | null>(null);
+  const [skillCatalog, setSkillCatalog] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +79,9 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
       fetchOrgChart(),
       fetchMetadataDictionaries({ entityType: 'Person' }),
       fetchPersonDirectory({ pageSize: 500 }),
+      fetchSkills(),
     ])
-      .then(async ([orgChartResponse, dictionariesResponse, peopleResponse]) => {
+      .then(async ([orgChartResponse, dictionariesResponse, peopleResponse, skillsResponse]) => {
         if (!isMounted) {
           return;
         }
@@ -86,9 +90,10 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
         setManagerOptions(
           peopleResponse.items.map((p) => ({ label: p.displayName, value: p.id })),
         );
+        setSkillCatalog(skillsResponse);
 
         const supportedDictionaries = dictionariesResponse.items.filter((item) =>
-          ['grade', 'role', 'skillset'].includes(item.dictionaryKey),
+          ['grade', 'role'].includes(item.dictionaryKey),
         );
         const details = await Promise.all(
           supportedDictionaries.map((item) => fetchMetadataDictionaryById(item.id)),
@@ -100,7 +105,6 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
 
         setGradeDictionary(details.find((item) => item.dictionaryKey === 'grade') ?? null);
         setRoleDictionary(details.find((item) => item.dictionaryKey === 'role') ?? null);
-        setSkillsetDictionary(details.find((item) => item.dictionaryKey === 'skillset') ?? null);
       })
       .catch((reason: Error) => {
         if (isMounted) {
@@ -127,9 +131,16 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
     if (fromDict.length > 0) return fromDict;
     return RBAC_ROLES;
   }, [roleDictionary]);
-  const skillsetOptions = useMemo(
-    () => toDictionaryOptions(skillsetDictionary),
-    [skillsetDictionary],
+  const skillOptions = useMemo<SelectOption[]>(
+    () =>
+      skillCatalog
+        .map((skill) => ({
+          label: skill.name,
+          meta: skill.category ?? undefined,
+          value: skill.id,
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    [skillCatalog],
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<EmployeeLifecycleRecord | null> {
@@ -157,12 +168,38 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
         name: values.name.trim(),
         orgUnitId: values.orgUnitId,
         ...(values.role ? { role: values.role } : {}),
-        ...(values.skillsets.length > 0 ? { skillsets: values.skillsets } : {}),
       };
 
       const created = await createEmployee(request);
+
+      // Persist picked skills as PersonSkill rows. Failure here is non-fatal:
+      // the employee is created; we surface a warning in the success message.
+      // (The transactional outbox + $transaction wrap that would make this
+      // atomic is HD-0.2 / HD-0.3 — a separate task.)
+      let skillNote = '';
+      if (values.skillIds.length > 0) {
+        try {
+          await upsertPersonSkills(
+            created.id,
+            values.skillIds.map((skillId) => ({
+              skillId,
+              proficiency: DEFAULT_NEW_HIRE_PROFICIENCY,
+              certified: false,
+            })),
+          );
+        } catch (skillError) {
+          skillNote =
+            ' (warning: skills could not be saved — open the employee Skills tab to retry)';
+          // Surface in console for diagnostics; success path still continues.
+          // eslint-disable-next-line no-console
+          console.warn('upsertPersonSkills failed after createEmployee', skillError);
+        }
+      }
+
       setCreatedEmployee(created);
-      setSuccessMessage(`Created employee ${created.name} with status ${created.status}.`);
+      setSuccessMessage(
+        `Created employee ${created.name} with status ${created.status}.${skillNote}`,
+      );
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       setValues(initialEmployeeLifecycleFormValues);
       setErrors({});
@@ -199,7 +236,7 @@ export function useEmployeeLifecycleAdmin(): EmployeeLifecycleAdminState {
     managerOptions,
     orgUnitOptions,
     roleOptions,
-    skillsetOptions,
+    skillOptions,
     successMessage,
     values,
   };

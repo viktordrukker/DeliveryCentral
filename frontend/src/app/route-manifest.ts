@@ -177,6 +177,10 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ADMIN_ROLES, description: 'Manage outbound webhook subscriptions with HMAC-SHA256 signed delivery.', group: 'admin', navVisible: true, path: '/admin/webhooks', title: 'Webhooks' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure BambooHR or Workday HRIS integration for automated employee sync.', group: 'admin', navVisible: true, path: '/admin/hris', title: 'HRIS Integration' },
   { allowedRoles: ADMIN_ROLES, description: 'View and manage ABAC (Attribute-Based Access Control) policies per role and resource.', group: 'admin', navVisible: true, path: '/admin/access-policies', title: 'Access Policies' },
+  { allowedRoles: ADMIN_ROLES, description: 'Configure who approves each governed action (project activation, budget change, person release, etc.).', group: 'admin', navVisible: true, path: '/admin/responsibility-matrix', title: 'Responsibility Matrix' },
+  { allowedRoles: ADMIN_ROLES, description: 'Manage bill-rate cards and per-(role × grade × skill) hourly rates used by the J2 resolver at assignment-book time.', group: 'admin', navVisible: true, path: '/admin/rate-cards', title: 'Rate Cards' },
+  { allowedRoles: ADMIN_ROLES, description: 'Author and publish Help Center articles end users see from the in-app `?` button.', group: 'admin', navVisible: true, path: '/admin/help', title: 'Help Center' },
+  { allowedRoles: ALL_ROLES, description: 'Browse Help Center articles published by your platform admins.', group: 'governance', navVisible: true, path: '/help', title: 'Help' },
 ];
 
 const routeManifestByPath = new Map(routeManifest.map((route) => [route.path, route]));

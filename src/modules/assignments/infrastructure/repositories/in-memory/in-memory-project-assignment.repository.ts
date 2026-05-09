@@ -4,6 +4,7 @@ import { ProjectAssignment } from '@src/modules/assignments/domain/entities/proj
 import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { AssignmentConcurrencyConflictError } from '@src/modules/assignments/application/assignment-concurrency-conflict.error';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 export class InMemoryProjectAssignmentRepository implements ProjectAssignmentRepositoryPort {
   public constructor(
@@ -12,18 +13,19 @@ export class InMemoryProjectAssignmentRepository implements ProjectAssignmentRep
     private readonly historyEntries: AssignmentHistory[] = [],
   ) {}
 
-  public async delete(id: string): Promise<void> {
+  // In-memory impl ignores `tx` — there is no atomic boundary to honor.
+  public async delete(id: string, _tx?: TransactionContext): Promise<void> {
     const index = this.assignments.findIndex((item) => item.id === id);
     if (index >= 0) {
       this.assignments.splice(index, 1);
     }
   }
 
-  public async appendApproval(approval: AssignmentApproval): Promise<void> {
+  public async appendApproval(approval: AssignmentApproval, _tx?: TransactionContext): Promise<void> {
     this.approvals.push(approval);
   }
 
-  public async appendHistory(historyEntry: AssignmentHistory): Promise<void> {
+  public async appendHistory(historyEntry: AssignmentHistory, _tx?: TransactionContext): Promise<void> {
     this.historyEntries.push(historyEntry);
   }
 
@@ -98,7 +100,7 @@ export class InMemoryProjectAssignmentRepository implements ProjectAssignmentRep
     ).map((item) => this.cloneAssignment(item));
   }
 
-  public async save(aggregate: ProjectAssignment): Promise<void> {
+  public async save(aggregate: ProjectAssignment, _tx?: TransactionContext): Promise<void> {
     const index = this.assignments.findIndex((item) => item.id === aggregate.id);
     if (index >= 0) {
       const persisted = this.assignments[index];
