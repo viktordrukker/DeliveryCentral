@@ -247,6 +247,22 @@ jobs:
     name: Backend DB-coupled checks
     runs-on: ubuntu-latest
     needs: [backend-fast]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workload_tracking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/workload_tracking_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -262,6 +278,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
 
       - name: DB Jest suite
         run: npm run test:db
@@ -270,6 +289,22 @@ jobs:
     name: Backend slow checks
     runs-on: ubuntu-latest
     needs: [backend-db]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workload_tracking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/workload_tracking_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -285,6 +320,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
 
       - name: Slow Jest suite
         run: npm run test:slow
@@ -345,6 +383,22 @@ jobs:
     name: E2E smoke merge gate
     runs-on: ubuntu-latest
     needs: [build-check, backend-db, backend-slow]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workload_tracking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/workload_tracking_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -363,6 +417,12 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
+
+      - name: Seed it-company dataset
+        run: SEED_PROFILE=it-company npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -378,6 +438,22 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workload_tracking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/workload_tracking_test?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -396,6 +472,12 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
+
+      - name: Seed it-company dataset
+        run: SEED_PROFILE=it-company npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
