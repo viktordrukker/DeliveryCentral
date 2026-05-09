@@ -282,6 +282,21 @@ jobs:
       - name: Apply migrations to test DB
         run: npx prisma migrate deploy
 
+      - name: Mark setup as complete (test-only — bypasses RequireSetupCompleteGuard)
+        run: |
+          # Without this, every API request hits the global SetupCompleteGuard
+          # (live since PR #5) and 503s before any test can run. Setting
+          # setup.completedAt to a timestamp tells the guard the wizard already
+          # ran. We INSERT-or-UPDATE because seedPlatformSettings creates the
+          # row with NULL value and seed-time runs may or may not have happened.
+          sudo apt-get update >/dev/null && sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO platform_settings (key, value, \"updatedAt\")
+            VALUES ('setup.completedAt', to_jsonb(now()::text), now())
+            ON CONFLICT (key) DO UPDATE
+              SET value = EXCLUDED.value, \"updatedAt\" = EXCLUDED.\"updatedAt\";
+          "
+
       - name: DB Jest suite
         run: npm run test:db
 
@@ -323,6 +338,16 @@ jobs:
 
       - name: Apply migrations to test DB
         run: npx prisma migrate deploy
+
+      - name: Mark setup as complete (test-only — bypasses RequireSetupCompleteGuard)
+        run: |
+          sudo apt-get update >/dev/null && sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO platform_settings (key, value, \"updatedAt\")
+            VALUES ('setup.completedAt', to_jsonb(now()::text), now())
+            ON CONFLICT (key) DO UPDATE
+              SET value = EXCLUDED.value, \"updatedAt\" = EXCLUDED.\"updatedAt\";
+          "
 
       - name: Slow Jest suite
         run: npm run test:slow
@@ -424,6 +449,16 @@ jobs:
       - name: Seed it-company dataset
         run: SEED_PROFILE=it-company npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts
 
+      - name: Mark setup as complete (test-only — bypasses RequireSetupCompleteGuard)
+        run: |
+          sudo apt-get update >/dev/null && sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO platform_settings (key, value, \"updatedAt\")
+            VALUES ('setup.completedAt', to_jsonb(now()::text), now())
+            ON CONFLICT (key) DO UPDATE
+              SET value = EXCLUDED.value, \"updatedAt\" = EXCLUDED.\"updatedAt\";
+          "
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -478,6 +513,16 @@ jobs:
 
       - name: Seed it-company dataset
         run: SEED_PROFILE=it-company npx ts-node --transpile-only --project tsconfig.json prisma/seed.ts
+
+      - name: Mark setup as complete (test-only — bypasses RequireSetupCompleteGuard)
+        run: |
+          sudo apt-get update >/dev/null && sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          psql "${DATABASE_URL%%\?*}" -v ON_ERROR_STOP=1 -c "
+            INSERT INTO platform_settings (key, value, \"updatedAt\")
+            VALUES ('setup.completedAt', to_jsonb(now()::text), now())
+            ON CONFLICT (key) DO UPDATE
+              SET value = EXCLUDED.value, \"updatedAt\" = EXCLUDED.\"updatedAt\";
+          "
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
