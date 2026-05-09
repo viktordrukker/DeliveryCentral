@@ -1,13 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { AppConfig } from '@src/shared/config/app-config';
+import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { InAppNotificationsModule } from '@src/modules/in-app-notifications/in-app-notifications.module';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
+import { OutboxEventHandlerRegistry } from '@src/modules/audit-observability/application/outbox-event-handler-registry';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { NotificationDispatchService } from './application/notification-dispatch.service';
 import { NotificationEventTranslatorService } from './application/notification-event-translator.service';
+import { NudgeSweeperService } from './application/nudge-sweeper.service';
+import { MetricsService } from '@src/shared/observability/metrics.service';
 import { NotificationOutcomeQueryService } from './application/notification-outcome-query.service';
 import { NotificationRetryPolicy } from './application/notification-retry-policy';
 import { NotificationTemplateQueryService } from './application/notification-template-query.service';
@@ -178,8 +182,35 @@ import { NotificationsController } from './presentation/notifications.controller
         dispatchService: NotificationDispatchService,
         appConfig: AppConfig,
         inAppNotificationService: InAppNotificationService,
-      ) => new NotificationEventTranslatorService(dispatchService, appConfig, inAppNotificationService),
-      inject: [NotificationDispatchService, AppConfig, InAppNotificationService],
+        prisma: PrismaService,
+        outboxRegistry: OutboxEventHandlerRegistry,
+        platformFlags: PlatformFlagsService,
+      ) =>
+        new NotificationEventTranslatorService(
+          dispatchService,
+          appConfig,
+          inAppNotificationService,
+          prisma,
+          outboxRegistry,
+          platformFlags,
+        ),
+      inject: [
+        NotificationDispatchService,
+        AppConfig,
+        InAppNotificationService,
+        PrismaService,
+        OutboxEventHandlerRegistry,
+        PlatformFlagsService,
+      ],
+    },
+    {
+      provide: NudgeSweeperService,
+      useFactory: (
+        prisma: PrismaService,
+        translator: NotificationEventTranslatorService,
+        metrics: MetricsService,
+      ) => new NudgeSweeperService(prisma, translator, metrics),
+      inject: [PrismaService, NotificationEventTranslatorService, MetricsService],
     },
   ],
   exports: [
@@ -190,6 +221,7 @@ import { NotificationsController } from './presentation/notifications.controller
     NotificationTemplateQueryService,
     NotificationTestSendService,
     NudgeService,
+    NudgeSweeperService,
     RequeueNotificationService,
     PrismaNotificationChannelRepository,
     PrismaNotificationTemplateRepository,

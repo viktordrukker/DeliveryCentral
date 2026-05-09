@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class WorkspendBucketDto {
   @ApiProperty()
@@ -37,4 +37,9 @@ export class ProjectClosureResponseDto {
 
   @ApiProperty({ type: ProjectWorkspendSummaryDto })
   public workspend!: ProjectWorkspendSummaryDto;
+
+  // HD-8 / Chunk 8.4a — populated only after a successful, non-override
+  // close. Pass back to `POST /undo/:id/consume` to reopen the project.
+  @ApiPropertyOptional()
+  public undoActionId?: string;
 }

@@ -24,3 +24,6 @@ jobs:
 
       - name: Run architecture checks
         run: npm run architecture:check
+
+      - name: RBAC ratchet
+        run: npm run rbac:check

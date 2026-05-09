@@ -69,6 +69,7 @@ export class TimesheetsController {
 
   @Put('timesheets/my/entries')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles(...MANAGER_ROLES, 'employee')
   @ApiOperation({ summary: 'Upsert a timesheet entry' })
   @ApiOkResponse({ description: 'Timesheet entry' })
   public async upsertEntry(
@@ -88,6 +89,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/submit')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles(...MANAGER_ROLES, 'employee')
   @ApiOperation({ summary: 'Submit timesheet week for approval' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async submitWeek(
@@ -107,6 +109,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/revoke')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles(...MANAGER_ROLES, 'employee')
   @ApiOperation({ summary: 'Revoke a submitted week back to DRAFT (owner only)' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async revokeWeek(
@@ -125,6 +128,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/reset')
   @HttpCode(HttpStatus.OK)
+  @RequireRoles(...MANAGER_ROLES, 'employee')
   @ApiOperation({ summary: 'Wipe all entries in a DRAFT week (owner only)' })
   @ApiOkResponse({ description: 'Number of entries deleted.' })
   public async resetWeek(

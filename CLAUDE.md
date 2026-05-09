@@ -104,6 +104,7 @@ All MIT or Apache-2.0. Frontend: `npm install <pkg> --prefix frontend`. Backend:
 | `xlsx` (SheetJS CE) | XLSX export |
 | `date-fns` | Date formatting |
 | `@dnd-kit/core` | Drag-and-drop |
+| `react-markdown` | Render Markdown safely in React (Help Center article body). Safe-by-default — NEVER enable `rehype-raw` or `allowDangerousHtml`. Always pass `urlTransform` to block `javascript:` / `data:` URIs and an `allowedElements` whitelist (no `<script>`, `<iframe>`, `<form>`, `<input>`, `<button>`). |
 
 Do not install any package not on this list without asking first.
 

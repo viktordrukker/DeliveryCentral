@@ -27,6 +27,22 @@ export async function fetchPulseHistory(weeks = 4): Promise<PulseHistoryDto> {
   return httpGet<PulseHistoryDto>(`/pulse/my?weeks=${weeks}`);
 }
 
+export interface PulseTrendWeekDto {
+  weekStart: string;
+  avgMood: number | null;
+  responseCount: number;
+  strugglingCount: number;
+}
+
+export interface PulseTeamTrendDto {
+  scopePersonCount: number;
+  weeks: PulseTrendWeekDto[];
+}
+
+export async function fetchPulseTeamTrend(weeks = 4): Promise<PulseTeamTrendDto> {
+  return httpGet<PulseTeamTrendDto>(`/pulse/team-trend?weeks=${weeks}`);
+}
+
 export interface PersonThreeSixtyDto {
   personId: string;
   displayName: string;

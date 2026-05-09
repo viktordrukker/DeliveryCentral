@@ -2,13 +2,15 @@ import { PersonOrgMembership } from '@src/modules/organization/domain/entities/p
 import { PersonOrgMembershipRepositoryPort } from '@src/modules/organization/domain/repositories/person-org-membership-repository.port';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 export class InMemoryPersonOrgMembershipRepository
   implements PersonOrgMembershipRepositoryPort
 {
   public constructor(private readonly items: PersonOrgMembership[] = []) {}
 
-  public async delete(id: string): Promise<void> {
+  // In-memory impl ignores `tx` — there is no atomic boundary to honor.
+  public async delete(id: string, _tx?: TransactionContext): Promise<void> {
     const index = this.items.findIndex((item) => item.id === id);
     if (index >= 0) {
       this.items.splice(index, 1);
@@ -31,7 +33,7 @@ export class InMemoryPersonOrgMembershipRepository
     );
   }
 
-  public async save(aggregate: PersonOrgMembership): Promise<void> {
+  public async save(aggregate: PersonOrgMembership, _tx?: TransactionContext): Promise<void> {
     const existingIndex = this.items.findIndex((item) => item.id === aggregate.id);
     if (existingIndex >= 0) {
       this.items.splice(existingIndex, 1, aggregate);

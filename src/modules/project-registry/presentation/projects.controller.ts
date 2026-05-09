@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Body,
   ConflictException,
   Controller,
@@ -25,8 +26,11 @@ import {
 
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { Idempotent } from '@src/shared/http/idempotent.decorator';
 
 import { ActivateProjectService } from '../application/activate-project.service';
+import { DecideProjectActivationService } from '../application/decide-project-activation.service';
+import { SubmitProjectForApprovalService } from '../application/submit-project-for-approval.service';
 import { AssignProjectTeamService } from '../application/assign-project-team.service';
 import { AssignProjectTeamRequestDto } from '../application/contracts/assign-project-team.request';
 import { AssignProjectTeamResponseDto } from '../application/contracts/assign-project-team.response';
@@ -64,6 +68,8 @@ export class ProjectsController {
     private readonly getProjectByIdService: GetProjectByIdService,
     private readonly createProjectService: CreateProjectService,
     private readonly activateProjectService: ActivateProjectService,
+    private readonly submitProjectForApprovalService: SubmitProjectForApprovalService,
+    private readonly decideProjectActivationService: DecideProjectActivationService,
     private readonly closeProjectService: CloseProjectService,
     private readonly assignProjectTeamService: AssignProjectTeamService,
     private readonly updateProjectService: UpdateProjectService,
@@ -88,7 +94,7 @@ export class ProjectsController {
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
   @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
-  @ApiOperation({ summary: 'Activate a draft internal project' })
+  @ApiOperation({ summary: 'Activate a draft internal project (legacy direct path; HD-2 prefers /submit-for-approval → /approve)' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
   public async activateProject(
@@ -97,6 +103,71 @@ export class ProjectsController {
     return this.mapCreatedProjectResponse(
       await this.withProjectActivationErrors(() => this.activateProjectService.execute(id)),
     );
+  }
+
+  @Post(':id/submit-for-approval')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles('project_manager', 'delivery_manager', 'admin')
+  @Idempotent()
+  @ApiOperation({ summary: 'HD-2 — submit a DRAFT project for Director approval (DRAFT → PENDING_APPROVAL)' })
+  @ApiOkResponse({ type: ProjectCreatedResponseDto })
+  @ApiNotFoundResponse({ description: 'Project not found.' })
+  public async submitProjectForApproval(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string } | undefined,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<ProjectCreatedResponseDto> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const result = await this.withProjectActivationErrors(() =>
+      this.submitProjectForApprovalService
+        .execute({ actorId, projectId: id, reason: body?.reason })
+        .then((r) => r.project),
+    );
+    return this.mapCreatedProjectResponse(result);
+  }
+
+  @Post(':id/approve')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles('director', 'admin')
+  @Idempotent()
+  @ApiOperation({ summary: 'HD-2 — Director approves a PENDING_APPROVAL project (PENDING_APPROVAL → ACTIVE)' })
+  @ApiOkResponse({ type: ProjectCreatedResponseDto })
+  @ApiNotFoundResponse({ description: 'Project not found.' })
+  public async approveProject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string } | undefined,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<ProjectCreatedResponseDto> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const result = await this.withProjectActivationErrors(() =>
+      this.decideProjectActivationService
+        .execute({ actorId, projectId: id, decision: 'APPROVE', reason: body?.reason })
+        .then((r) => r.project),
+    );
+    return this.mapCreatedProjectResponse(result);
+  }
+
+  @Post(':id/reject')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles('director', 'admin')
+  @ApiOperation({ summary: 'HD-2 — Director rejects a PENDING_APPROVAL project (PENDING_APPROVAL → DRAFT). Reason required.' })
+  @ApiOkResponse({ type: ProjectCreatedResponseDto })
+  @ApiNotFoundResponse({ description: 'Project not found.' })
+  public async rejectProject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason: string },
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<ProjectCreatedResponseDto> {
+    const actorId =
+      httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    const result = await this.withProjectActivationErrors(() =>
+      this.decideProjectActivationService
+        .execute({ actorId, projectId: id, decision: 'REJECT', reason: body?.reason })
+        .then((r) => r.project),
+    );
+    return this.mapCreatedProjectResponse(result);
   }
 
   @Post(':id/close')
@@ -122,6 +193,7 @@ export class ProjectsController {
       status: result.project.status,
       version: result.project.version,
       workspend: result.workspend,
+      ...(result.undoActionId ? { undoActionId: result.undoActionId } : {}),
     };
   }
 
@@ -349,6 +421,14 @@ export class ProjectsController {
     } catch (error) {
       if (error instanceof ProjectLifecycleConflictError) {
         throw new ConflictException(error.message);
+      }
+
+      // HD-4 — Pass typed HTTP errors through untouched so the resolver's
+      // ForbiddenException (PERSON-mode mismatch) keeps its 403 status
+      // instead of getting flattened to 400. Same for any service that
+      // throws e.g. NotFoundException directly.
+      if (error instanceof HttpException) {
+        throw error;
       }
 
       const message = error instanceof Error ? error.message : 'Project lifecycle action failed.';

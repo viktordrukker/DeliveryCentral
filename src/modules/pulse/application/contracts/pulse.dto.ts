@@ -27,3 +27,15 @@ export class PulseHistoryDto {
   entries!: PulseEntryDto[];
   frequency!: string;
 }
+
+export class PulseTrendWeekDto {
+  weekStart!: string;
+  avgMood!: number | null;
+  responseCount!: number;
+  strugglingCount!: number;
+}
+
+export class PulseTeamTrendDto {
+  scopePersonCount!: number;
+  weeks!: PulseTrendWeekDto[];
+}

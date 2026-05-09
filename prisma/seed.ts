@@ -18,6 +18,7 @@ import {
   itCompanyAssignmentHistory,
   itCompanyAssignments,
   itCompanyCases,
+  itCompanyClients,
   itCompanyDatasetSummary,
   itCompanyExternalSyncStates,
   itCompanyOrgUnits,
@@ -535,39 +536,7 @@ async function seedSkills(): Promise<void> {
     });
   }
 
-  // Assign some skills to key people
-  const personSkills = [
-    // Ethan Brooks — Senior Software Engineer
-    { id: '55555555-b500-0000-0000-000000000001', personId: '11111111-1111-1111-1111-111111111008', skillId: '55555555-5c00-0000-0000-000000000001', proficiency: 5 },
-    { id: '55555555-b500-0000-0000-000000000002', personId: '11111111-1111-1111-1111-111111111008', skillId: '55555555-5c00-0000-0000-000000000007', proficiency: 5 },
-    { id: '55555555-b500-0000-0000-000000000003', personId: '11111111-1111-1111-1111-111111111008', skillId: '55555555-5c00-0000-0000-000000000010', proficiency: 4 },
-    { id: '55555555-b500-0000-0000-000000000004', personId: '11111111-1111-1111-1111-111111111008', skillId: '55555555-5c00-0000-0000-000000000012', proficiency: 4 },
-    { id: '55555555-b500-0000-0000-000000000005', personId: '11111111-1111-1111-1111-111111111008', skillId: '55555555-5c00-0000-0000-000000000018', proficiency: 3 },
-    // Lucas Reed — Program Manager
-    { id: '55555555-b500-0000-0000-000000000006', personId: '11111111-1111-1111-1111-111111111010', skillId: '55555555-5c00-0000-0000-000000000022', proficiency: 5 },
-    { id: '55555555-b500-0000-0000-000000000007', personId: '11111111-1111-1111-1111-111111111010', skillId: '55555555-5c00-0000-0000-000000000023', proficiency: 5 },
-    { id: '55555555-b500-0000-0000-000000000008', personId: '11111111-1111-1111-1111-111111111010', skillId: '55555555-5c00-0000-0000-000000000001', proficiency: 3 },
-    // Sophia Kim — Resource Manager
-    { id: '55555555-b500-0000-0000-000000000009', personId: '11111111-1111-1111-1111-111111111006', skillId: '55555555-5c00-0000-0000-000000000022', proficiency: 4 },
-    { id: '55555555-b500-0000-0000-000000000010', personId: '11111111-1111-1111-1111-111111111006', skillId: '55555555-5c00-0000-0000-000000000023', proficiency: 4 },
-  ];
-
-  for (const ps of personSkills) {
-    // PersonSkill rows reference phase2 personIds. For non-phase2 profiles,
-    // those persons do not exist — skip silently rather than abort the seed.
-    try {
-      await prismaSeed.personSkill.upsert({
-        where: { personId_skillId: { personId: ps.personId, skillId: ps.skillId } },
-        create: ps,
-        update: { proficiency: ps.proficiency },
-      });
-    } catch {
-      // person does not exist in this profile — fine.
-    }
-  }
-
-   
-  console.log(`Seeded ${skills.length} skills, ${personSkills.length} person-skill assignments.`);
+  console.log(`Seeded ${skills.length} skills.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -640,6 +609,8 @@ async function clearExistingData(): Promise<void> {
       await t.projectChangeRequest.deleteMany();
       await t.radiatorThresholdConfig.deleteMany();
       await t.project.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ID } } });
+      // Clients are FK-referenced by Project.clientId; wipe AFTER projects.
+      await t.client.deleteMany();
       await t.personResourcePoolMembership.deleteMany();
       await t.resourcePool.deleteMany();
       await t.reportingLine.deleteMany();
@@ -686,6 +657,91 @@ async function seedCaseTypes(): Promise<void> {
 
 
 
+
+// HD-4 — Default ResponsibilityRules. One TENANT-scope rule per
+// `ResponsibilityActionKind`, mirroring the role gating that was
+// hardcoded in the controllers / @RequireRoles before HD-4 wiring.
+// Adding these rules makes the resolver return RULE-source verdicts
+// (instead of FALLBACK) on a fresh deployment, without changing
+// observable behaviour. Tenants can override per scope by inserting
+// rules at higher priority (lower numeric value) via the admin UI
+// (deferred follow-up).
+//
+// Idempotent via fixed UUIDs; safe to re-run.
+async function seedResponsibilityRules(): Promise<void> {
+  const rules = [
+    {
+      id: '00000000-0000-4000-8000-0000000d0401',
+      actionKind: 'PROJECT_ACTIVATION_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves project activation.',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0402',
+      actionKind: 'BUDGET_CHANGE_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves project budget changes.',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0403',
+      actionKind: 'ASSIGNMENT_DIRECTOR_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves staffing assignments above threshold.',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0404',
+      actionKind: 'ASSIGNMENT_OVERRIDE_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves staffing-rule overrides.',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0405',
+      actionKind: 'PERSON_RELEASE_HR_APPROVAL',
+      targetRole: 'hr_manager',
+      notes: 'Default — HR Manager approves person release (HR slot).',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0406',
+      actionKind: 'PERSON_RELEASE_DIRECTOR_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves person release (Director slot).',
+    },
+    {
+      id: '00000000-0000-4000-8000-0000000d0407',
+      actionKind: 'PROJECT_CLOSE_APPROVAL',
+      targetRole: 'director',
+      notes: 'Default — Director approves project close.',
+    },
+  ];
+
+  for (const r of rules) {
+    await prismaSeed.responsibilityRule.upsert({
+      where: { id: r.id },
+      create: {
+        id: r.id,
+        actionKind: r.actionKind,
+        scopeKind: 'TENANT',
+        scopeValue: null,
+        mode: 'ROLE',
+        targetRole: r.targetRole,
+        targetPersonId: null,
+        priority: 100,
+        isActive: true,
+        notes: r.notes,
+        tenantId: null,
+      },
+      update: {
+        // Keep custom edits — admin tweaks should NOT be clobbered
+        // on re-run. Only refresh notes (administrators can rename
+        // them safely; if they want bigger overrides they should
+        // create new rules at higher priority).
+        notes: r.notes,
+      },
+    });
+  }
+
+  console.log(`Seeded ${rules.length} default responsibility rules.`);
+}
 
 async function seedRadiatorThresholds(): Promise<void> {
   // updatedByPersonId references a phase2 admin. For non-phase2 profiles
@@ -907,6 +963,8 @@ async function clearOperatingData(): Promise<void> {
       await t.projectMilestone.deleteMany();
       await t.projectChangeRequest.deleteMany();
       await t.project.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ID } } });
+      // Clients are FK-referenced by Project.clientId; wipe AFTER projects.
+      await t.client.deleteMany();
       await t.personResourcePoolMembership.deleteMany();
       await t.resourcePool.deleteMany();
       await t.reportingLine.deleteMany();
@@ -992,6 +1050,10 @@ async function main(): Promise<void> {
   await clearExistingData();
 
   if (profile === 'it-company') {
+    // Clients must land before Projects (Project.clientId FK references clients).
+    // Standalone insert keeps SeedDataset structure stable across profiles.
+    await createManyInChunks('client', itCompanyClients);
+
     await seedDataset({
       assignmentApprovals: itCompanyAssignmentApprovals,
       assignmentHistory: itCompanyAssignmentHistory,
@@ -1079,6 +1141,7 @@ async function main(): Promise<void> {
     await seedPlatformSettings();
     await seedSkills();
     await seedRadiatorThresholds();
+    await seedResponsibilityRules();
     await seedFullNotificationInfrastructure();
 
     await seedItCompanyPersonSkills();
@@ -1140,6 +1203,7 @@ export {
   seedMetadata,
   seedSkills,
   seedRadiatorThresholds,
+  seedResponsibilityRules,
   seedFullNotificationInfrastructure,
   seedPlatformSettings,
   seedItCompanyAccounts,

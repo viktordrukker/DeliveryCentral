@@ -1,6 +1,7 @@
 import { Person } from '@src/modules/organization/domain/entities/person.entity';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { OrganizationPrismaMapper } from './organization-prisma.mapper';
 
@@ -11,11 +12,28 @@ interface PersonGateway {
   upsert(args: any): Promise<unknown>;
 }
 
+interface TxClientWithPerson {
+  person: PersonGateway;
+}
+
 export class PrismaPersonRepository implements PersonRepositoryPort {
   public constructor(private readonly gateway: PersonGateway) {}
 
-  public async delete(id: string): Promise<void> {
-    await this.gateway.delete({ where: { id } });
+  /**
+   * Resolve the gateway to use for this call. When an external `tx`
+   * (Prisma `$transaction` client) is supplied, swap to its `person`
+   * delegate so the write joins the caller's atomic unit; otherwise fall
+   * back to the constructor-injected gateway.
+   */
+  private resolveGateway(tx?: TransactionContext): PersonGateway {
+    if (tx && typeof tx === 'object' && tx !== null && 'person' in tx) {
+      return (tx as TxClientWithPerson).person;
+    }
+    return this.gateway;
+  }
+
+  public async delete(id: string, tx?: TransactionContext): Promise<void> {
+    await this.resolveGateway(tx).delete({ where: { id } });
   }
 
   public async findByEmail(email: string): Promise<Person | null> {
@@ -84,8 +102,8 @@ export class PrismaPersonRepository implements PersonRepositoryPort {
     return records.map((record) => OrganizationPrismaMapper.toDomainPerson(record));
   }
 
-  public async save(aggregate: Person): Promise<void> {
-    await this.gateway.upsert({
+  public async save(aggregate: Person, tx?: TransactionContext): Promise<void> {
+    await this.resolveGateway(tx).upsert({
       create: {
         displayName: aggregate.name,
         employmentStatus: aggregate.status,

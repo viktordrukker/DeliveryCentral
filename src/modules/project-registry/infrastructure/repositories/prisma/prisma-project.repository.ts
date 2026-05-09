@@ -2,6 +2,7 @@ import { Project } from '@src/modules/project-registry/domain/entities/project.e
 import { ProjectRepositoryPort } from '@src/modules/project-registry/domain/repositories/project-repository.port';
 import { ProjectId } from '@src/modules/project-registry/domain/value-objects/project-id';
 import { ProjectLifecycleConflictError } from '@src/modules/project-registry/application/project-lifecycle-conflict.error';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { ProjectRegistryPrismaMapper } from './project-registry-prisma.mapper';
 
@@ -13,11 +14,23 @@ interface ProjectGateway {
   updateMany(args: any): Promise<{ count: number }>;
 }
 
+interface TxClientWithProject {
+  project: ProjectGateway;
+}
+
 export class PrismaProjectRepository implements ProjectRepositoryPort {
   public constructor(private readonly gateway: ProjectGateway) {}
 
-  public async delete(id: string): Promise<void> {
-    await this.gateway.delete({ where: { id } });
+  /** Resolve the gateway: external `tx` overrides the constructor-injected one. */
+  private resolveGateway(tx?: TransactionContext): ProjectGateway {
+    if (tx && typeof tx === 'object' && tx !== null && 'project' in tx) {
+      return (tx as TxClientWithProject).project;
+    }
+    return this.gateway;
+  }
+
+  public async delete(id: string, tx?: TransactionContext): Promise<void> {
+    await this.resolveGateway(tx).delete({ where: { id } });
   }
 
   public async findById(id: string): Promise<Project | null> {
@@ -54,12 +67,13 @@ export class PrismaProjectRepository implements ProjectRepositoryPort {
     return ProjectRegistryPrismaMapper.toDomainProject(record);
   }
 
-  public async save(aggregate: Project): Promise<void> {
-    const persisted = await this.gateway.findFirst({ where: { id: aggregate.id } });
+  public async save(aggregate: Project, tx?: TransactionContext): Promise<void> {
+    const gateway = this.resolveGateway(tx);
+    const persisted = await gateway.findFirst({ where: { id: aggregate.id } });
 
     if (!persisted) {
       aggregate.synchronizeVersion(1);
-      await this.gateway.create({
+      await gateway.create({
         data: {
           archivedAt: aggregate.archivedAt ?? null,
           clientId: aggregate.clientId ?? null,
@@ -88,7 +102,7 @@ export class PrismaProjectRepository implements ProjectRepositoryPort {
     }
 
     const nextVersion = aggregate.version + 1;
-    const result = await this.gateway.updateMany({
+    const result = await gateway.updateMany({
       data: {
         archivedAt: aggregate.archivedAt ?? null,
         clientId: aggregate.clientId ?? null,

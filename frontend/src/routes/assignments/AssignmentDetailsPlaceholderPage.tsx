@@ -32,6 +32,24 @@ import {
   type NextStep,
 } from '@/features/assignments/workflow-progression';
 
+// HD-3 — show the missing-rate banner only when the assignment is past
+// PROPOSED/REJECTED/CANCELLED (i.e., a BOOKED-or-later state where the
+// rate-card pin SHOULD have happened) AND no rate was pinned. The
+// PROPOSED case never has a rate yet by design.
+const RATE_BANNER_STATUSES = new Set([
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+  'ON_HOLD',
+  'COMPLETED',
+]);
+function shouldShowMissingRateBanner(details: { approvalState: string; effectiveBillRate?: number | null }): boolean {
+  return (
+    RATE_BANNER_STATUSES.has(details.approvalState) &&
+    (details.effectiveBillRate === null || details.effectiveBillRate === undefined)
+  );
+}
+
 export function AssignmentDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
   const { principal } = useAuth();
@@ -260,6 +278,46 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
         <AssignmentInconsistencyBanner status={state.data.approvalState} />
       ) : null}
 
+      {state.data && shouldShowMissingRateBanner(state.data) ? (
+        <div
+          aria-live="polite"
+          role="status"
+          style={{
+            background: 'var(--color-status-warning-bg, var(--color-surface-alt))',
+            border: '1px solid var(--color-status-warning)',
+            borderRadius: 6,
+            color: 'var(--color-text)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-3)',
+            fontSize: 12,
+            marginBottom: 'var(--space-3)',
+            padding: 'var(--space-3)',
+          }}
+        >
+          <div>
+            <strong>No rate card matched this assignment.</strong>{' '}
+            Margin math will be missing until an admin adds a rate card entry that covers
+            <span style={{ fontFamily: 'var(--font-mono, monospace)' }}>
+              {' '}{state.data.staffingRole}
+            </span>
+            {' '}at this person's grade
+            {state.data.project.displayName ? ` for project "${state.data.project.displayName}"` : ''}.
+          </div>
+          <Link
+            to="/admin/rate-cards"
+            style={{
+              color: 'var(--color-accent)',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Open rate cards →
+          </Link>
+        </div>
+      ) : null}
+
       {state.isLoading ? (
         <LoadingState label="Loading assignment details..." variant="skeleton" skeletonType="detail" />
       ) : null}
@@ -382,11 +440,12 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
                 marginBottom: 'var(--space-1)',
               }}
             >
-              {state.data.person.displayName}'s existing assignments with this assignment overlaid as the
-              {' '}<span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>(new)</span>{' '}segment.
+              {state.data.person.displayName}'s other assignments with this one
+              {' '}<span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>highlighted</span>.
             </div>
             <WorkloadTimeline
               personId={state.data.person.id}
+              excludeAssignmentId={state.data.id}
               planned={{
                 allocationPercent: state.data.allocationPercent,
                 startDate: state.data.startDate,

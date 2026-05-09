@@ -5,6 +5,7 @@ import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { UndoService } from '@src/modules/undo/application/undo.service';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 import { WorkEvidenceRepositoryPort } from '@src/modules/work-evidence/domain/repositories/work-evidence-repository.port';
 import { AppConfig } from '@src/shared/config/app-config';
@@ -28,6 +29,9 @@ interface ProjectClosureSummary {
 interface CloseProjectResult {
   project: Project;
   workspend: ProjectClosureSummary;
+  // HD-8 / Chunk 8.4a — populated when the close registers an undo
+  // token (i.e. UndoService is wired and the close succeeded).
+  undoActionId: string | null;
 }
 
 interface CloseProjectOptions {
@@ -47,6 +51,7 @@ export class CloseProjectService {
     private readonly appConfig: AppConfig,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
+    private readonly undoService?: UndoService,
   ) {}
 
   public async execute(
@@ -143,9 +148,27 @@ export class CloseProjectService {
       totalMandays: workspend.totalMandays,
     });
 
+    // HD-8 / Chunk 8.4a — opt-in undo registration. Only the
+    // non-override path is reversible — an override close is an
+    // explicit "I know what I'm doing" action.
+    let undoActionId: string | null = null;
+    if (!overrideApplied && this.undoService && options.actorId) {
+      try {
+        undoActionId = await this.undoService.register({
+          actorId: options.actorId,
+          actionType: 'project.close',
+          entityId: project.projectId.value,
+          inversePayload: { previousStatus: 'ACTIVE' },
+        });
+      } catch {
+        // Undo registration is convenience — never block the close.
+      }
+    }
+
     return {
       project,
       workspend,
+      undoActionId,
     };
   }
 

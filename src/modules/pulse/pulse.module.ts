@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { InAppNotificationsModule } from '@src/modules/in-app-notifications/in-app-notifications.module';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
+import { OrganizationModule } from '@src/modules/organization/organization.module';
 
 import { PulseService } from './application/pulse.service';
 import { PeopleThreeSixtyService } from './application/people-360.service';
@@ -12,7 +13,7 @@ import { PeopleThreeSixtyController } from './presentation/people-360.controller
 import { MoodHeatmapController } from './presentation/mood-heatmap.controller';
 
 @Module({
-  imports: [InAppNotificationsModule],
+  imports: [InAppNotificationsModule, forwardRef(() => OrganizationModule)],
   controllers: [PulseController, PeopleThreeSixtyController, MoodHeatmapController],
   providers: [
     {

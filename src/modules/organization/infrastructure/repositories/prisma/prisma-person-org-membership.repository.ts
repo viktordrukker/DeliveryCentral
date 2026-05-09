@@ -3,6 +3,7 @@ import { PersonOrgMembershipRepositoryPort } from '@src/modules/organization/dom
 import { EffectiveDateRange } from '@src/modules/organization/domain/value-objects/effective-date-range';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 interface PersonOrgMembershipGateway {
   delete(args: any): Promise<unknown>;
@@ -11,13 +12,25 @@ interface PersonOrgMembershipGateway {
   upsert(args: any): Promise<unknown>;
 }
 
+interface TxClientWithMembership {
+  personOrgMembership: PersonOrgMembershipGateway;
+}
+
 export class PrismaPersonOrgMembershipRepository
   implements PersonOrgMembershipRepositoryPort
 {
   public constructor(private readonly gateway: PersonOrgMembershipGateway) {}
 
-  public async delete(id: string): Promise<void> {
-    await this.gateway.delete({ where: { id } });
+  /** Same pattern as PrismaPersonRepository: an external `tx` (Prisma `$transaction` client) overrides the constructor-injected gateway so writes join the caller's atomic unit. */
+  private resolveGateway(tx?: TransactionContext): PersonOrgMembershipGateway {
+    if (tx && typeof tx === 'object' && tx !== null && 'personOrgMembership' in tx) {
+      return (tx as TxClientWithMembership).personOrgMembership;
+    }
+    return this.gateway;
+  }
+
+  public async delete(id: string, tx?: TransactionContext): Promise<void> {
+    await this.resolveGateway(tx).delete({ where: { id } });
   }
 
   public async findById(id: string): Promise<PersonOrgMembership | null> {
@@ -57,8 +70,8 @@ export class PrismaPersonOrgMembershipRepository
     return records.map((record) => this.toDomain(record));
   }
 
-  public async save(aggregate: PersonOrgMembership): Promise<void> {
-    await this.gateway.upsert({
+  public async save(aggregate: PersonOrgMembership, tx?: TransactionContext): Promise<void> {
+    await this.resolveGateway(tx).upsert({
       create: {
         id: aggregate.id,
         isPrimary: aggregate.isPrimary,

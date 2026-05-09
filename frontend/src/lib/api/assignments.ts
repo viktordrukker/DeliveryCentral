@@ -74,6 +74,9 @@ export interface ProjectAssignmentResponse {
   startDate: string;
   status: string;
   version?: number;
+  // HD-8 / Chunk 8.4 — populated only after a successful CANCELLED transition.
+  // Pass back to `POST /undo/:id/consume` to restore the assignment.
+  undoActionId?: string;
 }
 
 export interface CreateAssignmentOverrideRequest {
@@ -144,6 +147,13 @@ export interface AssignmentDetails extends AssignmentDirectoryItem {
   note?: string;
   requestedAt: string;
   requestedByPersonId?: string;
+  // HD-3 — bill-rate pinning. Populated only after BOOKED + a matching
+  // rate card. Absent on PROPOSED/IN_REVIEW (no booking yet) AND on
+  // BOOKED rows where the resolver returned NONE (FE renders a
+  // missing-rate banner in that case).
+  appliedRateCardEntryId?: string;
+  effectiveBillRate?: number;
+  effectiveBillCurrency?: string;
 }
 
 export interface AssignmentHistoryItem {
@@ -221,36 +231,6 @@ export async function bulkCreateAssignments(
   return httpPost<BulkAssignmentResponse, BulkAssignmentRequest>('/assignments/bulk', request);
 }
 
-export async function approveAssignment(
-  id: string,
-  request: AssignmentDecisionRequest,
-): Promise<ProjectAssignmentResponse> {
-  return httpPost<ProjectAssignmentResponse, AssignmentDecisionRequest>(
-    `/assignments/${id}/approve`,
-    request,
-  );
-}
-
-export async function rejectAssignment(
-  id: string,
-  request: AssignmentDecisionRequest,
-): Promise<ProjectAssignmentResponse> {
-  return httpPost<ProjectAssignmentResponse, AssignmentDecisionRequest>(
-    `/assignments/${id}/reject`,
-    request,
-  );
-}
-
-export async function endAssignment(
-  id: string,
-  request: EndAssignmentRequest,
-): Promise<ProjectAssignmentResponse> {
-  return httpPost<ProjectAssignmentResponse, EndAssignmentRequest>(
-    `/assignments/${id}/end`,
-    request,
-  );
-}
-
 export interface AmendAssignmentRequest {
   allocationPercent?: number;
   notes?: string;
@@ -268,16 +248,6 @@ export async function amendAssignment(
 ): Promise<ProjectAssignmentResponse> {
   return httpPatch<ProjectAssignmentResponse, AmendAssignmentRequest>(
     `/assignments/${id}`,
-    request,
-  );
-}
-
-export async function revokeAssignment(
-  id: string,
-  request: RevokeAssignmentRequest,
-): Promise<ProjectAssignmentResponse> {
-  return httpPost<ProjectAssignmentResponse, RevokeAssignmentRequest>(
-    `/assignments/${id}/revoke`,
     request,
   );
 }

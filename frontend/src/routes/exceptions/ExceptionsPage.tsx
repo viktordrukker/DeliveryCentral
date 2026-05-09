@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -6,6 +6,7 @@ import { useTitleBarActions } from '@/app/title-bar-context';
 import { AuthTokenField } from '@/components/common/AuthTokenField';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { ListLayout } from '@/components/layout/ListLayout';
@@ -17,6 +18,7 @@ import { ExceptionQueueFilters } from '@/components/exceptions/ExceptionQueueFil
 import { ExceptionQueueTable } from '@/components/exceptions/ExceptionQueueTable';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { useExceptionQueue } from '@/features/exceptions/useExceptionQueue';
+import { type ExceptionQueueItem } from '@/lib/api/exceptions';
 import { Button } from '@/components/ds';
 
 export function ExceptionsPage(): JSX.Element {
@@ -40,6 +42,22 @@ export function ExceptionsPage(): JSX.Element {
     [state.handleSuppress],
   );
 
+  const exceptionsItems = state.data?.items ?? [];
+  const exportColumns = useMemo<ExportColumn<ExceptionQueueItem>[]>(
+    () => [
+      { key: 'observedAt', label: 'Observed', accessor: (r) => r.observedAt },
+      { key: 'category', label: 'Category', accessor: (r) => r.category },
+      { key: 'sourceContext', label: 'Source', accessor: (r) => r.sourceContext },
+      { key: 'projectName', label: 'Project', accessor: (r) => r.projectName ?? '' },
+      { key: 'personDisplayName', label: 'Person', accessor: (r) => r.personDisplayName ?? '' },
+      { key: 'summary', label: 'Summary', accessor: (r) => r.summary },
+      { key: 'status', label: 'Status', accessor: (r) => r.status },
+      { key: 'targetEntityId', label: 'Target id', accessor: (r) => r.targetEntityId },
+      { key: 'targetEntityType', label: 'Target type', accessor: (r) => r.targetEntityType },
+    ],
+    [],
+  );
+
   // Inject actions into title bar (filters stay in FilterBar since >3 fields)
   useEffect(() => {
     setActions(
@@ -47,11 +65,16 @@ export function ExceptionsPage(): JSX.Element {
         <Button as={Link} variant="secondary" size="sm" to="/dashboard/planned-vs-actual">
           Open planned vs actual
         </Button>
+        <ExportButton
+          data={exceptionsItems}
+          columns={exportColumns}
+          filename={`exceptions-${state.filters.statusFilter ?? 'open'}`}
+        />
         <TipTrigger />
       </>
     );
     return () => setActions(null);
-  }, [setActions]);
+  }, [setActions, exceptionsItems, exportColumns, state.filters.statusFilter]);
 
   const banners = (
     <>

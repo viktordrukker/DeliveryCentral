@@ -201,6 +201,65 @@ test.describe('@critical 2d-19 HR — view HR dashboard', () => {
   });
 });
 
+// ── TASK 0.16 · Skills routed to PersonSkill (no silent data loss) ──────────
+
+test.describe('@critical task-0.16 HR — Create Employee writes PersonSkill (not legacy skillsets)', () => {
+  test('picking a skill in the create form persists a PersonSkill row visible on the Skills tab', async ({ page }) => {
+    const token = await getToken(page, p2.accounts.hrManager.email, p2.accounts.hrManager.password);
+
+    // Pick a real skill UUID from the catalog — the form binds skill-id values, not free text.
+    const skillsRes = await page.request.get('http://127.0.0.1:3000/api/admin/skills', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(skillsRes.ok()).toBeTruthy();
+    const skills = await skillsRes.json() as Array<{ id: string; name: string }>;
+    expect(skills.length).toBeGreaterThan(0);
+    const targetSkill = skills[0];
+
+    // Pick any active org unit so the form passes validation.
+    const orgRes = await page.request.get('http://127.0.0.1:3000/api/org/chart', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const org = await orgRes.json() as { roots: Array<{ id: string; name: string; children: unknown[] }> };
+    expect(org.roots.length).toBeGreaterThan(0);
+    const orgUnitId = org.roots[0].id;
+
+    await page.goto('/admin/people/new');
+    await expect(page.getByTestId('employee-lifecycle-admin-page')).toBeVisible();
+
+    const unique = Date.now();
+    const email = `e2e.skill.${unique}@example.com`;
+    await page.getByLabel('Name').fill(`E2E Skill Person ${unique}`);
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Org Unit').selectOption(orgUnitId);
+    await page.getByTestId('skill-selector').selectOption(targetSkill.id);
+
+    // Confirm the chip appeared in the picker UI.
+    await expect(page.getByTestId('skill-chips')).toContainText(targetSkill.name);
+
+    await page.getByRole('button', { name: 'Create employee' }).click();
+    await page.getByRole('button', { name: 'Confirm' }).click();
+
+    // App navigates to the new employee's profile.
+    await page.waitForURL(/\/people\/[^/]+$/);
+    const url = page.url();
+    const newPersonId = url.split('/').pop() ?? '';
+    expect(newPersonId.length).toBeGreaterThan(0);
+
+    // Verify on the API: PersonSkill row exists; Person.skillsets is empty (not the dropped category).
+    const personSkillsRes = await page.request.get(
+      `http://127.0.0.1:3000/api/people/${newPersonId}/skills`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(personSkillsRes.ok()).toBeTruthy();
+    const personSkills = await personSkillsRes.json() as Array<{ skillId: string; proficiency: number; certified: boolean }>;
+    const matched = personSkills.find((s) => s.skillId === targetSkill.id);
+    expect(matched, `expected PersonSkill for ${targetSkill.name}`).toBeDefined();
+    expect(matched?.proficiency).toBe(3);
+    expect(matched?.certified).toBe(false);
+  });
+});
+
 async function getToken(page: import('@playwright/test').Page, email: string, password: string): Promise<string> {
   const res = await page.request.post('http://127.0.0.1:3000/api/auth/login', { data: { email, password } });
   const body = await res.json() as { accessToken: string };

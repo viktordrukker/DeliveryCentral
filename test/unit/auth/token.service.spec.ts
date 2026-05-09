@@ -3,6 +3,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { AppConfig } from '@src/shared/config/app-config';
 import { hashToken, TokenService } from '@src/modules/auth/token.service';
 import { verifyPlatformJwt } from '@src/modules/identity-access/application/platform-jwt';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
 import { createPrismaServiceStub } from '../../helpers/db/mock-prisma-client';
 
@@ -17,6 +18,12 @@ function buildAppConfig(overrides: Partial<AppConfig> = {}): AppConfig {
   } as unknown as AppConfig;
 }
 
+function buildPlatformSettingsStub(value: unknown = null): PlatformSettingsService {
+  return {
+    getRawValue: jest.fn().mockResolvedValue(value),
+  } as unknown as PlatformSettingsService;
+}
+
 describe('TokenService', () => {
   describe('issueTokenPair', () => {
     it('signs a verifiable access token and persists a hashed refresh token', async () => {
@@ -25,7 +32,7 @@ describe('TokenService', () => {
         refreshToken: { create },
       });
       const config = buildAppConfig();
-      const svc = new TokenService(prisma, config);
+      const svc = new TokenService(prisma, config, buildPlatformSettingsStub());
 
       const pair = await svc.issueTokenPair(
         'account-1',
@@ -73,7 +80,7 @@ describe('TokenService', () => {
       const prisma = createPrismaServiceStub({
         refreshToken: { findUnique: jest.fn().mockResolvedValue(null) },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await expect(svc.refresh('not-a-token')).rejects.toBeInstanceOf(UnauthorizedException);
     });
@@ -89,7 +96,7 @@ describe('TokenService', () => {
           }),
         },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await expect(svc.refresh('revoked')).rejects.toBeInstanceOf(UnauthorizedException);
     });
@@ -105,7 +112,7 @@ describe('TokenService', () => {
           }),
         },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await expect(svc.refresh('expired')).rejects.toBeInstanceOf(UnauthorizedException);
     });
@@ -133,7 +140,7 @@ describe('TokenService', () => {
           }),
         },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       const pair = await svc.refresh('valid-old-token');
 
@@ -161,7 +168,7 @@ describe('TokenService', () => {
         },
         localAccount: { findUnique: jest.fn().mockResolvedValue(null) },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await expect(svc.refresh('orphan')).rejects.toBeInstanceOf(UnauthorizedException);
     });
@@ -173,7 +180,7 @@ describe('TokenService', () => {
       const prisma = createPrismaServiceStub({
         refreshToken: { updateMany },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await svc.revokeRefreshToken('some-token');
 
@@ -189,7 +196,7 @@ describe('TokenService', () => {
       const prisma = createPrismaServiceStub({
         refreshToken: { updateMany },
       });
-      const svc = new TokenService(prisma, buildAppConfig());
+      const svc = new TokenService(prisma, buildAppConfig(), buildPlatformSettingsStub());
 
       await expect(svc.revokeRefreshToken('unknown')).resolves.toBeUndefined();
     });
@@ -198,7 +205,7 @@ describe('TokenService', () => {
   describe('signTempToken', () => {
     it('signs a JWT carrying the scope claim with a short TTL', () => {
       const config = buildAppConfig();
-      const svc = new TokenService(createPrismaServiceStub(), config);
+      const svc = new TokenService(createPrismaServiceStub(), config, buildPlatformSettingsStub());
 
       const token = svc.signTempToken('account-1', '2fa_pending', 300);
 

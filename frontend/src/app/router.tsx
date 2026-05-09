@@ -77,6 +77,11 @@ import { CreateProjectPage } from '@/routes/projects/CreateProjectPage';
 import { PortfolioRadiatorPage } from '@/routes/dashboard/PortfolioRadiatorPage';
 import { OrganizationConfigPage } from '@/routes/admin/OrganizationConfigPage';
 import { RadiatorThresholdsPage } from '@/routes/admin/RadiatorThresholdsPage';
+import { ResponsibilityMatrixAdminPage } from '@/routes/admin/ResponsibilityMatrixAdminPage';
+import { RateCardsAdminPage } from '@/routes/admin/RateCardsAdminPage';
+import { HelpAdminPage } from '@/routes/admin/HelpAdminPage';
+import { HelpArticleListPage } from '@/routes/help/HelpArticleListPage';
+import { HelpArticleDetailPage } from '@/routes/help/HelpArticleDetailPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
 import { ResourcePoolDetailPage } from '@/routes/resource-pools/ResourcePoolDetailPage';
 import { ResourcePoolsPage } from '@/routes/resource-pools/ResourcePoolsPage';
@@ -153,6 +158,26 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><RadiatorThresholdsPage /></RoleGuard>,
     path: 'admin/radiator-thresholds',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><ResponsibilityMatrixAdminPage /></RoleGuard>,
+    path: 'admin/responsibility-matrix',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><RateCardsAdminPage /></RoleGuard>,
+    path: 'admin/rate-cards',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><HelpAdminPage /></RoleGuard>,
+    path: 'admin/help',
+  },
+  {
+    element: <RoleGuard allowedRoles={ALL_ROLES}><HelpArticleListPage /></RoleGuard>,
+    path: 'help',
+  },
+  {
+    element: <RoleGuard allowedRoles={ALL_ROLES}><HelpArticleDetailPage /></RoleGuard>,
+    path: 'help/:slug',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><OrganizationConfigPage /></RoleGuard>,

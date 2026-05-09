@@ -5,6 +5,7 @@ import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -58,6 +59,27 @@ export function ApprovalQueuePage(): JSX.Element {
     scope,
   });
 
+  const exportColumns = useMemo<ExportColumn<AssignmentDirectoryItem>[]>(
+    () => [
+      { key: 'project', label: 'Project', accessor: (r) => r.project.displayName },
+      { key: 'person', label: 'Person', accessor: (r) => r.person.displayName },
+      { key: 'role', label: 'Role', accessor: (r) => r.staffingRole },
+      {
+        key: 'approvalState',
+        label: 'Status',
+        accessor: (r) =>
+          ASSIGNMENT_STATUS_LABELS[r.approvalState as keyof typeof ASSIGNMENT_STATUS_LABELS] ??
+          r.approvalState,
+      },
+      { key: 'startDate', label: 'Start', accessor: (r) => r.startDate ?? '' },
+      { key: 'endDate', label: 'End', accessor: (r) => r.endDate ?? '' },
+      { key: 'allocationPercent', label: 'Allocation %', accessor: (r) => r.allocationPercent },
+      { key: 'slaDueAt', label: 'SLA due', accessor: (r) => r.slaDueAt ?? '' },
+      { key: 'slaBreachedAt', label: 'SLA breached', accessor: (r) => r.slaBreachedAt ?? '' },
+    ],
+    [],
+  );
+
   useEffect(() => {
     setActions(
       <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
@@ -74,10 +96,15 @@ export function ApprovalQueuePage(): JSX.Element {
         <Button variant="ghost" size="sm" onClick={refresh}>
           Refresh
         </Button>
+        <ExportButton
+          data={items}
+          columns={exportColumns}
+          filename={`approval-queue-${scope}`}
+        />
       </div>,
     );
     return () => setActions(null);
-  }, [scope, refresh, setActions]);
+  }, [scope, refresh, setActions, items, exportColumns]);
 
   const now = useMemo(() => new Date(), [items]);
 

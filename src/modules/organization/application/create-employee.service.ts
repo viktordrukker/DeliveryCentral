@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { Person } from '../domain/entities/person.entity';
 import { PersonOrgMembership } from '../domain/entities/person-org-membership.entity';
@@ -30,6 +31,7 @@ export class CreateEmployeeService {
     private readonly personRepository: PersonRepositoryPort,
     private readonly orgUnitRepository: OrgUnitRepositoryPort,
     private readonly personOrgMembershipRepository: PersonOrgMembershipRepositoryPort,
+    private readonly prisma: PrismaService,
     private readonly auditLogger?: AuditLoggerService,
     private readonly employeeActivityService?: { record(cmd: { personId: string; eventType: string; summary: string; actorId?: string; metadata?: Record<string, unknown> }): Promise<void> },
     private readonly createLifecycleCase?: (cmd: { caseTypeKey: string; ownerPersonId: string; subjectPersonId: string; summary: string }) => Promise<unknown>,
@@ -71,25 +73,21 @@ export class CreateEmployeeService {
 
     employee.pullDomainEvents();
 
-    // DATA-05: pseudo-transactional cleanup. Repositories are domain ports (no shared Prisma tx),
-    // so on membership-save failure we compensate by deleting the orphaned person record.
-    let personSaved = false;
+    // HD-0.2 (replaces the legacy DATA-05 pseudo-transactional pattern).
+    // Both writes share a Prisma `$transaction` so a failure on the second
+    // write rolls the first write back at the database level — no
+    // best-effort compensation, no orphans.
     try {
-      await this.personRepository.save(employee);
-      personSaved = true;
-      await this.personOrgMembershipRepository.save(membership);
+      await this.prisma.$transaction(async (tx) => {
+        await this.personRepository.save(employee, tx);
+        await this.personOrgMembershipRepository.save(membership, tx);
+      });
     } catch (error: unknown) {
-      const isUniqueViolation = error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2002';
-      if (personSaved) {
-        // Best-effort rollback of the orphaned person.
-        try {
-          await this.personRepository.delete(employee.personId.value);
-        } catch (rollbackErr) {
-          this.logger.error(
-            `Failed to rollback orphan person ${employee.personId.value} after membership save failure: ${rollbackErr instanceof Error ? rollbackErr.message : 'unknown'}`,
-          );
-        }
-      }
+      const isUniqueViolation =
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002';
       if (isUniqueViolation) {
         throw new ConflictException('Employee email already exists.');
       }

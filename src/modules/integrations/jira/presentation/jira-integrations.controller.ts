@@ -1,6 +1,7 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 
 import { JiraProjectSyncResponseDto } from '../contracts/jira-project-sync-response.contract';
@@ -21,6 +22,7 @@ export class JiraIntegrationsController {
   ) {}
 
   @Post('projects/sync')
+  @RequireRoles('admin')
   @ApiOperation({ summary: 'Trigger Jira project synchronization' })
   @ApiOkResponse({ type: JiraProjectSyncResponseDto, description: 'Jira project sync executed.' })
   public async syncProjects(): Promise<{

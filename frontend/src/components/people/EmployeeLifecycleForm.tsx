@@ -11,7 +11,13 @@ export interface EmployeeLifecycleFormValues {
   name: string;
   orgUnitId: string;
   role: string;
-  skillsets: string[];
+  /**
+   * Skill UUIDs picked from the central Skill catalog (`/api/admin/skills`).
+   * Persisted as `PersonSkill` rows after the employee is created (proficiency
+   * defaults to 3, certified=false). Replaces the legacy `skillsets` free-text
+   * categories that were silently dropped on read (D-30/D-46).
+   */
+  skillIds: string[];
 }
 
 interface SelectOption {
@@ -29,7 +35,7 @@ interface EmployeeLifecycleFormProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   orgUnitOptions: SelectOption[];
   roleOptions: SelectOption[];
-  skillsetOptions: SelectOption[];
+  skillOptions: SelectOption[];
   values: EmployeeLifecycleFormValues;
 }
 
@@ -42,9 +48,24 @@ export function EmployeeLifecycleForm({
   onSubmit,
   orgUnitOptions,
   roleOptions,
-  skillsetOptions,
+  skillOptions,
   values,
 }: EmployeeLifecycleFormProps): JSX.Element {
+  function handleAddSkill(skillId: string): void {
+    if (!skillId || values.skillIds.includes(skillId)) return;
+    onChange('skillIds', [...values.skillIds, skillId]);
+  }
+
+  function handleRemoveSkill(skillId: string): void {
+    onChange(
+      'skillIds',
+      values.skillIds.filter((id) => id !== skillId),
+    );
+  }
+
+  const skillById = new Map(skillOptions.map((option) => [option.value, option]));
+  const availableOptions = skillOptions.filter((option) => !values.skillIds.includes(option.value));
+
   return (
     <form className="entity-form" noValidate onSubmit={onSubmit}>
       <div className="entity-form__grid">
@@ -169,37 +190,56 @@ export function EmployeeLifecycleForm({
           </select>
         </label>
 
-        {skillsetOptions.length > 0 ? (
-          <fieldset className="field field--full">
-            <legend className="field__label">Skillsets</legend>
-            <div className="bulk-selector">
-              {skillsetOptions.map((option) => {
-                const isSelected = values.skillsets.includes(option.value);
-
+        <fieldset className="field field--full">
+          <legend className="field__label">Skills</legend>
+          <div style={{ marginBottom: '8px' }}>
+            <select
+              aria-label="Add skill"
+              className="field__control"
+              data-testid="skill-selector"
+              onChange={(event) => {
+                handleAddSkill(event.target.value);
+                event.target.value = '';
+              }}
+              style={{ maxWidth: '320px' }}
+              value=""
+            >
+              <option value="">— add a skill from the catalog —</option>
+              {availableOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}{option.meta ? ` (${option.meta})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="field__help" style={{ marginTop: '4px' }}>
+              Pick from the catalog. Custom names are not allowed (prevents data drift).
+              Skills save at proficiency 3 (Advanced), not certified — refine in the Skills tab after creation.
+            </p>
+          </div>
+          {values.skillIds.length === 0 ? (
+            <p className="field__help" data-testid="skill-empty">No skills selected yet.</p>
+          ) : (
+            <ul className="chip-list" data-testid="skill-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', listStyle: 'none', margin: 0, padding: 0 }}>
+              {values.skillIds.map((skillId) => {
+                const option = skillById.get(skillId);
                 return (
-                  <label className="bulk-selector__item" key={option.value}>
-                    <input
-                      checked={isSelected}
-                      onChange={(event) =>
-                        onChange(
-                          'skillsets',
-                          event.target.checked
-                            ? [...values.skillsets, option.value]
-                            : values.skillsets.filter((item) => item !== option.value),
-                        )
-                      }
-                      type="checkbox"
-                    />
-                    <span className="bulk-selector__content">
-                      <strong>{option.label}</strong>
-                      <span className="dictionary-editor__copy">{option.value}</span>
-                    </span>
-                  </label>
+                  <li key={skillId} style={{ alignItems: 'center', background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: '12px', display: 'inline-flex', gap: '6px', padding: '4px 8px 4px 12px' }}>
+                    <span>{option?.label ?? skillId}</span>
+                    <Button
+                      data-testid={`remove-skill-${skillId}`}
+                      onClick={() => handleRemoveSkill(skillId)}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      Remove
+                    </Button>
+                  </li>
                 );
               })}
-            </div>
-          </fieldset>
-        ) : null}
+            </ul>
+          )}
+        </fieldset>
       </div>
 
       <div className="entity-form__actions">

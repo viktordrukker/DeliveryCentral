@@ -1,12 +1,13 @@
-import { ChangeEvent, InputHTMLAttributes, forwardRef } from 'react';
+import { ChangeEvent, InputHTMLAttributes, forwardRef, useEffect, useRef, useState } from 'react';
 
 import { IconButton } from './IconButton';
 
 interface SearchInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
   value: string;
   onValueChange: (next: string) => void;
-  /** Optional debounce in ms. Currently passes through immediately; debounce
-   *  is consumer-side via `useDebounce` if needed. Reserved for future. */
+  /** Debounce in ms before `onValueChange` fires. Defaults to 0 (immediate).
+   *  When > 0, the displayed text updates instantly but the callback is
+   *  delayed; clearing via the inline clear button always fires immediately. */
   debounceMs?: number;
 }
 
@@ -27,16 +28,60 @@ const ClearIcon = () => (
  * Phase DS-3-2 — search input with leading icon and inline clear button.
  * Style-wise it matches `<Input>`; semantically it's `type="search"` with
  * a value/onValueChange controlled API.
+ *
+ * HD-9 Chunk 3 — `debounceMs` honored internally. When set, the displayed
+ * text updates immediately (no input lag) but the parent's onValueChange
+ * fires after `debounceMs` of inactivity. The inline clear button bypasses
+ * the debounce so users get instant clears.
  */
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput(
-  { value, onValueChange, placeholder = 'Search…', className, debounceMs, disabled, ...rest },
+  { value, onValueChange, placeholder = 'Search…', className, debounceMs = 0, disabled, ...rest },
   ref,
 ) {
-  // Suppress the unused-debounceMs warning until we wire actual debouncing.
-  void debounceMs;
+  // Local displayed value lets the input re-render immediately even while
+  // we delay the parent callback. Sync it whenever the parent's `value`
+  // changes externally (e.g., the parent cleared the search via its own
+  // state, or hydrated from URL params).
+  const [displayed, setDisplayed] = useState<string>(value);
+  useEffect(() => {
+    setDisplayed(value);
+  }, [value]);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cancel any pending debounce timer when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
-    onValueChange(event.target.value);
+    const next = event.target.value;
+    setDisplayed(next);
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!debounceMs) {
+      onValueChange(next);
+      return;
+    }
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      onValueChange(next);
+    }, debounceMs);
+  }
+
+  function handleClear(): void {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setDisplayed('');
+    onValueChange('');
   }
 
   return (
@@ -48,17 +93,17 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
         ref={ref}
         type="search"
         className="ds-search-input__field"
-        value={value}
+        value={displayed}
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
         {...rest}
       />
-      {value && !disabled && (
+      {displayed && !disabled && (
         <IconButton
           aria-label="Clear search"
           size="xs"
-          onClick={() => onValueChange('')}
+          onClick={handleClear}
           className="ds-search-input__clear"
         >
           <ClearIcon />

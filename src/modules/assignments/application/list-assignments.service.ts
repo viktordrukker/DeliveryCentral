@@ -23,10 +23,16 @@ export class ListAssignmentsService {
 
   public async execute(query: ListAssignmentsQuery): Promise<{ items: AssignmentDirectoryItemDto[]; page: number; pageSize: number; totalCount: number }> {
     const normalizedStatus = query.status?.trim().toUpperCase();
+    // The frontend uses the virtual token `ACTIVE` to mean "currently
+    // committed" (BOOKED + ONBOARDING + ASSIGNED + ON_HOLD) — there is no
+    // `ACTIVE` value on the canonical AssignmentStatus enum (CSW workflow
+    // uses ASSIGNED). Expand the token here so direct DB filtering passes
+    // valid enum values, and a single literal status still works.
+    const statuses = expandStatusFilter(normalizedStatus);
     const assignments = await this.projectAssignmentRepository.findByQuery({
       personId: query.personId,
       projectId: query.projectId,
-      statuses: normalizedStatus ? [normalizedStatus] : undefined,
+      statuses,
     });
 
     const fromDate = query.from ? new Date(query.from) : undefined;
@@ -86,3 +92,18 @@ export class ListAssignmentsService {
     return { items, page, pageSize, totalCount };
   }
 }
+
+/**
+ * Expand a frontend-supplied status token to the set of canonical
+ * AssignmentStatus enum values it covers. The literal token `ACTIVE` is a
+ * virtual filter meaning "currently committed" (BOOKED + ONBOARDING +
+ * ASSIGNED + ON_HOLD); other tokens pass through verbatim.
+ */
+function expandStatusFilter(token: string | undefined): string[] | undefined {
+  if (!token) return undefined;
+  if (token === 'ACTIVE') {
+    return ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'];
+  }
+  return [token];
+}
+

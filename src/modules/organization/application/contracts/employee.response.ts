@@ -24,4 +24,9 @@ export class EmployeeResponseDto {
 
   @ApiProperty({ type: [String] })
   public skillsets!: string[];
+
+  // HD-8 / Chunk 8.4a — populated only after a successful deactivate.
+  // Pass back to `POST /undo/:id/consume` to restore the employee.
+  @ApiPropertyOptional()
+  public undoActionId?: string;
 }

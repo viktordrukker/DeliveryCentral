@@ -9,50 +9,53 @@ import { useAuth } from '@/app/auth-context';
 import { changePassword } from '@/lib/api/admin';
 import {
   fetchMyNotificationPrefs,
+  fetchNotificationChannels,
   updateMyNotificationPrefs,
+  type NotificationChannelInfo,
   type NotificationPreference,
 } from '@/lib/api/notification-prefs';
 import { readStoredColorModePreference } from '@/styles/design-tokens';
 import { Button } from '@/components/ds';
 
+// HD-8 / F2a — channels come from the platform via
+// GET /notifications/channels. The legacy localStorage shape is still
+// honored as a one-time migration source for users who set prefs in the
+// browser-only era; once migrated, server prefs are authoritative.
 const LEGACY_NOTIF_PREFS_KEY = 'dc:notif_prefs';
 
-const CHANNEL_EMAIL = 'email';
-const CHANNEL_IN_APP = 'in_app';
-const CHANNEL_TEAMS = 'teams';
-
-interface NotifPrefs {
-  emailEnabled: boolean;
-  inAppEnabled: boolean;
-  teamsEnabled: boolean;
+interface LegacyPrefs {
+  emailEnabled?: boolean;
+  inAppEnabled?: boolean;
+  teamsEnabled?: boolean;
 }
 
-const DEFAULT_PREFS: NotifPrefs = { emailEnabled: true, inAppEnabled: true, teamsEnabled: false };
-
-function readLegacyLocalStorage(): NotifPrefs | null {
+function readLegacyLocalStorage(): LegacyPrefs | null {
   try {
     const raw = localStorage.getItem(LEGACY_NOTIF_PREFS_KEY);
-    return raw ? (JSON.parse(raw) as NotifPrefs) : null;
+    return raw ? (JSON.parse(raw) as LegacyPrefs) : null;
   } catch {
     return null;
   }
 }
 
-function fromApi(records: NotificationPreference[]): NotifPrefs {
-  const map = new Map(records.map((r) => [r.channelKey, r.enabled]));
-  return {
-    emailEnabled: map.get(CHANNEL_EMAIL) ?? DEFAULT_PREFS.emailEnabled,
-    inAppEnabled: map.get(CHANNEL_IN_APP) ?? DEFAULT_PREFS.inAppEnabled,
-    teamsEnabled: map.get(CHANNEL_TEAMS) ?? DEFAULT_PREFS.teamsEnabled,
-  };
+function legacyValueFor(channelKey: string, legacy: LegacyPrefs): boolean | undefined {
+  if (channelKey === 'email') return legacy.emailEnabled;
+  if (channelKey === 'in_app') return legacy.inAppEnabled;
+  if (channelKey === 'teams') return legacy.teamsEnabled;
+  return undefined;
 }
 
-function toApi(prefs: NotifPrefs): NotificationPreference[] {
-  return [
-    { channelKey: CHANNEL_EMAIL, enabled: prefs.emailEnabled },
-    { channelKey: CHANNEL_IN_APP, enabled: prefs.inAppEnabled },
-    { channelKey: CHANNEL_TEAMS, enabled: prefs.teamsEnabled },
-  ];
+function buildPrefMap(records: NotificationPreference[]): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const r of records) out[r.channelKey] = r.enabled;
+  return out;
+}
+
+// Default to ON for known-everyday channels (email + in_app) if no row
+// exists yet; OFF for everything else (e.g. teams, slack, sms) so users
+// opt-in to noisier surfaces.
+function defaultEnabledFor(channelKey: string): boolean {
+  return channelKey === 'email' || channelKey === 'in_app';
 }
 
 export function AccountSettingsPage(): JSX.Element {
@@ -64,40 +67,63 @@ export function AccountSettingsPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
+  const [channels, setChannels] = useState<NotificationChannelInfo[]>([]);
+  const [prefMap, setPrefMap] = useState<Record<string, boolean>>({});
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [isDark, setIsDark] = useState(() => readStoredColorModePreference() === 'dark');
 
   useEffect(() => {
     let active = true;
-    fetchMyNotificationPrefs()
-      .then(async (records) => {
+    Promise.all([fetchMyNotificationPrefs(), fetchNotificationChannels()])
+      .then(async ([records, channelList]) => {
         if (!active) return;
+        setChannels(channelList);
         const legacy = readLegacyLocalStorage();
-        if (records.length === 0 && legacy) {
-          // First-time migration: push legacy localStorage prefs to API, then clear.
-          const migrated = await updateMyNotificationPrefs(toApi(legacy));
-          if (!active) return;
-          setNotifPrefs(fromApi(migrated));
+        if (records.length === 0 && legacy && channelList.length > 0) {
+          // First-time migration: push legacy localStorage prefs to API,
+          // then clear. Migrate only channels that the legacy shape
+          // recognized; new channels keep their default-enabled value.
+          const migrationPayload: NotificationPreference[] = channelList
+            .map((c) => {
+              const v = legacyValueFor(c.channelKey, legacy);
+              return v === undefined
+                ? null
+                : { channelKey: c.channelKey, enabled: v };
+            })
+            .filter((p): p is NotificationPreference => p !== null);
+          if (migrationPayload.length > 0) {
+            const migrated = await updateMyNotificationPrefs(migrationPayload);
+            if (!active) return;
+            setPrefMap(buildPrefMap(migrated));
+          } else {
+            setPrefMap({});
+          }
           localStorage.removeItem(LEGACY_NOTIF_PREFS_KEY);
         } else {
-          setNotifPrefs(fromApi(records));
+          setPrefMap(buildPrefMap(records));
         }
       })
       .catch(() => {
-        if (active) setNotifPrefs(readLegacyLocalStorage() ?? DEFAULT_PREFS);
+        if (active) setPrefMap({});
       })
       .finally(() => {
         if (active) setPrefsLoaded(true);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
-  function handlePrefsChange(key: keyof NotifPrefs, value: boolean): void {
-    const next = { ...notifPrefs, [key]: value };
-    setNotifPrefs(next);
-    void updateMyNotificationPrefs(toApi(next))
+  function isEnabled(channelKey: string): boolean {
+    if (channelKey in prefMap) return prefMap[channelKey];
+    return defaultEnabledFor(channelKey);
+  }
+
+  function handlePrefsChange(channelKey: string, value: boolean): void {
+    const next = { ...prefMap, [channelKey]: value };
+    setPrefMap(next);
+    void updateMyNotificationPrefs([{ channelKey, enabled: value }])
       .then(() => {
         setPrefsSaved(true);
         setTimeout(() => setPrefsSaved(false), 2000);
@@ -165,31 +191,25 @@ export function AccountSettingsPage(): JSX.Element {
 
       <SectionCard title="Notification Preferences">
         {prefsSaved ? <p className="form-success">Preferences saved.</p> : null}
+        {prefsLoaded && channels.length === 0 ? (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
+            No notification channels are configured for this deployment.
+          </p>
+        ) : null}
         <div className="form-stack">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-            <input
-              checked={notifPrefs.emailEnabled}
-              onChange={(e) => handlePrefsChange('emailEnabled', e.target.checked)}
-              type="checkbox"
-            />
-            <span>Email notifications</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-            <input
-              checked={notifPrefs.inAppEnabled}
-              onChange={(e) => handlePrefsChange('inAppEnabled', e.target.checked)}
-              type="checkbox"
-            />
-            <span>In-app notifications</span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-            <input
-              checked={notifPrefs.teamsEnabled}
-              onChange={(e) => handlePrefsChange('teamsEnabled', e.target.checked)}
-              type="checkbox"
-            />
-            <span>Microsoft Teams notifications</span>
-          </label>
+          {channels.map((channel) => (
+            <label
+              key={channel.channelKey}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+            >
+              <input
+                checked={isEnabled(channel.channelKey)}
+                onChange={(e) => handlePrefsChange(channel.channelKey, e.target.checked)}
+                type="checkbox"
+              />
+              <span>{channel.displayName}</span>
+            </label>
+          ))}
         </div>
       </SectionCard>
 

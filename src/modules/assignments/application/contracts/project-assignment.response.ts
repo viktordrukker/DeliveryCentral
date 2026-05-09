@@ -33,4 +33,10 @@ export class ProjectAssignmentResponseDto {
 
   @ApiPropertyOptional()
   public note?: string;
+
+  // HD-8 / Chunk 8.2 — populated only after a successful CANCEL
+  // transition. Pass back to `POST /undo/:id/consume` to roll the
+  // assignment back to its prior status.
+  @ApiPropertyOptional()
+  public undoActionId?: string;
 }

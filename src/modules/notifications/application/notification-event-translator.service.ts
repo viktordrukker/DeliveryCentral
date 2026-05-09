@@ -1,19 +1,191 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { v5 as uuidv5 } from 'uuid';
 
+import { OutboxEventHandlerRegistry } from '@src/modules/audit-observability/application/outbox-event-handler-registry';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
 import { AppConfig } from '@src/shared/config/app-config';
+import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { NotificationDispatchService } from './notification-dispatch.service';
 
+const OUTBOX_TOPIC = 'notifications';
+
+/**
+ * Stable UUIDv5 namespace for events whose natural key is a non-UUID
+ * tuple (e.g., `integration.sync_failed` keyed on `(provider, resourceType)`).
+ * Choosing a fixed namespace UUID gives us a reproducible aggregateId so
+ * `@db.Uuid` is satisfied and dedup logic can still work cross-process.
+ */
+const INTEGRATION_SYNC_NAMESPACE = '6c8b2a0e-0001-4000-8000-000000000001';
+
+interface AssignmentCreatedPayload {
+  assignmentId: string;
+  personId: string;
+  projectId: string;
+  staffingRole: string;
+}
+
 @Injectable()
-export class NotificationEventTranslatorService {
+export class NotificationEventTranslatorService implements OnModuleInit {
   private readonly logger = new Logger(NotificationEventTranslatorService.name);
 
   public constructor(
     private readonly notificationDispatchService: NotificationDispatchService,
     private readonly appConfig: AppConfig,
     private readonly inAppNotificationService?: InAppNotificationService,
+    /** Optional — provided in production DI; in unit tests with a stub
+     *  PrismaService the flag check defaults to false (sync dispatch). */
+    private readonly prisma?: PrismaService,
+    /** Optional — registered in production DI. Undefined in unit tests
+     *  that exercise the synchronous-dispatch path only. */
+    private readonly outboxRegistry?: OutboxEventHandlerRegistry,
+    /** Optional — when present, drives the dual-write flag check via
+     *  the central registry. When absent, defaults to sync dispatch. */
+    private readonly platformFlags?: PlatformFlagsService,
   ) {}
+
+  /**
+   * Single source of truth for the (eventName → dispatchMethod) mapping.
+   * Adding a new translator event to the dual-write rollout is a single
+   * line here plus the (already-existing) `dispatchXxx` private. Used by
+   * `onModuleInit` to register handlers and by `dualDispatch` to re-enter
+   * the sync path on the consumer side.
+   *
+   * Aggregate types are PMBOK-aligned domain names; aggregate IDs are
+   * pulled out of the payload by the public method before calling
+   * `dualDispatch`. The recipe per event:
+   *
+   *   public async fooHappened(payload) {
+   *     await this.dualDispatch({
+   *       eventName: 'foo.happened',
+   *       aggregateType: 'Foo',
+   *       aggregateId: payload.fooId,
+   *       payload,
+   *       dispatch: () => this.dispatchFooHappened(payload),
+   *     });
+   *   }
+   *
+   *   private async dispatchFooHappened(payload) { ...existing body... }
+   *
+   * Plus: add `{ eventName: 'foo.happened', dispatch: 'dispatchFooHappened' }`
+   * to OUTBOX_HANDLERS below.
+   */
+  private static readonly OUTBOX_HANDLERS = [
+    // Assignments
+    { eventName: 'assignment.created', dispatch: 'dispatchAssignmentCreated' },
+    { eventName: 'assignment.approved', dispatch: 'dispatchAssignmentApproved' },
+    { eventName: 'assignment.rejected', dispatch: 'dispatchAssignmentRejected' },
+    { eventName: 'assignment.amended', dispatch: 'dispatchAssignmentAmended' },
+    { eventName: 'assignment.ended', dispatch: 'dispatchAssignmentEnded' },
+    { eventName: 'assignment.status_changed', dispatch: 'dispatchAssignmentStatusChanged' },
+    { eventName: 'assignment.onboarding_scheduled', dispatch: 'dispatchAssignmentOnboardingScheduled' },
+    { eventName: 'assignment.sla_breached', dispatch: 'dispatchAssignmentSlaBreached' },
+    { eventName: 'assignment.sla_pre_breach', dispatch: 'dispatchAssignmentSlaPreBreach' },
+    { eventName: 'assignment.escalated_to_case', dispatch: 'dispatchAssignmentEscalatedToCase' },
+    { eventName: 'assignment.proposal_submitted', dispatch: 'dispatchProposalSubmitted' },
+    { eventName: 'assignment.proposal_acknowledged', dispatch: 'dispatchProposalAcknowledged' },
+    {
+      eventName: 'assignment.proposal_director_approval_requested',
+      dispatch: 'dispatchProposalDirectorApprovalRequested',
+    },
+    // Project
+    { eventName: 'project.submitted_for_approval', dispatch: 'dispatchProjectSubmittedForApproval' },
+    { eventName: 'project.approved', dispatch: 'dispatchProjectApproved' },
+    { eventName: 'project.rejected', dispatch: 'dispatchProjectRejected' },
+    { eventName: 'project.activated', dispatch: 'dispatchProjectActivated' },
+    { eventName: 'project.closed', dispatch: 'dispatchProjectClosed' },
+    { eventName: 'project.budget_change.requested', dispatch: 'dispatchProjectBudgetChangeRequested' },
+    { eventName: 'project.budget_change.approved', dispatch: 'dispatchProjectBudgetChangeApproved' },
+    { eventName: 'project.budget_change.rejected', dispatch: 'dispatchProjectBudgetChangeRejected' },
+    // Staffing request
+    { eventName: 'staffing_request.submitted', dispatch: 'dispatchStaffingRequestSubmitted' },
+    { eventName: 'staffing_request.in_review', dispatch: 'dispatchStaffingRequestInReview' },
+    { eventName: 'staffing_request.fulfilled', dispatch: 'dispatchStaffingRequestFulfilled' },
+    { eventName: 'staffing_request.cancelled', dispatch: 'dispatchStaffingRequestCancelled' },
+    // Case
+    { eventName: 'case.created', dispatch: 'dispatchCaseCreated' },
+    { eventName: 'case.step_completed', dispatch: 'dispatchCaseStepCompleted' },
+    { eventName: 'case.closed', dispatch: 'dispatchCaseClosed' },
+    { eventName: 'case.approved', dispatch: 'dispatchCaseApproved' },
+    { eventName: 'case.rejected', dispatch: 'dispatchCaseRejected' },
+    // Timesheet
+    { eventName: 'timesheet.approved', dispatch: 'dispatchTimesheetApproved' },
+    { eventName: 'timesheet.rejected', dispatch: 'dispatchTimesheetRejected' },
+    // Person
+    { eventName: 'employee.terminated', dispatch: 'dispatchEmployeeTerminated' },
+    { eventName: 'employee.deactivated', dispatch: 'dispatchEmployeeDeactivated' },
+    { eventName: 'person.release.requested', dispatch: 'dispatchPersonReleaseRequested' },
+    { eventName: 'person.release.partially_approved', dispatch: 'dispatchPersonReleasePartiallyApproved' },
+    { eventName: 'person.release.approved', dispatch: 'dispatchPersonReleaseApproved' },
+    { eventName: 'person.release.rejected', dispatch: 'dispatchPersonReleaseRejected' },
+    // Integration
+    { eventName: 'integration.sync_failed', dispatch: 'dispatchIntegrationSyncFailed' },
+    // HD-8 / F9b — Nudge categories. Sweeper (chunk 8.3) emits these
+    // when an entity is overdue for action. Dispatch produces an email +
+    // in-app notification per recipient; rate-limiting / dedup lives on
+    // the sweeper.
+    { eventName: 'nudge.proposal_acknowledgment_overdue', dispatch: 'dispatchNudgeProposalAcknowledgmentOverdue' },
+    { eventName: 'nudge.timesheet_submission_overdue', dispatch: 'dispatchNudgeTimesheetSubmissionOverdue' },
+    { eventName: 'nudge.staffing_request_approval_overdue', dispatch: 'dispatchNudgeStaffingRequestApprovalOverdue' },
+    { eventName: 'nudge.assignment_approval_overdue', dispatch: 'dispatchNudgeAssignmentApprovalOverdue' },
+  ] as const;
+
+  /**
+   * HD-0.3 Phase 2 — Register outbox handlers for every event in
+   * `OUTBOX_HANDLERS`. Each handler simply re-enters the synchronous
+   * dispatch path so the at-least-once guarantee of the outbox publisher
+   * composes cleanly with the existing email + in-app fan-out logic.
+   * Idempotency lives in the dispatch services, not here.
+   */
+  public onModuleInit(): void {
+    if (!this.outboxRegistry) {
+      return;
+    }
+    for (const entry of NotificationEventTranslatorService.OUTBOX_HANDLERS) {
+      const dispatchMethod = entry.dispatch;
+      this.outboxRegistry.register(
+        { topic: OUTBOX_TOPIC, eventName: entry.eventName },
+        async (event) => {
+          // Lookup is structural — the dispatch method names live on the
+          // class instance and accept a single `payload: unknown` after
+          // type narrowing inside each method.
+          const fn = (this as unknown as Record<string, (p: unknown) => Promise<void>>)[
+            dispatchMethod
+          ];
+          await fn.call(this, event.payload);
+        },
+      );
+    }
+  }
+
+  /**
+   * Generic dual-write dispatcher. When `flag.outboxEnabled=true` the
+   * payload is persisted to the OutboxEvent table for the publisher to
+   * consume; otherwise the closure runs synchronously (legacy path).
+   *
+   * Caller responsibility: pick a stable `eventName` (matches
+   * `OUTBOX_HANDLERS`), set `aggregateType` to the PMBOK-aligned domain
+   * name, and pass `aggregateId` from the payload.
+   */
+  private async dualDispatch(args: {
+    eventName: string;
+    aggregateType: string;
+    aggregateId: string;
+    payload: unknown;
+    dispatch: () => Promise<void>;
+  }): Promise<void> {
+    if (await this.isOutboxEnabled()) {
+      await this.appendOutbox({
+        eventName: args.eventName,
+        aggregateType: args.aggregateType,
+        aggregateId: args.aggregateId,
+        payload: args.payload,
+      });
+      return;
+    }
+    await args.dispatch();
+  }
 
   private createInAppNotification(
     recipientPersonId: string,
@@ -33,13 +205,34 @@ export class NotificationEventTranslatorService {
       });
   }
 
-  public async assignmentCreated(payload: {
-    assignmentId: string;
-    personId: string;
-    projectId: string;
-    staffingRole: string;
-  }): Promise<void> {
-    await this.sendEmail('assignment.created', 'assignment-created-email', payload);
+  public async assignmentCreated(payload: AssignmentCreatedPayload): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.created',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentCreated(payload),
+    });
+  }
+
+  /**
+   * The actual fan-out for `assignment.created`. Called either:
+   *   a) directly from `assignmentCreated()` when the outbox is disabled
+   *      (current default), or
+   *   b) by the outbox handler registered in `onModuleInit()` when the
+   *      publisher dequeues a `notifications/assignment.created` row.
+   *
+   * Idempotency note: re-entry on (b) re-sends the email + re-creates
+   * the in-app notification. Email service is responsible for de-dup
+   * via its own `idempotencyKey`; in-app notifications include
+   * `assignmentId` in the link, so a duplicate is harmless if rare.
+   */
+  private async dispatchAssignmentCreated(payload: AssignmentCreatedPayload): Promise<void> {
+    await this.sendEmail(
+      'assignment.created',
+      'assignment-created-email',
+      payload as unknown as Record<string, unknown>,
+    );
     if (payload.personId) {
       this.createInAppNotification(
         payload.personId,
@@ -51,7 +244,54 @@ export class NotificationEventTranslatorService {
     }
   }
 
+  /**
+   * Persist a row to `OutboxEvent` so the publisher can deliver it
+   * asynchronously. The write opens its own short transaction — the
+   * vast majority of translator callers are post-aggregate-tx today
+   * (see HD-0.2). When that changes, accept an optional `tx` arg.
+   */
+  private async appendOutbox(input: {
+    eventName: string;
+    aggregateType: string;
+    aggregateId: string;
+    payload: unknown;
+  }): Promise<void> {
+    if (!this.prisma) {
+      this.logger.warn(
+        `appendOutbox(${input.eventName}): no PrismaService injected — cannot persist outbox row. Falling back is the caller's responsibility.`,
+      );
+      return;
+    }
+    await this.prisma.outboxEvent.create({
+      data: {
+        topic: OUTBOX_TOPIC,
+        eventName: input.eventName,
+        aggregateType: input.aggregateType,
+        aggregateId: input.aggregateId,
+        payload: input.payload as object,
+      },
+    });
+  }
+
+  private async isOutboxEnabled(): Promise<boolean> {
+    if (!this.platformFlags) return false;
+    return this.platformFlags.isEnabled('outboxEnabled');
+  }
+
   public async assignmentApproved(payload: {
+    assignmentId: string;
+    recipientPersonId?: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.approved',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentApproved(payload),
+    });
+  }
+
+  private async dispatchAssignmentApproved(payload: {
     assignmentId: string;
     recipientPersonId?: string;
   }): Promise<void> {
@@ -72,6 +312,20 @@ export class NotificationEventTranslatorService {
     reason?: string;
     recipientPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.rejected',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentRejected(payload),
+    });
+  }
+
+  private async dispatchAssignmentRejected(payload: {
+    assignmentId: string;
+    reason?: string;
+    recipientPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('assignment.rejected', 'assignment-rejected-email', payload);
     if (payload.recipientPersonId) {
       this.createInAppNotification(
@@ -88,10 +342,207 @@ export class NotificationEventTranslatorService {
     projectId: string;
     projectName: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.activated',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectActivated(payload),
+    });
+  }
+
+  private async dispatchProjectActivated(payload: {
+    projectId: string;
+    projectName: string;
+  }): Promise<void> {
     await this.sendEmail('project.activated', 'project-activated-email', payload);
   }
 
+  public async projectSubmittedForApproval(payload: {
+    projectId: string;
+    projectName: string;
+    submittedByPersonId: string;
+    approvalId: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.submitted_for_approval',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectSubmittedForApproval(payload),
+    });
+  }
+
+  private async dispatchProjectSubmittedForApproval(payload: {
+    projectId: string;
+    projectName: string;
+    submittedByPersonId: string;
+    approvalId: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.submitted_for_approval',
+      'project-submitted-for-approval-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async projectApproved(payload: {
+    projectId: string;
+    projectName: string;
+    approvedByPersonId: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.approved',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectApproved(payload),
+    });
+  }
+
+  private async dispatchProjectApproved(payload: {
+    projectId: string;
+    projectName: string;
+    approvedByPersonId: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.approved',
+      'project-approved-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async projectRejected(payload: {
+    projectId: string;
+    projectName: string;
+    rejectedByPersonId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.rejected',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectRejected(payload),
+    });
+  }
+
+  private async dispatchProjectRejected(payload: {
+    projectId: string;
+    projectName: string;
+    rejectedByPersonId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.rejected',
+      'project-rejected-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async projectBudgetChangeRequested(payload: {
+    projectId: string;
+    approvalId: string;
+    requestedByPersonId: string;
+    capexBudget: number;
+    opexBudget: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.budget_change.requested',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectBudgetChangeRequested(payload),
+    });
+  }
+
+  private async dispatchProjectBudgetChangeRequested(payload: {
+    projectId: string;
+    approvalId: string;
+    requestedByPersonId: string;
+    capexBudget: number;
+    opexBudget: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.budget_change.requested',
+      'project-budget-change-requested-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async projectBudgetChangeApproved(payload: {
+    projectId: string;
+    approvalId: string;
+    approvedByPersonId: string;
+    capexBudget: number;
+    opexBudget: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.budget_change.approved',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectBudgetChangeApproved(payload),
+    });
+  }
+
+  private async dispatchProjectBudgetChangeApproved(payload: {
+    projectId: string;
+    approvalId: string;
+    approvedByPersonId: string;
+    capexBudget: number;
+    opexBudget: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.budget_change.approved',
+      'project-budget-change-approved-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async projectBudgetChangeRejected(payload: {
+    projectId: string;
+    approvalId: string;
+    rejectedByPersonId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.budget_change.rejected',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectBudgetChangeRejected(payload),
+    });
+  }
+
+  private async dispatchProjectBudgetChangeRejected(payload: {
+    projectId: string;
+    approvalId: string;
+    rejectedByPersonId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'project.budget_change.rejected',
+      'project-budget-change-rejected-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
   public async projectClosed(payload: {
+    projectId: string;
+    projectName: string;
+    totalMandays: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'project.closed',
+      aggregateType: 'Project',
+      aggregateId: payload.projectId,
+      payload,
+      dispatch: () => this.dispatchProjectClosed(payload),
+    });
+  }
+
+  private async dispatchProjectClosed(payload: {
     projectId: string;
     projectName: string;
     totalMandays: number;
@@ -100,6 +551,21 @@ export class NotificationEventTranslatorService {
   }
 
   public async caseCreated(payload: {
+    caseId: string;
+    caseType: string;
+    ownerPersonId: string;
+    subjectPersonId: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'case.created',
+      aggregateType: 'CaseRecord',
+      aggregateId: payload.caseId,
+      payload,
+      dispatch: () => this.dispatchCaseCreated(payload),
+    });
+  }
+
+  private async dispatchCaseCreated(payload: {
     caseId: string;
     caseType: string;
     ownerPersonId: string;
@@ -121,6 +587,19 @@ export class NotificationEventTranslatorService {
     caseId: string;
     ownerPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'case.step_completed',
+      aggregateType: 'CaseRecord',
+      aggregateId: payload.caseId,
+      payload,
+      dispatch: () => this.dispatchCaseStepCompleted(payload),
+    });
+  }
+
+  private async dispatchCaseStepCompleted(payload: {
+    caseId: string;
+    ownerPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('case.step_completed', 'case-step-completed-email', payload);
     if (payload.ownerPersonId) {
       this.createInAppNotification(
@@ -137,6 +616,19 @@ export class NotificationEventTranslatorService {
     caseId: string;
     subjectPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'case.closed',
+      aggregateType: 'CaseRecord',
+      aggregateId: payload.caseId,
+      payload,
+      dispatch: () => this.dispatchCaseClosed(payload),
+    });
+  }
+
+  private async dispatchCaseClosed(payload: {
+    caseId: string;
+    subjectPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('case.closed', 'case-closed-email', payload);
     if (payload.subjectPersonId) {
       this.createInAppNotification(
@@ -150,10 +642,36 @@ export class NotificationEventTranslatorService {
   }
 
   public async assignmentEnded(payload: { assignmentId: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.ended',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentEnded(payload),
+    });
+  }
+
+  private async dispatchAssignmentEnded(payload: { assignmentId: string }): Promise<void> {
     await this.sendEmail('assignment.ended', 'assignment-ended-email', payload);
   }
 
   public async assignmentStatusChanged(payload: {
+    assignmentId: string;
+    previousStatus: string;
+    reason?: string;
+    recipientPersonId?: string;
+    status: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.status_changed',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentStatusChanged(payload),
+    });
+  }
+
+  private async dispatchAssignmentStatusChanged(payload: {
     assignmentId: string;
     previousStatus: string;
     reason?: string;
@@ -173,7 +691,129 @@ export class NotificationEventTranslatorService {
     }
   }
 
+  public async personReleaseRequested(payload: {
+    requestId: string;
+    personId: string;
+    initiatedByPersonId: string;
+    targetTerminationDate: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'person.release.requested',
+      aggregateType: 'PersonReleaseRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchPersonReleaseRequested(payload),
+    });
+  }
+
+  private async dispatchPersonReleaseRequested(payload: {
+    requestId: string;
+    personId: string;
+    initiatedByPersonId: string;
+    targetTerminationDate: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'person.release.requested',
+      'person-release-requested-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async personReleasePartiallyApproved(payload: {
+    requestId: string;
+    personId: string;
+    approvedByPersonId: string;
+    approvedByRole: 'hr_manager' | 'director';
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'person.release.partially_approved',
+      aggregateType: 'PersonReleaseRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchPersonReleasePartiallyApproved(payload),
+    });
+  }
+
+  private async dispatchPersonReleasePartiallyApproved(payload: {
+    requestId: string;
+    personId: string;
+    approvedByPersonId: string;
+    approvedByRole: 'hr_manager' | 'director';
+  }): Promise<void> {
+    await this.sendEmail(
+      'person.release.partially_approved',
+      'person-release-partially-approved-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async personReleaseApproved(payload: {
+    requestId: string;
+    personId: string;
+    approvedByPersonId: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'person.release.approved',
+      aggregateType: 'PersonReleaseRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchPersonReleaseApproved(payload),
+    });
+  }
+
+  private async dispatchPersonReleaseApproved(payload: {
+    requestId: string;
+    personId: string;
+    approvedByPersonId: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'person.release.approved',
+      'person-release-approved-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
+  public async personReleaseRejected(payload: {
+    requestId: string;
+    personId: string;
+    rejectedByPersonId: string;
+    decisionRole: 'hr_manager' | 'director';
+    reason: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'person.release.rejected',
+      aggregateType: 'PersonReleaseRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchPersonReleaseRejected(payload),
+    });
+  }
+
+  private async dispatchPersonReleaseRejected(payload: {
+    requestId: string;
+    personId: string;
+    rejectedByPersonId: string;
+    decisionRole: 'hr_manager' | 'director';
+    reason: string;
+  }): Promise<void> {
+    await this.sendEmail(
+      'person.release.rejected',
+      'person-release-rejected-email',
+      payload as unknown as Record<string, unknown>,
+    );
+  }
+
   public async employeeTerminated(payload: { personId: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'employee.terminated',
+      aggregateType: 'Person',
+      aggregateId: payload.personId,
+      payload,
+      dispatch: () => this.dispatchEmployeeTerminated(payload),
+    });
+  }
+
+  private async dispatchEmployeeTerminated(payload: { personId: string }): Promise<void> {
     if (!this.appConfig.notificationsDefaultTeamsWebhookRecipient) {
       return;
     }
@@ -188,6 +828,28 @@ export class NotificationEventTranslatorService {
   }
 
   public async integrationSyncFailed(payload: {
+    errorMessage: string;
+    provider: string;
+    resourceType: string;
+  }): Promise<void> {
+    // HD-0.3 follow-up — natural key is `(provider, resourceType)`. A
+    // UUIDv5 over a stable namespace gives us a reproducible
+    // aggregateId that satisfies `OutboxEvent.aggregateId @db.Uuid`.
+    // Same input → same UUID → dedupable cross-process.
+    const aggregateId = uuidv5(
+      `${payload.provider}::${payload.resourceType}`,
+      INTEGRATION_SYNC_NAMESPACE,
+    );
+    await this.dualDispatch({
+      eventName: 'integration.sync_failed',
+      aggregateType: 'IntegrationSyncState',
+      aggregateId,
+      payload,
+      dispatch: () => this.dispatchIntegrationSyncFailed(payload),
+    });
+  }
+
+  private async dispatchIntegrationSyncFailed(payload: {
     errorMessage: string;
     provider: string;
     resourceType: string;
@@ -212,6 +874,20 @@ export class NotificationEventTranslatorService {
     weekStart: string;
     personId: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'timesheet.approved',
+      aggregateType: 'TimesheetWeek',
+      aggregateId: payload.weekId,
+      payload,
+      dispatch: () => this.dispatchTimesheetApproved(payload),
+    });
+  }
+
+  private async dispatchTimesheetApproved(payload: {
+    weekId: string;
+    weekStart: string;
+    personId: string;
+  }): Promise<void> {
     await this.sendEmail('timesheet.approved', 'timesheet-approved-email', payload);
     this.createInAppNotification(
       payload.personId,
@@ -223,6 +899,21 @@ export class NotificationEventTranslatorService {
   }
 
   public async timesheetRejected(payload: {
+    weekId: string;
+    weekStart: string;
+    personId: string;
+    reason?: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'timesheet.rejected',
+      aggregateType: 'TimesheetWeek',
+      aggregateId: payload.weekId,
+      payload,
+      dispatch: () => this.dispatchTimesheetRejected(payload),
+    });
+  }
+
+  private async dispatchTimesheetRejected(payload: {
     weekId: string;
     weekStart: string;
     personId: string;
@@ -246,6 +937,21 @@ export class NotificationEventTranslatorService {
     role: string;
     ownerPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'staffing_request.submitted',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchStaffingRequestSubmitted(payload),
+    });
+  }
+
+  private async dispatchStaffingRequestSubmitted(payload: {
+    requestId: string;
+    projectId: string;
+    role: string;
+    ownerPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('staffingRequest.submitted', 'staffing-request-submitted-email', payload);
     if (payload.ownerPersonId) {
       this.createInAppNotification(
@@ -262,6 +968,19 @@ export class NotificationEventTranslatorService {
     requestId: string;
     requesterPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'staffing_request.in_review',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchStaffingRequestInReview(payload),
+    });
+  }
+
+  private async dispatchStaffingRequestInReview(payload: {
+    requestId: string;
+    requesterPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('staffingRequest.inReview', 'staffing-request-in-review-email', payload);
     if (payload.requesterPersonId) {
       this.createInAppNotification(
@@ -275,6 +994,20 @@ export class NotificationEventTranslatorService {
   }
 
   public async staffingRequestFulfilled(payload: {
+    requestId: string;
+    requesterPersonId?: string;
+    assignedPersonId?: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'staffing_request.fulfilled',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchStaffingRequestFulfilled(payload),
+    });
+  }
+
+  private async dispatchStaffingRequestFulfilled(payload: {
     requestId: string;
     requesterPersonId?: string;
     assignedPersonId?: string;
@@ -304,6 +1037,19 @@ export class NotificationEventTranslatorService {
     requestId: string;
     requesterPersonId?: string;
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'staffing_request.cancelled',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.requestId,
+      payload,
+      dispatch: () => this.dispatchStaffingRequestCancelled(payload),
+    });
+  }
+
+  private async dispatchStaffingRequestCancelled(payload: {
+    requestId: string;
+    requesterPersonId?: string;
+  }): Promise<void> {
     await this.sendEmail('staffingRequest.cancelled', 'staffing-request-cancelled-email', payload);
     if (payload.requesterPersonId) {
       this.createInAppNotification(
@@ -317,10 +1063,30 @@ export class NotificationEventTranslatorService {
   }
 
   public async employeeDeactivated(payload: { personId: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'employee.deactivated',
+      aggregateType: 'Person',
+      aggregateId: payload.personId,
+      payload,
+      dispatch: () => this.dispatchEmployeeDeactivated(payload),
+    });
+  }
+
+  private async dispatchEmployeeDeactivated(payload: { personId: string }): Promise<void> {
     await this.sendEmail('employee.deactivated', 'employee-deactivated-email', payload);
   }
 
   public async assignmentAmended(payload: { assignmentId: string; personId: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.amended',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentAmended(payload),
+    });
+  }
+
+  private async dispatchAssignmentAmended(payload: { assignmentId: string; personId: string }): Promise<void> {
     await this.sendEmail('assignment.amended', 'assignment-amended-email', payload);
     this.createInAppNotification(
       payload.personId,
@@ -332,6 +1098,16 @@ export class NotificationEventTranslatorService {
   }
 
   public async caseApproved(payload: { caseId: string; subjectPersonId: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'case.approved',
+      aggregateType: 'CaseRecord',
+      aggregateId: payload.caseId,
+      payload,
+      dispatch: () => this.dispatchCaseApproved(payload),
+    });
+  }
+
+  private async dispatchCaseApproved(payload: { caseId: string; subjectPersonId: string }): Promise<void> {
     await this.sendEmail('case.approved', 'case-approved-email', payload);
     this.createInAppNotification(
       payload.subjectPersonId,
@@ -343,6 +1119,16 @@ export class NotificationEventTranslatorService {
   }
 
   public async caseRejected(payload: { caseId: string; subjectPersonId: string; reason: string }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'case.rejected',
+      aggregateType: 'CaseRecord',
+      aggregateId: payload.caseId,
+      payload,
+      dispatch: () => this.dispatchCaseRejected(payload),
+    });
+  }
+
+  private async dispatchCaseRejected(payload: { caseId: string; subjectPersonId: string; reason: string }): Promise<void> {
     await this.sendEmail('case.rejected', 'case-rejected-email', payload);
     this.createInAppNotification(
       payload.subjectPersonId,
@@ -356,6 +1142,20 @@ export class NotificationEventTranslatorService {
   // ── Workflow Overhaul Phase WO-3 — proposal slate + SLA events ──────────────
 
   public async proposalSubmitted(payload: {
+    assignmentId: string;
+    candidateCount: number;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.proposal_submitted',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchProposalSubmitted(payload),
+    });
+  }
+
+  private async dispatchProposalSubmitted(payload: {
     assignmentId: string;
     candidateCount: number;
     recipientPersonIds: readonly string[];
@@ -379,6 +1179,19 @@ export class NotificationEventTranslatorService {
     assignmentId: string;
     recipientPersonIds: readonly string[];
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.proposal_acknowledged',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchProposalAcknowledged(payload),
+    });
+  }
+
+  private async dispatchProposalAcknowledged(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
     await this.sendEmail('assignment.proposal_acknowledged', 'assignment-proposal-acknowledged-email', {
       assignmentId: payload.assignmentId,
     });
@@ -394,6 +1207,19 @@ export class NotificationEventTranslatorService {
   }
 
   public async proposalDirectorApprovalRequested(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.proposal_director_approval_requested',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchProposalDirectorApprovalRequested(payload),
+    });
+  }
+
+  private async dispatchProposalDirectorApprovalRequested(payload: {
     assignmentId: string;
     recipientPersonIds: readonly string[];
   }): Promise<void> {
@@ -414,6 +1240,20 @@ export class NotificationEventTranslatorService {
   }
 
   public async assignmentOnboardingScheduled(payload: {
+    assignmentId: string;
+    onboardingDate: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.onboarding_scheduled',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentOnboardingScheduled(payload),
+    });
+  }
+
+  private async dispatchAssignmentOnboardingScheduled(payload: {
     assignmentId: string;
     onboardingDate: string;
     recipientPersonIds: readonly string[];
@@ -439,6 +1279,20 @@ export class NotificationEventTranslatorService {
     slaStage: string;
     recipientPersonIds: readonly string[];
   }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.sla_breached',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentSlaBreached(payload),
+    });
+  }
+
+  private async dispatchAssignmentSlaBreached(payload: {
+    assignmentId: string;
+    slaStage: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
     await this.sendEmail('assignment.sla_breached', 'assignment-sla-breached-email', {
       assignmentId: payload.assignmentId,
       slaStage: payload.slaStage,
@@ -454,7 +1308,227 @@ export class NotificationEventTranslatorService {
     }
   }
 
+  // HD-10 — pre-breach warning. Same dispatch shape as the breach
+  // event but distinguishable in payload + template by `warnLevel`.
+  public async assignmentSlaPreBreach(payload: {
+    assignmentId: string;
+    slaStage: string;
+    warnLevel: '50pct' | '75pct';
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.sla_pre_breach',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentSlaPreBreach(payload),
+    });
+  }
+
+  private async dispatchAssignmentSlaPreBreach(payload: {
+    assignmentId: string;
+    slaStage: string;
+    warnLevel: '50pct' | '75pct';
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.sendEmail(
+      'assignment.sla_pre_breach',
+      'assignment-sla-pre-breach-email',
+      {
+        assignmentId: payload.assignmentId,
+        slaStage: payload.slaStage,
+        warnLevel: payload.warnLevel,
+      },
+    );
+    const friendly = payload.warnLevel === '75pct' ? '75%' : '50%';
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'assignment.sla_pre_breach',
+        `Assignment SLA at ${friendly} (${payload.slaStage})`,
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
+  // HD-8 / F9b — Nudge events. Each one accepts a `recipientPersonIds`
+  // array (the people whose action is overdue) plus a category-specific
+  // entity id used to deep-link the in-app notification. Dispatch goes
+  // through the standard email + in-app pair; rate-limit / dedup is the
+  // sweeper's job (chunk 8.3), not the translator's.
+
+  public async nudgeProposalAcknowledgmentOverdue(payload: {
+    proposalId: string;
+    staffingRequestId: string;
+    requesterPersonId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'nudge.proposal_acknowledgment_overdue',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.staffingRequestId,
+      payload,
+      dispatch: () => this.dispatchNudgeProposalAcknowledgmentOverdue(payload),
+    });
+  }
+
+  private async dispatchNudgeProposalAcknowledgmentOverdue(payload: {
+    proposalId: string;
+    staffingRequestId: string;
+    requesterPersonId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'nudge.proposal_acknowledgment_overdue',
+      'nudge-proposal-ack-overdue-email',
+      {
+        proposalId: payload.proposalId,
+        staffingRequestId: payload.staffingRequestId,
+        overdueByHours: payload.overdueByHours,
+      },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'nudge.proposal_acknowledgment_overdue',
+        `Reminder: a staffing proposal needs your acknowledgment (${payload.overdueByHours}h overdue)`,
+        undefined,
+        `/staffing-requests/${payload.staffingRequestId}`,
+      );
+    }
+  }
+
+  public async nudgeTimesheetSubmissionOverdue(payload: {
+    personId: string;
+    weekStart: string;
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'nudge.timesheet_submission_overdue',
+      aggregateType: 'TimesheetWeek',
+      aggregateId: payload.personId,
+      payload,
+      dispatch: () => this.dispatchNudgeTimesheetSubmissionOverdue(payload),
+    });
+  }
+
+  private async dispatchNudgeTimesheetSubmissionOverdue(payload: {
+    personId: string;
+    weekStart: string;
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'nudge.timesheet_submission_overdue',
+      'nudge-timesheet-overdue-email',
+      {
+        personId: payload.personId,
+        weekStart: payload.weekStart,
+        overdueByHours: payload.overdueByHours,
+      },
+    );
+    this.createInAppNotification(
+      payload.personId,
+      'nudge.timesheet_submission_overdue',
+      `Reminder: submit your timesheet for week of ${payload.weekStart}`,
+      undefined,
+      `/time/my`,
+    );
+  }
+
+  public async nudgeStaffingRequestApprovalOverdue(payload: {
+    staffingRequestId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'nudge.staffing_request_approval_overdue',
+      aggregateType: 'StaffingRequest',
+      aggregateId: payload.staffingRequestId,
+      payload,
+      dispatch: () => this.dispatchNudgeStaffingRequestApprovalOverdue(payload),
+    });
+  }
+
+  private async dispatchNudgeStaffingRequestApprovalOverdue(payload: {
+    staffingRequestId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'nudge.staffing_request_approval_overdue',
+      'nudge-staffing-request-approval-overdue-email',
+      {
+        staffingRequestId: payload.staffingRequestId,
+        overdueByHours: payload.overdueByHours,
+      },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'nudge.staffing_request_approval_overdue',
+        `Reminder: a staffing request awaits your approval (${payload.overdueByHours}h overdue)`,
+        undefined,
+        `/staffing-requests/${payload.staffingRequestId}`,
+      );
+    }
+  }
+
+  public async nudgeAssignmentApprovalOverdue(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'nudge.assignment_approval_overdue',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchNudgeAssignmentApprovalOverdue(payload),
+    });
+  }
+
+  private async dispatchNudgeAssignmentApprovalOverdue(payload: {
+    assignmentId: string;
+    recipientPersonIds: readonly string[];
+    overdueByHours: number;
+  }): Promise<void> {
+    await this.sendEmail(
+      'nudge.assignment_approval_overdue',
+      'nudge-assignment-approval-overdue-email',
+      {
+        assignmentId: payload.assignmentId,
+        overdueByHours: payload.overdueByHours,
+      },
+    );
+    for (const recipient of payload.recipientPersonIds) {
+      this.createInAppNotification(
+        recipient,
+        'nudge.assignment_approval_overdue',
+        `Reminder: an assignment awaits your approval (${payload.overdueByHours}h overdue)`,
+        undefined,
+        `/assignments/${payload.assignmentId}`,
+      );
+    }
+  }
+
   public async assignmentEscalatedToCase(payload: {
+    assignmentId: string;
+    caseId: string;
+    recipientPersonIds: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'assignment.escalated_to_case',
+      aggregateType: 'ProjectAssignment',
+      aggregateId: payload.assignmentId,
+      payload,
+      dispatch: () => this.dispatchAssignmentEscalatedToCase(payload),
+    });
+  }
+
+  private async dispatchAssignmentEscalatedToCase(payload: {
     assignmentId: string;
     caseId: string;
     recipientPersonIds: readonly string[];

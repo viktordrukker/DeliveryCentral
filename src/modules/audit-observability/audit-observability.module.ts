@@ -6,6 +6,8 @@ import { InMemoryAuditLogStore } from './application/in-memory-audit-log.store';
 import { AuditLoggerService } from './application/audit-logger.service';
 import { BusinessAuditQueryService } from './application/business-audit-query.service';
 import { DomainEventService } from './application/domain-event.service';
+import { OutboxEventHandlerRegistry } from './application/outbox-event-handler-registry';
+import { OutboxEventPublisherService } from './application/outbox-event-publisher.service';
 import { PrismaAuditLogStore } from './infrastructure/prisma-audit-log.store';
 import { BusinessAuditController } from './presentation/business-audit.controller';
 
@@ -26,6 +28,8 @@ import { BusinessAuditController } from './presentation/business-audit.controlle
     AuditLoggerService,
     BusinessAuditQueryService,
     DomainEventService,
+    OutboxEventHandlerRegistry,
+    OutboxEventPublisherService,
   ],
   exports: [
     InMemoryAuditLogStore,
@@ -33,6 +37,8 @@ import { BusinessAuditController } from './presentation/business-audit.controlle
     AuditLoggerService,
     BusinessAuditQueryService,
     DomainEventService,
+    OutboxEventHandlerRegistry,
+    OutboxEventPublisherService,
   ],
 })
 export class AuditObservabilityModule {}

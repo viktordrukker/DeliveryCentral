@@ -4,6 +4,7 @@ import { ProjectAssignment } from '@src/modules/assignments/domain/entities/proj
 import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 import { AssignmentConcurrencyConflictError } from '@src/modules/assignments/application/assignment-concurrency-conflict.error';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { AssignmentsPrismaMapper } from './assignments-prisma.mapper';
 
@@ -25,6 +26,12 @@ interface AssignmentHistoryGateway {
   findMany(args?: any): Promise<any[]>;
 }
 
+interface TxClientWithAssignmentTables {
+  projectAssignment?: AssignmentGateway;
+  assignmentApproval?: AssignmentApprovalGateway;
+  assignmentHistory?: AssignmentHistoryGateway;
+}
+
 export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepositoryPort {
   public constructor(
     private readonly gateway: AssignmentGateway,
@@ -32,9 +39,38 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     private readonly historyGateway?: AssignmentHistoryGateway,
   ) {}
 
-  public async delete(id: string): Promise<void> {
+  /**
+   * When an external `tx` (Prisma `$transaction` client) is supplied,
+   * swap to its delegate so writes join the caller's atomic unit.
+   * Falls back to the constructor-injected gateway otherwise.
+   */
+  private resolveAssignmentGateway(tx?: TransactionContext): AssignmentGateway {
+    if (tx && typeof tx === 'object' && tx !== null && 'projectAssignment' in tx) {
+      const fromTx = (tx as TxClientWithAssignmentTables).projectAssignment;
+      if (fromTx) return fromTx;
+    }
+    return this.gateway;
+  }
+
+  private resolveApprovalGateway(tx?: TransactionContext): AssignmentApprovalGateway | undefined {
+    if (tx && typeof tx === 'object' && tx !== null && 'assignmentApproval' in tx) {
+      const fromTx = (tx as TxClientWithAssignmentTables).assignmentApproval;
+      if (fromTx) return fromTx;
+    }
+    return this.approvalGateway;
+  }
+
+  private resolveHistoryGateway(tx?: TransactionContext): AssignmentHistoryGateway | undefined {
+    if (tx && typeof tx === 'object' && tx !== null && 'assignmentHistory' in tx) {
+      const fromTx = (tx as TxClientWithAssignmentTables).assignmentHistory;
+      if (fromTx) return fromTx;
+    }
+    return this.historyGateway;
+  }
+
+  public async delete(id: string, tx?: TransactionContext): Promise<void> {
     try {
-      await this.gateway.delete({ where: { id } });
+      await this.resolveAssignmentGateway(tx).delete({ where: { id } });
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === 'P2003') {
         throw new Error('Cannot delete assignment: it has linked approval or history records. Archive it instead.');
@@ -43,12 +79,13 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     }
   }
 
-  public async appendApproval(approval: AssignmentApproval): Promise<void> {
-    if (!this.approvalGateway) {
+  public async appendApproval(approval: AssignmentApproval, tx?: TransactionContext): Promise<void> {
+    const gateway = this.resolveApprovalGateway(tx);
+    if (!gateway) {
       throw new Error('Prisma assignment approval gateway is not configured.');
     }
 
-    await this.approvalGateway.create({
+    await gateway.create({
       data: {
         assignmentId: approval.assignmentId.value,
         decision: approval.decisionState.value,
@@ -61,12 +98,13 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     });
   }
 
-  public async appendHistory(historyEntry: AssignmentHistory): Promise<void> {
-    if (!this.historyGateway) {
+  public async appendHistory(historyEntry: AssignmentHistory, tx?: TransactionContext): Promise<void> {
+    const gateway = this.resolveHistoryGateway(tx);
+    if (!gateway) {
       throw new Error('Prisma assignment history gateway is not configured.');
     }
 
-    await this.historyGateway.create({
+    await gateway.create({
       data: {
         assignmentId: historyEntry.assignmentId.value,
         changeReason: historyEntry.changeReason ?? null,
@@ -193,12 +231,13 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     return records.map((record) => AssignmentsPrismaMapper.toDomainAssignment(record));
   }
 
-  public async save(aggregate: ProjectAssignment): Promise<void> {
-    const persisted = await this.gateway.findFirst({ where: { id: aggregate.id } });
+  public async save(aggregate: ProjectAssignment, tx?: TransactionContext): Promise<void> {
+    const gateway = this.resolveAssignmentGateway(tx);
+    const persisted = await gateway.findFirst({ where: { id: aggregate.id } });
 
     if (!persisted) {
       aggregate.synchronizeVersion(1);
-      await this.gateway.create({
+      await gateway.create({
         data: {
           allocationPercent: aggregate.allocationPercent?.value ?? null,
           approvedAt: aggregate.approvedAt ?? null,
@@ -231,7 +270,7 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     }
 
     const nextVersion = aggregate.version + 1;
-    const result = await this.gateway.updateMany({
+    const result = await gateway.updateMany({
       data: {
         allocationPercent: aggregate.allocationPercent?.value ?? null,
         approvedAt: aggregate.approvedAt ?? null,

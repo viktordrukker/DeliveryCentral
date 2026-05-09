@@ -72,6 +72,7 @@ const CSP  = 'bbbb0020'; // CaseStep
 const _CSU = 'bbbb0021'; // CaseParticipant (no participant rows seeded)
 const RET  = 'bbbb0022'; // ProjectRetrospective
 const _PVE = 'bbbb0023'; // ProjectVendorEngagement (skipped — Vendor model not seeded)
+const CLI  = 'bbbb0024'; // Client
 
 // ---------------------------------------------------------------------------
 // Time anchors
@@ -674,12 +675,49 @@ interface ProjectDef {
   outcomeRating: string | null;
   lessonsLearned: string | null;
   wouldStaffSameWay: boolean | null;
+  clientId: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// CLIENTS — closes D-35 (live seed had 0 Clients; project list showed `—`)
+// 9 active client orgs that map onto the 10 active projects (Internal
+// DeliveryCentral has no client). Closed-portfolio projects round-robin
+// across the same nine for continuity. AccountManager wiring is left null —
+// HD-3 (RateCard) is where we lay client-specific commercial overrides.
+// ---------------------------------------------------------------------------
+let cliSeq = 0;
+const cliid = (): string => ns(CLI, ++cliSeq);
+const clients = [
+  { id: cliid(), name: 'Acme Industries',     industry: 'Manufacturing',     notes: 'Self-service portal program; T&M.' },
+  { id: cliid(), name: 'Bluebird Logistics',  industry: 'Logistics',         notes: 'Mobile-first, fixed-price.' },
+  { id: cliid(), name: 'Cascade Insurance',   industry: 'Insurance',         notes: 'Critical legacy migration; T&M.' },
+  { id: cliid(), name: 'Delta Analytics',     industry: 'Data & Analytics',  notes: 'Data lakehouse on AWS+Snowflake.' },
+  { id: cliid(), name: 'Echo Retail',         industry: 'Retail',            notes: 'Headless commerce rewrite.' },
+  { id: cliid(), name: 'Forestry Co.',        industry: 'Agriculture',       notes: 'Managed service contract.' },
+  { id: cliid(), name: 'Gamma SaaS',          industry: 'Software',          notes: 'LLM-powered product features.' },
+  { id: cliid(), name: 'Helios Bank',         industry: 'Financial Services', notes: 'PCI-compliant payments rebuild.' },
+  { id: cliid(), name: 'Jade Manufacturing',  industry: 'Manufacturing',     notes: 'B2B partner portal.' },
+] as const;
+
+// Map active project name → client id (Internal stays null on purpose).
+const clientByActiveProjectName: Record<string, string | null> = {
+  'Acme Portal':              clients[0].id,
+  'Bluebird Mobile':          clients[1].id,
+  'Cascade API Migration':    clients[2].id,
+  'Delta Data Platform':      clients[3].id,
+  'Echo eCommerce v2':        clients[4].id,
+  'Forestry IoT Platform':    clients[5].id,
+  'Gamma AI Copilot':         clients[6].id,
+  'Helios Payments':          clients[7].id,
+  'Internal DeliveryCentral': null,
+  'Jade Partner Portal':      clients[8].id,
+};
 
 const projects: ProjectDef[] = [];
 
 // 10 ACTIVE projects (started 1-12 months ago)
-const activeProjectDefs: Array<Omit<ProjectDef, 'id' | 'projectCode' | 'closedAt' | 'outcomeRating' | 'lessonsLearned' | 'wouldStaffSameWay'>> = [
+// `clientId` is derived from name via `clientByActiveProjectName`, so omit it here.
+const activeProjectDefs: Array<Omit<ProjectDef, 'id' | 'projectCode' | 'closedAt' | 'outcomeRating' | 'lessonsLearned' | 'wouldStaffSameWay' | 'clientId'>> = [
   { name: 'Acme Portal',                description: 'Customer self-service portal for Acme Industries — React + NestJS + Postgres.',         projectManagerId: lucas.id, status: 'ACTIVE', engagementModel: 'TIME_AND_MATERIAL', priority: 'HIGH',     startsOn: monthsAgo(6),  endsOn: monthsAgo(-6) },
   { name: 'Bluebird Mobile',            description: 'Native iOS + Android customer app for Bluebird Logistics.',                                  projectManagerId: pms[1].id, status: 'ACTIVE', engagementModel: 'FIXED_PRICE',         priority: 'HIGH',     startsOn: monthsAgo(3),  endsOn: monthsAgo(-9) },
   { name: 'Cascade API Migration',      description: 'Lift-and-shift legacy SOAP services to REST + gRPC for Cascade Insurance.',                  projectManagerId: pms[2].id, status: 'ACTIVE', engagementModel: 'TIME_AND_MATERIAL', priority: 'CRITICAL', startsOn: monthsAgo(9),  endsOn: monthsAgo(-3) },
@@ -692,12 +730,14 @@ const activeProjectDefs: Array<Omit<ProjectDef, 'id' | 'projectCode' | 'closedAt
   { name: 'Jade Partner Portal',        description: 'B2B partner portal for Jade Manufacturing — recently kicked off.',                            projectManagerId: pms[8].id, status: 'ACTIVE', engagementModel: 'TIME_AND_MATERIAL', priority: 'MEDIUM',   startsOn: monthsAgo(1),  endsOn: monthsAgo(-11) },
 ];
 for (let i = 0; i < activeProjectDefs.length; i++) {
+  const def = activeProjectDefs[i];
   projects.push({
-    ...activeProjectDefs[i],
+    ...def,
     id: prjid(),
     projectCode: `IT-PROJ-${(i + 1).toString().padStart(3, '0')}`,
     closedAt: null,
     outcomeRating: null, lessonsLearned: null, wouldStaffSameWay: null,
+    clientId: clientByActiveProjectName[def.name] ?? null,
   });
 }
 
@@ -755,6 +795,10 @@ for (let i = 0; i < 30; i++) {
       ? 'Generally on track but late on a few milestones; team had to absorb scope creep.'
       : 'Smooth delivery, good client engagement, reusable assets harvested.',
     wouldStaffSameWay: wouldRestaff,
+    // Round-robin closed projects across the 9 active clients so the historical
+    // portfolio looks like real account continuity. (Index 0..8 cycles through
+    // 30 closed entries, giving each client ~3 prior engagements.)
+    clientId: clients[i % clients.length].id,
   });
 }
 
@@ -1657,6 +1701,17 @@ export const itCompanyResourcePools = resourcePools.map(rp => ({
 }));
 export const itCompanyResourcePoolMemberships = resourcePoolMemberships;
 
+export const itCompanyClients = clients.map(c => ({
+  id: c.id,
+  name: c.name,
+  industry: c.industry,
+  notes: c.notes,
+  isActive: true,
+  accountManagerPersonId: null,
+  createdAt: monthsAgo(60),
+  updatedAt: NOW,
+}));
+
 export const itCompanyProjects = projects.map(p => ({
   id: p.id, projectCode: p.projectCode, name: p.name, description: p.description,
   projectManagerId: p.projectManagerId, status: p.status,
@@ -1666,19 +1721,50 @@ export const itCompanyProjects = projects.map(p => ({
   outcomeRating: p.outcomeRating,
   lessonsLearned: p.lessonsLearned,
   wouldStaffSameWay: p.wouldStaffSameWay,
+  clientId: p.clientId,
   version: 1, createdAt: p.startsOn, updatedAt: NOW,
 }));
 
-export const itCompanyAssignments = assignments.map(a => ({
-  id: a.id, personId: a.personId, projectId: a.projectId,
-  requestedByPersonId: a.requestedByPersonId, assignmentCode: a.assignmentCode,
-  staffingRole: a.staffingRole, status: a.status,
-  allocationPercent: a.allocationPercent,
-  requestedAt: a.requestedAt, approvedAt: a.approvedAt,
-  validFrom: a.validFrom, validTo: a.validTo,
-  notes: a.notes, version: 1,
-  createdAt: a.requestedAt, updatedAt: NOW,
-}));
+// SLA seeding (closes D-32) — mirrors `AssignmentSlaService.STATUS_TO_STAGE`
+// + default day budgets so live transitions and seed rows look identical to
+// the Approval Queue / dashboards. Live transitions overwrite these via
+// `applyTransition`; the seed only needs to leave SLA-bearing rows in a
+// realistic shape.
+const SEED_SLA_STAGE: Record<string, { stage: 'PROPOSAL' | 'REVIEW' | 'APPROVAL' | 'RM_FINALIZE'; days: number } | null> = {
+  CREATED:    { stage: 'PROPOSAL',    days: 2 },
+  PROPOSED:   { stage: 'REVIEW',      days: 1 },
+  IN_REVIEW:  { stage: 'APPROVAL',    days: 2 },
+  ONBOARDING: { stage: 'RM_FINALIZE', days: 1 },
+  // BOOKED / ASSIGNED / COMPLETED / CANCELLED / REJECTED / ON_HOLD → null (no SLA)
+};
+
+function addBusinessDays(start: Date, days: number): Date {
+  const out = new Date(start);
+  let remaining = days;
+  while (remaining > 0) {
+    out.setUTCDate(out.getUTCDate() + 1);
+    const dow = out.getUTCDay();
+    if (dow !== 0 && dow !== 6) remaining -= 1;
+  }
+  return out;
+}
+
+export const itCompanyAssignments = assignments.map(a => {
+  const sla = SEED_SLA_STAGE[a.status] ?? null;
+  return {
+    id: a.id, personId: a.personId, projectId: a.projectId,
+    requestedByPersonId: a.requestedByPersonId, assignmentCode: a.assignmentCode,
+    staffingRole: a.staffingRole, status: a.status,
+    allocationPercent: a.allocationPercent,
+    requestedAt: a.requestedAt, approvedAt: a.approvedAt,
+    validFrom: a.validFrom, validTo: a.validTo,
+    notes: a.notes, version: 1,
+    createdAt: a.requestedAt, updatedAt: NOW,
+    slaStage: sla ? sla.stage : null,
+    slaDueAt: sla ? addBusinessDays(a.requestedAt, sla.days) : null,
+    slaBreachedAt: null,
+  };
+});
 
 export const itCompanyAssignmentApprovals = assignmentApprovals;
 export const itCompanyAssignmentHistory = assignmentHistory;

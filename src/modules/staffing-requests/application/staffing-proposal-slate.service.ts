@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
@@ -134,6 +135,24 @@ export class StaffingProposalSlateService {
       ranks.add(c.rank);
     }
 
+    // Pre-validate that every candidatePersonId exists. Without this the
+    // request would reach the slate.save() $transaction and fail there with
+    // an opaque 500 from the StaffingRequestProposalCandidate.candidatePersonId
+    // foreign-key. This can happen because person_skills.personId is not FK
+    // constrained — the matcher can surface ids that have no Person row.
+    const candidateIds = [...ids];
+    const existingPersons = await this.prisma.person.findMany({
+      where: { id: { in: candidateIds } },
+      select: { id: true },
+    });
+    if (existingPersons.length !== candidateIds.length) {
+      const existingSet = new Set(existingPersons.map((p) => p.id));
+      const missing = candidateIds.filter((cid) => !existingSet.has(cid));
+      throw new BadRequestException(
+        `Candidate person id(s) not found: ${missing.join(', ')}. Remove them from the slate and try again.`,
+      );
+    }
+
     const existing = await this.slateRepository.findByStaffingRequestId(request.id);
     if (existing && existing.status === 'OPEN') {
       throw new ConflictException(
@@ -170,15 +189,21 @@ export class StaffingProposalSlateService {
       (candidate as unknown as { props: { slateId: string } }).props.slateId = slate.id;
     }
 
-    await this.slateRepository.save(slate);
-
-    // Submitting a slate moves the request to IN_REVIEW (PM has work to do).
-    if (request.status !== 'IN_REVIEW') {
-      await this.prisma.staffingRequest.update({
-        where: { id: request.id },
-        data: { status: 'IN_REVIEW' },
-      });
-    }
+    // HD-0.2 Phase 2b: slate.save and the staffing-request status flip share
+    // a single $transaction so a slate can never persist without its
+    // matching IN_REVIEW status, and a status flip can never persist without
+    // its slate. The slate repo's `save` joins the outer tx when supplied.
+    await this.prisma.$transaction(async (tx) => {
+      await this.slateRepository.save(slate, tx);
+      if (request.status !== 'IN_REVIEW') {
+        await (tx as unknown as {
+          staffingRequest: { update: (args: unknown) => Promise<unknown> };
+        }).staffingRequest.update({
+          where: { id: request.id },
+          data: { status: 'IN_REVIEW' },
+        });
+      }
+    });
 
     this.auditLogger?.record({
       actionType: 'staffing_request.proposal_slate_submitted',
@@ -274,15 +299,23 @@ export class StaffingProposalSlateService {
     const timestamp = new Date();
     const picked = slate.pickCandidate(input.candidateId, timestamp);
 
-    // Persist slate decision before kicking off the downstream assignment write —
-    // if the assignment-create fails the slate still records the pick attempt.
-    await this.slateRepository.save(slate);
-
     const allocationPercent =
       typeof request.allocationPercent === 'number'
         ? request.allocationPercent
         : request.allocationPercent.toNumber();
 
+    // HD-0.2 Phase 2 — Cross-service `createAssignment.execute()` runs
+    // its own internal $transaction (Phase 2a) and we cannot share the
+    // tx context across services without changing its signature. Order
+    // of writes (option C from the Phase 2 survey):
+    //   1. Cross-service: create the assignment first. If this fails,
+    //      neither the slate decision nor the request status flip have
+    //      been written — clean rollback by absence.
+    //   2. Our two writes (slate.save + request.update) share a single
+    //      $transaction so they cannot disagree.
+    // The narrow remaining failure window is "assignment created but
+    // slate+request rollback at step 2" — recoverable via the
+    // assignment row itself (which references the request).
     const assignment = await this.createAssignment.execute({
       actorId: input.actorId,
       allocationPercent,
@@ -298,9 +331,16 @@ export class StaffingProposalSlateService {
     // Increment fulfilment headcount; if it now meets the requirement, mark request FULFILLED.
     const newHeadcount = Math.min(request.headcountFulfilled + 1, request.headcountRequired);
     const nextStatus = newHeadcount >= request.headcountRequired ? 'FULFILLED' : request.status;
-    await this.prisma.staffingRequest.update({
-      where: { id: request.id },
-      data: { headcountFulfilled: newHeadcount, status: nextStatus },
+    await this.prisma.$transaction(async (tx) => {
+      await this.slateRepository.save(slate, tx as unknown as TransactionContext);
+      await (tx as unknown as {
+        staffingRequest: {
+          update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
+        };
+      }).staffingRequest.update({
+        where: { id: request.id },
+        data: { headcountFulfilled: newHeadcount, status: nextStatus },
+      });
     });
 
     this.auditLogger?.record({
@@ -354,15 +394,22 @@ export class StaffingProposalSlateService {
     if (slate.status === 'OPEN') {
       slate.rejectAll(timestamp);
     }
-    await this.slateRepository.save(slate);
 
     const nextRequestStatus: 'OPEN' | 'CANCELLED' = input.sendBack ? 'OPEN' : 'CANCELLED';
-    await this.prisma.staffingRequest.update({
-      where: { id: request.id },
-      data: {
-        status: nextRequestStatus,
-        cancelledAt: nextRequestStatus === 'CANCELLED' ? timestamp : null,
-      },
+
+    // HD-0.2 Phase 2b: slate rejection and the request-status flip share a
+    // single $transaction so the rollback path on either failure is clean.
+    await this.prisma.$transaction(async (tx) => {
+      await this.slateRepository.save(slate, tx);
+      await (tx as unknown as {
+        staffingRequest: { update: (args: unknown) => Promise<unknown> };
+      }).staffingRequest.update({
+        where: { id: request.id },
+        data: {
+          status: nextRequestStatus,
+          cancelledAt: nextRequestStatus === 'CANCELLED' ? timestamp : null,
+        },
+      });
     });
 
     this.auditLogger?.record({

@@ -7,6 +7,7 @@ import { DrilldownProvider } from '@/app/drilldown-context';
 import { TitleBarProvider, useTitleBarActions } from '@/app/title-bar-context';
 import { CommandPalette, RecentPage } from '@/components/common/CommandPalette';
 import { TipsProvider } from '@/components/common/TipBalloon';
+import { OnboardingTourProvider } from '@/components/onboarding/OnboardingTourProvider';
 import { PendingMigrationsBanner } from '@/components/system/PendingMigrationsBanner';
 import { DrilldownBar } from './DrilldownBar';
 import { ImpersonationBanner } from './ImpersonationBanner';
@@ -220,6 +221,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
         </div>
         <DrilldownProvider>
         <TipsProvider>
+        <OnboardingTourProvider>
         <TitleBarProvider>
           <ConnectedPageTitleBar
             description={activeRoute?.description ?? ''}
@@ -231,6 +233,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
             <Outlet />
           </main>
         </TitleBarProvider>
+        </OnboardingTourProvider>
         </TipsProvider>
         </DrilldownProvider>
       </div>

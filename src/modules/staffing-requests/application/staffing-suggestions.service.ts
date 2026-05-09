@@ -72,8 +72,20 @@ export class StaffingSuggestionsService {
       select: { personId: true, skillId: true, proficiency: true },
     });
 
-    // Collect unique person IDs
-    const personIds = [...new Set(personSkills.map((ps) => ps.personId))];
+    // Collect unique person IDs and intersect with Person rows that actually
+    // exist. The person_skills.personId column is not FK-constrained (it's a
+    // plain text column), so orphan rows from older seeds can leak through.
+    // Without this filter the matcher would surface a personId for which no
+    // Person exists, which (a) renders as a raw UUID in the picker and (b)
+    // would later trip the FK on StaffingRequestProposalCandidate when the
+    // RM submits the slate.
+    const candidatePersonIds = [...new Set(personSkills.map((ps) => ps.personId))];
+    if (candidatePersonIds.length === 0) return [];
+    const existingPeople = await this.prisma.person.findMany({
+      where: { id: { in: candidatePersonIds } },
+      select: { id: true, displayName: true },
+    });
+    const personIds = existingPeople.map((p) => p.id);
     if (personIds.length === 0) return [];
 
     // Get current allocations for these people in the requested period
@@ -107,12 +119,7 @@ export class StaffingSuggestionsService {
       }
     }
 
-    // Get display names
-    const people = await this.prisma.person.findMany({
-      where: { id: { in: personIds } },
-      select: { id: true, displayName: true },
-    });
-    const displayNameMap = new Map(people.map((p) => [p.id, p.displayName]));
+    const displayNameMap = new Map(existingPeople.map((p) => [p.id, p.displayName]));
 
     // Group person skills by person
     const skillsByPerson = new Map<string, { skillId: string; proficiency: number }[]>();

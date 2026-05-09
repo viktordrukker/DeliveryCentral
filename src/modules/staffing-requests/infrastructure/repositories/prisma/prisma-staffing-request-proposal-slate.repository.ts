@@ -4,6 +4,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { StaffingRequestProposalCandidate } from '@src/modules/staffing-requests/domain/entities/staffing-request-proposal-candidate.entity';
 import { StaffingRequestProposalSlate } from '@src/modules/staffing-requests/domain/entities/staffing-request-proposal-slate.entity';
 import { StaffingRequestProposalSlateRepositoryPort } from '@src/modules/staffing-requests/domain/repositories/staffing-request-proposal-slate-repository.port';
+import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 interface SlateRow {
   id: string;
@@ -77,7 +78,7 @@ export class PrismaStaffingRequestProposalSlateRepository
 {
   public constructor(private readonly prisma: PrismaService) {}
 
-  public async save(slate: StaffingRequestProposalSlate): Promise<void> {
+  public async save(slate: StaffingRequestProposalSlate, tx?: TransactionContext): Promise<void> {
     const slatePayload = {
       id: slate.id,
       staffingRequestId: slate.staffingRequestId,
@@ -88,14 +89,19 @@ export class PrismaStaffingRequestProposalSlateRepository
       decidedAt: slate.decidedAt ?? null,
     };
 
-    await this.prisma.$transaction(async (tx) => {
+    // When the caller supplies their own `$transaction` client (so the
+    // slate write composes atomically with sibling writes — e.g. the
+    // staffing-request status flip in `submit`), use it directly. Otherwise
+    // open a short internal transaction so the slate-row + candidate-row
+    // upserts still commit atomically with each other.
+    const withinTx = async (txCtx: unknown): Promise<void> => {
       const slateGateway = (
-        tx as unknown as { staffingRequestProposalSlate: Record<string, unknown> }
+        txCtx as unknown as { staffingRequestProposalSlate: Record<string, unknown> }
       ).staffingRequestProposalSlate as {
         upsert: (args: unknown) => Promise<unknown>;
       };
       const candidateGateway = (
-        tx as unknown as { staffingRequestProposalCandidate: Record<string, unknown> }
+        txCtx as unknown as { staffingRequestProposalCandidate: Record<string, unknown> }
       ).staffingRequestProposalCandidate as {
         upsert: (args: unknown) => Promise<unknown>;
         deleteMany: (args: unknown) => Promise<unknown>;
@@ -147,7 +153,13 @@ export class PrismaStaffingRequestProposalSlateRepository
           },
         });
       }
-    });
+    };
+
+    if (tx && typeof tx === 'object' && tx !== null && 'staffingRequestProposalSlate' in tx) {
+      await withinTx(tx);
+    } else {
+      await this.prisma.$transaction(async (innerTx) => withinTx(innerTx));
+    }
   }
 
   public async findById(slateId: string): Promise<StaffingRequestProposalSlate | null> {

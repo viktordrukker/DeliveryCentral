@@ -18,6 +18,7 @@ import {
   closeProject,
   closeProjectOverride,
 } from '@/lib/api/project-registry';
+import { showUndoToast } from '@/lib/undo-toast';
 
 interface ProjectLifecycleControlsProps {
   project: ProjectDetails;
@@ -81,6 +82,11 @@ export function ProjectLifecycleControls({
         `Project ${response.name} closed with ${response.workspend.totalMandays.toFixed(2)} mandays captured.`,
       );
       await onReload();
+      showUndoToast({
+        undoActionId: response.undoActionId,
+        successMessage: `Project ${response.name} closed.`,
+        onUndone: () => onReload(),
+      });
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         setActionError(error.message);

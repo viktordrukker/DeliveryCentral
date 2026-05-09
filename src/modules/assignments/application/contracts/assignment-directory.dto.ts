@@ -116,6 +116,19 @@ export class AssignmentDetailsDto extends AssignmentDirectoryItemDto {
 
   @ApiProperty({ type: [AssignmentHistoryItemDto] })
   public history!: AssignmentHistoryItemDto[];
+
+  // HD-3 — bill-rate pinning. Populated only after a successful BOOKED
+  // transition + a matching rate-card lookup. Absent on PROPOSED/IN_REVIEW
+  // (no booking yet) AND on BOOKED rows where the resolver returned NONE
+  // (no matching card — FE renders a "missing rate card" banner).
+  @ApiPropertyOptional()
+  public appliedRateCardEntryId?: string;
+
+  @ApiPropertyOptional()
+  public effectiveBillRate?: number;
+
+  @ApiPropertyOptional()
+  public effectiveBillCurrency?: string;
 }
 
 export class AssignmentDirectoryResponseDto {
