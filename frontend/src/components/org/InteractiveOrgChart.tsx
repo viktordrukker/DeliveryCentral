@@ -274,8 +274,13 @@ export function InteractiveOrgChart({
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
+    // The cleanup function below calls chart.clear() to remove the
+    // `resize.<chartId>` window listener that d3-org-chart binds in render().
+    // Skipping clear() leaves the listener bound to a detached container ->
+    // next resize crashes with null.getBoundingClientRect (see d3-org-chart
+    // build:1905). Cleanup runs before this effect body re-runs, so by the
+    // time we get here chartRef is already null.
     el.replaceChildren();
-    chartRef.current = null;
 
     if (viewMode === 'people') {
       if (people.length === 0) return;
@@ -364,6 +369,13 @@ export function InteractiveOrgChart({
         // d3-org-chart may fail if container is not ready
       }
     }
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.clear();
+        chartRef.current = null;
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roots, people, searchTerm, dottedLines, handleNodeClick, viewMode]);
 

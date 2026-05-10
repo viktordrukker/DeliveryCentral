@@ -27,5 +27,9 @@ declare module 'd3-org-chart' {
     connectionsUpdate(cb: (d: unknown, i: number, arr: unknown[]) => void): this;
     layout(val: 'top' | 'bottom' | 'left' | 'right'): this;
     update(data: TDatum[]): this;
+    /** Removes the window resize listener bound during render() and clears the SVG.
+     *  Must be called when navigating away or before recreating the chart, otherwise
+     *  the resize listener fires getBoundingClientRect() on a detached container. */
+    clear(): this;
   }
 }
