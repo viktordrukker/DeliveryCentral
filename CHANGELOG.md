@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-05-10
+
+### Fixed
+- **Phase HD post-deploy: GRANT app_runtime on Phase HD tables.** Migration `20260510_hd_grant_app_runtime` (REVERSIBLE). After PR #19 shipped to staging, every endpoint touching a Phase HD table returned 500 with `42501 permission denied` (observed: `GET/PUT /api/help/onboarding/welcome` → 500 from `prisma.onboardingTourProgress.{findUnique,upsert}`; `GET /api/admin/responsibility-rules` → 500 from `prisma.responsibilityRule.findMany`). Same root cause as `20260502_setup_wizard_grants` — `ALTER DEFAULT PRIVILEGES` only auto-grants for tables created by the role that issued the ALTER, and Phase HD migrations created tables via a different role, so the runtime users (`prod_user` / `staging_user` / `app_runtime`) were never granted. Fix grants `SELECT, INSERT, UPDATE, DELETE` on the 13 affected tables (`help_articles`, `help_feedback`, `help_tips`, `onboarding_tour_progress`, `rate_cards`, `rate_card_entries`, `responsibility_rules`, `project_activation_approvals`, `person_release_requests`, `person_release_approvals`, `idempotency_keys`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`) and re-asserts `ALTER DEFAULT PRIVILEGES` so future migrations under the postgres role auto-grant. Idempotent (`GRANT` / `ALTER DEFAULT PRIVILEGES` are idempotent in postgres); pg_roles filter skips runtime roles missing on dev/test clusters. **Live smoke 2026-05-10 staging**: applied the same SQL via psql; before = 13 tables missing SELECT for `app_runtime`, after = 0. Migration contracts spec regenerated (111 blocks; new entry registered with frozen SHA).
+
 ## 2026-05-09
 
 ### Removed
