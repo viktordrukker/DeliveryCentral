@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
-import { fetchProjectHealth } from '@/lib/api/project-health';
+import { fetchProjectHealth, fetchProjectHealthBatch } from '@/lib/api/project-health';
 import { createPendingPromise } from '@test/api-mocks';
 import { buildProjectDirectoryItem, buildProjectDirectoryResponse } from '@test/fixtures/project-registry';
 import { renderRoute } from '@test/render-route';
@@ -15,6 +15,7 @@ vi.mock('@/lib/api/project-registry', () => ({
 
 vi.mock('@/lib/api/project-health', () => ({
   fetchProjectHealth: vi.fn(),
+  fetchProjectHealthBatch: vi.fn(() => Promise.resolve(new Map())),
 }));
 
 vi.mock('@/app/auth-context', () => ({
@@ -27,6 +28,7 @@ vi.mock('@/app/auth-context', () => ({
 
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
+const mockedFetchProjectHealthBatch = vi.mocked(fetchProjectHealthBatch);
 
 describe('ProjectsPage', () => {
   beforeEach(() => {
@@ -39,6 +41,16 @@ describe('ProjectsPage', () => {
       staffingScore: 17,
       timelineScore: 17,
     });
+    mockedFetchProjectHealthBatch.mockResolvedValue(
+      new Map([['prj-1', {
+        timeScore: 16,
+        grade: 'yellow',
+        projectId: 'prj-1',
+        score: 50,
+        staffingScore: 17,
+        timelineScore: 17,
+      }]]),
+    );
   });
 
   it('shows loading state', () => {
@@ -116,14 +128,16 @@ describe('ProjectsPage', () => {
         ],
       }),
     );
-    mockedFetchProjectHealth.mockResolvedValue({
-      timeScore: 33,
-      grade: 'green',
-      projectId: 'prj-1',
-      score: 84,
-      staffingScore: 33,
-      timelineScore: 18,
-    });
+    mockedFetchProjectHealthBatch.mockResolvedValue(
+      new Map([['prj-1', {
+        timeScore: 33,
+        grade: 'green',
+        projectId: 'prj-1',
+        score: 84,
+        staffingScore: 33,
+        timelineScore: 18,
+      }]]),
+    );
 
     renderWithRouter();
 

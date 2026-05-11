@@ -109,7 +109,8 @@ describe('route manifest', () => {
 
   it('maps critical persona paths consistently', () => {
     const expectations: Array<{ hidden?: string[]; role: AppRole; visible: string[] }> = [
-      { role: 'employee', visible: ['/dashboard/employee', '/people', '/projects', '/assignments', '/settings/account'], hidden: ['/admin', '/staffing-board'] },
+      // /assignments narrowed to STAFFING_DESK_ROLES (customer-walk fix #11) — no longer accessible to employees.
+      { role: 'employee', visible: ['/dashboard/employee', '/people', '/projects', '/settings/account'], hidden: ['/admin', '/staffing-board', '/assignments'] },
       { role: 'project_manager', visible: ['/dashboard/project-manager', '/staffing-requests', '/reports/time'], hidden: ['/admin', '/workload'] },
       { role: 'resource_manager', visible: ['/dashboard/resource-manager', '/workload', '/resource-pools', '/staffing-board'], hidden: ['/admin'] },
       { role: 'hr_manager', visible: ['/dashboard/hr', '/admin/dictionaries', '/admin/audit', '/leave'], hidden: ['/admin/settings'] },
@@ -235,33 +236,37 @@ describe('persona smoke: full navigation coverage per role', () => {
     // are NOT expected in the persona "mustSee" lists.
     employee: {
       minNav: 8,
-      mustSee: ['Workload Overview', 'Employee Dashboard', 'People', 'Projects', 'Assignments', 'My Time', 'Cases'],
-      mustNotSee: ['Admin', 'Platform Settings', 'Staffing Board', 'Workload Matrix', 'Workload Planning', 'Resource Pools'],
+      // /assignments narrowed to STAFFING_DESK_ROLES (customer-walk fix #11) — no longer in employee nav.
+      mustSee: ['Workload Overview', 'Employee Dashboard', 'People', 'Projects', 'My Time', 'Cases'],
+      mustNotSee: ['Admin', 'Platform Settings', 'Staffing Board', 'Workload Matrix', 'Workload Planning', 'Resource Pools', 'Assignments'],
     },
+    // Per Decision-11, per-role dashboards are navVisible: false in favour of the
+    // merged Manager Dashboard / Exec Dashboard. The per-role pages remain routable.
     project_manager: {
       minNav: 15,
-      mustSee: ['PM Dashboard', 'Projects', 'Assignments', 'Time Management', 'Time Analytics', 'Exceptions', 'Report Builder'],
+      mustSee: ['Manager Dashboard', 'Projects', 'Assignments', 'Time Management', 'Time Analytics', 'Exceptions', 'Report Builder'],
       mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix', 'Resource Pools'],
     },
     resource_manager: {
       minNav: 15,
-      mustSee: ['RM Dashboard', 'Resource Pools', 'Assignments', 'Exceptions'],
+      mustSee: ['Manager Dashboard', 'Resource Pools', 'Assignments', 'Exceptions'],
       mustNotSee: ['Admin', 'Platform Settings'],
     },
     hr_manager: {
       minNav: 15,
-      mustSee: ['Employee Dashboard', 'HR Dashboard', 'People', 'Admin Dictionaries', 'Business Audit', 'Bulk Import', 'Time Analytics', 'Exceptions'],
+      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'People', 'Admin Dictionaries', 'Business Audit', 'Bulk Import', 'Time Analytics', 'Exceptions'],
       mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies'],
     },
     delivery_manager: {
       minNav: 15,
-      mustSee: ['Delivery Dashboard', 'Planned vs Actual Time', 'Export Centre', 'Capitalisation', 'Assignments', 'Exceptions'],
+      mustSee: ['Manager Dashboard', 'Planned vs Actual Time', 'Export Centre', 'Capitalisation', 'Assignments', 'Exceptions'],
       mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix'],
     },
+    // /admin/integrations + /admin/monitoring narrowed to ADMIN_ONLY_ROLES (customer-walk fix #9).
     director: {
       minNav: 20,
-      mustSee: ['Employee Dashboard', 'HR Dashboard', 'PM Dashboard', 'RM Dashboard', 'Delivery Dashboard', 'Admin Notifications', 'Admin Integrations', 'Admin Monitoring', 'Integrations'],
-      mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies'],
+      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'Manager Dashboard', 'Admin Notifications', 'Integrations'],
+      mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies', 'Admin Integrations', 'Admin Monitoring'],
     },
     admin: {
       minNav: 25,
@@ -348,7 +353,8 @@ describe('sidebar navigation parity', () => {
     const links = screen.getAllByRole('link');
     const titles = links.map((l) => l.getAttribute('title'));
     expect(titles).toContain('Admin Notifications');
-    expect(titles).toContain('Admin Integrations');
+    // Admin Integrations + Admin Monitoring narrowed to ADMIN_ONLY_ROLES (customer-walk fix #9).
+    expect(titles).not.toContain('Admin Integrations');
     expect(titles).not.toContain('Platform Settings');
     expect(titles).not.toContain('Webhooks');
   });
