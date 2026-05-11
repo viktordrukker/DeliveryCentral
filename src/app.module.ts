@@ -7,6 +7,7 @@ import { DeprecatedEndpointInterceptor } from './shared/http/deprecated-endpoint
 import { IdempotencyInterceptor } from './shared/http/idempotency.interceptor';
 
 import { AdminModule } from './modules/admin/admin.module';
+import { AdminFeatureFlagsModule } from './modules/admin-feature-flags/admin-feature-flags.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AssignmentWorkloadModule } from './modules/assignment-workload/assignment-workload.module';
 import { AuditObservabilityModule } from './modules/audit-observability/audit-observability.module';
@@ -53,6 +54,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     PublicIdModule,
     ObservabilityModule,
     AdminModule,
+    AdminFeatureFlagsModule,
     HealthModule,
     HelpCenterModule,
     UndoModule,

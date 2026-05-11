@@ -29,6 +29,8 @@ import { humanizeEnum, EMPLOYMENT_STATUS_LABELS } from '@/lib/labels';
 import { PersonActivityFeed } from '@/components/people/PersonActivityFeed';
 import { Person360Tab } from '@/components/people/Person360Tab';
 import { HR_DIRECTOR_ADMIN_ROLES, THREESIXTY_REVIEW_ROLES, SKILL_EDIT_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { getDashboardPath } from '@/app/role-routing';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { Button, DatePicker } from '@/components/ds';
 
 export function EmployeeDetailsPlaceholderPage(): JSX.Element {
@@ -66,8 +68,13 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     if (state.data?.displayName) setCurrentLabel(state.data.displayName);
   }, [state.data?.displayName, setCurrentLabel]);
 
+  // Sprint F-0.6 (B-04 / D-45) — sync lifecycleStatus from server on every refresh.
+  // The previous `&& !lifecycleStatus` guard meant the local state only updated
+  // on first load; subsequent refetches (e.g. after a server-side change by
+  // another user) left a stale display. Per CLAUDE.md §8 pitfall #1, useState
+  // does not re-sync from props/data — useEffect must propagate every change.
   useEffect(() => {
-    if (state.data?.lifecycleStatus && !lifecycleStatus) {
+    if (state.data?.lifecycleStatus !== undefined && state.data.lifecycleStatus !== lifecycleStatus) {
       setLifecycleStatus(state.data.lifecycleStatus);
     }
   }, [state.data?.lifecycleStatus, lifecycleStatus]);
@@ -182,6 +189,29 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     } finally {
       setIsEndingRelationship(false);
     }
+  }
+
+  if (state.forbidden) {
+    return (
+      <PageContainer testId="employee-details-forbidden">
+        <PageHeader
+          eyebrow="Access denied"
+          title="You don't have access to this person's profile"
+          subtitle="Your role only lets you see your own profile and the people you manage. Ask your admin if you need broader visibility."
+        />
+        <SectionCard>
+          <EmptyState
+            icon={LockOutlinedIcon}
+            title="Restricted profile"
+            description="Head back to your dashboard or jump to the org chart for the directory view."
+            actions={[
+              { label: 'Go to my dashboard', href: getDashboardPath(principal?.roles ?? []), variant: 'primary' },
+              { label: 'View org chart', href: '/org-chart', variant: 'secondary' },
+            ]}
+          />
+        </SectionCard>
+      </PageContainer>
+    );
   }
 
   return (

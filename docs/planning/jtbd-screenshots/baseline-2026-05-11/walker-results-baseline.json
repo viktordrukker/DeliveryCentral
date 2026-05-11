@@ -1,0 +1,755 @@
+[
+  {
+    "role": "admin",
+    "route": "/",
+    "jtbd": "A1 — default landing",
+    "finalUrl": "http://localhost:5173/",
+    "title": "Workload Tracking Platform",
+    "h1": "Workload Overview",
+    "kpiText": "Ratio of assigned people to total headcount. Target is 80%. Green = healthy, amber = watch, red = over-capacity.44%Utilizationtarget 80%Total projects with status 'Active'. Click to view the full project registry.10Active Projectsacross all teamsPeople currently assigned to projects. The sparkline shows the 12-week trend.105Active AssignmentsPeople without any active assignment. Red if zero (no ca",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__root__A1_default_landing.png",
+    "durationMs": 2309,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/integrations",
+    "jtbd": "A2 — integration health/sync",
+    "finalUrl": "http://localhost:5173/admin/integrations",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin Integrations",
+    "kpiText": "ProviderJIRAStatusConfiguredLast OutcomeNo sync yetLast SyncNot available",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_integrations__A2_integration_health_sync.png",
+    "durationMs": 2333,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin",
+    "jtbd": "A3 — set platform configuration",
+    "finalUrl": "http://localhost:5173/admin",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin__A3_set_platform_configuration.png",
+    "durationMs": 4257,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/audit-log",
+    "jtbd": "A4 — investigate audit log (RED expected)",
+    "finalUrl": "http://localhost:5173/admin/audit-log",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_audit-log__A4_investigate_audit_log_RED_expected_.png",
+    "durationMs": 4297,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/setup",
+    "jtbd": "A5 — re-run setup post-install",
+    "finalUrl": "http://localhost:5173/dashboard/director",
+    "title": "Workload Tracking Platform",
+    "h1": "Director",
+    "kpiText": "Total active projects across the organization.15Active ProjectsPercentage of active people currently assigned to at least one project.35%UtilisationActive people with no current assignment (bench).131On BenchTotal unfilled positions across all project role plans.12Open GapsOrganization-wide staffing fill rate across all projects with role plans.83%Fill Rate10 / 4 / 1G / A / R",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__setup__A5_re_run_setup_post_install.png",
+    "durationMs": 2568,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/sso",
+    "jtbd": "BANK-1 — SSO config (Cat-1.1 D-155)",
+    "finalUrl": "http://localhost:5173/admin/sso",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_sso__BANK_1_SSO_config_Cat_1_1_D_155_.png",
+    "durationMs": 4258,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/ldap",
+    "jtbd": "BANK-2 — LDAP config (Cat-1.1 NEW)",
+    "finalUrl": "http://localhost:5173/admin/ldap",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_ldap__BANK_2_LDAP_config_Cat_1_1_NEW_.png",
+    "durationMs": 4171,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/jsm",
+    "jtbd": "BANK-3 — JSM connector (Cat-1.2 NEW)",
+    "finalUrl": "http://localhost:5173/admin/jsm",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_jsm__BANK_3_JSM_connector_Cat_1_2_NEW_.png",
+    "durationMs": 4165,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/feature-flags",
+    "jtbd": "BANK-4 — Feature flags (Cat-2 NEW)",
+    "finalUrl": "http://localhost:5173/admin/feature-flags",
+    "title": "Workload Tracking Platform",
+    "h1": "Feature Flags",
+    "kpiText": "21Enabled67Disabled88Total registered",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_feature-flags__BANK_4_Feature_flags_Cat_2_NEW_.png",
+    "durationMs": 2259,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/integrations/registry",
+    "jtbd": "BANK-5 — Integration registry (Cat-1.2 NEW)",
+    "finalUrl": "http://localhost:5173/admin/integrations/registry",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_integrations_registry__BANK_5_Integration_registry_Cat_1_2_NEW_.png",
+    "durationMs": 4165,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/roles",
+    "jtbd": "BANK-6 — Role redefinition (Cat-1.9 D-159)",
+    "finalUrl": "http://localhost:5173/admin/roles",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_roles__BANK_6_Role_redefinition_Cat_1_9_D_159_.png",
+    "durationMs": 4288,
+    "errors": []
+  },
+  {
+    "role": "admin",
+    "route": "/admin/platform-settings",
+    "jtbd": "BANK-7 — Platform settings UI (Cat-1.5 NEW)",
+    "finalUrl": "http://localhost:5173/admin/platform-settings",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/admin__admin_platform-settings__BANK_7_Platform_settings_UI_Cat_1_5_NEW_.png",
+    "durationMs": 4259,
+    "errors": []
+  },
+  {
+    "role": "director",
+    "route": "/dashboard/director",
+    "jtbd": "D1 — director dashboard",
+    "finalUrl": "http://localhost:5173/dashboard/director",
+    "title": "Workload Tracking Platform",
+    "h1": "Workload Overview",
+    "kpiText": "Total active projects across the organization.15Active ProjectsPercentage of active people currently assigned to at least one project.35%UtilisationActive people with no current assignment (bench).131On BenchTotal unfilled positions across all project role plans.12Open GapsOrganization-wide staffing fill rate across all projects with role plans.83%Fill Rate10 / 4 / 1G / A / R",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/director__dashboard_director__D1_director_dashboard.png",
+    "durationMs": 2462,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "director",
+    "route": "/dashboard/portfolio-radiator",
+    "jtbd": "D2 — portfolio radiator",
+    "finalUrl": "http://localhost:5173/dashboard/portfolio-radiator",
+    "title": "Workload Tracking Platform",
+    "h1": "Portfolio Radiator",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/director__dashboard_portfolio-radiator__D2_portfolio_radiator.png",
+    "durationMs": 4245,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "director",
+    "route": "/projects",
+    "jtbd": "D3 — review delivery health",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/director__projects__D3_review_delivery_health.png",
+    "durationMs": 4187,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "director",
+    "route": "/projects",
+    "jtbd": "D4 — approve change requests",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/director__projects__D4_approve_change_requests.png",
+    "durationMs": 4259,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "director",
+    "route": "/exceptions",
+    "jtbd": "D5 — investigate exceptions",
+    "finalUrl": "http://localhost:5173/exceptions",
+    "title": "Workload Tracking Platform",
+    "h1": "Exceptions",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/director__exceptions__D5_investigate_exceptions.png",
+    "durationMs": 4267,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "hr_manager",
+    "route": "/people/new",
+    "jtbd": "H1 — onboard a new employee",
+    "finalUrl": "http://localhost:5173/people/new",
+    "title": "Workload Tracking Platform",
+    "h1": "People",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/hr_manager__people_new__H1_onboard_a_new_employee.png",
+    "durationMs": 4271,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "hr_manager",
+    "route": "/leave",
+    "jtbd": "H2 — approve leave requests",
+    "finalUrl": "http://localhost:5173/leave",
+    "title": "Workload Tracking Platform",
+    "h1": "Leave",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/hr_manager__leave__H2_approve_leave_requests.png",
+    "durationMs": 4319,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "hr_manager",
+    "route": "/dashboard/hr",
+    "jtbd": "H3 — review HR dashboard",
+    "finalUrl": "http://localhost:5173/dashboard/hr",
+    "title": "Workload Tracking Platform",
+    "h1": "Hr",
+    "kpiText": "Total number of people in the system regardless of status. Click to view the employee directory.203Total Headcount200 active · 2 inactiveEmployees currently active and eligible for assignment.200Active EmployeesEmployees missing a line manager or org unit assignment. These are data quality issues that affect reporting.6Data Issues4 no mgr · 2 no orgEmployees flagged as at-risk based on multiple si",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/hr_manager__dashboard_hr__H3_review_HR_dashboard.png",
+    "durationMs": 2255,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "hr_manager",
+    "route": "/admin/dictionaries",
+    "jtbd": "H4 — manage HR dictionaries",
+    "finalUrl": "http://localhost:5173/admin/dictionaries",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin Dictionaries",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/hr_manager__admin_dictionaries__H4_manage_HR_dictionaries.png",
+    "durationMs": 4295,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "hr_manager",
+    "route": "/people",
+    "jtbd": "H5 — initiate offboarding",
+    "finalUrl": "http://localhost:5173/people",
+    "title": "Workload Tracking Platform",
+    "h1": "People",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/hr_manager__people__H5_initiate_offboarding.png",
+    "durationMs": 4211,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "resource_manager",
+    "route": "/dashboard/resource-manager",
+    "jtbd": "R1 — team utilization",
+    "finalUrl": "http://localhost:5173/dashboard/resource-manager",
+    "title": "Workload Tracking Platform",
+    "h1": "Workload Overview",
+    "kpiText": "Ratio of assigned people to total headcount. Target is 80%. Green = healthy, amber = watch, red = low.0%UtilizationTeams you manage directly. Click to view the full teams list.1Managed TeamsTotal headcount across all teams you manage.6Managed People0 assigned · 6 idlePeople with no active assignment. High counts indicate underutilized capacity. Zero means no spare capacity.6Idle Resourcesavailable",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/resource_manager__dashboard_resource-manager__R1_team_utilization.png",
+    "durationMs": 2312,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "resource_manager",
+    "route": "/staffing-desk",
+    "jtbd": "R2 — plan resource allocation",
+    "finalUrl": "http://localhost:5173/staffing-desk",
+    "title": "Workload Tracking Platform",
+    "h1": "Staffing Desk",
+    "kpiText": "199Supply163 available163Available FTE128 on bench9 HCOpen Demand8 requests-154Staffing Gapsurplus36%Fill Rateavg 0d to fill15Overallocatedpeople >100%",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/resource_manager__staffing-desk__R2_plan_resource_allocation.png",
+    "durationMs": 2304,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "resource_manager",
+    "route": "/staffing-requests",
+    "jtbd": "R3 — approve assignments",
+    "finalUrl": "http://localhost:5173/staffing-requests",
+    "title": "Workload Tracking Platform",
+    "h1": "Staffing Requests",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/resource_manager__staffing-requests__R3_approve_assignments.png",
+    "durationMs": 4214,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "resource_manager",
+    "route": "/staffing-desk",
+    "jtbd": "R4 — resolve overallocation",
+    "finalUrl": "http://localhost:5173/staffing-desk",
+    "title": "Workload Tracking Platform",
+    "h1": "Staffing Desk",
+    "kpiText": "199Supply163 available163Available FTE128 on bench9 HCOpen Demand8 requests-154Staffing Gapsurplus36%Fill Rateavg 0d to fill15Overallocatedpeople >100%",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/resource_manager__staffing-desk__R4_resolve_overallocation.png",
+    "durationMs": 2305,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "resource_manager",
+    "route": "/staffing-requests",
+    "jtbd": "R5 — plan staffing slates",
+    "finalUrl": "http://localhost:5173/staffing-requests",
+    "title": "Workload Tracking Platform",
+    "h1": "Staffing Requests",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/resource_manager__staffing-requests__R5_plan_staffing_slates.png",
+    "durationMs": 4215,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects",
+    "jtbd": "P1 — plan project phases",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/project_manager__projects__P1_plan_project_phases.png",
+    "durationMs": 4283,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "project_manager",
+    "route": "/staffing-requests/new",
+    "jtbd": "P2 — place a person on a project",
+    "finalUrl": "http://localhost:5173/staffing-requests/new",
+    "title": "Workload Tracking Platform",
+    "h1": "New",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/project_manager__staffing-requests_new__P2_place_a_person_on_a_project.png",
+    "durationMs": 4280,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects",
+    "jtbd": "P3 — manage risks",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/project_manager__projects__P3_manage_risks.png",
+    "durationMs": 4228,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "project_manager",
+    "route": "/timesheets/approval",
+    "jtbd": "P4 — approve timesheets",
+    "finalUrl": "http://localhost:5173/time-management",
+    "title": "Workload Tracking Platform",
+    "h1": "Time Management",
+    "kpiText": "2Pending0Approved4179Gap Days0hOvertime2Leave Requests0%Compliance",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/project_manager__timesheets_approval__P4_approve_timesheets.png",
+    "durationMs": 2230,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects",
+    "jtbd": "P5 — close project",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/project_manager__projects__P5_close_project.png",
+    "durationMs": 4195,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "delivery_manager",
+    "route": "/dashboard/delivery-manager",
+    "jtbd": "DM1 — track delivery KPIs",
+    "finalUrl": "http://localhost:5173/dashboard/delivery-manager",
+    "title": "Workload Tracking Platform",
+    "h1": "Workload Overview",
+    "kpiText": "Total projects with active status in your portfolio.15Active ProjectsPeople currently assigned to active projects.105Active AssignmentsProjects with no staff assigned — at risk and need immediate attention.5Unstaffedneeds attention",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/delivery_manager__dashboard_delivery-manager__DM1_track_delivery_KPIs.png",
+    "durationMs": 2227,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "delivery_manager",
+    "route": "/projects",
+    "jtbd": "DM2 — approve budget changes",
+    "finalUrl": "http://localhost:5173/projects",
+    "title": "Workload Tracking Platform",
+    "h1": "Projects",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/delivery_manager__projects__DM2_approve_budget_changes.png",
+    "durationMs": 4296,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "delivery_manager",
+    "route": "/dashboard/planned-vs-actual",
+    "jtbd": "DM3 — investigate PvA",
+    "finalUrl": "http://localhost:5173/dashboard/planned-vs-actual",
+    "title": "Workload Tracking Platform",
+    "h1": "Planned vs Actual Time",
+    "kpiText": "Percentage of time records that align to an approved assignment.0%Alignment Rate0 of 4 alignedTotal hours submitted or approved across all timesheets in the period.2868hTotal Submittedapproved + submittedHours in draft or submitted status — not yet approved.4028hPending Pipelinedraft + submittedTotal unfilled headcount from open staffing requests.7Staffing Gapsunfilled headcountProjects where tota",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/delivery_manager__dashboard_planned-vs-actual__DM3_investigate_PvA.png",
+    "durationMs": 2352,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "pageerror: Insufficient role for this operation.",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "pageerror: Insufficient role for this operation."
+    ]
+  },
+  {
+    "role": "delivery_manager",
+    "route": "/cases",
+    "jtbd": "DM4 — approve case decisions",
+    "finalUrl": "http://localhost:5173/cases",
+    "title": "Workload Tracking Platform",
+    "h1": "Cases",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/delivery_manager__cases__DM4_approve_case_decisions.png",
+    "durationMs": 4240,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "delivery_manager",
+    "route": "/admin/period-locks",
+    "jtbd": "DM5 — lock a period",
+    "finalUrl": "http://localhost:5173/admin/period-locks",
+    "title": "Workload Tracking Platform",
+    "h1": "Admin",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/delivery_manager__admin_period-locks__DM5_lock_a_period.png",
+    "durationMs": 4195,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/my-time",
+    "jtbd": "E1 — submit timesheet",
+    "finalUrl": "http://localhost:5173/my-time",
+    "title": "Workload Tracking Platform",
+    "h1": "My Time",
+    "kpiText": "0hReportedof 168h expected0hOvertime0hLeave0hBench21Gap Days168h missing0%Utilization",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__my-time__E1_submit_timesheet.png",
+    "durationMs": 2237,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/leave",
+    "jtbd": "E2 — request leave",
+    "finalUrl": "http://localhost:5173/leave",
+    "title": "Workload Tracking Platform",
+    "h1": "Leave",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__leave__E2_request_leave.png",
+    "durationMs": 4231,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/dashboard/employee",
+    "jtbd": "E3 — see my assignments",
+    "finalUrl": "http://localhost:5173/dashboard/employee",
+    "title": "Workload Tracking Platform",
+    "h1": "Employee Dashboard",
+    "kpiText": "Number of projects you are currently assigned to.0Current AssignmentsUpcoming assignments that have not started yet.0Future AssignmentsYour combined allocation across all active assignments. Over 100% means you are overbooked.0%AllocationItems pending your action — assignment approvals, etc.1Pending Items",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__dashboard_employee__E3_see_my_assignments.png",
+    "durationMs": 2218,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/work-evidence",
+    "jtbd": "E4 — log work evidence (RED expected)",
+    "finalUrl": "http://localhost:5173/dashboard/employee",
+    "title": "Workload Tracking Platform",
+    "h1": "Employee Dashboard",
+    "kpiText": "Number of projects you are currently assigned to.0Current AssignmentsUpcoming assignments that have not started yet.0Future AssignmentsYour combined allocation across all active assignments. Over 100% means you are overbooked.0%AllocationItems pending your action — assignment approvals, etc.1Pending Items",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__work-evidence__E4_log_work_evidence_RED_expected_.png",
+    "durationMs": 2197,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/people",
+    "jtbd": "E5 — see my profile",
+    "finalUrl": "http://localhost:5173/people",
+    "title": "Workload Tracking Platform",
+    "h1": "People",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__people__E5_see_my_profile.png",
+    "durationMs": 4220,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "pageerror: Insufficient role for this operation.",
+      "pageerror: Insufficient role for this operation."
+    ]
+  },
+  {
+    "role": "employee",
+    "route": "/cases/new",
+    "jtbd": "BANK-8 — Employee Report Issue (Cat-1.4 NEW)",
+    "finalUrl": "http://localhost:5173/dashboard/employee",
+    "title": "Workload Tracking Platform",
+    "h1": "Employee Dashboard",
+    "kpiText": "Number of projects you are currently assigned to.0Current AssignmentsUpcoming assignments that have not started yet.0Future AssignmentsYour combined allocation across all active assignments. Over 100% means you are overbooked.0%AllocationItems pending your action — assignment approvals, etc.1Pending Items",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/employee__cases_new__BANK_8_Employee_Report_Issue_Cat_1_4_NEW_.png",
+    "durationMs": 2214,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "dual_role",
+    "route": "/",
+    "jtbd": "M1 — switch between roles",
+    "finalUrl": "http://localhost:5173/dashboard/hr",
+    "title": "Workload Tracking Platform",
+    "h1": "Hr",
+    "kpiText": "Total number of people in the system regardless of status. Click to view the employee directory.203Total Headcount200 active · 2 inactiveEmployees currently active and eligible for assignment.200Active EmployeesEmployees missing a line manager or org unit assignment. These are data quality issues that affect reporting.6Data Issues4 no mgr · 2 no orgEmployees flagged as at-risk based on multiple si",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/dual_role__root__M1_switch_between_roles.png",
+    "durationMs": 2368,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "dual_role",
+    "route": "/staffing-desk",
+    "jtbd": "M2 — approve as RM",
+    "finalUrl": "http://localhost:5173/staffing-desk",
+    "title": "Workload Tracking Platform",
+    "h1": "Staffing Desk",
+    "kpiText": "199Supply163 available163Available FTE128 on bench9 HCOpen Demand8 requests-154Staffing Gapsurplus36%Fill Rateavg 0d to fill15Overallocatedpeople >100%",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/dual_role__staffing-desk__M2_approve_as_RM.png",
+    "durationMs": 2272,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "dual_role",
+    "route": "/leave",
+    "jtbd": "M3 — approve as HR",
+    "finalUrl": "http://localhost:5173/leave",
+    "title": "Workload Tracking Platform",
+    "h1": "Leave",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/dual_role__leave__M3_approve_as_HR.png",
+    "durationMs": 4241,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "dual_role",
+    "route": "/notifications",
+    "jtbd": "M4 — see unified inbox",
+    "finalUrl": "http://localhost:5173/notifications",
+    "title": "Workload Tracking Platform",
+    "h1": "Notifications",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/dual_role__notifications__M4_see_unified_inbox.png",
+    "durationMs": 4222,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  },
+  {
+    "role": "dual_role",
+    "route": "/dashboard",
+    "jtbd": "M5 — see merged dashboards",
+    "finalUrl": "http://localhost:5173/dashboard",
+    "title": "Workload Tracking Platform",
+    "h1": "Dashboard",
+    "kpiText": "",
+    "emptyOrError": "",
+    "screenshot": "docs/planning/jtbd-screenshots/baseline-2026-05-11/dual_role__dashboard__M5_see_merged_dashboards.png",
+    "durationMs": 4251,
+    "errors": [
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "console: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ]
+  }
+]

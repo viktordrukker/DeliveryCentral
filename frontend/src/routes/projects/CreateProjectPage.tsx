@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { ErrorState } from '@/components/common/ErrorState';
@@ -33,6 +34,19 @@ export function CreateProjectPage(): JSX.Element {
     !state.createdProject &&
     DIRTY_FIELDS.some((field) => (state.values[field] ?? '').toString().trim() !== '');
   useUnsavedChangesWarning(isDirty);
+
+  // Sprint F-0.12 (D-50) — post-create redirect. Previously the page parked
+  // on a "Project Created" success card; users had to manually click into
+  // the new project. UX Law 3 (no context loss after action) wants the user
+  // to land on the entity they just created. 1.5s delay gives the success
+  // banner time to register before navigating away.
+  useEffect(() => {
+    if (!state.createdProject?.id) return;
+    const timer = setTimeout(() => {
+      navigate(`/projects/${state.createdProject!.id}`, { replace: true });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [state.createdProject, navigate]);
 
   const banners = (
     <>

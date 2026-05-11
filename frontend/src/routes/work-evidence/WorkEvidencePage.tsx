@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 
+import { useAuth } from '@/app/auth-context';
 import { useEvidenceManagement } from '@/app/platform-settings-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { CreateWorkEvidenceForm, CreateWorkEvidenceFormErrors, CreateWorkEvidenceFormValues } from '@/components/work-evidence/CreateWorkEvidenceForm';
@@ -33,9 +34,21 @@ function makeInitialCreateValues(): CreateWorkEvidenceFormValues {
   };
 }
 
+const PRIVILEGED_EVIDENCE_ROLES = [
+  'project_manager',
+  'resource_manager',
+  'delivery_manager',
+  'hr_manager',
+  'director',
+  'admin',
+];
+
 export function WorkEvidencePage(): JSX.Element {
   const evidenceManagement = useEvidenceManagement();
   const { setActions } = useTitleBarActions();
+  const { principal } = useAuth();
+  const isPrivileged = (principal?.roles ?? []).some((r) => PRIVILEGED_EVIDENCE_ROLES.includes(r));
+  const canCreateEvidence = isPrivileged && evidenceManagement.allowManualEntry;
   const [filters, setFilters] = useFilterParams({ dateFrom: '', dateTo: '', person: '', project: '', source: '' });
   const [createValues, setCreateValues] = useState<CreateWorkEvidenceFormValues>(makeInitialCreateValues);
   const [createErrors, setCreateErrors] = useState<CreateWorkEvidenceFormErrors>({});
@@ -150,34 +163,43 @@ export function WorkEvidencePage(): JSX.Element {
 
   return (
     <PageContainer testId="work-evidence-page">
-      <SectionCard title="Add Observed Work">
-        {createServerError ? <ErrorState description={createServerError} /> : null}
-        {createSuccess ? (
-          <div className="success-banner" data-testid="work-evidence-success" role="status">
-            {createSuccess}
-          </div>
-        ) : null}
-        <p className="placeholder-block__copy" style={{ marginBottom: '0.75rem' }}>
-          Use this optional module to capture observed work from manual or source-system records for audit and reconciliation.
-          It does not create or approve staffing assignments.
-        </p>
-        {evidenceManagement.allowManualEntry ? (
-          <CreateWorkEvidenceForm
-            errors={createErrors}
-            isSubmitting={isSubmitting}
-            onChange={handleCreateChange}
-            onSubmit={handleCreateSubmit}
-            people={state.people}
-            projects={state.projects}
-            values={createValues}
-          />
-        ) : (
-          <EmptyState
-            description="Manual entry is turned off in platform settings. You can still review observed-work records below."
-            title="Manual entry disabled"
-          />
-        )}
-      </SectionCard>
+      {isPrivileged ? (
+        <SectionCard title="Add Observed Work">
+          {createServerError ? <ErrorState description={createServerError} /> : null}
+          {createSuccess ? (
+            <div className="success-banner" data-testid="work-evidence-success" role="status">
+              {createSuccess}
+            </div>
+          ) : null}
+          <p className="placeholder-block__copy" style={{ marginBottom: '0.75rem' }}>
+            Use this optional module to capture observed work from manual or source-system records for audit and reconciliation.
+            It does not create or approve staffing assignments.
+          </p>
+          {canCreateEvidence ? (
+            <CreateWorkEvidenceForm
+              errors={createErrors}
+              isSubmitting={isSubmitting}
+              onChange={handleCreateChange}
+              onSubmit={handleCreateSubmit}
+              people={state.people}
+              projects={state.projects}
+              values={createValues}
+            />
+          ) : (
+            <EmptyState
+              description="Manual entry is turned off in platform settings. You can still review observed-work records below."
+              title="Manual entry disabled"
+            />
+          )}
+        </SectionCard>
+      ) : (
+        <SectionCard title="My observed work">
+          <p className="placeholder-block__copy" style={{ marginBottom: 0 }}>
+            These are the work records the system has captured for you — manually recorded by managers or pulled in from
+            source systems. Use them to confirm what's been credited to your timesheets.
+          </p>
+        </SectionCard>
+      )}
 
       <FilterBar>
         <label className="field">
@@ -238,8 +260,8 @@ export function WorkEvidencePage(): JSX.Element {
 
             {state.visibleItems.length === 0 ? (
                 <EmptyState
-                action={evidenceManagement.allowManualEntry ? { href: '/work-evidence', label: 'Add Observed Work' } : undefined}
-                description="No observed-work records matched the current filters."
+                action={canCreateEvidence ? { href: '/work-evidence', label: 'Add Observed Work' } : undefined}
+                description={isPrivileged ? 'No observed-work records matched the current filters.' : 'No observed work has been recorded for you yet.'}
                 title="No observed work found"
               />
             ) : (

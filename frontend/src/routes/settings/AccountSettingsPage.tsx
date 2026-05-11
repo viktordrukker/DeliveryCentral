@@ -15,6 +15,14 @@ import {
   type NotificationPreference,
 } from '@/lib/api/notification-prefs';
 import { readStoredColorModePreference } from '@/styles/design-tokens';
+import {
+  COMMON_TIMEZONES,
+  SUPPORTED_LOCALES,
+  getUserLocale,
+  getUserTimezone,
+  setUserLocale,
+  setUserTimezone,
+} from '@/lib/user-prefs';
 import { Button } from '@/components/ds';
 
 // HD-8 / F2a — channels come from the platform via
@@ -72,6 +80,23 @@ export function AccountSettingsPage(): JSX.Element {
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
   const [isDark, setIsDark] = useState(() => readStoredColorModePreference() === 'dark');
+  const [userLocale, setUserLocaleState] = useState(() => getUserLocale());
+  const [userTimezone, setUserTimezoneState] = useState(() => getUserTimezone());
+  const [prefsToast, setPrefsToast] = useState<string | null>(null);
+
+  function handleLocaleChange(locale: string): void {
+    setUserLocaleState(locale);
+    setUserLocale(locale);
+    setPrefsToast('Locale saved.');
+    setTimeout(() => setPrefsToast(null), 1500);
+  }
+
+  function handleTimezoneChange(tz: string): void {
+    setUserTimezoneState(tz);
+    setUserTimezone(tz);
+    setPrefsToast('Timezone saved.');
+    setTimeout(() => setPrefsToast(null), 1500);
+  }
 
   useEffect(() => {
     let active = true;
@@ -210,6 +235,48 @@ export function AccountSettingsPage(): JSX.Element {
               <span>{channel.displayName}</span>
             </label>
           ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Locale &amp; Timezone">
+        {prefsToast ? <p className="form-success">{prefsToast}</p> : null}
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginTop: 0 }}>
+          Sets how dates, numbers, and currency are formatted across the app.
+          Stored in this browser; native date pickers (e.g. on filter bars)
+          continue to follow your operating system locale until v1.1's custom
+          date-picker lands.
+        </p>
+        <div className="form-stack">
+          <label className="field">
+            <span className="field__label">Locale</span>
+            <select
+              className="field__control"
+              data-testid="user-locale-select"
+              onChange={(e) => handleLocaleChange(e.target.value)}
+              value={userLocale}
+            >
+              {SUPPORTED_LOCALES.map((opt) => (
+                <option key={opt.code} value={opt.code}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field__label">Timezone</span>
+            <select
+              className="field__control"
+              data-testid="user-timezone-select"
+              onChange={(e) => handleTimezoneChange(e.target.value)}
+              value={userTimezone}
+            >
+              {COMMON_TIMEZONES.map((opt) => (
+                <option key={opt.code} value={opt.code}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </SectionCard>
 

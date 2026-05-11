@@ -326,6 +326,44 @@ export class ProjectsController {
     return result;
   }
 
+  /**
+   * Sprint F-0.8 (B-14 / D-88) — batch variant of /:id/health. Replaces the
+   * N+1 pattern where the FE projects list (and several dashboards) fired one
+   * health request per visible project (30+ requests per page load on /projects
+   * with a default-sized seed). Returns a map of `{ projectId → health }`;
+   * unknown ids are simply omitted from the response.
+   */
+  @Get('health')
+  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @ApiOperation({
+    summary: 'Batch project health for a list of project ids (replaces N+1 calls)',
+  })
+  @ApiQuery({
+    name: 'ids',
+    required: true,
+    description: 'Comma-separated UUIDs (max 200).',
+    type: String,
+  })
+  @ApiOkResponse({
+    description: 'Object keyed by projectId; missing ids are omitted.',
+  })
+  public async getProjectHealthBatch(
+    @Query('ids') idsParam?: string,
+  ): Promise<Record<string, ProjectHealthDto>> {
+    if (!idsParam) return {};
+    const ids = idsParam
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .slice(0, 200);
+    const map = await this.projectHealthQueryService.executeMany(ids);
+    const out: Record<string, ProjectHealthDto> = {};
+    map.forEach((value, key) => {
+      out[key] = value;
+    });
+    return out;
+  }
+
   @Get()
   @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List internal projects with external link summaries' })

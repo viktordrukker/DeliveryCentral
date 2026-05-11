@@ -229,8 +229,9 @@ export function ResourcePoolDetailPage(): JSX.Element {
               <div>
                 <dt>Assignments</dt>
                 <dd>
-                  <Button as={Link} variant="secondary" to="/assignments/new">
-                    Create new assignment
+                  {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow. */}
+                  <Button as={Link} variant="secondary" to="/staffing-requests/new">
+                    Create staffing request
                   </Button>
                 </dd>
               </div>

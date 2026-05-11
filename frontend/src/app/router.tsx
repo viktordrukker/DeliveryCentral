@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 
 import {
+  ADMIN_ONLY_ROLES,
   ALL_ROLES,
   ADMIN_ROLES,
   appRoutes,
@@ -41,6 +42,7 @@ import { ForgotPasswordPage } from '@/routes/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage';
 import { TwoFactorSetupPage } from '@/routes/auth/TwoFactorSetupPage';
 import { AdminPanelPage } from '@/routes/admin/AdminPanelPage';
+import { FeatureFlagsAdminPage } from '@/routes/admin/FeatureFlagsAdminPage';
 import { BulkImportPage } from '@/routes/admin/BulkImportPage';
 import { BusinessAuditPage } from '@/routes/admin/BusinessAuditPage';
 import { SettingsPage } from '@/routes/admin/SettingsPage';
@@ -102,6 +104,9 @@ const EmployeeDashboardPage = lazy(() => import('@/routes/dashboard/EmployeeDash
 const HrDashboardPage = lazy(() => import('@/routes/dashboard/HrDashboardPage').then(m => ({ default: m.HrDashboardPage })));
 const ProjectManagerDashboardPage = lazy(() => import('@/routes/dashboard/ProjectManagerDashboardPage').then(m => ({ default: m.ProjectManagerDashboardPage })));
 const ResourceManagerDashboardPage = lazy(() => import('@/routes/dashboard/ResourceManagerDashboardPage').then(m => ({ default: m.ResourceManagerDashboardPage })));
+// Sprint F-0.11 (Decision-11) — merged dashboards.
+const ManagerDashboardPage = lazy(() => import('@/routes/dashboard/ManagerDashboardPage').then(m => ({ default: m.ManagerDashboardPage })));
+const ExecDashboardPage = lazy(() => import('@/routes/dashboard/ExecDashboardPage').then(m => ({ default: m.ExecDashboardPage })));
 const PlannedVsActualPage = lazy(() => import('@/routes/dashboard/PlannedVsActualPage').then(m => ({ default: m.PlannedVsActualPage })));
 const OrgPage = lazy(() => import('@/routes/org/OrgPage').then(m => ({ default: m.OrgPage })));
 // ProjectDashboardPage merged into ProjectDetailPage — route redirects to ?tab=radiator
@@ -127,6 +132,25 @@ function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
 const dashboardChildren = [
   { element: <DashboardPage />, path: '/' },
   { element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><LazyPage><PlannedVsActualPage /></LazyPage></RoleGuard>, path: 'dashboard/planned-vs-actual' },
+  // Sprint F-0.11 (Decision-11) — merged Manager + Exec dashboards.
+  // The per-role routes below remain for direct access; the merged routes
+  // are the canonical sidebar entries in v1.
+  {
+    element: (
+      <RoleGuard allowedRoles={['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin']}>
+        <LazyPage><ManagerDashboardPage /></LazyPage>
+      </RoleGuard>
+    ),
+    path: 'dashboard/manager',
+  },
+  {
+    element: (
+      <RoleGuard allowedRoles={['director', 'admin', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager']}>
+        <LazyPage><ExecDashboardPage /></LazyPage>
+      </RoleGuard>
+    ),
+    path: 'dashboard/exec',
+  },
   {
     element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><LazyPage><EmployeeDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/employee',
@@ -208,7 +232,7 @@ const dashboardChildren = [
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDetailPage /></RoleGuard>, path: 'projects/:id' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDashboardRedirect /></RoleGuard>, path: 'projects/:id/dashboard' },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentsPage /></RoleGuard>, path: 'assignments' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><AssignmentsPage /></RoleGuard>, path: 'assignments' },
   {
     element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><CreateAssignmentPage /></RoleGuard>,
     path: 'assignments/new',
@@ -315,11 +339,11 @@ const dashboardChildren = [
     path: 'admin/notifications',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><IntegrationsAdminPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><IntegrationsAdminPage /></RoleGuard>,
     path: 'admin/integrations',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><MonitoringPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><MonitoringPage /></RoleGuard>,
     path: 'admin/monitoring',
   },
   {
@@ -333,6 +357,11 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><SettingsPage /></RoleGuard>,
     path: 'admin/settings',
+  },
+  {
+    // Sprint F-1.1 — Tenant Settings Catalog admin surface.
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><FeatureFlagsAdminPage /></RoleGuard>,
+    path: 'admin/feature-flags',
   },
   {
     element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><BulkImportPage /></RoleGuard>,

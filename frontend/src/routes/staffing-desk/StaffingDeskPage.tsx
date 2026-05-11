@@ -142,10 +142,13 @@ export function StaffingDeskPage(): JSX.Element {
         onDemandClick={() => setDemandOpen(true)}
       />
 
-      {/* Action buttons below KPIs */}
+      {/* Action buttons below KPIs.
+          Sprint F-0.10 (Decision-10) — single canonical staffing flow:
+          Create Staffing Request → Slate → Pick → Assignment lifecycle.
+          The legacy "Make Assignment" direct-create CTA is removed in v1
+          (route gated by `staffingMakeAssignment` flag, default OFF). */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Button as={Link} variant="primary" size="sm" to="/assignments/new">Make Assignment</Button>
-        <Button variant="secondary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Staffing Request</Button>
+        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ Create Staffing Request</Button>
         <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">Open full create page</Button>
       </div>
       <StaffingRequestDrawer

@@ -38,6 +38,7 @@ export function RmKpiStrip({
     <div className="kpi-strip" aria-label="Key metrics">
       <Link
         className="kpi-strip__item"
+        data-jtbd="How is my pool utilised this week?"
         to="/workload"
         style={{ borderLeft: `3px solid ${utilTone(utilPct)}` }}
       >
@@ -60,7 +61,7 @@ export function RmKpiStrip({
         )}
       </Link>
 
-      <Link className="kpi-strip__item" to="/teams" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+      <Link className="kpi-strip__item" data-jtbd="How many teams do I run?" to="/teams" style={{ borderLeft: '3px solid var(--color-accent)' }}>
         <TipBalloon tip="Teams you manage directly. Click to view the full teams list." arrow="left" />
         <span className="kpi-strip__value">{managedTeamCount}</span>
         <span className="kpi-strip__label">Managed Teams</span>
@@ -68,6 +69,7 @@ export function RmKpiStrip({
 
       <Link
         className="kpi-strip__item"
+        data-jtbd="How many people do I oversee?"
         to="/people"
         style={{ borderLeft: '3px solid var(--color-chart-5)' }}
       >
@@ -81,6 +83,7 @@ export function RmKpiStrip({
 
       <Link
         className="kpi-strip__item"
+        data-jtbd="Who is idle right now?"
         to="/people?filter=idle"
         style={{ borderLeft: `3px solid ${idleTone(idlePeople)}` }}
       >
@@ -100,6 +103,7 @@ export function RmKpiStrip({
 
       <Link
         className="kpi-strip__item"
+        data-jtbd="Who is overallocated and needs rebalancing?"
         to="/assignments"
         style={{
           borderLeft: `3px solid ${

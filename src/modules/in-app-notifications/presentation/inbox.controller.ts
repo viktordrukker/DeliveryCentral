@@ -98,6 +98,28 @@ export class InboxController {
     return { status: 'ok' };
   }
 
+  /**
+   * Sprint F-0.8 (B-13 / D-87) — polling replacement for the SSE stream.
+   * The FE switched from `/inbox/stream` (SSE) to 30-second polling on this
+   * endpoint because the SSE path returned 503 in Phase 4 walker capture.
+   * Cheap call, ~2 round trips/min per active user.
+   */
+  @Get('unread-count')
+  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @ApiOperation({ summary: 'Get unread notification count for the current user (polling endpoint)' })
+  @ApiOkResponse({ description: 'JSON `{ unreadCount: number }`.' })
+  public async unreadCount(
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<{ unreadCount: number }> {
+    const personId = req.principal?.personId;
+    if (!personId) return { unreadCount: 0 };
+    const records = await this.inAppNotificationService.getInbox(personId, {
+      unreadOnly: true,
+      limit: 100,
+    });
+    return { unreadCount: records.length };
+  }
+
   @Sse('stream')
   @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
   @ApiOperation({ summary: 'Server-sent events stream for real-time notification count updates' })

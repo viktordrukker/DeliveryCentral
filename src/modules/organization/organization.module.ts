@@ -2,6 +2,9 @@ import { Module, forwardRef } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '../audit-observability/application/audit-logger.service';
+import { CaseManagementModule } from '../case-management/case-management.module';
+import { CreateCaseService } from '../case-management/application/create-case.service';
+import { CaseTypeKey } from '../case-management/domain/entities/case-type.entity';
 import { ResponsibilityResolverService } from '../identity-access/application/responsibility-resolver.service';
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
@@ -54,6 +57,7 @@ import { TeamsController } from './presentation/teams.controller';
     forwardRef(() => ProjectRegistryModule),
     WorkEvidenceModule,
     NotificationsModule,
+    CaseManagementModule,
   ],
   controllers: [
     PersonDirectoryController,
@@ -177,6 +181,8 @@ import { TeamsController } from './presentation/teams.controller';
         personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
         prisma: PrismaService,
         auditLogger: AuditLoggerService,
+        employeeActivityService: EmployeeActivityService,
+        createCaseService: CreateCaseService,
       ) =>
         new CreateEmployeeService(
           personRepository,
@@ -184,6 +190,19 @@ import { TeamsController } from './presentation/teams.controller';
           personOrgMembershipRepository,
           prisma,
           auditLogger,
+          // Sprint F-0.3.e — wired so HIRED activity events fire on Person create
+          // (was undefined → silent no-op; root of D-47 / Phase 4 walker observation
+          // "History tab empty after hire").
+          employeeActivityService,
+          // Sprint F-0.3.e — wired so onboarding cases auto-create on Person create
+          // (was undefined → silent no-op; root of 20b-08 not landing).
+          (cmd) =>
+            createCaseService.execute({
+              caseTypeKey: cmd.caseTypeKey as CaseTypeKey,
+              ownerPersonId: cmd.ownerPersonId,
+              subjectPersonId: cmd.subjectPersonId,
+              summary: cmd.summary,
+            }),
         ),
       inject: [
         InMemoryPersonRepository,
@@ -191,6 +210,8 @@ import { TeamsController } from './presentation/teams.controller';
         InMemoryPersonOrgMembershipRepository,
         PrismaService,
         AuditLoggerService,
+        EmployeeActivityService,
+        CreateCaseService,
       ],
     },
     {
@@ -199,15 +220,31 @@ import { TeamsController } from './presentation/teams.controller';
         personRepository: InMemoryPersonRepository,
         auditLogger: AuditLoggerService,
         undoService: UndoService,
+        employeeActivityService: EmployeeActivityService,
+        createCaseService: CreateCaseService,
       ) =>
         new DeactivateEmployeeService(
           personRepository,
           auditLogger,
-          undefined,
-          undefined,
+          // Sprint F-0.4 — wired (was `undefined`, silent on deactivate).
+          employeeActivityService,
+          // Sprint F-0.4 — wired so OFFBOARDING cases auto-create on deactivate.
+          (cmd) =>
+            createCaseService.execute({
+              caseTypeKey: cmd.caseTypeKey as CaseTypeKey,
+              ownerPersonId: cmd.ownerPersonId,
+              subjectPersonId: cmd.subjectPersonId,
+              summary: cmd.summary,
+            }),
           undoService,
         ),
-      inject: [InMemoryPersonRepository, AuditLoggerService, UndoService],
+      inject: [
+        InMemoryPersonRepository,
+        AuditLoggerService,
+        UndoService,
+        EmployeeActivityService,
+        CreateCaseService,
+      ],
     },
     {
       provide: PersonDeactivateUndoExecutor,
@@ -225,6 +262,7 @@ import { TeamsController } from './presentation/teams.controller';
         endProjectAssignmentService: EndProjectAssignmentService,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
+        employeeActivityService: EmployeeActivityService,
       ) =>
         new TerminateEmployeeService(
           personRepository,
@@ -232,6 +270,8 @@ import { TeamsController } from './presentation/teams.controller';
           endProjectAssignmentService,
           auditLogger,
           notificationEventTranslator,
+          // Sprint F-0.4 — wired so TERMINATED activity events fire (was silent).
+          employeeActivityService,
         ),
       inject: [
         InMemoryPersonRepository,
@@ -239,6 +279,7 @@ import { TeamsController } from './presentation/teams.controller';
         EndProjectAssignmentService,
         AuditLoggerService,
         NotificationEventTranslatorService,
+        EmployeeActivityService,
       ],
     },
     {

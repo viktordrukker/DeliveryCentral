@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
@@ -8,7 +8,17 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+
+const PRIVILEGED_EVIDENCE_ROLES = new Set([
+  'project_manager',
+  'resource_manager',
+  'delivery_manager',
+  'hr_manager',
+  'director',
+  'admin',
+]);
 
 import { CreateWorkEvidenceRequestDto } from '../application/contracts/create-work-evidence.request';
 import { ListWorkEvidenceQueryDto } from '../application/contracts/list-work-evidence.query';
@@ -94,6 +104,7 @@ export class WorkEvidenceController {
   }
 
   @Get()
+  @RequireRoles('employee', 'project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
   @ApiOperation({ summary: 'List work evidence records with optional filters' })
   @ApiQuery({ name: 'personId', required: false, type: String })
   @ApiQuery({ name: 'projectId', required: false, type: String })
@@ -102,10 +113,20 @@ export class WorkEvidenceController {
   @ApiQuery({ name: 'dateTo', required: false, type: String })
   @ApiOkResponse({ type: ListWorkEvidenceResponseDto })
   public async listWorkEvidence(
+    @Req() req: { principal?: RequestPrincipal },
     @Query() query: ListWorkEvidenceQueryDto,
   ): Promise<ListWorkEvidenceResponseDto> {
+    const isPrivileged = (req.principal?.roles ?? []).some((r) => PRIVILEGED_EVIDENCE_ROLES.has(r));
+    const scopedQuery: ListWorkEvidenceQueryDto = isPrivileged
+      ? query
+      : { ...query, personId: req.principal?.personId };
+
+    if (!isPrivileged && !scopedQuery.personId) {
+      throw new BadRequestException('Cannot resolve self-scope: principal has no personId.');
+    }
+
     try {
-      const result = await this.listWorkEvidenceService.execute(query);
+      const result = await this.listWorkEvidenceService.execute(scopedQuery);
       return {
         items: result.items.map((item) => this.mapResponse(item)),
       };

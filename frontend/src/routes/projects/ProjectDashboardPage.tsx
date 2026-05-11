@@ -61,8 +61,8 @@ export function ProjectDashboardPage(): JSX.Element {
             <Button as={Link} variant="secondary" size="sm" to={`/projects/${id ?? ''}`}>Back to project</Button>
             {canManage && (
               <>
-                <Button as={Link} variant="secondary" size="sm" to={`/staffing-requests/new?projectId=${id ?? ''}`}>Staffing request</Button>
-                <Button as={Link} variant="secondary" size="sm" to={`/assignments/new?projectId=${id ?? ''}`}>Quick assign</Button>
+                {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow. */}
+                <Button as={Link} variant="primary" size="sm" to={`/staffing-requests/new?projectId=${id ?? ''}`}>Create Staffing Request</Button>
               </>
             )}
           </div>

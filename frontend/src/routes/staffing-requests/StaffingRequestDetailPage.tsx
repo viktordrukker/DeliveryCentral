@@ -83,13 +83,32 @@ const TIMELINE_STAGES: readonly TimelineStageMeta[] = [
   { key: 'FULFILLED', label: 'Filled' },
 ];
 
+/**
+ * Sprint F-0.10 (B-07 / L-2 / D-11) — single source of truth: derivedStatus.
+ * The previous version read `request.status` (the cached column) for the
+ * workflow timeline, while the StatusBadge above the timeline read
+ * `request.derivedStatus`. The two could disagree on the SAME screen
+ * (e.g. timeline showing "In review" while badge shows "Open").
+ *
+ * This now derives stage progression from `derivedStatus` exclusively.
+ */
+function deriveReachedIndex(derivedStatus: StaffingRequest['derivedStatus']): number {
+  switch (derivedStatus) {
+    case 'Open':
+      return TIMELINE_STAGES.findIndex((s) => s.key === 'OPEN');
+    case 'In progress':
+      return TIMELINE_STAGES.findIndex((s) => s.key === 'IN_REVIEW');
+    case 'Filled':
+    case 'Closed':
+      return TIMELINE_STAGES.findIndex((s) => s.key === 'FULFILLED');
+    default:
+      return -1;
+  }
+}
+
 function buildWorkflowStages(request: StaffingRequest): WorkflowStage[] {
-  const cancelled = request.status === 'CANCELLED';
-  const reachedIndex = (() => {
-    if (cancelled) return -1;
-    const i = TIMELINE_STAGES.findIndex((s) => s.key === request.status);
-    return i;
-  })();
+  const cancelled = request.derivedStatus === 'Cancelled';
+  const reachedIndex = cancelled ? -1 : deriveReachedIndex(request.derivedStatus);
 
   if (cancelled) {
     return [

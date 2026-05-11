@@ -20,6 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
+import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import {
@@ -164,9 +165,24 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a staffing request' })
   @ApiCreatedResponse({ description: 'Staffing request created' })
-  public async create(@Body() body: CreateStaffingRequestBody): Promise<StaffingRequestWithDerived> {
+  public async create(
+    @Req() req: { principal?: RequestPrincipal },
+    @Body() body: Omit<CreateStaffingRequestBody, 'requestedByPersonId'> & {
+      requestedByPersonId?: string;
+    },
+  ): Promise<StaffingRequestWithDerived> {
+    // Sprint F-2 prep — derive `requestedByPersonId` from authenticated principal.
+    // Previously the body needed to supply it; the FE form didn't pass it; SR
+    // creation 500'd with "Argument requestedByPersonId is missing". Server-
+    // trusted derivation also blocks the PM impersonating another requestor.
+    const requestedByPersonId = req.principal?.personId ?? body.requestedByPersonId;
+    if (!requestedByPersonId) {
+      throw new BadRequestException(
+        'requestedByPersonId is required (no personId on principal and no override supplied).',
+      );
+    }
     try {
-      const created = await this.service.create(body);
+      const created = await this.service.create({ ...body, requestedByPersonId });
       return this.enrich(created);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Creation failed.');

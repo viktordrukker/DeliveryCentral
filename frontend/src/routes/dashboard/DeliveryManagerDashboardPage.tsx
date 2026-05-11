@@ -16,7 +16,7 @@ import { TabBar } from '@/components/common/TabBar';
 import { formatDate } from '@/lib/format-date';
 import { PortfolioHealthHeatmap } from '@/components/charts/PortfolioHealthHeatmap';
 import { BurnRateTrendPoint, fetchScorecardHistory, ProjectHealthItem, ProjectScorecardHistoryItem, StaffingGapItem, OpenRequestsByProjectItem } from '@/lib/api/dashboard-delivery-manager';
-import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
+import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-health';
 import { useDeliveryManagerDashboard } from '@/features/dashboard/useDeliveryManagerDashboard';
 import { Button, Table, type Column } from '@/components/ds';
 
@@ -42,22 +42,19 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
 
   const [healthScores, setHealthScores] = useState<Map<string, ProjectHealthDto>>(new Map());
 
+  // Sprint F-0.8 (B-14 / D-88) — batch fetch replaces N parallel requests.
   useEffect(() => {
     if (!state.data || state.data.portfolioHealth.length === 0) return;
     let active = true;
-    void Promise.allSettled(
-      state.data.portfolioHealth.map((item) =>
-        fetchProjectHealth(item.projectId).then((h) => ({ health: h, id: item.projectId })),
-      ),
-    ).then((results) => {
+    void fetchProjectHealthBatch(
+      state.data.portfolioHealth.map((item) => item.projectId),
+    ).then((map) => {
       if (!active) return;
-      const next = new Map<string, ProjectHealthDto>();
-      for (const result of results) {
-        if (result.status === 'fulfilled') next.set(result.value.id, result.value.health);
-      }
-      setHealthScores(next);
+      setHealthScores(map);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [state.data]);
 
   // Title bar actions

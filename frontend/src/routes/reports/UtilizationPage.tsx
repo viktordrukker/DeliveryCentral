@@ -80,7 +80,7 @@ export function UtilizationPage(): JSX.Element {
     setError(null);
     fetchUtilizationReport({ from, to })
       .then((data) => setReport(data))
-      .catch(() => setError('Failed to load utilization report. Check date range.'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load utilization report. Check date range.'))
       .finally(() => setIsLoading(false));
   }, [from, to]);
 

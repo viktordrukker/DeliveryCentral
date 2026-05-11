@@ -20,6 +20,7 @@ import {
 
 interface AuthenticatedRequest {
   user?: { personId?: string; sub?: string };
+  principal?: { roles?: string[]; personId?: string; userId?: string };
 }
 
 @ApiTags('admin')
@@ -28,11 +29,13 @@ export class PlatformSettingsController {
   public constructor(private readonly service: PlatformSettingsService) {}
 
   @Get()
-  @RequireRoles('admin')
-  @ApiOperation({ summary: 'Get all platform settings grouped by section' })
+  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @ApiOperation({
+    summary: 'Get all platform settings grouped by section. Non-admin readers receive redacted secrets (clientSecret, monitoring tokens, db.prodUserPassword).',
+  })
   @ApiOkResponse({ type: SettingsResponseDto })
-  public async getAll(): Promise<SettingsResponseDto> {
-    return this.service.getAll();
+  public async getAll(@Request() req: AuthenticatedRequest): Promise<SettingsResponseDto> {
+    return this.service.getAll(req.principal?.roles);
   }
 
   @Get('by-prefix/:prefix')

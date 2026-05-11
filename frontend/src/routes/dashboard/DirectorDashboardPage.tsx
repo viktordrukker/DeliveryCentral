@@ -28,7 +28,7 @@ import { useDirectorDashboard } from '@/features/dashboard/useDirectorDashboard'
 import { exportToXlsx } from '@/lib/export';
 import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool } from '@/lib/api/portfolio-dashboard';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
-import { fetchProjectHealth, type ProjectHealthDto } from '@/lib/api/project-health';
+import { fetchProjectHealthBatch, type ProjectHealthDto } from '@/lib/api/project-health';
 import { Button, DataView, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
@@ -76,15 +76,25 @@ export function DirectorDashboardPage(): JSX.Element {
     void fetchAvailablePool().then(setAvailablePool).catch(() => undefined);
 
     setProjectsLoading(true);
-    void fetchProjectDirectory().then(async (res) => {
-      const healthResults = await Promise.allSettled(res.items.map((p) => fetchProjectHealth(p.id)));
-      setProjectRows(res.items.map((p, i) => ({
-        id: p.id, name: p.name, projectCode: p.projectCode, status: p.status,
-        assignmentCount: p.assignmentCount,
-        health: healthResults[i].status === 'fulfilled' ? healthResults[i].value : null,
-        clientName: p.clientName, priority: p.priority,
-      })));
-    }).catch(() => {}).finally(() => setProjectsLoading(false));
+    // Sprint F-0.8 (B-14 / D-88) — batch replaces N parallel /:id/health calls.
+    void fetchProjectDirectory()
+      .then(async (res) => {
+        const healthMap = await fetchProjectHealthBatch(res.items.map((p) => p.id));
+        setProjectRows(
+          res.items.map((p) => ({
+            id: p.id,
+            name: p.name,
+            projectCode: p.projectCode,
+            status: p.status,
+            assignmentCount: p.assignmentCount,
+            health: healthMap.get(p.id) ?? null,
+            clientName: p.clientName,
+            priority: p.priority,
+          })),
+        );
+      })
+      .catch(() => {})
+      .finally(() => setProjectsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -162,20 +172,20 @@ export function DirectorDashboardPage(): JSX.Element {
         <>
           {/* ═══ KPI STRIP ═══ */}
           <div className="kpi-strip" aria-label="Portfolio health">
-            <Link className="kpi-strip__item" to="/projects" style={{ borderLeft: `3px solid var(--color-accent)` }}>
+            <Link className="kpi-strip__item" data-jtbd="How many active projects do we have?" to="/projects" style={{ borderLeft: `3px solid var(--color-accent)` }}>
               <TipBalloon tip="Total active projects across the organization." arrow="left" />
               <span className="kpi-strip__value">{d.summary.activeProjectCount}</span>
               <span className="kpi-strip__label">Active Projects</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/people" style={{ borderLeft: `3px solid ${tc(Math.round(d.summary.staffingUtilisationRate), 60, 40, false)}` }}>
+            <Link className="kpi-strip__item" data-jtbd="What's our org-wide utilisation?" to="/people" style={{ borderLeft: `3px solid ${tc(Math.round(d.summary.staffingUtilisationRate), 60, 40, false)}` }}>
               <TipBalloon tip="Percentage of active people currently assigned to at least one project." arrow="left" />
               <span className="kpi-strip__value">{Math.round(d.summary.staffingUtilisationRate)}%</span>
               <span className="kpi-strip__label">Utilisation</span>
               <Sparkline data={d.weeklyTrend.map((w) => w.staffingUtilisationRate)} height={20} width={60} color={tc(Math.round(d.summary.staffingUtilisationRate), 60, 40, false)} />
             </Link>
 
-            <Link className="kpi-strip__item" to="/people?filter=unassigned" style={{ borderLeft: `3px solid ${tc(d.summary.unstaffedActivePersonCount, 3, 8)}` }}>
+            <Link className="kpi-strip__item" data-jtbd="How many people are on the bench?" to="/people?filter=unassigned" style={{ borderLeft: `3px solid ${tc(d.summary.unstaffedActivePersonCount, 3, 8)}` }}>
               <TipBalloon tip="Active people with no current assignment (bench)." arrow="left" />
               <span className="kpi-strip__value">{d.summary.unstaffedActivePersonCount}</span>
               <span className="kpi-strip__label">On Bench</span>
@@ -183,19 +193,20 @@ export function DirectorDashboardPage(): JSX.Element {
 
             {ps ? (
               <>
-                <Link className="kpi-strip__item" to="/projects" style={{ borderLeft: `3px solid ${tc(ps.totalOpenGaps, 3, 8)}` }}>
+                <Link className="kpi-strip__item" data-jtbd="How many roles still need filling?" to="/projects" style={{ borderLeft: `3px solid ${tc(ps.totalOpenGaps, 3, 8)}` }}>
                   <TipBalloon tip="Total unfilled positions across all project role plans." arrow="left" />
                   <span className="kpi-strip__value">{ps.totalOpenGaps}</span>
                   <span className="kpi-strip__label">Open Gaps</span>
                 </Link>
 
-                <span className="kpi-strip__item" style={{ borderLeft: `3px solid ${tc(ps.overallFillRate, 60, 40, false)}` }}>
-                  <TipBalloon tip="Organization-wide staffing fill rate across all projects with role plans." arrow="left" />
+                <Link className="kpi-strip__item" data-jtbd="How well-staffed are projects overall?" to="/projects?status=ACTIVE" style={{ borderLeft: `3px solid ${tc(ps.overallFillRate, 60, 40, false)}` }}>
+                  <TipBalloon tip="Organization-wide staffing fill rate across all projects with role plans. Click to view all active projects." arrow="left" />
                   <span className="kpi-strip__value">{ps.overallFillRate}%</span>
                   <span className="kpi-strip__label">Fill Rate</span>
-                </span>
+                </Link>
 
-                <span className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+                <Link className="kpi-strip__item" data-jtbd="What's the green / amber / red split across the portfolio?" to="/dashboards/portfolio-radiator" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+                  <TipBalloon tip="Portfolio health split. Click to open the Project Radiator for full RAG drilldown." arrow="left" />
                   <span className="kpi-strip__value">
                     <span style={{ color: 'var(--color-status-active)' }}>{ps.byRag.green}</span>
                     {' / '}
@@ -204,7 +215,7 @@ export function DirectorDashboardPage(): JSX.Element {
                     <span style={{ color: 'var(--color-status-danger)' }}>{ps.byRag.red}</span>
                   </span>
                   <span className="kpi-strip__label">G / A / R</span>
-                </span>
+                </Link>
               </>
             ) : null}
           </div>

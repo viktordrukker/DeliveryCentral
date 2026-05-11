@@ -267,7 +267,7 @@ export function StaffingRequestForm({
       <FormField
         label="Role"
         required
-        error={errors.role}
+        error={errors.role ?? (roleLoadError ? `Roles unavailable: ${roleLoadError}` : undefined)}
         hint={
           roleLoadError
             ? undefined
@@ -278,9 +278,9 @@ export function StaffingRequestForm({
           value={values.role || null}
           onValueChange={(next) => update('role', next ?? '')}
           options={roleOptions}
-          placeholder={roleLoadError ?? (roleLoading ? 'Loading roles…' : 'Pick a role…')}
+          placeholder={roleLoading ? 'Loading roles…' : 'Pick a role…'}
           disabled={roleLoading || Boolean(roleLoadError)}
-          invalid={Boolean(errors.role)}
+          invalid={Boolean(errors.role) || Boolean(roleLoadError)}
         />
       </FormField>
 

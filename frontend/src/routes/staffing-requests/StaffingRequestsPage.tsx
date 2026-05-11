@@ -100,7 +100,7 @@ export function StaffingRequestsPage(): JSX.Element {
     setError(null);
     fetchStaffingRequests()
       .then((data) => setRequests(data))
-      .catch(() => setError('Failed to load staffing requests.'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load staffing requests.'))
       .finally(() => setIsLoading(false));
   }, []);
 

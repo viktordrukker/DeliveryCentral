@@ -1,8 +1,8 @@
 # DeliveryCentral — Master Implementation Tracker
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Created:** 2026-04-05  
-**Updated:** 2026-04-16  
+**Updated:** 2026-05-10 (bank-IT pivot post-Phase-11; doc-revision side-job 1 closed)  
 **Source backlog:** `docs/planning/DELIVERY_CENTRAL_PRODUCT_BACKLOG.md` v3.0 _(file was never committed to the repo; FR refs below are from the original planning document)_  
 **Phase 4 detail:** `docs/planning/phase4-plan.md`  
 **Priority decomposition:** `docs/planning/decomposition-priority-2026-04.md`
@@ -85,6 +85,8 @@
 | Phase CC | Console Cleanup Deferred Items | — | 🔄 Sweep 2026-04-24: **0 console errors + 0 warnings across all 57 authenticated routes** (was 82 errors, 79 warnings, 82 failed requests). 8 fixes landed (CC-1 through CC-8 — infinite render loop, R-Router future flags, staffing-desk 500, missing metadata dict, Recharts -1 noise, login auth-probe 401s, `/auth/refresh` 204 semantics, in-memory service TS2352 × 9). 5 follow-ups deferred (CC-9 release-gate grep, CC-10 hoist AuthProvider, CC-11 PlatformSettings coupling, CC-12 144 ResponsiveContainer structural fix, CC-13 host-side node_modules ownership). |
 | Phase CSW | Canonical Staffing Workflow (9 statuses) | — | ✅ Landed 2026-04-18: (a) **Domain** — new `AssignmentStatus` value object + `ASSIGNMENT_STATUS_TRANSITIONS` matrix + `ProjectAssignment.transitionTo()` with reason/role enforcement; (b) **Schema** — 9-value enum + `staffingRequestId` FK + `rejectionReason`/`cancellationReason`/`onHoldReason`/`onHoldCaseId` columns; expand-contract migration with legacy-value data mapping; `StaffingRequestAssignments` relation; (c) **Backend services** — new `TransitionProjectAssignmentService`; legacy approve/reject/end/revoke/activate services updated; 21 callsites across dashboards, staffing-desk, project-registry, timesheets, reports, workload, person-directory migrated to canonical literals; (d) **Controllers** — 8 new transition endpoints (`/propose /reject /book /onboarding /assign /hold /release /complete /cancel`) alongside legacy ones; (e) **Notifications** — `assignmentStatusChanged` translator; (f) **DeriveStaffingRequestStatusService** — computed `Open / In progress / Filled / Closed / Cancelled` from per-slot assignment pipeline, wired into `StaffingRequestWithDerived` DTO on all staffing-request endpoints; (g) **Frontend** — new `AssignmentStatusValue` type + `transitionAssignment` helper; `AssignmentWorkflowActions` rewritten to render dynamic buttons from `availableTransitions`; `AssignmentDetailsPlaceholderPage` rewired; `StaffingRequestsPage` shows derivedStatus + client-side filter; `StaffingRequestDetailPage` shows derivedStatus + assignment-pipeline card; labels + StatusBadge tone map + `STATUS_OPTS` + workflow-next-step updated; (h) **Seeds** — all 6 profiles emit canonical status literals + STATUS_* change types; (i) **Tests** — new `assignment-transition-matrix.spec.ts` + 10 backend test files + 4 frontend test files migrated; (j) **Docs** — [canonical-staffing-workflow.md](canonical-staffing-workflow.md). Backend `tsc --project tsconfig.build.json --noEmit` clean; frontend `tsc --noEmit` clean (excluding 4 pre-existing `pptxgenjs`/`jspdf`/`html2canvas` module-not-found errors). Runtime requires container rebuild to pick up regenerated Prisma client. |
 | Phase DS | Design System Standardization (atoms / molecules / surfaces / feature blocks / grammars + mobile + theming + UX-contract gating) | — | 🔄 In progress (DS-0 kickoff 2026-04-27). Plan: `~/.claude/plans/this-is-a-pure-idempotent-cray.md`. |
+| Phase RESEARCH | 12-phase research program (audits + synthesis + master plan + xlsx + QA gate) | Phases 1–12 | ✅ Complete (2026-05-10): 9 audit docs, 87 D-items (D-85..D-171), 24 themes (T-01..T-24), `synthesis-themes.md`, `NEXT_ITERATION_PLAN.md` (9 goals × full structure), `next-iteration-roadmap.xlsx` (5 sheets, 91 tasks). Phase 12 quality gate 7/7 pass. Driving prompt: `CLAUDE_CODE_RESEARCH_PROMPT.md`. |
+| Phase BANK-IT | Bank-IT pivot — 3-category re-categorization (single-tenant per-bank install) | Cat-1 (Now) / Cat-2 (Toggle off / flag-gated) / Cat-3 (Future) | 🔄 In progress (2026-05-10): plan locked at `~/.claude/plans/now-it-is-a-zazzy-gizmo.md` covering 170 open `[ ]` items. Side-job 1 (doc revision) ✅ inventory + archive of 12 superseded docs + current-state.md regen. Side-job 2 (Playwright clickthrough) pending. Surgical Cat-1 + Cat-2 implementation pending stakeholder review. Locked decisions: locale-agnostic settings architecture, Entra ID OIDC primary, F6 multi-tenant code stays behind flag, generic OpenAI-compatible LLM client, JSM Cloud + DC, customizable + deterministic RBAC (T-04 promoted to Cat-1), Pulse off-by-default opt-in. |
 
 ---
 
@@ -2531,10 +2533,10 @@ Strategic plan: `/home/drukker/.claude/plans/http-localhost-5173-review-data-mod
 - [x] **DM-R-12 (Wave 3)** `.agent-ownership.json` + CI checker — registry declares agent→path-glob ownership (claude-code currently claims prisma/, resilience scripts, publicId layer, planning docs). `scripts/check-agent-ownership.cjs` reads `Agent-Id:` commit trailer from every commit in PR range, rejects (a) commits by unregistered agents and (b) commits where the declared agent touches another agent's territory. Minimal minimatch-style glob implementation (no new dep). No-trailer commits are treated as human work and pass the gate (CODEOWNERS handles humans). `.github/workflows/ci.yml` adds `agent-ownership-check` job gated on `github.event_name == 'pull_request'` with `BASE_SHA`/`HEAD_SHA` env wiring. Positive + violation + unowned-path + unregistered-agent scenarios unit-tested in a throwaway repo. — BE · _(done 2026-04-18)_
 - [x] **DM-R-13 (Wave 3)** Per-migration contract tests (generated) — `scripts/gen-migration-tests.cjs` emits `test/integration/migration-contracts.generated.spec.ts` with one `describe()` block per migration + frozen SHA-256 digests of migration.sql and (for REVERSIBLE) rollback.sql. Any edit to a migration requires regeneration (ossification = the property the plan calls for). Consolidated into a single spec (per-file layout OOM'd jest-worker in backend container). Scripts: `npm run test:migrations:gen` (regenerate) + `test:migrations:check` (CI gate, rejects out-of-sync state). 48 describes × 206 assertions, ~2.7s. Wired into CI `schema-drift-check` after enum:check. — BE · _(done 2026-04-18)_
 - [x] **DM-R-14 (Wave 3)** Structured-log drift events + alerting hook — `scripts/lib/drift-events.cjs` with `emitEvent(name, payload, severity)` emits one JSON-Lines record per event prefixed with literal `DRIFT_EVENT `. Stable envelope (event, severity, timestamp, service, hostname, git_sha, agent_id, payload). Three known events wired: `schema.drift.detected` (from prestart-verify-migrations.sh layer-1), `migration.half_applied.detected` (from verify-migrations-deep.cjs per-row), `migration.name.monotonicity.violation`. Optional `DRIFT_WEBHOOK_URL=<url>` POSTs each event (2s timeout, fail-open — webhook errors never break callers). Hook for future Sentry/Slack/PagerDuty. Grep-friendly: `docker logs backend \| grep DRIFT_EVENT \| jq`. Docs: [docs/planning/drift-events.md](drift-events.md) with event schema, alert recommendations, grep recipes. Smoke-verified: JSON stdout emit + webhook receipt. — BE · _(done 2026-04-18)_
-- [ ] **DM-R-15** Concurrent-`prisma migrate dev` protection — already covered by DM-R-3's `pg_try_advisory_lock` — BE · _(fused into DM-R-3 2026-04-18)_
-- [ ] **DM-R-16** Prisma client regeneration drift check — already covered by DM-R-2 step — BE · _(fused into DM-R-2 2026-04-18)_
-- [ ] **DM-R-17** Shadow-DB CI diff — already covered by DM-R-2 ephemeral Postgres — BE · _(fused into DM-R-2 2026-04-18)_
-- [ ] **DM-R-18** Dev-DB reset safety — already covered by DM-R-3's `db-reset-safe.sh` — BE · _(fused into DM-R-3 2026-04-18)_
+- [-] **DM-R-15** Concurrent-`prisma migrate dev` protection — already covered by DM-R-3's `pg_try_advisory_lock` — BE · _(fused into DM-R-3 2026-04-18; flipped to [-] 2026-05-10 cleanup sweep)_
+- [-] **DM-R-16** Prisma client regeneration drift check — already covered by DM-R-2 step — BE · _(fused into DM-R-2 2026-04-18; flipped to [-] 2026-05-10 cleanup sweep)_
+- [-] **DM-R-17** Shadow-DB CI diff — already covered by DM-R-2 ephemeral Postgres — BE · _(fused into DM-R-2 2026-04-18; flipped to [-] 2026-05-10 cleanup sweep)_
+- [-] **DM-R-18** Dev-DB reset safety — already covered by DM-R-3's `db-reset-safe.sh` — BE · _(fused into DM-R-3 2026-04-18; flipped to [-] 2026-05-10 cleanup sweep)_
 - [x] **DM-R-19** Staging promotion gate — `.github/workflows/deploy.yml` split into `build-and-push` → `deploy-staging` → `deploy-production` (with a side `verify-staging-freshness` gate). Push-to-main path: all three run sequentially. `workflow_dispatch` path adds three targets — `staging-and-prod` (default), `staging-only`, `prod-only`. `prod-only` goes through `verify-staging-freshness` which queries `gh api` for a successful deploy workflow run for the same SHA within the last 6 hours (DM-R-19 "6h rule"); fails if older. Staging opt-in via `vars.STAGING_DEPLOY_ENABLED == 'true'` (required secrets: `STAGING_VPS_HOST`, `STAGING_VPS_USER`, `STAGING_VPS_SSH_KEY`, `STAGING_CADDY_DOMAIN`); absence flows directly to prod with a loud `::warning` annotation. Staging smoke runs `/api/health` + `/api/health/deep` (DM-R-8). Prod smoke likewise elevated to deep. — OPS · _(done 2026-04-18; **superseded by DM-R-33 on 2026-04-28** — auto-prod removed in favor of manual tag-based promotion)_
 - [x] **DM-R-20 (Wave 4)** Least-privilege Postgres roles — migration `20260418_dm_r_20_role_separation` creates `app_runtime` (LOGIN, DML-only, append-only on AuditLog + migration_audit, default privileges for future tables) and `app_migrator` (LOGIN, full DDL+DML). `docker-compose.yml` wired: migrate/seed/mock-data-generator read `${MIGRATE_DATABASE_URL}`, backend reads `${RUNTIME_DATABASE_URL}`; both fall back to the legacy superuser URL if unset (opt-in cutover per environment). Permission matrix smoke: app_runtime cannot DROP TABLE or DELETE AuditLog; app_migrator can CREATE/DROP. Runbook: [docs/runbooks/dm-r-20-role-separation-cutover.md](../runbooks/dm-r-20-role-separation-cutover.md). Classification REVERSIBLE + rollback.sql tested in round-trip. — BE/OPS · _(done 2026-04-18)_
 - [x] **DM-R-21 (Wave 4)** DDL event-trigger lockout + `ddl_audit` — migration `20260419_dm_r_21_ddl_event_trigger` installs three event triggers: (a) `ddl_command_start` → raises `ERRCODE 42501` unless `session_user ∈ {postgres, app_migrator}` (defense-in-depth over DM-R-20 grants — even if a forgotten GRANT CREATE drifts in, DDL still denied); (b) `ddl_command_end` → inserts one row per command into `ddl_audit` with session_user / current_user / application_name (DM-R-26 provenance hook) / command_tag / object_identity / query text; (c) `sql_drop` → same audit for dropped objects. `ddl_audit` is append-only (UPDATE/DELETE revoked from app_runtime). Smoke matrix verified: postgres + app_migrator ALLOWED, app_runtime DENIED even with GRANT CREATE on schema. Classification REVERSIBLE + rollback.sql. — BE · _(done 2026-04-19)_
@@ -2794,3 +2796,196 @@ Drives the validated subset of the HARDEN_BRIEF + HARDEN_WIRING_MAP planning mat
 ### Closed-out (REFUTED — do not reopen)
 
 D-02 (DI fix), D-27 (breadcrumb leak), D-28 (page title), D-29 (locale), D-47 (event silence on create), D-59 (audit silence on activate), D-68 (cmd+k people), D-72 (planner read-only). Evidence in plan file.
+
+---
+
+## Research Findings (D-85+)
+
+Out-of-tracker findings minted by the Phase 1-12 research program (`docs/planning/CLAUDE_CODE_RESEARCH_PROMPT.md`). Each item references a source audit doc with file:line evidence. Per-phase counters: Phase 1 D-85..D-93 (9), Phase 2 D-94..D-102 (9), Phase 3 D-103..D-113 (11), Phase 4 D-114..D-121 (8), Phase 5 D-122..D-132 (11), Phase 6 D-133..D-135 (3), Phase 7 D-136..D-141 (6), Phase 8 D-142..D-152 (11), Phase 9 D-153..D-171 (19). Total at 2026-05-10: **87 items**.
+
+### Phase 1 — Flow audit (docs/planning/flow-audit.md)
+
+15 cross-cutting flows mapped + 8 multi-path situations classified KEEP/DEPRECATE/MERGE. Run date 2026-05-09. Source: `docs/planning/research-checkpoints/phase-1.md`.
+
+- [ ] **D-85** — [MERGE] Place a person on a project — collapse 6 FE entry points (`/staffing-requests/new`, `/assignments/new`, `/assignments/bulk`, `/projects/:id` Team tab, `/staffing-desk` planner-apply, `/staffing-board` drag) to 2 user-visible flows ("Quick Add" / "Plan & Propose"); route by allocation% + strategic tag in the CTA. — `flow-audit.md` row #1
+- [ ] **D-86** — [DEPRECATE] `/admin/people/new` is alias of `/people/new` (same component, same role gate); add client-side redirect. — `flow-audit.md` row #2
+- [ ] **D-87** — [DEPRECATE] `/timesheets` (alias of `/my-time`); replace with `<Navigate>` redirect. — `flow-audit.md` row #3
+- [ ] **D-88** — [DEPRECATE] `/timesheets/approval` (alias of `/time-management`); replace with `<Navigate>` redirect. — `flow-audit.md` row #4
+- [ ] **D-89** — [DEPRECATE] Legacy assignment endpoints (`/approve, /reject, /end, /revoke, /activate`) covered by Phase WO-6 already; add `Deprecation` headers as transitional measure. — `flow-audit.md` row #5; D-04 reference
+- [ ] **D-90** — [DOCUMENT] Slate reject-all vs assignment reject — semantic difference recorded in `canonical-staffing-workflow.md`. — `flow-audit.md` row #6
+- [ ] **D-91** — [INCOMPLETE] Approve case — `ApproveCaseService` exists but no controller endpoint and no FE button; wire `POST /cases/:id/approve` + FE button on CaseDetailPage. — `flow-audit.md` Flow 14
+- [ ] **D-92** — [INCOMPLETE] Approve budget change — backend `POST /projects/{id}/budget-change-requests/{approvalId}/approve` exists; wire FE on BudgetTab. — `flow-audit.md` Flow 15a
+- [ ] **D-93** — [INCOMPLETE] Lock a period — admin `POST /admin/period-locks` endpoint exists; admin FE page missing. — `flow-audit.md` Flow 15b
+
+### Phase 2 — Functional duplication (docs/planning/functional-duplication-register.md)
+
+20 candidate pairs registered (12 new + 8 cross-references) + 8 refuted candidates. Run date 2026-05-09. Source: `docs/planning/research-checkpoints/phase-2.md`. Two corrections to prior briefs surfaced (HARDEN_BRIEF D-10 was half-wrong; the legacy assignment "endpoints" are actually injected-but-unused services).
+
+- [ ] **D-94** — [DROP] Drop orphaned `ProjectTag` and `ProjectTechnology` join tables — zero writes anywhere; `Project.tags`/`techStack` arrays on `Project` are de-facto SoT; supersedes the "consolidate" half of HARDEN_BRIEF D-10. — `functional-duplication-register.md` row #2-#3, §1
+- [ ] **D-95** — [DERIVE] Replace `StaffingRequest.headcountFulfilled` cached counter with a derived count — adjacent to D-11 status drift, candidate to fold into S-13 scope. — register row #5, §2
+- [ ] **D-96** — [DECIDE] `archivedAt` + `deletedAt` dual soft-delete on `Person` / `Project` / `OrgUnit` — user decision needed: is GDPR purge a real process or vestigial? Cost ranges S→L based on answer. Phase 9 D-167 is the consumer. — register row #6-#8, §3
+- [ ] **D-97** — [VERIFY] `Project.projectManagerId` vs `Project.leadPmPersonId` relation duplicate — confirm whether DM-2.5/DM-3 already owns this; if not, audit writers and drop the loser. — register row #9, §4
+- [ ] **D-98** — [DELETE] Three injected-but-unused legacy assignment services in `assignments.controller.ts` (`Approve/Reject/Revoke`); `End` retained for cascade. Distinct from D-89 (HTTP endpoints). — register row #11, §5a
+- [ ] **D-99** — [REFACTOR] `WorkforcePlannerService.applyPlan` calls `prisma.projectAssignment.create()` directly — bypasses `CreateProjectAssignmentService` (no audit log, no transaction wrap). — register row #12, §5b
+- [ ] **D-100** — [DEPRECATE] `POST /staffing-requests/:id/fulfil` — no live FE callers; canonical fulfilment goes through `/proposals/:slateId/pick`. — register row #14, §5c
+- [ ] **D-101** — [CONSOLIDATE] `/admin/dictionaries` (HR-scoped legacy) into `/metadata-admin` with role-scoped entity-type filter; or formally split if both must remain. — register row #15, §6a
+- [ ] **D-102** — [DEPRECATE] `/staffing-board` once drag-write lands in `/staffing-desk` (Distribution Studio scope); cross-ref D-72 (refuted). Phase 4 update: `/staffing-board` already redirects to `/staffing-desk?view=timeline`; remaining work is drag-write inside `/staffing-desk`. — register row #20, §6c
+
+### Phase 3 — Data quality audit (docs/planning/data-quality-audit.md)
+
+Coverage matrices for all 9 audit columns × 105 models; 12 candidate findings (10 new + 2 cross-referenced). Run date 2026-05-09. Source: `docs/planning/research-checkpoints/phase-3.md`. Schema-wide actor-audit gap is the headline.
+
+- [ ] **D-103** — [GAP] Schema-wide actor-audit gap — 0/105 models have `createdById`/`updatedById`. Decide: denormalize on rows (cost M) or formalize "use AuditLog joins" with documented patterns + lint rule. — `data-quality-audit.md` Part 1 finding 1
+- [ ] **D-104** — [GAP] `ProjectActivationApproval` (line 177), `PersonReleaseApproval` (line 157), `StaffingRequestFulfilment` (line 2078) missing `createdAt`/`updatedAt`. Add timestamps + Prisma migration. — `data-quality-audit.md` Part 1 finding 2
+- [ ] **D-105** — [STANDARDIZE] 10 booleans missing `is*/has*/can*/should*/must*` prefix (full list in audit Part 2). One-batch rename + Prisma migration. — `data-quality-audit.md` Part 2
+- [ ] **D-106** — [STANDARDIZE] Enum value casing — `AggregateType` (26 PascalCase values) and `LocalAccountSource` (4 lowercase/snake values) should be SCREAMING_SNAKE. — `data-quality-audit.md` Part 2
+- [ ] **D-107** — [MIGRATE] 9 enums → MetadataDictionary: `RiskCategory`, `RiskStrategy`, `RiskReviewCadence`, `MilestoneStatus`, `LeaveRequestType`, `ChangeRequestSeverity`, `RolePlanSource`, `VendorContractType`, `VendorEngagementStatus`. Bundle migration; expand-migrate-contract per enum. Cross-ref §13.1 of HARDEN_WIRING_MAP. — `data-quality-audit.md` Part 3
+- [ ] **D-108** — [STANDARDIZE] Effective-dating uniformity — pick one column-name convention (`validFrom/validTo` OR `effectiveFrom/effectiveTo`); pick `Timestamptz(3)` and migrate `RateCard` + `PersonCostRate` from Date; add `@@unique([parent, ...From])` to OrgUnit, OvertimePolicy, OvertimeException, RateCard, Position. — `data-quality-audit.md` Part 7
+- [ ] **D-109** — [FIX] `OnboardingTourProgress.person` FK action: Cascade → SetNull (audit-adjacent data should survive person deletion). Single-line schema change + migration. — `data-quality-audit.md` Part 4 sub-task c
+- [ ] **D-110** — [INDEX] Add 12 missing FK indexes — highest priority: `PersonSkill.skillId`, `TimesheetEntry.timesheetWeekId`, `ProjectActivationApproval.requestedById`, `ProjectActivationApproval.decidedById`. Consider a CI lint to prevent regressions. — `data-quality-audit.md` Part 4 sub-task d
+- [ ] **D-111** — [HARDEN] Add Postgres CHECK constraints — schema currently has zero (confirms HARDEN_WIRING_MAP §15.1). Bundle 6-10 invariants: `allocationPercent BETWEEN 0 AND 100`, `effectiveTo IS NULL OR effectiveTo > effectiveFrom`, `hoursWorked >= 0`, `headcountFulfilled <= headcountRequired`, `LENGTH(reason) >= 10` (close-override), `workspendSummary IS NOT NULL OR status != 'CLOSED'`. — `data-quality-audit.md` Part 6
+- [ ] **D-112** — [DECIDE] Class E `isActive Boolean` only (Client, Tenant, Vendor) — no audit-trail timestamp. Migrate to `archivedAt` if any analytics need historical inactivity data; else document as intentionally simple. — `data-quality-audit.md` Part 5 obs 2
+- [ ] **D-113** — [DOCUMENT] Class F (`isActive` + `archivedAt`) on HelpTip, RateCard, RateCardEntry, ResponsibilityRule. **RateCard is financial** — drift causes "rate card we charged on but isActive=false" bugs. Either document state machine in schema comments (S) or migrate to single pattern (M). — `data-quality-audit.md` Part 5 obs 3
+
+### Phase 4 — JTBD validation (docs/planning/jtbd-validation-matrix.md)
+
+8 roles × 5 JTBDs = 40 live walks against `localhost:5173` + `localhost:3000/api`; 27 GREEN / 11 AMBER / 2 RED. Run date 2026-05-09. Raw data: `docs/planning/jtbd-screenshots/walker-results.json` + 40 PNGs. Source: `docs/planning/research-checkpoints/phase-4.md`.
+
+- [ ] **D-114** — [GAP] No `/admin/audit-log` FE route — admin investigation has no surface (RED). `/admin/audit-log` does not exist in `route-manifest.ts`; admin index renders instead. — `jtbd-validation-matrix.md` (A4)
+- [ ] **D-115** — [BUG?] Portfolio radiator shows `0% Green / 0% Critical` despite 14 projects + Avg 48; verify RAG snapshot generation (does the seed populate `ProjectRagSnapshot` rows?). — `jtbd-validation-matrix.md` (D2)
+- [ ] **D-116** — [RBAC] Employee cannot reach `/work-evidence` — JTBD E4 broken (RED). `/work-evidence` is gated to `EVIDENCE_MANAGEMENT_ROLES = ['director','admin']` (route-manifest.ts:145). Widen RBAC to self-scope OR add a section to `/dashboard/employee` and `/my-time`. — `jtbd-validation-matrix.md` (E4)
+- [ ] **D-117** — [GAP] No `/admin/setup` post-install control surface; setup wizard is one-shot at `/setup`. — `jtbd-validation-matrix.md`
+- [ ] **D-118** — [UPDATE] D-102 narrative — `/staffing-board` already redirects to `/staffing-desk?view=timeline`; remaining work is drag-write inside `/staffing-desk`. — `jtbd-validation-matrix.md`
+- [ ] **D-119** — [DECIDE] dual-role default landing — `/dashboard/hr` wins over RM (undocumented precedence rule); document or add per-user override (PlatformSetting / PersonNotificationPreference). — `jtbd-validation-matrix.md`
+- [ ] **D-120** — [SEED/DATA] RM dashboard for Sophia (1 team / 6 people) shows 0% Util / 0/6 assigned, while global staffing-desk shows 27% Fill Rate / 15 Overallocated. Verify seed RM-managed-team coverage OR fix dashboard data shaping. — `jtbd-validation-matrix.md`
+- [ ] **D-121** — [UX] Silent JS RBAC errors — director on portfolio-radiator, delivery_manager on planned-vs-actual, employee on `/people` all throw "Insufficient role for this operation" page-errors while the page renders. Sub-features should fail loud (visible error region with retry) or be hidden when role lacks access. — `jtbd-validation-matrix.md`
+
+### Phase 5 — Customization debt (docs/planning/customization-debt-register.md)
+
+13 new debt items + 11 already-correct positives + migration order + ~21 proposed L1 catalog keys, classified across the 5-layer L0..L4 model. Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-5.md`.
+
+- [ ] **D-122** — [L1] `StaffingSuggestionsService` skill importance weights (0.5/1.0/2.0) + proficiency match thresholds (1.0/0.6/0.3/0) — 7 PlatformSetting keys. — `customization-debt-register.md`
+- [ ] **D-123** — [L1] `StaffingSuggestionsService` recent-role window (12 months) + recency modifier (1.2) — 2 keys. — `customization-debt-register.md`
+- [ ] **D-124** — [L1] `AssignmentSlaSweepService` pre-breach warning levels (0.5, 0.75) — already commented as TODO; 2 keys. — `customization-debt-register.md`
+- [ ] **D-125** — [L1] `AssignmentSlaSweepService` risk-score breach threshold (15) — 1 key. — `customization-debt-register.md`
+- [ ] **D-126** — [L1] `NudgeSweeperService` four windows: 60min sweep, 48h proposal-ack, 72h timesheet, 24h dedup — 4 keys. — `customization-debt-register.md`
+- [ ] **D-127** — [L1] `ProjectRiskService` default probability/impact (3/3) + critical-score threshold (15) — 3 keys; adjacent to PM-06. — `customization-debt-register.md`
+- [ ] **D-128** — [L2] `ProjectRiskService` cadence-to-days (7/14/30/90) — fold into D-107 `risk-review-cadence` MetadataDictionary as `value:{days:int}` per entry. — `customization-debt-register.md`
+- [ ] **D-129** — [L1] `ProjectClosureReadinessService` budget variance threshold (>10%) — 1 key. — `customization-debt-register.md`
+- [ ] **D-130** — [L0+ → L1] Three repeated `@RequireRoles(...)` role-list patterns (24×, 29×, 22×). Step 1: extract to named constants in `src/shared/auth/role-presets.ts` (cheap, eliminates drift). Step 2: drive from `responsibilityMatrix.*.roles` PlatformSetting. Step 3: fold into ResponsibilityRule (S-05). Phase 9 D-158 extends scope to read endpoints. — `customization-debt-register.md`
+- [ ] **D-131** — [L2 companion] Frontend risk-enum display labels missing in `labels.ts` (RiskCategory/RiskStatus/RiskType/RiskStrategy used in `RisksIssuesTab.tsx:33` and `RiskRegister.tsx:30-31`); after D-107 lands, FE reads `entry.displayName`. — `customization-debt-register.md`
+- [ ] **D-132** — [TYPE-SAFETY] Add `Grade` TS const (`src/shared/lookups/grades.ts` exporting `['G7'..'G14'] as const`) for type-safe DTOs/forms; mirrors the `PlatformRole` pattern. Grade L2 seeding is already correct. — `customization-debt-register.md`
+
+### Phase 6 — UI normalization (docs/planning/ui-normalization-audit.md)
+
+Thin audit (Phase DS + Phase 18 already cover most of the substance); 6 conformance rules audited (5 clean + 1 regression), 1 architecture decision pending, 1 test gap. Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-6.md`.
+
+- [ ] **D-133** — [REGRESSION] `frontend/src/routes/my-time/MyTimePage.tsx:821` raw `<button>` violates `no-raw-button` ERROR rule (1 occurrence; baseline=0). Replace with DS `<Button>` ghost/icon variant. Also: verify CI runs `node scripts/check-ds-conformance.cjs --report` as a blocking gate; the regression suggests it may not be enforced. — `ui-normalization-audit.md`
+- [ ] **D-134** — [DECIDE] Group A inline-panel architecture — `DepartmentSidebarDrawer.tsx` (231 LoC) + `PersonSidebarDrawer.tsx` (244 LoC) gated on the DS-5 / `MasterDetailLayout` decision per `ds-deferred-items.md`. Either schedule DS-5 to land or formally accept the inline pattern as the chosen UX. — `ui-normalization-audit.md`
+- [ ] **D-135** — [TEST] Add `DeliveryManagerDashboardPage.test.tsx` mirroring the other 7 role-dashboard tests. Per `phase18-standardization-changelog.md` 18-A-09 — DM dashboard is the only one without a test file. — `ui-normalization-audit.md`
+
+### Phase 7 — Tab and nav (docs/planning/tab-and-nav-audit.md)
+
+60+ routes audited; 6 groups assessed; 2 underused (`governance`, `evidence`), 2 overloaded (`work` 18 routes, `admin` 15 routes). Proposed restructure: 6 → 9 groups. Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-7.md`.
+
+- [ ] **D-136** — [REORG] Split `work` (18 → 4 groups: `projects`, `staffing`, `time`, `reports`). — `tab-and-nav-audit.md`
+- [ ] **D-137** — [REORG] Retire `governance` (fold `/exceptions` to `reports`; resolve `/integrations` duplicate per D-101). — `tab-and-nav-audit.md`
+- [ ] **D-138** — [REORG] Retire `evidence` (fold `/work-evidence` to `reports`; companion to D-116 RBAC fix). — `tab-and-nav-audit.md`
+- [ ] **D-139** — [REORG] Split `admin` (15 → 3 groups: `admin-config`, `admin-integrations`, `admin-governance`); closes D-117. — `tab-and-nav-audit.md`
+- [ ] **D-140** — [TYPE] Update `RouteGroup` type to 8-9 keys reflecting D-136..D-139. — `tab-and-nav-audit.md`
+- [ ] **D-141** — [DOC] Codify or comment the implicit "My Work" pseudo-group at `SidebarNav.tsx:82-87` (computed at sidebar render time from `(employee dashboard + account settings)`; not stored as a `RouteGroup`). — `tab-and-nav-audit.md`
+
+### Phase 8 — Scalability and modularity (docs/planning/scalability-modularity-audit.md)
+
+Module dependency graph (mermaid + import-count table) + 20 ranked perf hotspots + 6 scaling-cliff projections + modularity refactor recommendations. Architecture green at the depcruise gate; deeper coupling story is fan-out (`dashboard` imports from 10 modules). Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-8.md`.
+
+- [ ] **D-142** — [SCALE] Outbox publisher + DomainEvent producers — zero-wired. Schema models + service skeleton exist, but a recursive grep finds zero producers and zero publisher; missing `attemptCount`/`lastError` on `OutboxEvent`. Cross-ref HARDEN_BRIEF F2. — `scalability-modularity-audit.md` §3(g)
+- [ ] **D-143** — [SCALE] Database connection-pool defaults unconfigured. `prisma.service.ts:50-58` instantiates `PrismaClient` with no `connection_limit`; default ~9 at 4 vCPU; cliff at ~50 concurrent users. Make env-driven and document the tuning matrix. — `scalability-modularity-audit.md` §3(j)
+- [ ] **D-144** — [SCALE] Top-3 unbounded `findMany` (closes Phase 20c-12 scope). `project-assignment.repository.ts:84` empty where; `planned-vs-actual-query.service.ts:79` no take; DM dashboard 4× full TimesheetEntry scans (`delivery-manager-dashboard-query.service.ts:211/242/284/353`). 9 unbounded calls confirmed (out of 308); top three account for ~2 M row-touches per dashboard load. — `scalability-modularity-audit.md` §3(c)
+- [ ] **D-145** — [N+1] PvA per-project `findUnique` loop. `planned-vs-actual-query.service.ts:382-384` — replace with `findMany({ where: { id: { in: pids } } })`. — `scalability-modularity-audit.md` §3(b)
+- [ ] **D-146** — [N+1] Workforce planner per-person `platformSetting.findUnique`. `workforce-planner.service.ts:625` — hoist outside the 5,000-person loop. — `scalability-modularity-audit.md` §3(b)
+- [ ] **D-147** — [PERF] Materialized rollup table bundle: `mv_person_week_utilization`, `mv_project_week_actuals`, `mv_project_capitalisation_month`, `mv_overtime_summary_week`, `mv_dm_dashboard_aggregates`, `mv_radiator_history`. D-110 (FK indexes) is prerequisite. — `scalability-modularity-audit.md` §3(h)
+- [ ] **D-148** — [PERF] CDN-able tenant-shared metadata. Override global `no-store` (`main.ts:55`) on `/api/admin/skills`, `/api/metadata/dictionaries*`, `/api/admin/roles`, `/api/admin/grades` to `public, max-age=3600`. — `scalability-modularity-audit.md` §3(i)
+- [ ] **D-149** — [PERF] ETag + 304 for heatmaps + radiator. No ETag support in `src/`; add ETag interceptor for `/api/reports/mood-heatmap`, `/api/staffing-desk/project-timeline`; switch radiator endpoints to `private, max-age=60`. — `scalability-modularity-audit.md` §3(i)
+- [ ] **D-150** — [REFACTOR] God services + non-dashboard god FE pages. Backend `setup.service.ts` (696 LoC, accumulation); FE `MyTimePage.tsx` (1,237) + `TimesheetPage.tsx` (971); plus `workforce-planner.service.ts` (1,584, cohesive but split-worthy). Distinct from Phase 20c-15 (dashboard pages). — `scalability-modularity-audit.md` §3(e)
+- [ ] **D-151** — [DOC] Refine forwardRef cycle count (Phase 20c-08). Actual is **5 modules participating, 3 bidirectional cycles** (not "4 modules"); `staffing-requests`/`exceptions` are unidirectional DI. — `scalability-modularity-audit.md` §3(d)
+- [ ] **D-152** — [DECIDE] Dashboard module hub coupling (10 imports). Decide explicitly: keep `dashboard.module.ts` as a "presentation aggregation" hub (today's reality) OR push queries back to owning modules behind a thin facade. Same shape applies to `exceptions.module.ts` (6 imports). — `scalability-modularity-audit.md` §3(a)
+
+### Phase 9 — Real-organization readiness (docs/planning/real-org-readiness-gap.md)
+
+Catalogues gaps a real customer (5,000-person org, fiscal year != Jan 1, multi-currency, Okta SSO, distributed teams across timezones, 30-year retention/compliance posture) hits on Day 1 / Week 1 / Month 1. Run date 2026-05-10. Phase 1-8 audits + HARDEN_BRIEF F6 are cross-referenced where they close the same gap; Phase 9 mints new D-IDs only when no existing item covers the finding.
+
+- [ ] **D-153** — [SECURITY] Tenant-scoping gap: notification suite + IdempotencyKey + IntegrationSyncState lack `tenantId`. 80 of 105 models are not in HARDEN_BRIEF F6.1-F6.3 scope; multi-tenant single-DB hosting leaks `NotificationChannel` (`prisma/schema.prisma:1395`), `NotificationTemplate` (1412), `NotificationRequest` (1432), `NotificationDelivery` (1459), `IdempotencyKey` (1325), `IntegrationSyncState` (1378), `PlatformSetting` (1770). — `real-org-readiness-gap.md` §2(a)
+- [ ] **D-154** — [SECURITY] Repository where-clause tenant-filter ratchet. Sample of 8-12 repositories shows `findMany`/`findFirst`/`findUnique` calls lack `where: { tenantId }` even where the column exists (`workload.repository.ts:41`, `timesheet.repository.ts:18`, `financial.repository.ts:36`). Wire a Prisma middleware extension that injects the filter + add a CI lint. — `real-org-readiness-gap.md` §2(a)
+- [ ] **D-155** — [BLOCKER] SSO OIDC implementation gap. `sso.*` settings (`platform-settings.service.ts:33-41`) + `openid-client@6.8.2` dep wired, but no `/auth/oidc/*` route handler in `auth.controller.ts:1-228`; `sso.autoProvisionUsers` setting has zero consumer in `src/`. — `real-org-readiness-gap.md` §2(h)
+- [ ] **D-156** — [SCALE] M365 reconciliation auto-provision gap. `m365-directory-adapter.ts:1-38` is read-only `fetchUsers/fetchManagers/mapExternalUserToInternal`; does not create Person rows on directory pull. — `real-org-readiness-gap.md` §2(h)
+- [ ] **D-157** — [DECIDE] SCIM 2.0 server stub for IdP-driven user lifecycle. Zero `/scim/Users\|/scim/Groups` routes; no IdP-driven deprovision path. Recommendation: defer until first customer asks. — `real-org-readiness-gap.md` §2(h)
+- [ ] **D-158** — [SECURITY] Extend ResponsibilityRule to read endpoints (extends D-130). `ResponsibilityActionKind` (`prisma/schema.prisma:77-84`) covers mutations only; 330 `@RequireRoles` invocations across 52 distinct patterns include every `@Get` and cannot consume tenant rules. Top read pattern `@RequireRoles('admin')` ×67. — `real-org-readiness-gap.md` §2(b)
+- [ ] **D-159** — [DECIDE] Tenant role redefinition admin UI. No `RolePermissionAdminPage` in `frontend/src/routes/admin/`; fixed list of 8 roles; tenant cannot define `custom_role_X` or redefine role capabilities. — `real-org-readiness-gap.md` §2(b)
+- [ ] **D-160** — [BLOCKER] Fiscal calendar entity + period-aware financial rollups. `financial.repository.ts:216-217` hardcodes `Date.UTC(fiscalYear, 0, 1)`; `general.fiscalYearStart` setting (`platform-settings.service.ts:9`, read at line 143) is unused; UK FY=Apr1, AU FY=Jul1, US fed FY=Oct1 produce broken capitalisation. May warrant ADR + split into D-160a (consume setting) + D-160b (FiscalCalendar/FiscalPeriod entities). — `real-org-readiness-gap.md` §2(c)
+- [ ] **D-161** — [LOCALE] Tenant timezone + weekStartDay propagation. `general.timezone` (`platform-settings.service.ts:8`) and `timesheets.weekStartDay` (line 15) settings are read into the DTO but never consumed; `pulse.service.ts:14-22, 41` calls `getMondayOfWeek(new Date())` in server UTC; cross-timezone teams see misaligned week boundaries. — `real-org-readiness-gap.md` §2(c)(e)
+- [ ] **D-162** — [LOCALE] Org seed depth shallow vs real-org pattern. `it-company-profile.ts:479-490` seeds Root → Directorate → Department (3 levels); real-org pattern needs 5 (with Region/Country layer). Schema fine — seed gap only. — `real-org-readiness-gap.md` §2(c)
+- [ ] **D-163** — [LOCALE] PublicHoliday tenant/region scoping. `prisma/schema.prisma` `PublicHoliday.countryCode @default("AU")` (~line 2210); `public-holiday.service.ts:15` defaults to `'AU'`; multi-region tenants cannot register UK + IN holidays simultaneously. — `real-org-readiness-gap.md` §2(c)
+- [ ] **D-164** — [BLOCKER] FxRate model + multi-currency consolidation in capitalisation/budget reports. Zero `FxRate`/`exchangeRate` in `prisma/schema.prisma`; `src/modules/financial-governance/application/financial.service.ts:61-196` sums per-project capex/opex in native currencies; USD + EUR project rates produce non-comparable native-currency P&L. — `real-org-readiness-gap.md` §2(d)
+- [ ] **D-165** — [LOCALE] Frontend currency formatter wiring + `date-fns-tz` adoption. `BudgetCapexOpexSummary.tsx:15` hardcodes `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`; `VendorEngagementPanel.tsx:11` same; 120 raw `new Date()` calls; `date-fns-tz` not in `frontend/package.json`. — `real-org-readiness-gap.md` §2(d)(e)
+- [ ] **D-166** — [DATA] Bulk-import scope expansion: Project/OrgUnit/Skill/RateCard + XLSX + ImportBatch model + transactional rollback. Today: Person-only, CSV-text body, sync, no batch tracking, no rollback (`admin-config.controller.ts:222-311`); no `ImportBatch`/`BulkImportJob` model in schema. — `real-org-readiness-gap.md` §2(f)
+- [ ] **D-167** — [COMPLIANCE] GDPR right-to-erasure endpoint + AuditLog redaction strategy. Zero `purge\|forget\|gdpr` hits in `src/`; AuditLog (`prisma/schema.prisma:1294-1317`) is hash-chained, indefinite retention, payload-PII intact; `actorId onDelete: SetNull` orphans audit rows. Decision tree: redact payload PII vs. delete row vs. cryptographic forgetting. Consumer of D-96. — `real-org-readiness-gap.md` §2(g)
+- [ ] **D-168** — [COMPLIANCE] AuditLog retention policy + auto-purge. `evidenceManagement.retentionDays` is nullable (default = indefinite); no `audit.retentionDays` setting; no purge cron; AuditLog has no `expiresAt`; violates GDPR Art. 5(1)(e) storage limitation. — `real-org-readiness-gap.md` §2(g)
+- [ ] **D-169** — [SCALE] Reporting CSV/XLSX export endpoints + cursor pagination + `modifiedSince` filter. `src/modules/reports/` has 3 GET endpoints, all JSON-only; zero `cursor\|modifiedSince` hits in reports module; BI tools (Snowflake, Power BI, Tableau) cannot poll incrementally. References D-148/D-149 (Phase 8) for ETag/CDN posture on cacheable extracts. — `real-org-readiness-gap.md` §2(k)
+- [ ] **D-170** — [DOC] Webhook event-type registry + schema documentation. `InMemoryWebhookService.dispatch(eventType: string, payload)` (`admin-config.controller.ts:315-344`) is unconstrained; integrators cannot self-discover the schema. — `real-org-readiness-gap.md` §2(k)
+- [ ] **D-171** — [CUSTOM] Customization breadth +5 (extends D-122..D-132). 5 new scaling-lens debts under realistic workload: per-project SLA profiles (`assignment-sla.service.ts:33-38`), per-skill matching weights (`platform-settings.service.ts:92-101`), per-org allocation ceiling (`hr-manager-dashboard-query.service.ts:171`), per-workflow timesheet lock window (`platform-settings.service.ts:18, 154`), industry presets (Finance/Healthcare/Tech/Public-Sector). — `real-org-readiness-gap.md` §2(i)
+
+_Phase 9 contributed 19 items; counter now at D-171._
+
+### Phase 10 — Synthesis (docs/planning/synthesis-themes.md)
+
+Cross-cuts the 87 D-items (D-85..D-171) from Phases 1-9 into 24 themes (T-01..T-24), impact×effort scored, sprint-mapped, with a Mermaid dependency graph. Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-10.md`. **0 new D-ids minted** — counter stays at D-171. Sprint 0 = 6 P0 themes matching Phase 9's Top-10 Blockers shape.
+
+- [ ] **T-07** — [P0] Locale + timezone + week boundaries. Bundles D-161, D-163, D-165. Effort: 5–7 days. Sprint: S0. — `synthesis-themes.md` §2 T-07
+- [ ] **T-11** — [P1] Outbox producers + DB connection pool. Bundles D-142, D-143. Effort: 4–7 days. Sprint: S1. — `synthesis-themes.md` §2 T-11
+- [ ] **T-12** — [P1] Hot-path query optimization. Bundles D-144, D-145, D-146. Effort: 3–5 days. Sprint: S1. — `synthesis-themes.md` §2 T-12
+- [ ] **T-18** — [P1] Approval-flow + admin gap completion. Bundles D-91, D-92, D-93, D-114, D-117. Effort: 6–8 days. Sprint: S1. — `synthesis-themes.md` §2 T-18
+- [ ] **T-20** — [P1] Dashboard + RBAC data quality fixes. Bundles D-115, D-116, D-119, D-120, D-121. Effort: 5–7 days. Sprint: S1. — `synthesis-themes.md` §2 T-20
+- [ ] **T-02** — [P0] SSO + IdP-driven user lifecycle. Bundles D-155, D-156, D-157 (D-157 deferred). Effort: 8–12 days. Sprint: S0 (D-155+D-156); Backlog (D-157). — `synthesis-themes.md` §2 T-02
+- [ ] **T-06** — [P0] Multi-currency consolidation (FxRate). Bundles D-164. Effort: 7–10 days. Sprint: S0. — `synthesis-themes.md` §2 T-06
+- [ ] **T-10** — [P2] Customization L1 catalog (config knobs). Bundles D-122, D-123, D-124, D-125, D-126, D-127, D-129, D-171. Effort: 6–9 days. Sprint: S3. — `synthesis-themes.md` §2 T-10
+- [ ] **T-16** — [P1] Place-person flow consolidation. Bundles D-85, D-89, D-90, D-98, D-100, D-102, D-118. Effort: 6–9 days. Sprint: S2. — `synthesis-themes.md` §2 T-16
+- [ ] **T-01** — [P0] Multi-tenant data isolation. Bundles D-153, D-154 (+ HARDEN_BRIEF F6 cross-ref). Effort: 15–25 days; splittable T-01a/b. Sprint: S0 (T-01a) / S1 (T-01b). — `synthesis-themes.md` §2 T-01
+- [ ] **T-03** — [P0] GDPR + retention compliance. Bundles D-96, D-167, D-168. Effort: 10–15 days. Sprint: S0 (ADR) / S1 (impl). Blocked by T-01 (tenantId on AuditLog). — `synthesis-themes.md` §2 T-03
+- [ ] **T-05** — [P0] Fiscal calendar + period-aware rollups. Bundles D-160 (splittable D-160a/b). Effort: 3 days (D-160a) / 10–15 days (D-160b). Sprint: S0 (D-160a) / S2 (D-160b). Blocked by T-06 (FxRate). — `synthesis-themes.md` §2 T-05
+- [ ] **T-22** — [P2] UI normalization (DS regression + decisions). Bundles D-133, D-134, D-135. Effort: 2–3 days. Sprint: S3. — `synthesis-themes.md` §2 T-22
+- [ ] **T-08** — [P1] Schema-quality batch. Bundles D-103, D-104, D-105, D-106, D-108, D-109, D-110, D-111, D-112, D-113. Effort: 10–15 days. Sprint: S1. **D-110 prereq for T-13 D-147.** — `synthesis-themes.md` §2 T-08
+- [ ] **T-09** — [P1] Lookups → MetadataDictionary. Bundles D-101, D-107, D-128, D-131, D-132. Effort: 8–12 days. Sprint: S2. — `synthesis-themes.md` §2 T-09
+- [ ] **T-14** — [P2] BI extracts + webhook integration surface. Bundles D-169, D-170. Effort: 8–12 days. Sprint: S4. Blocked by T-11 (outbox), T-13 (caching). — `synthesis-themes.md` §2 T-14
+- [ ] **T-21** — [P1] Nav restructure (6 → 9 groups). Bundles D-136, D-137, D-138, D-139, D-140, D-141. Effort: 6–10 days. Sprint: S2. Blocked by T-20 D-116. — `synthesis-themes.md` §2 T-21
+- [ ] **T-04** — [P1] Tenant role customization (RBAC L0→L1). Bundles D-130, D-158, D-159. Effort: 12–18 days. Sprint: S2. — `synthesis-themes.md` §2 T-04
+- [ ] **T-13** — [P1] Materialized rollups + caching layer. Bundles D-147, D-148, D-149. Effort: 12–18 days. Sprint: S2. **Blocked by T-08 D-110.** — `synthesis-themes.md` §2 T-13
+- [ ] **T-19** — [P2] Functional duplication clean-up. Bundles D-94, D-95, D-97. Effort: 4–6 days. Sprint: S3. — `synthesis-themes.md` §2 T-19
+- [ ] **T-23** — [P2] Bulk-import + data-ops expansion. Bundles D-166. Effort: 12–18 days. Sprint: S4. — `synthesis-themes.md` §2 T-23
+- [ ] **T-17** — [P3] Route alias clean-up. Bundles D-86, D-87, D-88. Effort: 1 day. Sprint: Backlog. — `synthesis-themes.md` §2 T-17
+- [ ] **T-24** — [P3] Org structure depth (real-org seed). Bundles D-162. Effort: 2–3 days. Sprint: Backlog. — `synthesis-themes.md` §2 T-24
+- [ ] **T-15** — [P3] Architecture refactors (god services + cycles). Bundles D-99, D-150, D-151, D-152. Effort: 15–25 days. Sprint: Backlog. — `synthesis-themes.md` §2 T-15
+
+_Phase 10 contributed 24 themes (T-01..T-24); 0 new D-items; counter still at D-171._
+
+### Phase 11 — Master plan + roadmap (docs/planning/NEXT_ITERATION_PLAN.md + next-iteration-roadmap.xlsx)
+
+Authored 2026-05-10. Consumes Phase 10's 24-theme synthesis to produce the master plan (9 goals × full structure: Current state / Target state / Migration path / Acceptance / Sprint mapping / Effort / Risks / Dependencies) + the 5-sheet xlsx roadmap (Tasks 91 rows, Risk register 19, JTBD matrix 40, Customization debt 32, HARDEN coverage 42). Source: `docs/planning/research-checkpoints/phase-11.md`. **Phase 12 quality gate: 7/7 pass** (9 audit artifacts; 9 goals; 91 tasks vs 50 floor; 40/40 JTBDs scored; 11 flow verdicts vs 5 floor; 32 customization items vs 30 floor; 63 UI standardization log entries vs 20 floor).
+
+**Goal-to-theme mapping:**
+
+- **Goal 1 — Lean the flows** → T-16 (place-person), T-18 (approval gaps), T-17 (route aliases). Tasks 1.1–1.12.
+- **Goal 2 — Deprecate doubled functionality** → T-19 (functional dup), T-16 partial, T-17 partial. Tasks 2.1–2.7.
+- **Goal 3 — Simplify architecture** → T-11 (outbox + DB pool), T-15 (god services, backlog). Tasks 3.1–3.6.
+- **Goal 4 — JTBD coverage per role** → T-20 (dashboard quality), T-22 partial (DM dashboard test). Tasks 4.1–4.6.
+- **Goal 5 — Increase tenant customization** → T-04 (RBAC L0→L1), T-09 (lookups), T-10 (L1 catalog). Tasks 5.1–5.16.
+- **Goal 6 — Normalize UI** → T-22 (DS regression + decisions). Tasks 6.1–6.2.
+- **Goal 7 — Review tab categories** → T-21 (nav restructure 6 → 9 groups). Tasks 7.1–7.6.
+- **Goal 8 — Real-organization readiness** → T-01 (multi-tenant), T-02 (SSO), T-03 (GDPR), T-05 (fiscal calendar), T-06 (multi-currency), T-07 (locale), T-23 (bulk-import), T-24 (org seed). Tasks 8.1–8.18.
+- **Goal 9 — Scalability and modularity** → T-08 (schema quality), T-12 (hot-path queries), T-13 (MVs + caching), T-14 (BI extracts + webhooks). Tasks 9.1–9.18.
+
+**Stakeholder inputs locked (Phase 11 gate):** 2 engineers × 2-week sprints; cross-reference HARDEN_BRIEF (don't absorb); GDPR strategy = redact-payload v1 (cryptographic-forgetting v2 backlog); SCIM 2.0 deferred to backlog.
+
+**Capacity honesty.** Sprint 1 + Sprint 2 are over-budget at 2 engineers × 2-week. Plan documents 3 deferrable options for stakeholder pre-commit (add 3rd engineer / defer T-04 / defer T-21). 7 open questions for stakeholders surfaced in the checkpoint.
+
+_Phase 11 contributed the master plan + xlsx; Phase 12 gate passed; 0 new D-ids or T-ids; counter still at D-171, theme counter still at T-24. Research program (Phases 1–12) closed pending final stakeholder review._
