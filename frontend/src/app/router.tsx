@@ -43,6 +43,7 @@ import { ResetPasswordPage } from '@/routes/auth/ResetPasswordPage';
 import { TwoFactorSetupPage } from '@/routes/auth/TwoFactorSetupPage';
 import { AdminPanelPage } from '@/routes/admin/AdminPanelPage';
 import { FeatureFlagsAdminPage } from '@/routes/admin/FeatureFlagsAdminPage';
+import { PeriodLocksAdminPage } from '@/routes/admin/PeriodLocksAdminPage';
 import { BulkImportPage } from '@/routes/admin/BulkImportPage';
 import { BusinessAuditPage } from '@/routes/admin/BusinessAuditPage';
 import { SettingsPage } from '@/routes/admin/SettingsPage';
@@ -362,6 +363,11 @@ const dashboardChildren = [
     // Sprint F-1.1 — Tenant Settings Catalog admin surface.
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><FeatureFlagsAdminPage /></RoleGuard>,
     path: 'admin/feature-flags',
+  },
+  {
+    // F-2.0a (D-93) — admin Period Locks UI.
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><PeriodLocksAdminPage /></RoleGuard>,
+    path: 'admin/period-locks',
   },
   {
     element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><BulkImportPage /></RoleGuard>,

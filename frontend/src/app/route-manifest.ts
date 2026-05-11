@@ -235,6 +235,9 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'governance', navVisible: true, path: '/integrations', title: 'Integrations' },
   { allowedRoles: ADMIN_ROLES, description: 'Metadata, validation, and administrative configuration.', group: 'admin', navVisible: true, path: '/metadata-admin', title: 'Metadata / Admin' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure platform-wide behaviour: timesheets, capitalisation, pulse, notifications, and security.', group: 'admin', navVisible: true, path: '/admin/settings', title: 'Platform Settings' },
+  // F-2.0a (D-93) — admin Period Locks UI on top of the existing backend
+  // /admin/period-locks endpoints. Blocks edits to historical periods.
+  { allowedRoles: ADMIN_ROLES, description: 'Lock past time periods so timesheets, expenses, and capitalisation rows can’t be edited retroactively.', group: 'admin', navVisible: true, path: '/admin/period-locks', title: 'Period Locks' },
   // Sprint F-1.1 — Tenant Settings Catalog admin surface. Lists every
   // registered feature flag with its current state and metadata.
   { allowedRoles: ADMIN_ROLES, description: 'Toggle individual features per tenant; view maturity, ownership, and dependency metadata for every registered flag.', group: 'admin', navVisible: true, path: '/admin/feature-flags', title: 'Feature Flags' },
