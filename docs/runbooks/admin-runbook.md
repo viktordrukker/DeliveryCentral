@@ -37,7 +37,7 @@ Key post-wizard checks:
 - **Create employee:** `/admin/people/new` — 3-step lifecycle wizard. Skills go through PersonSkill multi-picker (silent-drop bug fixed Sprint F-0.5).
 - **Deactivate employee:** `/people/:id` → Lifecycle → Deactivate. Writes AuditLog `person.deactivated` + `EmployeeActivityEvent.DEACTIVATED` + opens an OFFBOARDING case (Sprint F-0.4).
 - **Terminate employee:** same flow, choose Terminate. Cascade-closes their open assignments.
-- **View-as / impersonation:** admin avatar menu → "View as". Persistent banner shows the impersonated identity. Use to debug role-specific issues.
+- **View-as / impersonation:** the **"View as..." `<select>` in the top header** (visible only when logged in as admin, immediately to the left of the user-name chip). Pick an account from the list to assume that user's identity — sidebar shrinks to their role, dashboards re-render with their scope, an orange persistent banner ("Viewing as <Name> — Exit impersonation") appears at the top. Click "Exit impersonation" or set the select back to "View as..." to revert. State is held in `sessionStorage[dc:impersonation]` — closes with the tab. Use to debug role-specific issues without rotating passwords. UAT-19 closure (2026-05-11): the entry is the select, not a button; an "Impersonate" row-action on `/admin/people` is intentionally *not* surfaced because the top-header select is the single canonical entry.
 
 ### Bulk operations
 
