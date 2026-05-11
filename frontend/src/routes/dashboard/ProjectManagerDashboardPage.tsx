@@ -147,7 +147,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Managed Projects</span>
             </Link>
 
-            <Link className="kpi-strip__item" data-jtbd="How many people are working on my projects right now?" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many people are working on my projects right now?" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to your projects with active status." arrow="left" />
               <span className="kpi-strip__value">{d.staffingSummary.activeAssignmentCount}</span>
               <span className="kpi-strip__label">Active Assignments</span>
