@@ -19,6 +19,14 @@ vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: vi.fn(),
 }));
 
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'user-1', roles: ['director'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
 const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);

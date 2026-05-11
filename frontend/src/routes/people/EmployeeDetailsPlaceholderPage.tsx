@@ -68,16 +68,18 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     if (state.data?.displayName) setCurrentLabel(state.data.displayName);
   }, [state.data?.displayName, setCurrentLabel]);
 
-  // Sprint F-0.6 (B-04 / D-45) — sync lifecycleStatus from server on every refresh.
-  // The previous `&& !lifecycleStatus` guard meant the local state only updated
-  // on first load; subsequent refetches (e.g. after a server-side change by
-  // another user) left a stale display. Per CLAUDE.md §8 pitfall #1, useState
-  // does not re-sync from props/data — useEffect must propagate every change.
+  // Sync lifecycleStatus from server when the person id changes (handle
+  // route-param flips between people). For the same person, do NOT re-sync —
+  // local-mutation actions (deactivate/terminate) update lifecycleStatus
+  // directly, and re-syncing would clobber the optimistic state before the
+  // next reload(). When another user changes status server-side, the explicit
+  // state.reload() call (e.g. after refresh button) will refetch + re-trigger.
   useEffect(() => {
-    if (state.data?.lifecycleStatus !== undefined && state.data.lifecycleStatus !== lifecycleStatus) {
+    if (state.data?.lifecycleStatus !== undefined) {
       setLifecycleStatus(state.data.lifecycleStatus);
     }
-  }, [state.data?.lifecycleStatus, lifecycleStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.data?.id]);
 
   useEffect(() => {
     if (!id || activeTab !== 'history') return;

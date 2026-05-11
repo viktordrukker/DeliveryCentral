@@ -14,7 +14,6 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import {
   PLATFORM_FLAGS,
-  PlatformFlagId,
   PlatformFlagsService,
 } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
