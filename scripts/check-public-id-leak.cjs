@@ -49,6 +49,9 @@ const REQUEST_PREFIXES = [
 const EXPLICIT_OPT_OUTS = new Set([
   // Files/classes that legitimately carry non-publicId identifiers we want the
   // lint to ignore. Add entries with a one-line justification comment above.
+  // F-1.1 admin/feature-flags: `id` is the static registry key (e.g. "staffingProposalSlate"),
+  // not a UUID — opaque by construction, never a database id.
+  'FeatureFlagsAdminController',
 ]);
 
 const ID_DECL = /^\s*(?:public\s+|private\s+|protected\s+)?(?:readonly\s+)?id[?!]?\s*:\s*string\b/m;

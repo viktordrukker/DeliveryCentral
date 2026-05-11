@@ -46,7 +46,23 @@ export class CreateEmployeeRequestDto {
   @IsString()
   public role?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  /**
+   * @deprecated Sprint F-0.5 (B-03 closure) — `Person.skillsets[]` free-text array is
+   * superseded by the canonical `PersonSkill` rows reachable via
+   * `PUT /api/people/:id/skills`. The Create Employee FE form (`useEmployeeLifecycleAdmin.ts`)
+   * does not populate this field; it calls `upsertPersonSkills` after create.
+   *
+   * Retained for backwards compatibility with external integrations. Full
+   * removal is a v1.1+ ratchet (delete column, migrate readers in
+   * portfolio-dashboard.service.ts and person-directory.controller.ts to
+   * read from PersonSkill).
+   */
+  @ApiPropertyOptional({
+    type: [String],
+    deprecated: true,
+    description:
+      'Deprecated. Use PUT /api/people/:id/skills with PersonSkill rows. v1.1 will remove this field.',
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

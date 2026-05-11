@@ -1,26 +1,152 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { $Enums, Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLogRecord } from '../application/audit-log-record';
 
+/**
+ * Sprint F-0.3 (B-02 root cause fix) — translates free-form `targetEntityType`
+ * strings used by writers (`'EMPLOYEE'`, `'PROJECT'`, `'ASSIGNMENT'`, ...) to
+ * the canonical `AggregateType` enum values.
+ *
+ * Before this fix the cast `record.targetEntityType as $Enums.AggregateType`
+ * silently failed at the Postgres enum coercion, the .catch() swallowed the
+ * error, and AuditLog stayed empty (verified 2026-05-10: 0 rows in DB despite
+ * 200+ persons + 45 projects + 332 assignments seeded).
+ *
+ * Maintain this map as a closed set. New aggregate types added to the schema
+ * must be added here too — the `check-flags.cjs`-style consistency rule for
+ * audit-log writers is a follow-up item (F-1.x ratchet).
+ */
+const AGGREGATE_TYPE_ALIASES: Record<string, $Enums.AggregateType> = {
+  // Person-flavored
+  PERSON: $Enums.AggregateType.Person,
+  EMPLOYEE: $Enums.AggregateType.Person,
+  PEOPLE: $Enums.AggregateType.Person,
+
+  // Org-flavored
+  ORG_UNIT: $Enums.AggregateType.OrgUnit,
+  ORGUNIT: $Enums.AggregateType.OrgUnit,
+  REPORTING_LINE: $Enums.AggregateType.OrgUnit,
+  TEAM: $Enums.AggregateType.OrgUnit,
+
+  // Resource Pool
+  RESOURCE_POOL: $Enums.AggregateType.ResourcePool,
+
+  // Project-flavored
+  PROJECT: $Enums.AggregateType.Project,
+  PROJECT_BUDGET: $Enums.AggregateType.ProjectBudget,
+  PROJECT_RAG_SNAPSHOT: $Enums.AggregateType.ProjectRagSnapshot,
+  PROJECT_RADIATOR: $Enums.AggregateType.ProjectRadiatorOverride,
+  PROJECT_RADIATOR_OVERRIDE: $Enums.AggregateType.ProjectRadiatorOverride,
+  PROJECT_RISK: $Enums.AggregateType.ProjectRisk,
+  PROJECT_CHANGE_REQUEST: $Enums.AggregateType.ProjectChangeRequest,
+  PROJECT_MILESTONE: $Enums.AggregateType.ProjectMilestone,
+  BUDGET_APPROVAL: $Enums.AggregateType.BudgetApproval,
+
+  // Assignment-flavored
+  ASSIGNMENT: $Enums.AggregateType.ProjectAssignment,
+  PROJECT_ASSIGNMENT: $Enums.AggregateType.ProjectAssignment,
+
+  // Staffing
+  STAFFING_REQUEST: $Enums.AggregateType.StaffingRequest,
+
+  // Cases
+  CASE: $Enums.AggregateType.CaseRecord,
+  CASE_RECORD: $Enums.AggregateType.CaseRecord,
+
+  // Time
+  TIMESHEET_WEEK: $Enums.AggregateType.TimesheetWeek,
+  TIMESHEET: $Enums.AggregateType.TimesheetWeek,
+  PERIOD_LOCK: $Enums.AggregateType.PeriodLock,
+  LEAVE_REQUEST: $Enums.AggregateType.LeaveRequest,
+
+  // Notifications
+  NOTIFICATION: $Enums.AggregateType.Notification,
+  NOTIFICATION_REQUEST: $Enums.AggregateType.Notification,
+
+  // Tenant + integration
+  TENANT: $Enums.AggregateType.Tenant,
+  CLIENT: $Enums.AggregateType.Client,
+  VENDOR: $Enums.AggregateType.Vendor,
+
+  // Skills
+  SKILL: $Enums.AggregateType.Skill,
+  PERSON_SKILL: $Enums.AggregateType.Skill,
+
+  // Cost rates
+  PERSON_COST_RATE: $Enums.AggregateType.PersonCostRate,
+  RATE_CARD: $Enums.AggregateType.PersonCostRate,
+  RATE_CARD_ENTRY: $Enums.AggregateType.PersonCostRate,
+
+  // Employment events
+  EMPLOYMENT_EVENT: $Enums.AggregateType.EmploymentEvent,
+
+  // Contact
+  CONTACT: $Enums.AggregateType.Contact,
+
+  // Domain events / unmapped fall-through
+  DOMAIN_EVENT: $Enums.AggregateType.DomainEvent,
+  INTEGRATION_SYNC: $Enums.AggregateType.DomainEvent,
+  METADATA_DICTIONARY: $Enums.AggregateType.DomainEvent,
+  RESPONSIBILITY_RULE: $Enums.AggregateType.DomainEvent,
+
+  // Migration
+  MIGRATION: $Enums.AggregateType.Migration,
+};
+
+/**
+ * Resolve a free-form `targetEntityType` to the canonical AggregateType enum.
+ * Tries (in order): exact PascalCase match against the enum, alias map lookup,
+ * fallback to `DomainEvent` so the audit row still lands.
+ */
+function resolveAggregateType(raw: string | null | undefined): $Enums.AggregateType {
+  if (!raw) return $Enums.AggregateType.DomainEvent;
+  // Exact PascalCase match first (covers writers that already pass canonical).
+  if ((Object.values($Enums.AggregateType) as string[]).includes(raw)) {
+    return raw as $Enums.AggregateType;
+  }
+  const upper = raw.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  return AGGREGATE_TYPE_ALIASES[upper] ?? $Enums.AggregateType.DomainEvent;
+}
+
+const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Sprint F-0.3 (B-02 secondary fix) — `AuditLog.aggregateId` is UUID-typed
+ * in Postgres but writers pass non-UUID identifiers (PlatformSetting keys
+ * like `general.platformName`, dictionary entry slugs, etc.). The previous
+ * silent .catch() hid this; the new warn log surfaced it.
+ *
+ * If the raw id isn't UUID-shaped, return ZERO_UUID and let the caller
+ * stash the original in the payload (forensic traceability).
+ */
+function coerceUuid(raw: string | null | undefined): { uuid: string; preserved: string | null } {
+  if (!raw) return { uuid: ZERO_UUID, preserved: null };
+  if (UUID_RE.test(raw)) return { uuid: raw, preserved: null };
+  return { uuid: ZERO_UUID, preserved: raw };
+}
+
 @Injectable()
 export class PrismaAuditLogStore {
+  private readonly logger = new Logger(PrismaAuditLogStore.name);
+  private writeFailures = 0;
+
   public constructor(private readonly prisma: PrismaService) {}
 
   public append(record: AuditLogRecord): void {
     this.appendToCache(record);
+    const aggregateType = resolveAggregateType(record.targetEntityType);
+    const { uuid: aggregateId, preserved: rawAggregateId } = coerceUuid(
+      record.targetEntityId ?? record.subjectId,
+    );
     void this.prisma.auditLog
       .create({
         data: {
-          // Pre-existing drift: AuditLogRecord.targetEntityType is a free-form
-          // string ('PROJECT', 'ASSIGNMENT', 'Project', etc.) but the DB column
-          // is the AggregateType enum. Postgres rejects unmatched values; this
-          // path swallows the rejection in .catch() below. Phase 2 work: align
-          // writers to the enum or widen the column.
-          aggregateType: record.targetEntityType as $Enums.AggregateType,
-          aggregateId: record.targetEntityId ?? record.subjectId ?? '00000000-0000-0000-0000-000000000000',
+          aggregateType,
+          aggregateId,
           eventName: record.actionType,
           actorId: record.actorId ?? null,
           correlationId: record.correlationId ?? null,
@@ -34,11 +160,24 @@ export class PrismaAuditLogStore {
             oldValues: (record.oldValues ?? null) as Prisma.InputJsonValue | null,
             newValues: (record.newValues ?? null) as Prisma.InputJsonValue | null,
             subjectId: record.subjectId ?? null,
+            // Preserve the original free-form type for forensic traceability
+            // when the alias map didn't match exactly (we fell back to DomainEvent).
+            originalTargetEntityType: record.targetEntityType ?? null,
+            // Preserve non-UUID aggregateId (e.g. PlatformSetting key) for
+            // forensic traceability when we coerced to ZERO_UUID.
+            rawAggregateId,
           } as Prisma.InputJsonValue,
         },
       })
-      .catch(() => {
-        // Swallow write errors — audit logging must not break the caller
+      .catch((error: unknown) => {
+        // Audit logging must never break the caller, but the error must be
+        // visible — Phase 4 walker logged "0 audit records" because the
+        // previous silent .catch() swallowed every Postgres rejection.
+        this.writeFailures += 1;
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `AuditLog write failed for actionType=${record.actionType} targetEntityType=${record.targetEntityType}: ${message} (cumulative failures=${this.writeFailures})`,
+        );
       });
   }
 

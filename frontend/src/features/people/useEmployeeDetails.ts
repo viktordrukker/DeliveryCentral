@@ -9,12 +9,14 @@ import { QueryState } from '@/lib/api/query-state';
 
 interface EmployeeDetailsState extends QueryState<PersonDirectoryItem> {
   notFound: boolean;
+  forbidden: boolean;
 }
 
 export function useEmployeeDetails(id?: string): EmployeeDetailsState {
   const [state, setState] = useState<EmployeeDetailsState>({
     isLoading: true,
     notFound: false,
+    forbidden: false,
   });
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export function useEmployeeDetails(id?: string): EmployeeDetailsState {
         error: 'Employee id is required.',
         isLoading: false,
         notFound: false,
+        forbidden: false,
       });
       return;
     }
@@ -32,6 +35,7 @@ export function useEmployeeDetails(id?: string): EmployeeDetailsState {
     setState({
       isLoading: true,
       notFound: false,
+      forbidden: false,
     });
 
     void fetchPersonDirectoryById(id)
@@ -44,6 +48,7 @@ export function useEmployeeDetails(id?: string): EmployeeDetailsState {
           data,
           isLoading: false,
           notFound: false,
+          forbidden: false,
         });
       })
       .catch((error: unknown) => {
@@ -55,6 +60,16 @@ export function useEmployeeDetails(id?: string): EmployeeDetailsState {
           setState({
             isLoading: false,
             notFound: true,
+            forbidden: false,
+          });
+          return;
+        }
+
+        if (error instanceof ApiError && error.status === 403) {
+          setState({
+            isLoading: false,
+            notFound: false,
+            forbidden: true,
           });
           return;
         }
@@ -66,6 +81,7 @@ export function useEmployeeDetails(id?: string): EmployeeDetailsState {
               : 'Failed to load employee details.',
           isLoading: false,
           notFound: false,
+          forbidden: false,
         });
       });
 

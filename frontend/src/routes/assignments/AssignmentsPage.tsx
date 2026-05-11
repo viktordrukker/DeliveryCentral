@@ -93,13 +93,12 @@ export function AssignmentsPage(): JSX.Element {
         )}
         {!isEmployeeOnly && (
           <>
-            {canCreateAssignment ? (
-              <Button as={Link} variant="secondary" size="sm" to="/assignments/new">
-                Create Assignment
-              </Button>
-            ) : null}
+            {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
+                Direct "Create Assignment" CTA removed in v1; the slate flow
+                is the only staffing path. The page route stays for inspection;
+                creation goes through Create Staffing Request. */}
             <Button as={Link} variant="primary" size="sm" to="/staffing-requests/new">
-              Create Position
+              Create Staffing Request
             </Button>
           </>
         )}

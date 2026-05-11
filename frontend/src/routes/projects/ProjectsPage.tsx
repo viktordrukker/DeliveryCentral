@@ -16,7 +16,7 @@ import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { useFilterParams } from '@/hooks/useFilterParams';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
-import { fetchProjectHealth, ProjectHealthDto } from '@/lib/api/project-health';
+import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-health';
 import { useProjectRegistry } from '@/features/projects/useProjectRegistry';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';
@@ -107,23 +107,19 @@ export function ProjectsPage(): JSX.Element {
     return () => setActions(null);
   }, [setActions, titleBarContent]);
 
-  // Fetch health for visible items
+  // Sprint F-0.8 (B-14 / D-88) — batch fetch replaces N parallel requests.
+  // Phase 4 walker measured 30+ separate /:id/health calls on a default
+  // /projects load; one batch call replaces the whole burst.
   useEffect(() => {
     if (state.visibleItems.length === 0) return;
     let active = true;
-    void Promise.allSettled(
-      state.visibleItems.map((item) =>
-        fetchProjectHealth(item.id).then((h) => ({ health: h, id: item.id })),
-      ),
-    ).then((results) => {
+    void fetchProjectHealthBatch(state.visibleItems.map((item) => item.id)).then((map) => {
       if (!active) return;
-      const next = new Map<string, ProjectHealthDto>();
-      for (const result of results) {
-        if (result.status === 'fulfilled') next.set(result.value.id, result.value.health);
-      }
-      setHealthMap(next);
+      setHealthMap(map);
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [state.visibleItems]);
 
   const filteredItems = state.visibleItems.filter((item) => {

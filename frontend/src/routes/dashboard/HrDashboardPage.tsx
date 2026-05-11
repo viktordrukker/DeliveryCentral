@@ -176,14 +176,14 @@ export function HrDashboardPage(): JSX.Element {
           )}
 
           <div className="kpi-strip" aria-label="Key metrics">
-            <Link className="kpi-strip__item" to="/people" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many people are in the org?" to="/people" style={{ borderLeft: '3px solid var(--color-accent)' }}>
               <TipBalloon tip="Total number of people in the system regardless of status. Click to view the employee directory." arrow="left" />
               <span className="kpi-strip__value">{totalHeadcount}</span>
               <span className="kpi-strip__label">Total Headcount</span>
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{activeHeadcount} active · {inactiveHeadcount} inactive</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/people?status=active" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many employees are currently active?" to="/people?status=active" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
               <TipBalloon tip="Employees currently active and eligible for assignment." arrow="left" />
               <span className="kpi-strip__value">{activeHeadcount}</span>
               <span className="kpi-strip__label">Active Employees</span>
@@ -194,6 +194,7 @@ export function HrDashboardPage(): JSX.Element {
 
             <Link
               className="kpi-strip__item"
+              data-jtbd="Whose records have data-quality issues?"
               to="#data-quality"
               onClick={(e) => { e.preventDefault(); handleTabChange('data-quality'); }}
               style={{ borderLeft: `3px solid ${dataIssues > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
@@ -208,6 +209,7 @@ export function HrDashboardPage(): JSX.Element {
 
             <Link
               className="kpi-strip__item"
+              data-jtbd="Who is at risk of leaving or churning?"
               to="#lifecycle"
               onClick={(e) => { e.preventDefault(); handleTabChange('lifecycle'); }}
               style={{ borderLeft: `3px solid ${atRisk.length > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
@@ -222,6 +224,7 @@ export function HrDashboardPage(): JSX.Element {
 
             <Link
               className="kpi-strip__item"
+              data-jtbd="How many HR cases are open?"
               to="/cases"
               style={{ borderLeft: `3px solid ${openCaseSubjects.length > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
             >

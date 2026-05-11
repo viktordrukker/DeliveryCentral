@@ -1,3 +1,5 @@
+import { type FeatureFlagId, isFeatureEnabled } from '@/lib/feature-flags';
+
 export type AppRole =
   | 'employee'
   | 'hr_manager'
@@ -15,6 +17,8 @@ export interface AppRouteDefinition {
   path: string;
   title: string;
   allowedRoles?: AppRole[];
+  /** Sprint F-0.1 — feature flag gating route visibility + nav. */
+  flag?: FeatureFlagId;
 }
 
 export interface RouteManifestEntry {
@@ -24,6 +28,26 @@ export interface RouteManifestEntry {
   navVisible?: boolean;
   path: string;
   title?: string;
+  /** Sprint F-0.1 — feature flag gating route visibility + nav. */
+  flag?: FeatureFlagId;
+}
+
+/**
+ * Sprint F-0.1 — predicate composing role + flag visibility for sidebar.
+ *
+ * A route is nav-visible iff:
+ *   1. `navVisible !== false`
+ *   2. role allowed (or `allowedRoles` undefined)
+ *   3. flag enabled (or `flag` undefined)
+ */
+export function isRouteNavVisible(
+  entry: { allowedRoles?: AppRole[]; flag?: FeatureFlagId; navVisible?: boolean },
+  role: AppRole | undefined,
+): boolean {
+  if (entry.navVisible === false) return false;
+  if (entry.allowedRoles && (!role || !entry.allowedRoles.includes(role))) return false;
+  if (entry.flag && !isFeatureEnabled(entry.flag)) return false;
+  return true;
 }
 
 export const ALL_ROLES: AppRole[] = [
@@ -51,7 +75,16 @@ export const RM_DASHBOARD_ROLES: AppRole[] = ['resource_manager', 'director', 'a
 export const HR_DASHBOARD_ROLES: AppRole[] = ['hr_manager', 'director', 'admin'];
 export const DELIVERY_DASHBOARD_ROLES: AppRole[] = ['delivery_manager', 'director', 'admin'];
 export const DIRECTOR_ADMIN_ROLES: AppRole[] = ['director', 'admin'];
-export const EVIDENCE_MANAGEMENT_ROLES: AppRole[] = ['director', 'admin'];
+export const ADMIN_ONLY_ROLES: AppRole[] = ['admin'];
+export const EVIDENCE_MANAGEMENT_ROLES: AppRole[] = [
+  'employee',
+  'project_manager',
+  'resource_manager',
+  'delivery_manager',
+  'hr_manager',
+  'director',
+  'admin',
+];
 export const HR_ADMIN_ROLES: AppRole[] = ['hr_manager', 'admin'];
 export const HR_DIRECTOR_ADMIN_ROLES: AppRole[] = ['hr_manager', 'director', 'admin'];
 export const WORKLOAD_ROLES: AppRole[] = ['resource_manager', 'director', 'admin'];
@@ -112,11 +145,34 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, description: 'Primary dashboard entry point.', group: 'dashboard', navVisible: true, path: '/', title: 'Workload Overview' },
   { allowedRoles: MANAGEMENT_ROLES, description: 'Operational comparison of planned staffing and approved time.', group: 'dashboard', navVisible: true, path: '/dashboard/planned-vs-actual', title: 'Planned vs Actual Time' },
   { allowedRoles: EMPLOYEE_DASHBOARD_ROLES, description: 'Self-oriented dashboard for assignments, workload, and time compliance.', group: 'dashboard', navVisible: true, path: '/dashboard/employee', title: 'Employee Dashboard' },
-  { allowedRoles: PM_DASHBOARD_ROLES, description: 'Project-oriented dashboard for managed projects, staffing gaps, and anomalies.', group: 'dashboard', navVisible: true, path: '/dashboard/project-manager', title: 'PM Dashboard' },
-  { allowedRoles: RM_DASHBOARD_ROLES, description: 'Capacity-oriented dashboard for managed teams, idle resources, and pipeline.', group: 'dashboard', navVisible: true, path: '/dashboard/resource-manager', title: 'RM Dashboard' },
-  { allowedRoles: HR_DASHBOARD_ROLES, description: 'Organization-centric dashboard for headcount, distribution, and people-data quality.', group: 'dashboard', navVisible: true, path: '/dashboard/hr', title: 'HR Dashboard' },
-  { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Team delivery dashboard for anomaly drilldown and delivery metrics.', group: 'dashboard', navVisible: true, path: '/dashboard/delivery-manager', title: 'Delivery Dashboard' },
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Executive dashboard for delivery health, capacity, and portfolio risk.', group: 'dashboard', navVisible: true, path: '/dashboard/director', title: 'Director Dashboard' },
+  // Sprint F-0.11 (Decision-11) — merged Manager + Exec dashboards.
+  // Single sidebar entry per role-class; underlying per-role surfaces stay
+  // accessible via direct URL but are hidden from the sidebar (flag-gated).
+  {
+    allowedRoles: ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'],
+    description: 'Manager Dashboard — answers "what does my team need?" Role-routed (PM/RM/DM content).',
+    flag: 'dashMergedManager',
+    group: 'dashboard',
+    navVisible: true,
+    path: '/dashboard/manager',
+    title: 'Manager Dashboard',
+  },
+  {
+    allowedRoles: ['director', 'admin', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager'],
+    description: 'Exec Dashboard — answers "how is the org doing?" Role-routed (Director/HR/Workload content).',
+    flag: 'dashMergedExec',
+    group: 'dashboard',
+    navVisible: true,
+    path: '/dashboard/exec',
+    title: 'Exec Dashboard',
+  },
+  // Per-role dashboards stay routable but hidden from sidebar in v1
+  // (flag-gated). The merged routes above are the canonical entries.
+  { allowedRoles: PM_DASHBOARD_ROLES, description: 'Project-oriented dashboard for managed projects, staffing gaps, and anomalies.', flag: 'dashProjectManager', group: 'dashboard', navVisible: false, path: '/dashboard/project-manager', title: 'PM Dashboard' },
+  { allowedRoles: RM_DASHBOARD_ROLES, description: 'Capacity-oriented dashboard for managed teams, idle resources, and pipeline.', flag: 'dashResourceManager', group: 'dashboard', navVisible: false, path: '/dashboard/resource-manager', title: 'RM Dashboard' },
+  { allowedRoles: HR_DASHBOARD_ROLES, description: 'Organization-centric dashboard for headcount, distribution, and people-data quality.', flag: 'dashHr', group: 'dashboard', navVisible: false, path: '/dashboard/hr', title: 'HR Dashboard' },
+  { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Team delivery dashboard for anomaly drilldown and delivery metrics.', flag: 'dashDeliveryManager', group: 'dashboard', navVisible: false, path: '/dashboard/delivery-manager', title: 'Delivery Dashboard' },
+  { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Executive dashboard for delivery health, capacity, and portfolio risk.', flag: 'dashDirector', group: 'dashboard', navVisible: false, path: '/dashboard/director', title: 'Director Dashboard' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Portfolio-wide radiator scores across all projects.', group: 'dashboard', navVisible: true, path: '/dashboards/portfolio-radiator', title: 'Portfolio Radiator' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure scoring thresholds for the 16-axis project radiator.', group: 'admin', navVisible: true, path: '/admin/radiator-thresholds', title: 'Radiator Thresholds' },
   { allowedRoles: ADMIN_ROLES, description: 'Organization-wide reporting cadence, exception thresholds, governance and risk cadence.', group: 'admin', navVisible: true, path: '/admin/organization-config', title: 'Organization Config' },
@@ -133,9 +189,16 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: PROJECT_CREATE_ROLES, path: '/projects/new' },
   { allowedRoles: ALL_ROLES, path: '/projects/:id' },
   { allowedRoles: ALL_ROLES, path: '/projects/:id/dashboard' },
-  { allowedRoles: ALL_ROLES, description: 'Authoritative staffing assignments.', group: 'work', navVisible: true, path: '/assignments', title: 'Assignments' },
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, path: '/assignments/new' },
-  { allowedRoles: ASSIGNMENT_CREATE_ROLES, path: '/assignments/bulk' },
+  { allowedRoles: STAFFING_DESK_ROLES, description: 'Authoritative staffing assignments.', group: 'work', navVisible: true, path: '/assignments', title: 'Assignments' },
+  // Sprint F-0.10 (Decision-10) — `/assignments/new` direct path is gated
+  // OFF in v1. The canonical flow is `Create Staffing Request → Slate → Pick`.
+  // The route still exists in code (so the page component continues to be
+  // testable + reachable when the flag flips), but it's hidden from the
+  // sidebar AND gated by the `staffingMakeAssignment` flag (default OFF).
+  { allowedRoles: DIRECTOR_ADMIN_ROLES, flag: 'staffingMakeAssignment', navVisible: false, path: '/assignments/new' },
+  // `/assignments/bulk` stays accessible to RM/Admin via direct URL (utility),
+  // not in the sidebar.
+  { allowedRoles: ASSIGNMENT_CREATE_ROLES, flag: 'staffingBulkAssignment', navVisible: false, path: '/assignments/bulk' },
   { allowedRoles: MANAGEMENT_ROLES, description: 'Pending approval queue for proposal slates and director sign-off.', group: 'work', navVisible: true, path: '/assignments/queue', title: 'Approval Queue' },
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
@@ -167,11 +230,14 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Metadata-backed dictionary management for people-related configuration.', group: 'admin', navVisible: true, path: '/admin/dictionaries', title: 'Admin Dictionaries' },
   { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Business-action audit trail for investigation and governance workflows.', group: 'admin', navVisible: true, path: '/admin/audit', title: 'Business Audit' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Notification channel and template management.', group: 'admin', navVisible: true, path: '/admin/notifications', title: 'Admin Notifications' },
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'admin', navVisible: true, path: '/admin/integrations', title: 'Admin Integrations' },
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin', navVisible: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
+  { allowedRoles: ADMIN_ONLY_ROLES, description: 'External provider health and synchronization.', group: 'admin', navVisible: true, path: '/admin/integrations', title: 'Admin Integrations' },
+  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin', navVisible: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'governance', navVisible: true, path: '/integrations', title: 'Integrations' },
   { allowedRoles: ADMIN_ROLES, description: 'Metadata, validation, and administrative configuration.', group: 'admin', navVisible: true, path: '/metadata-admin', title: 'Metadata / Admin' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure platform-wide behaviour: timesheets, capitalisation, pulse, notifications, and security.', group: 'admin', navVisible: true, path: '/admin/settings', title: 'Platform Settings' },
+  // Sprint F-1.1 — Tenant Settings Catalog admin surface. Lists every
+  // registered feature flag with its current state and metadata.
+  { allowedRoles: ADMIN_ROLES, description: 'Toggle individual features per tenant; view maturity, ownership, and dependency metadata for every registered flag.', group: 'admin', navVisible: true, path: '/admin/feature-flags', title: 'Feature Flags' },
   { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Bulk import people from a CSV file — up to 200+ records at once.', group: 'admin', navVisible: true, path: '/admin/people/import', title: 'Bulk Import' },
   { allowedRoles: ADMIN_ROLES, description: 'Manage external vendors and subcontractors for project staffing.', group: 'admin', navVisible: true, path: '/admin/vendors', title: 'Vendors' },
   { allowedRoles: ADMIN_ROLES, description: 'Manage outbound webhook subscriptions with HMAC-SHA256 signed delivery.', group: 'admin', navVisible: true, path: '/admin/webhooks', title: 'Webhooks' },

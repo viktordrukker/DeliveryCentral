@@ -69,7 +69,7 @@ export function LeaveRequestPage(): JSX.Element {
     }
 
     void Promise.all(promises)
-      .catch(() => setError('Failed to load leave requests.'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load leave requests.'))
       .finally(() => setIsLoading(false));
   }
 

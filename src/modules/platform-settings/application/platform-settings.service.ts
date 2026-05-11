@@ -128,12 +128,34 @@ export class PlatformSettingsService {
     private readonly auditLogger: AuditLoggerService,
   ) {}
 
-  public async getAll(): Promise<SettingsResponseDto> {
+  /**
+   * Sensitive keys redacted for non-admin readers. The endpoint is now open
+   * to any authenticated user so the FE can read feature toggles (e.g.
+   * `evidenceManagement.enabled`) without admin-only access, but credentials
+   * never cross that boundary.
+   */
+  private static readonly REDACTED_KEYS_FOR_NON_ADMIN = new Set<string>([
+    'sso.clientSecret',
+    'monitoring.splunk.token',
+    'monitoring.datadog.apiKey',
+    'monitoring.otlp.headers',
+    'db.prodUserPassword',
+  ]);
+
+  public async getAll(viewerRoles?: string[]): Promise<SettingsResponseDto> {
     const rows = await this.prisma.platformSetting.findMany();
     const map: Record<string, unknown> = { ...DEFAULTS };
 
     for (const row of rows) {
       map[row.key] = row.value;
+    }
+
+    const isAdmin = (viewerRoles ?? []).includes('admin');
+    if (!isAdmin) {
+      for (const key of PlatformSettingsService.REDACTED_KEYS_FOR_NON_ADMIN) {
+        const current = map[key];
+        map[key] = typeof current === 'string' ? '' : null;
+      }
     }
 
     return {

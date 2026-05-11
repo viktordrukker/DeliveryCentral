@@ -11,10 +11,15 @@ import { Button, Modal } from '@/components/ds';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
-// QUAL-06: how long the SSE notification stream waits before reconnecting after
-// the server drops the connection. 60s is a balance between picking up new
-// notifications quickly and not hammering the backend if it's unreachable.
-const SSE_RECONNECT_DELAY_MS = 60_000;
+// Sprint F-0.8 (B-13 / D-87) — polling-based notification count updates.
+// The previous SSE path (`/notifications/inbox/stream`) returned 503 in
+// Phase 4 walker capture, so the FE silently retried every 60s and produced
+// network/console noise. Polling is cheaper to operate at v1 scale (20–100
+// IT-block users) and removes the broken endpoint's surface area.
+//
+// 30s is the same cadence the previous SSE event-emission used, so user-
+// perceived latency is unchanged.
+const NOTIFICATION_POLL_INTERVAL_MS = 30_000;
 
 export function setDarkMode(value: boolean): void {
   setColorModePreference(value ? 'dark' : 'light');
@@ -27,70 +32,58 @@ const SHORTCUTS = [
   { key: 'Esc', description: 'Close modal / overlay' },
 ];
 
-/** Connect to the notifications SSE stream and dispatch count-update events */
-function useNotificationStream(): void {
+/**
+ * Sprint F-0.8 (B-13 / D-87) — poll the unread-count endpoint every 30s and
+ * dispatch the same `notifications:count-update` event the bell components
+ * already listen for. Replaces the previous SSE attempt that 503'd silently.
+ */
+function useNotificationPolling(): void {
   useEffect(() => {
-    let controller: AbortController | null = null;
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    async function connect(): Promise<void> {
+    async function fetchOnce(): Promise<void> {
       const token =
         localStorage.getItem(apiClientConfig.authTokenStorageKey) ??
         sessionStorage.getItem(apiClientConfig.authTokenStorageKey);
-      if (!token) return;
-
-      controller = new AbortController();
+      if (!token) {
+        scheduleNext();
+        return;
+      }
       try {
-        const response = await fetch(`${apiClientConfig.baseUrl}/notifications/inbox/stream`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        if (!response.ok || !response.body) return;
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-          for (const line of lines) {
-            if (line.startsWith('data:')) {
-              try {
-                const payload = JSON.parse(line.slice(5).trim()) as { unreadCount?: number };
-                window.dispatchEvent(
-                  new CustomEvent('notifications:count-update', { detail: payload }),
-                );
-              } catch {
-                // ignore malformed
-              }
-            }
-          }
+        const response = await fetch(
+          `${apiClientConfig.baseUrl}/notifications/inbox/unread-count`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (response.ok) {
+          const payload = (await response.json()) as { unreadCount?: number };
+          window.dispatchEvent(
+            new CustomEvent('notifications:count-update', { detail: payload }),
+          );
         }
       } catch {
-        // ignore abort or network errors
+        // network error — try again at the next interval; no console spam.
       }
-
-      if (!controller?.signal.aborted) {
-        retryTimeout = setTimeout(() => void connect(), SSE_RECONNECT_DELAY_MS);
-      }
+      scheduleNext();
     }
 
-    void connect();
+    function scheduleNext(): void {
+      if (!active) return;
+      timer = setTimeout(() => void fetchOnce(), NOTIFICATION_POLL_INTERVAL_MS);
+    }
+
+    void fetchOnce();
 
     return () => {
-      controller?.abort();
-      if (retryTimeout) clearTimeout(retryTimeout);
+      active = false;
+      if (timer) clearTimeout(timer);
     };
   }, []);
 }
 
 export function App(): JSX.Element {
   const [showShortcuts, setShowShortcuts] = useState(false);
-  useNotificationStream();
+  useNotificationPolling();
 
   useEffect(() => {
     const handler = (): void => {

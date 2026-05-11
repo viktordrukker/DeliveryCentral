@@ -43,7 +43,7 @@ export function VendorRegistryPage(): JSX.Element {
     setIsLoading(true);
     fetchVendors(false)
       .then(setVendors)
-      .catch(() => setError('Failed to load vendors.'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load vendors.'))
       .finally(() => setIsLoading(false));
   }
 

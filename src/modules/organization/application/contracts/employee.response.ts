@@ -22,7 +22,15 @@ export class EmployeeResponseDto {
   @ApiPropertyOptional()
   public role?: string;
 
-  @ApiProperty({ type: [String] })
+  /**
+   * @deprecated Sprint F-0.5 (B-03 closure) — superseded by `PersonSkill` rows
+   * fetchable via `GET /api/people/:id/skills`. Full removal is a v1.1+ ratchet.
+   */
+  @ApiProperty({
+    type: [String],
+    deprecated: true,
+    description: 'Deprecated. Use GET /api/people/:id/skills for canonical PersonSkill rows.',
+  })
   public skillsets!: string[];
 
   // HD-8 / Chunk 8.4a — populated only after a successful deactivate.

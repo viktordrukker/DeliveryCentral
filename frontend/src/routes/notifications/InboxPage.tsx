@@ -122,8 +122,9 @@ export function InboxPage(): JSX.Element {
         <SectionCard>
           {notifications.length === 0 ? (
             <EmptyState
-              description="You have no notifications yet."
-              title="No notifications"
+              description="You have no notifications yet. Approvals, mentions, and assignment changes will appear here."
+              title="Inbox zero"
+              action={{ href: '/dashboard/employee', label: 'Go to my dashboard' }}
             />
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>

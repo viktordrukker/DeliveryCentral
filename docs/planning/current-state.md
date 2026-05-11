@@ -1,799 +1,161 @@
 # Current State
 
-This document summarizes the platform as it exists in code today.
+This document summarizes the platform as it exists in code today, oriented to the **bank-IT supply/demand application** framing locked on 2026-05-10.
 
-It is meant to help planning agents separate:
+For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
 
-- implemented and usable behavior
-- implemented but still maturing behavior
-- the real next bottlenecks for the next iteration
-
-_Last updated: 2026-05-03 (CI green-up complete for deploy-gating jobs — see "CI green-up state" section below). Earlier note: 2026-04-18 — Phase DM advancing: DM-1 complete · DM-3 Phase-1 landed (16 UUID↔UUID FKs, baseline 368) · DM-2 expand scaffolded for all 12 tables · DM-2.5 tooling complete (PublicIdService, middleware, pipe + `ParsePublicIdOrUuid` transitional variant, serializer interceptor, `public-id-missing` + `controller-uuid-leak` lint rules, 43 unit tests) · DM-2.5-8 canonical template at `docs/planning/dm2.5-controller-migration-template.md` · **Skill Sub-phases A + B landed** — SkillDto emits publicId, `UpsertPersonSkillItemDto.skillId` accepts either uuid or `skl_…`, `DELETE /admin/skills/:id` now uses `ParsePublicIdOrUuid`, service resolves publicIds transparently; controller-uuid-leak baseline 48→47; **StaffingRequest Sub-A landed** — `StaffingRequest` interface + `PrismaRecord` gain `publicId`, `toResponse()` emits publicId in both `id`+`publicId` with uuid fallback, `findRecordByIdOrPublicId` transitional helper. Skill Sub-C + StaffingRequest Sub-B/C + 8 remaining aggregate migrations pending (global interceptor/middleware wiring **landed** 2026-04-18 — `APP_INTERCEPTOR: PublicIdSerializerInterceptor` + `PublicIdBootstrapService.onModuleInit` now installs Prisma publicId middleware; non-strict defaults with `PUBLIC_ID_STRICT=true` / `PUBLIC_ID_MIDDLEWARE_ENABLED=false` env opt-outs; schema baseline 370; tsc 0 errors); Phase 20 audit still at 74/92 items · **Workforce Planner "Distribution Studio" overhaul** — strategy solver + min-skill tuning, two-tier fallback with chain/follow-on staffing, multi-week coverage expansion, server-persisted scenarios, unified status/priority filters across grid+autoMatch, HC-level diagnostics, legend-aligned cell colors, cell overflow +N more · **Project Radiator v1 landed** — 16-axis PMBOK radar (Scope/Schedule/Budget/People × 4 sub-dims, scores 0–4, quadrant 0–25, overall 0–100), per-axis PM override with audit trail + in-app drop notifications, portfolio rollup page, admin threshold config, milestones + change-request tabs, PDF/PPTX export, 60s scoring cache; RadiatorTab replaces old Status+Report tabs (legacy `?tab=status|report` redirect) · **Regression + pre-existing failure cleanup 2026-04-18** — Jest testTimeout 5s→30s, backend container memory 1G→2G (takes effect on next recreate), route-manifest.test.tsx 39/39 (wrapped 4 bare `<Navigate>` redirects in `RoleGuard`), DashboardPage role-redirect bug (admin always redirected away from `/` due to stale `/admin` literal) fixed, DirectorDashboardPage + CreateProjectPage test coverage modernised (obsolete assertions `it.skip` with TODOs for redesigned components), ProjectsPage health-badge `aria-label → title` assertion, case-record repository Prisma `createMany` FK bug fixed, QA handoff at `docs/testing/qa-handoff-2026-04-18.md` · **End-of-session 2026-04-18 PM** — new `frontend/src/hooks/useOutsideClick.ts` shared hook; wired into FilterChip + SavedFiltersDropdown so only one dropdown can be open at a time (fixes planner toolbar multi-open bug); **⚠ open blocker** — `prisma/schema.prisma` working copy had `AssignmentStatus` enum silently reverted to pre-v1.0 values (CREATED/PROPOSED/BOOKED), surgically restored from HEAD (DRAFT/REQUESTED/APPROVED/ACTIVE/…) + `ProjectAssignment.status @default(REQUESTED)` — remaining 1,120-line schema diff untouched; backend now compiles 0 errors but still unhealthy due to **`PublicIdBootstrapService` DI failure** (cannot resolve `PublicIdService` in `PublicIdModule`) — frontend service cannot start via docker-compose `depends_on: service_healthy`. See `docs/testing/qa-handoff-2026-04-18.md` §8a)_
+_Last updated: 2026-05-10 (post-Phase-11 master plan + post-bank-IT-pivot doc revision)._
 
 ---
 
-## Runtime model
+## 1. Platform shape (today)
 
-### Backend
+### Runtime
 
-- NestJS modular monolith
-- global API prefix: `/api`
-- structured JSON logging with correlation ids
-- Swagger at `/api/docs`
-- operator endpoints:
-  - `/api/health`
-  - `/api/readiness`
-  - `/api/health/deep` (DM-R-8 — 12-aggregate probe through repository layer)
-  - `/api/diagnostics`
+- **Backend:** NestJS modular monolith. 36 modules under `src/modules/`. Global API prefix `/api`. Structured JSON logging. Swagger at `/api/docs`. Operator endpoints: `/api/health`, `/api/readiness`, `/api/health/deep` (12-aggregate probe), `/api/diagnostics`, `/metrics` (HD-11 prom-client).
+- **Frontend:** React + Vite + React Router. 30 route trees under `frontend/src/routes/`. Local entry `http://localhost:5173`. Vite dev proxy forwards `/api` to backend. Production build served from container.
+- **Database:** PostgreSQL 16. Prisma migrations at `prisma/migrations/`. 53+ schema models. CHECK constraints (DM-4-1: 33 across 14 tables). Hash-chained AuditLog.
+- **Local environment:** Docker-only. PostgreSQL 512MB, backend 2GB (raised from 1GB on 2026-04-18), frontend 1GB. Single seed profile `it-company` (200 people, 40 projects, 5-year history).
 
-### Frontend
+### Tenant posture
 
-- React + Vite + React Router
-- browser entry at `http://localhost:5173`
-- backend API configured through `VITE_API_BASE_URL`
-- Vite proxy forwards `/api` calls to the backend inside the Docker network
+- **Single-tenant per-bank install** (locked 2026-05-10). HARDEN F6 multi-tenant scaffolding stays in code behind `flag.tenancy.multiTenant.enabled=false` for a future SaaS pivot.
 
-### Local environment
+### Domain modules (backend)
 
-- supported local runtime path is Docker-only
-- PostgreSQL, backend, frontend, migration job, seed job, and optional monitoring services are containerized
-- resource limits: PostgreSQL 512MB, backend 1GB, frontend 1GB
-- six seed profiles: `demo`, `phase2`, `bank-scale`, `life-demo`, `investor-demo`, `enterprise`
-- `phase2` profile creates 32 people, 16 org units, 4-level hierarchy, 12 projects, 22 assignments, 24 work evidence entries, and 8 test accounts
+`admin`, `assignment-workload`, `assignments`, `audit-observability`, `auth`, `case-management`, `customization-metadata`, `dashboard`, `exceptions`, `financial-governance`, `health`, `help-center`, `identity-access`, `in-app-notifications`, `integrations`, `integrations-hub`, `leave-requests`, `metadata`, `notifications`, `organization`, `organization-org-chart`, `overtime`, `platform-settings`, `project-registry`, `pulse`, `reports`, `resource-pools`, `setup`, `skills`, `staffing-desk`, `staffing-requests`, `time-work-evidence`, `timesheets`, `undo`, `work-evidence`, `workload`.
+
+### Frontend route trees
+
+`admin`, `assignments`, `auth`, `cases`, `dashboard`, `exceptions`, `help`, `integrations`, `leave`, `metadata-admin`, `my-time`, `notifications`, `org`, `people`, `projects`, `reports`, `resource-pools`, `settings`, `setup`, `staffing-board`, `staffing-desk`, `staffing-requests`, `teams`, `time-management`, `timesheets`, `work-evidence`, `workload`. Plus `FeatureGuard.tsx`, `ProtectedRoute.tsx`, `RoleGuard.tsx`, `RoutePlaceholderPage.tsx`, `NotFoundPage.tsx`.
 
 ---
 
-## Phase 2 delivery status
+## 2. What is implemented (bank-IT lens)
 
-### Phase 2a — Mock Organization (seed expansion) ✅ COMPLETE
+### 2.1 Identity + access
 
-- `prisma/seeds/phase2-dataset.ts` — 32 people, 16 org units, 29 reporting lines, 4 resource pools, 12 projects, 22 assignments, 24 work evidence entries
-- 8 local test accounts with role-specific passwords:
-  - `noah.bennett@example.com` / `DirectorPass1!` → `director`
-  - `diana.walsh@example.com` / `HrManagerPass1!` → `hr_manager`
-  - `sophia.kim@example.com` / `ResourceMgrPass1!` → `resource_manager`
-  - `lucas.reed@example.com` / `ProjectMgrPass1!` → `project_manager`
-  - `carlos.vega@example.com` / `DeliveryMgrPass1!` → `delivery_manager`
-  - `ethan.brooks@example.com` / `EmployeePass1!` → `employee`
-  - `emma.garcia@example.com` / `DualRolePass1!` → `resource_manager` + `hr_manager`
-- Seed with: `docker compose exec -e SEED_PROFILE=phase2 backend sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"`
+- **Local-account auth:** `/auth/login` + JWT cookies + 2FA + password reset. Functional but local-only (D-155 / Cat-1.1 will add OIDC).
+- **8 platform roles:** `admin`, `director`, `hr_manager`, `resource_manager`, `project_manager`, `delivery_manager`, `employee`, plus `dual-role`. Bank-specific shapes (Squad/Tribe Lead, IT Service Owner) added by tenant admin via D-159 UI on installation; not pre-baked.
+- **Impersonation:** Admin "View as" overlay (CLAUDE.md §8.13). Used by walker-results.json and admin investigation flows.
+- **OIDC handler:** ❌ not yet (D-155 in Cat-1.1). Settings + `openid-client@6.8.2` are wired; route handler missing.
+- **LDAP / AD adapter:** ❌ not yet (Cat-1.1 NEW C1-LDAP).
+- **M365 directory adapter:** read-only stub (`m365-directory-adapter.ts:1-38`); auto-provision missing (D-156 in Cat-1.1).
 
-### Phase 2b — Backend Flow Gaps ✅ COMPLETE
+### 2.2 Project + portfolio
 
-| Item | Description | Status |
-|------|-------------|--------|
-| A1 | Delivery Manager Dashboard — `GET /dashboard/delivery-manager` | ✅ Done |
-| A2 | Director Dashboard — `GET /dashboard/director` | ✅ Done |
-| A3 | Assignment end `reason` field | ✅ Done (pre-existing) |
-| A4 | `POST /people/:id/terminate` — TerminateEmployeeService + endpoint | ✅ Done |
-| A5 | `POST /cases/:id/steps/:stepKey/complete` — case step completion | ✅ Done |
-| A6 | Notification events on assignment approve/reject | ✅ Done |
-| A7 | Project Dashboard — `GET /projects/:id/dashboard` with `evidenceByWeek` + `allocationByPerson` | ✅ Done |
-| A8 | Assignment listing pagination + `from`/`to` date filters + `totalCount` | ✅ Done |
-| A9 | `POST /auth/accounts` — admin local account creation endpoint | ✅ Done |
-| — | `PATCH /metadata/dictionaries/entries/:entryId` — toggle entry enabled | ✅ Done |
+- **Project lifecycle:** ACTIVE → CLOSED workflow shipped; `CloseProjectService` + `RestoreProjectService` (HD-8 chunk 8.4a). `ProjectClosureReadinessService` checks budget variance + work hours.
+- **Project Radiator v1:** 16-axis PMBOK radar; per-axis PM override with audit; portfolio rollup; PDF/PPTX export; 60s scoring cache.
+- **Project assignments:** state machine DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED. CHECK constraints prevent overlap > 100% (allocationPercent 0..100). Undo seam (HD-8 chunk 8.4a/b) for cancel/close/deactivate.
+- **Jira PPM connector:** ❌ stub-shaped today (Cat-1.2 NEW C1-JIRA-PPM promotes to first-class).
 
-### Phase 2c — Frontend & Dashboard Enrichment ✅ COMPLETE
+### 2.3 Staffing + workforce
 
-| Item | Description | Status |
-|------|-------------|--------|
-| B1 | Delivery Manager Dashboard page (was "Coming soon" stub) | ✅ Done — full page at `/dashboard/delivery-manager` |
-| B2 | Director Dashboard page | ✅ Done — new page at `/dashboard/director` |
-| B3 | Assignment Details page | ✅ Done — approve/reject/end + history timeline |
-| — | WorkloadCard danger/warning variant | ✅ Done |
-| — | Employee dashboard: overallocation danger state | ✅ Done |
-| — | HR dashboard: lifecycle activity list | ✅ Done |
-| — | PM dashboard: nearing-closure section | ✅ Done |
-| — | Assignments page date-range (`from`/`to`) filters + `totalCount` | ✅ Done |
-| — | Project Dashboard page: `evidenceByWeek` + `allocationByPerson` from new endpoint | ✅ Done |
-| — | Case Details page: step completion UI | ✅ Done |
-| — | Terminate Employee UI (button + form on employee detail page) | ✅ Done |
-| — | Admin Account Creation form on AdminPanelPage (User Accounts section) | ✅ Done |
-| — | Metadata Admin entry add + disable/enable UI | ✅ Done |
+- **Workforce Planner "Distribution Studio":** 3-tier solver (chain/qualified/fallback), 5 strategies, multi-week coverageWeeks, server-persisted PlannerScenario, HC-diagnostics.
+- **Staffing Desk:** approval queue, slate-based proposal flow, drag-and-drop placement (`@dnd-kit/core`).
+- **Skills:** `Skill` + `PersonSkill` (proficiency 1-5), `SkillCategory`. CRUD via `/admin/skills`.
+- **PvA dashboard:** virtualized layout; configurable hours/week constant from PlatformSettings.
 
-### Phase 2d — E2E Test Suite ✅ COMPLETE (2026-04-05)
+### 2.4 Time + leave + evidence
 
-- All 38 JTBD Playwright E2E tests written under `e2e/tests/` (12 spec files)
-- Auth fixture (`e2e/fixtures/auth.ts`): `login()` helper + per-role convenience wrappers + extended `test` fixtures
-- Navigation helper (`e2e/helpers/navigation.ts`): `routes` map + `expectToast` + `clickWithConfirm`
-- Test files:
-  - `01-employee.spec.ts` — 2d-02, 2d-03, 2d-04
-  - `02-work-evidence.spec.ts` — 2d-03 (extended: DM and PM)
-  - `03-pm-dashboard.spec.ts` — 2d-05, 2d-08
-  - `04-project-lifecycle.spec.ts` — 2d-06, 2d-07
-  - `05-rm-assignments.spec.ts` — 2d-09, 2d-10, 2d-11, 2d-12, 2d-13, 2d-14
-  - `06-hr-people.spec.ts` — 2d-15, 2d-16, 2d-17, 2d-18, 2d-19
-  - `07-hr-cases.spec.ts` — 2d-20
-  - `08-director.spec.ts` — 2d-21, 2d-22, 2d-23, 2d-24
-  - `09-admin.spec.ts` — 2d-25, 2d-26, 2d-27, 2d-28, 2d-29, 2d-30, 2d-31
-  - `10-cross-role.spec.ts` — 2d-32, 2d-33, 2d-34
-  - `11-negative-paths.spec.ts` — 2d-35, 2d-36, 2d-37, 2d-38
-  - `12-timesheets.spec.ts` — timesheet page access (employee, PM, DM)
-- Pattern: API-based auth (JWT injected into localStorage), `test.describe.serial` for stateful flows, API assertions alongside UI assertions
-- See `docs/planning/phase2-plan.md` Section 1 for acceptance criteria per JTBD
+- **Timesheets:** weekly approval flow with hash-chained AuditLog. `TimesheetWeek` rows DRAFT/SUBMITTED/APPROVED. CHECK: hours 0..24.
+- **Leave requests:** `LeaveRequestType` (currently a code enum; T-09 D-107 migrates to MetadataDictionary in Cat-2). Approvals via standard chain.
+- **Work evidence:** `WorkEvidence` records. ❌ Today gated to director/admin (D-116 in Cat-1.4 widens self-scope or relocates).
+- **Overtime:** shipped (DM-4-1 CHECK constraint HPW 0..168; OvertimePolicy + OvertimeException effective-dating).
+- **Period locks:** BE endpoint `POST /admin/period-locks` exists; ❌ admin FE missing (D-93 in Cat-1.5).
 
----
+### 2.5 Cases + governance
 
-## Operational contexts
+- **Case management module:** `cases` BE module + `/cases` FE routes. Approve workflow ❌ (D-91 in Cat-1.5 wires FE button).
+- **Audit log:** hash-chained. AuditLog `payload.email` + `actorDisplayName` are NOT redacted on erasure (D-167 in Cat-1.8 closes; redact-payload v1).
+- **Audit log admin page:** ❌ missing FE (D-114 in Cat-1.5; no longer blocked by tenantId since single-tenant).
+- **AuditLog retention:** ❌ no policy / no purge cron (D-168 in Cat-1.8).
 
-### Organization
+### 2.6 Notifications + nudge + outbox
 
-Implemented backend capabilities:
+- **In-app notifications:** shipped. PersonNotificationPreference (HD-8 era).
+- **Outbox seam:** schema landed (HD-7); ❌ producers + publisher zero-wired (D-142 in Cat-1.6).
+- **Nudge sweeper:** HD-8 chunk 8.3 — NudgeSweeperService runs per-tick scan (60min), emits `nudge.proposal_acknowledgment_overdue` + `nudge.timesheet_submission_overdue` events through outbox seam.
+- **SLA pre-breach:** HD-10 — assignment SLA sweep at 50%/75% pre-breach + breach.
+- **Email channels:** generic + ms_teams_webhook + email shipped (HD-8 chunk 8.1).
 
-- employee creation
-- employee deactivation
-- employee termination (cascades to end all active assignments)
-- person directory and person detail reads
-- org chart read
-- manager scope read
-- effective-dated reporting line creation
-- team read APIs
-- team create and member update APIs
+### 2.7 Help Center + onboarding
 
-Implemented frontend capabilities:
+- **Help Center MVP:** HD-9 closed 2026-05-09 (admin editor + public list + article detail + feedback widget + onboarding tour). Per Cat-2 plan, may be flag-gated per-bank with `flag.helpCenter.enabled`.
 
-- employee directory
-- employee details
-- employee lifecycle admin create flow
-- employee deactivation action
-- employee termination action (with optional reason + date form)
-- reporting-line management with effective dates
-- org chart
-- manager scope
-- team management UI
-- team dashboard UI
+### 2.8 Performance + caching
 
-Runtime state: live and durable (Prisma-backed)
+- **DB pool:** ❌ `prisma.service.ts:50-58` instantiates with no `connection_limit` (D-143 in Cat-1.6).
+- **FK indexes:** ❌ 12 missing (D-110 in Cat-1.6).
+- **MV bundle:** ❌ not built (T-13 in Cat-2; not needed at bank-IT 200-2,000 person scale).
+- **Cache headers:** ❌ tenant-shared metadata serves `no-store` (T-13 D-148 in Cat-2).
+- **Hot-path queries:** ❌ 3 unbounded findMany sites + 2 N+1s (D-144/145/146 in Cat-1.6).
 
-### Assignments and workload
+### 2.9 Locale + currency + fiscal
 
-Implemented backend capabilities:
+- **Tenant timezone, weekStartDay, currency, fiscalYearStart:** ❌ settings exist but NOT consumed (D-160a/D-161/D-163/D-165 in Cat-1.3 fix).
+- **FxRate model:** ❌ does not exist (D-164 in Cat-1.3).
+- **PublicHoliday:** ❌ defaults to `'AU'` (D-163 in Cat-1.3 makes multi-region).
 
-- assignment create, bulk create, approve, reject, end, amend, revoke
-- assignment activation service (APPROVED → ACTIVE when validFrom reached; `POST /assignments/activate`)
-- assignment override creation for conflict resolution (override reason persisted in history)
-- self-approval prevention (actorId !== personId)
-- person active check at approval time (cannot approve for deactivated employee)
-- project end date validation (assignment cannot exceed project end date)
-- lifecycle history
-- workload summary
-- planned-vs-actual comparison
-- employee, PM, RM, HR, delivery manager, and director dashboard detail APIs
-- assignment listing with pagination, date-range filter, status filter, `totalCount`
-- optimistic concurrency protection
+### 2.10 GDPR + compliance
 
-Implemented frontend capabilities:
+- **Right-to-erasure:** ❌ zero `purge|forget|gdpr` hits in `src/` (D-167 in Cat-1.8 ships redact-payload v1).
+- **Soft-delete model:** dual `archivedAt` + `deletedAt`; default `archivedAt` as live column (D-96 in Cat-1.8).
 
-- assignments page (status filter + `from`/`to` date range filters + `totalCount` display)
-- create assignment form
-- bulk assignment UI
-- assignment detail with approve/reject/end + history timeline
-- governed assignment override UI
-- planned-vs-actual
-- employee, PM, RM, HR, delivery manager, and director dashboards
+### 2.11 Observability
 
-### Project registry
+- **prom-client + `/metrics`:** HD-11 closed. Counters/gauges for outbox + assignment SLA + nudge sweep.
+- **Health probes:** `/api/health`, `/api/readiness`, `/api/health/deep` (12-aggregate probe).
+- **OpenTelemetry / structured logging:** structured JSON logging + correlation ids; OTel exporters not yet wired.
 
-Implemented backend capabilities:
+### 2.12 Local-LLM scaffolding
 
-- create, activate, close, close-override project
-- assign team to project
-- project read/list APIs
-- Jira sync support
-- project dashboard endpoint (`evidenceByWeek`, `allocationByPerson`, `staffingSummary`)
-- optimistic concurrency protection
-
-Implemented frontend capabilities:
-
-- project registry
-- project details
-- create project flow
-- activate / close / assign-team actions
-- governed close-override UI
-- project dashboard UI (with `evidenceByWeek`, `allocationByPerson`, `staffingSummary` from new endpoint)
-
-### Work evidence
-
-Implemented: create, list/query, evidence-backed dashboard and project surfaces. Runtime is durable.
-
-### Teams
-
-Implemented: list, create, members, team detail, team dashboard summary. Runtime is durable.
-
-### Cases
-
-Implemented backend capabilities:
-
-- create case (auto-creates ONBOARDING case on employee hire, OFFBOARDING on deactivation)
-- list cases (filters persisted in URL search params)
-- case detail
-- list case steps
-- complete case step
-- close case (`POST /cases/:id/close`)
-- cancel case (`POST /cases/:id/cancel`)
-- archive case (`POST /cases/:id/archive`)
-- approve case (`ApproveCaseService` — OPEN/IN_PROGRESS → APPROVED)
-- reject case (`ApproveCaseService` — OPEN/IN_PROGRESS → REJECTED with reason)
-- `subjectPersonName` / `ownerPersonName` resolved from `demoPeople` in response
-
-Implemented frontend capabilities:
-
-- cases list, case create flow, case detail
-- case workflow step list with complete button per step
-- COMPLETED step badge and timestamp display
-- Close Case / Cancel Case / Archive Case action buttons
-- Subject and Owner displayed as names (not raw UUIDs)
-- Error state with retry action (Law 2 compliance)
-
-### Metadata and admin
-
-Implemented backend capabilities:
-
-- metadata dictionary list and detail
-- dictionary entry creation
-- dictionary entry enable/disable (`PATCH /metadata/dictionaries/entries/:entryId`)
-- admin config/settings/integrations/notifications aggregation
-- admin local account creation (`POST /admin/accounts`)
-
-Implemented frontend capabilities:
-
-- admin panel (User Accounts section with Create Account form + enable/disable/delete per account)
-- metadata admin (dictionary list; entry add form; enable/disable per entry)
-- integrations admin
-- notifications admin
-- monitoring/admin diagnostics
-- business audit browsing
-- exception queue
-
-### Dashboards
-
-| Dashboard | Backend | Frontend |
-|-----------|---------|----------|
-| Workload (generic) | ✅ | ✅ |
-| Employee | ✅ | ✅ |
-| Project Manager | ✅ | ✅ (+ nearing-closure section) |
-| Resource Manager | ✅ | ✅ |
-| HR Manager | ✅ | ✅ (+ lifecycle activity list) |
-| Delivery Manager | ✅ | ✅ (full page) |
-| Director | ✅ | ✅ (new page at `/dashboard/director`) |
-| Project Dashboard | ✅ | ✅ (new endpoint, evidenceByWeek + allocationByPerson) |
-
-### Integrations
-
-Implemented: Jira sync, M365 and RADIUS directory sync, reconciliation review, sync history. Runtime is operational.
-
-### Notifications
-
-Implemented: templates, channel abstraction, test-send, SMTP + Teams webhook transport, retry policy, outcome queries, audit. Assignment approve/reject events are wired. Notification queue endpoint (`GET /notifications/queue`) with status filter + pagination. Frontend queue section in NotificationsPage with status dropdown, paginated table, and payload detail.
-
-**In-app notification inbox** (Phase 10): `in_app_notifications` table. `GET /notifications/inbox`, `POST /notifications/inbox/:id/read`, `POST /notifications/inbox/read-all` endpoints (auth-required, personal scope). `NotificationBell` component in TopHeader (native `<button>` element for accessibility) — bell icon with unread badge, dropdown panel, per-item read/navigate, mark-all-read, 30-second polling. Events wired: `assignment.created`, `assignment.approved`, `assignment.rejected`, `assignment.amended`, `case.created`, `case.step_completed`, `case.closed`, `case.approved`, `case.rejected`, `employee.deactivated`, `employee.terminated`.
-
-### Audit, exceptions, and observability
-
-Implemented: structured logging, correlation ids, business audit logging and querying (with `from`/`to` date filter, pagination, `totalCount`), exception queue, diagnostics, self-check scripts.
+- ❌ Not yet (Cat-1.2 NEW C1-LLM-SCAFFOLD). Generic OpenAI-compatible client wrapper to be built; no AI features yet.
 
 ---
 
-## Security and access control
+## 3. Test accounts (it-company seed profile)
 
-Implemented:
+Single seed profile is `it-company` (200 people, 40 projects, 5-year history). Test accounts:
 
-- bearer-token principal sourcing with HS256 JWT
-- RBAC guard layer (`@RequireRoles`)
-- route-level protection for write/admin APIs
-- test-friendly non-production auth helpers (blocked in production via startup guard)
-- CORS with `credentials: true` and SameSite=strict refresh cookies
-- Vite proxy configured so browser calls go through `/api` path (not direct to port 3000)
-- Security headers in all environments: HSTS, CSP, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy (both `main.ts` and `nginx.conf`)
-- Self-approval prevention: employees cannot approve their own timesheets or assignments
-- IDOR protection: actorId always derived from authenticated principal, never from request body
-- Rate limiting: login (10 req/min), password reset (3 req/hour), global (100 req/min)
-- Password complexity: min 8 chars + uppercase + lowercase + digit + special character
-- 2FA temp token verification via full JWT signature validation (not manual base64)
-- Password reset tokens never logged (only truncated hash)
-- `/diagnostics` endpoint requires `@RequireRoles('admin')` (was previously `@Public()`)
-- `$queryRaw` (parameterized) used instead of `$queryRawUnsafe` in health service
-- `innerHTML` replaced with `replaceChildren()` in org chart (XSS surface removed)
-- Admin config endpoints validated via class-validator DTOs
-- Production startup guard prevents `AUTH_ALLOW_TEST_HEADERS` and `AUTH_DEV_BOOTSTRAP_ENABLED`
-- GitHub Actions pinned to commit SHAs (supply chain hardening)
-- Trivy container image scanning in CI pipeline
-- Caddy reverse proxy rate limiting (100 req/min per IP)
-- `npm audit` dependency scanning step in CI
+| Role | Email | Password |
+|------|-------|----------|
+| admin | `admin@deliverycentral.local` | `DeliveryCentral@Admin1` |
+| director (Engineering) | `noah.bennett@itco.local` | `DirectorPass1!` |
+| hr_manager | `diana.walsh@itco.local` | `HrManagerPass1!` |
+| resource_manager | `sophia.kim@itco.local` | `ResourceMgrPass1!` |
+| project_manager | `lucas.reed@itco.local` | `ProjectMgrPass1!` |
+| delivery_manager | `carlos.vega@itco.local` | `DeliveryMgrPass1!` |
+| employee | `ethan.brooks@itco.local` | `EmployeePass1!` |
+| dual-role RM+HR | `emma.garcia@itco.local` | `DualRolePass1!` |
 
-Current limitation:
-- authentication is token-based; not yet integrated with an external OIDC provider or JWKS validation flow
+Seed: `docker compose exec -e SEED_PROFILE=it-company backend sh -c "npx ts-node --project tsconfig.json prisma/seed.ts"`.
 
 ---
 
-## Frontend route coverage
+## 4. Outstanding work (high level)
 
-Implemented route groups:
+For the full breakdown see [`MASTER_TRACKER.md`](MASTER_TRACKER.md) + [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md) Appendix A.
 
-- dashboard (workload, employee, PM, RM, HR, delivery manager, director, planned-vs-actual)
-- people
-- org
-- teams
-- projects (registry, detail, dashboard)
-- assignments (list, create, bulk, detail)
-- work evidence
-- cases
-- admin (panel, metadata, integrations, notifications, audit, monitoring, exceptions)
+| Category | Count | Examples |
+|---|---|---|
+| **Cat-1 (Now — bank-IT go-live)** | ~40 tasks across themes T-02/T-03/T-04/T-05a/T-06/T-07/T-08-D110/T-11/T-12/T-16/T-18/T-20/T-21/T-22-D133 + 6 NEW-C1-* | OIDC handler, LDAP adapter, JSM connector, locale-agnostic settings, customizable+deterministic RBAC, PMO surface gaps, employee Report-Issue, FK indexes, hot-path queries, outbox producers |
+| **Cat-2 (Toggle off — flag-gated)** | ~24 tasks across themes T-01/T-05b/T-09/T-10/T-13/T-14/T-23 + Pulse + Help Center + Undo toast | Multi-tenant scaffolding (kept-in-code), MV bundle, BI extracts, customization L1 catalog, bulk-import, Pulse mood heatmap, Help Center per-bank gating |
+| **Cat-3 (Future roadmap)** | ~13 capabilities + ~18 legacy tracker items | SaaS multi-tenant activation, SCIM 2.0, AI-driven case classification, mobile employee app, cross-bank benchmarking, architecture refactors (T-15) |
 
 ---
 
-## Testing and validation posture
-
-Implemented:
-
-- backend unit/domain/repository/integration/contracts/performance coverage
-- API integration and negative-path tests
-- role dashboard and lifecycle tests
-- frontend route/component tests: 54 test files (TypeScript clean as of 2026-04-16)
-- E2E Playwright tests: 29 spec files covering all 7 roles + smoke + cross-role + accessibility
-- UAT happy-path, anomaly, and dashboard packs
-- release-readiness self-check and operator drill scripts
-- CI retries set to 2 in Playwright config for flaky test resilience
-- E2E tests use centralized URL constants (`PLAYWRIGHT_API_BASE`, `PLAYWRIGHT_BASE_URL`)
-- Semantic locators (`getByRole`, `getByLabel`) preferred over CSS selectors
-- axe-core accessibility smoke test per role dashboard (`14-accessibility.spec.ts`)
-- `npm audit` and Trivy container scanning in CI pipeline
-
-Testing gaps remaining:
-- 19-10: Activity feed API/component tests not yet written
-- E2E: some test files still use hardcoded `http://127.0.0.1:3000/api` (not all migrated)
-
----
-
-## Phase 4a — Foundation & Data Integrity ✅ COMPLETE (2026-04-05)
-
-All F1.1–F1.7 items implemented:
-
-- **F1.1 Date Defaults**: All dashboard hooks, pages, and forms now initialize `asOf`/date fields to `new Date().toISOString()` instead of hardcoded strings. Reset buttons also compute `new Date()` at click time.
-- **F1.2 Person Defaults**: `useHrManagerDashboard` and `useEmployeeDashboard` no longer use hardcoded person UUID constants. Both use the `useEffect` sync + empty-string guard pattern.
-- **F1.3 UUID Resolution**: `PersonSelect` component resolves person IDs to names via `fetchPersonDirectory`. `resolvePersonName` module-level cache. Cases page filter dropdowns replaced with `PersonSelect`. `ProjectTeamAssignmentForm` "Workflow Actor" is now a `PersonSelect`.
-- **F1.4 Breadcrumbs**: `Breadcrumb` component added. Breadcrumbs live on: Project Details, Assignment Details, Case Details, Employee Details, Team Dashboard, Resource Pool Detail, Project Dashboard, Account Settings.
-- **F1.5 Enum Labels**: `humanizeEnum()` utility with label maps for ASSIGNMENT_STATUS, PROJECT_STATUS, ORG_UNIT_TYPE, ANOMALY_TYPE, SOURCE_TYPE, NOTIFICATION_CHANNEL, EMPLOYMENT_STATUS, INTEGRATION_PROVIDER. Applied across: AssignmentsTable, OrgChartTree, ExceptionQueueTable, AnomalyPanel, PlannedVsActualPage.
-- **F1.6 Label-Value Spacing**: `.metadata-detail__stat` CSS fixed (flex column, gap, block display for label/strong).
-- **F1.7 RBAC Sidebar**: "MY WORK" section added at top of SidebarNav. Project/Employee details gate write actions on `canManageProject`/`canManageLifecycle` based on `principal.roles`.
-
-Test suite: 35 files / 118 tests all pass. TypeScript clean.
-
-## Phase 4c — UX Quick Wins ✅ COMPLETE (2026-04-05)
-
-All items 4c-1-01 through 4c-9-06 implemented across 9 feature areas:
-
-- **4c-1 Toast notifications**: `sonner` installed; `<Toaster position="bottom-right" richColors />` mounted in `App.tsx`.
-- **4c-2 Confirm dialogs**: `ConfirmDialog` component created (`frontend/src/components/common/ConfirmDialog.tsx`). All `window.confirm()` calls replaced across: AssignmentWorkflowActions, AssignmentEndActions, AssignmentDetailsPlaceholderPage, CreateAssignmentPage, ProjectDetailsPlaceholderPage, AdminPanelPage, EmployeeDetailsPlaceholderPage, CaseDetailsPage, TeamDetails.
-- **4c-3 Command palette**: `CommandPalette` component created (`frontend/src/components/common/CommandPalette.tsx`). Triggered by `Ctrl+K`/`Cmd+K` in AppShell. Groups: People (debounced API search), Projects (debounced API search), Pages (RBAC-filtered), Actions. Keyboard navigation: ArrowUp/Down, Enter, Escape.
-- **4c-4 Sidebar nav**: Already implemented in Phase 4a (items N/A).
-- **4c-5 Skeleton loaders**: `Skeleton`, `TableSkeleton`, `CardSkeleton`, `ChartSkeleton` created (`frontend/src/components/common/Skeleton.tsx`). CSS pulse animation added to `global.css`.
-- **4c-6 Empty states with actions**: `EmptyState` updated with optional `action?: { href, label }` prop. CTAs added on: AssignmentsPage ("No assignments yet"), ProjectsPage ("No projects yet"), WorkEvidencePage ("No evidence logged"), CasesPage ("No cases open"), ResourcePoolsPage ("No pools").
-- **4c-7 View/edit mode**: `ProjectDetailsPlaceholderPage` metadata section now gates editing behind `isEditing` state toggle with Edit/Cancel buttons (RBAC-gated on `canManageProject`).
-- **4c-8 Filtered dropdowns**: AssignmentsPage approval state filter changed from text input to `<select>` using `ASSIGNMENT_STATUS_LABELS`. EmployeeDirectoryPage resource pool filter changed from text input to `<select>` populated from `fetchResourcePools()` API call.
-- **4c-9 Export XLSX**: `exportToXlsx` utility created (`frontend/src/lib/export.ts`) using SheetJS CE (`xlsx`). Export buttons added to: EmployeeDirectoryPage, AssignmentsPage, ProjectsPage, WorkEvidencePage, BusinessAuditPage.
-
-New components created: `ConfirmDialog`, `Skeleton` (+ `TableSkeleton`, `CardSkeleton`, `ChartSkeleton`), `CommandPalette`, `ProjectSelect`, `export.ts`.
-
-Test suite: 35 files / 118 tests all pass. TypeScript clean.
-
----
-
-## Phase 5 — Time Management ✅ COMPLETE (2026-04-05)
-
-All F3.1–F3.3 items implemented:
-
-- **Prisma schema**: `TimesheetWeek` + `TimesheetEntry` models with `TimesheetStatus` enum (DRAFT/SUBMITTED/APPROVED/REJECTED). Migration SQL at `prisma/migrations/20260405_timesheets/migration.sql`.
-- **Backend module** (`src/modules/timesheets/`): `TimesheetRepository`, `TimesheetsService`, `TimesheetsController`, `TimesheetsModule` wired into `AppModule`.
-- **Backend endpoints**: `GET /timesheets/my`, `PUT /timesheets/my/entries`, `POST /timesheets/my/:weekStart/submit`, `GET /timesheets/my/history`, `GET /timesheets/approval`, `POST /timesheets/:id/approve`, `POST /timesheets/:id/reject`, `GET /reports/time`.
-- **Lock enforcement**: upsert rejects if week status is APPROVED or SUBMITTED.
-- **Frontend API client** (`frontend/src/lib/api/timesheets.ts`): full CRUD + approval + time report.
-- **TimesheetPage** (`/timesheets`): weekly grid (Mon-Sun columns), auto-save on blur with 500ms debounce, Saving/Saved indicator, CAPEX toggle per row, row/column/grand totals, grand total colour coding (green 35-45h, yellow, red >50h), week navigation, description popover per cell, Submit for Approval button, read-only mode for APPROVED/REJECTED weeks.
-- **TimesheetApprovalPage** (`/timesheets/approval`): queue list with filters, approve/reject with ConfirmDialog, bulk approve, expandable read-only grid, approval progress bar (HTML `<progress>`). Restricted to manager roles.
-- **TimeReportPage** (`/reports/time`): 4 charts (Hours by Project bar, Hours by Person bar, Daily Trend line, CAPEX/OPEX pie), period filter (this week/month/quarter/custom), XLSX export. Restricted to manager roles.
-- **Navigation**: My Timesheet, Timesheet Approval, Time Report added to navigation.ts; routes added to router.tsx.
-- **Tests**: 24 new tests across `TimesheetPage.test.tsx` and `TimesheetApprovalPage.test.tsx`. All 37 test files / 142 tests pass. TypeScript clean.
-
-## Phase 6 — Organization & Structure Visualization ✅ COMPLETE (2026-04-05)
-
-All F6.1–F6.3 items implemented:
-
-- **F6.1 Interactive Visual Org Chart**: `react-d3-tree` installed; `OrgTreeChart` component created at `frontend/src/components/charts/OrgTreeChart.tsx`. Transforms `OrgChartNode[]` → `RawNodeDatum` tree. SVG custom node renders org unit name (bold), manager name, member count badge, type badge (humanized via `ORG_UNIT_TYPE_LABELS`). Click node → `/people?orgUnitId=<id>`. Depth level selector (top 1/2/3/all levels via pre-pruning). Search term highlights matching nodes in yellow. Static legend/minimap in bottom-right corner. Dotted-line panel retained alongside as sidebar. `OrgPage` updated to use `OrgTreeChart` in place of text hierarchy. `react-d3-tree` mocked in test setup (`frontend/src/test/d3-tree-mock.ts`).
-- **F6.2 Workload Matrix**: `GET /workload/matrix` backend endpoint (NestJS `WorkloadModule`) queries APPROVED active assignments filtered by `poolId`, `orgUnitId`, `managerId`. Frontend `WorkloadMatrixPage` at `/workload` with sticky first column, colour-coded cells (0%=empty, 1-49%=light blue, 50-79%=blue, 80-100%=green, >100%=red), row totals, FTE column totals, click-to-assignments navigation, XLSX export, Resource Pool / Org Unit / Manager filter dropdowns. Route + navigation added (PEOPLE & ORG group, RM/Director/Admin only).
-- **F6.3 Workload Planning Timeline**: `GET /workload/planning` backend endpoint returns people + 12 forward ISO-week dates. Frontend `WorkloadPlanningPage` at `/workload/planning` with 12-week grid; cells show total allocation %, colour-coded; assignment blocks per cell with "extend 1 week" / "shorten 1 week" controls (calls `PATCH /assignments/:id`); conflict indicator (>100% shown red with ! badge); Resource Pool filter; What-if mode toggle adds hypothetical assignments (local state only, shown with dashed yellow styling).
-- **Backend module**: `src/modules/workload/` — `WorkloadRepository`, `WorkloadService`, `WorkloadController`, `WorkloadModule` wired into `AppModule`.
-- **Frontend API client**: `frontend/src/lib/api/workload.ts` — `fetchWorkloadMatrix`, `fetchWorkloadPlanning`.
-- **Tests**: `WorkloadMatrixPage.test.tsx` (8 tests), `WorkloadPlanningPage.test.tsx` (8 tests). All 39 test files / 158 tests pass. TypeScript clean.
-
-## Phase 7 — Project Lifecycle Enhancement ✅ COMPLETE (2026-04-05)
-
-All F7.1–F7.2 items implemented:
-
-- **F7.1 Project Detail Tabbed Layout**: `ProjectDetailsPlaceholderPage` redesigned with 6-tab interface (Summary | Team | Timeline | Evidence | Budget | History). Active tab stored in `?tab=` URL param. `TabBar` component at `frontend/src/components/common/TabBar.tsx`. Summary tab shows read-only fields + health badge + edit form (RBAC-gated). Team tab shows APPROVED assignments table (person links, role, allocation, dates) + Assign Team form. Timeline tab shows SVG Gantt of assignment date ranges coloured by staffing role. Evidence tab shows evidence list + `EvidenceTimelineBar` chart. Budget tab shows placeholder. History tab shows placeholder.
-- **F7.2 Project Health Scoring**: `GET /projects/:id/health` endpoint added to `ProjectsController` backed by `ProjectHealthQueryService`. Scoring: staffing (33 pts if approved assignments exist), evidence (33 pts recent, 16 pts stale, 0 none), timeline (34 pts if end date future, 17 no end date, 0 past). Grades: green≥70, yellow≥40, red<40. `ProjectHealthBadge` SVG circle component at `frontend/src/components/common/ProjectHealthBadge.tsx`. `fetchProjectHealth` API at `frontend/src/lib/api/project-health.ts`. Health badge added to project list rows and project detail Summary tab. `ProjectHealthScorecardTable` added to `DeliveryManagerDashboardPage`. Project list has sortable Health column with ↕/▲/▼ toggle.
-- **Tests**: New mocks for `fetchAssignments`, `fetchWorkEvidence`, `fetchProjectHealth` in `ProjectDetailsPage.test.tsx`. Tab navigation tests added. Health badge column test in `ProjectsPage.test.tsx`. All 39 test files / 161 tests pass. TypeScript clean.
-
-## Phase 8 — Financial Governance & Capitalisation ✅ COMPLETE (2026-04-05)
-
-All F4.1–F4.2 items implemented:
-
-- **F4.1 Capitalisation Backend**: `capex` field added to `work_evidence` table (migration SQL). `GET /reports/capitalisation?from=&to=&projectId=` endpoint aggregates approved timesheet hours by CAPEX/OPEX per project. Reconciliation alert flags projects where `|actual - expected| / expected > 0.10`. Period lock table (`period_locks`). `POST /admin/period-locks`, `GET /admin/period-locks`, `DELETE /admin/period-locks/:id` (admin only). Period lock enforcement in `TimesheetsService.upsertEntry`.
-- **F4.2 Project Budget Backend**: `project_budgets` and `person_cost_rates` tables with migrations. `PUT /projects/:id/budget` upserts per-fiscal-year CAPEX/OPEX budget. `PUT /people/:id/cost-rate` inserts person cost rate. `GET /projects/:id/budget-dashboard` returns burn-down data (weekly cumulative cost vs budget line), forecast (linear extrapolation with `projectedTotalCost`, `remainingBudget`, `onTrack`), cost breakdown by staffing role, and `healthColor` (green/yellow/red).
-- **F4.1 Capitalisation Frontend**: `CapitalisationPage` at `/reports/capitalisation` with period selector, CAPEX/OPEX breakdown table (sortable by CAPEX %), stacked bar chart (CAPEX=blue, OPEX=grey), period trend line chart (CAPEX % per month). Period lock UI (admin only): lock from/to form + locked periods table with Unlock button. Export XLSX (via `exportToXlsx`) + Export PDF (via `window.print()`). Route added with `director`, `admin`, `delivery_manager` roles.
-- **F4.2 Budget Frontend**: Budget tab in `ProjectDetailsPlaceholderPage` replaced with real content: budget edit form (fiscal year + CAPEX/OPEX inputs, admin/pm only), `BudgetBurnDownChart` (actual cost vs budget line), `ForecastChart` (projected vs budget bar), `CostBreakdownDonut` (cost by staffing role). Budget health color badge on Summary tab (On Track / At Risk / Over Budget). New chart components: `BudgetBurnDownChart`, `ForecastChart`, `CostBreakdownDonut`.
-- **New API clients**: `frontend/src/lib/api/capitalisation.ts`, `frontend/src/lib/api/project-budget.ts`.
-- **Tests**: `CapitalisationPage.test.tsx` (10 tests — table renders, chart sections visible, XLSX export fires, period lock UI, create/delete lock, error state, totals). `ProjectDetailsPage.test.tsx` updated (Budget tab renders charts, budget health badge). `recharts-mock.ts` updated with `CartesianGrid`, `BarChart`/`PieChart` as `PassThrough`. All 40 test files / 171 tests pass. TypeScript clean.
-
-## Phase 9 — Employee 360 & Wellbeing ✅ COMPLETE (2026-04-05)
-
-All F5.1–F5.3 items implemented:
-
-- **F5.1 Pulse Backend**: `pulse_entries` table (migration SQL). `POST /pulse` upserts one entry per person per week (derives `personId` from JWT, `weekStart` = ISO Monday). `GET /pulse/my?weeks=N` returns own history. Frequency hardcoded as 'weekly' (Phase 11 will wire platform settings). `PulseModule` registered in `AppModule`.
-- **F5.2 360 View Backend**: `GET /people/:id/360?weeks=12` — returns `moodTrend` (from `pulse_entries`), `workloadTrend` (from `projectAssignment` allocation by week), `hoursTrend` (from approved `timesheetWeek` entries), `currentMood`, `currentAllocation`, `alertActive` (mood ≤ 2 for 2+ consecutive weeks). Access restricted to hr_manager, delivery_manager, resource_manager, director, admin.
-- **F5.3 Heatmap Backend**: `GET /reports/mood-heatmap?from=&to=&orgUnitId=&managerId=&poolId=` — returns Person × Week mood grid with team averages. Filterable by org unit (`personOrgMembership`), manager (`reportingLine.managerPersonId`), or resource pool (`personResourcePoolMembership`).
-- **F5.1 Pulse Widget**: `PulseWidget` component — 5 emoji mood buttons (😣 Struggling → 😄 Great), optional collapsible text note, single-click submit, success/error feedback, readonly state when already submitted. History dots row for last 4 prior weeks. Embedded in `EmployeeDashboardPage`.
-- **F5.2 360 Frontend**: `Person360Tab` component with alert badge (⚠ Low mood alert), current mood/allocation summary cards. "360 View" tab on `PersonDetailPage` — role-gated (hr_manager, delivery_manager, resource_manager, director, admin). Three charts: `MoodTrendChart` (LineChart, reference lines at 2 and 3), `WorkloadTrendChart` (LineChart, reference line at 100%), `HoursLoggedChart` (BarChart).
-- **F5.3 Heatmap Frontend**: `TeamMoodHeatmap` component — CSS grid Person × Week, cells colored by mood (1=#ef4444 → 5=#22c55e, null=#e5e7eb), click cell navigates to `/people/:id?tab=360`. Team averages row at bottom. Filter bar (manager, pool) with `DirectReportsMoodTable` summary below. Embedded in `HrDashboardPage`.
-- **New API client**: `frontend/src/lib/api/pulse.ts` — `submitPulse`, `fetchPulseHistory`, `fetchPerson360`, `fetchMoodHeatmap`.
-- **Tests**: `PulseWidget.test.tsx` (4 tests), `EmployeeDashboardPage.test.tsx` updated (pulse widget mock + assertion), `HrDashboardPage.test.tsx` updated (heatmap mock + assertion), `EmployeeDetailsPage.test.tsx` updated (360 tab click test). All 41 test files / 176 tests pass. TypeScript clean (backend + frontend).
-
-## Phase 10 — In-App Notifications ✅ COMPLETE (2026-04-05)
-
-All F9.1 backend and frontend items implemented:
-
-- **Backend**: `InAppNotification` Prisma model + migration SQL. `InAppNotificationsModule` with `InAppNotificationRepository` (Prisma-backed), `InAppNotificationService`, `InboxController`. Routes: `GET /notifications/inbox`, `POST /notifications/inbox/:id/read`, `POST /notifications/inbox/read-all`. Auth-required (all roles), personal scope (derived from JWT `personId`).
-- **Event wiring**: `NotificationEventTranslatorService` updated to accept `InAppNotificationService` (injected via `InAppNotificationsModule` import in `NotificationsModule`). In-app records created for: `assignment.created` (recipient = assignment person), `assignment.approved` (recipient = assignment person), `assignment.rejected` (recipient = assignment person), `case.created` (recipient = subject person), `case.step_completed` (recipient = case owner), `case.closed` (recipient = case subject). Calling services updated to pass `recipientPersonId`/`ownerPersonId`/`subjectPersonId`.
-- **Frontend**: `frontend/src/lib/api/inbox.ts` — `fetchInbox`, `markNotificationRead`, `markAllRead`. `NotificationBell` component — bell 🔔 + unread count badge, absolute-positioned dropdown panel (max 400px, scrollable), per-notification icon (📋 cases, 👤 assignments, 📁 projects), relative timestamp, unread blue-left-border, × mark-read button, "Mark all read" header button, click → navigate + mark read, 30-second polling via `setInterval` / `clearInterval`. Added to `TopHeader` next to Sign Out.
-- **Tests**: `NotificationBell.test.tsx` — 8 tests (renders bell, unread badge count, dropdown opens, empty state, mark-read API call, mark-all-read API call, polling after 30s, event icon). `App.test.tsx` updated with `fetchInbox` mock. All 42 test files / 184 tests pass. TypeScript clean.
-
-## Phase 11 — Enterprise Config & Governance ✅ COMPLETE (2026-04-06)
-
-All 25 items (11-1-01 through 11-3-07) implemented:
-
-- **F10.1 Platform Settings**: `PlatformSetting` model in Prisma (key/value JSON store). `src/modules/platform-settings/` NestJS module. `GET /admin/settings` returns all 6 sections with defaults (general, timesheets, capitalisation, pulse, notifications, security). `PATCH /admin/settings/:key` updates a key and audit-logs the change. `SettingsPage` at `/admin/settings` with per-field Save buttons, boolean checkboxes, select dropdowns, text/number inputs. Added to router + navigation (admin-only). `frontend/src/lib/api/platform-settings.ts` API client.
-- **F10.2 Full Audit Trail**: `AuditLogRecord` extended with `oldValues`/`newValues` fields. `BusinessAuditRecordDto` updated to expose them. Settings PATCH logs old + new values. Project History tab replaced with live `AuditTimeline` fetching from `GET /audit/business?targetEntityType=Project&entityId=:id`. Assignment detail page: Audit History section added. Person detail page: History tab added with `AuditTimeline`. `AuditTimeline` component at `frontend/src/components/common/AuditTimeline.tsx` — vertical timeline with colour-coded action icons (CREATE=blue, UPDATE=yellow, DELETE=red), humanized action labels, relative timestamps, expandable old→new diff table.
-- **F10.3 Skills Registry**: `Skill` and `PersonSkill` Prisma models (migration SQL). `src/modules/skills/` NestJS module with 3 controllers: `GET /admin/skills`, `POST /admin/skills` (admin/hr), `DELETE /admin/skills/:id` (admin), `GET /people/:id/skills`, `PUT /people/:id/skills` (full replace). `GET /assignments/skill-match?skills=skill1,skill2` — finds people with ALL listed skills and < 100% allocation. Skills tab on PersonDetailPage with proficiency badges (Beginner/Intermediate/Advanced/Expert), certified flag, edit mode with skill picker. SkillMatchPanel embedded in CreateAssignmentPage — expand to select skills, click "Find matches", shows candidates table with allocation %. `frontend/src/lib/api/skills.ts` API client.
-- **Tests**: `SettingsPage.test.tsx` (6 tests), `AuditTimeline.test.tsx` (5 tests), `PersonSkillsTab.test.tsx` (6 tests). All 45 test files / 201 tests pass. TypeScript clean.
-
-## Phase 12 — Reporting & Export Centre ✅ COMPLETE (2026-04-05)
-
-All items 12-1-01 through 12-2-07 implemented:
-
-- **F11.1 Director Executive Dashboard Enhancement**:
-  - `FteTrendChart` component at `frontend/src/components/charts/FteTrendChart.tsx` — `LineChart` of staffed FTE per month derived from weekly trend data.
-  - `CostDistributionPie` component at `frontend/src/components/charts/CostDistributionPie.tsx` — `PieChart` of total hours by project from capitalisation report.
-  - `DirectorDashboardPage` enhanced: fetches projects + health scores and renders `Portfolio Summary Table` (project name links, status badge, `ProjectHealthBadge`, assignment count). Fetches `fetchCapitalisationReport` for cost pie (shown only when data present). Fetches `fetchWorkloadMatrix` to compute org-wide average allocation, displayed via reused `WorkloadGauge` component. All 5 KPI cards wrapped in `<Link>` elements pointing to `/projects`, `/assignments`, `/people`.
-- **F11.2 Export Centre**:
-  - `ExportCentrePage` at `/reports/export` — card-based layout with 5 report cards, each with description, optional date-range inputs, and Generate & Download button (loading state while generating).
-  - Headcount Report: `fetchPersonDirectory({ pageSize: 500 })` → exports Name, Email, Status, Org Unit, Manager, Resource Pools, Active Assignments Count.
-  - Assignment Overview: `fetchAssignments({ pageSize: 500 })` → exports Person, Project, Role, Allocation %, Status, Start Date, End Date.
-  - Timesheet Summary: `fetchApprovalQueue({ status: 'APPROVED', from, to })` → exports Person, Week, Total Hours, CAPEX Hours, OPEX Hours, Status.
-  - CAPEX/OPEX by Project: `fetchCapitalisationReport({ from, to })` → exports Project, CAPEX Hours, OPEX Hours, Total Hours, CAPEX %, Alert.
-  - Workload Matrix: `fetchWorkloadMatrix()` → exports person × project matrix rows with Total % column.
-  - Route added to router + navigation (group: 'work', roles: director, admin, delivery_manager, hr_manager).
-- **Tests**: `DirectorDashboardPage.test.tsx` (6 tests), `ExportCentrePage.test.tsx` (8 tests). All 47 test files / 217 tests pass. TypeScript clean.
-
-## Phase G — Unfair Advantages (2026-04-06) ✅ COMPLETE
-
-All Phase G items implemented:
-
-- **G-01 Weighted Skill Coverage Scoring**: `StaffingSuggestionsService` with proficiency × importance × availability × recency algorithm; `GET /staffing-requests/suggestions?requestId=` returns ranked candidates with per-skill breakdown; suggestions panel on `StaffingRequestDetailPage`.
-- **G-02 Conflict-Aware Drag-and-Drop Staffing Board**: `StaffingBoardPage` at `/staffing-board` with person swimlanes × 12-week columns; `@dnd-kit/core` drag handler calls conflict check before commit; `GET /workload/check-conflict` endpoint.
-- **G-03 Algorithmic Capacity Forecast**: `GET /workload/capacity-forecast` with bench projection and at-risk people detection; `CapacityForecastChart` stacked area chart on `WorkloadPlanningPage` with click-through to at-risk people list.
-- **G-04 Case SLA Engine**: `InMemoryCaseSlaService` with per-type SLA hours (ONBOARDING=72h, OFFBOARDING=48h, TRANSFER=96h, PERFORMANCE=120h); escalation tier computation (0/1/2); SLA countdown indicator on `CaseDetailsPage` with green/yellow/red/red-tier2 color coding; admin SLA config endpoints.
-- **G-05 Webhook / Event API**: `InMemoryWebhookService` with HMAC-SHA256 signed delivery (`X-Delivery-Signature`), delivery log; `POST/GET/DELETE /admin/webhooks`; test delivery endpoint; `WebhooksAdminPage` with add/test/delete/view deliveries UI.
-- **G-06 HRIS Integration**: `HrisAdapterPort` interface; `BambooHrAdapter` and `WorkdayAdapter` stubs; `HrisSyncService` with adapter selection and manual sync trigger; `GET/POST /admin/hris/config` + `POST /admin/hris/sync`; `HrisConfigPage` with connection config and field mapping UI.
-- **G-07 Custom Report Builder**: `ReportBuilderService` with 5 data sources (people, assignments, projects, timesheets, work_evidence) and column metadata; `GET /reports/builder/sources`, `GET/POST/DELETE /reports/templates`; `ReportBuilderPage` with column selector, filter builder, sort order, preview table, save/load templates, XLSX export.
-- **G-08 ABAC**: `AbacPolicy` interface + `AbacPolicyRegistry` with 3 seed policies (rm-approve-pool, pm-read-project, employee-own-timesheet); `applyDataFilter()` for Prisma where-clause injection; `GET /admin/access-policies`; `AccessPoliciesPage` with role/resource filter and policy table.
-
-## Deferred items resolved (2026-04-07)
-
-All previously deferred tracker items are now implemented:
-
-- **13-A1–A5 (Prisma schema)**: `StaffingRequest` + `StaffingRequestFulfilment` models + enums added to `schema.prisma`; applied via `prisma db push` against running Docker DB; manual migration SQL at `prisma/migrations/20260407_staffing_requests/`.
-- **13-C5 (Notification seed)**: `seedNotificationInfrastructure()` added to `seed.ts`; 4 staffing request notification templates seeded into Docker DB.
-- **13-D8 (DM staffing gaps table)**: `StaffingGapsTable` + `OpenRequestsByProjectTable` rendered in `DeliveryManagerDashboardPage` from backend-provided data.
-- **13-E3–E5 (Playwright E2E specs)**: Tests written in `e2e/tests/13-staffing-flows.spec.ts` (PM→RM flow, HR at-risk panel, DM staffing gaps); WSL2 browser limitations prevent local execution.
-- **A-L01 (ConfirmDialog on employee creation)**: `ConfirmDialog` wraps the create form submission in `EmployeeLifecycleAdminPage`; tests updated.
-- **F-07 (Mobile layout)**: `overflow-x: auto` on timesheet/data-table wrappers; `@media (max-width: 640px)` rules in `global.css` for tables, filter bars, and assignment table column hiding.
-- **Group 3 (SSO/onboarding settings)**: `sso.*` and `onboarding.*` settings added to `platform-settings.service.ts`, DTO, frontend API types, and `SettingsPage.tsx` with 2 new sections.
-- **Group 4 (BurnRateTrend + skill matching)**:
-  - `burnRateTrend` field added to DM dashboard DTO + service (evidence entries grouped by ISO week, last 8 weeks); `BurnRateTrendChart` (recharts `LineChart`) rendered in `DeliveryManagerDashboardPage`.
-  - `fetchStaffingSuggestions()` added to frontend API; `StaffingRequestDetailPage` fetches and renders ranked skill-matched candidates panel (`data-testid="skill-suggestions-panel"`) when request is OPEN/IN_REVIEW with skills.
-
-## Highest-value remaining gaps (priority order)
-
-All phases (1–19, 20a–i, A–G, DD, MS, QA-A through QA-M) are complete or in progress. **54 frontend test files + 29 E2E specs passing. Backend TS clean. Frontend TS clean.**
-
-### CI green-up state (2026-05-02 / 03) — deploy-gating jobs green; downstream jobs Phase 3
-
-Initiative goal: every required workflow check pure-green so the branch can be protected with all of them. Reference plan at `/home/drukker/.claude/plans/there-are-lots-of-logical-kahn.md`. Posture as of 2026-05-03:
-
-**Green and stable (deploy-gating):**
-- `architecture-check.yml` — green
-- `build-and-stage.yml` — green; staging deploy operational at https://deliverit-test.agentic.uz/
-- `ci.yml` → `Backend fast checks` — green (lint clean, contract tests pass, schema-drift-check passes, Trivy passes)
-- `ci.yml` → `Frontend quality` — green (vitest globals registered, all pre-existing failures fixed)
-- `ci.yml` → `Schema drift check (DM-R-2)` — green via reconcile migration `20260502_reconcile_schema_drift_post_dm_r` (idempotent, full schema reconcile, 332 lines)
-
-**Phase 3 outstanding (downstream jobs that were skipped behind Phase 1's red gates and are now visible):**
-- `ci.yml` → `Backend DB-coupled checks` — needs CI infra wiring + ~26 known test failures
-- `ci.yml` → `Backend slow checks` — same infra + perf suite stability
-- `ci.yml` → `Production build smoke test` — Trivy advisory (`exit-code: 0`, non-blocking by design); could be promoted to blocking in a separate decision
-- `ci.yml` → `E2E smoke merge gate`, `E2E non-smoke shard 1/2`, `E2E non-smoke shard 2/2` — Playwright `webServer` startup + post-DS-migration selector drift
-
-**Phase 4 outstanding:**
-- `rollback-roundtrip.yml` — 38 of 57 reversible migrations broken; fix-plan in the kahn plan covers FORWARD_ONLY reclassification (~16), idempotency wraps (~4), determinism fixes (~15), real rollback rewrites (~10). Workflow stays scheduled-only until rehab lands.
-
-**PRs delivered for this initiative:**
-| PR | Title | Notes |
-|----|-------|-------|
-| #13 | Phase 1 — fix the three blocking CI jobs + tokens:check | tsconfig vitest globals, drop dead DataTable test, drop unused `Param`, reconcile migration v1, tokens baseline |
-| #14 | Phase 2 — fix backend-fast Jest + frontend test failures | 5 commits; the test edits did not actually pass — process failure (no local verification) |
-| #15 | Phase 2-R — re-fix Phase 2's broken edits | metadata-dictionaries contract spec stubs setup.completedAt + read-replica; AssignmentDetailsPage/ProjectDetailsPage/IntegrationsAdminPage/NotificationsPage selectors aligned with current source |
-| #16 | Hotfix — make reconcile migration idempotent | staging deploy half-applied → 502; rewrote `20260502_reconcile_schema_drift_post_dm_r/migration.sql` with `IF EXISTS`/`IF NOT EXISTS`/DO-EXCEPTION wraps; cleared failed `_prisma_migrations` rows on staging via SSH |
-| #17 | Bump Trivy SHA + pg_dump filter for PG16.5 | Trivy `18f2510e` → `ed142fd0` (v0.36.0); pg_dump pipeline strips `\restrict`/`\unrestrict` non-deterministic tokens; strip `?schema=public` from DATABASE_URL for pg_dump |
-| #18 | .gitignore — local planning artefacts | three docs/planning/*.md files were getting swept by `git add -A`; pinned by name |
-
-Business-feature implementation can resume now — deploy-gating jobs are green, so any feature PR that passes those four jobs can merge and ship to staging.
-
-### Phase 20 — Comprehensive Audit (2026-04-15/16) — 74/92 items done
-
-Remaining 17 items are architectural refactoring (20c sub-phase):
-- Module boundary violations (cross-module imports of internal repos)
-- Service decomposition (split AuthService 498→4 services)
-- DTO creation for 25+ inline @Body() parameters
-- Replace `any` types in 15+ Prisma Gateway interfaces
-- Extract shared hooks (useDashboardQuery, usePersonSelector, fetchDashboard<T>)
-- Split god components (ProjectManagerDashboardPage, DirectorDashboardPage, HrDashboardPage)
-- Add transaction boundaries to multi-step operations
-- Resolve circular dependencies (4 modules use forwardRef)
-
-### Business logic added (Phase 20b)
-- Assignment APPROVED → ACTIVE transition with `ActivateApprovedAssignmentsService`
-- Case approval/rejection workflow (`ApproveCaseService`)
-- Auto-create ONBOARDING case on employee hire
-- Auto-create OFFBOARDING case on employee deactivation
-- Overlapping leave request detection (server-side)
-- Budget approval workflow (audit-trail based; full DB schema pending — tracked in DM-6-2)
-
-### Phase DM — Data Model Remediation (2026-04-17, DM-1 complete)
-
-Holistic schema audit against best-practice conventions. Strategic plan: `/home/drukker/.claude/plans/http-localhost-5173-review-data-model-bright-peach.md`. Scope set by product: full D1→D8 delivered, multi-tenancy within 6 months (→ DM-7.5 first-class), small scale (<10M rows/24mo → partitioning deferred; DomainEvent partition-ready), 24/7 zero-downtime (→ expand-contract + two-release contract + blue/green clone verification every phase).
-
-**DM-1 landed (governance + lint baseline, zero DB risk):**
-- `docs/planning/schema-conventions.md` — 20 sections covering IDs, temporal vocabulary, enums, audit columns, soft delete, `onDelete` matrix, table/column naming, timestamptz, polymorphism rules, JSON discipline, indexing, uniqueness, versioning, currency, tenant scope, migration discipline, canonical dictionaries, accepted Postgres extensions, enforcement.
-- `docs/planning/aggregate-map.md` — every DDD aggregate with components, tenant-scope flags, and a forbidden-cross-aggregate-writes list.
-- `docs/planning/data-model-decisions.md` — 25 DMD entries (CRUD + event-log, RLS-on-top, expand-contract, two-release contract, FK enforcement, transactional outbox, polymorphism bounds, archivedAt canonicalisation, UTC timestamptz, dictionary-backed reference data, currency codes, optimistic `version`, partitioning deferral, AST-based CI lint, platform vs tenant-scoped reference data, envelope-encryption policy, accepted Postgres extensions, `hiredAt`/`terminatedAt` denorm, `ProjectRetrospective` extraction, bridge-naming rule, `ApprovalDecision.REQUESTED` deprecation).
-- `scripts/check-schema-conventions.cjs` — 7 rules parsing `schema.prisma` via `@mrleebo/prisma-ast`: `id-not-uuid`, `fk-not-uuid`, `fk-missing-relation`, `relation-ondelete-missing`, `datetime-not-timestamptz`, `model-missing-map`, `approval-decision-requested`.
-- `scripts/schema-convention-baseline.json` — 397 existing violations grandfathered; baseline shrinks, never grows. Every DM sub-phase reduces it.
-- `npm run schema:check` wired into `verify:pr`; `npm run schema:baseline` regenerates after intentional changes.
-- `Phase DM` tracker section added covering DM-1 through DM-8 (50+ checklist items).
-
-**DM-3 Phase-1 landed (2026-04-17):** 16 UUID↔UUID foreign keys declared in [prisma/schema.prisma](prisma/schema.prisma) with explicit `onDelete` per the DM-1 policy matrix. Migration draft at [prisma/migrations/20260417_dm3_relation_closure/migration.sql](prisma/migrations/20260417_dm3_relation_closure/migration.sql) uses `ADD CONSTRAINT ... NOT VALID` + `CREATE INDEX IF NOT EXISTS` + `VALIDATE CONSTRAINT`. Orphan detection at [scripts/find-orphans.ts](scripts/find-orphans.ts) covers 30+ relations (UUID and TEXT). Migration not yet applied — ops rollout playbook in tracker item DM-3-4. Schema lint baseline dropped 397 → 361 (20 external-ID + polymorphic whitelist entries + 16 new relations).
-
-**DM-2.5 Public ID Layer inserted (2026-04-18, security-critical):** user flagged raw UUIDs in URLs/DTOs as a heavy security vulnerability. Every aggregate root gains a `publicId VARCHAR(32)` column (entity-type-prefixed, tenant-scoped Sqid, never leaves the API layer). Internal `uuid` PK remains for FKs and joins. Decision documented as [DMD-026](docs/planning/data-model-decisions.md), specification in [schema-conventions.md §20](docs/planning/schema-conventions.md). DM-2 + DM-2.5 combined per-table — one expand-contract cycle introduces both internal `uuid` and external `publicId`.
-
-**DM-2 expand scaffolded for all 12 tables (2026-04-18):** runbook at [docs/planning/dm2-expand-contract-runbook.md](docs/planning/dm2-expand-contract-runbook.md). Each table got a migration directory under `prisma/migrations/20260418_dm2_expand_<table>/` with `migration.sql` + `rollback.sql`. Every expand migration is additive: adds `id_new uuid DEFAULT gen_random_uuid()`, adds `publicId varchar(32)` (aggregate roots only), backfills both, installs a BEFORE-INSERT-OR-UPDATE dual-maintain trigger, builds unique indexes, and logs a self-audit `AuditLog` row.
-
-| Table | Aggregate root? | publicId prefix | Migration |
-|---|---|---|---|
-| `skills` | Yes | `skl_` | [20260418_dm2_expand_skills](prisma/migrations/20260418_dm2_expand_skills) |
-| `person_skills` | No (child) | — | [20260418_dm2_expand_person_skills](prisma/migrations/20260418_dm2_expand_person_skills) |
-| `pulse_entries` | No (composite key) | — | [20260418_dm2_expand_pulse_entries](prisma/migrations/20260418_dm2_expand_pulse_entries) |
-| `period_locks` | Yes | `prd_` | [20260418_dm2_expand_period_locks](prisma/migrations/20260418_dm2_expand_period_locks) |
-| `person_cost_rates` | Yes | `pcr_` | [20260418_dm2_expand_person_cost_rates](prisma/migrations/20260418_dm2_expand_person_cost_rates) |
-| `project_budgets` | Yes | `bud_` | [20260418_dm2_expand_project_budgets](prisma/migrations/20260418_dm2_expand_project_budgets) |
-| `in_app_notifications` | Yes | `not_` | [20260418_dm2_expand_in_app_notifications](prisma/migrations/20260418_dm2_expand_in_app_notifications) |
-| `leave_requests` | Yes | `lvr_` | [20260418_dm2_expand_leave_requests](prisma/migrations/20260418_dm2_expand_leave_requests) |
-| `staffing_requests` | Yes | `stf_` | [20260418_dm2_expand_staffing_requests](prisma/migrations/20260418_dm2_expand_staffing_requests) |
-| `staffing_request_fulfilments` | No (child) | — | [20260418_dm2_expand_staffing_request_fulfilments](prisma/migrations/20260418_dm2_expand_staffing_request_fulfilments) |
-| `timesheet_weeks` | Yes | `tsh_` | [20260418_dm2_expand_timesheet_weeks](prisma/migrations/20260418_dm2_expand_timesheet_weeks) |
-| `timesheet_entries` | No (child) | — | [20260418_dm2_expand_timesheet_entries](prisma/migrations/20260418_dm2_expand_timesheet_entries) |
-
-Prefix reservations are captured in [schema-conventions.md §20](docs/planning/schema-conventions.md). `prisma validate` ✓ · `db:generate` ✓ · backend `tsc --noEmit` clean · schema lint baseline 364 (unchanged from pre-DM-2 batch; Skill-pilot's `publicId` was exempted via the `*Id$` lint heuristic fix). Fallback publicId format during expand is `<prefix>_<12-hex>`; DM-2.5-2 (Sqids service) will regenerate to proper opaque Sqids before the contract cutover.
-
-**DM-2 remaining work:**
-- **DM-2-ops-expand** — apply the 12 expand migrations to the blue/green clone → traffic replay → staging drill → production cutover. Any order works since expand is additive.
-- **DM-2.5 tooling** — Sqids service, Prisma extension, NestJS pipe, serializer, the two new lint rules, controller+frontend migration top-down.
-- **DM-2-contract-batch** — 12 contract migrations (PK swap + rename + drop trigger + `publicId NOT NULL`). Cross-table dependencies: `skills` ↔ `person_skills.skillId`, `timesheet_weeks` ↔ `timesheet_entries.timesheetWeekId`, `staffing_requests` ↔ `staffing_request_fulfilments.requestId` must contract in lock-step (type-mismatched FKs are invalid after cutover).
-- **DM-2-finish** — regenerate `prisma/seed.ts`, unblock DM-3-2b (14 TEXT→UUID FKs), unblock DM-4 CHECK constraints on these tables, drop `id_old` shadow columns.
-
-**Remaining DM sub-phases (pending):** DM-2 type normalization (expand-contract TEXT→uuid — unblocks DM-3 Phase-2's 14 remaining relations); DM-3 Phase-2 (TEXT→UUID FKs) + DM-3-6 service refactor (use Prisma `include`); DM-4 CHECK constraints + enum promotion + timestamptz conversion; DM-5 naming normalization; DM-6 new domain models (Currency, BudgetApproval, Contact, EmploymentEvent, ProjectRetrospective, dictionary-backed reference data); DM-7 DomainEvent transactional outbox + notification unification; DM-7.5 first-class tenant isolation with RLS; DM-8 version columns, soft-delete middleware, full-text search, materialised views, operational hardening.
-- Missing notification events added (amended, deactivated, case approved/rejected)
-
-### Accessibility (Phase 20e — complete)
-- `prefers-reduced-motion` media query for all animations
-- Native `<button>` in NotificationBell (was `<div>`)
-- `scope="col"` on table headers across all pages
-- Color contrast verified (--color-text-subtle darkened to 4.5:1)
-- Focus-visible indicators on charts, tables, KPIs, tip balloons
-- DataTable captions on key instances
-- axe-core Playwright a11y test suite (`e2e/tests/14-accessibility.spec.ts`)
-
-### UX improvements (Phase 20g — complete)
-- Filter persistence via URL (CasesPage, WorkloadMatrixPage)
-- Form pre-fill from URL params and auth context (CreateAssignment, CreateStaffingRequest, BulkAssignment)
-- Timesheet approval auto-expands submitted rows (one-screen approval)
-- Error/empty states all have forward actions
-- Sort order persisted in URL (ProjectsPage)
-- KPI drilldown fixed (TeamDashboard "Unassigned" links to filtered list)
-
-### Frontend quality (Phase 20d)
-- Disabled button styling for all variants
-- Focus-visible on interactive table rows, KPI strip, chart wrappers
-- Table row hover transitions
-- Confirm dialog fade-in animation
-- Inline styles extracted to constants in ActionDataTable and WorkloadMatrixPage
-- Pagination component (`PaginationControls`) with page numbers, first/last, rows-per-page selector
-- StaffingRequestsPage now paginated
-
-### Completed 2026-04-11 (DB Migration & Demo Readiness)
-
-- **In-memory → DB migration**: All persistent data stores moved to Prisma-backed repositories:
-  - Notifications module (4 repos: Channel, Template, Request, Delivery)
-  - Metadata module (new Prisma repos: MetadataDictionary, MetadataEntry)
-  - Resource Pools module (new PrismaResourcePoolRepository)
-  - Case management (CaseStep service now Prisma-backed; CaseComment stores in CaseRecord.payload JSON)
-  - Audit observability (PrismaAuditLogStore writes to AuditLog table with in-memory cache for sync reads)
-  - Kept in-memory: external system adapters (Jira, M365, Radius), webhooks (no Prisma model), CaseSLA config
-- **Class-validator decorators**: Added to all 28 write DTO files across all modules
-- **Comprehensive seed dataset** (phase2 profile): 32 people, 16 org units, 12 projects, 22 assignments, 24 evidence entries, 3 cases with 14 steps, 6 metadata dictionaries, 42 platform settings, 25 skills, 8 timesheet weeks, 36 pulse entries, 8 in-app notifications, 3 notification channels, 15 templates
-- **Admin impersonation**: "View as..." dropdown in top header for admin users; overlays impersonated personId/roles onto `useAuth()` so all dashboards, role guards, and data fetching reflect the selected user
-- **Auth fix**: `AuthenticatedPrincipalFactory` no longer throws on invalid/expired tokens — returns `undefined` so `@Public()` endpoints work regardless of stale tokens
-- **Throttle limit**: Increased from 10 to 100 req/min globally; login endpoint keeps strict 10 req/min
-- **Dashboard trend**: Sequential fetching (was 12 parallel calls hitting rate limit)
-- **Scroll fix**: `.app-shell__content` changed to `overflow-y: auto`; `.page-container--viewport` no longer blocks scroll
-- **Custom scrollbars**: 5px ultra-thin, color-matched for light content and dark sidebar
-- **Sidebar fix**: Collapse button pinned at bottom; nav menu scrollable; duplicate key warning fixed
-- **leave_requests migration**: Created and applied (table was missing from DB)
-- **Monitoring fix**: Applied pending migration; fixed audit visibility false positive
-
-### Completed 2026-04-08
-
-- **15c-08**: Planned vs Actual page redesigned — tabbed summary table with expandable rows
-- **15d-01 to 15d-05**: Interactive Org Chart with `d3-org-chart`
-- **Phase 16**: Code-splitting for 18 heavy pages via `React.lazy` + `Suspense`
-- **QA fixes**: C4 (hot-reload), C9/H3 (ESM), C10/L1 (seed UUIDs), I6 (DTO decorators)
-
-### Phase A bug fixes applied (2026-04-06)
-
-- A-C01: Bearer token removed from admin panel display
-- A-C02: RBAC guards on all `/admin/*` routes; AccessDenied page for unauthorized roles
-- A-C03: Case owner dropdown uses personId (not account ID); name resolution via multi-dataset Map
-- A-C04: Assignment queries join project/person names; planned-vs-actual also fixed
-- A-C05: Employee directory includes INACTIVE; status filter dropdown added
-- A-C06: ErrorBoundary wrapping AppShell; 404 NotFoundPage for unmatched routes
-- A-H01: Grade dropdown populated with G7–G14 entries from in-memory factory
-- A-H02: Role dropdown falls back to RBAC role list when no metadata dictionary
-- A-H03: Approve/Reject buttons hidden (not just disabled) when not applicable
-- A-H04/M04: Dual breadcrumb eliminated; PageTitleBar no longer renders hardcoded crumbs
-- A-H05: Date locale standardized to en-US throughout
-- A-H06: Case participant count includes subject + owner (+2 in list and detail)
-- A-H07: CSS `flex: 1 1 auto; min-height: 0` on main content area
-- A-H08: InMemoryCaseStepService with 4 ONBOARDING steps auto-created on case creation
-- A-M01: Auto-redirect to entity detail page after employee/case/assignment creation
-- A-M02: Employee form adds hire date, job title, location, line manager fields
-- A-M03: Export XLSX visible when search active (condition fixed)
-- A-M05: Pagination shows "filtered" label when client-side filter active
-- A-M06: Skillsets section hidden when no options configured
-- A-M07: Case type is a dropdown select (not disabled text input)
-- A-L02: Employee creation redirects directly to new profile (no success banner needed)
-- A-L04: Assignment note field moved above date range in detail view
-- A-L05: TableSkeleton on key list pages (people, assignments, cases, projects)
-- A-L06: btn/btn--* replaced with button/button--* in 3 files
-
-### QA bug fixes applied earlier (2026-04-05)
-
-- BUG-008: actorId auto-derived from auth context on assignment workflow actions (no manual entry)
-- BUG-019: Project Manager displayed as name (not UUID) on project detail page
-- BUG-044: Resource Pools displayed as names (not UUIDs) on person detail page
-- BUG-052: Case subject/owner names resolved in backend response (already working)
-- BUG-060: PM dashboard activity feed person names resolved from demoPeople (already working)
-- ADM3: Admin panel now lists, enables/disables, and deletes local accounts
-- RM3a: RM dashboard quick-assignment modal implemented
-- Notification wired: `case.step_completed` event fires on step completion
-
----
-
-## Workforce Planner — Distribution Studio (2026-04-17 / 18)
-
-Entry point: `/staffing-desk?view=planner`. Backend: [workforce-planner.service.ts](src/modules/staffing-desk/application/workforce-planner.service.ts), [planner-scenario.service.ts](src/modules/staffing-desk/application/planner-scenario.service.ts), [staffing-desk.controller.ts](src/modules/staffing-desk/presentation/staffing-desk.controller.ts). Frontend: [WorkforcePlanner.tsx](frontend/src/components/staffing-desk/WorkforcePlanner.tsx) + 9 sibling components + [usePlannerSimulation.ts](frontend/src/features/staffing-desk/usePlannerSimulation.ts).
-
-### Solver — strategy-driven auto-distribute
-
-`POST /api/staffing-desk/planner/auto-match` accepts `{ strategy, minSkillMatch, from, weeks, projectStatuses[], priorities[], poolId, orgUnitId, demandIds?, lockedPersonIds? }`.
-
-Five strategies:
-- `BALANCED` (default): `0.5·skill + 0.3·benchDays + 0.2·costInverse`.
-- `BEST_FIT`: pure skill match.
-- `UTILIZE_BENCH`: longest-benched first, skill as tiebreaker.
-- `CHEAPEST`: lowest cost, skill floor.
-- `GROWTH`: stretch-band 20–60% skill, junior bonus.
-
-Three-tier candidate selection per demand:
-1. **Chain** — person whose prior simulated engagement ends strictly before this demand starts; preferred so one person rolls from project A to project B without going to bench.
-2. **Qualified** — fresh bench person clearing `minSkillMatch`, ranked by strategy score.
-3. **Fallback** — longest-bench eligible person regardless of skill (flagged `fallbackUsed: true`, shown as MISMATCH with `fallback: longest bench` rationale).
-
-Hard filters applied in solver: `employmentStatus=ACTIVE`, over-allocation (cumulative across batch), approved leave overlap, project end date vs demand start.
-
-### Multi-week coverage
-
-Each suggestion carries `coverageWeeks: string[]` — Monday-aligned weeks spanning the demand's duration, clamped to the grid horizon. On acceptance, the frontend expands the suggestion into one yellow block per covered week. One suggestion can fill 13 cells.
-
-### Filter consistency (grid + autoMatch + scenarios)
-
-`projectStatuses` and `priorities` are passed to **both** `GET /api/staffing-desk/planner` and `POST /api/staffing-desk/planner/auto-match` from a single React state object. `poolId`/`orgUnitId` also flow to both. Project-status scope and the `endsOn >= horizonStart` guard are applied identically on both endpoints so any project invisible in the grid is also invisible to the solver.
-
-Toolbar filter bar: `Status` multi-select chip (6 statuses, default ACTIVE), `Priority` multi-select chip (4 priorities, default all), `Layer` select (coverage/cost/match/risk heatmap).
-
-### Diagnostics — transparent funnel
-
-Every auto-match response carries an `AutoMatchDiagnostics` block: `projectsWithOpenDemand`, `projectsInScope`, `totalHeadcountScanned`, `headcountInScope`, `headcountSkippedProjectStatus`, `headcountSkippedHorizon`, `headcountSkippedPriority`, `totalActivePeople`, `benchInScope`, `suggestionsCreated`, `chainedCount`, `fallbackCount`, `unmatchedHeadcount`. Surfaced as a strip at the top of the preview modal so the user can reconcile the visible grid rows against the solver's scope.
-
-### Extension & anomalies
-
-`POST /api/staffing-desk/planner/extension-validate` runs 5 checks when a user opts to extend an existing assignment (`Extend` button in cell-detail popover): employment inactive, termination before new end, project end overrun (hard stops) + approved leave overlap, over-allocation (soft anomalies). Soft anomalies require a reason (`TRAINING | EMERGENCY | CLIENT_PREFERENCE | OTHER+note`); both the conflict list and the reason flow through apply and land on `ProjectAssignment.notes`.
-
-Collapsible `PlannerAnomalyTable` below the grid aggregates: skill-mismatch force-assigns, over-allocation overrides, accepted MISMATCH auto-matches, extension conflicts. Default collapsed to a ~28px strip showing severity counts; expands on click to a capped 35vh scrollable table with per-row `Undo`. `flex: 0 0 auto` so it cannot steal vertical space from the grid.
-
-### Server-persisted scenarios
-
-New Prisma model `PlannerScenario` (`planner_scenarios` table, migration `20260418_add_planner_scenarios`) stores serialized simulation state (`moves`, `suggestions`, `hireIntents`, `releases`, `extensions`, `unmatchedDemand`) plus cached summary counts + horizon context.
-
-- `GET /api/staffing-desk/planner/scenarios` — list
-- `GET /api/staffing-desk/planner/scenarios/:id` — detail (includes `state`)
-- `POST /api/staffing-desk/planner/scenarios` — create (requires `actorId`)
-- `PATCH /api/staffing-desk/planner/scenarios/:id` — update
-- `DELETE /api/staffing-desk/planner/scenarios/:id` — archive (soft)
-
-Toolbar `Scenarios ▾` dropdown: Save current / Load / Fork / Archive. Forking round-trips through backend as a new record.
-
-### Why-not?
-
-`POST /api/staffing-desk/planner/why-not` — for any unmatched demand, returns top 5 close-but-rejected candidates with `disqualifiers: WhyNotDisqualifier[]` (`fully-allocated`, `on-leave`, `missing-skills`, `inactive`, ...). Surfaced via `?` button on each unmatched demand card in the bench sidebar.
-
-### Cell rendering legend
-
-- **Green fill** — existing APPROVED / ACTIVE / REQUESTED assignment.
-- **Blue fill** — DRAFT assignment (`AssignmentStatus=DRAFT`).
-- **Yellow dashed, no fill** — missing assignment (unfilled StaffingRequest / RolePlan HC).
-- **Yellow fill** — proposed by simulation (auto-match accepted, manual drag, chained continuation).
-- **Yellow dashed with ⟶** — simulated extension.
-- **Purple dotted** — PHANTOM_HIRE (new hire intent, no person yet).
-- `!` badge = skill MISMATCH; `⛔` badge = over-allocation override.
-
-Cell cap: 6 assignments + 4 demands visible before a clickable **`+N more`** overflow badge opens the cell detail popover.
-
-### Tuning controls
-
-Bench sidebar: Strategy dropdown (5 options) + `Min skill match` slider (0–90%, step 5, default 15%). `Min skill match` is ignored when strategy is `GROWTH`.
-
-### Apply flow
-
-`POST /api/staffing-desk/planner/apply` now handles `{ dispatches, hireRequests, releases, extensions }` atomically:
-- Dispatches create `ProjectAssignment` with `status=REQUESTED` and force-assign reason on `notes`.
-- Hires create `StaffingRequest` with `status=OPEN`.
-- Extensions update `ProjectAssignment.validTo` and append conflicts + reason to `notes`.
-- Response: `{ assignmentsCreated, staffingRequestsCreated, releasesNoted, extensionsUpdated, errors[] }`.
-
-### Interaction model
-
-- Single click on a populated cell → `PlannerCellDetailPopover` (assignment list + per-row Remove/Extend/Release/Accept/Reject).
-- Double click on any cell → `PlannerDraftAssignmentModal` (person picker from bench, Save Draft = `status=DRAFT`, Create & Request = `status=REQUESTED`).
-- Drag bench → cell: classifies SUGGESTED/ACCEPTABLE/MISMATCH/BLOCKED; MISMATCH/BLOCKED triggers `PlannerForceAssignPopover` for reason capture.
-- Inline bench chips appear on empty demand cells during Simulating mode (top-3 candidates, click = instant assign).
-- Keyboard: `Cmd/Ctrl+Z` undo · `Cmd/Ctrl+Enter` apply · `Escape` dismiss top overlay · `Alt+←/→` jump 4 weeks.
-- Heatmap layers: coverage (default), cost, match quality, risk.
-
-### Rightmost diff column
-
-Every project row carries a sticky `Δ FTE` column showing `baseline → simulated` average FTE across the horizon and the delta, color-coded green/red/muted.
-
-### Known limitations / follow-ups
-
-- `PlannerAssignmentBlock` doesn't expose `validTo` to the frontend, so the Extend modal shows `open-ended` as the initial current-end; backend validator resolves the real date on first validate call.
-- Compare-scenarios side-by-side view not built yet (only list + load + fork).
-- Over-allocation tracking still uses a cumulative counter across the batch rather than per-week; acceptable because chaining uses `busyUntil` which naturally respects time windows, but fresh-bench over-allocation across multiple demand items in the same week is imprecise.
-- No backend tests for the new solver paths yet — user has flagged test-runs as user-triggered only. Planner endpoints are exercised by the Playwright smoke suite but not by dedicated specs.
+## 5. Highest-value remaining gaps (pre-bank-IT-go-live)
+
+Ordered by impact × effort score from Phase 10 synthesis:
+
+1. **T-07 Locale + timezone + week + currency** — bank cannot operate without correct locale handling. Effort: 5–7d.
+2. **T-02 SSO/OIDC handler + M365 auto-provision** — enterprise-blocker. Effort: 8–12d.
+3. **T-06 Multi-currency consolidation (FxRate)** — locale-agnostic architecture requires it. Effort: 7–10d.
+4. **T-05a Fiscal year quick fix** — banks rarely have Jan-1 FY. Effort: 3d.
+5. **T-04 Customizable + deterministic RBAC** — promoted from Cat-2 to Cat-1. Effort: 12–18d (D-130+D-158+D-159).
+6. **T-03 GDPR redact-payload v1** — regulatory blocker for EU/UK banks. Effort: 10–15d.
+7. **T-08 D-110 FK indexes** — hardening + prereq for any future MV work. Effort: 5d.
+8. **T-12 Hot-path queries** — perf safety net. Effort: 3–5d.
+9. **T-11 Outbox producers + DB pool** — production-readiness. Effort: 4–7d.
+10. **T-18 Approval-flow + admin gap completion** — case approve, budget approve, period lock, audit log, /admin/setup. Effort: 6–8d.

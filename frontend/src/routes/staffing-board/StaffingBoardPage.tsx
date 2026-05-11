@@ -142,7 +142,7 @@ export function StaffingBoardPage(): JSX.Element {
         }
         setAssignments(merged);
       })
-      .catch(() => setError('Failed to load assignments.'))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load assignments.'))
       .finally(() => setIsLoading(false));
   }, []);
 

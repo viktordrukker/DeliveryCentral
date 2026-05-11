@@ -16,6 +16,7 @@ import { useProjectDetails } from '@/features/projects/useProjectDetails';
 import { type ComputedRag, fetchComputedRag } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { Button } from '@/components/ds';
 
 import { RadiatorTab } from './tabs/RadiatorTab';
@@ -59,6 +60,13 @@ export function ProjectDetailPage(): JSX.Element {
   const [computedRag, setComputedRag] = useState<ComputedRag | null>(null);
   const [staffingSummary, setStaffingSummary] = useState<StaffingSummary | null>(null);
 
+  // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
+  // overall band were computed from different signals and could disagree on
+  // the same screen. Per Decision-11 the radiator flag is OFF in v1; suppress
+  // the duplicate "Overall RAG" KPI tile when it's off so there's only one
+  // health story visible. Re-enables automatically when the flag flips.
+  const radiatorEnabled = isFeatureEnabled('projectRadiator');
+
   useEffect(() => {
     if (state.data?.name) setCurrentLabel(state.data.name);
   }, [state.data?.name, setCurrentLabel]);
@@ -68,12 +76,14 @@ export function ProjectDetailPage(): JSX.Element {
     let active = true;
 
     void (async () => {
-      try { const r = await fetchComputedRag(id); if (active) setComputedRag(r); } catch { /* optional */ }
+      if (radiatorEnabled) {
+        try { const r = await fetchComputedRag(id); if (active) setComputedRag(r); } catch { /* optional */ }
+      }
       try { const s = await fetchStaffingSummary(id); if (active) setStaffingSummary(s); } catch { /* optional */ }
     })();
 
     return () => { active = false; };
-  }, [id]);
+  }, [id, radiatorEnabled]);
 
   function setTab(tab: string): void {
     setSearchParams((prev) => {
@@ -122,7 +132,7 @@ export function ProjectDetailPage(): JSX.Element {
         </Link>
       ) : null}
 
-      {computedRag ? (
+      {radiatorEnabled && computedRag ? (
         <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=radiator`}
           style={{ borderLeft: `3px solid ${computedRag.overallRag === 'GREEN' ? 'var(--color-status-active)' : computedRag.overallRag === 'AMBER' ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
           <StatusBadge status={computedRag.overallRag.toLowerCase()} label={computedRag.overallRag} variant="chip" />
@@ -151,8 +161,10 @@ export function ProjectDetailPage(): JSX.Element {
       actions={
         id && canManage ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button as={Link} variant="secondary" size="sm" to={`/staffing-requests/new?projectId=${id}`}>Staffing request</Button>
-            <Button as={Link} variant="secondary" size="sm" to={`/assignments/new?projectId=${id}`}>Quick assign</Button>
+            {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
+                "Quick assign" direct-create CTA removed; all staffing goes
+                through Create Staffing Request → Slate → Pick. */}
+            <Button as={Link} variant="primary" size="sm" to={`/staffing-requests/new?projectId=${id}`}>Create Staffing Request</Button>
           </div>
         ) : null
       }

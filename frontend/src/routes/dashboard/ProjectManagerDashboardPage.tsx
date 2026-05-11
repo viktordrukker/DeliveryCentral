@@ -141,13 +141,13 @@ export function ProjectManagerDashboardPage(): JSX.Element {
           />
 
           <div className="kpi-strip" aria-label="Key metrics">
-            <Link className="kpi-strip__item" to="/projects" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many projects do I own?" to="/projects" style={{ borderLeft: '3px solid var(--color-accent)' }}>
               <TipBalloon tip="Total projects you manage. Click to view the full project registry." arrow="left" />
               <span className="kpi-strip__value">{d.staffingSummary.managedProjectCount}</span>
               <span className="kpi-strip__label">Managed Projects</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many people are working on my projects right now?" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
               <TipBalloon tip="People currently assigned to your projects with active status." arrow="left" />
               <span className="kpi-strip__value">{d.staffingSummary.activeAssignmentCount}</span>
               <span className="kpi-strip__label">Active Assignments</span>
@@ -155,6 +155,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
 
             <Link
               className="kpi-strip__item"
+              data-jtbd="Where am I short on people?"
               to="/staffing-requests"
               style={{ borderLeft: `3px solid ${staffingGaps > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
             >
@@ -171,6 +172,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
 
             <Link
               className="kpi-strip__item"
+              data-jtbd="Which of my projects are wrapping up soon?"
               to="/projects?closingInDays=30"
               style={{ borderLeft: `3px solid ${attentionProjects.length > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
             >
