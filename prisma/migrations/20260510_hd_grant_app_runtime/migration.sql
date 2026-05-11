@@ -24,6 +24,19 @@
 -- This migration also re-asserts ALTER DEFAULT PRIVILEGES so future
 -- migrations creating tables under the same role don't repeat the issue.
 --
+-- 2026-05-11 fix: dropped `FOR ROLE postgres` from the ALTER DEFAULT
+-- PRIVILEGES clauses. The original `FOR ROLE postgres` clause meant
+-- "when role `postgres` creates a future table…" — but Prisma migrations
+-- create tables under the *migrator* role (`app_migrator` on staging,
+-- `prod_user` on prod), never under `postgres`. Worse, the FOR ROLE
+-- variant required the migrator to be a member of the `postgres` role,
+-- which `app_migrator` is not — failing the migration with
+-- `42501 permission denied to change default privileges`. The
+-- no-FOR-ROLE variant defaults to the *current* role (= migrator), which
+-- is exactly what we want. EXCEPTION block guards against future cluster
+-- configurations where the current role still can't ALTER its own
+-- defaults.
+--
 -- Idempotent (GRANT + ALTER DEFAULT PRIVILEGES are idempotent in postgres),
 -- skips runtime roles that don't exist (dev/test DBs).
 --
@@ -71,16 +84,27 @@ BEGIN
       r.rolname
     );
 
-    EXECUTE format(
-      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public '
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I',
-      r.rolname
-    );
+    -- Future tables created by the *current* role (= migrator) auto-grant
+    -- DML to the runtime role. Wrapped in EXCEPTION for clusters where
+    -- ALTER DEFAULT PRIVILEGES on the current role is still restricted.
+    BEGIN
+      EXECUTE format(
+        'ALTER DEFAULT PRIVILEGES IN SCHEMA public '
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I',
+        r.rolname
+      );
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (tables) for %% — insufficient_privilege; existing tables still granted.', r.rolname;
+    END;
 
-    EXECUTE format(
-      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public '
-      'GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I',
-      r.rolname
-    );
+    BEGIN
+      EXECUTE format(
+        'ALTER DEFAULT PRIVILEGES IN SCHEMA public '
+        'GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I',
+        r.rolname
+      );
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (sequences) for %% — insufficient_privilege; existing sequences still granted.', r.rolname;
+    END;
   END LOOP;
 END $$;
