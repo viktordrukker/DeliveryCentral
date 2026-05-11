@@ -94,7 +94,7 @@ BEGIN
         r.rolname
       );
     EXCEPTION WHEN insufficient_privilege THEN
-      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (tables) for %% — insufficient_privilege; existing tables still granted.', r.rolname;
+      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (tables) for % — insufficient_privilege; existing tables still granted.', r.rolname;
     END;
 
     BEGIN
@@ -104,7 +104,7 @@ BEGIN
         r.rolname
       );
     EXCEPTION WHEN insufficient_privilege THEN
-      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (sequences) for %% — insufficient_privilege; existing sequences still granted.', r.rolname;
+      RAISE NOTICE 'Skipping ALTER DEFAULT PRIVILEGES (sequences) for % — insufficient_privilege; existing sequences still granted.', r.rolname;
     END;
   END LOOP;
 END $$;
