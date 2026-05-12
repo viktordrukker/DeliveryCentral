@@ -87,6 +87,10 @@ vi.mock('@/lib/api/project-health', () => ({
 vi.mock('@/lib/api/project-budget', () => ({
   fetchProjectBudgetDashboard: vi.fn(),
   upsertProjectBudget: vi.fn(),
+  fetchPendingBudgetChangeRequests: vi.fn().mockResolvedValue([]),
+  requestBudgetChange: vi.fn(),
+  approveBudgetChange: vi.fn(),
+  rejectBudgetChange: vi.fn(),
 }));
 
 vi.mock('@/lib/api/business-audit', () => ({
