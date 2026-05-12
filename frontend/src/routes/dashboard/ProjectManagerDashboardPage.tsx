@@ -11,6 +11,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { TabBar } from '@/components/common/TabBar';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { AnomalyStrip } from '@/components/dashboard/AnomalyStrip';
+import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useProjectManagerDashboard } from '@/features/dashboard/useProjectManagerDashboard';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
@@ -181,6 +182,8 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Closing in 30d</span>
             </Link>
           </div>
+
+          <PendingApprovalsCard personId={effectivePersonId ?? undefined} />
 
           <div className="tab-bar-sticky">
             <TabBar activeTab={activeTab} onTabChange={handleTabChange} tabs={PM_TABS} />

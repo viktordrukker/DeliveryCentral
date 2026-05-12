@@ -22,6 +22,8 @@ import { EmployeeDashboardResponseDto } from '../application/contracts/employee-
 import { HrManagerDashboardResponseDto } from '../application/contracts/hr-manager-dashboard.dto';
 import { ProjectManagerDashboardResponseDto } from '../application/contracts/project-manager-dashboard.dto';
 import { HrManagerDashboardQueryService } from '../application/hr-manager-dashboard-query.service';
+import { PendingActionsQueryService } from '../application/pending-actions-query.service';
+import { PendingActionsResponseDto } from '../application/contracts/pending-actions.dto';
 import { ProjectManagerDashboardQueryService } from '../application/project-manager-dashboard-query.service';
 import { ResourceManagerDashboardResponseDto } from '../application/contracts/resource-manager-dashboard.dto';
 import { ResourceManagerDashboardQueryService } from '../application/resource-manager-dashboard-query.service';
@@ -39,6 +41,7 @@ export class RoleDashboardController {
     private readonly projectManagerDashboardQueryService: ProjectManagerDashboardQueryService,
     private readonly resourceManagerDashboardQueryService: ResourceManagerDashboardQueryService,
     private readonly hrManagerDashboardQueryService: HrManagerDashboardQueryService,
+    private readonly pendingActionsQueryService: PendingActionsQueryService,
   ) {}
 
   @Get('employee/:personId')
@@ -199,6 +202,35 @@ export class RoleDashboardController {
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Director dashboard query failed.',
+      );
+    }
+  }
+
+  @Get('pending-actions')
+  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'hr_manager')
+  @ApiOperation({
+    summary:
+      'F-3.2 / WO-4.14 — unified pending-approvals queue for managers (SR pick + budget-change + leave + timesheet).',
+  })
+  @ApiQuery({ name: 'personId', required: false, type: String })
+  @ApiOkResponse({ type: PendingActionsResponseDto })
+  public async getPendingActions(
+    @Req() req: { principal?: { personId?: string; roles?: string[] } },
+    @Query('personId') personIdOverride?: string,
+  ): Promise<PendingActionsResponseDto> {
+    const roles = req.principal?.roles ?? [];
+    const principalPersonId = req.principal?.personId;
+    // Admins can scope to any person; everyone else queries themselves.
+    const targetPersonId =
+      roles.includes('admin') && personIdOverride ? personIdOverride : principalPersonId;
+    if (!targetPersonId) {
+      throw new BadRequestException('Authenticated principal required.');
+    }
+    try {
+      return await this.pendingActionsQueryService.execute(targetPersonId);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Pending actions query failed.',
       );
     }
   }

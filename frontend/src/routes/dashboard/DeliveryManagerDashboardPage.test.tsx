@@ -37,6 +37,10 @@ vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 200, total: 0 }),
 }));
 
+vi.mock('@/lib/api/dashboard-pending-actions', () => ({
+  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+}));
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'dm-1', roles: ['delivery_manager'] },

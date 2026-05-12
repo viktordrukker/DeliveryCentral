@@ -28,6 +28,10 @@ vi.mock('@/lib/api/assignments', () => ({
   createAssignment: vi.fn(),
 }));
 
+vi.mock('@/lib/api/dashboard-pending-actions', () => ({
+  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+}));
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'rm-person-1', roles: ['resource_manager'] },

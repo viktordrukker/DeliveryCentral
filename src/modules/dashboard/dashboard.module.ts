@@ -17,6 +17,7 @@ import { DeliveryManagerDashboardQueryService } from './application/delivery-man
 import { DirectorDashboardQueryService } from './application/director-dashboard-query.service';
 import { EmployeeDashboardQueryService } from './application/employee-dashboard-query.service';
 import { HrManagerDashboardQueryService } from './application/hr-manager-dashboard-query.service';
+import { PendingActionsQueryService } from './application/pending-actions-query.service';
 import { PlannedVsActualQueryService } from './application/planned-vs-actual-query.service';
 import { ProjectManagerDashboardQueryService } from './application/project-manager-dashboard-query.service';
 import { ResourceManagerDashboardQueryService } from './application/resource-manager-dashboard-query.service';
@@ -63,6 +64,7 @@ import { WorkloadDashboardController } from './presentation/workload-dashboard.c
     },
     PlannedVsActualQueryService,
     RoleDashboardQueryService,
+    PendingActionsQueryService,
   ],
   exports: [
     DeliveryManagerDashboardQueryService,
@@ -74,6 +76,7 @@ import { WorkloadDashboardController } from './presentation/workload-dashboard.c
     WorkloadDashboardQueryService,
     PlannedVsActualQueryService,
     RoleDashboardQueryService,
+    PendingActionsQueryService,
   ],
 })
 export class DashboardModule {}
