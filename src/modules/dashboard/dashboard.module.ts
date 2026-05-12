@@ -15,6 +15,7 @@ import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infra
 
 import { DeliveryManagerDashboardQueryService } from './application/delivery-manager-dashboard-query.service';
 import { DirectorDashboardQueryService } from './application/director-dashboard-query.service';
+import { DirectorSlaSummaryQueryService } from './application/director-sla-summary-query.service';
 import { EmployeeDashboardQueryService } from './application/employee-dashboard-query.service';
 import { HrManagerDashboardQueryService } from './application/hr-manager-dashboard-query.service';
 import { PendingActionsQueryService } from './application/pending-actions-query.service';
@@ -65,6 +66,7 @@ import { WorkloadDashboardController } from './presentation/workload-dashboard.c
     PlannedVsActualQueryService,
     RoleDashboardQueryService,
     PendingActionsQueryService,
+    DirectorSlaSummaryQueryService,
   ],
   exports: [
     DeliveryManagerDashboardQueryService,
@@ -77,6 +79,7 @@ import { WorkloadDashboardController } from './presentation/workload-dashboard.c
     PlannedVsActualQueryService,
     RoleDashboardQueryService,
     PendingActionsQueryService,
+    DirectorSlaSummaryQueryService,
   ],
 })
 export class DashboardModule {}

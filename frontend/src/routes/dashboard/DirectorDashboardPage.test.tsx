@@ -4,6 +4,8 @@ import { vi } from 'vitest';
 
 import { fetchDirectorDashboard } from '@/lib/api/dashboard-director';
 import { fetchCapitalisationReport } from '@/lib/api/capitalisation';
+import { fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
+import { fetchPendingActions } from '@/lib/api/dashboard-pending-actions';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealth } from '@/lib/api/project-health';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
@@ -30,7 +32,17 @@ vi.mock('@/lib/api/workload', () => ({
   fetchWorkloadMatrix: vi.fn(),
 }));
 
+vi.mock('@/lib/api/dashboard-pending-actions', () => ({
+  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+}));
+
+vi.mock('@/lib/api/dashboard-exec-sla', () => ({
+  fetchDirectorSlaSummary: vi.fn().mockResolvedValue({ slaBreaches24h: 0, timeToFillSeries: [0, 0, 0, 0], timeToFillMedianDays: null, timeToFillSampleSize: 0 }),
+}));
+
 const mockedFetchDirectorDashboard = vi.mocked(fetchDirectorDashboard);
+const mockedFetchDirectorSlaSummary = vi.mocked(fetchDirectorSlaSummary);
+const mockedFetchPendingActions = vi.mocked(fetchPendingActions);
 const mockedFetchCapitalisationReport = vi.mocked(fetchCapitalisationReport);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
@@ -72,6 +84,13 @@ describe('DirectorDashboardPage', () => {
     mockedFetchCapitalisationReport.mockRejectedValue(new Error('not enabled'));
     mockedFetchProjectDirectory.mockResolvedValue({ items: [] });
     mockedFetchWorkloadMatrix.mockResolvedValue({ people: [], projects: [] });
+    mockedFetchDirectorSlaSummary.mockResolvedValue({
+      slaBreaches24h: 0,
+      timeToFillSeries: [0, 0, 0, 0],
+      timeToFillMedianDays: null,
+      timeToFillSampleSize: 0,
+    });
+    mockedFetchPendingActions.mockResolvedValue({ items: [], totalCount: 0 });
   });
 
   it('renders KPI summary cards with drilldown links', async () => {

@@ -17,6 +17,8 @@ import { DeliveryManagerDashboardQueryService } from '../application/delivery-ma
 import { DeliveryManagerDashboardResponseDto, ProjectScorecardHistoryItemDto } from '../application/contracts/delivery-manager-dashboard.dto';
 import { DirectorDashboardQueryService } from '../application/director-dashboard-query.service';
 import { DirectorDashboardResponseDto } from '../application/contracts/director-dashboard.dto';
+import { DirectorSlaSummaryQueryService } from '../application/director-sla-summary-query.service';
+import { DirectorSlaSummaryDto } from '../application/contracts/director-sla-summary.dto';
 import { EmployeeDashboardQueryService } from '../application/employee-dashboard-query.service';
 import { EmployeeDashboardResponseDto } from '../application/contracts/employee-dashboard.dto';
 import { HrManagerDashboardResponseDto } from '../application/contracts/hr-manager-dashboard.dto';
@@ -42,6 +44,7 @@ export class RoleDashboardController {
     private readonly resourceManagerDashboardQueryService: ResourceManagerDashboardQueryService,
     private readonly hrManagerDashboardQueryService: HrManagerDashboardQueryService,
     private readonly pendingActionsQueryService: PendingActionsQueryService,
+    private readonly directorSlaSummaryQueryService: DirectorSlaSummaryQueryService,
   ) {}
 
   @Get('employee/:personId')
@@ -202,6 +205,23 @@ export class RoleDashboardController {
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Director dashboard query failed.',
+      );
+    }
+  }
+
+  @Get('exec/sla-summary')
+  @RequireRoles('director', 'admin')
+  @ApiOperation({
+    summary:
+      'F-3.3 / WO-4.15/5.6 — Director exec dashboard SLA tile + Time-to-fill sparkline metrics.',
+  })
+  @ApiOkResponse({ type: DirectorSlaSummaryDto })
+  public async getExecSlaSummary(): Promise<DirectorSlaSummaryDto> {
+    try {
+      return await this.directorSlaSummaryQueryService.execute();
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Director SLA summary query failed.',
       );
     }
   }
