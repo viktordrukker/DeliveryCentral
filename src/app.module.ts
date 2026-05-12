@@ -48,7 +48,17 @@ import { PublicIdModule } from './infrastructure/public-id';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // F-2.2 — env-configurable throttler. Default 1000 req/60s/IP is a
+    // 10x bump from the previous hard-coded 100; the previous default
+    // tripped under 10 concurrent users behind a single corporate proxy
+    // (bank-IT scale-up scenario). Override per env via THROTTLER_LIMIT
+    // and THROTTLER_TTL_MS.
+    ThrottlerModule.forRoot([
+      {
+        ttl: parseInt(process.env.THROTTLER_TTL_MS ?? '60000', 10),
+        limit: parseInt(process.env.THROTTLER_LIMIT ?? '1000', 10),
+      },
+    ]),
     AppConfigModule,
     PrismaModule,
     PublicIdModule,
