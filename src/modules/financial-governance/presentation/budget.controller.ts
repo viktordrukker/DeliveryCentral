@@ -20,7 +20,9 @@ import {
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { BudgetChangeRequestDto } from '../application/contracts/budget-change-request.response';
 import { DecideBudgetChangeService } from '../application/decide-budget-change.service';
 import { FinancialService } from '../application/financial.service';
 import { RequestBudgetChangeService } from '../application/request-budget-change.service';
@@ -36,6 +38,24 @@ const BUDGET_ROLES = ['admin', 'project_manager', 'delivery_manager', 'director'
 const BUDGET_REQUEST_ROLES = ['admin', 'project_manager', 'delivery_manager'] as const;
 const BUDGET_DECIDE_ROLES = ['admin', 'director'] as const;
 
+interface BudgetApprovalRowQuery {
+  budgetApproval: {
+    findMany: (args: unknown) => Promise<
+      ReadonlyArray<{
+        readonly id: string;
+        readonly projectBudgetId: string;
+        readonly status: string;
+        readonly requestedByPersonId: string;
+        readonly requestedAt: Date;
+        readonly requestedChange: unknown;
+        readonly decidedByPersonId: string | null;
+        readonly decisionAt: Date | null;
+        readonly decisionReason: string | null;
+      }>
+    >;
+  };
+}
+
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectBudgetController {
@@ -43,6 +63,7 @@ export class ProjectBudgetController {
     private readonly service: FinancialService,
     private readonly requestBudgetChangeService: RequestBudgetChangeService,
     private readonly decideBudgetChangeService: DecideBudgetChangeService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Put(':id/budget')
@@ -61,6 +82,34 @@ export class ProjectBudgetController {
         error instanceof Error ? error.message : 'Failed to upsert project budget.',
       );
     }
+  }
+
+  @Get(':id/budget-change-requests')
+  @RequireRoles(...BUDGET_ROLES)
+  @ApiOperation({
+    summary:
+      'F-3.1 / D-92 — list budget-change approvals for a project (defaults to PENDING).',
+  })
+  @ApiOkResponse({ description: 'Budget approvals for the project.' })
+  public async listBudgetChangeRequests(
+    @Param('id', ParseUUIDPipe) projectId: string,
+  ): Promise<BudgetChangeRequestDto[]> {
+    const rows = await (this.prisma as unknown as BudgetApprovalRowQuery).budgetApproval.findMany({
+      where: { projectBudget: { projectId }, status: 'PENDING' },
+      orderBy: { requestedAt: 'desc' },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      publicId: null,
+      projectBudgetId: r.projectBudgetId,
+      status: r.status,
+      requestedByPersonId: r.requestedByPersonId,
+      requestedAt: r.requestedAt.toISOString(),
+      requestedChange: (r.requestedChange as { capexBudget: number; opexBudget: number } | null) ?? null,
+      decidedByPersonId: r.decidedByPersonId,
+      decisionAt: r.decisionAt ? r.decisionAt.toISOString() : null,
+      decisionReason: r.decisionReason,
+    }));
   }
 
   @Post(':id/budget-change-requests')

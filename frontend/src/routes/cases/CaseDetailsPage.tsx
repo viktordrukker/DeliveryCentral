@@ -16,12 +16,14 @@ import {
   CaseStep,
   addCaseComment,
   addCaseStep,
+  approveCaseRecord,
   archiveCaseRecord,
   cancelCaseRecord,
   closeCaseRecord,
   completeCaseStep,
   fetchCaseComments,
   fetchCaseSteps,
+  rejectCaseRecord,
   removeCaseStep,
   CaseSlaStatus,
   fetchCaseSlaStatus,
@@ -53,11 +55,17 @@ export function CaseDetailsPage(): JSX.Element {
   const [isClosing, setIsClosing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
   const [showCancelForm, setShowCancelForm] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
   const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [confirmApproveOpen, setConfirmApproveOpen] = useState(false);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
 
   const displayCase = caseData ?? state.data;
 
@@ -155,6 +163,36 @@ export function CaseDetailsPage(): JSX.Element {
     }
   }
 
+  async function handleApprove(): Promise<void> {
+    if (!id) return;
+    setIsApproving(true);
+    setLifecycleError(null);
+    try {
+      const updated = await approveCaseRecord(id);
+      setCaseData(updated);
+    } catch (error) {
+      setLifecycleError(error instanceof Error ? error.message : 'Failed to approve case.');
+    } finally {
+      setIsApproving(false);
+    }
+  }
+
+  async function handleReject(): Promise<void> {
+    if (!id || !rejectReason.trim()) return;
+    setIsRejecting(true);
+    setLifecycleError(null);
+    try {
+      const updated = await rejectCaseRecord(id, rejectReason.trim());
+      setCaseData(updated);
+      setShowRejectForm(false);
+      setRejectReason('');
+    } catch (error) {
+      setLifecycleError(error instanceof Error ? error.message : 'Failed to reject case.');
+    } finally {
+      setIsRejecting(false);
+    }
+  }
+
   async function handleAddStep(): Promise<void> {
     if (!id || !newStepName.trim()) return;
     setAddingStep(true);
@@ -234,6 +272,28 @@ export function CaseDetailsPage(): JSX.Element {
         open={confirmCancelOpen}
         title="Cancel Case"
       />
+      <ConfirmDialog
+        confirmLabel="Approve case"
+        message="Approve this case? Status will move to APPROVED and the case will close."
+        onCancel={() => setConfirmApproveOpen(false)}
+        onConfirm={() => {
+          setConfirmApproveOpen(false);
+          void handleApprove();
+        }}
+        open={confirmApproveOpen}
+        title="Approve Case"
+      />
+      <ConfirmDialog
+        confirmLabel="Reject case"
+        message={rejectReason.trim() ? `Reject with reason: "${rejectReason}"` : 'Please enter a rejection reason below before confirming.'}
+        onCancel={() => setConfirmRejectOpen(false)}
+        onConfirm={() => {
+          setConfirmRejectOpen(false);
+          void handleReject();
+        }}
+        open={confirmRejectOpen}
+        title="Reject Case"
+      />
       <PageHeader
         actions={
           <Button as={Link} variant="secondary" to="/cases">
@@ -301,7 +361,13 @@ export function CaseDetailsPage(): JSX.Element {
           {displayCase.status === 'OPEN' || displayCase.status === 'IN_PROGRESS' ? (
             <SectionCard title="Case Actions">
               <div className="entity-form__actions" style={{ gap: '12px', display: 'flex', flexWrap: 'wrap' }}>
-                <Button variant="primary" disabled={isClosing} onClick={() => setConfirmCloseOpen(true)} type="button">
+                <Button variant="primary" disabled={isApproving} onClick={() => setConfirmApproveOpen(true)} type="button" data-jtbd="Approve this case">
+                  {isApproving ? 'Approving...' : 'Approve Case'}
+                </Button>
+                <Button variant="secondary" onClick={() => setShowRejectForm((v) => !v)} type="button">
+                  Reject Case
+                </Button>
+                <Button variant="secondary" disabled={isClosing} onClick={() => setConfirmCloseOpen(true)} type="button">
                   {isClosing ? 'Closing...' : 'Close Case'}
                 </Button>
                 <Button variant="secondary" onClick={() => setShowCancelForm((v) => !v)} type="button">
@@ -311,6 +377,27 @@ export function CaseDetailsPage(): JSX.Element {
                   {isArchiving ? 'Archiving...' : 'Archive'}
                 </Button>
               </div>
+              {showRejectForm ? (
+                <div style={{ marginTop: '12px' }}>
+                  <label className="field">
+                    <span className="field__label">Rejection reason</span>
+                    <textarea
+                      className="field__control"
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      rows={3}
+                      value={rejectReason}
+                    />
+                  </label>
+                  <div className="entity-form__actions" style={{ marginTop: '8px' }}>
+                    <Button variant="primary" disabled={isRejecting || !rejectReason.trim()} onClick={() => setConfirmRejectOpen(true)} type="button">
+                      {isRejecting ? 'Rejecting...' : 'Confirm Rejection'}
+                    </Button>
+                    <Button variant="secondary" onClick={() => { setShowRejectForm(false); setRejectReason(''); }} type="button">
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {showCancelForm ? (
                 <div style={{ marginTop: '12px' }}>
                   <label className="field">

@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -26,6 +27,8 @@ import { CaseResponseDto, ListCasesResponseDto } from '../application/contracts/
 import { CancelCaseRequestDto } from '../application/contracts/cancel-case.request';
 import { CreateCaseRequestDto } from '../application/contracts/create-case.request';
 import { ListCasesQueryDto } from '../application/contracts/list-cases.query';
+import { ApproveCaseService } from '../application/approve-case.service';
+import { ApproveCaseRequestDto, RejectCaseRequestDto } from '../application/contracts/approve-case.request';
 import { ArchiveCaseService } from '../application/archive-case.service';
 import { CancelCaseService } from '../application/cancel-case.service';
 import { CloseCaseService } from '../application/close-case.service';
@@ -46,6 +49,7 @@ import { UpdateSlaConfigRequestDto } from '../application/contracts/update-sla-c
 @Controller('cases')
 export class CasesController {
   public constructor(
+    private readonly approveCaseService: ApproveCaseService,
     private readonly archiveCaseService: ArchiveCaseService,
     private readonly cancelCaseService: CancelCaseService,
     private readonly closeCaseService: CloseCaseService,
@@ -175,6 +179,62 @@ export class CasesController {
       return this.mapCase(await this.cancelCaseService.execute({ caseId: id, reason: request.reason }), peopleMap);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case cancel failed.';
+      if (message === 'Case not found.') {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':id/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve a case (transition OPEN/IN_PROGRESS to APPROVED)' })
+  @ApiOkResponse({ type: CaseResponseDto })
+  @ApiNotFoundResponse({ description: 'Case not found.' })
+  @RequireRoles('hr_manager', 'director', 'admin')
+  public async approveCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() _request: ApproveCaseRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
+    try {
+      const actorId =
+        httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+      const peopleMap = await this.loadPeopleMap();
+      return this.mapCase(
+        await this.approveCaseService.approve({ caseId: id, actorId }),
+        peopleMap,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Case approve failed.';
+      if (message === 'Case not found.') {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject a case (transition OPEN/IN_PROGRESS to REJECTED)' })
+  @ApiOkResponse({ type: CaseResponseDto })
+  @ApiNotFoundResponse({ description: 'Case not found.' })
+  @RequireRoles('hr_manager', 'director', 'admin')
+  public async rejectCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: RejectCaseRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
+    try {
+      const actorId =
+        httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+      const peopleMap = await this.loadPeopleMap();
+      return this.mapCase(
+        await this.approveCaseService.reject({ caseId: id, actorId, reason: request.reason }),
+        peopleMap,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Case reject failed.';
       if (message === 'Case not found.') {
         throw new NotFoundException(message);
       }
