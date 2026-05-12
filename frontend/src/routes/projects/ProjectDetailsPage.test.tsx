@@ -16,7 +16,7 @@ import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchAssignments } from '@/lib/api/assignments';
 import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { fetchProjectHealth } from '@/lib/api/project-health';
-import { fetchProjectBudgetDashboard } from '@/lib/api/project-budget';
+import { fetchPendingBudgetChangeRequests, fetchProjectBudgetDashboard } from '@/lib/api/project-budget';
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import { fetchComputedRag, fetchEnhancedComputedRag, fetchLatestRagSnapshot, fetchRagHistory, fetchStaffingAlerts, createRagSnapshot } from '@/lib/api/project-rag';
 import { fetchRolePlan, fetchRolePlanComparison, fetchStaffingSummary, upsertRolePlan, deleteRolePlanEntry, generateRequestsFromPlan } from '@/lib/api/project-role-plan';
@@ -163,6 +163,7 @@ const mockedFetchAssignments = vi.mocked(fetchAssignments);
 const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
 const mockedFetchProjectBudgetDashboard = vi.mocked(fetchProjectBudgetDashboard);
+const mockedFetchPendingBudgetChangeRequests = vi.mocked(fetchPendingBudgetChangeRequests);
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
 const mockedFetchComputedRag = vi.mocked(fetchComputedRag);
 const mockedFetchEnhancedComputedRag = vi.mocked(fetchEnhancedComputedRag);
@@ -215,6 +216,7 @@ describe('ProjectDetailPage', () => {
     });
 
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
+    mockedFetchPendingBudgetChangeRequests.mockResolvedValue([]);
     mockedFetchRadiator.mockRejectedValue(new Error('radiator not implemented in test'));
     mockedFetchRadiatorHistory.mockResolvedValue([]);
     mockedFetchRadiatorSnapshotByWeek.mockResolvedValue(null);
