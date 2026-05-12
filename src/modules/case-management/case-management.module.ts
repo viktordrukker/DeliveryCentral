@@ -4,6 +4,9 @@ import { NotificationEventTranslatorService } from '@src/modules/notifications/a
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+
+import { ApproveCaseService } from './application/approve-case.service';
 import { ArchiveCaseService } from './application/archive-case.service';
 import { CancelCaseService } from './application/cancel-case.service';
 import { CloseCaseService } from './application/close-case.service';
@@ -23,6 +26,7 @@ import { CasesController } from './presentation/cases.controller';
   imports: [NotificationsModule],
   controllers: [CasesController],
   exports: [
+    ApproveCaseService,
     ArchiveCaseService,
     CancelCaseService,
     CloseCaseService,
@@ -43,6 +47,12 @@ import { CasesController } from './presentation/cases.controller';
       provide: InMemoryCaseReferenceRepository,
       useFactory: (prisma: PrismaService) => new PrismaCaseReferenceRepository(prisma),
       inject: [PrismaService],
+    },
+    {
+      provide: ApproveCaseService,
+      useFactory: (repository: PrismaCaseRecordRepository, auditLogger: AuditLoggerService) =>
+        new ApproveCaseService(repository, auditLogger),
+      inject: [PrismaCaseRecordRepository, AuditLoggerService],
     },
     {
       provide: ArchiveCaseService,

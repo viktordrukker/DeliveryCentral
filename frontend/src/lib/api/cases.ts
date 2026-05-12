@@ -111,6 +111,14 @@ export async function archiveCaseRecord(caseId: string): Promise<CaseRecord> {
   return httpPost<CaseRecord, Record<string, never>>(`/cases/${caseId}/archive`, {});
 }
 
+export async function approveCaseRecord(caseId: string, reason?: string): Promise<CaseRecord> {
+  return httpPost<CaseRecord, { reason?: string }>(`/cases/${caseId}/approve`, { reason });
+}
+
+export async function rejectCaseRecord(caseId: string, reason: string): Promise<CaseRecord> {
+  return httpPost<CaseRecord, { reason: string }>(`/cases/${caseId}/reject`, { reason });
+}
+
 export async function fetchCaseComments(caseId: string): Promise<CaseComment[]> {
   return httpGet<CaseComment[]>(`/cases/${caseId}/comments`);
 }

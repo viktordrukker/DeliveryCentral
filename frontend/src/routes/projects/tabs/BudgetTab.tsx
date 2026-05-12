@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
-import { PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { DIRECTOR_ADMIN_ROLES, PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -11,8 +13,12 @@ import { ForecastChart } from '@/components/charts/ForecastChart';
 import { BudgetCapexOpexSummary } from '@/components/projects/BudgetCapexOpexSummary';
 import { DataSourceBadge } from '@/components/common/DataSourceBadge';
 import {
+  type BudgetChangeRequest,
   type ProjectBudgetDashboard,
+  approveBudgetChange,
+  fetchPendingBudgetChangeRequests,
   fetchProjectBudgetDashboard,
+  rejectBudgetChange,
   upsertProjectBudget,
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
@@ -25,6 +31,7 @@ interface BudgetTabProps {
 export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
   const { principal } = useAuth();
   const canManageBudget = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
+  const canDecideBudgetChange = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
 
   const [dashboard, setDashboard] = useState<ProjectBudgetDashboard | null>(null);
   const [spc, setSpc] = useState<SpcBurndownDto | null>(null);
@@ -39,6 +46,24 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
+  // F-3.1 / D-92 — pending budget-change approvals
+  const [approvals, setApprovals] = useState<BudgetChangeRequest[]>([]);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [decideError, setDecideError] = useState<string | null>(null);
+  const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [rejectFormId, setRejectFormId] = useState<string | null>(null);
+  const [confirmRejectId, setConfirmRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  async function refreshApprovals(): Promise<void> {
+    try {
+      const rows = await fetchPendingBudgetChangeRequests(projectId);
+      setApprovals(rows);
+    } catch {
+      setApprovals([]);
+    }
+  }
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -46,11 +71,13 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
     void Promise.all([
       fetchProjectBudgetDashboard(projectId),
       fetchSpcBurndown(projectId, 12).catch(() => null),
+      fetchPendingBudgetChangeRequests(projectId).catch(() => [] as BudgetChangeRequest[]),
     ])
-      .then(([data, spcData]) => {
+      .then(([data, spcData, approvalRows]) => {
         if (!active) return;
         setDashboard(data);
         setSpc(spcData);
+        setApprovals(approvalRows);
         if (data.budget) {
           setFiscalYear(data.budget.fiscalYear);
           setCapex(String(data.budget.capex));
@@ -62,6 +89,36 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
 
     return () => { active = false; };
   }, [projectId]);
+
+  async function handleApproveBudgetChange(approvalId: string): Promise<void> {
+    setDecidingId(approvalId);
+    setDecideError(null);
+    try {
+      await approveBudgetChange(projectId, approvalId);
+      await refreshApprovals();
+      const data = await fetchProjectBudgetDashboard(projectId);
+      setDashboard(data);
+    } catch (e: unknown) {
+      setDecideError(e instanceof Error ? e.message : 'Failed to approve budget change.');
+    } finally {
+      setDecidingId(null);
+    }
+  }
+
+  async function handleRejectBudgetChange(approvalId: string, reason: string): Promise<void> {
+    setDecidingId(approvalId);
+    setDecideError(null);
+    try {
+      await rejectBudgetChange(projectId, approvalId, reason);
+      await refreshApprovals();
+      setRejectFormId(null);
+      setRejectReason('');
+    } catch (e: unknown) {
+      setDecideError(e instanceof Error ? e.message : 'Failed to reject budget change.');
+    } finally {
+      setDecidingId(null);
+    }
+  }
 
   async function handleSaveBudget(): Promise<void> {
     setSaving(true);
@@ -123,6 +180,128 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
           {saveSuccess ? <div style={{ color: 'var(--color-status-active)', fontSize: 12, marginTop: 'var(--space-2)' }}>{saveSuccess}</div> : null}
         </SectionCard>
       ) : null}
+
+      {/* F-3.1 / D-92 — Pending Budget Change Requests */}
+      <SectionCard title="Pending Budget Change Requests" data-jtbd="What budget changes need decision?">
+        {approvals.length === 0 ? (
+          <EmptyState description="No pending budget change requests for this project." title="All caught up" />
+        ) : (
+          <>
+            {decideError ? <ErrorState description={decideError} variant="inline" /> : null}
+            <table className="dash-compact-table" style={{ marginTop: 'var(--space-2)' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Requested</th>
+                  <th style={{ textAlign: 'left' }}>Requested by</th>
+                  <th style={{ textAlign: 'right' }}>New CAPEX</th>
+                  <th style={{ textAlign: 'right' }}>New OPEX</th>
+                  <th style={{ textAlign: 'left' }}>Reason</th>
+                  {canDecideBudgetChange ? <th style={{ textAlign: 'right' }}>Action</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {approvals.map((a) => {
+                  const isSubmitter = principal?.personId === a.requestedByPersonId;
+                  const change = a.requestedChange;
+                  return (
+                    <tr key={a.id}>
+                      <td>{new Date(a.requestedAt).toLocaleString()}</td>
+                      <td>{a.requestedByPersonId}</td>
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {change ? `$${Math.round(change.capexBudget).toLocaleString()}` : '—'}
+                      </td>
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {change ? `$${Math.round(change.opexBudget).toLocaleString()}` : '—'}
+                      </td>
+                      <td>{a.decisionReason ?? '—'}</td>
+                      {canDecideBudgetChange ? (
+                        <td style={{ textAlign: 'right' }}>
+                          {isSubmitter ? (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Self-approval blocked</span>
+                          ) : (
+                            <div style={{ display: 'inline-flex', gap: 8 }}>
+                              <Button
+                                disabled={decidingId === a.id}
+                                onClick={() => setConfirmApproveId(a.id)}
+                                size="sm"
+                                type="button"
+                                variant="primary"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                disabled={decidingId === a.id}
+                                onClick={() => { setRejectFormId(a.id); setRejectReason(''); }}
+                                size="sm"
+                                type="button"
+                                variant="secondary"
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {rejectFormId ? (
+              <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+                <label className="field">
+                  <span className="field__label">Rejection reason (required)</span>
+                  <textarea className="field__control" onChange={(e) => setRejectReason(e.target.value)} rows={3} value={rejectReason} />
+                </label>
+                <div className="entity-form__actions" style={{ marginTop: 'var(--space-2)' }}>
+                  <Button
+                    disabled={decidingId === rejectFormId || !rejectReason.trim()}
+                    onClick={() => setConfirmRejectId(rejectFormId)}
+                    type="button"
+                    variant="primary"
+                  >
+                    {decidingId === rejectFormId ? 'Rejecting…' : 'Confirm Rejection'}
+                  </Button>
+                  <Button onClick={() => { setRejectFormId(null); setRejectReason(''); }} type="button" variant="secondary">
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+      </SectionCard>
+
+      <ConfirmDialog
+        confirmLabel="Approve budget change"
+        message="Approve this budget change request? The project budget will be updated atomically."
+        onCancel={() => setConfirmApproveId(null)}
+        onConfirm={() => {
+          if (confirmApproveId) {
+            const id = confirmApproveId;
+            setConfirmApproveId(null);
+            void handleApproveBudgetChange(id);
+          }
+        }}
+        open={confirmApproveId !== null}
+        title="Approve Budget Change"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Reject budget change"
+        message={rejectReason.trim() ? `Reject with reason: "${rejectReason}"` : 'Please enter a rejection reason above before confirming.'}
+        onCancel={() => setConfirmRejectId(null)}
+        onConfirm={() => {
+          if (confirmRejectId && rejectReason.trim()) {
+            const id = confirmRejectId;
+            const reason = rejectReason.trim();
+            setConfirmRejectId(null);
+            void handleRejectBudgetChange(id, reason);
+          }
+        }}
+        open={confirmRejectId !== null}
+        title="Reject Budget Change"
+      />
 
       {/* Charts (two-column) */}
       {dashboard?.budget ? (
