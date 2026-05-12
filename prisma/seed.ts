@@ -604,6 +604,21 @@ async function clearExistingData(): Promise<void> {
       await t.projectRolePlan.deleteMany();
       await t.projectRagSnapshot.deleteMany();
       await t.projectVendorEngagement.deleteMany();
+      // Phase HD child tables — references Project/Person with onDelete:
+      // Restrict (or default). Must wipe BEFORE Project/Person deleteMany
+      // or the parent delete fails with `P2003 Foreign key constraint`.
+      await t.budgetApproval.deleteMany();           // → ProjectBudget
+      await t.personReleaseApproval.deleteMany();    // → PersonReleaseRequest
+      await t.personReleaseRequest.deleteMany();     // → Person, Project
+      await t.projectActivationApproval.deleteMany();// → Project
+      await t.rateCardEntry.deleteMany();            // → RateCard
+      await t.rateCard.deleteMany();
+      await t.responsibilityRule.deleteMany();
+      await t.onboardingTourProgress.deleteMany();   // → Person
+      await t.helpFeedback.deleteMany();
+      await t.helpTip.deleteMany();
+      await t.helpArticle.deleteMany();
+      await t.idempotencyKey.deleteMany();
       await t.projectBudget.deleteMany();
       await t.projectMilestone.deleteMany();
       await t.projectChangeRequest.deleteMany();
@@ -959,6 +974,21 @@ async function clearOperatingData(): Promise<void> {
       await t.projectRolePlan.deleteMany();
       await t.projectRagSnapshot.deleteMany();
       await t.projectVendorEngagement.deleteMany();
+      // Phase HD child tables — references Project/Person with onDelete:
+      // Restrict (or default). Must wipe BEFORE Project/Person deleteMany
+      // or the parent delete fails with `P2003 Foreign key constraint`.
+      await t.budgetApproval.deleteMany();           // → ProjectBudget
+      await t.personReleaseApproval.deleteMany();    // → PersonReleaseRequest
+      await t.personReleaseRequest.deleteMany();     // → Person, Project
+      await t.projectActivationApproval.deleteMany();// → Project
+      await t.rateCardEntry.deleteMany();            // → RateCard
+      await t.rateCard.deleteMany();
+      await t.responsibilityRule.deleteMany();
+      await t.onboardingTourProgress.deleteMany();   // → Person
+      await t.helpFeedback.deleteMany();
+      await t.helpTip.deleteMany();
+      await t.helpArticle.deleteMany();
+      await t.idempotencyKey.deleteMany();
       await t.projectBudget.deleteMany();
       await t.projectMilestone.deleteMany();
       await t.projectChangeRequest.deleteMany();
