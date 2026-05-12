@@ -17,6 +17,7 @@ import { formatDate } from '@/lib/format-date';
 import { PortfolioHealthHeatmap } from '@/components/charts/PortfolioHealthHeatmap';
 import { BurnRateTrendPoint, fetchScorecardHistory, ProjectHealthItem, ProjectScorecardHistoryItem, StaffingGapItem, OpenRequestsByProjectItem } from '@/lib/api/dashboard-delivery-manager';
 import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-health';
+import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { useDeliveryManagerDashboard } from '@/features/dashboard/useDeliveryManagerDashboard';
 import { Button, Table, type Column } from '@/components/ds';
 
@@ -125,6 +126,8 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
             </Link>
 
           </div>
+
+          <PendingApprovalsCard />
 
           {/* ── TABS ── */}
           <div className="tab-bar-sticky">

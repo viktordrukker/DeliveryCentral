@@ -23,6 +23,10 @@ vi.mock('@/lib/api/workload', () => ({
   fetchWorkloadMatrix: vi.fn().mockResolvedValue({ people: [] }),
 }));
 
+vi.mock('@/lib/api/dashboard-pending-actions', () => ({
+  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+}));
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'pm-person-1', roles: ['project_manager'] },

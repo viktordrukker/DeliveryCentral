@@ -14,6 +14,7 @@ import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { TeamCapacityHeatmap } from '@/components/charts/TeamCapacityHeatmap';
 import { ResourcePoolUtilizationDonut } from '@/components/charts/ResourcePoolUtilizationDonut';
 import { DemandPipelineChart } from '@/components/charts/DemandPipelineChart';
+import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useResourceManagerDashboard } from '@/features/dashboard/useResourceManagerDashboard';
 import { createAssignment } from '@/lib/api/assignments';
@@ -231,6 +232,8 @@ export function ResourceManagerDashboardPage(): JSX.Element {
             idlePeople={idlePeople}
             overallocatedCount={overallocated.length}
           />
+
+          <PendingApprovalsCard personId={state.personId || undefined} />
 
           {/* ── HERO: Team Capacity Heatmap ── */}
           <div className="dashboard-hero" style={{ position: 'relative' }}>
