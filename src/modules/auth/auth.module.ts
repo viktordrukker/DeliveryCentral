@@ -4,6 +4,8 @@ import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { OidcController } from './oidc.controller';
+import { OidcService } from './oidc.service';
 import { TokenService } from './token.service';
 import { TwoFactorService } from './two-factor.service';
 import { PasswordService } from './password.service';
@@ -12,8 +14,8 @@ import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 
 @Module({
   imports: [PlatformSettingsModule],
-  controllers: [AuthController],
-  providers: [AuthService, TokenService, TwoFactorService, PasswordService, LocalStrategy, JwtAccessStrategy],
+  controllers: [AuthController, OidcController],
+  providers: [AuthService, TokenService, TwoFactorService, PasswordService, OidcService, LocalStrategy, JwtAccessStrategy],
   exports: [TokenService],
 })
 export class AuthModule {}

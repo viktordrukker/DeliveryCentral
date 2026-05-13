@@ -15,7 +15,7 @@ const config: Config = {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
-  transformIgnorePatterns: ['node_modules/(?!(@scure/base|@noble/hashes|@otplib/plugin-crypto-noble)/)'],
+  transformIgnorePatterns: ['node_modules/(?!(@scure/base|@noble/hashes|@otplib/plugin-crypto-noble|openid-client|oauth4webapi|jose)/)'],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: 'coverage',
   // TEST-08 — coverage thresholds NOT YET ENFORCED. The fast suite alone covers
