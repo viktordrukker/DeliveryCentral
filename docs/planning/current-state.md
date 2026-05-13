@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
 
-_Last updated: 2026-05-13 (Sprint F-3 Lean Delivery Operations complete — PRs #32–#39; Sprint F-4 partial — LLM scaffold + Shadow CI + Jira PPM source filter shipped via PRs #40–#42; OIDC / JSM / EMP-CASE / LDAP deferred to F-5)._
+_Last updated: 2026-05-13 (Sprint F-3 Lean Delivery Operations complete — PRs #32–#39; Sprint F-4 Bank-landscape Integrations COMPLETE — PRs #40–#47: LLM scaffold, Shadow CI, Jira PPM source filter, OIDC handler (D-155), EMP-CASE + EMPLOYEE_ISSUE migration, JSM Cloud connector, LDAP / AD adapter)._
 
 ---
 
