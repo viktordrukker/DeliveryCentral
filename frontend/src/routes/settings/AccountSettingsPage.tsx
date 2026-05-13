@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { setDarkMode } from '@/app/App';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -18,11 +18,14 @@ import { readStoredColorModePreference } from '@/styles/design-tokens';
 import {
   COMMON_TIMEZONES,
   SUPPORTED_LOCALES,
+  getPreferredDashboardRoute,
   getUserLocale,
   getUserTimezone,
+  setPreferredDashboardRoute,
   setUserLocale,
   setUserTimezone,
 } from '@/lib/user-prefs';
+import { availableDashboardPreferences } from '@/app/role-routing';
 import { Button } from '@/components/ds';
 
 // HD-8 / F2a — channels come from the platform via
@@ -82,7 +85,15 @@ export function AccountSettingsPage(): JSX.Element {
   const [isDark, setIsDark] = useState(() => readStoredColorModePreference() === 'dark');
   const [userLocale, setUserLocaleState] = useState(() => getUserLocale());
   const [userTimezone, setUserTimezoneState] = useState(() => getUserTimezone());
+  const [preferredDashboard, setPreferredDashboardState] = useState<string>(
+    () => getPreferredDashboardRoute() ?? '',
+  );
   const [prefsToast, setPrefsToast] = useState<string | null>(null);
+
+  const dashboardOptions = useMemo(
+    () => availableDashboardPreferences(principal?.roles ?? []),
+    [principal?.roles],
+  );
 
   function handleLocaleChange(locale: string): void {
     setUserLocaleState(locale);
@@ -95,6 +106,13 @@ export function AccountSettingsPage(): JSX.Element {
     setUserTimezoneState(tz);
     setUserTimezone(tz);
     setPrefsToast('Timezone saved.');
+    setTimeout(() => setPrefsToast(null), 1500);
+  }
+
+  function handlePreferredDashboardChange(route: string): void {
+    setPreferredDashboardState(route);
+    setPreferredDashboardRoute(route === '' ? null : route);
+    setPrefsToast(route === '' ? 'Preferred dashboard cleared.' : 'Preferred dashboard saved.');
     setTimeout(() => setPrefsToast(null), 1500);
   }
 
@@ -277,6 +295,24 @@ export function AccountSettingsPage(): JSX.Element {
               ))}
             </select>
           </label>
+          {dashboardOptions.length > 1 ? (
+            <label className="field" data-jtbd="Land on the dashboard I use most">
+              <span className="field__label">Preferred dashboard (after login)</span>
+              <select
+                className="field__control"
+                data-testid="user-preferred-dashboard-select"
+                onChange={(e) => handlePreferredDashboardChange(e.target.value)}
+                value={preferredDashboard}
+              >
+                <option value="">Auto (use my role's default)</option>
+                {dashboardOptions.map((opt) => (
+                  <option key={opt.route} value={opt.route}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
       </SectionCard>
 
