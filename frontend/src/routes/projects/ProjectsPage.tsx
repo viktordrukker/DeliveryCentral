@@ -72,6 +72,21 @@ export function ProjectsPage(): JSX.Element {
         <option value="MEDIUM">Medium</option>
         <option value="LOW">Low</option>
       </select>
+      {/* F-4.3 — filter by external source (Jira PPM, M365, etc.). The
+          underlying URL param + BE filter were already wired; this
+          dropdown surfaces the option in the title bar. */}
+      <select
+        aria-label="Filter by external source"
+        data-jtbd="Which projects come from Jira / external systems?"
+        onChange={(e) => setFilters({ source: e.target.value })}
+        value={filters.source}
+        style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
+      >
+        <option value="">All sources</option>
+        <option value="JIRA">Jira PPM</option>
+        <option value="M365">M365</option>
+        <option value="RADIUS">Radius</option>
+      </select>
       {hasItems ? (
         <Button
           variant="secondary"
