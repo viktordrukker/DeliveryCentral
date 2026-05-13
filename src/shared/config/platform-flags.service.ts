@@ -951,6 +951,12 @@ export class PlatformFlagsService {
   }
 
   public async isEnabledByKey(key: string, fallback: boolean): Promise<boolean> {
+    // F-4 / Shadow CI seam — force every flag ON when the nightly verify
+    // suite runs, so flag-gated code paths still get exercised. Default OFF
+    // in normal CI / dev / prod so behavior is unchanged.
+    if (process.env.FORCE_ALL_FLAGS_ON === '1' || process.env.FORCE_ALL_FLAGS_ON === 'true') {
+      return true;
+    }
     if (!this.prisma) return fallback;
     const now = Date.now();
     const hit = this.cache.get(key);
