@@ -42,6 +42,7 @@ import { WorkloadModule } from './modules/workload/workload.module';
 import { AppConfigModule } from './shared/config/app-config.module';
 import { CorrelationIdMiddleware } from './shared/observability/correlation-id.middleware';
 import { RequestLoggingMiddleware } from './shared/observability/request-logging.middleware';
+import { LlmModule } from './shared/llm/llm.module';
 import { ObservabilityModule } from './shared/observability/observability.module';
 import { PrismaModule } from './shared/persistence/prisma.module';
 import { PublicIdModule } from './infrastructure/public-id';
@@ -62,6 +63,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     AppConfigModule,
     PrismaModule,
     PublicIdModule,
+    LlmModule,
     ObservabilityModule,
     AdminModule,
     AdminFeatureFlagsModule,
