@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
 
-_Last updated: 2026-05-10 (post-Phase-11 master plan + post-bank-IT-pivot doc revision)._
+_Last updated: 2026-05-13 (Sprint F-3 Lean Delivery Operations complete — PRs #32–#38)._
 
 ---
 
@@ -53,6 +53,12 @@ _Last updated: 2026-05-10 (post-Phase-11 master plan + post-bank-IT-pivot doc re
 
 - **Workforce Planner "Distribution Studio":** 3-tier solver (chain/qualified/fallback), 5 strategies, multi-week coverageWeeks, server-persisted PlannerScenario, HC-diagnostics.
 - **Staffing Desk:** approval queue, slate-based proposal flow, drag-and-drop placement (`@dnd-kit/core`).
+- **Manager Dashboard — Pending Approvals tile:** ✅ KPI tile + embedded approval-queue strip on `/dashboard/manager` (WO-4.14/WO-5.5 — Sprint F-3.2 / PR #33).
+- **Exec/Director Dashboard — SLA breach + Time-to-fill tiles:** ✅ Director-approvals-waiting + 24h SLA breach count + Time-to-fill sparkline on `/dashboard/exec` (WO-4.15/WO-5.6 — Sprint F-3.3 / PR #34).
+- **Portfolio Radiator KPI:** ✅ Green/Warning/Critical counts now show correctly (D-115 — Sprint F-3.5 / PR #36).
+- **RM dashboard data shaping:** ✅ RM excluded from their own managed-people counts; pool Util/Assignment numbers now accurate (D-120 — Sprint F-3.6 / PR #37).
+- **Per-user preferred dashboard route:** ✅ `account.preferredDashboardRoute` setting on Account Settings; dual-role HR > RM precedence codified (D-119 — Sprint F-3.7 / PR #38).
+- **PvA dashboard "Resolve" → Project Budget tab:** ✅ PvA resolve action links into Project Detail budget-approval CTA (CLAUDE.md Pitfall #14 — Sprint F-3.4 / PR #35).
 - **Skills:** `Skill` + `PersonSkill` (proficiency 1-5), `SkillCategory`. CRUD via `/admin/skills`.
 - **PvA dashboard:** virtualized layout; configurable hours/week constant from PlatformSettings.
 
@@ -66,7 +72,8 @@ _Last updated: 2026-05-10 (post-Phase-11 master plan + post-bank-IT-pivot doc re
 
 ### 2.5 Cases + governance
 
-- **Case management module:** `cases` BE module + `/cases` FE routes. Approve workflow ❌ (D-91 in Cat-1.5 wires FE button).
+- **Case management module:** `cases` BE module + `/cases` FE routes. Approve workflow ✅ FE button wired on CaseDetailsPage (D-91 — Sprint F-3.1 / PR #32).
+- **Budget-change request approval:** ✅ FE button wired on Project BudgetTab (D-92 — Sprint F-3.1 / PR #32).
 - **Audit log:** hash-chained. AuditLog `payload.email` + `actorDisplayName` are NOT redacted on erasure (D-167 in Cat-1.8 closes; redact-payload v1).
 - **Audit log admin page:** ❌ missing FE (D-114 in Cat-1.5; no longer blocked by tenantId since single-tenant).
 - **AuditLog retention:** ❌ no policy / no purge cron (D-168 in Cat-1.8).
@@ -76,6 +83,7 @@ _Last updated: 2026-05-10 (post-Phase-11 master plan + post-bank-IT-pivot doc re
 - **In-app notifications:** shipped. PersonNotificationPreference (HD-8 era).
 - **Outbox seam:** schema landed (HD-7); ❌ producers + publisher zero-wired (D-142 in Cat-1.6).
 - **Nudge sweeper:** HD-8 chunk 8.3 — NudgeSweeperService runs per-tick scan (60min), emits `nudge.proposal_acknowledgment_overdue` + `nudge.timesheet_submission_overdue` events through outbox seam.
+- **Approver nudge button:** ✅ `NudgeButton.tsx` + `POST /notifications/nudge` with 24h rate-limit — wired into manager-dashboard approval queue rows (21-09 — Sprint F-3.4 / PR #35).
 - **SLA pre-breach:** HD-10 — assignment SLA sweep at 50%/75% pre-breach + breach.
 - **Email channels:** generic + ms_teams_webhook + email shipped (HD-8 chunk 8.1).
 
