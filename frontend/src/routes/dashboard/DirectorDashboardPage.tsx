@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { PortfolioStaffingHeatmap } from '@/components/dashboard/PortfolioStaffingHeatmap';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
+import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -27,6 +28,7 @@ import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { useDirectorDashboard } from '@/features/dashboard/useDirectorDashboard';
 import { exportToXlsx } from '@/lib/export';
 import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool } from '@/lib/api/portfolio-dashboard';
+import { type DirectorSlaSummary, fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealthBatch, type ProjectHealthDto } from '@/lib/api/project-health';
 import { Button, DataView, Table, type Column } from '@/components/ds';
@@ -100,6 +102,16 @@ export function DirectorDashboardPage(): JSX.Element {
   useEffect(() => {
     if (state.data && !state.isLoading) setLastFetch(new Date());
   }, [state.data, state.isLoading]);
+
+  // F-3.3 — SLA breach + Time-to-fill metrics
+  const [slaSummary, setSlaSummary] = useState<DirectorSlaSummary | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetchDirectorSlaSummary()
+      .then((data) => { if (active) setSlaSummary(data); })
+      .catch(() => { if (active) setSlaSummary(null); });
+    return () => { active = false; };
+  }, []);
 
   // Title bar
   useEffect(() => {
@@ -218,7 +230,43 @@ export function DirectorDashboardPage(): JSX.Element {
                 </Link>
               </>
             ) : null}
+
+            {/* F-3.3 — SLA breach + Time-to-fill */}
+            {slaSummary ? (
+              <>
+                <Link
+                  className="kpi-strip__item"
+                  data-jtbd="What's at risk?"
+                  to="/staffing-desk?filter=sla"
+                  style={{ borderLeft: `3px solid ${slaSummary.slaBreaches24h > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
+                >
+                  <TipBalloon tip="Assignments whose SLA due-date is within ±24h and have not yet been marked breached. Red when any are pending." arrow="left" />
+                  <span className="kpi-strip__value">{slaSummary.slaBreaches24h}</span>
+                  <span className="kpi-strip__label">24h SLA Breach</span>
+                </Link>
+
+                <Link
+                  className="kpi-strip__item"
+                  data-jtbd="How fast are we filling roles?"
+                  to="/staffing-requests?status=FULFILLED"
+                  style={{ borderLeft: '3px solid var(--color-chart-2)' }}
+                >
+                  <TipBalloon tip="Rolling 4-week median time-to-fill (days) per filled staffing request. Sparkline shows per-week trend." arrow="left" />
+                  <span className="kpi-strip__value">
+                    {slaSummary.timeToFillMedianDays !== null
+                      ? `${Math.round(slaSummary.timeToFillMedianDays)}d`
+                      : '—'}
+                  </span>
+                  <span className="kpi-strip__label">Time to Fill (4w)</span>
+                  {slaSummary.timeToFillSeries.some((v) => v > 0) ? (
+                    <Sparkline data={slaSummary.timeToFillSeries} height={20} width={60} color="var(--color-chart-2)" />
+                  ) : null}
+                </Link>
+              </>
+            ) : null}
           </div>
+
+          <PendingApprovalsCard />
 
           {/* ═══ CHARTS: 3-column grid with chart/table toggles ═══ */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-4)' }}>
