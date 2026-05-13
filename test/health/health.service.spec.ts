@@ -151,6 +151,7 @@ describe('HealthService diagnostics', () => {
       notificationTemplateRepository,
       auditLogStore,
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
+      { probe: async () => ({ configured: false, reachable: false, latencyMs: null, deployment: null }) } as never,
     );
 
     const diagnostics = await service.getDiagnostics();
@@ -254,6 +255,7 @@ describe('HealthService diagnostics', () => {
       new InMemoryNotificationTemplateRepository(createSeededInMemoryNotificationTemplateRepository()) as unknown as PrismaNotificationTemplateRepository,
       new InMemoryAuditLogStore(),
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
+      { probe: async () => ({ configured: false, reachable: false, latencyMs: null, deployment: null }) } as never,
     );
 
     const diagnostics = await service.getDiagnostics();
