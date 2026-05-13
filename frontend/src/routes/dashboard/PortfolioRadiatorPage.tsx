@@ -64,18 +64,16 @@ export function PortfolioRadiatorPage(): JSX.Element {
 
   const kpis = useMemo(() => {
     if (!rows || rows.length === 0) {
-      return { avg: 0, critical: 0, green: 0, total: 0 };
+      return { avg: 0, green: 0, amber: 0, redOrCritical: 0, total: 0, hasData: false };
     }
     const total = rows.length;
     const avg = Math.round(rows.reduce((acc, r) => acc + r.overallScore, 0) / total);
     const green = rows.filter((r) => r.overallBand === 'GREEN').length;
-    const critical = rows.filter((r) => r.overallBand === 'CRITICAL').length;
-    return {
-      avg,
-      critical: Math.round((critical / total) * 100),
-      green: Math.round((green / total) * 100),
-      total,
-    };
+    const amber = rows.filter((r) => r.overallBand === 'AMBER').length;
+    const redOrCritical = rows.filter(
+      (r) => r.overallBand === 'RED' || r.overallBand === 'CRITICAL',
+    ).length;
+    return { avg, green, amber, redOrCritical, total, hasData: true };
   }, [rows]);
 
   const sorted = useMemo(() => {
@@ -185,23 +183,57 @@ export function PortfolioRadiatorPage(): JSX.Element {
         title="Portfolio Radiator"
       />
 
-      {/* KPI strip */}
+      {/* F-3.5 / D-115 — KPI strip with all three RAG bands as counts (was %Green + %Critical only — looked broken when every project was AMBER). */}
       <div aria-label="Portfolio KPIs" className="kpi-strip">
-        <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+        <Link
+          className="kpi-strip__item"
+          data-jtbd="How many projects do we have in the portfolio?"
+          to="/projects"
+          style={{ borderLeft: '3px solid var(--color-accent)' }}
+        >
           <span className="kpi-strip__value">{kpis.total}</span>
           <span className="kpi-strip__label">Total projects</span>
-        </div>
-        <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${kpis.avg >= 76 ? 'var(--color-status-active)' : kpis.avg >= 51 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-          <span className="kpi-strip__value">{kpis.avg}</span>
+        </Link>
+        <div
+          className="kpi-strip__item"
+          style={{
+            borderLeft: `3px solid ${
+              kpis.hasData
+                ? kpis.avg >= 76
+                  ? 'var(--color-status-active)'
+                  : kpis.avg >= 51
+                    ? 'var(--color-status-warning)'
+                    : 'var(--color-status-danger)'
+                : 'var(--color-border)'
+            }`,
+          }}
+        >
+          <span className="kpi-strip__value">{kpis.hasData ? kpis.avg : '—'}</span>
           <span className="kpi-strip__label">Avg score</span>
         </div>
-        <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
-          <span className="kpi-strip__value">{kpis.green}%</span>
-          <span className="kpi-strip__label">% Green</span>
+        <div
+          className="kpi-strip__item"
+          data-jtbd="How many projects are green?"
+          style={{ borderLeft: '3px solid var(--color-status-active)' }}
+        >
+          <span className="kpi-strip__value">{kpis.hasData ? kpis.green : '—'}</span>
+          <span className="kpi-strip__label">Green</span>
         </div>
-        <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-critical)' }}>
-          <span className="kpi-strip__value">{kpis.critical}%</span>
-          <span className="kpi-strip__label">% Critical</span>
+        <div
+          className="kpi-strip__item"
+          data-jtbd="How many projects are amber?"
+          style={{ borderLeft: '3px solid var(--color-status-warning)' }}
+        >
+          <span className="kpi-strip__value">{kpis.hasData ? kpis.amber : '—'}</span>
+          <span className="kpi-strip__label">Amber</span>
+        </div>
+        <div
+          className="kpi-strip__item"
+          data-jtbd="How many projects are red or critical?"
+          style={{ borderLeft: '3px solid var(--color-status-danger)' }}
+        >
+          <span className="kpi-strip__value">{kpis.hasData ? kpis.redOrCritical : '—'}</span>
+          <span className="kpi-strip__label">Red / Critical</span>
         </div>
       </div>
 
