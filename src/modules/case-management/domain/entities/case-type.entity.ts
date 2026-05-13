@@ -1,6 +1,6 @@
 import { AggregateRoot } from '@src/shared/domain/aggregate-root';
 
-export type CaseTypeKey = 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER';
+export type CaseTypeKey = 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER' | 'EMPLOYEE_ISSUE';
 
 interface CaseTypeProps {
   description?: string;
@@ -13,6 +13,7 @@ const CASE_TYPE_DEFINITIONS: Record<CaseTypeKey, { description: string; displayN
   ONBOARDING: { description: 'Employee or contributor onboarding workflow.', displayName: 'Onboarding', id: 'case-type-onboarding' },
   PERFORMANCE: { description: 'Performance review or improvement plan workflow.', displayName: 'Performance Review', id: 'case-type-performance' },
   TRANSFER: { description: 'Role or department transfer workflow.', displayName: 'Transfer', id: 'case-type-transfer' },
+  EMPLOYEE_ISSUE: { description: 'Employee-reported issue (HR / IT / facilities / general). Routes to JSM when integrations.jsm.enabled.', displayName: 'Employee issue', id: 'case-type-employee-issue' },
 };
 
 export class CaseType extends AggregateRoot<CaseTypeProps> {

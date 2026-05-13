@@ -7,7 +7,7 @@ interface PrismaCaseRecord {
   caseNumber: string;
   caseType: {
     displayName: string;
-    key: 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER';
+    key: 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER' | 'EMPLOYEE_ISSUE';
   };
   id: string;
   openedAt: Date;

@@ -45,7 +45,9 @@ export interface CaseComment {
 }
 
 export interface CreateCaseRequest {
-  caseTypeKey: 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER';
+  // F-4.5 / C1-EMP-CASE — EMPLOYEE_ISSUE added so the Report-an-issue modal
+  // can fire `POST /api/cases` with a permissible caseTypeKey.
+  caseTypeKey: 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER' | 'EMPLOYEE_ISSUE';
   ownerPersonId: string;
   participants?: CaseParticipant[];
   relatedAssignmentId?: string;

@@ -19,6 +19,7 @@ import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard'
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { HR_DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Button } from '@/components/ds';
+import { ReportIssueModal } from '@/components/employee/ReportIssueModal';
 
 function buildWeeks(count: number, asOf: string): string[] {
   const base = new Date(asOf);
@@ -46,6 +47,7 @@ export function EmployeeDashboardPage(): JSX.Element {
   const { setActions } = useTitleBarActions();
   const isElevated = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   const [lastFetch, setLastFetch] = useState(new Date());
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   const ownPersonId = principal?.personId;
   const requestedPersonId = searchParams.get('personId');
@@ -75,6 +77,14 @@ export function EmployeeDashboardPage(): JSX.Element {
           </label>
         ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/my-time">My Time</Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setReportIssueOpen(true)}
+          data-jtbd="Report something that needs attention"
+        >
+          Report an issue
+        </Button>
         <TipTrigger />
       </>
     );
@@ -95,6 +105,7 @@ export function EmployeeDashboardPage(): JSX.Element {
 
   return (
     <PageContainer testId="employee-dashboard-page">
+      <ReportIssueModal open={reportIssueOpen} onClose={() => setReportIssueOpen(false)} />
       {state.isLoading ? <LoadingState label="Loading employee dashboard..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {!state.isLoading && !state.error && !d && isElevated ? (
