@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -105,9 +105,13 @@ describe('OrgPage', () => {
   it('renders the interactive chart container', async () => {
     renderWithRouter();
 
-    // The chart viewport should be present (people view is default, needs people data)
+    // The chart viewport should be present (people view is default, needs people data).
+    // Page header lands first; the viewport mounts after an async data fetch settles,
+    // so wait for the DOM node rather than reading it synchronously.
     await screen.findByText('Org Chart');
-    expect(document.querySelector('.org-chart-viewport')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('.org-chart-viewport')).toBeInTheDocument();
+    });
   });
 
   it('supports search filtering', async () => {
