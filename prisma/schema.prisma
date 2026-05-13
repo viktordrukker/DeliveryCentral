@@ -2399,6 +2399,7 @@ enum CaseTypeKey {
   PERFORMANCE
   TRANSFER
   OVERTIME_EXCEPTION
+  EMPLOYEE_ISSUE
 }
 
 // DM-4-2 batch 3 — promoted from `PersonCostRate.rateType: String`.

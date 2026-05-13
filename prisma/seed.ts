@@ -656,6 +656,8 @@ async function seedCaseTypes(): Promise<void> {
     { key: 'OFFBOARDING', displayName: 'Offboarding', description: 'Employee offboarding workflow.' },
     { key: 'PERFORMANCE', displayName: 'Performance Review', description: 'Performance review and improvement plan.' },
     { key: 'TRANSFER',    displayName: 'Transfer',    description: 'Internal department transfer workflow.' },
+    // F-4.5 / C1-EMP-CASE — employee-reported issues. Routes to JSM when integrations.jsm.enabled.
+    { key: 'EMPLOYEE_ISSUE', displayName: 'Employee issue', description: 'Employee-reported issue (HR / IT / facilities / general).' },
   ];
 
   for (const t of types) {

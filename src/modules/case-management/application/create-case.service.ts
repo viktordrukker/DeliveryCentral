@@ -29,7 +29,7 @@ export class CreateCaseService {
   ) {}
 
   public async execute(command: CreateCaseCommand): Promise<CaseRecord> {
-    const validTypes: CaseTypeKey[] = ['ONBOARDING', 'OFFBOARDING', 'TRANSFER', 'PERFORMANCE'];
+    const validTypes: CaseTypeKey[] = ['ONBOARDING', 'OFFBOARDING', 'TRANSFER', 'PERFORMANCE', 'EMPLOYEE_ISSUE'];
     if (!validTypes.includes(command.caseTypeKey)) {
       throw new BadRequestException(`Unsupported case type: ${command.caseTypeKey}`);
     }

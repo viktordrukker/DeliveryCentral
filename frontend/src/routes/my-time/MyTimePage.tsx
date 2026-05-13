@@ -16,6 +16,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipTrigger } from '@/components/common/TipBalloon';
+import { ReportIssueModal } from '@/components/employee/ReportIssueModal';
 import {
   fetchMonthlyTimesheet,
   autoFillMonth,
@@ -79,6 +80,7 @@ export function MyTimePage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [showOT, setShowOT] = useState(false);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [customRows, setCustomRows] = useState<GridRow[]>([]);
   const [localEdits, setLocalEdits] = useState<Map<string, number>>(new Map()); // key = rowKey:dateStr → hours
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,6 +138,14 @@ export function MyTimePage(): JSX.Element {
         <Button size="sm" variant="secondary" onClick={() => { if (month === 1) { setYear((y) => y - 1); setMonth(12); } else setMonth((m) => m - 1); }}>{'\u25C2'} Prev</Button>
         <span style={{ fontWeight: 600, fontSize: 14, minWidth: 100, textAlign: 'center' }}>{MONTH_NAMES[month - 1]} {year}</span>
         <Button size="sm" variant="secondary" onClick={() => { if (month === 12) { setYear((y) => y + 1); setMonth(1); } else setMonth((m) => m + 1); }}>Next {'\u25B8'}</Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setReportIssueOpen(true)}
+          data-jtbd="Report something that needs attention"
+        >
+          Report an issue
+        </Button>
         <TipTrigger />
       </>
     );
@@ -548,6 +558,7 @@ export function MyTimePage(): JSX.Element {
 
   return (
     <PageContainer testId="my-time-page">
+      <ReportIssueModal open={reportIssueOpen} onClose={() => setReportIssueOpen(false)} />
       {loading ? <LoadingState label="Loading your timesheet..." variant="skeleton" skeletonType="page" /> : null}
       {error ? <ErrorState description={error} /> : null}
 
