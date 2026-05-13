@@ -152,6 +152,7 @@ describe('HealthService diagnostics', () => {
       auditLogStore,
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null, deployment: null }) } as never,
+      { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
     );
 
     const diagnostics = await service.getDiagnostics();
@@ -256,6 +257,7 @@ describe('HealthService diagnostics', () => {
       new InMemoryAuditLogStore(),
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
       { probe: async () => ({ configured: false, reachable: false, latencyMs: null, deployment: null }) } as never,
+      { probe: async () => ({ configured: false, reachable: false, latencyMs: null }) } as never,
     );
 
     const diagnostics = await service.getDiagnostics();

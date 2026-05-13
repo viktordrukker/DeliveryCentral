@@ -12,6 +12,7 @@ import { PrismaNotificationChannelRepository } from '@src/modules/notifications/
 import { PrismaNotificationTemplateRepository } from '@src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-template.repository';
 import { AppConfig } from '@src/shared/config/app-config';
 import { JsmCloudAdapter } from '@src/shared/jsm/jsm-cloud-adapter';
+import { LdapDirectoryAdapter } from '@src/shared/ldap/ldap-directory-adapter';
 import { OpenAiCompatibleLlmClient } from '@src/shared/llm/openai-compatible-client';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -29,6 +30,7 @@ export class HealthService {
     private readonly auditLogStore: InMemoryAuditLogStore,
     private readonly llmClient: OpenAiCompatibleLlmClient,
     private readonly jsmClient: JsmCloudAdapter,
+    private readonly ldapClient: LdapDirectoryAdapter,
   ) {}
 
   public async getHealth(): Promise<{
@@ -135,6 +137,12 @@ export class HealthService {
       deployment: 'cloud' | 'datacenter' | null;
       error?: string;
     };
+    ldap: {
+      configured: boolean;
+      reachable: boolean;
+      latencyMs: number | null;
+      error?: string;
+    };
     status: 'ready' | 'degraded';
     timestamp: string;
   }> {
@@ -205,12 +213,23 @@ export class HealthService {
       ...(jsmProbe.error ? { error: jsmProbe.error } : {}),
     };
 
+    // F-4.7 / NEW C1-LDAP — LDAP directory reachability probe. Same shape
+    // as LLM + JSM: unconfigured = passive; doesn't degrade overall status.
+    const ldapProbe = await this.ldapClient.probe();
+    const ldap = {
+      configured: ldapProbe.configured,
+      reachable: ldapProbe.reachable,
+      latencyMs: ldapProbe.latencyMs,
+      ...(ldapProbe.error ? { error: ldapProbe.error } : {}),
+    };
+
     const overall = results.some((r) => r.status === 'degraded') ? 'degraded' : 'ready';
 
     return {
       aggregates: results,
       llm,
       jsm,
+      ldap,
       status: overall,
       timestamp: new Date().toISOString(),
     };

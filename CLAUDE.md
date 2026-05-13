@@ -105,6 +105,7 @@ All MIT or Apache-2.0. Frontend: `npm install <pkg> --prefix frontend`. Backend:
 | `date-fns` | Date formatting |
 | `@dnd-kit/core` | Drag-and-drop |
 | `react-markdown` | Render Markdown safely in React (Help Center article body). Safe-by-default — NEVER enable `rehype-raw` or `allowDangerousHtml`. Always pass `urlTransform` to block `javascript:` / `data:` URIs and an `allowedElements` whitelist (no `<script>`, `<iframe>`, `<form>`, `<input>`, `<button>`). |
+| `ldapts` | Pure-TS LDAPv3 client. Used only on the backend by `LdapDirectoryAdapter` (F-4.7) for bank-AD directory sync. MIT, no native deps. Bind credentials live in env (`LDAP_BIND_DN`, `LDAP_BIND_PASSWORD`) — never commit them. |
 
 Do not install any package not on this list without asking first.
 

@@ -43,6 +43,7 @@ import { AppConfigModule } from './shared/config/app-config.module';
 import { CorrelationIdMiddleware } from './shared/observability/correlation-id.middleware';
 import { RequestLoggingMiddleware } from './shared/observability/request-logging.middleware';
 import { JsmModule } from './shared/jsm/jsm.module';
+import { LdapModule } from './shared/ldap/ldap.module';
 import { LlmModule } from './shared/llm/llm.module';
 import { ObservabilityModule } from './shared/observability/observability.module';
 import { PrismaModule } from './shared/persistence/prisma.module';
@@ -66,6 +67,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     PublicIdModule,
     LlmModule,
     JsmModule,
+    LdapModule,
     ObservabilityModule,
     AdminModule,
     AdminFeatureFlagsModule,
