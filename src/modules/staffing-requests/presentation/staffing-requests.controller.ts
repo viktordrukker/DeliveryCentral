@@ -40,6 +40,7 @@ import {
   DeriveStaffingRequestStatusService,
   DerivedStaffingRequestResult,
 } from '../application/derive-staffing-request-status.service';
+import { NudgeStaffingRequestService, NudgeResult } from '../application/nudge-staffing-request.service';
 import { StaffingProposalSlateService } from '../application/staffing-proposal-slate.service';
 import {
   SuggestionCandidate,
@@ -98,6 +99,7 @@ export class StaffingRequestsController {
     private readonly suggestionsService: StaffingSuggestionsService,
     private readonly deriveStatusService: DeriveStaffingRequestStatusService,
     private readonly proposalSlateService: StaffingProposalSlateService,
+    private readonly nudgeService: NudgeStaffingRequestService,
   ) {}
 
   private mapSlateResponse(slate: StaffingRequestProposalSlate): ProposalSlateResponseDto {
@@ -363,6 +365,30 @@ export class StaffingRequestsController {
       return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Cancel failed.';
+      if (msg.includes('not found')) throw new NotFoundException(msg);
+      throw new BadRequestException(msg);
+    }
+  }
+
+  @Post(':id/nudge')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'F-3.4 / 21-09 — PM/RM nudges the approver of a stalled staffing request. Rate-limited 1 nudge per 4h per SR.',
+  })
+  @ApiOkResponse({ description: 'Nudge written (or rate-limited).' })
+  public async nudge(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<NudgeResult> {
+    const actorId = req.principal?.personId ?? req.principal?.userId ?? '';
+    if (!actorId) {
+      throw new BadRequestException('Authenticated requester required.');
+    }
+    try {
+      return await this.nudgeService.nudge(id, actorId);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Nudge failed.';
       if (msg.includes('not found')) throw new NotFoundException(msg);
       throw new BadRequestException(msg);
     }

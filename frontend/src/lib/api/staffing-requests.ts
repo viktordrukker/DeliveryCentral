@@ -134,6 +134,17 @@ export async function duplicateStaffingRequest(id: string): Promise<StaffingRequ
   return httpPost<StaffingRequest, Record<string, never>>(`/staffing-requests/${id}/duplicate`, {});
 }
 
+// F-3.4 / 21-09 — nudge approver
+export interface NudgeResult {
+  nudged: boolean;
+  lastNudgedAt: string;
+  rateLimitedUntil: string | null;
+}
+
+export async function nudgeStaffingRequest(id: string): Promise<NudgeResult> {
+  return httpPost<NudgeResult, Record<string, never>>(`/staffing-requests/${id}/nudge`, {});
+}
+
 export interface SkillBreakdown {
   availabilityModifier: number;
   importanceWeight: number;

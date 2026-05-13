@@ -25,7 +25,9 @@ import {
   duplicateStaffingRequest,
   fetchProposalSlate,
   fetchStaffingRequestById,
+  nudgeStaffingRequest,
   type DerivedStaffingRequestStatus,
+  type NudgeResult,
   type ProposalSlateDto,
   type StaffingRequest,
 } from '@/lib/api/staffing-requests';
@@ -151,6 +153,8 @@ export function StaffingRequestDetailPage(): JSX.Element {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [nudgeBusy, setNudgeBusy] = useState(false);
+  const [nudgeFeedback, setNudgeFeedback] = useState<NudgeResult | null>(null);
   const [proficiencyCells, setProficiencyCells] = useState<SkillMatchCell[]>([]);
   const [personNames, setPersonNames] = useState<Record<string, string>>({});
 
@@ -299,6 +303,21 @@ export function StaffingRequestDetailPage(): JSX.Element {
       setError('Failed to cancel request.');
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function handleNudge(): Promise<void> {
+    if (!id) return;
+    setNudgeBusy(true);
+    setNudgeFeedback(null);
+    try {
+      const result = await nudgeStaffingRequest(id);
+      setNudgeFeedback(result);
+    } catch (e: unknown) {
+      setNudgeFeedback(null);
+      setError(e instanceof Error ? e.message : 'Failed to nudge approver.');
+    } finally {
+      setNudgeBusy(false);
     }
   }
 
@@ -552,7 +571,36 @@ export function StaffingRequestDetailPage(): JSX.Element {
 
       {(isPM || isRM) &&
       request.status !== 'CANCELLED' &&
-      request.status !== 'FULFILLED' ? (
+      (request.status === 'OPEN' || request.status === 'IN_REVIEW') ? (
+        <SectionCard title="Nudge approver" data-jtbd="Stalled — get a decision">
+          <p style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-muted)', fontSize: 12 }}>
+            Send a reminder to the approver(s). Rate-limited to one nudge per 4 hours per request.
+          </p>
+          <Button
+            variant="secondary"
+            disabled={nudgeBusy}
+            onClick={() => void handleNudge()}
+            type="button"
+          >
+            {nudgeBusy ? 'Nudging…' : 'Nudge approver'}
+          </Button>
+          {nudgeFeedback ? (
+            <div
+              style={{
+                marginTop: 'var(--space-2)',
+                fontSize: 12,
+                color: nudgeFeedback.nudged ? 'var(--color-status-active)' : 'var(--color-status-warning)',
+              }}
+            >
+              {nudgeFeedback.nudged
+                ? `Approver nudged at ${new Date(nudgeFeedback.lastNudgedAt).toLocaleTimeString()}.`
+                : `Already nudged within the last 4 hours. Try again after ${nudgeFeedback.rateLimitedUntil ? new Date(nudgeFeedback.rateLimitedUntil).toLocaleTimeString() : 'a few hours'}.`}
+            </div>
+          ) : null}
+        </SectionCard>
+      ) : null}
+
+      {request.status !== 'FULFILLED' ? (
         <SectionCard title="Cancel request" collapsible defaultCollapsed>
           <p style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-muted)', fontSize: 12 }}>
             Cancelling removes the request from the RM queue. Use only when the role is no longer needed.

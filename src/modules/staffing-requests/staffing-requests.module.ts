@@ -10,6 +10,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 
 import { DeriveStaffingRequestStatusService } from './application/derive-staffing-request-status.service';
+import { NudgeStaffingRequestService } from './application/nudge-staffing-request.service';
 import {
   STAFFING_REQUEST_PROPOSAL_SLATE_REPOSITORY,
   StaffingProposalSlateService,
@@ -30,6 +31,7 @@ import { StaffingRequestsController } from './presentation/staffing-requests.con
   providers: [
     InMemoryStaffingRequestService,
     DeriveStaffingRequestStatusService,
+    NudgeStaffingRequestService,
     PrismaStaffingRequestProposalSlateRepository,
     {
       provide: StaffingSuggestionsService,

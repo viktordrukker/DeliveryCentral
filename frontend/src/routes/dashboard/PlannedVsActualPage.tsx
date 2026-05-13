@@ -241,10 +241,13 @@ export function PlannedVsActualPage(): JSX.Element {
     {
       key: 'resolve',
       label: 'Resolve',
+      // F-3.4 / CLAUDE.md Pitfall #14 — land on the project's budget tab
+      // where the F-3.1 D-91/D-92 approval CTAs live. Falls back to
+      // /people for items with no project context (rare).
       onSelect: (item) => {
-        if (item.sourceCategory === 'silent') nav('/assignments');
-        else if (item.sourceCategory === 'missing') nav(`/people/${item.personId}`);
-        else openAssignModal(item);
+        if (item.projectId) nav(`/projects/${item.projectId}?tab=budget`);
+        else if (item.personId) nav(`/people/${item.personId}`);
+        else nav('/assignments');
       },
     },
     {
