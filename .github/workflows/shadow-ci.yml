@@ -1,0 +1,54 @@
+# F-4 / Shadow CI (deferred from F-2.5).
+#
+# Nightly verification: runs the fast suites with FORCE_ALL_FLAGS_ON=1 so
+# every flag-gated code path is exercised. If a flag-OFF code path has
+# diverged from the flag-ON one (e.g. a service stopped calling a code
+# path that's only reachable when the flag is ON), this job fails and the
+# flag's promotion to GA is frozen until the path is repaired.
+#
+# Runs at 03:00 UTC every day. Failure does NOT block PRs — that's what
+# the regular ci.yml fast suite is for. Shadow CI is the long-tail
+# safety net.
+#
+# To run locally: `npm run verify:shadow` (or `FORCE_ALL_FLAGS_ON=1 npm run test:fast`).
+
+name: shadow-ci
+
+on:
+  schedule:
+    # 03:00 UTC daily
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  shadow:
+    name: Shadow CI (all flags forced ON)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FORCE_ALL_FLAGS_ON: '1'
+      CI: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Backend fast suite (flags forced ON)
+        run: npm run test:fast
+
+      - name: Frontend tests (flags forced ON)
+        run: npm --prefix frontend run test
