@@ -11,6 +11,7 @@ import { NotificationOutcomeQueryService } from '@src/modules/notifications/appl
 import { PrismaNotificationChannelRepository } from '@src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-channel.repository';
 import { PrismaNotificationTemplateRepository } from '@src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-template.repository';
 import { AppConfig } from '@src/shared/config/app-config';
+import { OpenAiCompatibleLlmClient } from '@src/shared/llm/openai-compatible-client';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class HealthService {
     private readonly notificationChannelRepository: PrismaNotificationChannelRepository,
     private readonly notificationTemplateRepository: PrismaNotificationTemplateRepository,
     private readonly auditLogStore: InMemoryAuditLogStore,
+    private readonly llmClient: OpenAiCompatibleLlmClient,
   ) {}
 
   public async getHealth(): Promise<{
@@ -118,6 +120,12 @@ export class HealthService {
       count: number | null;
       error?: string;
     }>;
+    llm: {
+      configured: boolean;
+      reachable: boolean;
+      latencyMs: number | null;
+      error?: string;
+    };
     status: 'ready' | 'degraded';
     timestamp: string;
   }> {
@@ -166,10 +174,22 @@ export class HealthService {
       }),
     );
 
+    // F-4 / NEW C1-LLM-SCAFFOLD — LLM reachability probe. When the endpoint
+    // is unset (typical dev), `configured: false` and the overall status
+    // stays unaffected — LLM is opt-in capability, not a hard dependency.
+    const llmProbe = await this.llmClient.probe();
+    const llm = {
+      configured: llmProbe.configured,
+      reachable: llmProbe.reachable,
+      latencyMs: llmProbe.latencyMs,
+      ...(llmProbe.error ? { error: llmProbe.error } : {}),
+    };
+
     const overall = results.some((r) => r.status === 'degraded') ? 'degraded' : 'ready';
 
     return {
       aggregates: results,
+      llm,
       status: overall,
       timestamp: new Date().toISOString(),
     };
