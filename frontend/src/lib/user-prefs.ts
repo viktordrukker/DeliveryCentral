@@ -16,6 +16,7 @@
 
 const LOCALE_KEY = 'dc:user_locale';
 const TZ_KEY = 'dc:user_timezone';
+const PREFERRED_DASHBOARD_KEY = 'dc:user_preferred_dashboard';
 
 export const SUPPORTED_LOCALES: ReadonlyArray<{ code: string; label: string }> = [
   { code: 'en-US', label: 'English (US) — 1,234.56 · MM/DD/YYYY' },
@@ -86,6 +87,34 @@ export function setUserLocale(locale: string): void {
 
 export function setUserTimezone(timezone: string): void {
   safeWrite(TZ_KEY, timezone);
+}
+
+/**
+ * F-3.7 / D-119 — per-user preferred dashboard route.
+ *
+ * Returns the user-set landing-dashboard route, or null when no preference
+ * has been set (in which case `getDashboardPath()` falls back to role
+ * precedence). Same localStorage pattern as locale/timezone above —
+ * BE-backed persistence will follow in v1.1 alongside the locale/timezone
+ * sync to `account.preferredDashboardRoute` PlatformSetting.
+ */
+export function getPreferredDashboardRoute(): string | null {
+  return safeRead(PREFERRED_DASHBOARD_KEY);
+}
+
+export function setPreferredDashboardRoute(route: string | null): void {
+  if (route === null) {
+    try {
+      window.localStorage.removeItem(PREFERRED_DASHBOARD_KEY);
+      window.dispatchEvent(
+        new CustomEvent('dc:user-prefs-changed', { detail: { key: PREFERRED_DASHBOARD_KEY } }),
+      );
+    } catch {
+      /* ignored */
+    }
+    return;
+  }
+  safeWrite(PREFERRED_DASHBOARD_KEY, route);
 }
 
 /**
