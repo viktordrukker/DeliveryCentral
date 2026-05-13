@@ -69,32 +69,38 @@ export class ResourceManagerDashboardQueryService {
       })),
     );
 
+    // F-3.6 / D-120 — exclude the RM themselves from the "people I manage"
+    // count. When an RM sits in their own pool (e.g. Sophia in RMO Pool),
+    // counting them as a managed/unassigned person made the dashboard
+    // claim a 6-person bench against ground truth of 5 deliverable peers.
     const allocationIndicators = teamMembers.flatMap(({ members, team }) =>
-      members.map((member) => {
-        const currentAssignments = (assignmentsByPerson.get(member.id) ?? []).filter(
-          (assignment) => assignment.isActiveAt(asOf),
-        );
-        const totalAllocationPercent = currentAssignments.reduce(
-          (sum, assignment) => sum + (assignment.allocationPercent?.value ?? 0),
-          0,
-        );
+      members
+        .filter((member) => member.id !== query.personId)
+        .map((member) => {
+          const currentAssignments = (assignmentsByPerson.get(member.id) ?? []).filter(
+            (assignment) => assignment.isActiveAt(asOf),
+          );
+          const totalAllocationPercent = currentAssignments.reduce(
+            (sum, assignment) => sum + (assignment.allocationPercent?.value ?? 0),
+            0,
+          );
 
-        return {
-          displayName: member.displayName,
-          indicator:
-            totalAllocationPercent > 100
-              ? 'OVERALLOCATED'
-              : totalAllocationPercent === 0
-                ? 'UNASSIGNED'
-                : totalAllocationPercent < 100
-                  ? 'UNDERALLOCATED'
-                  : 'FULLY_ALLOCATED',
-          personId: member.id,
-          teamId: team.id,
-          teamName: team.name,
-          totalAllocationPercent,
-        };
-      }),
+          return {
+            displayName: member.displayName,
+            indicator:
+              totalAllocationPercent > 100
+                ? 'OVERALLOCATED'
+                : totalAllocationPercent === 0
+                  ? 'UNASSIGNED'
+                  : totalAllocationPercent < 100
+                    ? 'UNDERALLOCATED'
+                    : 'FULLY_ALLOCATED',
+            personId: member.id,
+            teamId: team.id,
+            teamName: team.name,
+            totalAllocationPercent,
+          };
+        }),
     );
 
     const peopleWithoutAssignments = allocationIndicators.filter(
@@ -132,7 +138,8 @@ export class ResourceManagerDashboardQueryService {
       }));
 
     const teamCapacitySummary = teamMembers.map(({ members, team }) => {
-      const memberIds = new Set(members.map((member) => member.id));
+      const deliverableMembers = members.filter((m) => m.id !== query.personId);
+      const memberIds = new Set(deliverableMembers.map((member) => member.id));
       const activeAssignments = assignments.filter(
         (assignment) => memberIds.has(assignment.personId) && assignment.isActiveAt(asOf),
       );
@@ -142,7 +149,7 @@ export class ResourceManagerDashboardQueryService {
       return {
         activeAssignmentCount: activeAssignments.length,
         activeProjectCount: activeProjectIds.length,
-        memberCount: members.length,
+        memberCount: deliverableMembers.length,
         overallocatedPeopleCount: teamIndicators.filter(
           (indicator) => indicator.indicator === 'OVERALLOCATED',
         ).length,
