@@ -11,6 +11,7 @@ import { NotificationOutcomeQueryService } from '@src/modules/notifications/appl
 import { PrismaNotificationChannelRepository } from '@src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-channel.repository';
 import { PrismaNotificationTemplateRepository } from '@src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-template.repository';
 import { AppConfig } from '@src/shared/config/app-config';
+import { JsmCloudAdapter } from '@src/shared/jsm/jsm-cloud-adapter';
 import { OpenAiCompatibleLlmClient } from '@src/shared/llm/openai-compatible-client';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -27,6 +28,7 @@ export class HealthService {
     private readonly notificationTemplateRepository: PrismaNotificationTemplateRepository,
     private readonly auditLogStore: InMemoryAuditLogStore,
     private readonly llmClient: OpenAiCompatibleLlmClient,
+    private readonly jsmClient: JsmCloudAdapter,
   ) {}
 
   public async getHealth(): Promise<{
@@ -126,6 +128,13 @@ export class HealthService {
       latencyMs: number | null;
       error?: string;
     };
+    jsm: {
+      configured: boolean;
+      reachable: boolean;
+      latencyMs: number | null;
+      deployment: 'cloud' | 'datacenter' | null;
+      error?: string;
+    };
     status: 'ready' | 'degraded';
     timestamp: string;
   }> {
@@ -185,11 +194,23 @@ export class HealthService {
       ...(llmProbe.error ? { error: llmProbe.error } : {}),
     };
 
+    // F-4.6 / C1-JSM — JSM reachability probe. Symmetric to LLM:
+    // unconfigured by default in dev, doesn't degrade overall health.
+    const jsmProbe = await this.jsmClient.probe();
+    const jsm = {
+      configured: jsmProbe.configured,
+      reachable: jsmProbe.reachable,
+      latencyMs: jsmProbe.latencyMs,
+      deployment: jsmProbe.deployment,
+      ...(jsmProbe.error ? { error: jsmProbe.error } : {}),
+    };
+
     const overall = results.some((r) => r.status === 'degraded') ? 'degraded' : 'ready';
 
     return {
       aggregates: results,
       llm,
+      jsm,
       status: overall,
       timestamp: new Date().toISOString(),
     };
