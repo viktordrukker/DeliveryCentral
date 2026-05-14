@@ -4,6 +4,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { InMemoryAuditLogStore } from './application/in-memory-audit-log.store';
 import { AuditLoggerService } from './application/audit-logger.service';
+import { AuditRetentionSweepService } from './application/audit-retention-sweep.service';
 import { BusinessAuditQueryService } from './application/business-audit-query.service';
 import { DomainEventService } from './application/domain-event.service';
 import { OutboxEventHandlerRegistry } from './application/outbox-event-handler-registry';
@@ -26,6 +27,7 @@ import { BusinessAuditController } from './presentation/business-audit.controlle
       useExisting: PrismaAuditLogStore,
     },
     AuditLoggerService,
+    AuditRetentionSweepService,
     BusinessAuditQueryService,
     DomainEventService,
     OutboxEventHandlerRegistry,
@@ -35,6 +37,7 @@ import { BusinessAuditController } from './presentation/business-audit.controlle
     InMemoryAuditLogStore,
     PrismaAuditLogStore,
     AuditLoggerService,
+    AuditRetentionSweepService,
     BusinessAuditQueryService,
     DomainEventService,
     OutboxEventHandlerRegistry,
