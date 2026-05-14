@@ -8,9 +8,12 @@ import {
   platformSettingKeyForPreset,
 } from '@src/shared/auth/role-presets';
 
-describe('RolePresetsAdminController (F-5.2 / D-130 step 2)', () => {
-  type SettingsRow = { key: string; value: unknown };
+interface SettingsRow {
+  key: string;
+  value: unknown;
+}
 
+describe('RolePresetsAdminController (F-5.2 / D-130 step 2)', () => {
   function makeFixture() {
     const settings: SettingsRow[] = [];
     const settingsMock = {
