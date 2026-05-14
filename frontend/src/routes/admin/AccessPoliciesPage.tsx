@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -8,6 +9,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { Table, type Column } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { httpGet } from '@/lib/api/http-client';
 
 interface AbacPolicySummary {
@@ -60,6 +62,19 @@ export function AccessPoliciesPage(): JSX.Element {
         eyebrow="Admin"
         subtitle="Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions."
         title="Access Policies"
+        actions={
+          isFeatureEnabled('adminRolePermissionUI')
+            ? [
+                <Link
+                  key="edit-presets"
+                  className="button button--secondary button--sm"
+                  to="/admin/access-policies/edit"
+                >
+                  Edit role presets
+                </Link>,
+              ]
+            : undefined
+        }
       />
 
       {isLoading ? <LoadingState label="Loading access policies..." /> : null}
