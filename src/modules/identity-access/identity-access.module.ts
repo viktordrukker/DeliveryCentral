@@ -9,6 +9,7 @@ import { AbacPolicyRegistry } from './application/abac/abac-policy.registry';
 import { AuthenticatedPrincipalFactory } from './application/authenticated-principal.factory';
 import { DemoModeGuard } from './application/demo-mode.guard';
 import { RbacGuard } from './application/rbac.guard';
+import { ReadAccessResolverService } from './application/read-access-resolver.service';
 import { ResponsibilityResolverService } from './application/responsibility-resolver.service';
 import { ResponsibilityRulesAdminService } from './application/responsibility-rules-admin.service';
 import { ResponsibilityRulesAdminController } from './presentation/responsibility-rules-admin.controller';
@@ -34,6 +35,11 @@ import { ResponsibilityRulesAdminController } from './presentation/responsibilit
       inject: [PrismaService],
     },
     {
+      provide: ReadAccessResolverService,
+      useFactory: (prisma: PrismaService) => new ReadAccessResolverService(prisma),
+      inject: [PrismaService],
+    },
+    {
       provide: ResponsibilityRulesAdminService,
       useFactory: (prisma: PrismaService, auditLogger: AuditLoggerService) =>
         new ResponsibilityRulesAdminService(prisma, auditLogger),
@@ -43,6 +49,7 @@ import { ResponsibilityRulesAdminController } from './presentation/responsibilit
   exports: [
     AuthenticatedPrincipalFactory,
     AbacPolicyRegistry,
+    ReadAccessResolverService,
     ResponsibilityResolverService,
     ResponsibilityRulesAdminService,
   ],

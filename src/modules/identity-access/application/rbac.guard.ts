@@ -7,10 +7,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
 import { RolePresetsService } from '@src/shared/auth/role-presets.service';
 import { REQUIRED_ROLE_PRESET_KEY } from '@src/shared/auth/role-preset.decorator';
 import type { RolePresetName } from '@src/shared/auth/role-presets';
 
+import { ReadAccessResolverService } from './read-access-resolver.service';
+import { READ_ACTION_KEY } from './read-action.decorator';
+import type { ReadActionKind } from './responsibility-resolver.service';
 import { RequestPrincipal } from './request-principal';
 import { SELF_SCOPE_KEY, SelfScopeOptions } from './self-scope.decorator';
 import { REQUIRED_ROLES_KEY } from './roles.decorator';
@@ -22,6 +26,8 @@ export class RbacGuard implements CanActivate {
   public constructor(
     private readonly reflector: Reflector,
     private readonly rolePresets: RolePresetsService,
+    private readonly readAccess: ReadAccessResolverService,
+    private readonly flags: PlatformFlagsService,
   ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -80,6 +86,20 @@ export class RbacGuard implements CanActivate {
 
     if (!noStaticRoles && requiredRoles!.some((role) => principal.roles.includes(role))) {
       return true;
+    }
+
+    // F-5.3 / D-158 — read-action coverage. When the flag is ON and the
+    // route declared `@ReadAction(kind)`, the caller can ALSO pass via
+    // tenant-defined responsibility rules. The flag default is OFF, so
+    // this branch is inert in production until the soak window flips
+    // it. Union semantics — never narrows access, only expands.
+    const readAction = this.reflector.getAllAndOverride<ReadActionKind>(
+      READ_ACTION_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (readAction && (await this.flags.isEnabled('rbacResponsibilityRuleReads'))) {
+      const verdict = await this.readAccess.resolveAllowedRoles(readAction);
+      if (ReadAccessResolverService.permits(verdict, principal.roles)) return true;
     }
 
     throw new ForbiddenException('Insufficient role for this operation.');
