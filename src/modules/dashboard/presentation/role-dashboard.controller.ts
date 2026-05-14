@@ -13,6 +13,7 @@ import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestj
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, DELIVERY_EXEC_ROLES, EXEC_ROLES, HR_GOVERNANCE_ROLES, RM_EXEC_ROLES } from '@src/shared/auth/role-presets';
 import { DeliveryManagerDashboardQueryService } from '../application/delivery-manager-dashboard-query.service';
 import { DeliveryManagerDashboardResponseDto, ProjectScorecardHistoryItemDto } from '../application/contracts/delivery-manager-dashboard.dto';
 import { DirectorDashboardQueryService } from '../application/director-dashboard-query.service';
@@ -98,7 +99,7 @@ export class RoleDashboardController {
   }
 
   @Get('resource-manager/:personId')
-  @RequireRoles('resource_manager', 'director', 'admin')
+  @RequireRoles(...RM_EXEC_ROLES)
   @ApiOperation({ summary: 'Get capacity-oriented dashboard data for one resource manager' })
   @ApiParam({ name: 'personId', type: String })
   @ApiQuery({ name: 'asOf', required: false, type: String })
@@ -124,7 +125,7 @@ export class RoleDashboardController {
   }
 
   @Get('hr-manager/:personId')
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   @ApiOperation({ summary: 'Get organization-centric dashboard data for one HR manager' })
   @ApiParam({ name: 'personId', type: String })
   @ApiQuery({ name: 'asOf', required: false, type: String })
@@ -150,7 +151,7 @@ export class RoleDashboardController {
   }
 
   @Get('delivery-manager')
-  @RequireRoles('delivery_manager', 'director', 'admin')
+  @RequireRoles(...DELIVERY_EXEC_ROLES)
   @ApiOperation({ summary: 'Get cross-portfolio delivery health dashboard' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   @ApiOkResponse({ type: DeliveryManagerDashboardResponseDto })
@@ -167,7 +168,7 @@ export class RoleDashboardController {
   }
 
   @Get('delivery/scorecard-history')
-  @RequireRoles('delivery_manager', 'director', 'admin')
+  @RequireRoles(...DELIVERY_EXEC_ROLES)
   @ApiOperation({ summary: 'Get project health scorecard history (trailing N weeks)' })
   @ApiQuery({ name: 'projectId', required: false, type: String })
   @ApiQuery({ name: 'weeks', required: false, type: Number })
@@ -193,7 +194,7 @@ export class RoleDashboardController {
   }
 
   @Get('director')
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   @ApiOperation({ summary: 'Get organisation-wide executive summary dashboard' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   @ApiOkResponse({ type: DirectorDashboardResponseDto })
@@ -210,7 +211,7 @@ export class RoleDashboardController {
   }
 
   @Get('exec/sla-summary')
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   @ApiOperation({
     summary:
       'F-3.3 / WO-4.15/5.6 — Director exec dashboard SLA tile + Time-to-fill sparkline metrics.',
@@ -227,7 +228,7 @@ export class RoleDashboardController {
   }
 
   @Get('pending-actions')
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'hr_manager')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({
     summary:
       'F-3.2 / WO-4.14 — unified pending-approvals queue for managers (SR pick + budget-change + leave + timesheet).',
@@ -256,7 +257,7 @@ export class RoleDashboardController {
   }
 
   @Get(':role')
-  @RequireRoles('admin', 'director', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get tailored dashboard data for a supported role' })
   @ApiParam({
     name: 'role',

@@ -19,6 +19,7 @@ import { IsOptional, IsString } from 'class-validator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, EXEC_ROLES, PROJECT_DELIVERY_ROLES, RM_EXEC_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
 import { ApproveProjectAssignmentService } from '../application/approve-project-assignment.service';
 import { DirectorApproveService } from '../application/director-approve.service';
@@ -95,7 +96,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Activate all approved assignments that have reached their start date' })
   @ApiOkResponse({ description: 'Number of assignments activated.' })
-  @RequireRoles('admin', 'resource_manager', 'director')
+  @RequireRoles(...RM_EXEC_ROLES)
   public async activateApproved(): Promise<{ activated: number }> {
     const activated = await this.activateApprovedAssignmentsService.execute();
     return { activated };
@@ -104,7 +105,7 @@ export class AssignmentsController {
   @Get()
   @ApiOperation({ summary: 'List authoritative internal project assignments' })
   @ApiOkResponse({ type: AssignmentDirectoryResponseDto })
-  @RequireRoles('employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async listAssignments(
     @Query() query: AssignmentDirectoryQueryDto,
   ): Promise<AssignmentDirectoryResponseDto> {
@@ -114,7 +115,7 @@ export class AssignmentsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get authoritative internal project assignment by id' })
   @ApiOkResponse({ type: AssignmentDetailsDto })
-  @RequireRoles('employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async getAssignmentById(@Param('id', ParseUUIDPipe) id: string): Promise<AssignmentDetailsDto> {
     const assignment = await this.getAssignmentByIdService.execute(id);
 
@@ -129,7 +130,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a formal internal project assignment' })
   @ApiCreatedResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   public async createAssignment(
     @Body() request: CreateProjectAssignmentRequestDto,
   ): Promise<ProjectAssignmentResponseDto> {
@@ -147,7 +148,7 @@ export class AssignmentsController {
       'Create an assignment through an explicit governance override for selected staffing conflicts',
   })
   @ApiCreatedResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   public async createAssignmentOverride(
     @Body() request: CreateProjectAssignmentOverrideRequestDto,
     @Req() httpRequest: { principal?: RequestPrincipal },
@@ -258,7 +259,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a draft assignment (DRAFT → CREATED)' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'resource_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async submitDraftAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto,
@@ -284,7 +285,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Book a proposed assignment after validating workload' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async bookAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto,
@@ -299,7 +300,7 @@ export class AssignmentsController {
     summary: 'Move a booked assignment to onboarding (optionally schedules onboardingDate)',
   })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async onboardingAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto & { onboardingDate?: string },
@@ -325,7 +326,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark an assignment as actively assigned (work started)' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async assignAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto,
@@ -364,7 +365,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark an assignment as completed (natural end of work)' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async completeAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto,
@@ -377,7 +378,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel an assignment' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'resource_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async cancelAssignment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: TransitionRequestDto,
@@ -395,7 +396,7 @@ export class AssignmentsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Record Director second-step approval (when threshold trips)' })
   @ApiOkResponse({ type: ProjectAssignmentResponseDto })
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   public async directorApprove(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: { reason?: string } | undefined,

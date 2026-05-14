@@ -34,3 +34,7 @@ npm run --silent enum:check
 # 5. Pairing — schema.prisma edited ⇒ new migration dir staged.
 echo "🔎 husky: schema.prisma ↔ migration pairing"
 node scripts/check-schema-migration-pairing.cjs
+
+# 6. Role-literal ratchet — block new @RequireRoles(literal, literal, …) sites.
+echo "🔎 husky: npm run roles:check"
+npm run --silent roles:check

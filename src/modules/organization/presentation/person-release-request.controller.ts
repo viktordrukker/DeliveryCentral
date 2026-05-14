@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
 
 import { DecidePersonReleaseService } from '../application/decide-person-release.service';
@@ -59,7 +60,7 @@ export class PersonReleaseRequestController {
 
   @Post('people/release-requests/:requestId/approve')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   @Idempotent()
   @ApiOperation({
     summary:
@@ -84,7 +85,7 @@ export class PersonReleaseRequestController {
 
   @Post('people/release-requests/:requestId/reject')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   @ApiOperation({
     summary:
       'HD-5 — HR Manager OR Director rejects a pending release request. Reason required. The first rejection short-circuits the workflow. Per J3.',

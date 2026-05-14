@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PublicHolidayService } from '../application/public-holiday.service';
@@ -53,7 +54,7 @@ interface ComplianceRow {
 
 @ApiTags('time-management')
 @Controller('time-management')
-@RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+@RequireRoles(...ALL_MANAGER_ROLES)
 export class TimeManagementController {
   public constructor(
     private readonly prisma: PrismaService,

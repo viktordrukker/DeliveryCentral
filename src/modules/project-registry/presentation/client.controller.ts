@@ -3,6 +3,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ClientService, CreateClientDto, UpdateClientDto } from '../application/client.service';
 
 @ApiTags('clients')
@@ -13,7 +14,7 @@ export class ClientController {
   @Get()
   @ApiOperation({ summary: 'List clients' })
   @ApiOkResponse({ description: 'Client list.' })
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director')
+  @RequireRoles(...STAFFING_ROLES)
   public async list(@Query('activeOnly') activeOnly?: string) {
     return this.clientService.list(activeOnly !== 'false');
   }
@@ -21,7 +22,7 @@ export class ClientController {
   @Get(':id')
   @ApiOperation({ summary: 'Get client by ID' })
   @ApiOkResponse({ description: 'Client details.' })
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director')
+  @RequireRoles(...STAFFING_ROLES)
   public async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.clientService.getById(id);
   }

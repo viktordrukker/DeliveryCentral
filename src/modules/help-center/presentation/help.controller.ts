@@ -16,6 +16,7 @@ import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 
 import { HelpService } from '../application/help.service';
 import {
@@ -27,16 +28,6 @@ import {
   UpsertTourProgressDto,
 } from '../application/contracts/help.dto';
 
-const ALL_AUTHENTICATED = [
-  'employee',
-  'project_manager',
-  'resource_manager',
-  'hr_manager',
-  'delivery_manager',
-  'director',
-  'admin',
-] as const;
-
 // HD-9 — public-facing Help Center read + feedback endpoints. The
 // caller's `personId` drives feedback authorship + tour-progress
 // scoping; no admin gating here. Admin write endpoints live on the
@@ -47,7 +38,7 @@ export class HelpController {
   public constructor(private readonly help: HelpService) {}
 
   @Get('articles')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'HD-9 — list published Help articles, optional q + tag filters.' })
   @ApiQuery({ name: 'q', required: false, type: String })
   @ApiQuery({ name: 'tag', required: false, type: String })
@@ -60,7 +51,7 @@ export class HelpController {
   }
 
   @Get('articles/:slug')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'HD-9 — get a published Help article by slug.' })
   @ApiOkResponse({ type: HelpArticleDto })
   public async getArticle(@Param('slug') slug: string): Promise<HelpArticleDto> {
@@ -71,7 +62,7 @@ export class HelpController {
   }
 
   @Get('tips')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({
     summary: 'HD-9 — list active tips for a route. Drives the per-page `?` button.',
   })
@@ -83,7 +74,7 @@ export class HelpController {
   }
 
   @Post('articles/:id/feedback')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'HD-9 — submit reader feedback on a Help article.' })
   @ApiOkResponse({ type: HelpFeedbackDto })
@@ -97,7 +88,7 @@ export class HelpController {
   }
 
   @Get('onboarding/:tourKey')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: "HD-9 — fetch the caller's progress for an onboarding tour." })
   @ApiOkResponse({ type: OnboardingTourProgressDto })
   public async getTourProgress(
@@ -113,7 +104,7 @@ export class HelpController {
   }
 
   @Put('onboarding/:tourKey')
-  @RequireRoles(...ALL_AUTHENTICATED)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "HD-9 — upsert the caller's onboarding-tour progress." })
   @ApiOkResponse({ type: OnboardingTourProgressDto })

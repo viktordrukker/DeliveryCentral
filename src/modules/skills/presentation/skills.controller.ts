@@ -15,6 +15,7 @@ import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } 
 
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { SkillsService } from '../application/skills.service';
 import {
@@ -31,7 +32,7 @@ export class AdminSkillsController {
   public constructor(private readonly service: SkillsService) {}
 
   @Get()
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List all skills in the skill dictionary' })
   @ApiOkResponse({ type: [SkillDto] })
   public async list(): Promise<SkillDto[]> {
@@ -68,7 +69,7 @@ export class PersonSkillsController {
   public constructor(private readonly service: SkillsService) {}
 
   @Get(':id/skills')
-  @RequireRoles('hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get skills for a person' })
   @ApiOkResponse({ type: [PersonSkillDto] })
@@ -96,7 +97,7 @@ export class SkillMatchController {
   public constructor(private readonly service: SkillsService) {}
 
   @Get('skill-match')
-  @RequireRoles('admin', 'resource_manager', 'delivery_manager', 'director', 'project_manager')
+  @RequireRoles(...STAFFING_ROLES)
   @ApiOperation({ summary: 'Find people matching all given skills with capacity < 100%' })
   @ApiQuery({ name: 'skills', required: true, description: 'Comma-separated skill IDs or names' })
   @ApiQuery({ name: 'projectId', required: false })

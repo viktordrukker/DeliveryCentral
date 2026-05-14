@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { OvertimePolicyService } from '../application/overtime-policy.service';
 import { OvertimeResolverService } from '../application/overtime-resolver.service';
 import { OvertimeSummaryService } from '../application/overtime-summary.service';
@@ -50,7 +51,7 @@ export class OvertimeController {
   }
 
   @Get('resolve/:personId')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get effective overtime policy for a person' })
   @ApiOkResponse({ type: ResolvedOvertimePolicyDto })
   public async resolve(@Param('personId') personId: string): Promise<ResolvedOvertimePolicyDto> {

@@ -23,6 +23,7 @@ import { PlatformRole } from '@src/modules/identity-access/domain/platform-role'
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import {
   AggregateType,
   ParsePublicIdOrUuid,
@@ -92,7 +93,7 @@ interface FulfilBody {
 
 @ApiTags('staffing-requests')
 @Controller('staffing-requests')
-@RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+@RequireRoles(...STAFFING_ROLES)
 export class StaffingRequestsController {
   public constructor(
     private readonly service: InMemoryStaffingRequestService,
@@ -421,7 +422,7 @@ export class StaffingRequestsController {
   @Get(':id/proposals')
   @ApiOperation({ summary: 'Fetch the active proposal slate for this staffing request (or null)' })
   @ApiOkResponse({ type: ProposalSlateResponseDto })
-  @RequireRoles('employee', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async getProposalSlate(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
   ): Promise<ProposalSlateResponseDto | null> {
@@ -465,7 +466,7 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Acknowledge proposal slate (PM/DM); request → IN_REVIEW (idempotent)' })
   @ApiOkResponse({ type: ProposalSlateResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async acknowledgeProposal(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
     @Param('slateId') slateId: string,
@@ -486,7 +487,7 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Pick a candidate; creates an Assignment at BOOKED' })
   @ApiOkResponse({ type: PickProposalCandidateResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async pickProposalCandidate(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
     @Param('slateId') slateId: string,
@@ -512,7 +513,7 @@ export class StaffingRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject the slate; sendBack=true returns to OPEN, false → CANCELLED' })
   @ApiOkResponse({ type: RejectProposalSlateResponseDto })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async rejectProposalSlate(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
     @Param('slateId') slateId: string,

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { RadiatorOverrideDto } from '../application/contracts/radiator-override.dto';
 import { RadiatorOverrideService } from '../application/radiator-override.service';
 import { RadiatorScoringService } from '../application/radiator-scoring.service';
@@ -18,7 +19,7 @@ export class RadiatorController {
   @Get('projects/:id/radiator')
   @ApiOperation({ summary: 'Get current radiator snapshot for a project' })
   @ApiOkResponse({ description: 'Current radiator snapshot.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getRadiator(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.scoringService.computeRadiator(projectId);
   }
@@ -26,7 +27,7 @@ export class RadiatorController {
   @Get('projects/:id/radiator/history')
   @ApiOperation({ summary: 'Get radiator history (past N weeks)' })
   @ApiOkResponse({ description: 'Radiator history entries.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getHistory(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Query('weeks') weeks?: string,
@@ -38,7 +39,7 @@ export class RadiatorController {
   @Get('projects/:id/radiator/snapshot/:weekStarting')
   @ApiOperation({ summary: 'Get radiator snapshot for a specific ISO week' })
   @ApiOkResponse({ description: 'Historical radiator snapshot or null.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getSnapshot(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Param('weekStarting') weekStarting: string,
@@ -50,7 +51,7 @@ export class RadiatorController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Apply a manual override to a radiator sub-dimension' })
   @ApiOkResponse({ description: 'Updated radiator snapshot.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async applyOverride(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: RadiatorOverrideDto,
@@ -70,7 +71,7 @@ export class RadiatorController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Manually invalidate the 60s radiator cache for this project and return a fresh snapshot.' })
   @ApiOkResponse({ description: 'Fresh radiator snapshot.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async refresh(@Param('id', ParseUUIDPipe) projectId: string) {
     this.scoringService.invalidateCache(projectId);
     return this.scoringService.computeRadiator(projectId);

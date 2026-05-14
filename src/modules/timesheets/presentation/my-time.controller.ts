@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { MonthlyTimesheetService, MonthlyTimesheetResponse } from '../application/monthly-timesheet.service';
 import { TimeGapDetectionService, TimeGap } from '../application/time-gap-detection.service';
 import { PublicHolidayService, PublicHolidayDto } from '../application/public-holiday.service';
@@ -19,7 +20,7 @@ export class MyTimeController {
   ) {}
 
   @Get('month')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get monthly timesheet view with entries, leave, gaps, and summary' })
   @ApiQuery({ name: 'month', required: true, type: String, description: 'YYYY-MM format' })
   @ApiQuery({ name: 'personId', required: false, type: String, description: 'Override person (manager viewing team member)' })
@@ -35,7 +36,7 @@ export class MyTimeController {
   }
 
   @Post('auto-fill')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Auto-fill month from assignments' })
   @ApiQuery({ name: 'month', required: true, type: String })
   @ApiOkResponse({ description: 'Counts of days and hours filled.' })
@@ -49,7 +50,7 @@ export class MyTimeController {
   }
 
   @Post('copy-previous')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Copy previous month pattern' })
   @ApiQuery({ name: 'month', required: true, type: String })
   @ApiOkResponse({ description: 'Counts of days and hours copied from the previous month.' })
@@ -63,7 +64,7 @@ export class MyTimeController {
   }
 
   @Get('gaps')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Detect time gaps for a month with suggestions' })
   @ApiQuery({ name: 'month', required: true, type: String })
   @ApiQuery({ name: 'personId', required: false, type: String })
@@ -79,7 +80,7 @@ export class MyTimeController {
   }
 
   @Post('rename-row')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Rename a custom row across all DRAFT entries in a month' })
   @ApiBody({ type: RenameMyTimeRowDto })
   @ApiOkResponse({ description: 'Number of entries updated.' })
@@ -92,7 +93,7 @@ export class MyTimeController {
   }
 
   @Post('delete-row')
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Delete all DRAFT entries belonging to a custom row in a month' })
   @ApiBody({ type: DeleteMyTimeRowDto })
   @ApiOkResponse({ description: 'Number of entries deleted.' })
@@ -111,7 +112,7 @@ export class PublicHolidaysController {
   public constructor(private readonly holidayService: PublicHolidayService) {}
 
   @Get()
-  @RequireRoles('employee', 'resource_manager', 'delivery_manager', 'project_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List public holidays for a year' })
   @ApiQuery({ name: 'year', required: false, type: Number })
   @ApiQuery({ name: 'country', required: false, type: String })

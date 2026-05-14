@@ -25,6 +25,7 @@ import {
 
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { AuditRead } from '@src/shared/http/audit-read.decorator';
 
 import { CreateEmployeeRequestDto } from '../application/contracts/create-employee.request';
@@ -58,7 +59,7 @@ export class PersonDirectoryController {
   @ApiCreatedResponse({ type: EmployeeResponseDto })
   @ApiConflictResponse({ description: 'Employee email already exists.' })
   @ApiNotFoundResponse({ description: 'Org unit not found.' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async createEmployee(
     @Body() request: CreateEmployeeRequestDto,
   ): Promise<EmployeeResponseDto> {
@@ -72,7 +73,7 @@ export class PersonDirectoryController {
   @ApiOperation({ summary: 'Deactivate an employee without deleting history' })
   @ApiOkResponse({ type: EmployeeResponseDto })
   @ApiNotFoundResponse({ description: 'Employee not found.' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async deactivateEmployee(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: { personId?: string; userId?: string } },
@@ -89,7 +90,7 @@ export class PersonDirectoryController {
   @ApiOperation({ summary: 'Terminate an employee and end all active assignments' })
   @ApiOkResponse({ type: EmployeeResponseDto })
   @ApiNotFoundResponse({ description: 'Employee not found.' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async terminateEmployee(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TerminatePersonRequestDto,
@@ -107,7 +108,7 @@ export class PersonDirectoryController {
   }
 
   @Get()
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List people for workload and org visibility' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
@@ -141,7 +142,7 @@ export class PersonDirectoryController {
   }
 
   @Get(':id')
-  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @AllowSelfScope({ param: 'id' })
   @AuditRead({
     actionType: 'person.directory.read',
@@ -162,7 +163,7 @@ export class PersonDirectoryController {
   }
 
   @Get(':id/activity')
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get employee activity feed (lifecycle events)' })
   @ApiOkResponse({ description: 'Activity events for the person.' })

@@ -4,6 +4,7 @@ import { IsOptional, IsString } from 'class-validator';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { RM_EXEC_ROLES } from '@src/shared/auth/role-presets';
 import { WorkloadService } from '../application/workload.service';
 import { WorkloadMatrixResponse, WorkloadPlanningResponse } from '../application/contracts/workload.dto';
 
@@ -21,7 +22,7 @@ class WorkloadPlanningQueryDto {
 
 @ApiTags('workload')
 @Controller('workload')
-@RequireRoles('resource_manager', 'director', 'admin')
+@RequireRoles(...RM_EXEC_ROLES)
 export class WorkloadController {
   public constructor(private readonly service: WorkloadService) {}
 

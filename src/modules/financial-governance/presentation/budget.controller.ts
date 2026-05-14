@@ -19,6 +19,11 @@ import {
 } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import {
+  BUDGET_DECIDE_ROLES,
+  BUDGET_REQUEST_ROLES,
+  BUDGET_ROLES,
+} from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -33,10 +38,6 @@ import {
   ProjectBudgetDto,
   UpsertProjectBudgetDto,
 } from '../application/contracts/financial.dto';
-
-const BUDGET_ROLES = ['admin', 'project_manager', 'delivery_manager', 'director'] as const;
-const BUDGET_REQUEST_ROLES = ['admin', 'project_manager', 'delivery_manager'] as const;
-const BUDGET_DECIDE_ROLES = ['admin', 'director'] as const;
 
 interface BudgetApprovalRowQuery {
   budgetApproval: {

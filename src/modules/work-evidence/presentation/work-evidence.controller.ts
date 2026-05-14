@@ -11,6 +11,7 @@ import {
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 const PRIVILEGED_EVIDENCE_ROLES = new Set([
   'project_manager',
   'resource_manager',
@@ -49,7 +50,7 @@ export class WorkEvidenceController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Create a manual or internal work evidence record' })
   @ApiCreatedResponse({ type: WorkEvidenceResponseDto })
   public async createWorkEvidence(
@@ -76,7 +77,7 @@ export class WorkEvidenceController {
 
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Update a manual/internal work evidence record' })
   @ApiOkResponse({ type: WorkEvidenceResponseDto })
   @ApiNotFoundResponse({ description: 'Work evidence not found.' })
@@ -104,7 +105,7 @@ export class WorkEvidenceController {
   }
 
   @Get()
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'delivery_manager', 'hr_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List work evidence records with optional filters' })
   @ApiQuery({ name: 'personId', required: false, type: String })
   @ApiQuery({ name: 'projectId', required: false, type: String })

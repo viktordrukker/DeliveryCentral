@@ -3,6 +3,7 @@ import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nest
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { NotificationTemplateDto } from '../application/contracts/notification-template.dto';
 import { NotificationOutcomeDto } from '../application/contracts/notification-outcome.dto';
 import { NotificationQueueResponseDto } from '../application/contracts/notification-queue.dto';
@@ -31,7 +32,7 @@ export class NotificationsController {
 
   @Post('nudge')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Send a nudge reminder to a pending approver (rate-limited 1/24h per requestId+approver).' })
   public async nudge(
     @Body(new ValidationPipe({ whitelist: true })) body: NudgeRequestDto,

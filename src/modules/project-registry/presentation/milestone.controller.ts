@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { CreateMilestoneDto, UpdateMilestoneDto } from '../application/contracts/milestone.dto';
 import { ProjectMilestoneService } from '../application/project-milestone.service';
 
@@ -14,7 +15,7 @@ export class MilestoneController {
   @Get(':id/milestones')
   @ApiOperation({ summary: 'List project milestones' })
   @ApiOkResponse({ description: 'Milestones for the project.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async list(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.service.list(projectId);
   }
@@ -23,7 +24,7 @@ export class MilestoneController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create a project milestone' })
   @ApiOkResponse({ description: 'Milestone created.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async create(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateMilestoneDto,
@@ -34,7 +35,7 @@ export class MilestoneController {
   @Patch(':id/milestones/:milestoneId')
   @ApiOperation({ summary: 'Update a project milestone' })
   @ApiOkResponse({ description: 'Milestone updated.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async update(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
@@ -46,7 +47,7 @@ export class MilestoneController {
   @Delete(':id/milestones/:milestoneId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a project milestone' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async remove(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('milestoneId', ParseUUIDPipe) milestoneId: string,

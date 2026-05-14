@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { BusinessAuditQueryService } from '../application/business-audit-query.service';
 import { BusinessAuditResponseDto } from '../application/contracts/business-audit.dto';
 
@@ -14,7 +15,7 @@ export class BusinessAuditController {
   ) {}
 
   @Get()
-  @RequireRoles('admin', 'director', 'hr_manager')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   @ApiOperation({ summary: 'Query business audit records with date range and pagination' })
   @ApiQuery({ name: 'actorId', required: false, type: String })
   @ApiQuery({ name: 'actionType', required: false, type: String })

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { DELIVERY_EXEC_ROLES } from '@src/shared/auth/role-presets';
 import { PortfolioDashboardService } from '../application/portfolio-dashboard.service';
 
 @ApiTags('portfolio-dashboard')
@@ -13,7 +14,7 @@ export class PortfolioDashboardController {
   @Get('heatmap')
   @ApiOperation({ summary: 'Portfolio staffing heatmap — projects × weeks colored by fill rate' })
   @ApiOkResponse({ description: 'Portfolio heatmap data.' })
-  @RequireRoles('delivery_manager', 'director', 'admin')
+  @RequireRoles(...DELIVERY_EXEC_ROLES)
   public async getHeatmap(@Query('weeks') weeks?: string) {
     return this.service.getPortfolioHeatmap(weeks ? parseInt(weeks) : undefined);
   }
@@ -21,7 +22,7 @@ export class PortfolioDashboardController {
   @Get('summary')
   @ApiOperation({ summary: 'Portfolio summary KPIs' })
   @ApiOkResponse({ description: 'Portfolio summary.' })
-  @RequireRoles('delivery_manager', 'director', 'admin')
+  @RequireRoles(...DELIVERY_EXEC_ROLES)
   public async getSummary() {
     return this.service.getPortfolioSummary();
   }
