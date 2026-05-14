@@ -25,7 +25,63 @@ export type ResponsibilityActionKind =
   | 'ASSIGNMENT_OVERRIDE_APPROVAL'
   | 'PERSON_RELEASE_HR_APPROVAL'
   | 'PERSON_RELEASE_DIRECTOR_APPROVAL'
-  | 'PROJECT_CLOSE_APPROVAL';
+  | 'PROJECT_CLOSE_APPROVAL'
+  // F-5.3 / D-158 — READ_* coverage. Each GET endpoint declares its
+  // entity-scoped read kind via `@ReadAction(kind)`. When the flag
+  // `flag.rbac.responsibilityRule.reads.enabled` is ON, the RbacGuard
+  // consults `responsibility_rules` rows of these kinds to expand or
+  // narrow the static @RequireRoles set per tenant policy. Entity-
+  // scoped (not per-route) so the kind set stays small and admin-
+  // configurable.
+  | 'READ_PROJECT'
+  | 'READ_PERSON'
+  | 'READ_ASSIGNMENT'
+  | 'READ_STAFFING_REQUEST'
+  | 'READ_BUDGET'
+  | 'READ_TIMESHEET'
+  | 'READ_LEAVE'
+  | 'READ_OVERTIME'
+  | 'READ_CASE'
+  | 'READ_DASHBOARD'
+  | 'READ_REPORT'
+  | 'READ_ORG'
+  | 'READ_NOTIFICATION'
+  | 'READ_ADMIN'
+  | 'READ_METADATA'
+  | 'READ_SETTINGS'
+  | 'READ_EXCEPTION'
+  | 'READ_PULSE'
+  | 'READ_HELP'
+  | 'READ_AUDIT_LOG';
+
+export const READ_ACTION_KINDS = [
+  'READ_PROJECT',
+  'READ_PERSON',
+  'READ_ASSIGNMENT',
+  'READ_STAFFING_REQUEST',
+  'READ_BUDGET',
+  'READ_TIMESHEET',
+  'READ_LEAVE',
+  'READ_OVERTIME',
+  'READ_CASE',
+  'READ_DASHBOARD',
+  'READ_REPORT',
+  'READ_ORG',
+  'READ_NOTIFICATION',
+  'READ_ADMIN',
+  'READ_METADATA',
+  'READ_SETTINGS',
+  'READ_EXCEPTION',
+  'READ_PULSE',
+  'READ_HELP',
+  'READ_AUDIT_LOG',
+] as const;
+
+export type ReadActionKind = (typeof READ_ACTION_KINDS)[number];
+
+export function isReadActionKind(value: string): value is ReadActionKind {
+  return (READ_ACTION_KINDS as readonly string[]).includes(value);
+}
 
 export type ResponsibilityResolutionMode = 'ROLE' | 'PERSON' | 'PM_SOLO' | 'SKIP';
 
