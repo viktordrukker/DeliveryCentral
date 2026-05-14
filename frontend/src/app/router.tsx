@@ -54,6 +54,7 @@ import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
+import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
 import { ApprovalQueuePage } from '@/routes/assignments/ApprovalQueuePage';
 import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
@@ -388,6 +389,16 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><AccessPoliciesPage /></RoleGuard>,
     path: 'admin/access-policies',
+  },
+  {
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <FeatureGuard flag="adminRolePermissionUI">
+          <RolePermissionAdminPage />
+        </FeatureGuard>
+      </RoleGuard>
+    ),
+    path: 'admin/access-policies/edit',
   },
 ];
 
