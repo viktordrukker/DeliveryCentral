@@ -91,3 +91,53 @@ export const BUDGET_REQUEST_ROLES: readonly PlatformRole[] = [
 
 /** Budget deciders: director + admin only. */
 export const BUDGET_DECIDE_ROLES: readonly PlatformRole[] = ['admin', 'director'] as const;
+
+// ─────────────────────────────────────────────────────────────────────────
+// F-5.2 — D-130 step 2: PlatformSetting-driven override registry.
+//
+// Each preset has a stable string name; tenant admins can override the
+// role set per-preset via the `responsibilityMatrix.<name>.roles`
+// PlatformSetting. `RolePresetsService` reads those overrides; routes
+// declared with `@RequireRolePreset(name)` resolve through the service
+// at request time. Static `@RequireRoles(...PRESET)` call-sites continue
+// to work with the compile-time default until migrated.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const ROLE_PRESET_NAMES = [
+  'EXEC_ROLES',
+  'HR_GOVERNANCE_ROLES',
+  'DELIVERY_EXEC_ROLES',
+  'RM_EXEC_ROLES',
+  'PROJECT_DELIVERY_ROLES',
+  'STAFFING_ROLES',
+  'ALL_MANAGER_ROLES',
+  'ALL_AUTHENTICATED_ROLES',
+  'BUDGET_ROLES',
+  'BUDGET_REQUEST_ROLES',
+  'BUDGET_DECIDE_ROLES',
+] as const;
+
+export type RolePresetName = (typeof ROLE_PRESET_NAMES)[number];
+
+export const DEFAULT_ROLE_PRESETS: Record<RolePresetName, readonly PlatformRole[]> = {
+  EXEC_ROLES,
+  HR_GOVERNANCE_ROLES,
+  DELIVERY_EXEC_ROLES,
+  RM_EXEC_ROLES,
+  PROJECT_DELIVERY_ROLES,
+  STAFFING_ROLES,
+  ALL_MANAGER_ROLES,
+  ALL_AUTHENTICATED_ROLES,
+  BUDGET_ROLES,
+  BUDGET_REQUEST_ROLES,
+  BUDGET_DECIDE_ROLES,
+};
+
+export function isRolePresetName(value: string): value is RolePresetName {
+  return (ROLE_PRESET_NAMES as readonly string[]).includes(value);
+}
+
+/** PlatformSetting key holding the override role list for a preset. */
+export function platformSettingKeyForPreset(preset: RolePresetName): string {
+  return `responsibilityMatrix.${preset}.roles`;
+}
