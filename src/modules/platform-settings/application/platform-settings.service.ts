@@ -26,6 +26,12 @@ const DEFAULTS: Record<string, unknown> = {
   'notifications.emailEnabled': true,
   'notifications.inAppEnabled': true,
   'notifications.digestFrequency': 'daily',
+  // F-5.6 / D-168 — AuditLog retention. Audit rows older than this are
+  // deleted by `AuditRetentionSweepService` once per day. Default 365
+  // days matches the "1 year minimum" most banks document in their
+  // record-retention policies; admins can raise it tenant-wide.
+  'audit.retentionDays': 365,
+  'audit.sweep.intervalHours': 24,
   'security.sessionTimeoutMinutes': 480,
   'security.maxLoginAttempts': 5,
   'security.passwordMinLength': 8,
