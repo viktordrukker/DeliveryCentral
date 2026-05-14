@@ -22,6 +22,7 @@ import {
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 
 import { TimesheetsService } from '../application/timesheets.service';
 import {
@@ -31,15 +32,6 @@ import {
   TimesheetWeekDto,
   UpsertEntryDto,
 } from '../application/contracts/timesheet.dto';
-
-const MANAGER_ROLES = [
-  'project_manager',
-  'resource_manager',
-  'hr_manager',
-  'delivery_manager',
-  'director',
-  'admin',
-] as const;
 
 @ApiTags('timesheets')
 @Controller()
@@ -69,7 +61,7 @@ export class TimesheetsController {
 
   @Put('timesheets/my/entries')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles(...MANAGER_ROLES, 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Upsert a timesheet entry' })
   @ApiOkResponse({ description: 'Timesheet entry' })
   public async upsertEntry(
@@ -89,7 +81,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/submit')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles(...MANAGER_ROLES, 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Submit timesheet week for approval' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async submitWeek(
@@ -109,7 +101,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/revoke')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles(...MANAGER_ROLES, 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Revoke a submitted week back to DRAFT (owner only)' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
   public async revokeWeek(
@@ -128,7 +120,7 @@ export class TimesheetsController {
 
   @Post('timesheets/my/:weekStart/reset')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles(...MANAGER_ROLES, 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Wipe all entries in a DRAFT week (owner only)' })
   @ApiOkResponse({ description: 'Number of entries deleted.' })
   public async resetWeek(
@@ -162,7 +154,7 @@ export class TimesheetsController {
   // ─── Manager / approval endpoints ─────────────────────────────────────────
 
   @Get('timesheets/approval')
-  @RequireRoles(...MANAGER_ROLES)
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Get approval queue' })
   @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'personId', required: false, type: String })
@@ -179,7 +171,7 @@ export class TimesheetsController {
   }
 
   @Post('timesheets/:id/approve')
-  @RequireRoles(...MANAGER_ROLES)
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve a timesheet' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
@@ -200,7 +192,7 @@ export class TimesheetsController {
   }
 
   @Post('timesheets/:id/reject')
-  @RequireRoles(...MANAGER_ROLES)
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject a timesheet' })
   @ApiOkResponse({ description: 'Updated timesheet week' })
@@ -223,7 +215,7 @@ export class TimesheetsController {
   // ─── Reports ──────────────────────────────────────────────────────────────
 
   @Get('reports/time')
-  @RequireRoles(...MANAGER_ROLES)
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Aggregated time report' })
   @ApiQuery({ name: 'from', required: false, type: String })
   @ApiQuery({ name: 'to', required: false, type: String })

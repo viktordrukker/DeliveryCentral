@@ -3,6 +3,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { VendorService, CreateVendorDto, UpdateVendorDto, CreateVendorEngagementDto } from '../application/vendor.service';
 import { UpdateVendorEngagementRequestDto } from '../application/contracts/update-vendor-engagement.request';
 
@@ -14,7 +15,7 @@ export class VendorController {
   @Get()
   @ApiOperation({ summary: 'List vendors' })
   @ApiOkResponse({ description: 'Vendor list.' })
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director')
+  @RequireRoles(...STAFFING_ROLES)
   public async list(@Query('activeOnly') activeOnly?: string) {
     return this.vendorService.listVendors(activeOnly !== 'false');
   }
@@ -22,7 +23,7 @@ export class VendorController {
   @Get(':id')
   @ApiOperation({ summary: 'Get vendor by ID' })
   @ApiOkResponse({ description: 'Vendor details.' })
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director')
+  @RequireRoles(...STAFFING_ROLES)
   public async getById(@Param('id', ParseUUIDPipe) id: string) {
     return this.vendorService.getVendorById(id);
   }
@@ -53,7 +54,7 @@ export class ProjectVendorController {
   @Get(':id/vendors')
   @ApiOperation({ summary: 'List vendors on a project' })
   @ApiOkResponse({ description: 'Project vendor engagements.' })
-  @RequireRoles('admin', 'project_manager', 'resource_manager', 'delivery_manager', 'director')
+  @RequireRoles(...STAFFING_ROLES)
   public async listProjectVendors(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.vendorService.listProjectVendors(projectId);
   }

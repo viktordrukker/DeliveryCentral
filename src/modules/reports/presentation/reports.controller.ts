@@ -3,12 +3,13 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 import { ReportBuilderService, ReportTemplate } from '../application/report-builder.service';
 import { UtilizationReport, UtilizationService } from '../application/utilization.service';
 
 @ApiTags('reports')
 @Controller('reports')
-@RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+@RequireRoles(...ALL_MANAGER_ROLES)
 export class ReportsController {
   public constructor(
     private readonly utilizationService: UtilizationService,

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { UpsertPulseReportDto } from '../application/contracts/pulse-report.dto';
 import { PulseReportService } from '../application/pulse-report.service';
 
@@ -14,7 +15,7 @@ export class PulseReportController {
   @Get('projects/:id/pulse-report')
   @ApiOperation({ summary: 'Get current (or empty scaffold) weekly Pulse report with per-dimension tiers.' })
   @ApiOkResponse({ description: 'PulseReportDto.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getCurrent(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.service.getCurrent(projectId);
   }
@@ -23,7 +24,7 @@ export class PulseReportController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Upsert this week`s Pulse report. Set submit=true to mark submitted.' })
   @ApiOkResponse({ description: 'Updated PulseReportDto.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async upsert(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: UpsertPulseReportDto,

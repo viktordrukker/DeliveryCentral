@@ -4,6 +4,7 @@ import { RiskCategory, RiskStatus, RiskType } from '@prisma/client';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ProjectRiskService } from '../application/project-risk.service';
 import {
   CreateProjectRiskDto,
@@ -21,7 +22,7 @@ export class ProjectRiskController {
   @Get(':id/risks/matrix')
   @ApiOperation({ summary: 'Get probability/impact risk matrix' })
   @ApiOkResponse({ description: 'Risk matrix.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getRiskMatrix(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.riskService.getRiskMatrix(projectId);
   }
@@ -29,7 +30,7 @@ export class ProjectRiskController {
   @Get(':id/risks/summary')
   @ApiOperation({ summary: 'Get risk summary for project' })
   @ApiOkResponse({ description: 'Risk summary.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getRiskSummary(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.riskService.getRiskSummary(projectId);
   }
@@ -37,7 +38,7 @@ export class ProjectRiskController {
   @Get(':id/risks')
   @ApiOperation({ summary: 'List project risks/issues' })
   @ApiOkResponse({ description: 'List of risks.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async list(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Query('riskType') riskType?: RiskType,
@@ -51,7 +52,7 @@ export class ProjectRiskController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a project risk' })
   @ApiOkResponse({ description: 'Risk created.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async create(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateProjectRiskDto,
@@ -64,7 +65,7 @@ export class ProjectRiskController {
   @Patch(':id/risks/:riskId')
   @ApiOperation({ summary: 'Update a project risk' })
   @ApiOkResponse({ description: 'Risk updated.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async update(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
@@ -77,7 +78,7 @@ export class ProjectRiskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Convert a risk to an issue' })
   @ApiOkResponse({ description: 'Issue created from risk.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async convertToIssue(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
@@ -90,7 +91,7 @@ export class ProjectRiskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resolve a risk/issue' })
   @ApiOkResponse({ description: 'Risk resolved.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async resolve(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
@@ -102,7 +103,7 @@ export class ProjectRiskController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Close a risk/issue' })
   @ApiOkResponse({ description: 'Risk closed.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async close(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,

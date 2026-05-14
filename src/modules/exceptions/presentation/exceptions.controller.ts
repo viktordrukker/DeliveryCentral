@@ -15,6 +15,7 @@ import { ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } f
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 import { ExceptionQueueQueryDto } from '../application/contracts/exception-queue.query';
 import { ExceptionQueueItemDto, ExceptionQueueResponseDto } from '../application/contracts/exception-queue.dto';
 import {
@@ -36,7 +37,7 @@ export class ExceptionsController {
   ) {}
 
   @Get()
-  @RequireRoles('admin', 'director', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'List operational exception queue items derived from current platform truths' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   @ApiQuery({ name: 'category', required: false, type: String })
@@ -131,7 +132,7 @@ export class ExceptionsController {
   }
 
   @Get(':id')
-  @RequireRoles('admin', 'director', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Get a specific exception queue item by id' })
   @ApiOkResponse({ type: ExceptionQueueItemDto })
   @ApiNotFoundResponse({ description: 'Exception item not found.' })

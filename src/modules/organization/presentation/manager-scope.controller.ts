@@ -4,6 +4,7 @@ import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 import { ManagerScopeResponseDto } from '../application/contracts/manager-scope.dto';
 import { ManagerScopeQueryService } from '../application/manager-scope-query.service';
 
@@ -13,7 +14,7 @@ export class ManagerScopeController {
   public constructor(private readonly managerScopeQueryService: ManagerScopeQueryService) {}
 
   @Get(':id/scope')
-  @RequireRoles('hr_manager', 'project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @AllowSelfScope({ param: 'id' })
   @ApiOperation({ summary: 'Get manager-scoped visibility for reports and dotted-line relationships' })
   @ApiQuery({ name: 'page', required: false, type: Number })

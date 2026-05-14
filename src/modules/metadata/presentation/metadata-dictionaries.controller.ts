@@ -22,6 +22,7 @@ import {
 } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { CreateDictionaryEntryRequestDto } from '../application/contracts/create-dictionary-entry.request';
 import {
   MetadataDictionaryDetailsDto,
@@ -44,7 +45,7 @@ export class MetadataDictionariesController {
   ) {}
 
   @Get()
-  @RequireRoles('admin', 'hr_manager', 'director', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List metadata dictionaries. READ is open to all authenticated users; mutating endpoints stay admin/hr_manager only.' })
   @ApiQuery({ name: 'entityType', required: false, type: String })
   @ApiQuery({ name: 'scopeOrgUnitId', required: false, type: String })
@@ -57,7 +58,7 @@ export class MetadataDictionariesController {
   }
 
   @Get(':id')
-  @RequireRoles('admin', 'hr_manager', 'director', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get a metadata dictionary with entries. READ is open to all authenticated users.' })
   @ApiOkResponse({ type: MetadataDictionaryDetailsDto })
   @ApiNotFoundResponse({ description: 'Metadata dictionary not found.' })

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ProjectRagService, CreateRagSnapshotDto } from '../application/project-rag.service';
 
 @ApiTags('project-rag')
@@ -13,7 +14,7 @@ export class ProjectRagController {
   @Get(':id/rag-enhanced')
   @ApiOperation({ summary: 'Get enhanced RAG with scope, business, and risk dimensions' })
   @ApiOkResponse({ description: 'Enhanced computed RAG with dimension hints.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getEnhancedRag(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.ragService.computeEnhancedRag(projectId);
   }
@@ -21,7 +22,7 @@ export class ProjectRagController {
   @Get(':id/rag-computed')
   @ApiOperation({ summary: 'Get real-time computed RAG (no snapshot)' })
   @ApiOkResponse({ description: 'Computed RAG with explanations.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getComputedRag(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.ragService.computeRag(projectId);
   }
@@ -29,7 +30,7 @@ export class ProjectRagController {
   @Get(':id/staffing-alerts')
   @ApiOperation({ summary: 'Get auto-generated staffing alerts' })
   @ApiOkResponse({ description: 'Staffing alerts.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getStaffingAlerts(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.ragService.getStaffingAlerts(projectId);
   }
@@ -38,7 +39,7 @@ export class ProjectRagController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create or update weekly RAG snapshot' })
   @ApiOkResponse({ description: 'RAG snapshot saved.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async createSnapshot(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateRagSnapshotDto,
@@ -51,7 +52,7 @@ export class ProjectRagController {
   @Get(':id/rag-snapshots')
   @ApiOperation({ summary: 'Get RAG snapshot history' })
   @ApiOkResponse({ description: 'RAG history.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getHistory(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Query('weeks') weeks?: string,
@@ -62,7 +63,7 @@ export class ProjectRagController {
   @Get(':id/rag-snapshots/latest')
   @ApiOperation({ summary: 'Get latest RAG snapshot' })
   @ApiOkResponse({ description: 'Latest RAG snapshot or null.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getLatest(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.ragService.getLatestSnapshot(projectId);
   }

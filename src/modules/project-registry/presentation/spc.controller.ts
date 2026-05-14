@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { SpcService } from '../application/spc.service';
 
 @ApiTags('project-spc')
@@ -13,7 +14,7 @@ export class SpcController {
   @Get('projects/:id/spc-burndown')
   @ApiOperation({ summary: 'SPC burndown: hours + Standardized Production Cost per week, plus vendor accrual.' })
   @ApiOkResponse({ description: 'SPC burndown DTO.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getBurndown(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Query('weeks') weeks?: string,

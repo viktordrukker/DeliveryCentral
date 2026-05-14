@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ProjectRolePlanService, UpsertRolePlanEntryDto } from '../application/project-role-plan.service';
 import { GenerateStaffingRequestsFromPlanService } from '../application/generate-staffing-requests-from-plan.service';
 
@@ -17,7 +18,7 @@ export class ProjectRolePlanController {
   @Get(':id/role-plan')
   @ApiOperation({ summary: 'Get project role plan' })
   @ApiOkResponse({ description: 'Role plan entries.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getRolePlan(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.rolePlanService.getRolePlan(projectId);
   }
@@ -26,7 +27,7 @@ export class ProjectRolePlanController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create or update role plan entries' })
   @ApiOkResponse({ description: 'Updated role plan entries.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async upsertRolePlan(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() entries: UpsertRolePlanEntryDto[],
@@ -37,7 +38,7 @@ export class ProjectRolePlanController {
   @Delete(':id/role-plan/:entryId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a role plan entry' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async deleteEntry(@Param('entryId', ParseUUIDPipe) entryId: string) {
     await this.rolePlanService.deleteRolePlanEntry(entryId);
   }
@@ -45,7 +46,7 @@ export class ProjectRolePlanController {
   @Get(':id/role-plan/comparison')
   @ApiOperation({ summary: 'Compare role plan vs actual staffing' })
   @ApiOkResponse({ description: 'Plan vs actual comparison.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getComparison(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.rolePlanService.getRolePlanVsActual(projectId);
   }
@@ -53,7 +54,7 @@ export class ProjectRolePlanController {
   @Get(':id/staffing-summary')
   @ApiOperation({ summary: 'Get project staffing summary' })
   @ApiOkResponse({ description: 'Staffing summary.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getStaffingSummary(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.rolePlanService.getStaffingSummary(projectId);
   }
@@ -62,7 +63,7 @@ export class ProjectRolePlanController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Generate staffing requests from unfilled role plan entries' })
   @ApiOkResponse({ description: 'Generated request IDs.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async generateRequests(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Req() httpRequest: { principal?: { personId?: string } },

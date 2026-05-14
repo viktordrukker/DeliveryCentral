@@ -11,6 +11,7 @@ import {
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { PlatformSettingsService } from '../application/platform-settings.service';
 import {
   SettingsResponseDto,
@@ -29,7 +30,7 @@ export class PlatformSettingsController {
   public constructor(private readonly service: PlatformSettingsService) {}
 
   @Get()
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({
     summary: 'Get all platform settings grouped by section. Non-admin readers receive redacted secrets (clientSecret, monitoring tokens, db.prodUserPassword).',
   })

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { StaffingDeskService } from '../application/staffing-desk.service';
 import { StaffingDeskQueryDto } from '../application/staffing-desk-query.dto';
 import { StaffingDeskResponseDto } from '../application/staffing-desk-response.dto';
@@ -16,7 +17,7 @@ import { PlannerScenarioService, CreatePlannerScenarioDto, UpdatePlannerScenario
 
 @ApiTags('staffing-desk')
 @Controller('staffing-desk')
-@RequireRoles('resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin')
+@RequireRoles(...STAFFING_ROLES)
 export class StaffingDeskController {
   public constructor(
     private readonly service: StaffingDeskService,

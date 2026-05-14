@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 
 import {
   NotificationPreferenceDto,
@@ -12,16 +13,6 @@ import {
   NotificationPreferencesService,
   NotificationPreferenceRecord,
 } from '../application/notification-preferences.service';
-
-const ALL_AUTHENTICATED_ROLES = [
-  'admin',
-  'director',
-  'hr_manager',
-  'resource_manager',
-  'project_manager',
-  'delivery_manager',
-  'employee',
-] as const;
 
 function toDto(record: NotificationPreferenceRecord): NotificationPreferenceDto {
   return { channelKey: record.channelKey, enabled: record.enabled };

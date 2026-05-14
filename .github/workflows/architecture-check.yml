@@ -27,3 +27,6 @@ jobs:
 
       - name: RBAC ratchet
         run: npm run rbac:check
+
+      - name: Role-literal ratchet (F-5.1 / D-130 step 1)
+        run: npm run roles:check

@@ -26,6 +26,7 @@ import {
 
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES, EXEC_ROLES, PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
 
 import { ActivateProjectService } from '../application/activate-project.service';
@@ -79,7 +80,7 @@ export class ProjectsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   @ApiOperation({ summary: 'Create an internal project with charter fields' })
   @ApiCreatedResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project manager not found.' })
@@ -93,7 +94,7 @@ export class ProjectsController {
 
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   @ApiOperation({ summary: 'Activate a draft internal project (legacy direct path; HD-2 prefers /submit-for-approval → /approve)' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -129,7 +130,7 @@ export class ProjectsController {
 
   @Post(':id/approve')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   @Idempotent()
   @ApiOperation({ summary: 'HD-2 — Director approves a PENDING_APPROVAL project (PENDING_APPROVAL → ACTIVE)' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
@@ -151,7 +152,7 @@ export class ProjectsController {
 
   @Post(':id/reject')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   @ApiOperation({ summary: 'HD-2 — Director rejects a PENDING_APPROVAL project (PENDING_APPROVAL → DRAFT). Reason required.' })
   @ApiOkResponse({ type: ProjectCreatedResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -205,7 +206,7 @@ export class ProjectsController {
   })
   @ApiOkResponse({ type: ProjectClosureResponseDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
-  @RequireRoles('director', 'admin')
+  @RequireRoles(...EXEC_ROLES)
   public async closeProjectOverride(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: CloseProjectOverrideRequestDto,
@@ -312,7 +313,7 @@ export class ProjectsController {
   }
 
   @Get(':id/health')
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   @ApiOperation({ summary: 'Get composite health score for a project (0-100)' })
   @ApiOkResponse({ description: 'Project health score and grade.' })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -334,7 +335,7 @@ export class ProjectsController {
    * unknown ids are simply omitted from the response.
    */
   @Get('health')
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   @ApiOperation({
     summary: 'Batch project health for a list of project ids (replaces N+1 calls)',
   })
@@ -365,7 +366,7 @@ export class ProjectsController {
   }
 
   @Get()
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List internal projects with external link summaries' })
   @ApiQuery({ name: 'source', required: false, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -378,7 +379,7 @@ export class ProjectsController {
   }
 
   @Get(':id/dashboard')
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   @ApiOperation({ summary: 'Get project dashboard: staffing, evidence by week, allocation by person' })
   @ApiQuery({ name: 'asOf', required: false, type: String })
   public async getProjectDashboard(
@@ -399,7 +400,7 @@ export class ProjectsController {
   }
 
   @Get(':id')
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get an internal project by id with external link details' })
   @ApiOkResponse({ type: ProjectDetailsDto })
   @ApiNotFoundResponse({ description: 'Project not found.' })
@@ -416,7 +417,7 @@ export class ProjectsController {
   @Get(':id/closure-readiness')
   @ApiOperation({ summary: 'Check if project is ready to close' })
   @ApiOkResponse({ description: 'Closure readiness check result.' })
-  @RequireRoles('project_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
   public async checkClosureReadiness(@Param('id', ParseUUIDPipe) id: string) {
     return this.closureReadinessService.checkClosureReadiness(id);
   }

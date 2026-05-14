@@ -15,6 +15,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import {
   CreateLeaveRequestDto,
   LeaveRequestDto,
@@ -28,7 +29,7 @@ export class LeaveRequestsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Submit a leave request' })
   @ApiCreatedResponse({ description: 'Created leave request' })
   public async create(
@@ -40,7 +41,7 @@ export class LeaveRequestsController {
   }
 
   @Get('my')
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get own leave requests' })
   @ApiOkResponse({ description: 'Own leave requests' })
   public async getMy(
@@ -53,7 +54,7 @@ export class LeaveRequestsController {
   @Get()
   @ApiOperation({ summary: 'List leave requests (manager/HR view)' })
   @ApiOkResponse({ description: 'Leave requests list' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async findAll(
     @Query('personId') personId?: string,
     @Query('status') status?: string,
@@ -65,7 +66,7 @@ export class LeaveRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve a leave request' })
   @ApiOkResponse({ description: 'Approved leave request' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async approve(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
@@ -78,7 +79,7 @@ export class LeaveRequestsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject a leave request' })
   @ApiOkResponse({ description: 'Rejected leave request' })
-  @RequireRoles('hr_manager', 'director', 'admin')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async reject(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },

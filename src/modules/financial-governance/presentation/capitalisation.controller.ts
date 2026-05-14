@@ -23,6 +23,7 @@ import {
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
+import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 
 import { FinancialService } from '../application/financial.service';
 import {
@@ -31,22 +32,13 @@ import {
   PeriodLockDto,
 } from '../application/contracts/financial.dto';
 
-const REPORT_ROLES = [
-  'project_manager',
-  'resource_manager',
-  'hr_manager',
-  'delivery_manager',
-  'director',
-  'admin',
-] as const;
-
 @ApiTags('reports')
 @Controller()
 export class CapitalisationController {
   public constructor(private readonly service: FinancialService) {}
 
   @Get('reports/capitalisation')
-  @RequireRoles(...REPORT_ROLES)
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'CAPEX/OPEX capitalisation report' })
   @ApiQuery({ name: 'from', required: true, type: String })
   @ApiQuery({ name: 'to', required: true, type: String })

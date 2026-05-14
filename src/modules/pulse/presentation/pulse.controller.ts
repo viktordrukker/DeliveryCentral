@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { ManagerScopeQueryService } from '@src/modules/organization/application/manager-scope-query.service';
 
@@ -32,7 +33,7 @@ export class PulseController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Submit or update own weekly pulse' })
   @ApiOkResponse({ description: 'Pulse entry' })
   public async submit(
@@ -63,7 +64,7 @@ export class PulseController {
   // can plot a sparkline alongside the existing dashboards.
   // Per J7.
   @Get('team-trend')
-  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({
     summary:
       'Pulse trend over the caller\'s reporting scope. HD-7 / J7 — RM/PM/Director/HR each see what they manage.',

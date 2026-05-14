@@ -12,20 +12,11 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
 
 import { UndoConsumeResponseDto } from '../application/contracts/undo.dto';
 import { UndoService } from '../application/undo.service';
-
-const ALL_AUTHENTICATED_ROLES = [
-  'admin',
-  'director',
-  'hr_manager',
-  'resource_manager',
-  'project_manager',
-  'delivery_manager',
-  'employee',
-] as const;
 
 // HD-8 / Chunk 8.2 — undo consume endpoint. Idempotency comes from
 // `UndoService.consume` (re-returns the same result on already-

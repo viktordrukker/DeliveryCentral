@@ -2,17 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
-
-const ALL_AUTHENTICATED_ROLES = [
-  'admin',
-  'director',
-  'hr_manager',
-  'resource_manager',
-  'project_manager',
-  'delivery_manager',
-  'employee',
-] as const;
 
 // HD-8 / F2a — channel discovery for the AccountSettingsPage. Returns
 // the full set of `NotificationChannel` rows the deployment has

@@ -3,6 +3,7 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ProjectPulseService } from '../application/project-pulse.service';
 
 @ApiTags('project-pulse')
@@ -13,7 +14,7 @@ export class ProjectPulseController {
   @Get('projects/:id/pulse-summary')
   @ApiOperation({ summary: 'Unified project pulse: signals KPIs + 7d activity stream' })
   @ApiOkResponse({ description: 'Pulse summary DTO.' })
-  @RequireRoles('project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...STAFFING_ROLES)
   public async getPulseSummary(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.pulseService.getPulseSummary(projectId);
   }

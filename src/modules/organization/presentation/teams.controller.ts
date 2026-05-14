@@ -14,6 +14,7 @@ import {
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, RM_EXEC_ROLES } from '@src/shared/auth/role-presets';
 import {
   CreateTeamRequestDto,
   TeamDashboardDto,
@@ -36,7 +37,7 @@ export class TeamsController {
   ) {}
 
   @Get()
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'List operational teams' })
   @ApiOkResponse({ type: TeamListResponseDto })
   public async listTeams(): Promise<TeamListResponseDto> {
@@ -47,7 +48,7 @@ export class TeamsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create an operational team' })
   @ApiCreatedResponse({ type: TeamSummaryDto })
-  @RequireRoles('resource_manager', 'director', 'admin')
+  @RequireRoles(...RM_EXEC_ROLES)
   public async createTeam(@Body() request: CreateTeamRequestDto): Promise<TeamSummaryDto> {
     try {
       const created = await this.createTeamService.execute(request);
@@ -66,7 +67,7 @@ export class TeamsController {
   }
 
   @Get(':id')
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get an operational team by id' })
   @ApiOkResponse({ type: TeamSummaryDto })
   public async getTeam(@Param('id', ParseUUIDPipe) id: string): Promise<TeamSummaryDto> {
@@ -79,7 +80,7 @@ export class TeamsController {
   }
 
   @Get(':id/members')
-  @RequireRoles('employee', 'project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get operational team members' })
   @ApiOkResponse({ type: TeamMembersResponseDto })
   public async getTeamMembers(
@@ -98,7 +99,7 @@ export class TeamsController {
   }
 
   @Get(':id/dashboard')
-  @RequireRoles('project_manager', 'resource_manager', 'hr_manager', 'delivery_manager', 'director', 'admin')
+  @RequireRoles(...ALL_MANAGER_ROLES)
   @ApiOperation({ summary: 'Get operational team dashboard summary' })
   @ApiOkResponse({ type: TeamDashboardDto })
   public async getTeamDashboard(
@@ -120,7 +121,7 @@ export class TeamsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Add or remove a team member' })
   @ApiOkResponse({ type: TeamMembersResponseDto })
-  @RequireRoles('resource_manager', 'director', 'admin')
+  @RequireRoles(...RM_EXEC_ROLES)
   public async updateTeamMembers(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateTeamMemberRequestDto,

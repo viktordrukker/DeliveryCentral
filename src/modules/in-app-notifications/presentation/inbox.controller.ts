@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { ALL_AUTHENTICATED_ROLES } from '@src/shared/auth/role-presets';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { Observable, Subject, interval, startWith, switchMap, from, takeUntil } from 'rxjs';
 
@@ -40,7 +41,7 @@ export class InboxController {
   public constructor(private readonly inAppNotificationService: InAppNotificationService) {}
 
   @Get()
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get personal notification inbox' })
   @ApiQuery({ name: 'unreadOnly', required: false, type: Boolean })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -64,7 +65,7 @@ export class InboxController {
 
   @Post(':id/read')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Mark a single notification as read' })
   @ApiOkResponse({ type: InAppNotificationDto })
   public async markRead(
@@ -83,7 +84,7 @@ export class InboxController {
 
   @Post('read-all')
   @HttpCode(HttpStatus.OK)
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Mark all unread notifications as read' })
   @ApiOkResponse({ description: 'Acknowledgement payload `{ status: "ok" }`.' })
   public async markAllRead(
@@ -105,7 +106,7 @@ export class InboxController {
    * Cheap call, ~2 round trips/min per active user.
    */
   @Get('unread-count')
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Get unread notification count for the current user (polling endpoint)' })
   @ApiOkResponse({ description: 'JSON `{ unreadCount: number }`.' })
   public async unreadCount(
@@ -121,7 +122,7 @@ export class InboxController {
   }
 
   @Sse('stream')
-  @RequireRoles('admin', 'director', 'hr_manager', 'resource_manager', 'project_manager', 'delivery_manager', 'employee')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   @ApiOperation({ summary: 'Server-sent events stream for real-time notification count updates' })
   @ApiOkResponse({ description: 'text/event-stream with `{ unreadCount, connected }` events emitted every 30s.' })
   public streamNotifications(
