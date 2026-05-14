@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+import { RolePresetsModule } from '@src/shared/auth/role-presets.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AbacPolicyRegistry } from './application/abac/abac-policy.registry';
@@ -14,6 +15,7 @@ import { ResponsibilityRulesAdminController } from './presentation/responsibilit
 
 @Global()
 @Module({
+  imports: [RolePresetsModule],
   controllers: [ResponsibilityRulesAdminController],
   providers: [
     AuthenticatedPrincipalFactory,

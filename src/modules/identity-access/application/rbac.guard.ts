@@ -7,6 +7,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+import { RolePresetsService } from '@src/shared/auth/role-presets.service';
+import { REQUIRED_ROLE_PRESET_KEY } from '@src/shared/auth/role-preset.decorator';
+import type { RolePresetName } from '@src/shared/auth/role-presets';
+
 import { RequestPrincipal } from './request-principal';
 import { SELF_SCOPE_KEY, SelfScopeOptions } from './self-scope.decorator';
 import { REQUIRED_ROLES_KEY } from './roles.decorator';
@@ -15,9 +19,12 @@ import { PlatformRole } from '../domain/platform-role';
 
 @Injectable()
 export class RbacGuard implements CanActivate {
-  public constructor(private readonly reflector: Reflector) {}
+  public constructor(
+    private readonly reflector: Reflector,
+    private readonly rolePresets: RolePresetsService,
+  ) {}
 
-  public canActivate(context: ExecutionContext): boolean {
+  public async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -41,8 +48,13 @@ export class RbacGuard implements CanActivate {
       REQUIRED_ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
+    const requiredPreset = this.reflector.getAllAndOverride<RolePresetName>(
+      REQUIRED_ROLE_PRESET_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    if (!requiredRoles || requiredRoles.length === 0) {
+    const noStaticRoles = !requiredRoles || requiredRoles.length === 0;
+    if (noStaticRoles && !requiredPreset) {
       return true;
     }
 
@@ -59,13 +71,18 @@ export class RbacGuard implements CanActivate {
       return true;
     }
 
-    const hasRole = requiredRoles.some((role) => principal.roles.includes(role));
-
-    if (!hasRole) {
-      throw new ForbiddenException('Insufficient role for this operation.');
+    // F-5.2 — preset metadata resolves via PlatformSetting overrides
+    // (defaults to compile-time constants in role-presets.ts).
+    if (requiredPreset) {
+      const liveRoles = await this.rolePresets.resolve(requiredPreset);
+      if (liveRoles.some((role) => principal.roles.includes(role))) return true;
     }
 
-    return true;
+    if (!noStaticRoles && requiredRoles!.some((role) => principal.roles.includes(role))) {
+      return true;
+    }
+
+    throw new ForbiddenException('Insufficient role for this operation.');
   }
 
   private matchesSelfScope(
