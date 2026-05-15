@@ -3,6 +3,8 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { InAppNotificationsModule } from '@src/modules/in-app-notifications/in-app-notifications.module';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
 import { OrganizationModule } from '@src/modules/organization/organization.module';
+import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
 import { PulseService } from './application/pulse.service';
 import { PeopleThreeSixtyService } from './application/people-360.service';
@@ -13,7 +15,7 @@ import { PeopleThreeSixtyController } from './presentation/people-360.controller
 import { MoodHeatmapController } from './presentation/mood-heatmap.controller';
 
 @Module({
-  imports: [InAppNotificationsModule, forwardRef(() => OrganizationModule)],
+  imports: [InAppNotificationsModule, forwardRef(() => OrganizationModule), PlatformSettingsModule],
   controllers: [PulseController, PeopleThreeSixtyController, MoodHeatmapController],
   providers: [
     {
@@ -23,9 +25,13 @@ import { MoodHeatmapController } from './presentation/mood-heatmap.controller';
     },
     {
       provide: PulseService,
-      useFactory: (repo: PulseRepository, prisma: PrismaService, inApp: InAppNotificationService) =>
-        new PulseService(repo, prisma, inApp),
-      inject: [PulseRepository, PrismaService, InAppNotificationService],
+      useFactory: (
+        repo: PulseRepository,
+        prisma: PrismaService,
+        inApp: InAppNotificationService,
+        settings: PlatformSettingsService,
+      ) => new PulseService(repo, prisma, inApp, settings),
+      inject: [PulseRepository, PrismaService, InAppNotificationService, PlatformSettingsService],
     },
     {
       provide: PeopleThreeSixtyService,
