@@ -38,3 +38,7 @@ node scripts/check-schema-migration-pairing.cjs
 # 6. Role-literal ratchet — block new @RequireRoles(literal, literal, …) sites.
 echo "🔎 husky: npm run roles:check"
 npm run --silent roles:check
+
+# 7. FK-index guardrail (F-6.1 / D-110) — block unindexed FK columns.
+echo "🔎 husky: npm run fk-indexes:check"
+npm run --silent fk-indexes:check
