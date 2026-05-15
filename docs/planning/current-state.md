@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
 
-_Last updated: 2026-05-15 (Sprint F-5 Customizable RBAC + Governance COMPLETE — PRs #49–#55: role-preset constants + literal-array ratchet (D-130 step 1), PlatformSetting-driven preset overrides (D-130 step 2), read-action coverage via ResponsibilityRule (D-158, flag default OFF), RolePermissionAdminPage FE (D-159, flag default OFF), POST /admin/persons/:id/forget redact-payload v1 (D-167), audit.retentionDays + nightly auto-purge cron (D-168), AuditLog CHECK constraints (D-111))._
+_Last updated: 2026-05-15 (Sprint F-6 Stability + Perf Ratchets COMPLETE — PRs #57–#63: 16 FK indexes + ratchet guardrail (D-110), top-3 unbounded findMany caps (D-144), PvA per-id loop → batch (D-145), workforce-planner via PlatformSettingsService (D-146), `flag.outboxEnabled` flipped to ON with producer contract test (D-142), env-driven DB pool (D-143), architectural-ratchet check-in #1 + F-6 close-true). Toggle: `flag.outboxEnabled` ON. Previous: Sprint F-5 (RBAC + Governance) complete via PRs #49–#56._
 
 ---
 
