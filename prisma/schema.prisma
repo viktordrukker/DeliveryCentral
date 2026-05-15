@@ -2522,6 +2522,63 @@ model FxRate {
   @@map("fx_rates")
 }
 
+/// F-7.5 / D-160b — Fiscal Calendar entity.
+///
+/// One row per tenant fiscal year (e.g. "FY2026 GB" = Apr 1 2026 – Mar 31
+/// 2027). Each calendar has 12 FiscalPeriod rows (monthly), grouped into
+/// quarters 1–4. Replaces the D-160a "single fiscalYearStart number"
+/// quick fix with a real entity so quarterly/period rollups can be
+/// driven from real data rather than computed every read.
+///
+/// Gated by `flag.feature.financial.fiscalCalendar.entity.enabled`
+/// (default OFF). Until flipped, financial-report consumers stick with
+/// the simpler D-160a path (`general.fiscalYearStart` setting).
+model FiscalCalendar {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// Tenant-chosen handle, e.g. `FY2026` or `FY2026-GB`. Stable across
+  /// admin edits so reports can pin to a name.
+  name        String   @unique
+  /// Fiscal year number (e.g. 2026). Matches `ProjectBudget.fiscalYear`.
+  fiscalYear  Int
+  /// First day of the FY (inclusive).
+  startDate   DateTime @db.Date
+  /// Last day of the FY (inclusive).
+  endDate     DateTime @db.Date
+  /// Optional tag for multi-region tenants ("GB", "US", etc.). NULL
+  /// means tenant-wide / default calendar.
+  regionCode  String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  periods     FiscalPeriod[]
+
+  @@unique([fiscalYear, regionCode])
+  @@index([startDate, endDate])
+  @@map("fiscal_calendars")
+}
+
+/// One monthly period within a FiscalCalendar. Quarters are derived
+/// from `quarter` (1–4). All periods are bounded by the parent
+/// calendar's [startDate, endDate].
+model FiscalPeriod {
+  id           String         @id @default(uuid()) @db.Uuid
+  calendarId   String         @db.Uuid
+  calendar     FiscalCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  /// 1–12 monthly period number within the fiscal year.
+  periodNumber Int
+  /// 1–4 quarter number within the fiscal year.
+  quarter      Int
+  startDate    DateTime       @db.Date
+  endDate      DateTime       @db.Date
+  /// Short label, e.g. "Apr 2026" or "P1". Display-only.
+  label        String?
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@unique([calendarId, periodNumber])
+  @@index([calendarId, startDate])
+  @@map("fiscal_periods")
+}
+
 // DM-6a-2 — queryable BudgetApproval state per ProjectBudget change.
 enum BudgetApprovalStatus {
   PENDING
