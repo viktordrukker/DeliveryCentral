@@ -231,6 +231,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Business-action audit trail for investigation and governance workflows.', group: 'admin', navVisible: true, path: '/admin/audit', title: 'Business Audit' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Notification channel and template management.', group: 'admin', navVisible: true, path: '/admin/notifications', title: 'Admin Notifications' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'External provider health and synchronization.', group: 'admin', navVisible: true, path: '/admin/integrations', title: 'Admin Integrations' },
+  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status and last-sync.', group: 'admin', navVisible: true, path: '/admin/integrations/registry', title: 'Integrations Registry' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin', navVisible: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'governance', navVisible: true, path: '/integrations', title: 'Integrations' },
   { allowedRoles: ADMIN_ROLES, description: 'Metadata, validation, and administrative configuration.', group: 'admin', navVisible: true, path: '/metadata-admin', title: 'Metadata / Admin' },
