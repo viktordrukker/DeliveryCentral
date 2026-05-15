@@ -49,6 +49,7 @@ import { BusinessAuditPage } from '@/routes/admin/BusinessAuditPage';
 import { SettingsPage } from '@/routes/admin/SettingsPage';
 import { DictionariesPage } from '@/routes/admin/DictionariesPage';
 import { IntegrationsAdminPage } from '@/routes/admin/IntegrationsAdminPage';
+import { IntegrationsRegistryPage } from '@/routes/admin/IntegrationsRegistryPage';
 import { MonitoringPage } from '@/routes/admin/MonitoringPage';
 import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
@@ -343,6 +344,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><IntegrationsAdminPage /></RoleGuard>,
     path: 'admin/integrations',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><IntegrationsRegistryPage /></RoleGuard>,
+    path: 'admin/integrations/registry',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><MonitoringPage /></RoleGuard>,
