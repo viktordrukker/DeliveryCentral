@@ -213,7 +213,11 @@ const dashboardChildren = [
   { element: <LazyPage><OrgPage /></LazyPage>, path: 'org' },
   { element: <ManagerScopePage />, path: 'org/managers/:id/scope' },
   {
-    element: <RoleGuard allowedRoles={HR_ADMIN_ROLES}><EmployeeLifecycleAdminPage /></RoleGuard>,
+    // F-11.1 / D-86 — `/admin/people/new` is a legacy alias of `/people/new`.
+    // Both rendered the same `EmployeeLifecycleAdminPage`; consolidating
+    // via a `<Navigate>` to keep one canonical route. RoleGuard preserved
+    // so deep-linked unauthenticated users still see the 403.
+    element: <RoleGuard allowedRoles={HR_ADMIN_ROLES}><Navigate to="/people/new" replace /></RoleGuard>,
     path: 'admin/people/new',
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PeoplePage /></RoleGuard>, path: 'people' },
