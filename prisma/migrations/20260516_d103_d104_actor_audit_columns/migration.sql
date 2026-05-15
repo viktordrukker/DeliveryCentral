@@ -22,12 +22,12 @@ ALTER TABLE "Project"
 
 ALTER TABLE "Project"
   ADD CONSTRAINT "Project_createdByPersonId_fkey"
-    FOREIGN KEY ("createdByPersonId") REFERENCES "persons"("id")
+    FOREIGN KEY ("createdByPersonId") REFERENCES "Person"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "Project"
   ADD CONSTRAINT "Project_updatedByPersonId_fkey"
-    FOREIGN KEY ("updatedByPersonId") REFERENCES "persons"("id")
+    FOREIGN KEY ("updatedByPersonId") REFERENCES "Person"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE INDEX IF NOT EXISTS "Project_createdByPersonId_idx"
@@ -43,12 +43,12 @@ ALTER TABLE "ProjectAssignment"
 
 ALTER TABLE "ProjectAssignment"
   ADD CONSTRAINT "ProjectAssignment_createdByPersonId_fkey"
-    FOREIGN KEY ("createdByPersonId") REFERENCES "persons"("id")
+    FOREIGN KEY ("createdByPersonId") REFERENCES "Person"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "ProjectAssignment"
   ADD CONSTRAINT "ProjectAssignment_updatedByPersonId_fkey"
-    FOREIGN KEY ("updatedByPersonId") REFERENCES "persons"("id")
+    FOREIGN KEY ("updatedByPersonId") REFERENCES "Person"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE INDEX IF NOT EXISTS "ProjectAssignment_createdByPersonId_idx"
