@@ -51,9 +51,9 @@ export const PLATFORM_FLAGS = {
   outboxEnabled: {
     key: 'flag.outboxEnabled',
     description:
-      'Master switch for the OutboxEvent dual-write seam. When true, NotificationEventTranslatorService writes outbox rows + the publisher dispatches; when false, the translator runs synchronously.',
-    default: false,
-    maturityLevel: 'beta',
+      'Master switch for the OutboxEvent dual-write seam. When true, NotificationEventTranslatorService writes outbox rows + the publisher dispatches; when false, the translator runs synchronously. F-6.5 / D-142 flipped to ON after verifying ≥3 mutation flows (assignmentCreated, projectActivated, caseCreated) call the translator with proper aggregate scope.',
+    default: true,
+    maturityLevel: 'ga',
     expectedGaSprint: 'v1.1',
     owner: 'platform-eng',
     category: 'foundation',
