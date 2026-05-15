@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
+import { getWeekStart, type WeekStartOptions } from '@src/shared/temporal/week-of';
 import { PulseRepository } from '../infrastructure/pulse.repository';
 import {
   PulseEntryDto,
@@ -9,16 +11,6 @@ import {
   PulseTrendWeekDto,
   SubmitPulseDto,
 } from './contracts/pulse.dto';
-
-/** Returns the ISO Monday (YYYY-MM-DD) for the week containing the given date. */
-function getMondayOfWeek(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ...
-  const diff = day === 0 ? -6 : 1 - day; // shift to Monday
-  d.setUTCDate(d.getUTCDate() + diff);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -35,10 +27,27 @@ export class PulseService {
     private readonly repo: PulseRepository,
     private readonly prisma: PrismaService,
     private readonly inAppNotifications: InAppNotificationService,
+    private readonly platformSettings: PlatformSettingsService,
   ) {}
 
+  /**
+   * F-7.1 / D-161 — read tenant timezone + week-start from PlatformSettings.
+   * Falls back to UTC + Monday when unset.
+   */
+  private async loadWeekOptions(): Promise<WeekStartOptions> {
+    const [tz, wsd] = await Promise.all([
+      this.platformSettings.getRawValue('general.timezone'),
+      this.platformSettings.getRawValue('timesheets.weekStartDay'),
+    ]);
+    return {
+      timezone: typeof tz === 'string' && tz.length > 0 ? tz : undefined,
+      weekStartDay: typeof wsd === 'number' ? wsd : undefined,
+    };
+  }
+
   public async submit(personId: string, dto: SubmitPulseDto): Promise<PulseEntryDto> {
-    const weekStart = getMondayOfWeek(new Date());
+    const opts = await this.loadWeekOptions();
+    const weekStart = getWeekStart(new Date(), opts);
     const record = await this.repo.upsert(personId, weekStart, dto.mood, dto.note);
 
     if (dto.mood === STRUGGLING_MOOD) {
@@ -113,7 +122,8 @@ export class PulseService {
   // sparkline. Sorted oldest → newest.
   public async getTeamTrend(personIds: string[], weeks: number): Promise<PulseTeamTrendDto> {
     const safeWeeks = Math.max(1, Math.min(52, Math.floor(weeks)));
-    const todayMonday = getMondayOfWeek(new Date());
+    const opts = await this.loadWeekOptions();
+    const todayMonday = getWeekStart(new Date(), opts);
     const earliestMonday = new Date(todayMonday);
     earliestMonday.setUTCDate(earliestMonday.getUTCDate() - 7 * (safeWeeks - 1));
 
@@ -131,7 +141,7 @@ export class PulseService {
 
     const buckets = new Map<string, { sum: number; count: number; struggling: number }>();
     for (const e of entries) {
-      const key = toDateStr(getMondayOfWeek(e.weekStart));
+      const key = toDateStr(getWeekStart(e.weekStart, opts));
       const bucket = buckets.get(key) ?? { sum: 0, count: 0, struggling: 0 };
       bucket.sum += e.mood;
       bucket.count += 1;
