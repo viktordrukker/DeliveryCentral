@@ -13,6 +13,50 @@ const MAX_CONNECT_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
 
 /**
+ * F-6.6 / D-143 — env-driven Prisma connection pool sizing.
+ *
+ * Prisma defaults to `num_physical_cpus * 2 + 1` connections per worker,
+ * which on a small container (2-vCPU staging box) lands at 5 — too small
+ * under bank-IT concurrency. `DATABASE_POOL_LIMIT` overrides the default;
+ * `DATABASE_POOL_TIMEOUT_SECONDS` controls how long a starved request
+ * waits before erroring. Both are stamped into the DATABASE_URL as query
+ * parameters so every libpq connection inherits them (Prisma's
+ * documented pool-tuning seam).
+ *
+ * Defaults:
+ *   DATABASE_POOL_LIMIT           = 20  (per F-6.6 in the plan)
+ *   DATABASE_POOL_TIMEOUT_SECONDS = 10
+ *
+ * Negative / zero / non-numeric values fall back to the defaults; a
+ * misconfigured env never disables pooling silently.
+ */
+const DEFAULT_POOL_LIMIT = 20;
+const DEFAULT_POOL_TIMEOUT_SECONDS = 10;
+
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
+function withConnectionPool(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    const limit = parsePositiveInt(process.env.DATABASE_POOL_LIMIT, DEFAULT_POOL_LIMIT);
+    const timeout = parsePositiveInt(
+      process.env.DATABASE_POOL_TIMEOUT_SECONDS,
+      DEFAULT_POOL_TIMEOUT_SECONDS,
+    );
+    url.searchParams.set('connection_limit', String(limit));
+    url.searchParams.set('pool_timeout', String(timeout));
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+/**
  * DM-R-26 — tag every Postgres connection from this process with a
  * grep-able `application_name`. Attribution lands in `pg_stat_activity`,
  * `ddl_audit` (via the event trigger in DM-R-21), and Postgres logs.
@@ -48,11 +92,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   public constructor(appConfig: AppConfig, private readonly publicIdService: PublicIdService) {
-    const taggedUrl = withApplicationName(appConfig.databaseUrl);
+    // Layer the URL transformations: pool sizing first, then attribution.
+    // Both write to URL search-params so order is incidental, but keeping
+    // it deterministic makes the resulting URL stable across boots.
+    const tunedUrl = withConnectionPool(withApplicationName(appConfig.databaseUrl));
     super({
       datasources: {
         db: {
-          url: taggedUrl,
+          url: tunedUrl,
         },
       },
     });
