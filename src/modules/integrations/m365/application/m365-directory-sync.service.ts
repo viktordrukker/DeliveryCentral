@@ -1,5 +1,6 @@
 import { CreateEmployeeService } from '@src/modules/organization/application/create-employee.service';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { AppConfig } from '@src/shared/config/app-config';
 
 import { M365DirectoryAdapter, M365DirectoryMappingConfig } from './m365-directory-adapter';
@@ -31,6 +32,7 @@ export class M365DirectorySyncService {
     private readonly reconciliationRecordRepository: M365DirectoryReconciliationRecordRepositoryPort,
     private readonly directorySyncStateRepository: DirectorySyncStateRepositoryPort,
     appConfig: AppConfig,
+    private readonly platformSettings?: PlatformSettingsService,
   ) {
     this.mappingConfig = {
       defaultOrgUnitId: appConfig.m365DirectoryDefaultOrgUnitId,
@@ -44,6 +46,15 @@ export class M365DirectorySyncService {
         'M365 directory sync requires M365_DIRECTORY_DEFAULT_ORG_UNIT_ID to be configured.',
       );
     }
+
+    // D-156: when sso.autoProvisionUsers is OFF, unmatched M365 users land in
+    // UNMATCHED reconciliation for operator review instead of creating Person
+    // rows automatically. Default ON preserves pre-D-156 behaviour for tests
+    // and tenants that have not opted out.
+    const autoProvisionRaw = await this.platformSettings?.getRawValue('sso.autoProvisionUsers');
+    const autoProvisionEnabled = autoProvisionRaw === undefined || autoProvisionRaw === null
+      ? true
+      : autoProvisionRaw !== false;
 
     const users = await this.directoryAdapter.fetchUsers();
     const managers = await this.directoryAdapter.fetchManagers();
@@ -256,6 +267,25 @@ export class M365DirectorySyncService {
             externalUserId: mapped.externalUserId,
             link,
             personId: existingPerson.personId.value,
+          });
+          continue;
+        }
+
+        if (!autoProvisionEnabled) {
+          await this.upsertReconciliationRecord({
+            category: 'UNMATCHED',
+            externalDisplayName: mapped.name,
+            externalEmail: mapped.email,
+            externalPrincipalName: mapped.externalPrincipalName,
+            externalUserId: mapped.externalUserId,
+            lastEvaluatedAt: now,
+            lastSeenAt: new Date(),
+            sourceAccountEnabled: mapped.accountEnabled,
+            sourceDepartment: mapped.sourceDepartment,
+            sourceJobTitle: mapped.sourceJobTitle,
+            sourceUpdatedAt: mapped.sourceUpdatedAt,
+            summary:
+              'External identity is unmatched and sso.autoProvisionUsers is OFF — operator review required.',
           });
           continue;
         }

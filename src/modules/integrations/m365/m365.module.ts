@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { AppConfig } from '@src/shared/config/app-config';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -19,7 +21,7 @@ import { PrismaPersonExternalIdentityLinkRepository } from './infrastructure/rep
 import { M365DirectoryController } from './presentation/m365-directory.controller';
 
 @Module({
-  imports: [OrganizationModule],
+  imports: [OrganizationModule, PlatformSettingsModule],
   controllers: [M365DirectoryController],
   providers: [
     {
@@ -60,6 +62,7 @@ import { M365DirectoryController } from './presentation/m365-directory.controlle
         reconciliationRecordRepository: InMemoryM365DirectoryReconciliationRecordRepository,
         directorySyncStateRepository: InMemoryDirectorySyncStateRepository,
         appConfig: AppConfig,
+        platformSettings: PlatformSettingsService,
       ) =>
         new M365DirectorySyncService(
           adapter,
@@ -69,6 +72,7 @@ import { M365DirectoryController } from './presentation/m365-directory.controlle
           reconciliationRecordRepository,
           directorySyncStateRepository,
           appConfig,
+          platformSettings,
         ),
       inject: [
         InMemoryM365DirectoryAdapter,
@@ -78,6 +82,7 @@ import { M365DirectoryController } from './presentation/m365-directory.controlle
         InMemoryM365DirectoryReconciliationRecordRepository,
         InMemoryDirectorySyncStateRepository,
         AppConfig,
+        PlatformSettingsService,
       ],
     },
     {
