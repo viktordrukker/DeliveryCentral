@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BenchManagementService } from './application/bench-management.service';
@@ -13,6 +15,7 @@ import { WorkforcePlannerService } from './application/workforce-planner.service
 import { StaffingDeskController } from './presentation/staffing-desk.controller';
 
 @Module({
+  imports: [PlatformSettingsModule],
   controllers: [StaffingDeskController],
   providers: [
     {
@@ -47,8 +50,9 @@ import { StaffingDeskController } from './presentation/staffing-desk.controller'
     },
     {
       provide: WorkforcePlannerService,
-      useFactory: (prisma: PrismaService) => new WorkforcePlannerService(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, settings: PlatformSettingsService) =>
+        new WorkforcePlannerService(prisma, settings),
+      inject: [PrismaService, PlatformSettingsService],
     },
     {
       provide: PlannerScenarioService,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 /* ── Auto-Match types ── */
@@ -298,7 +299,10 @@ export interface WorkforcePlannerResponseDto {
 
 @Injectable()
 export class WorkforcePlannerService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly platformSettings: PlatformSettingsService,
+  ) {}
 
   public async getPlan(params: {
     from: string;
@@ -616,9 +620,15 @@ export class WorkforcePlannerService {
     const totalHcRequired = projectRows.reduce((sum, p) => sum + p.requiredHc, 0);
     const draftProjectDemand = projectRows.filter((p) => p.status === 'DRAFT').reduce((sum, p) => sum + p.requiredHc, 0);
 
-    // Budget
-    const budgetSetting = await this.prisma.platformSetting.findUnique({ where: { key: 'budgetSimulation.enabled' } });
-    const budgetEnabled = budgetSetting ? Boolean(budgetSetting.value) : false;
+    // F-6.4 / D-146 — route platform-setting reads through the canonical
+    // service. (The original D-146 issue — a per-person setting lookup
+    // inside the planner's iteration — was already fixed by an earlier
+    // refactor; this cleanup completes the abstraction layering so future
+    // setting reads share the service's fallback / cache surface.)
+    const budgetSettingValue = await this.platformSettings.getRawValue(
+      'budgetSimulation.enabled',
+    );
+    const budgetEnabled = Boolean(budgetSettingValue);
 
     let baselineMonthlyCost = 0;
     if (budgetEnabled) {
