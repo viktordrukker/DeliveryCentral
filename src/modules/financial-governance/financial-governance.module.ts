@@ -4,11 +4,13 @@ import { AuditLoggerService } from '@src/modules/audit-observability/application
 import { ResponsibilityResolverService } from '@src/modules/identity-access/application/responsibility-resolver.service';
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { DecideBudgetChangeService } from './application/decide-budget-change.service';
 import { EffectiveBillRateResolverService } from './application/effective-bill-rate-resolver.service';
 import { FinancialService } from './application/financial.service';
+import { FxRateService } from './application/fx-rate.service';
 import { RateCardAdminService } from './application/rate-card-admin.service';
 import { RequestBudgetChangeService } from './application/request-budget-change.service';
 import { FinancialRepository } from './infrastructure/financial.repository';
@@ -92,6 +94,12 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
         new RateCardAdminService(prisma, auditLogger),
       inject: [PrismaService, AuditLoggerService],
     },
+    {
+      provide: FxRateService,
+      useFactory: (prisma: PrismaService, flags: PlatformFlagsService) =>
+        new FxRateService(prisma, flags),
+      inject: [PrismaService, PlatformFlagsService],
+    },
   ],
   exports: [
     FinancialService,
@@ -99,6 +107,7 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     DecideBudgetChangeService,
     EffectiveBillRateResolverService,
     RateCardAdminService,
+    FxRateService,
   ],
 })
 export class FinancialGovernanceModule {}

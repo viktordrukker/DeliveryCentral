@@ -2484,8 +2484,42 @@ model Currency {
   personCostRates          PersonCostRate[]
   projectVendorEngagements ProjectVendorEngagement[]
   rateCards                RateCard[]
+  fxRatesFrom              FxRate[] @relation("FxRateFromCurrency")
+  fxRatesTo                FxRate[] @relation("FxRateToCurrency")
 
   @@map("Currency")
+}
+
+/// F-7.4 / D-164 — multi-currency consolidation backing table.
+///
+/// One row per `(fromCurrency, toCurrency, asOf)` triple. `rate` is the
+/// multiplier: amount-in-from × rate = amount-in-to. Higher precision
+/// than money (8 fractional digits) so a long-running consolidation
+/// over multi-year history doesn't accumulate rounding error.
+///
+/// Lookup pattern: get the most recent row where `asOf <= today` for
+/// the (from, to) pair. `FxRateService.getLatestRate` implements that.
+/// Same-currency conversions short-circuit to `rate = 1`.
+///
+/// Gated by `flag.feature.financial.multiCurrency.enabled` — the
+/// table exists in v1 so the schema is portable, but the
+/// `FinancialService` only consults it when the flag is ON.
+model FxRate {
+  id            String   @id @default(uuid()) @db.Uuid
+  fromCurrency  String   @db.VarChar(3)
+  toCurrency    String   @db.VarChar(3)
+  rate          Decimal  @db.Decimal(18, 8)
+  asOf          DateTime @db.Date
+  source        String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  from Currency @relation("FxRateFromCurrency", fields: [fromCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  to   Currency @relation("FxRateToCurrency", fields: [toCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([fromCurrency, toCurrency, asOf])
+  @@index([fromCurrency, toCurrency, asOf(sort: Desc)])
+  @@index([toCurrency])
+  @@map("fx_rates")
 }
 
 // DM-6a-2 — queryable BudgetApproval state per ProjectBudget change.
