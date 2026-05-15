@@ -152,6 +152,7 @@ model PersonReleaseRequest {
   @@index([status, targetTerminationDate])
   @@index([tenantId])
   @@map("person_release_requests")
+  @@index([initiatedByPersonId])
 }
 
 model PersonReleaseApproval {
@@ -193,6 +194,8 @@ model ProjectActivationApproval {
   @@index([decidedAt])
   @@index([tenantId])
   @@map("project_activation_approvals")
+  @@index([requestedById])
+  @@index([decidedById])
 }
 
 // HD-4 — ResponsibilityRule (J4). A configurable matrix that decides
@@ -595,6 +598,7 @@ model ExternalAccountLink {
   @@index([externalUsername])
   @@index([externalEmail])
   @@map("ExternalAccountLink")
+  @@index([personId])
 }
 
 model RadiusReconciliationRecord {
@@ -931,6 +935,7 @@ model ProjectAssignment {
   @@index([status, slaDueAt])
   @@index([tenantId])
   @@map("ProjectAssignment")
+  @@index([appliedRateCardEntryId])
 }
 
 model AssignmentApproval {
@@ -1050,6 +1055,7 @@ model CaseType {
 
   @@index([archivedAt])
   @@map("CaseType")
+  @@index([workflowDefinitionId])
 }
 
 model CaseRecord {
@@ -1454,6 +1460,7 @@ model NotificationRequest {
   @@index([recipient, requestedAt])
   @@index([templateId])
   @@map("NotificationRequest")
+  @@index([channelId])
 }
 
 model NotificationDelivery {
@@ -1702,6 +1709,7 @@ model RateCard {
   @@index([clientId, isActive])
   @@index([tenantId])
   @@map("rate_cards")
+  @@index([currencyCode])
 }
 
 model RateCardEntry {
@@ -1977,6 +1985,7 @@ model PersonSkill {
   @@unique([personId, skillId])
   @@index([personId])
   @@map("person_skills")
+  @@index([skillId])
 }
 
 // =============================================================================
@@ -2160,6 +2169,7 @@ model OvertimePolicy {
   @@index([resourcePoolId, effectiveFrom])
   @@index([approvalCaseId])
   @@map("overtime_policies")
+  @@index([setByPersonId])
 }
 
 model OvertimeException {
@@ -2178,6 +2188,7 @@ model OvertimeException {
 
   @@index([personId, effectiveFrom, effectiveTo])
   @@map("overtime_exceptions")
+  @@index([caseRecordId])
 }
 
 // =============================================================================
@@ -2234,6 +2245,7 @@ model Client {
   @@index([isActive])
   @@index([tenantId])
   @@map("clients")
+  @@index([accountManagerPersonId])
 }
 
 model Vendor {
@@ -2501,6 +2513,7 @@ model BudgetApproval {
   @@index([status])
   @@index([requestedByPersonId])
   @@map("budget_approvals")
+  @@index([decidedByPersonId])
 }
 
 // DM-6a-4 — per-Person contact records (phone/address/alt-email).
@@ -2555,6 +2568,7 @@ model EmploymentEvent {
   @@index([personId, occurredOn])
   @@index([kind])
   @@map("employment_events")
+  @@index([recordedByPersonId])
 }
 
 // DM-7-1 — DomainEvent: durable transactional outbox. One row per
@@ -2633,6 +2647,7 @@ model ProjectRetrospective {
 
   @@index([projectId])
   @@map("project_retrospectives")
+  @@index([facilitatedByPersonId])
 }
 
 model ProjectMilestone {
@@ -2756,6 +2771,7 @@ model ProjectRisk {
   @@index([relatedCaseId])
   @@index([title(ops: raw("gin_trgm_ops"))], map: "project_risks_title_trgm_idx", type: Gin)
   @@map("project_risks")
+  @@index([convertedFromRiskId])
 }
 
 // =============================================================================
