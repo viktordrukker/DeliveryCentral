@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { MetadataDictionary } from '@src/modules/metadata/domain/entities/metadata-dictionary.entity';
 import { MetadataDictionaryRepositoryPort } from '@src/modules/metadata/domain/repositories/metadata-dictionary-repository.port';
 
@@ -10,9 +12,19 @@ interface MetadataDictionaryGateway {
   upsert(args: any): Promise<unknown>;
 }
 
+/**
+ * F-6.2 / D-144 — cap on list(). MetadataDictionary tables stay in the
+ * low hundreds even at bank-IT scale; this cap is defensive against
+ * tenant-driven growth (T-09 dictionary expansion will eventually use
+ * pagination via a dedicated query service).
+ */
+const LIST_MAX = 1000;
+
 export class PrismaMetadataDictionaryRepository
   implements MetadataDictionaryRepositoryPort
 {
+  private readonly logger = new Logger(PrismaMetadataDictionaryRepository.name);
+
   public constructor(private readonly gateway: MetadataDictionaryGateway) {}
 
   public async delete(id: string): Promise<void> {
@@ -35,7 +47,15 @@ export class PrismaMetadataDictionaryRepository
   }
 
   public async list(): Promise<MetadataDictionary[]> {
-    const records = await this.gateway.findMany();
+    const records = await this.gateway.findMany({
+      orderBy: [{ entityType: 'asc' }, { dictionaryKey: 'asc' }],
+      take: LIST_MAX,
+    });
+    if (records.length === LIST_MAX) {
+      this.logger.warn(
+        `list() hit the ${LIST_MAX}-row cap; older dictionaries omitted.`,
+      );
+    }
     return records.map((record) => MetadataPrismaMapper.toDictionary(record));
   }
 
