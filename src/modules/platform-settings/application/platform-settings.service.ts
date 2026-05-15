@@ -9,6 +9,10 @@ const DEFAULTS: Record<string, unknown> = {
   'general.fiscalYearStart': 1,
   'general.dateFormat': 'YYYY-MM-DD',
   'general.currency': 'AUD',
+  // F-7.2 / D-163 — default region for PublicHoliday lookups. Single
+  // region code (country or sub-region like 'US-CA'). Multi-region
+  // tenants pass an explicit `regionCodes[]` to the service.
+  'general.countryCode': 'AU',
   'timesheets.enabled': true,
   'timesheets.standardHoursPerWeek': 40,
   'timesheets.maxHoursPerDay': 12,
