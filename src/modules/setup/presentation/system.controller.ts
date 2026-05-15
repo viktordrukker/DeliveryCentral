@@ -6,6 +6,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Public } from '@src/modules/identity-access/application/public.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { ApplyMigrationsBodyDto } from '../application/contracts/setup-body.dto';
 import { SetupService } from '../application/setup.service';
 import { SystemStateService } from '../application/system-state.service';
 
@@ -43,7 +44,7 @@ export class AdminSystemController {
   @Post('migrations/apply')
   @RequireRoles('admin')
   public async applyMigrations(
-    @Body() body: { wipeFirst?: boolean } = {},
+    @Body() body: ApplyMigrationsBodyDto = {},
   ): Promise<{ ok: true; runId: string }> {
     const runId = randomUUID();
     await this.setup.applyMigrations(runId, { wipeFirst: !!body.wipeFirst });

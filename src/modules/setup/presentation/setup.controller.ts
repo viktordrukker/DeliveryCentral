@@ -17,6 +17,7 @@ import type { Response } from 'express';
 import { Public } from '@src/modules/identity-access/application/public.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { SetupStepBodyDto } from '../application/contracts/setup-body.dto';
 import { DiagnosticBundleService } from '../application/diagnostic-bundle.service';
 import { MonitoringSnippetService, type SnippetTarget } from '../application/monitoring-snippet.service';
 import { SetupTokenGuard } from '../application/setup-guard';
@@ -89,7 +90,7 @@ export class SetupController {
   @Public()
   @UseGuards(SetupTokenGuard)
   @HttpCode(HttpStatus.OK)
-  public async createDatabase(@Body() body: { runId: string }) {
+  public async createDatabase(@Body() body: SetupStepBodyDto) {
     if (!body.runId) throw new BadRequestException('runId required.');
     await this.service.createDatabase(body.runId);
     return { ok: true };
@@ -180,7 +181,7 @@ export class SetupController {
   @Public()
   @UseGuards(SetupTokenGuard)
   @HttpCode(HttpStatus.OK)
-  public async complete(@Body() body: { runId: string }): Promise<{ ok: true }> {
+  public async complete(@Body() body: SetupStepBodyDto): Promise<{ ok: true }> {
     if (!body.runId) throw new BadRequestException('runId required.');
     await this.service.completeRun(body.runId);
     return { ok: true };

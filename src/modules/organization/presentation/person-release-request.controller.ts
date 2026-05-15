@@ -18,7 +18,12 @@ import {
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
+import {
+  OptionalReasonBodyDto,
+  RequiredReasonBodyDto,
+} from '@src/shared/http/reason-body.dto';
 
+import { OpenPersonReleaseRequestBodyDto } from '../application/contracts/open-person-release-request.dto';
 import { DecidePersonReleaseService } from '../application/decide-person-release.service';
 import { OpenPersonReleaseRequestService } from '../application/open-person-release-request.service';
 
@@ -45,7 +50,7 @@ export class PersonReleaseRequestController {
   @ApiOkResponse({ description: 'New PersonReleaseRequest id.' })
   public async openReleaseRequest(
     @Param('id', ParseUUIDPipe) personId: string,
-    @Body() body: { reason: string; reasonCode?: string; targetTerminationDate: string },
+    @Body() body: OpenPersonReleaseRequestBodyDto,
     @Req() req: PrincipalRequest,
   ): Promise<{ requestId: string }> {
     const actorId = req.principal?.personId ?? req.principal?.userId ?? 'unknown';
@@ -69,7 +74,7 @@ export class PersonReleaseRequestController {
   @ApiOkResponse({ description: 'Decision result.' })
   public async approveReleaseRequest(
     @Param('requestId', ParseUUIDPipe) requestId: string,
-    @Body() body: { reason?: string } | undefined,
+    @Body() body: OptionalReasonBodyDto | undefined,
     @Req() req: PrincipalRequest,
   ): Promise<unknown> {
     const actorId = req.principal?.personId ?? req.principal?.userId ?? 'unknown';
@@ -93,7 +98,7 @@ export class PersonReleaseRequestController {
   @ApiOkResponse({ description: 'Decision result.' })
   public async rejectReleaseRequest(
     @Param('requestId', ParseUUIDPipe) requestId: string,
-    @Body() body: { reason: string },
+    @Body() body: RequiredReasonBodyDto,
     @Req() req: PrincipalRequest,
   ): Promise<unknown> {
     const actorId = req.principal?.personId ?? req.principal?.userId ?? 'unknown';

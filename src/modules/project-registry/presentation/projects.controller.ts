@@ -28,6 +28,10 @@ import { RequestPrincipal } from '@src/modules/identity-access/application/reque
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { ALL_AUTHENTICATED_ROLES, EXEC_ROLES, PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
+import {
+  OptionalReasonBodyDto,
+  RequiredReasonBodyDto,
+} from '@src/shared/http/reason-body.dto';
 
 import { ActivateProjectService } from '../application/activate-project.service';
 import { DecideProjectActivationService } from '../application/decide-project-activation.service';
@@ -115,7 +119,7 @@ export class ProjectsController {
   @ApiNotFoundResponse({ description: 'Project not found.' })
   public async submitProjectForApproval(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { reason?: string } | undefined,
+    @Body() body: OptionalReasonBodyDto | undefined,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectCreatedResponseDto> {
     const actorId =
@@ -137,7 +141,7 @@ export class ProjectsController {
   @ApiNotFoundResponse({ description: 'Project not found.' })
   public async approveProject(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { reason?: string } | undefined,
+    @Body() body: OptionalReasonBodyDto | undefined,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectCreatedResponseDto> {
     const actorId =
@@ -158,7 +162,7 @@ export class ProjectsController {
   @ApiNotFoundResponse({ description: 'Project not found.' })
   public async rejectProject(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { reason: string },
+    @Body() body: RequiredReasonBodyDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectCreatedResponseDto> {
     const actorId =
