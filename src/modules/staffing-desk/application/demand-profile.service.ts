@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 export interface SkillGapEntry {
@@ -85,7 +86,7 @@ export class DemandProfileService {
         requestId: r.id,
         projectName: projectNameMap.get(r.projectId) ?? r.projectId,
         role: r.role,
-        allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
+        allocationPercent: decimalToNumber(r.allocationPercent),
         priority: prio,
         skills: r.skills,
         headcountRequired: r.headcountRequired,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 export interface TimelineAssignmentBlock {
@@ -195,7 +196,7 @@ export class ProjectTimelineService {
       const block: TimelineRequestBlock = {
         requestId: r.id,
         role: r.role,
-        allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
+        allocationPercent: decimalToNumber(r.allocationPercent),
         priority: r.priority,
         headcountOpen: openHc,
       };
@@ -206,7 +207,7 @@ export class ProjectTimelineService {
         if (rStart <= we && rEnd >= ws) {
           row.weekData[i].requests.push(block);
           // DM-4-3: StaffingRequest.allocationPercent is Decimal(5,2) after 2026-04-22.
-          row.weekData[i].totalDemandPercent += (r.allocationPercent as unknown as { toNumber(): number }).toNumber() * openHc;
+          row.weekData[i].totalDemandPercent += decimalToNumber(r.allocationPercent) * openHc;
         }
       }
     }

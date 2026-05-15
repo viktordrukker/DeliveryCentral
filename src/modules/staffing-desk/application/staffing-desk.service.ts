@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { StaffingDeskQueryDto } from './staffing-desk-query.dto';
@@ -125,7 +126,7 @@ export class StaffingDeskService {
       projectId: r.projectId,
       projectName: projectsById.get(r.projectId) ?? r.projectId,
       role: r.role,
-      allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
+      allocationPercent: decimalToNumber(r.allocationPercent),
       startDate: r.startDate.toISOString(),
       endDate: r.endDate.toISOString(),
       status: r.status,
