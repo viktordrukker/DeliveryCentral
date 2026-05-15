@@ -10,6 +10,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { DecideBudgetChangeService } from './application/decide-budget-change.service';
 import { EffectiveBillRateResolverService } from './application/effective-bill-rate-resolver.service';
 import { FinancialService } from './application/financial.service';
+import { FiscalCalendarService } from './application/fiscal-calendar.service';
 import { FxRateService } from './application/fx-rate.service';
 import { RateCardAdminService } from './application/rate-card-admin.service';
 import { RequestBudgetChangeService } from './application/request-budget-change.service';
@@ -100,6 +101,12 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
         new FxRateService(prisma, flags),
       inject: [PrismaService, PlatformFlagsService],
     },
+    {
+      provide: FiscalCalendarService,
+      useFactory: (prisma: PrismaService, flags: PlatformFlagsService) =>
+        new FiscalCalendarService(prisma, flags),
+      inject: [PrismaService, PlatformFlagsService],
+    },
   ],
   exports: [
     FinancialService,
@@ -108,6 +115,7 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     EffectiveBillRateResolverService,
     RateCardAdminService,
     FxRateService,
+    FiscalCalendarService,
   ],
 })
 export class FinancialGovernanceModule {}
