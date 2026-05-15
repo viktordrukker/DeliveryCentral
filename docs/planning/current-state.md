@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
 
-_Last updated: 2026-05-15 (Sprint F-7 Locale-Agnostic Finalization COMPLETE — PRs #64–#70: tenant-tz/week-aware getWeekStart (D-161), multi-region PublicHoliday (D-163), Intl + date-fns-tz formatters (D-165), FxRate service flag-gated (D-164), FiscalCalendar entities flag-gated (D-160b), locale-flip US↔GB test, architectural-ratchet check-in #2 + F-7 close-true). 55 new tests. Previous: Sprint F-6 (Stability + Perf Ratchets) complete via PRs #57–#63. Sprint F-5 (RBAC + Governance) complete via PRs #49–#56._
+_Last updated: 2026-05-15 (Sprint F-8 Cat-1 Residuals in flight — PR #71 integrations registry shipped (NEW C1-INT-FRAMEWORK), PR #72 M365 auto-provision gate (D-156). Doc sweep marks D-93 period-locks FE, D-114 audit log admin page, D-116 work-evidence self-scope, D-155 OIDC handler, NEW C1-LDAP as shipped per earlier sprints. Previous: Sprint F-7 Locale-Agnostic Finalization COMPLETE — PRs #64–#70. Sprint F-6 (Stability + Perf Ratchets) PRs #57–#63. Sprint F-5 (RBAC + Governance) PRs #49–#56._
 
 ---
 
@@ -38,9 +38,10 @@ _Last updated: 2026-05-15 (Sprint F-7 Locale-Agnostic Finalization COMPLETE — 
 - **Local-account auth:** `/auth/login` + JWT cookies + 2FA + password reset. Functional but local-only (D-155 / Cat-1.1 will add OIDC).
 - **8 platform roles:** `admin`, `director`, `hr_manager`, `resource_manager`, `project_manager`, `delivery_manager`, `employee`, plus `dual-role`. Bank-specific shapes (Squad/Tribe Lead, IT Service Owner) added by tenant admin via D-159 UI on installation; not pre-baked.
 - **Impersonation:** Admin "View as" overlay (CLAUDE.md §8.13). Used by walker-results.json and admin investigation flows.
-- **OIDC handler:** ❌ not yet (D-155 in Cat-1.1). Settings + `openid-client@6.8.2` are wired; route handler missing.
-- **LDAP / AD adapter:** ❌ not yet (Cat-1.1 NEW C1-LDAP).
-- **M365 directory adapter:** read-only stub (`m365-directory-adapter.ts:1-38`); auto-provision missing (D-156 in Cat-1.1).
+- **OIDC handler:** ✅ `/auth/oidc/login` + `/auth/oidc/callback` (Entra-primary, IdP-agnostic) shipped via Sprint F-4.4 / PR #44 (D-155).
+- **LDAP / AD adapter:** ✅ `LdapDirectoryAdapter` mirrors the M365 shape — pulls users + manager hierarchy + group membership; maps groups → platform roles via `ldap.groupRoleMap`. Sprint F-4.7 / PR #47 (NEW C1-LDAP).
+- **M365 directory adapter:** ✅ auto-provision wired — unmatched users create INACTIVE Person rows via `CreateEmployeeService`. Gated by `sso.autoProvisionUsers` (default ON; OFF routes unmatched to UNMATCHED reconciliation for operator review). Sprint F-8.2 (D-156).
+- **Integrations registry:** ✅ uniform admin view at `/admin/integrations/registry` enumerates every adapter (Jira PPM, M365, RADIUS, JSM, LDAP, LLM) with status / configured / reachable / last-sync / summary. Sprint F-8.1 (NEW C1-INT-FRAMEWORK).
 
 ### 2.2 Project + portfolio
 
@@ -66,16 +67,16 @@ _Last updated: 2026-05-15 (Sprint F-7 Locale-Agnostic Finalization COMPLETE — 
 
 - **Timesheets:** weekly approval flow with hash-chained AuditLog. `TimesheetWeek` rows DRAFT/SUBMITTED/APPROVED. CHECK: hours 0..24.
 - **Leave requests:** `LeaveRequestType` (currently a code enum; T-09 D-107 migrates to MetadataDictionary in Cat-2). Approvals via standard chain.
-- **Work evidence:** `WorkEvidence` records. ❌ Today gated to director/admin (D-116 in Cat-1.4 widens self-scope or relocates).
+- **Work evidence:** `WorkEvidence` records. ✅ Self-scope widened — `ALL_AUTHENTICATED_ROLES` can list their own records; privileged roles see the full surface. Shipped in customer-walk sweep `cbf3c64` (D-116).
 - **Overtime:** shipped (DM-4-1 CHECK constraint HPW 0..168; OvertimePolicy + OvertimeException effective-dating).
-- **Period locks:** BE endpoint `POST /admin/period-locks` exists; ❌ admin FE missing (D-93 in Cat-1.5).
+- **Period locks:** ✅ BE endpoint + admin FE `PeriodLocksAdminPage` at `/admin/period-locks` (admin-only). Shipped in Sprint F-2.0a (D-93).
 
 ### 2.5 Cases + governance
 
 - **Case management module:** `cases` BE module + `/cases` FE routes. Approve workflow ✅ FE button wired on CaseDetailsPage (D-91 — Sprint F-3.1 / PR #32).
 - **Budget-change request approval:** ✅ FE button wired on Project BudgetTab (D-92 — Sprint F-3.1 / PR #32).
 - **Audit log:** hash-chained. AuditLog `payload.email` + `actorDisplayName` are NOT redacted on erasure (D-167 in Cat-1.8 closes; redact-payload v1).
-- **Audit log admin page:** ❌ missing FE (D-114 in Cat-1.5; no longer blocked by tenantId since single-tenant).
+- **Audit log admin page:** ✅ `BusinessAuditPage` at `/admin/audit` (HR/director/admin). Filterable + paginated stream of business-action audit rows (D-114).
 - **AuditLog retention:** ❌ no policy / no purge cron (D-168 in Cat-1.8).
 
 ### 2.6 Notifications + nudge + outbox
@@ -153,17 +154,15 @@ For the full breakdown see [`MASTER_TRACKER.md`](MASTER_TRACKER.md) + [`/home/dr
 
 ---
 
-## 5. Highest-value remaining gaps (pre-bank-IT-go-live)
+## 5. Highest-value remaining gaps (post Sprint F-8.1/F-8.2)
 
-Ordered by impact × effort score from Phase 10 synthesis:
+The original Cat-1 list (T-02..T-12, T-18) is largely closed by F-3..F-8. What's left is the long-tail Cat-2/Cat-3 backlog from `MASTER_TRACKER.md` and the Appendix A of `/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`. Top candidates for the next sprint:
 
-1. **T-07 Locale + timezone + week + currency** — bank cannot operate without correct locale handling. Effort: 5–7d.
-2. **T-02 SSO/OIDC handler + M365 auto-provision** — enterprise-blocker. Effort: 8–12d.
-3. **T-06 Multi-currency consolidation (FxRate)** — locale-agnostic architecture requires it. Effort: 7–10d.
-4. **T-05a Fiscal year quick fix** — banks rarely have Jan-1 FY. Effort: 3d.
-5. **T-04 Customizable + deterministic RBAC** — promoted from Cat-2 to Cat-1. Effort: 12–18d (D-130+D-158+D-159).
-6. **T-03 GDPR redact-payload v1** — regulatory blocker for EU/UK banks. Effort: 10–15d.
-7. **T-08 D-110 FK indexes** — hardening + prereq for any future MV work. Effort: 5d.
-8. **T-12 Hot-path queries** — perf safety net. Effort: 3–5d.
-9. **T-11 Outbox producers + DB pool** — production-readiness. Effort: 4–7d.
-10. **T-18 Approval-flow + admin gap completion** — case approve, budget approve, period lock, audit log, /admin/setup. Effort: 6–8d.
+1. **20c-09 / 20c-10 / 20c-11 — DTO + type-safety hygiene** — 25+ inline `@Body()` without DTOs; `any`/`as unknown as` cleanup. Cat-1 hygiene. Effort: 5–7d.
+2. **DM-2.5-8..12 — publicId top-down rollout** — controller-uuid-leak baseline 55 → 0. CLAUDE.md memory rule + security boundary. Effort: 8–12d.
+3. **D-167 v2 — cryptographic forgetting** — moves redact-payload v1 to per-row encryption + key-shred. Required for high-bar EU/UK banks. Cat-3. Effort: 10–14d.
+4. **Outbox consumer audit (post-F-6.5)** — verify `flag.outboxEnabled` flip actually moved fan-out off the request thread on staging. Effort: 2–3d.
+5. **20c-15 — split god dashboard pages (PM/Director/HR)** — internal velocity. Cat-3. Effort: 4–6d.
+6. **DM-5-2 / DM-5-5 — temporal-column rename + uniform createdBy/updatedBy** — schema hygiene. Cat-2. Effort: 3–4d.
+
+The plan-mandated Cat-1 stack (Locale-agnostic, SSO/OIDC, FxRate, FiscalCalendar, RBAC, redact-payload v1, FK indexes, hot-path queries, outbox producers, approval-flow + admin gap completion) is **shipped**.
