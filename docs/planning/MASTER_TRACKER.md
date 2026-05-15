@@ -2871,8 +2871,8 @@ Coverage matrices for all 9 audit columns × 105 models; 12 candidate findings (
 
 13 new debt items + 11 already-correct positives + migration order + ~21 proposed L1 catalog keys, classified across the 5-layer L0..L4 model. Run date 2026-05-10. Source: `docs/planning/research-checkpoints/phase-5.md`.
 
-- [ ] **D-122** — [L1] `StaffingSuggestionsService` skill importance weights (0.5/1.0/2.0) + proficiency match thresholds (1.0/0.6/0.3/0) — 7 PlatformSetting keys. — `customization-debt-register.md`
-- [ ] **D-123** — [L1] `StaffingSuggestionsService` recent-role window (12 months) + recency modifier (1.2) — 2 keys. — `customization-debt-register.md`
+- [x] **D-122** — [L1] `StaffingSuggestionsService` skill importance weights (0.5/1.0/2.0) + proficiency match thresholds (1.0/0.6/0.3/0) — 7 PlatformSetting keys. _shipped: Sprint F-11.3 — 7 keys under `staffing.suggestion.skillWeights.*` + `staffing.suggestion.proficiencyScore.*` added to `DEFAULTS`; service loads via optional `PlatformSettingsService` dep with legacy-default fallback._ — `customization-debt-register.md`
+- [x] **D-123** — [L1] `StaffingSuggestionsService` recent-role window (12 months) + recency modifier (1.2) — 2 keys. _shipped: Sprint F-11.3 — `staffing.suggestion.recentRoleWindowMonths` + `staffing.suggestion.recencyModifier` keys; window now drives `recentRoleCutoff` via `setMonth(-N)`._ — `customization-debt-register.md`
 - [ ] **D-124** — [L1] `AssignmentSlaSweepService` pre-breach warning levels (0.5, 0.75) — already commented as TODO; 2 keys. — `customization-debt-register.md`
 - [ ] **D-125** — [L1] `AssignmentSlaSweepService` risk-score breach threshold (15) — 1 key. — `customization-debt-register.md`
 - [ ] **D-126** — [L1] `NudgeSweeperService` four windows: 60min sweep, 48h proposal-ack, 72h timesheet, 24h dedup — 4 keys. — `customization-debt-register.md`
