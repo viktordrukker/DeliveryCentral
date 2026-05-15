@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
+import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 /* ── Auto-Match types ── */
@@ -471,7 +472,7 @@ export class WorkforcePlannerService {
                 rolePlanId: null,
                 role: r.role,
                 skills: r.skills,
-                allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
+                allocationPercent: decimalToNumber(r.allocationPercent),
                 headcountOpen: openHc,
                 priority: r.priority,
               });
@@ -819,7 +820,7 @@ export class WorkforcePlannerService {
         projectEndsOn: proj?.endsOn ?? null,
         role: r.role,
         skillNames: r.skills,
-        allocationPercent: (r.allocationPercent as unknown as { toNumber(): number }).toNumber(),
+        allocationPercent: decimalToNumber(r.allocationPercent),
         headcountOpen: openHc,
         priority: priorityOrder[r.priority] ?? 2,
         weekStart: clampToHorizon(r.startDate, horizonStart, horizonEnd),
@@ -1445,7 +1446,7 @@ export class WorkforcePlannerService {
     if (asRequest) {
       demandRole = asRequest.role;
       demandSkills = asRequest.skills;
-      demandAlloc = (asRequest.allocationPercent as unknown as { toNumber(): number }).toNumber();
+      demandAlloc = decimalToNumber(asRequest.allocationPercent);
       demandProjectId = asRequest.projectId;
       demandStart = asRequest.startDate;
       demandEnd = asRequest.endDate;
