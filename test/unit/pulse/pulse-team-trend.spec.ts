@@ -1,6 +1,7 @@
 import { PulseService } from '@src/modules/pulse/application/pulse.service';
 import { PulseRepository } from '@src/modules/pulse/infrastructure/pulse.repository';
 import { InAppNotificationService } from '@src/modules/in-app-notifications/application/in-app-notification.service';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 interface FakeEntry {
@@ -50,6 +51,13 @@ function buildPrisma(entries: FakeEntry[]): PrismaService {
 
 const fakeRepo = {} as unknown as PulseRepository;
 const fakeInApp = {} as unknown as InAppNotificationService;
+// F-7.1 — PulseService now consumes tenant tz + weekStartDay from
+// PlatformSettings. Stub returns null for both keys so the service
+// falls back to UTC + Monday (the same shape the tests were written
+// against).
+const fakeSettings = {
+  getRawValue: async () => null,
+} as unknown as PlatformSettingsService;
 
 describe('PulseService.getTeamTrend', () => {
   it('returns a weekly series with avgMood, responseCount and strugglingCount', async () => {
@@ -66,7 +74,7 @@ describe('PulseService.getTeamTrend', () => {
       // This week: empty → avg null
     ];
 
-    const service = new PulseService(fakeRepo, buildPrisma(entries), fakeInApp);
+    const service = new PulseService(fakeRepo, buildPrisma(entries), fakeInApp, fakeSettings);
     const trend = await service.getTeamTrend(['p1', 'p2'], 3);
 
     expect(trend.scopePersonCount).toBe(2);
@@ -82,7 +90,7 @@ describe('PulseService.getTeamTrend', () => {
   });
 
   it('returns an empty trend (zero scope) when no person IDs are supplied', async () => {
-    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp);
+    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp, fakeSettings);
     const trend = await service.getTeamTrend([], 4);
     expect(trend.scopePersonCount).toBe(0);
     expect(trend.weeks).toHaveLength(4);
@@ -94,7 +102,7 @@ describe('PulseService.getTeamTrend', () => {
   });
 
   it('clamps weeks to [1, 52]', async () => {
-    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp);
+    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp, fakeSettings);
     const tooMany = await service.getTeamTrend([], 9999);
     expect(tooMany.weeks).toHaveLength(52);
     const tooFew = await service.getTeamTrend([], 0);
@@ -102,7 +110,7 @@ describe('PulseService.getTeamTrend', () => {
   });
 
   it('produces weekStart dates that are sorted oldest → newest', async () => {
-    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp);
+    const service = new PulseService(fakeRepo, buildPrisma([]), fakeInApp, fakeSettings);
     const trend = await service.getTeamTrend([], 5);
     const dates = trend.weeks.map((w) => w.weekStart);
     const sorted = [...dates].sort();
