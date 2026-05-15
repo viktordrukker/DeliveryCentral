@@ -2217,7 +2217,10 @@ model PublicHoliday {
   id          String   @id @default(uuid()) @db.Uuid
   date        DateTime @db.Date
   name        String
-  countryCode String   @default("AU")
+  // F-7.2 / D-163 — region code (country or sub-region like 'US-CA').
+  // Default removed so multi-region tenants explicitly tag every row.
+  // Existing AU rows continue to work; new rows must specify.
+  countryCode String
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@unique([date, countryCode])
