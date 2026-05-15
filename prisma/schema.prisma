@@ -166,6 +166,8 @@ model PersonReleaseApproval {
   decision      ReleaseApprovalDecision
   reason        String?
   decidedAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime                 @default(now()) @updatedAt @db.Timestamptz(3)
   request       PersonReleaseRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
   actor         Person                   @relation("PersonReleaseApprovalActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
 
@@ -465,6 +467,10 @@ model Person {
   managedOrgUnits                        OrgUnit[]                           @relation("OrgUnitManager")
   managedProjects                        Project[]                           @relation("ProjectManager")
   deliveryManagedProjects                Project[]                           @relation("DeliveryManager")
+  createdProjects                        Project[]                           @relation("ProjectCreatedBy")
+  updatedProjects                        Project[]                           @relation("ProjectUpdatedBy")
+  createdProjectAssignments              ProjectAssignment[]                 @relation("ProjectAssignmentCreatedBy")
+  updatedProjectAssignments              ProjectAssignment[]                 @relation("ProjectAssignmentUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -800,9 +806,13 @@ model Project {
   version               Int                       @default(1)
   createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                  @updatedAt @db.Timestamptz(3)
+  createdByPersonId     String?                   @db.Uuid
+  updatedByPersonId     String?                   @db.Uuid
   archivedAt            DateTime?                 @db.Timestamptz(3)
   deletedAt             DateTime?                 @db.Timestamptz(3)
   projectManager        Person?                   @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  createdByPerson       Person?                   @relation("ProjectCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson       Person?                   @relation("ProjectUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   deliveryManager       Person?                   @relation("DeliveryManager", fields: [deliveryManagerId], references: [id])
   client                Client?                   @relation(fields: [clientId], references: [id])
   externalLinks         ProjectExternalLink[]
@@ -829,6 +839,8 @@ model Project {
   @@index([shape])
   @@index([programId])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@index([name(ops: raw("gin_trgm_ops"))], map: "Project_name_trgm_idx", type: Gin)
   @@map("Project")
 }
@@ -913,8 +925,12 @@ model ProjectAssignment {
   version                  Int                  @default(1)
   createdAt                DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
+  createdByPersonId        String?              @db.Uuid
+  updatedByPersonId        String?              @db.Uuid
   archivedAt               DateTime?            @db.Timestamptz(3)
   person                   Person               @relation("AssignmentPerson", fields: [personId], references: [id])
+  createdByPerson          Person?              @relation("ProjectAssignmentCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson          Person?              @relation("ProjectAssignmentUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   project                  Project              @relation(fields: [projectId], references: [id])
   staffingRequest          StaffingRequest?     @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
   requestedBy              Person?              @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
@@ -932,6 +948,8 @@ model ProjectAssignment {
   @@index([slaStage, slaDueAt])
   @@index([status, slaDueAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("ProjectAssignment")
   @@index([appliedRateCardEntryId])
 }
@@ -2089,6 +2107,8 @@ model StaffingRequestFulfilment {
   assignedPersonId   String
   proposedByPersonId String
   fulfilledAt        DateTime        @default(now()) @db.Timestamptz(3)
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
   request            StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([requestId])
