@@ -13,7 +13,9 @@
  * trail still type-checks; callers that need a sentinel can `?? 0` the
  * input first.
  */
-type DecimalLike = { toNumber(): number };
+interface DecimalLike {
+  toNumber(): number;
+}
 
 function isDecimalLike(value: unknown): value is DecimalLike {
   return (
