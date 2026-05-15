@@ -25,6 +25,10 @@ import {
   BUDGET_ROLES,
 } from '@src/shared/auth/role-presets';
 import { Idempotent } from '@src/shared/http/idempotent.decorator';
+import {
+  OptionalReasonBodyDto,
+  RequiredReasonBodyDto,
+} from '@src/shared/http/reason-body.dto';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BudgetChangeRequestDto } from '../application/contracts/budget-change-request.response';
@@ -158,7 +162,7 @@ export class ProjectBudgetController {
   public async approveBudgetChange(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('approvalId', ParseUUIDPipe) approvalId: string,
-    @Body() body: { reason?: string } | undefined,
+    @Body() body: OptionalReasonBodyDto | undefined,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<unknown> {
     const actorId =
@@ -182,7 +186,7 @@ export class ProjectBudgetController {
   public async rejectBudgetChange(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('approvalId', ParseUUIDPipe) approvalId: string,
-    @Body() body: { reason: string },
+    @Body() body: RequiredReasonBodyDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<unknown> {
     const actorId =
