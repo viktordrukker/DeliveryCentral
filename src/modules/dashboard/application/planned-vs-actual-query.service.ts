@@ -377,24 +377,31 @@ export class PlannedVsActualQueryService {
     });
 
     // ── Staffing coverage summary ──
-    // Also include projects that have open staffing requests but no assignments in the window
+    // Also include projects that have open staffing requests but no assignments in the window.
+    // F-6.3 / D-145 — batch fetch instead of per-id findUnique loop. Avoids N+1 round-trips
+    // when a portfolio has many unstaffed projects open simultaneously.
     const allProjectIdsWithRequests = [...staffingByProject.keys()];
-    for (const pid of allProjectIdsWithRequests) {
-      if (!projectAccMap.has(pid)) {
-        const proj = await this.prisma.project.findUnique({ where: { id: pid }, select: { id: true, name: true, projectCode: true } });
-        if (proj) {
-          const staffing = staffingByProject.get(pid)!;
-          projectSummaries.push({
-            projectId: pid,
-            projectCode: proj.projectCode,
-            projectName: proj.name,
-            plannedHours: 0, approvedHours: 0, submittedHours: 0, draftHours: 0,
-            totalActualHours: 0, assignmentCount: 0,
-            openStaffingRequests: staffing.openRequests,
-            unfilledHeadcount: staffing.unfilledHeadcount,
-            variance: 0, variancePercent: 0, overSubmitted: false,
-          });
-        }
+    const missingProjectIds = allProjectIdsWithRequests.filter((pid) => !projectAccMap.has(pid));
+    if (missingProjectIds.length > 0) {
+      const extraProjects = await this.prisma.project.findMany({
+        where: { id: { in: missingProjectIds } },
+        select: { id: true, name: true, projectCode: true },
+      });
+      const projectById = new Map(extraProjects.map((p) => [p.id, p]));
+      for (const pid of missingProjectIds) {
+        const proj = projectById.get(pid);
+        if (!proj) continue;
+        const staffing = staffingByProject.get(pid)!;
+        projectSummaries.push({
+          projectId: pid,
+          projectCode: proj.projectCode,
+          projectName: proj.name,
+          plannedHours: 0, approvedHours: 0, submittedHours: 0, draftHours: 0,
+          totalActualHours: 0, assignmentCount: 0,
+          openStaffingRequests: staffing.openRequests,
+          unfilledHeadcount: staffing.unfilledHeadcount,
+          variance: 0, variancePercent: 0, overSubmitted: false,
+        });
       }
     }
 
