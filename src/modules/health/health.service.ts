@@ -143,6 +143,12 @@ export class HealthService {
       latencyMs: number | null;
       error?: string;
     };
+    outbox: {
+      pending: number;
+      retry: number;
+      failed: number;
+      oldestPendingAgeSeconds: number | null;
+    };
     status: 'ready' | 'degraded';
     timestamp: string;
   }> {
@@ -223,6 +229,12 @@ export class HealthService {
       ...(ldapProbe.error ? { error: ldapProbe.error } : {}),
     };
 
+    // F-9.1 / Sprint F-9 — outbox consumer audit. Surfaces the queue depth +
+    // the age of the oldest unpublished row so operators can spot consumer
+    // stalls without grepping Prometheus. Backlog metric `dc_outbox_events_backlog`
+    // is still the live gauge — this block is the snapshot for /api/health/deep.
+    const outbox = await this.getOutboxSnapshot();
+
     const overall = results.some((r) => r.status === 'degraded') ? 'degraded' : 'ready';
 
     return {
@@ -230,9 +242,36 @@ export class HealthService {
       llm,
       jsm,
       ldap,
+      outbox,
       status: overall,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  private async getOutboxSnapshot(): Promise<{
+    pending: number;
+    retry: number;
+    failed: number;
+    oldestPendingAgeSeconds: number | null;
+  }> {
+    try {
+      const [pending, retry, failed, oldest] = await Promise.all([
+        this.prisma.outboxEvent.count({ where: { status: 'PENDING' } }),
+        this.prisma.outboxEvent.count({ where: { status: 'RETRY' } }),
+        this.prisma.outboxEvent.count({ where: { status: 'FAILED' } }),
+        this.prisma.outboxEvent.findFirst({
+          where: { status: { in: ['PENDING', 'RETRY'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { createdAt: true },
+        }),
+      ]);
+      const oldestPendingAgeSeconds = oldest
+        ? Math.floor((Date.now() - oldest.createdAt.getTime()) / 1000)
+        : null;
+      return { pending, retry, failed, oldestPendingAgeSeconds };
+    } catch {
+      return { pending: 0, retry: 0, failed: 0, oldestPendingAgeSeconds: null };
+    }
   }
 
   public async getDiagnostics(): Promise<{
