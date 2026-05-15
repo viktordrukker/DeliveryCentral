@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { NotificationTemplate } from '../../../domain/entities/notification-template.entity';
 import { NotificationTemplateRepositoryPort } from '../../../domain/repositories/notification-template-repository.port';
 import { NotificationsPrismaMapper } from './notifications-prisma.mapper';
@@ -9,7 +11,16 @@ interface Gateway {
   upsert(args: any): Promise<unknown>;
 }
 
+/**
+ * F-6.2 / D-144 — cap on listActive(). Template tables are small (~50
+ * rows in a typical tenant) so this is defensive; if a tenant adds
+ * thousands of templates the warn log surfaces it before perf degrades.
+ */
+const LIST_ACTIVE_MAX = 500;
+
 export class PrismaNotificationTemplateRepository implements NotificationTemplateRepositoryPort {
+  private readonly logger = new Logger(PrismaNotificationTemplateRepository.name);
+
   public constructor(private readonly gateway: Gateway) {}
 
   public async delete(id: string): Promise<void> {
@@ -27,7 +38,16 @@ export class PrismaNotificationTemplateRepository implements NotificationTemplat
   }
 
   public async listActive(): Promise<NotificationTemplate[]> {
-    const records = await this.gateway.findMany({ where: { archivedAt: null } });
+    const records = await this.gateway.findMany({
+      where: { archivedAt: null },
+      orderBy: { templateKey: 'asc' },
+      take: LIST_ACTIVE_MAX,
+    });
+    if (records.length === LIST_ACTIVE_MAX) {
+      this.logger.warn(
+        `listActive() hit the ${LIST_ACTIVE_MAX}-row cap; some templates omitted.`,
+      );
+    }
     return records.map((record) => NotificationsPrismaMapper.toNotificationTemplate(record));
   }
 
