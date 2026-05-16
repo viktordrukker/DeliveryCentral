@@ -227,14 +227,20 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },
   { allowedRoles: ADMIN_ROLES, description: 'Consolidated operator-facing control surface for configuration and platform settings.', group: 'admin', navVisible: true, path: '/admin', title: 'Admin' },
-  { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Metadata-backed dictionary management for people-related configuration.', group: 'admin', navVisible: true, path: '/admin/dictionaries', title: 'Admin Dictionaries' },
+  // F-12.4 / D-101 — legacy HR-scoped dictionary admin consolidated
+  // into /metadata-admin. Route stays registered (deep-linked bookmarks
+  // redirect via router.tsx) but is hidden from the sidebar.
+  { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Legacy HR dictionary admin — redirects to /metadata-admin (D-101).', group: 'admin', navVisible: false, path: '/admin/dictionaries', title: 'Admin Dictionaries (legacy)' },
   { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Business-action audit trail for investigation and governance workflows.', group: 'admin', navVisible: true, path: '/admin/audit', title: 'Business Audit' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Notification channel and template management.', group: 'admin', navVisible: true, path: '/admin/notifications', title: 'Admin Notifications' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'External provider health and synchronization.', group: 'admin', navVisible: true, path: '/admin/integrations', title: 'Admin Integrations' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status and last-sync.', group: 'admin', navVisible: true, path: '/admin/integrations/registry', title: 'Integrations Registry' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin', navVisible: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'governance', navVisible: true, path: '/integrations', title: 'Integrations' },
-  { allowedRoles: ADMIN_ROLES, description: 'Metadata, validation, and administrative configuration.', group: 'admin', navVisible: true, path: '/metadata-admin', title: 'Metadata / Admin' },
+  // F-12.4 / D-101 — widened from ADMIN_ROLES to HR_DIRECTOR_ADMIN_ROLES
+  // so HR/Director keep their dictionary-admin access after the legacy
+  // /admin/dictionaries route consolidated into this one.
+  { allowedRoles: HR_DIRECTOR_ADMIN_ROLES, description: 'Metadata, validation, and administrative configuration (unified dictionary admin per D-101).', group: 'admin', navVisible: true, path: '/metadata-admin', title: 'Metadata / Admin' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure platform-wide behaviour: timesheets, capitalisation, pulse, notifications, and security.', group: 'admin', navVisible: true, path: '/admin/settings', title: 'Platform Settings' },
   // F-2.0a (D-93) — admin Period Locks UI on top of the existing backend
   // /admin/period-locks endpoints. Blocks edits to historical periods.

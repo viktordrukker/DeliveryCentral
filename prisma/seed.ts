@@ -162,6 +162,83 @@ async function seedMetadata(): Promise<void> {
       entityType: 'StaffingRequest',
       isSystemManaged: false,
     },
+    // ─── F-12.1 / D-107 — 9 Prisma enums mirrored as MetadataDictionary
+    //     dictionaries. Enum columns stay as the source of truth for
+    //     type-safety; the dictionary provides admin-extensible display
+    //     labels + per-tenant rename via `displayName`. Apps look up
+    //     `entry.displayName` for FE rendering (D-131 in F-12.3).
+    {
+      id: '42222222-0000-0000-0000-000000000501',
+      dictionaryKey: 'risk-type',
+      displayName: 'Risk Types',
+      description: 'D-107 — mirrors the Prisma `RiskType` enum. Admins rename labels via this dictionary.',
+      entityType: 'ProjectRisk',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000502',
+      dictionaryKey: 'risk-category',
+      displayName: 'Risk Categories',
+      description: 'D-107 — mirrors the Prisma `RiskCategory` enum.',
+      entityType: 'ProjectRisk',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000503',
+      dictionaryKey: 'risk-strategy',
+      displayName: 'Risk Response Strategies',
+      description: 'D-107 — mirrors the Prisma `RiskStrategy` enum.',
+      entityType: 'ProjectRisk',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000504',
+      dictionaryKey: 'risk-status',
+      displayName: 'Risk Statuses',
+      description: 'D-107 — mirrors the Prisma `RiskStatus` enum.',
+      entityType: 'ProjectRisk',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000505',
+      dictionaryKey: 'risk-review-cadence',
+      displayName: 'Risk Review Cadences',
+      description: 'F-12.2 / D-128 — mirrors the Prisma `RiskReviewCadence` enum AND stores cadence-to-days mapping in `entryValue` (e.g. WEEKLY=7, FORTNIGHTLY=14). Service reads days via dictionary instead of hardcoded switch.',
+      entityType: 'ProjectRisk',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000601',
+      dictionaryKey: 'case-status',
+      displayName: 'Case Statuses',
+      description: 'D-107 — mirrors the Prisma `CaseStatus` enum.',
+      entityType: 'CaseRecord',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000602',
+      dictionaryKey: 'case-participant-role',
+      displayName: 'Case Participant Roles',
+      description: 'D-107 — mirrors the Prisma `CaseParticipantRole` enum.',
+      entityType: 'CaseParticipant',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000701',
+      dictionaryKey: 'leave-request-type',
+      displayName: 'Leave Request Types',
+      description: 'D-107 — mirrors the Prisma `LeaveRequestType` enum.',
+      entityType: 'LeaveRequest',
+      isSystemManaged: true,
+    },
+    {
+      id: '42222222-0000-0000-0000-000000000702',
+      dictionaryKey: 'leave-request-status',
+      displayName: 'Leave Request Statuses',
+      description: 'D-107 — mirrors the Prisma `LeaveRequestStatus` enum.',
+      entityType: 'LeaveRequest',
+      isSystemManaged: true,
+    },
   ];
 
   for (const dict of dictionaries) {
@@ -272,6 +349,66 @@ async function seedMetadata(): Promise<void> {
     { id: '43333333-0000-0000-0000-000000000738', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'DATABASE_ADMINISTRATOR',     entryValue: 'Database Administrator',     displayName: 'Database Administrator',     sortOrder: 38, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000739', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'SUPPORT_ENGINEER',           entryValue: 'Support Engineer',           displayName: 'Support Engineer',           sortOrder: 39, isEnabled: true },
     { id: '43333333-0000-0000-0000-000000000740', metadataDictionaryId: '42222222-0000-0000-0000-000000000401', entryKey: 'INTEGRATION_SPECIALIST',     entryValue: 'Integration Specialist',     displayName: 'Integration Specialist',     sortOrder: 40, isEnabled: true },
+    // ─── F-12.1 / D-107 — risk-type entries (mirrors RiskType enum) ───
+    { id: '43333333-0000-0000-0000-000000000801', metadataDictionaryId: '42222222-0000-0000-0000-000000000501', entryKey: 'RISK',  entryValue: 'RISK',  displayName: 'Risk',  sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000802', metadataDictionaryId: '42222222-0000-0000-0000-000000000501', entryKey: 'ISSUE', entryValue: 'ISSUE', displayName: 'Issue', sortOrder: 2, isEnabled: true },
+    // risk-category entries (mirrors RiskCategory enum)
+    { id: '43333333-0000-0000-0000-000000000811', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'SCOPE',       entryValue: 'SCOPE',       displayName: 'Scope',       sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000812', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'SCHEDULE',    entryValue: 'SCHEDULE',    displayName: 'Schedule',    sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000813', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'BUDGET',      entryValue: 'BUDGET',      displayName: 'Budget',      sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000814', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'BUSINESS',    entryValue: 'BUSINESS',    displayName: 'Business',    sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000815', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'TECHNICAL',   entryValue: 'TECHNICAL',   displayName: 'Technical',   sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000816', metadataDictionaryId: '42222222-0000-0000-0000-000000000502', entryKey: 'OPERATIONAL', entryValue: 'OPERATIONAL', displayName: 'Operational', sortOrder: 6, isEnabled: true },
+    // risk-strategy entries (mirrors RiskStrategy enum)
+    { id: '43333333-0000-0000-0000-000000000821', metadataDictionaryId: '42222222-0000-0000-0000-000000000503', entryKey: 'MITIGATE', entryValue: 'MITIGATE', displayName: 'Mitigate', sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000822', metadataDictionaryId: '42222222-0000-0000-0000-000000000503', entryKey: 'ACCEPT',   entryValue: 'ACCEPT',   displayName: 'Accept',   sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000823', metadataDictionaryId: '42222222-0000-0000-0000-000000000503', entryKey: 'TRANSFER', entryValue: 'TRANSFER', displayName: 'Transfer', sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000824', metadataDictionaryId: '42222222-0000-0000-0000-000000000503', entryKey: 'AVOID',    entryValue: 'AVOID',    displayName: 'Avoid',    sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000825', metadataDictionaryId: '42222222-0000-0000-0000-000000000503', entryKey: 'ESCALATE', entryValue: 'ESCALATE', displayName: 'Escalate', sortOrder: 5, isEnabled: true },
+    // risk-status entries (mirrors RiskStatus enum)
+    { id: '43333333-0000-0000-0000-000000000831', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'IDENTIFIED',          entryValue: 'IDENTIFIED',          displayName: 'Identified',          sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000832', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'ASSESSED',            entryValue: 'ASSESSED',            displayName: 'Assessed',            sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000833', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'MITIGATING',          entryValue: 'MITIGATING',          displayName: 'Mitigating',          sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000834', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'RESOLVED',            entryValue: 'RESOLVED',            displayName: 'Resolved',            sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000835', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'CLOSED',              entryValue: 'CLOSED',              displayName: 'Closed',              sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000836', metadataDictionaryId: '42222222-0000-0000-0000-000000000504', entryKey: 'CONVERTED_TO_ISSUE',  entryValue: 'CONVERTED_TO_ISSUE',  displayName: 'Converted to Issue',  sortOrder: 6, isEnabled: true },
+    // F-12.2 / D-128 — risk-review-cadence entries. `entryValue` carries
+    // the cadence-to-days mapping (so the service no longer hardcodes the switch).
+    { id: '43333333-0000-0000-0000-000000000841', metadataDictionaryId: '42222222-0000-0000-0000-000000000505', entryKey: 'WEEKLY',      entryValue: '7',  displayName: 'Weekly',      sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000842', metadataDictionaryId: '42222222-0000-0000-0000-000000000505', entryKey: 'FORTNIGHTLY', entryValue: '14', displayName: 'Fortnightly', sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000843', metadataDictionaryId: '42222222-0000-0000-0000-000000000505', entryKey: 'MONTHLY',     entryValue: '30', displayName: 'Monthly',     sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000844', metadataDictionaryId: '42222222-0000-0000-0000-000000000505', entryKey: 'QUARTERLY',   entryValue: '90', displayName: 'Quarterly',   sortOrder: 4, isEnabled: true },
+    // case-status entries (mirrors CaseStatus enum)
+    { id: '43333333-0000-0000-0000-000000000851', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'OPEN',        entryValue: 'OPEN',        displayName: 'Open',        sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000852', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'IN_PROGRESS', entryValue: 'IN_PROGRESS', displayName: 'In Progress', sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000853', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'APPROVED',    entryValue: 'APPROVED',    displayName: 'Approved',    sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000854', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'REJECTED',    entryValue: 'REJECTED',    displayName: 'Rejected',    sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000855', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'COMPLETED',   entryValue: 'COMPLETED',   displayName: 'Completed',   sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000856', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'CANCELLED',   entryValue: 'CANCELLED',   displayName: 'Cancelled',   sortOrder: 6, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000857', metadataDictionaryId: '42222222-0000-0000-0000-000000000601', entryKey: 'ARCHIVED',    entryValue: 'ARCHIVED',    displayName: 'Archived',    sortOrder: 7, isEnabled: true },
+    // case-participant-role entries (mirrors CaseParticipantRole enum)
+    { id: '43333333-0000-0000-0000-000000000861', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'SUBJECT',   entryValue: 'SUBJECT',   displayName: 'Subject',   sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000862', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'REQUESTER', entryValue: 'REQUESTER', displayName: 'Requester', sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000863', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'APPROVER',  entryValue: 'APPROVER',  displayName: 'Approver',  sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000864', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'REVIEWER',  entryValue: 'REVIEWER',  displayName: 'Reviewer',  sortOrder: 4, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000865', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'OBSERVER',  entryValue: 'OBSERVER',  displayName: 'Observer',  sortOrder: 5, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000866', metadataDictionaryId: '42222222-0000-0000-0000-000000000602', entryKey: 'OPERATOR',  entryValue: 'OPERATOR',  displayName: 'Operator',  sortOrder: 6, isEnabled: true },
+    // leave-request-type entries (mirrors LeaveRequestType enum)
+    { id: '43333333-0000-0000-0000-000000000871', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'ANNUAL',        entryValue: 'ANNUAL',        displayName: 'Annual Leave',        sortOrder: 1,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000872', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'SICK',          entryValue: 'SICK',          displayName: 'Sick Leave',          sortOrder: 2,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000873', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'PARENTAL',      entryValue: 'PARENTAL',      displayName: 'Parental Leave',      sortOrder: 3,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000874', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'COMPASSIONATE', entryValue: 'COMPASSIONATE', displayName: 'Compassionate Leave', sortOrder: 4,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000875', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'UNPAID',        entryValue: 'UNPAID',        displayName: 'Unpaid Leave',        sortOrder: 5,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000876', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'OTHER',         entryValue: 'OTHER',         displayName: 'Other',               sortOrder: 6,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000877', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'OT_OFF',        entryValue: 'OT_OFF',        displayName: 'OT Time-off',         sortOrder: 7,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000878', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'PERSONAL',      entryValue: 'PERSONAL',      displayName: 'Personal Leave',      sortOrder: 8,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000879', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'BEREAVEMENT',   entryValue: 'BEREAVEMENT',   displayName: 'Bereavement Leave',   sortOrder: 9,  isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000880', metadataDictionaryId: '42222222-0000-0000-0000-000000000701', entryKey: 'STUDY',         entryValue: 'STUDY',         displayName: 'Study Leave',         sortOrder: 10, isEnabled: true },
+    // leave-request-status entries (mirrors LeaveRequestStatus enum)
+    { id: '43333333-0000-0000-0000-000000000891', metadataDictionaryId: '42222222-0000-0000-0000-000000000702', entryKey: 'PENDING',   entryValue: 'PENDING',   displayName: 'Pending',   sortOrder: 1, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000892', metadataDictionaryId: '42222222-0000-0000-0000-000000000702', entryKey: 'APPROVED',  entryValue: 'APPROVED',  displayName: 'Approved',  sortOrder: 2, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000893', metadataDictionaryId: '42222222-0000-0000-0000-000000000702', entryKey: 'REJECTED',  entryValue: 'REJECTED',  displayName: 'Rejected',  sortOrder: 3, isEnabled: true },
+    { id: '43333333-0000-0000-0000-000000000894', metadataDictionaryId: '42222222-0000-0000-0000-000000000702', entryKey: 'CANCELLED', entryValue: 'CANCELLED', displayName: 'Cancelled', sortOrder: 4, isEnabled: true },
   ];
 
   for (const entry of entries) {

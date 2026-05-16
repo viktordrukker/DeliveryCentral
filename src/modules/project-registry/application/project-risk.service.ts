@@ -36,6 +36,13 @@ export function deriveRiskCadence(impact: number, probability: number): RiskRevi
   return 'QUARTERLY';
 }
 
+/**
+ * F-12.2 / D-128 — cadence-to-days mapping. This pure helper remains
+ * the canonical fallback (used by `project-exceptions.service.ts`).
+ * Tenants that customize cadence days via the `risk-review-cadence`
+ * MetadataDictionary entries' `entryValue` can opt into the
+ * dictionary-driven path via `ProjectRiskService.loadCadenceDays()`.
+ */
 export function cadenceDays(cadence: RiskReviewCadence): number {
   switch (cadence) {
     case 'WEEKLY':
@@ -63,6 +70,51 @@ export class ProjectRiskService {
     const raw = await this.platformSettings.getRawValue(key);
     if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
     return fallback;
+  }
+
+  /**
+   * F-12.2 / D-128 — dictionary-driven cadence-to-days mapping.
+   * Reads the `risk-review-cadence` MetadataDictionary entries (seeded
+   * in F-12.1) whose `entryValue` holds the day count for each cadence
+   * (`WEEKLY=7`, `FORTNIGHTLY=14`, `MONTHLY=30`, `QUARTERLY=90`).
+   *
+   * Falls back to the pure `cadenceDays()` helper per cadence whenever
+   * the dictionary row is missing or carries a non-numeric value, so
+   * tenants on a fresh install (pre-seed) still get the legacy defaults.
+   */
+  public async loadCadenceDays(): Promise<Record<RiskReviewCadence, number>> {
+    const fallbackMap: Record<RiskReviewCadence, number> = {
+      WEEKLY: cadenceDays('WEEKLY'),
+      FORTNIGHTLY: cadenceDays('FORTNIGHTLY'),
+      MONTHLY: cadenceDays('MONTHLY'),
+      QUARTERLY: cadenceDays('QUARTERLY'),
+    };
+
+    try {
+      const dictionary = await this.prisma.metadataDictionary.findFirst({
+        where: { dictionaryKey: 'risk-review-cadence' },
+        select: { id: true },
+      });
+      if (!dictionary) return fallbackMap;
+
+      const entries = await this.prisma.metadataEntry.findMany({
+        where: { metadataDictionaryId: dictionary.id, isEnabled: true, archivedAt: null },
+        select: { entryKey: true, entryValue: true },
+      });
+
+      const out = { ...fallbackMap };
+      for (const e of entries) {
+        const days = Number(e.entryValue);
+        if (Number.isFinite(days) && days > 0 && e.entryKey in fallbackMap) {
+          out[e.entryKey as RiskReviewCadence] = days;
+        }
+      }
+      return out;
+    } catch {
+      // Dictionary unavailable (fresh install pre-seed, transient DB error) —
+      // fall through to the pure-helper defaults.
+      return fallbackMap;
+    }
   }
 
   public async create(projectId: string, dto: CreateProjectRiskDto): Promise<ProjectRiskResponseDto> {
