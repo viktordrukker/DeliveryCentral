@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 export interface ClosureReadinessResult {
@@ -14,9 +15,23 @@ export interface ClosureReadinessResult {
   blockers: string[];
 }
 
+// F-11.7 / D-129 — budget variance threshold above which closure
+// is blocked. Default 10 (= +10% over budget); admin-tunable.
+const DEFAULT_BUDGET_VARIANCE_THRESHOLD_PERCENT = 10;
+
 @Injectable()
 export class ProjectClosureReadinessService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly platformSettings?: PlatformSettingsService,
+  ) {}
+
+  private async numberSetting(key: string, fallback: number): Promise<number> {
+    if (!this.platformSettings) return fallback;
+    const raw = await this.platformSettings.getRawValue(key);
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    return fallback;
+  }
 
   public async checkClosureReadiness(projectId: string): Promise<ClosureReadinessResult> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
@@ -65,7 +80,11 @@ export class ProjectClosureReadinessService {
       });
       const estimatedCost = Number(totalHours._sum?.hours ?? 0) * 100;
       budgetVariancePercent = totalBudget > 0 ? Math.round(((estimatedCost - totalBudget) / totalBudget) * 100) : 0;
-      if (budgetVariancePercent > 10) {
+      const varianceThreshold = await this.numberSetting(
+        'project.closure.budgetVarianceThresholdPercent',
+        DEFAULT_BUDGET_VARIANCE_THRESHOLD_PERCENT,
+      );
+      if (budgetVariancePercent > varianceThreshold) {
         blockers.push(`Budget overrun: ${budgetVariancePercent}% over budget.`);
       }
     }
