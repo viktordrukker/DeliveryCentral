@@ -23,10 +23,16 @@ interface PreBreachCandidateRow extends BreachedRow {
 const KEY_INTERVAL = 'assignment.sla.sweepIntervalMinutes';
 const DEFAULT_INTERVAL_MINUTES = 15;
 
-// HD-10 — pre-breach warning thresholds. Hardcoded; later iterations
-// can pull from PlatformSetting if we need per-tenant tuning.
-const PRE_BREACH_LEVEL_50 = 0.5;
-const PRE_BREACH_LEVEL_75 = 0.75;
+// F-11.4 / D-124 — pre-breach warning thresholds resolved from the
+// `assignment.sla.warningPercents` PlatformSetting (default `[50, 75]`).
+// Service still operates on exactly two columns (`slaWarnedAt50pct`,
+// `slaWarnedAt75pct`) so the schema doesn't change; the array first
+// two entries are interpreted as the lower (50pct column) + upper
+// (75pct column) thresholds. Out-of-range / non-numeric values fall
+// back to the legacy 0.5 / 0.75.
+const KEY_WARNING_PERCENTS = 'assignment.sla.warningPercents';
+const DEFAULT_PRE_BREACH_LEVEL_LOW = 0.5;
+const DEFAULT_PRE_BREACH_LEVEL_HIGH = 0.75;
 
 @Injectable()
 export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy {
@@ -79,16 +85,17 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
     }
 
     const candidates = await this.findPreBreachCandidates(now);
+    const { low: levelLow, high: levelHigh } = await this.loadPreBreachLevels();
     let warned50 = 0;
     let warned75 = 0;
     for (const row of candidates) {
       const fraction = this.elapsedFraction(now, row.requestedAt, row.slaDueAt!);
-      if (fraction >= PRE_BREACH_LEVEL_75 && !row.slaWarnedAt75pct) {
+      if (fraction >= levelHigh && !row.slaWarnedAt75pct) {
         await this.markWarned(row.id, '75pct', now);
         await this.recordPreBreach(row, '75pct', fraction);
         this.metrics?.incSlaPreBreachWarned('75pct', row.slaStage ?? 'UNKNOWN');
         warned75 += 1;
-      } else if (fraction >= PRE_BREACH_LEVEL_50 && !row.slaWarnedAt50pct) {
+      } else if (fraction >= levelLow && !row.slaWarnedAt50pct) {
         await this.markWarned(row.id, '50pct', now);
         await this.recordPreBreach(row, '50pct', fraction);
         this.metrics?.incSlaPreBreachWarned('50pct', row.slaStage ?? 'UNKNOWN');
@@ -133,6 +140,39 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
     if (minutes < 1) minutes = 1;
     if (minutes > 1440) minutes = 1440;
     return minutes * 60 * 1000;
+  }
+
+  /**
+   * F-11.4 / D-124 — resolve pre-breach thresholds from
+   * `assignment.sla.warningPercents` (e.g. `[50, 75]` → low=0.5, high=0.75).
+   * Out-of-range / wrong-type values fall back to the legacy hardcoded
+   * 0.5 / 0.75 so an empty PlatformSetting table doesn't break the sweep.
+   */
+  private async loadPreBreachLevels(): Promise<{ low: number; high: number }> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({
+        where: { key: KEY_WARNING_PERCENTS },
+      });
+      const value = row?.value;
+      if (Array.isArray(value) && value.length >= 2) {
+        const lowRaw = Number(value[0]);
+        const highRaw = Number(value[1]);
+        const low =
+          Number.isFinite(lowRaw) && lowRaw >= 0 && lowRaw <= 100
+            ? lowRaw / 100
+            : DEFAULT_PRE_BREACH_LEVEL_LOW;
+        const high =
+          Number.isFinite(highRaw) && highRaw >= 0 && highRaw <= 100
+            ? highRaw / 100
+            : DEFAULT_PRE_BREACH_LEVEL_HIGH;
+        // Defensive: ensure ordering. If admin set [75, 50] mistakenly,
+        // swap so the higher value still gates the 75pct column.
+        return low <= high ? { low, high } : { low: high, high: low };
+      }
+    } catch {
+      // PlatformSetting unavailable → fall through to defaults.
+    }
+    return { low: DEFAULT_PRE_BREACH_LEVEL_LOW, high: DEFAULT_PRE_BREACH_LEVEL_HIGH };
   }
 
   private async findBreached(now: Date): Promise<BreachedRow[]> {
