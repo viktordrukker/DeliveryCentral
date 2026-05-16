@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { RiskCategory, RiskReviewCadence, RiskStatus, RiskType } from '@prisma/client';
 
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import {
@@ -10,6 +11,12 @@ import {
   RiskMatrixCellDto,
   RiskSummaryDto,
 } from './contracts/project-risk.dto';
+
+// F-11.6 / D-127 — risk authoring defaults + critical-score threshold,
+// resolved from PlatformSettings with safe fallbacks.
+const DEFAULT_RISK_PROBABILITY = 3;
+const DEFAULT_RISK_IMPACT = 3;
+const DEFAULT_CRITICAL_SCORE_THRESHOLD = 15;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,14 +53,26 @@ export function cadenceDays(cadence: RiskReviewCadence): number {
 
 @Injectable()
 export class ProjectRiskService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly platformSettings?: PlatformSettingsService,
+  ) {}
+
+  private async numberSetting(key: string, fallback: number): Promise<number> {
+    if (!this.platformSettings) return fallback;
+    const raw = await this.platformSettings.getRawValue(key);
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    return fallback;
+  }
 
   public async create(projectId: string, dto: CreateProjectRiskDto): Promise<ProjectRiskResponseDto> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found.');
 
-    const probability = dto.probability ?? 3;
-    const impact = dto.impact ?? 3;
+    const probability =
+      dto.probability ?? (await this.numberSetting('project.risk.defaultProbability', DEFAULT_RISK_PROBABILITY));
+    const impact =
+      dto.impact ?? (await this.numberSetting('project.risk.defaultImpact', DEFAULT_RISK_IMPACT));
     const risk = await this.prisma.projectRisk.create({
       data: {
         projectId,
@@ -212,8 +231,12 @@ export class ProjectRiskService {
     const totalIssues = all.filter((r) => r.riskType === 'ISSUE').length;
     const openRisks = all.filter((r) => r.riskType === 'RISK' && OPEN_STATUSES.includes(r.status)).length;
     const openIssues = all.filter((r) => r.riskType === 'ISSUE' && OPEN_STATUSES.includes(r.status)).length;
+    const criticalThreshold = await this.numberSetting(
+      'project.risk.criticalScoreThreshold',
+      DEFAULT_CRITICAL_SCORE_THRESHOLD,
+    );
     const criticalCount = all.filter(
-      (r) => OPEN_STATUSES.includes(r.status) && r.probability * r.impact >= 15,
+      (r) => OPEN_STATUSES.includes(r.status) && r.probability * r.impact >= criticalThreshold,
     ).length;
 
     const openItems = all
