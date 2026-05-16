@@ -110,6 +110,18 @@ const DEFAULTS: Record<string, unknown> = {
   'assignment.matching.weights.tz': 2,
   'assignment.matching.weights.cert': 5,
   'assignment.nudge.cooldownHours': 24,
+  // F-11.3 / D-122 — StaffingSuggestionsService skill-importance weights.
+  // Service falls back to these defaults when no tenant override is set.
+  'staffing.suggestion.skillWeights.niceToHave': 0.5,
+  'staffing.suggestion.skillWeights.preferred': 1.0,
+  'staffing.suggestion.skillWeights.required': 2.0,
+  'staffing.suggestion.proficiencyScore.exact': 1.0,
+  'staffing.suggestion.proficiencyScore.oneOff': 0.6,
+  'staffing.suggestion.proficiencyScore.twoOff': 0.3,
+  'staffing.suggestion.proficiencyScore.threeOrMoreOff': 0,
+  // F-11.3 / D-123 — recent-role window + recency modifier.
+  'staffing.suggestion.recentRoleWindowMonths': 12,
+  'staffing.suggestion.recencyModifier': 1.2,
   // ─── Setup wizard sentinels ─────────────────────────────────────────
   'setup.completedAt': null,
   'setup.profile': null,

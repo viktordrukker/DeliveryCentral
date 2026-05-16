@@ -8,6 +8,8 @@ import { CreateProjectAssignmentService } from '../assignments/application/creat
 import { AuditLoggerService } from '../audit-observability/application/audit-logger.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
+import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '../platform-settings/application/platform-settings.service';
 
 import { DeriveStaffingRequestStatusService } from './application/derive-staffing-request-status.service';
 import { NudgeStaffingRequestService } from './application/nudge-staffing-request.service';
@@ -25,6 +27,7 @@ import { StaffingRequestsController } from './presentation/staffing-requests.con
     forwardRef(() => AssignmentsModule),
     AuditObservabilityModule,
     NotificationsModule,
+    PlatformSettingsModule,
   ],
   controllers: [StaffingRequestsController],
   exports: [InMemoryStaffingRequestService, DeriveStaffingRequestStatusService, StaffingProposalSlateService],
@@ -35,8 +38,9 @@ import { StaffingRequestsController } from './presentation/staffing-requests.con
     PrismaStaffingRequestProposalSlateRepository,
     {
       provide: StaffingSuggestionsService,
-      useFactory: (prisma: PrismaService) => new StaffingSuggestionsService(prisma),
-      inject: [PrismaService],
+      useFactory: (prisma: PrismaService, settings: PlatformSettingsService) =>
+        new StaffingSuggestionsService(prisma, settings),
+      inject: [PrismaService, PlatformSettingsService],
     },
     {
       provide: STAFFING_REQUEST_PROPOSAL_SLATE_REPOSITORY,
