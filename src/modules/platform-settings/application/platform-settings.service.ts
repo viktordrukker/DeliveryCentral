@@ -130,6 +130,14 @@ const DEFAULTS: Record<string, unknown> = {
   'staffing.proposalAck.slaHours': 48,
   'timesheet.submission.slaHours': 72,
   'nudge.dedup.hours': 24,
+  // F-11.6 / D-127 — ProjectRiskService authoring defaults +
+  // critical-score threshold. `defaultProbability` × `defaultImpact`
+  // gives the initial seed when an author omits them; risks with
+  // `probability × impact >= criticalScoreThreshold` (open status)
+  // surface in `criticalCount` on the risk summary.
+  'project.risk.defaultProbability': 3,
+  'project.risk.defaultImpact': 3,
+  'project.risk.criticalScoreThreshold': 15,
   // ─── Setup wizard sentinels ─────────────────────────────────────────
   'setup.completedAt': null,
   'setup.profile': null,

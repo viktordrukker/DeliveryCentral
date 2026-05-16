@@ -8,6 +8,7 @@ import { ResponsibilityResolverService } from '@src/modules/identity-access/appl
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { CreateProjectAssignmentService } from '../assignments/application/create-project-assignment.service';
 import { InMemoryProjectAssignmentRepository } from '../assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryPersonRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person.repository';
@@ -83,6 +84,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     NotificationsModule,
     PulseModule,
     InAppNotificationsModule,
+    PlatformSettingsModule,
   ],
   controllers: [
     ProjectsController,
