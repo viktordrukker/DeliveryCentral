@@ -138,6 +138,9 @@ const DEFAULTS: Record<string, unknown> = {
   'project.risk.defaultProbability': 3,
   'project.risk.defaultImpact': 3,
   'project.risk.criticalScoreThreshold': 15,
+  // F-11.7 / D-129 — ProjectClosureReadinessService budget variance
+  // threshold above which closure is blocked. Default +10% over budget.
+  'project.closure.budgetVarianceThresholdPercent': 10,
   // ─── Setup wizard sentinels ─────────────────────────────────────────
   'setup.completedAt': null,
   'setup.profile': null,
