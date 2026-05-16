@@ -42,6 +42,15 @@ These transitions require a non-empty `reason`:
 - any → `CANCELLED`
 - `ONBOARDING | ASSIGNED` → `ON_HOLD`
 
+## Slate reject-all vs assignment reject (D-90)
+
+Two distinct verbs that share the word "reject"; both legitimate, neither replaces the other:
+
+- **Assignment reject** — `POST /assignments/:id/reject` flips a *single* `ProjectAssignment` to `REJECTED` (terminal). Used when one candidate is unsuitable but the staffing request is still open. The slate stays alive; remaining candidates (or new ones) can still be picked.
+- **Slate reject-all** — `POST /staffing-requests/:id/proposals/:slateId/reject-all` (in `StaffingProposalSlateService`) discards *every* candidate on the current slate at once. The slate transitions to `REJECTED` and the underlying `StaffingRequest` goes back to `OPEN` so the RM can propose a fresh slate. Used when the PM wants a complete re-pitch.
+
+Both write `AssignmentHistory` / `StaffingRequestProposalSlateHistory` rows respectively with the supplied reason. The choice between them is product-level: per-candidate rejection vs. "start over" semantics. Service layer keeps them on separate endpoints because the audit shape + downstream events differ.
+
 ## Single source of truth
 
 The state machine, role matrix, and reason requirements live in
