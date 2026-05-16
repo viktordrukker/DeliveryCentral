@@ -2246,7 +2246,7 @@ _The following endpoints were flagged by the scanner but are intentionally open 
 - [x] **19-07** Use `terminatedAt` in the assignment modal timeline (replace proxy with real date) — FE
 - [x] **19-08** Seed phase2 dataset with lifecycle events for all test accounts (hired dates, assignment events, Viktor Drago deactivation) — SEED
 - [x] **19-09** Add inactive employee warning + resolution options to assignment modal using real lifecycle data — FE
-- [ ] **19-10** Add tests for activity feed API, component, and modal inactive flow — FE/BE/testing
+- [x] **19-10** Add tests for activity feed API, component, and modal inactive flow — FE/BE/testing _shipped: Sprint F-11.9 — `test/unit/organization/employee-activity.service.spec.ts` (7 tests covering `record` defaults / metadata clone / `listByPerson` ordering + limit + serialization + per-person scoping) + `frontend/src/components/people/PersonActivityFeed.test.tsx` (7 tests covering loading/empty/error states, deactivated-event danger-tone badge, unknown-event-type fallback, limit/personId propagation). 14 new tests total._
 
 ---
 
