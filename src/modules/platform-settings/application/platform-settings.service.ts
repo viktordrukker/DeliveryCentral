@@ -122,6 +122,14 @@ const DEFAULTS: Record<string, unknown> = {
   // F-11.3 / D-123 — recent-role window + recency modifier.
   'staffing.suggestion.recentRoleWindowMonths': 12,
   'staffing.suggestion.recencyModifier': 1.2,
+  // F-11.5 / D-126 — NudgeSweeperService windows. The service already
+  // consumes these via `numberSetting()` with fallback constants;
+  // advertising them in DEFAULTS makes them visible/editable through
+  // `/admin/platform-settings` and `/admin/feature-flags`.
+  'nudge.sweep.intervalMinutes': 60,
+  'staffing.proposalAck.slaHours': 48,
+  'timesheet.submission.slaHours': 72,
+  'nudge.dedup.hours': 24,
   // ─── Setup wizard sentinels ─────────────────────────────────────────
   'setup.completedAt': null,
   'setup.profile': null,
