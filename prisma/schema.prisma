@@ -1713,6 +1713,18 @@ model RateCard {
   // covers the assignment's `validFrom`. NULL `validTo` = open-ended.
   validFrom     DateTime         @db.Date
   validTo       DateTime?        @db.Date
+  // D-113 — Class F state machine (`isActive` + `archivedAt`). On RateCard
+  // specifically (financial), the combinations have to be read carefully:
+  //   • isActive=true,  archivedAt=null  → live, eligible for resolver pick
+  //   • isActive=false, archivedAt=null  → disabled by admin, no new picks,
+  //                                        but `appliedRateCardEntryId` refs
+  //                                        on existing assignments stay valid
+  //                                        (rate-pinning preserved)
+  //   • isActive=*,     archivedAt!=null → soft-deleted; admin UI hides it
+  //                                        but historical assignments still
+  //                                        resolve their pinned entry
+  // Drift between isActive and archivedAt is fine because the resolver uses
+  // isActive only; archivedAt is the visibility filter for admin UIs.
   isActive      Boolean          @default(true)
   notes         String?
   tenantId      String?          @db.Uuid
@@ -2247,6 +2259,16 @@ model PublicHoliday {
 }
 
 // ── Client & Vendor (Phase 1) ─────────────────────────────────────────────────
+
+// D-112 — Class E pattern (Client, Tenant, Vendor): `isActive Boolean`
+// only, NO `archivedAt`. Intentional. These tables are reference data
+// where "this entity is no longer transacting" is the only state we
+// care about; historical assignments / projects retain their FK
+// reference and continue to display the entity's name. We don't need
+// audit-trail timestamps on disable because the change is captured by
+// the AuditLog hash chain. If future analytics ever need historical
+// inactivity windows, migrate to `archivedAt` + an additional
+// `inactiveAt`; not needed today.
 
 model Client {
   id                     String    @id @default(uuid()) @db.Uuid

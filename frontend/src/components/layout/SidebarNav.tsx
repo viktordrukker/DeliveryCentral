@@ -79,7 +79,23 @@ export function SidebarNav({
     {},
   );
 
-  // Only show "My Dashboard" (employee dashboard) to roles that can access it
+  // D-141 — "My Work" pseudo-group.
+  //
+  // Unlike every other sidebar section, this one is NOT a `RouteGroup`
+  // in `route-manifest.ts`. It's computed at render time as the union
+  // of (employee dashboard + account settings) for the current user.
+  // Reasons it isn't stored as a real group:
+  //   1. Membership is role-conditional ("My Dashboard" hides for
+  //      roles without `/dashboard/employee` access) — RouteGroup
+  //      doesn't model that.
+  //   2. The two items live in different actual groups
+  //      (`dashboard` and `account-settings`) for routing/RBAC purposes.
+  //   3. The label "My Work" only makes sense in the sidebar's mental
+  //      model; outside the sidebar both items are still reachable
+  //      via their canonical paths.
+  // Pseudo-group bookkeeping: `myWorkPaths` deduplicates so these
+  // items don't appear twice when their underlying route is also in
+  // a real RouteGroup further down the list.
   const canSeeEmployeeDash = canAccessRoute('/dashboard/employee', principal?.roles);
   const myWorkItems = [
     ...(canSeeEmployeeDash ? [{ description: 'Your personal dashboard and overview.', path: '/dashboard/employee', title: 'My Dashboard' }] : []),
