@@ -30,22 +30,29 @@ function savePins(personId: string | undefined, pins: Set<string>): void {
   localStorage.setItem(`sidebar-pins:${personId}`, JSON.stringify([...pins]));
 }
 
+// F-13 / T-21 — labels for the restructured 9-group taxonomy.
 const GROUP_LABELS: Record<AppRouteDefinition['group'], string> = {
   dashboard: 'Dashboards',
   'people-org': 'People & Org',
-  work: 'Work',
-  governance: 'Governance',
-  evidence: 'Evidence Management',
-  admin: 'Admin',
+  projects: 'Projects',
+  staffing: 'Staffing',
+  time: 'Time & Leave',
+  reports: 'Reports & Exceptions',
+  'admin-config': 'Admin · Configuration',
+  'admin-integrations': 'Admin · Integrations',
+  'admin-governance': 'Admin · Governance',
 };
 
 const GROUP_ORDER: AppRouteDefinition['group'][] = [
   'dashboard',
   'people-org',
-  'work',
-  'governance',
-  'evidence',
-  'admin',
+  'projects',
+  'staffing',
+  'time',
+  'reports',
+  'admin-config',
+  'admin-integrations',
+  'admin-governance',
 ];
 
 export function SidebarNav({

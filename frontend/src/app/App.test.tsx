@@ -27,8 +27,11 @@ describe('App shell navigation', () => {
     expect(screen.getByText('Workload Tracking')).toBeInTheDocument();
     // Active group (dashboards) items are visible
     expect(screen.getByText('Workload Overview')).toBeInTheDocument();
-    // Section group headers are always rendered (collapsed sections show header)
-    expect(screen.getByText('Work')).toBeInTheDocument();
+    // Section group headers are always rendered (collapsed sections show header).
+    // F-13 / T-21 renamed `work` to a four-way split (`projects`, `staffing`,
+    // `time`, `reports`); pick `Time & Leave` since it doesn't collide with
+    // any individual route title.
+    expect(screen.getByText('Time & Leave')).toBeInTheDocument();
     expect(screen.getByText('People & Org')).toBeInTheDocument();
   });
 });
