@@ -113,7 +113,8 @@ describe('route manifest', () => {
       { role: 'employee', visible: ['/dashboard/employee', '/people', '/projects', '/settings/account'], hidden: ['/admin', '/staffing-board', '/assignments'] },
       { role: 'project_manager', visible: ['/dashboard/project-manager', '/staffing-requests', '/reports/time'], hidden: ['/admin', '/workload'] },
       { role: 'resource_manager', visible: ['/dashboard/resource-manager', '/workload', '/resource-pools', '/staffing-board'], hidden: ['/admin'] },
-      { role: 'hr_manager', visible: ['/dashboard/hr', '/admin/dictionaries', '/admin/audit', '/leave'], hidden: ['/admin/settings'] },
+      // F-12.4 / D-101 — /admin/dictionaries consolidated into /metadata-admin (now HR-visible via widened RBAC).
+      { role: 'hr_manager', visible: ['/dashboard/hr', '/metadata-admin', '/admin/audit', '/leave'], hidden: ['/admin/settings'] },
       { role: 'director', visible: ['/dashboard/director', '/integrations', '/admin/notifications', '/staffing-board'], hidden: ['/admin/settings'] },
       { role: 'admin', visible: ['/admin', '/admin/settings', '/admin/access-policies', '/dashboard/employee'], hidden: [] },
     ];
@@ -254,7 +255,8 @@ describe('persona smoke: full navigation coverage per role', () => {
     },
     hr_manager: {
       minNav: 15,
-      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'People', 'Admin Dictionaries', 'Business Audit', 'Bulk Import', 'Time Analytics', 'Exceptions'],
+      // F-12.4 / D-101 — 'Admin Dictionaries' folded into 'Metadata / Admin'.
+      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'People', 'Metadata / Admin', 'Business Audit', 'Bulk Import', 'Time Analytics', 'Exceptions'],
       mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies'],
     },
     delivery_manager: {
@@ -336,11 +338,12 @@ describe('sidebar navigation parity', () => {
   it('shows HR-specific admin routes in collapsed rail for hr_manager', () => {
     currentRoles = ['hr_manager'];
 
-    renderRoute(<SidebarNav activePath="/admin/dictionaries" collapsed routes={appRoutes} />);
+    // F-12.4 / D-101 — activePath now /metadata-admin (consolidated from /admin/dictionaries).
+    renderRoute(<SidebarNav activePath="/metadata-admin" collapsed routes={appRoutes} />);
 
     const links = screen.getAllByRole('link');
     const titles = links.map((l) => l.getAttribute('title'));
-    expect(titles).toContain('Admin Dictionaries');
+    expect(titles).toContain('Metadata / Admin');
     expect(titles).toContain('Business Audit');
     expect(titles).not.toContain('Platform Settings');
   });

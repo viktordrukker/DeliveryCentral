@@ -334,7 +334,10 @@ const dashboardChildren = [
     path: 'admin',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><DictionariesPage /></RoleGuard>,
+    // F-12.4 / D-101 — legacy HR-scoped dictionary admin consolidated
+    // into /metadata-admin. Redirect preserves deep-linked bookmarks;
+    // /metadata-admin RBAC widened to HR_DIRECTOR_ADMIN_ROLES.
+    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><Navigate to="/metadata-admin" replace /></RoleGuard>,
     path: 'admin/dictionaries',
   },
   {
@@ -362,7 +365,10 @@ const dashboardChildren = [
     path: 'integrations',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ROLES}><MetadataAdminPage /></RoleGuard>,
+    // F-12.4 / D-101 — RBAC widened from ADMIN_ROLES to
+    // HR_DIRECTOR_ADMIN_ROLES so HR/Director keep dictionary-admin
+    // access after the legacy /admin/dictionaries consolidation.
+    element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><MetadataAdminPage /></RoleGuard>,
     path: 'metadata-admin',
   },
   {
