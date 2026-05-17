@@ -1,6 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { PrismaService } from '@src/shared/persistence/prisma.service';
+import {
+  LEAVE_REQUEST_REPOSITORY,
+  LeaveRequestRepositoryPort,
+  LeaveRequestRow,
+} from '../domain/repositories/leave-request-repository.port';
 
 export interface CreateLeaveRequestDto {
   endDate: string;
@@ -23,58 +27,52 @@ export interface LeaveRequestDto {
   type: 'ANNUAL' | 'SICK' | 'OTHER';
 }
 
+/**
+ * F-14.2 / 20c-02 — service now consumes `LeaveRequestRepositoryPort`
+ * instead of `PrismaService` directly. Repository pattern restored;
+ * Prisma row-shape leakage stops at the port boundary.
+ */
 @Injectable()
 export class LeaveRequestsService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    @Inject(LEAVE_REQUEST_REPOSITORY)
+    private readonly repository: LeaveRequestRepositoryPort,
+  ) {}
 
   public async create(dto: CreateLeaveRequestDto): Promise<LeaveRequestDto> {
-    const record = await this.prisma.leaveRequest.create({
-      data: {
-        endDate: new Date(dto.endDate),
-        notes: dto.notes ?? null,
-        personId: dto.personId,
-        startDate: new Date(dto.startDate),
-        type: dto.type,
-      },
+    const record = await this.repository.create({
+      endDate: new Date(dto.endDate),
+      notes: dto.notes ?? null,
+      personId: dto.personId,
+      startDate: new Date(dto.startDate),
+      type: dto.type,
     });
     return this.toDto(record);
   }
 
   public async findMy(personId: string): Promise<LeaveRequestDto[]> {
-    const records = await this.prisma.leaveRequest.findMany({
-      orderBy: { createdAt: 'desc' },
-      where: { personId },
-    });
+    const records = await this.repository.findManyByPerson(personId);
     return records.map((r) => this.toDto(r));
   }
 
   public async findAll(personId?: string, status?: string): Promise<LeaveRequestDto[]> {
-    const records = await this.prisma.leaveRequest.findMany({
-      orderBy: { createdAt: 'desc' },
-      where: {
-        ...(personId ? { personId } : {}),
-        ...(status ? { status: status as 'PENDING' | 'APPROVED' | 'REJECTED' } : {}),
-      },
-    });
+    const records = await this.repository.findMany({ personId, status });
     return records.map((r) => this.toDto(r));
   }
 
   public async approve(id: string, reviewerId: string): Promise<LeaveRequestDto> {
-    const record = await this.prisma.leaveRequest.findUnique({ where: { id } });
+    const record = await this.repository.findById(id);
     if (!record) throw new NotFoundException('Leave request not found');
     if (record.status !== 'PENDING') {
       throw new ForbiddenException('Only pending requests can be approved');
     }
 
-    // Check for overlapping approved leave requests (20b-11)
-    const overlapping = await this.prisma.leaveRequest.findFirst({
-      where: {
-        personId: record.personId,
-        status: 'APPROVED',
-        id: { not: id },
-        startDate: { lte: record.endDate },
-        endDate: { gte: record.startDate },
-      },
+    // Check for overlapping approved leave requests (20b-11).
+    const overlapping = await this.repository.findFirstOverlappingApproved({
+      personId: record.personId,
+      startDate: record.startDate,
+      endDate: record.endDate,
+      excludeId: id,
     });
     if (overlapping) {
       throw new ForbiddenException(
@@ -82,38 +80,29 @@ export class LeaveRequestsService {
       );
     }
 
-    const updated = await this.prisma.leaveRequest.update({
-      data: { reviewedAt: new Date(), reviewedBy: reviewerId, status: 'APPROVED' },
-      where: { id },
+    const updated = await this.repository.updateStatus(id, {
+      reviewedAt: new Date(),
+      reviewedBy: reviewerId,
+      status: 'APPROVED',
     });
     return this.toDto(updated);
   }
 
   public async reject(id: string, reviewerId: string): Promise<LeaveRequestDto> {
-    const record = await this.prisma.leaveRequest.findUnique({ where: { id } });
+    const record = await this.repository.findById(id);
     if (!record) throw new NotFoundException('Leave request not found');
     if (record.status !== 'PENDING') {
       throw new ForbiddenException('Only pending requests can be rejected');
     }
-    const updated = await this.prisma.leaveRequest.update({
-      data: { reviewedAt: new Date(), reviewedBy: reviewerId, status: 'REJECTED' },
-      where: { id },
+    const updated = await this.repository.updateStatus(id, {
+      reviewedAt: new Date(),
+      reviewedBy: reviewerId,
+      status: 'REJECTED',
     });
     return this.toDto(updated);
   }
 
-  private toDto(record: {
-    createdAt: Date;
-    endDate: Date;
-    id: string;
-    notes: string | null;
-    personId: string;
-    reviewedAt: Date | null;
-    reviewedBy: string | null;
-    startDate: Date;
-    status: string;
-    type: string;
-  }): LeaveRequestDto {
+  private toDto(record: LeaveRequestRow): LeaveRequestDto {
     return {
       createdAt: record.createdAt.toISOString(),
       endDate: record.endDate.toISOString().slice(0, 10),
