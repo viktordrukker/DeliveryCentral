@@ -22,6 +22,7 @@ import {
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { DeprecatedEndpoint } from '@src/shared/http/deprecated-endpoint.decorator';
 
 import { ALL_AUTHENTICATED_ROLES, PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import {
@@ -338,8 +339,19 @@ export class StaffingRequestsController {
 
   @Post(':id/fulfil')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Fulfil a staffing request by assigning a person' })
+  @ApiOperation({
+    summary:
+      'DEPRECATED — Fulfil a staffing request by assigning a person. Canonical fulfilment goes through POST /staffing-requests/:id/proposals/:slateId/pick.',
+  })
   @ApiOkResponse({ description: 'Fulfilment recorded' })
+  // F-15.10 / D-100 — zero live FE callers; canonical fulfilment is
+  // `/proposals/:slateId/pick` (slate-based workflow). Keep the
+  // endpoint reachable until external integrators (if any) migrate.
+  @DeprecatedEndpoint({
+    sunsetIso: '2026-12-01',
+    successorPath: '/staffing-requests/:id/proposals/:slateId/pick',
+    label: 'staffing-request.legacy.fulfil',
+  })
   public async fulfil(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
     @Body() body: FulfilBody,

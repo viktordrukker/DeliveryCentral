@@ -1,4 +1,4 @@
-import { httpGet } from './http-client';
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 
 export interface DirectorDashboardSummary {
   activeProjectCount: number;
@@ -34,15 +34,5 @@ export interface DirectorDashboardResponse {
 export async function fetchDirectorDashboard(
   asOf?: string,
 ): Promise<DirectorDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<DirectorDashboardResponse>(
-    `/dashboard/director${suffix ? `?${suffix}` : ''}`,
-  );
+  return fetchDashboardEndpoint<DirectorDashboardResponse>('/dashboard/director', { asOf });
 }

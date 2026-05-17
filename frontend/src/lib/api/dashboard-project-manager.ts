@@ -1,4 +1,4 @@
-import { httpGet } from './http-client';
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 
 export interface ProjectManagerDashboardPersonSummary {
   displayName: string;
@@ -68,15 +68,8 @@ export async function fetchProjectManagerDashboard(
   personId: string,
   asOf?: string,
 ): Promise<ProjectManagerDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<ProjectManagerDashboardResponse>(
-    `/dashboard/project-manager/${personId}${suffix ? `?${suffix}` : ''}`,
+  return fetchDashboardEndpoint<ProjectManagerDashboardResponse>(
+    `/dashboard/project-manager/${personId}`,
+    { asOf },
   );
 }

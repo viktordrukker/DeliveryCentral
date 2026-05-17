@@ -1,3 +1,4 @@
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 import { httpGet } from './http-client';
 
 export interface DeliveryManagerDashboardSummary {
@@ -101,15 +102,8 @@ export async function fetchScorecardHistory(options?: {
 export async function fetchDeliveryManagerDashboard(
   asOf?: string,
 ): Promise<DeliveryManagerDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<DeliveryManagerDashboardResponse>(
-    `/dashboard/delivery-manager${suffix ? `?${suffix}` : ''}`,
+  return fetchDashboardEndpoint<DeliveryManagerDashboardResponse>(
+    '/dashboard/delivery-manager',
+    { asOf },
   );
 }

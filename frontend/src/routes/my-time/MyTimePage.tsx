@@ -829,14 +829,15 @@ export function MyTimePage(): JSX.Element {
                                   style={{ cursor: 'text', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
                                   title="Click to rename"
                                 >{row.label}</span>
-                                <button
-                                  type="button"
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   className="mytime-row-delete"
                                   onClick={(e) => { e.stopPropagation(); startDelete(row.key); }}
                                   aria-label={`Delete ${row.label}`}
                                   title="Delete this line"
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: 13, padding: '0 4px', lineHeight: 1 }}
-                                >{'\u2715'}</button>
+                                  style={{ background: 'transparent', color: 'var(--color-text-muted)', fontSize: 13, padding: '0 4px', lineHeight: 1, minWidth: 'unset' }}
+                                >{'\u2715'}</Button>
                               </span>
                             );
                           }

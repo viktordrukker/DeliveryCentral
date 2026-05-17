@@ -21,7 +21,6 @@ import { RequireRoles } from '@src/modules/identity-access/application/roles.dec
 
 import { ALL_AUTHENTICATED_ROLES, EXEC_ROLES, PROJECT_DELIVERY_ROLES, RM_EXEC_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
-import { ApproveProjectAssignmentService } from '../application/approve-project-assignment.service';
 import { DirectorApproveService } from '../application/director-approve.service';
 import { ScheduleOnboardingService } from '../application/schedule-onboarding.service';
 import { BulkCreateProjectAssignmentsService } from '../application/bulk-create-project-assignments.service';
@@ -43,9 +42,7 @@ import { CreateProjectAssignmentService } from '../application/create-project-as
 import { EndProjectAssignmentService } from '../application/end-project-assignment.service';
 import { GetAssignmentByIdService } from '../application/get-assignment-by-id.service';
 import { ListAssignmentsService } from '../application/list-assignments.service';
-import { RejectProjectAssignmentService } from '../application/reject-project-assignment.service';
 import { AmendProjectAssignmentService } from '../application/amend-project-assignment.service';
-import { RevokeProjectAssignmentService } from '../application/revoke-project-assignment.service';
 import { TransitionProjectAssignmentService } from '../application/transition-project-assignment.service';
 import { AssignmentConcurrencyConflictError } from '../application/assignment-concurrency-conflict.error';
 import { ProjectAssignment } from '../domain/entities/project-assignment.entity';
@@ -76,17 +73,22 @@ class TransitionRequestDto {
 @ApiTags('assignments')
 @Controller('assignments')
 export class AssignmentsController {
+  // F-15.8 / D-98 — 3 legacy services (ApproveProjectAssignmentService,
+  // RejectProjectAssignmentService, RevokeProjectAssignmentService) had been
+  // injected but never called from this controller. Removed from the
+  // constructor + module provider. The class files stay in
+  // `application/` for now (separate cleanup); the canonical transitions
+  // go through `TransitionProjectAssignmentService` (CSW workflow).
+  // `EndProjectAssignmentService` is kept — still called via the legacy
+  // assignment-end cascade path.
   public constructor(
     private readonly activateApprovedAssignmentsService: ActivateApprovedAssignmentsService,
     private readonly createProjectAssignmentService: CreateProjectAssignmentService,
     private readonly bulkCreateProjectAssignmentsService: BulkCreateProjectAssignmentsService,
-    private readonly approveProjectAssignmentService: ApproveProjectAssignmentService,
-    private readonly rejectProjectAssignmentService: RejectProjectAssignmentService,
     private readonly endProjectAssignmentService: EndProjectAssignmentService,
     private readonly listAssignmentsService: ListAssignmentsService,
     private readonly getAssignmentByIdService: GetAssignmentByIdService,
     private readonly amendProjectAssignmentService: AmendProjectAssignmentService,
-    private readonly revokeProjectAssignmentService: RevokeProjectAssignmentService,
     private readonly transitionProjectAssignmentService: TransitionProjectAssignmentService,
     private readonly directorApproveService: DirectorApproveService,
     private readonly scheduleOnboardingService: ScheduleOnboardingService,
