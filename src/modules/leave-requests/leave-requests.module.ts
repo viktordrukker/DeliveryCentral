@@ -4,16 +4,25 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { LeaveRequestsService } from './application/leave-requests.service';
 import { LeaveBalanceService } from './application/leave-balance.service';
+import { LEAVE_REQUEST_REPOSITORY } from './domain/repositories/leave-request-repository.port';
+import { PrismaLeaveRequestRepository } from './infrastructure/repositories/prisma/prisma-leave-request.repository';
 import { LeaveRequestsController } from './presentation/leave-requests.controller';
 
 @Module({
   controllers: [LeaveRequestsController],
   exports: [LeaveRequestsService, LeaveBalanceService],
   providers: [
+    // F-14.2 / 20c-02 — bind the new LeaveRequest repository port to its
+    // Prisma adapter so `LeaveRequestsService` doesn't speak Prisma directly.
     {
       inject: [PrismaService],
+      provide: LEAVE_REQUEST_REPOSITORY,
+      useFactory: (prisma: PrismaService) => new PrismaLeaveRequestRepository(prisma),
+    },
+    {
+      inject: [LEAVE_REQUEST_REPOSITORY],
       provide: LeaveRequestsService,
-      useFactory: (prisma: PrismaService) => new LeaveRequestsService(prisma),
+      useFactory: (repo) => new LeaveRequestsService(repo),
     },
     LeaveBalanceService,
   ],

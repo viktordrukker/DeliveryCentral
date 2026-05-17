@@ -1,8 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { MetadataDictionaryRepositoryPort } from '../domain/repositories/metadata-dictionary-repository.port';
 import { MetadataEntryRepositoryPort } from '../domain/repositories/metadata-entry-repository.port';
+import {
+  METADATA_RELATED_ENTITIES_REPOSITORY,
+  MetadataRelatedEntitiesRepositoryPort,
+} from './ports/metadata-related-entities.repository.port';
 import {
   MetadataDictionaryDetailsDto,
   MetadataDictionaryEntryDto,
@@ -19,7 +22,8 @@ export class MetadataDictionaryQueryService {
   public constructor(
     private readonly metadataDictionaryRepository: MetadataDictionaryRepositoryPort,
     private readonly metadataEntryRepository: MetadataEntryRepositoryPort,
-    private readonly prisma: PrismaService,
+    @Inject(METADATA_RELATED_ENTITIES_REPOSITORY)
+    private readonly relatedEntities: MetadataRelatedEntitiesRepositoryPort,
   ) {}
 
   public async listDictionaries(
@@ -83,10 +87,7 @@ export class MetadataDictionaryQueryService {
           isEnabled: entry.isEnabled,
           sortOrder: entry.sortOrder,
         })),
-      relatedCustomFields: (await this.prisma.customFieldDefinition.findMany({
-        where: { metadataDictionaryId: id },
-        select: { id: true, fieldKey: true, displayName: true, dataType: true, entityType: true, isRequired: true },
-      })).map((field) => ({
+      relatedCustomFields: (await this.relatedEntities.listCustomFieldsForDictionary(id)).map((field) => ({
         dataType: field.dataType,
         displayName: field.displayName,
         entityType: field.entityType,
@@ -94,13 +95,12 @@ export class MetadataDictionaryQueryService {
         id: field.id,
         isRequired: field.isRequired,
       })),
-      relatedLayouts: (await this.prisma.entityLayoutDefinition.findMany({
-        where: {
-          entityType: dictionary.entityType,
-          ...(dictionary.scopeOrgUnitId ? { scopeOrgUnitId: dictionary.scopeOrgUnitId } : {}),
-        },
-        select: { id: true, layoutKey: true, displayName: true, entityType: true, isDefault: true, version: true },
-      })).map((layout) => ({
+      relatedLayouts: (
+        await this.relatedEntities.listLayoutsForEntityType(
+          dictionary.entityType,
+          dictionary.scopeOrgUnitId,
+        )
+      ).map((layout) => ({
         displayName: layout.displayName,
         entityType: layout.entityType,
         id: layout.id,
@@ -108,10 +108,9 @@ export class MetadataDictionaryQueryService {
         layoutKey: layout.layoutKey,
         version: layout.version,
       })),
-      relatedWorkflows: (await this.prisma.workflowDefinition.findMany({
-        where: { entityType: dictionary.entityType },
-        select: { id: true, workflowKey: true, displayName: true, entityType: true, status: true, version: true },
-      })).map((workflow) => ({
+      relatedWorkflows: (
+        await this.relatedEntities.listWorkflowsForEntityType(dictionary.entityType)
+      ).map((workflow) => ({
         displayName: workflow.displayName,
         entityType: workflow.entityType,
         id: workflow.id,
@@ -130,12 +129,10 @@ export class MetadataDictionaryQueryService {
     }
 
     const entries = await this.metadataEntryRepository.findByDictionaryId(id);
-    const relatedCustomFieldCount = await this.prisma.customFieldDefinition.count({
-      where: { metadataDictionaryId: id },
-    });
-    const workflowUsageCount = await this.prisma.workflowDefinition.count({
-      where: { entityType: dictionary.entityType },
-    });
+    const relatedCustomFieldCount = await this.relatedEntities.countCustomFieldsForDictionary(id);
+    const workflowUsageCount = await this.relatedEntities.countWorkflowsForEntityType(
+      dictionary.entityType,
+    );
 
     return {
       description: dictionary.description,
