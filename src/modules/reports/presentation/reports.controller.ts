@@ -4,6 +4,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestj
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { ALL_MANAGER_ROLES } from '@src/shared/auth/role-presets';
+import { CreateReportTemplateRequestDto } from '../application/contracts/create-report-template.request';
 import { ReportBuilderService, ReportTemplate } from '../application/report-builder.service';
 import { UtilizationReport, UtilizationService } from '../application/utilization.service';
 
@@ -57,7 +58,7 @@ export class ReportsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Save a report template' })
   @ApiCreatedResponse({ description: 'Report template saved.' })
-  public createTemplate(@Body() body: Omit<ReportTemplate, 'id' | 'createdAt'>): ReportTemplate {
+  public createTemplate(@Body() body: CreateReportTemplateRequestDto): ReportTemplate {
     try {
       return this.reportBuilderService.createTemplate(
         body.name,

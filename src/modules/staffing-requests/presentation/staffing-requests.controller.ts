@@ -30,6 +30,7 @@ import {
   ParsePublicIdOrUuid,
 } from '@src/infrastructure/public-id';
 
+import { FulfilStaffingRequestRequestDto } from '../application/contracts/fulfil-staffing-request.request';
 import {
   PickProposalCandidateRequestDto,
   PickProposalCandidateResponseDto,
@@ -85,11 +86,6 @@ interface UpdateStaffingRequestBody {
   skills?: string[];
   startDate?: string;
   summary?: string;
-}
-
-interface FulfilBody {
-  assignedPersonId: string;
-  proposedByPersonId: string;
 }
 
 @ApiTags('staffing-requests')
@@ -354,7 +350,7 @@ export class StaffingRequestsController {
   })
   public async fulfil(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
-    @Body() body: FulfilBody,
+    @Body() body: FulfilStaffingRequestRequestDto,
   ): Promise<StaffingRequestWithDerived> {
     try {
       const result = await this.service.fulfil(id, body.proposedByPersonId, body.assignedPersonId);

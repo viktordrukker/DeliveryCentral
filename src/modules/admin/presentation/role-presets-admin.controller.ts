@@ -24,15 +24,13 @@ import {
 import { RolePresetsService } from '@src/shared/auth/role-presets.service';
 import { isPlatformRole, type PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
+import { SetRolePresetOverrideRequestDto } from '../application/contracts/set-role-preset-override.request';
+
 interface PresetView {
   preset: RolePresetName;
   defaults: PlatformRole[];
   effective: PlatformRole[];
   overridden: boolean;
-}
-
-interface OverridePayload {
-  roles: string[] | null;
 }
 
 /**
@@ -79,7 +77,7 @@ export class RolePresetsAdminController {
   @ApiOkResponse({ description: 'Updated preset detail.' })
   public async setOverride(
     @Param('preset') presetParam: string,
-    @Body() body: OverridePayload,
+    @Body() body: SetRolePresetOverrideRequestDto,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<PresetView> {
     const preset = this.parsePreset(presetParam);
