@@ -33,6 +33,7 @@ import { AuthProvider } from './auth-context';
 import { ImpersonationProvider } from './impersonation-context';
 import { AppShell } from '@/components/layout/AppShell';
 import { SetupGate } from '@/app/setup-gate';
+import { SetupOpsPage } from '@/routes/admin/SetupOpsPage';
 import { SetupWizardPage } from '@/routes/setup/SetupWizardPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RoleGuard } from '@/routes/RoleGuard';
@@ -384,6 +385,11 @@ const dashboardChildren = [
     // F-2.0a (D-93) — admin Period Locks UI.
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><PeriodLocksAdminPage /></RoleGuard>,
     path: 'admin/period-locks',
+  },
+  {
+    // F-13.7 (D-117) — post-install control surface; pairs with /setup wizard.
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><SetupOpsPage /></RoleGuard>,
+    path: 'admin/setup',
   },
   {
     element: <RoleGuard allowedRoles={HR_DIRECTOR_ADMIN_ROLES}><BulkImportPage /></RoleGuard>,
