@@ -1,4 +1,4 @@
-import { httpGet } from './http-client';
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 
 export interface HrManagerDashboardPersonSummary {
   displayName: string;
@@ -58,15 +58,8 @@ export async function fetchHrManagerDashboard(
   personId: string,
   asOf?: string,
 ): Promise<HrManagerDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<HrManagerDashboardResponse>(
-    `/dashboard/hr-manager/${personId}${suffix ? `?${suffix}` : ''}`,
+  return fetchDashboardEndpoint<HrManagerDashboardResponse>(
+    `/dashboard/hr-manager/${personId}`,
+    { asOf },
   );
 }

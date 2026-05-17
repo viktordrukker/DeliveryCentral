@@ -1,5 +1,5 @@
 import { AssignmentDirectoryItem } from './assignments';
-import { httpGet } from './http-client';
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 
 export interface EmployeeDashboardPersonSummary {
   currentLineManager: {
@@ -54,15 +54,8 @@ export async function fetchEmployeeDashboard(
   personId: string,
   asOf?: string,
 ): Promise<EmployeeDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<EmployeeDashboardResponse>(
-    `/dashboard/employee/${personId}${suffix ? `?${suffix}` : ''}`,
+  return fetchDashboardEndpoint<EmployeeDashboardResponse>(
+    `/dashboard/employee/${personId}`,
+    { asOf },
   );
 }

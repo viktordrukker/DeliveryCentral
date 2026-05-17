@@ -1,4 +1,4 @@
-import { httpGet } from './http-client';
+import { fetchDashboardEndpoint } from './dashboard-fetch';
 
 export interface ResourceManagerDashboardPersonSummary {
   displayName: string;
@@ -91,15 +91,8 @@ export async function fetchResourceManagerDashboard(
   personId: string,
   asOf?: string,
 ): Promise<ResourceManagerDashboardResponse> {
-  const params = new URLSearchParams();
-
-  if (asOf) {
-    params.set('asOf', asOf);
-  }
-
-  const suffix = params.toString();
-
-  return httpGet<ResourceManagerDashboardResponse>(
-    `/dashboard/resource-manager/${personId}${suffix ? `?${suffix}` : ''}`,
+  return fetchDashboardEndpoint<ResourceManagerDashboardResponse>(
+    `/dashboard/resource-manager/${personId}`,
+    { asOf },
   );
 }
