@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { MetadataEntry } from '@src/modules/metadata/domain/entities/metadata-entry.entity';
 import { MetadataEntryRepositoryPort } from '@src/modules/metadata/domain/repositories/metadata-entry-repository.port';
 
@@ -10,7 +12,14 @@ interface MetadataEntryGateway {
   upsert(args: any): Promise<unknown>;
 }
 
+// F-18 / 20c-12 — cap on findByDictionaryId(). Dictionaries are
+// admin-curated; typical sizes are 5–50 entries. Real workloads
+// won't approach the cap; the warn surfaces drift.
+const FIND_BY_DICTIONARY_MAX = 2000;
+
 export class PrismaMetadataEntryRepository implements MetadataEntryRepositoryPort {
+  private readonly logger = new Logger(PrismaMetadataEntryRepository.name);
+
   public constructor(private readonly gateway: MetadataEntryGateway) {}
 
   public async delete(id: string): Promise<void> {
@@ -20,7 +29,14 @@ export class PrismaMetadataEntryRepository implements MetadataEntryRepositoryPor
   public async findByDictionaryId(metadataDictionaryId: string): Promise<MetadataEntry[]> {
     const records = await this.gateway.findMany({
       where: { metadataDictionaryId },
+      orderBy: { sortOrder: 'asc' },
+      take: FIND_BY_DICTIONARY_MAX,
     });
+    if (records.length === FIND_BY_DICTIONARY_MAX) {
+      this.logger.warn(
+        `findByDictionaryId(${metadataDictionaryId}) hit the ${FIND_BY_DICTIONARY_MAX}-row cap; some entries omitted.`,
+      );
+    }
     return records.map((record) => MetadataPrismaMapper.toEntry(record));
   }
 
