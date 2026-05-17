@@ -141,9 +141,13 @@ model PersonReleaseRequest {
   completedAt           DateTime?               @db.Timestamptz(3)
   createdAt             DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  createdByPersonId     String?                 @db.Uuid
+  updatedByPersonId     String?                 @db.Uuid
   version               Int                     @default(1)
   person                Person                  @relation("PersonReleaseRequestSubject", fields: [personId], references: [id], onDelete: Restrict)
   initiatedBy           Person                  @relation("PersonReleaseRequestInitiator", fields: [initiatedByPersonId], references: [id], onDelete: Restrict)
+  createdByPerson       Person?                 @relation("PersonReleaseRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson       Person?                 @relation("PersonReleaseRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   approvals             PersonReleaseApproval[]
   tenantId              String?                 @db.Uuid
   Tenant                Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -151,6 +155,8 @@ model PersonReleaseRequest {
   @@index([personId, status])
   @@index([status, targetTerminationDate])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("person_release_requests")
   @@index([initiatedByPersonId])
 }
@@ -471,6 +477,10 @@ model Person {
   updatedProjects                        Project[]                           @relation("ProjectUpdatedBy")
   createdProjectAssignments              ProjectAssignment[]                 @relation("ProjectAssignmentCreatedBy")
   updatedProjectAssignments              ProjectAssignment[]                 @relation("ProjectAssignmentUpdatedBy")
+  createdCaseRecords                     CaseRecord[]                        @relation("CaseRecordCreatedBy")
+  updatedCaseRecords                     CaseRecord[]                        @relation("CaseRecordUpdatedBy")
+  createdPersonReleaseRequests           PersonReleaseRequest[]              @relation("PersonReleaseRequestCreatedBy")
+  updatedPersonReleaseRequests           PersonReleaseRequest[]              @relation("PersonReleaseRequestUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1091,9 +1101,13 @@ model CaseRecord {
   createdAt               DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
   archivedAt              DateTime?           @db.Timestamptz(3)
+  createdByPersonId       String?             @db.Uuid
+  updatedByPersonId       String?             @db.Uuid
   caseType                CaseType            @relation(fields: [caseTypeId], references: [id])
   subjectPerson           Person              @relation("CaseSubjectPerson", fields: [subjectPersonId], references: [id])
   ownerPerson             Person              @relation("CaseOwnerPerson", fields: [ownerPersonId], references: [id])
+  createdByPerson         Person?             @relation("CaseRecordCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?             @relation("CaseRecordUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   relatedProject          Project?            @relation(fields: [relatedProjectId], references: [id])
   relatedAssignment       ProjectAssignment?  @relation(fields: [relatedAssignmentId], references: [id])
   steps                   CaseStep[]
@@ -1111,6 +1125,8 @@ model CaseRecord {
   @@index([relatedProjectId])
   @@index([relatedAssignmentId])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("CaseRecord")
 }
 
