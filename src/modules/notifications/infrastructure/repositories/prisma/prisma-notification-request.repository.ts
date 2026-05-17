@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { NotificationRequest } from '../../../domain/entities/notification-request.entity';
 import { NotificationRequestRepositoryPort } from '../../../domain/repositories/notification-request-repository.port';
 import { NotificationsPrismaMapper } from './notifications-prisma.mapper';
@@ -9,7 +11,14 @@ interface Gateway {
   upsert(args: any): Promise<unknown>;
 }
 
+// F-18 / 20c-12 — cap on listAll(). Notification requests are
+// short-lived (deleted on dispatch) but a stuck queue could grow
+// unbounded; the warn log surfaces it before perf degrades.
+const LIST_ALL_MAX = 1000;
+
 export class PrismaNotificationRequestRepository implements NotificationRequestRepositoryPort {
+  private readonly logger = new Logger(PrismaNotificationRequestRepository.name);
+
   public constructor(private readonly gateway: Gateway) {}
 
   public async delete(id: string): Promise<void> {
@@ -22,7 +31,15 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
   }
 
   public async listAll(): Promise<NotificationRequest[]> {
-    const records = await this.gateway.findMany();
+    const records = await this.gateway.findMany({
+      orderBy: { requestedAt: 'desc' },
+      take: LIST_ALL_MAX,
+    });
+    if (records.length === LIST_ALL_MAX) {
+      this.logger.warn(
+        `listAll() hit the ${LIST_ALL_MAX}-row cap; some notification requests omitted.`,
+      );
+    }
     return records.map((record) => NotificationsPrismaMapper.toNotificationRequest(record));
   }
 

@@ -1,7 +1,14 @@
+import { Logger } from '@nestjs/common';
+
 import { CustomFieldDefinition } from '@src/modules/metadata/domain/entities/custom-field-definition.entity';
 import { CustomFieldDefinitionRepositoryPort } from '@src/modules/metadata/domain/repositories/custom-field-definition-repository.port';
 
 import { MetadataPrismaMapper } from './metadata-prisma.mapper';
+
+// F-18 / 20c-12 — cap on findByEntityType(). Custom fields are
+// admin-curated per entity type; even with heavy customization a
+// tenant won't approach the cap. Warn log surfaces drift.
+const FIND_BY_ENTITY_TYPE_MAX = 500;
 
 interface CustomFieldDefinitionGateway {
   delete(args: Record<string, unknown>): Promise<unknown>;
@@ -41,6 +48,8 @@ interface CustomFieldDefinitionGateway {
 export class PrismaCustomFieldDefinitionRepository
   implements CustomFieldDefinitionRepositoryPort
 {
+  private readonly logger = new Logger(PrismaCustomFieldDefinitionRepository.name);
+
   public constructor(private readonly gateway: CustomFieldDefinitionGateway) {}
 
   public async delete(id: string): Promise<void> {
@@ -56,7 +65,14 @@ export class PrismaCustomFieldDefinitionRepository
         entityType,
         scopeOrgUnitId: scopeOrgUnitId ?? undefined,
       },
+      take: FIND_BY_ENTITY_TYPE_MAX,
     });
+
+    if (records.length === FIND_BY_ENTITY_TYPE_MAX) {
+      this.logger.warn(
+        `findByEntityType(${entityType}) hit the ${FIND_BY_ENTITY_TYPE_MAX}-row cap; some definitions omitted.`,
+      );
+    }
 
     return records.map((record) => MetadataPrismaMapper.toCustomFieldDefinition(record));
   }

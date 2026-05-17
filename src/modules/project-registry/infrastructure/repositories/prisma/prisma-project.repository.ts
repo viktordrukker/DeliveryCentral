@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
 import { ProjectRepositoryPort } from '@src/modules/project-registry/domain/repositories/project-repository.port';
 import { ProjectId } from '@src/modules/project-registry/domain/value-objects/project-id';
@@ -18,7 +20,14 @@ interface TxClientWithProject {
   project: ProjectGateway;
 }
 
+// F-18 / 20c-12 — cap on findAll(). Mid-size bank tenant tops out around
+// 200–500 projects; a 2,000 cap leaves comfortable headroom and surfaces
+// over-growth via the warn log before perf degrades.
+const FIND_ALL_MAX = 2000;
+
 export class PrismaProjectRepository implements ProjectRepositoryPort {
+  private readonly logger = new Logger(PrismaProjectRepository.name);
+
   public constructor(private readonly gateway: ProjectGateway) {}
 
   /** Resolve the gateway: external `tx` overrides the constructor-injected one. */
@@ -44,7 +53,10 @@ export class PrismaProjectRepository implements ProjectRepositoryPort {
   }
 
   public async findAll(): Promise<Project[]> {
-    const records = await this.gateway.findMany();
+    const records = await this.gateway.findMany({ take: FIND_ALL_MAX });
+    if (records.length === FIND_ALL_MAX) {
+      this.logger.warn(`findAll() hit the ${FIND_ALL_MAX}-row cap; some projects omitted.`);
+    }
     return records.map((record) => ProjectRegistryPrismaMapper.toDomainProject(record));
   }
 
