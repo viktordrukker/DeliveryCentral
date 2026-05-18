@@ -3,7 +3,7 @@
  *
  * Models a custom-software-development firm "ITCo" with:
  *   - 200 people (4 inactive: 1 LEAVE, 1 TERMINATED, 2 retained-but-inactive)
- *   - 12 OrgUnits (1 root + 3 directorates + 8 departments)
+ *   - 14 OrgUnits (1 root + 1 region + 1 country + 3 directorates + 8 departments — 5 levels)
  *   - 8 ResourcePools (one per leaf department)
  *   - 5-6 named Resource Managers
  *   - 40 projects (10 ACTIVE + 30 CLOSED) spanning 5 years (2021-04-28 → 2026-04-28)
@@ -12,19 +12,21 @@
  *   - Common-scenario coverage matrix (in-flight onboarding, over-allocated person,
  *     bench staff, partial staffing fulfilment, terminated person, rejected timesheet, etc.)
  *
- * Org shape:
+ * Org shape (F-23 / D-162 — 5-level real-org pattern):
  *   ITCo (root)
- *   ├── Engineering Directorate
- *   │   ├── Backend
- *   │   ├── Frontend
- *   │   ├── Mobile & QA
- *   │   └── DevOps & Platform
- *   ├── Delivery Directorate
- *   │   ├── Project Management Office (PMO)
- *   │   └── Resource Management Office (RMO)  ← holds the 5-6 RMs
- *   └── Operations Directorate
- *       ├── HR & People
- *       └── Finance & Admin
+ *   └── APAC Region
+ *       └── Australia
+ *           ├── Engineering Directorate
+ *           │   ├── Backend
+ *           │   ├── Frontend
+ *           │   ├── Mobile & QA
+ *           │   └── DevOps & Platform
+ *           ├── Delivery Directorate
+ *           │   ├── Project Management Office (PMO)
+ *           │   └── Resource Management Office (RMO)  ← holds the 5-6 RMs
+ *           └── Operations Directorate
+ *               ├── HR & People
+ *               └── Finance & Admin
  */
 
 // ---------------------------------------------------------------------------
@@ -452,7 +454,15 @@ if (people.length > 200) {
 let ouSeq = 0;
 const ouid = (): string => ns(OU, ++ouSeq);
 
-const ouRoot = ouid();           // ITCo
+// F-23 / D-162 — real-org pattern: Root → Region → Country →
+// Directorate → Department (5 levels). The schema already supports
+// arbitrary depth via OrgUnit.parentOrgUnitId; previous seed flattened
+// the chain to 3 levels (Root → Directorate → Department) and downstream
+// org-rollup tests couldn't exercise the deeper paths a bank-IT install
+// will hit in production.
+const ouRoot = ouid();           // ITCo (Root)
+const ouRegionApac = ouid();     // APAC (Region)
+const ouCountryAu = ouid();      // Australia (Country)
 const ouEngDir = ouid();         // Engineering Directorate
 const ouDelDir = ouid();         // Delivery Directorate
 const ouOpsDir = ouid();         // Operations Directorate
@@ -476,10 +486,12 @@ interface OrgUnitDef {
 }
 
 const orgUnits: OrgUnitDef[] = [
-  { id: ouRoot, code: 'ITCO', name: 'ITCo', description: 'IT-Company root', parentOrgUnitId: null, managerPersonId: ceo.id, kind: 'directorate' },
-  { id: ouEngDir, code: 'ENG-DIR', name: 'Engineering Directorate', description: 'All engineering departments', parentOrgUnitId: ouRoot, managerPersonId: noah.id, kind: 'directorate' },
-  { id: ouDelDir, code: 'DEL-DIR', name: 'Delivery Directorate', description: 'PMO + Resource Management', parentOrgUnitId: ouRoot, managerPersonId: delDir.id, kind: 'directorate' },
-  { id: ouOpsDir, code: 'OPS-DIR', name: 'Operations Directorate', description: 'HR + Finance + Admin', parentOrgUnitId: ouRoot, managerPersonId: opsDir.id, kind: 'directorate' },
+  { id: ouRoot, code: 'ITCO', name: 'ITCo', description: 'IT-Company root', parentOrgUnitId: null, managerPersonId: ceo.id, kind: 'root' },
+  { id: ouRegionApac, code: 'REG-APAC', name: 'APAC Region', description: 'Asia-Pacific region', parentOrgUnitId: ouRoot, managerPersonId: ceo.id, kind: 'region' },
+  { id: ouCountryAu, code: 'CTY-AU', name: 'Australia', description: 'Australia country office', parentOrgUnitId: ouRegionApac, managerPersonId: ceo.id, kind: 'country' },
+  { id: ouEngDir, code: 'ENG-DIR', name: 'Engineering Directorate', description: 'All engineering departments', parentOrgUnitId: ouCountryAu, managerPersonId: noah.id, kind: 'directorate' },
+  { id: ouDelDir, code: 'DEL-DIR', name: 'Delivery Directorate', description: 'PMO + Resource Management', parentOrgUnitId: ouCountryAu, managerPersonId: delDir.id, kind: 'directorate' },
+  { id: ouOpsDir, code: 'OPS-DIR', name: 'Operations Directorate', description: 'HR + Finance + Admin', parentOrgUnitId: ouCountryAu, managerPersonId: opsDir.id, kind: 'directorate' },
   { id: ouBackend, code: 'DEP-BE', name: 'Backend Department', description: 'Server-side engineering', parentOrgUnitId: ouEngDir, managerPersonId: engMgrs[0].id, kind: 'department' },
   { id: ouFrontend, code: 'DEP-FE', name: 'Frontend Department', description: 'Client-side engineering', parentOrgUnitId: ouEngDir, managerPersonId: engMgrs[1].id, kind: 'department' },
   { id: ouMobileQa, code: 'DEP-MQ', name: 'Mobile & QA Department', description: 'Mobile + QA engineering', parentOrgUnitId: ouEngDir, managerPersonId: engMgrs[2].id, kind: 'department' },
