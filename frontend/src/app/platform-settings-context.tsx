@@ -47,14 +47,14 @@ const PlatformSettingsContext = createContext<PlatformSettingsContextValue>({
 //     a hard refresh.
 //
 // Why event-bus + not React context coupling:
-//   1. PlatformSettingsProvider sits inside the router shell, while
-//      AuthProvider sits outside it (it must survive the router
-//      remount during logout/login). A context coupling would require
-//      hoisting PlatformSettingsProvider above the router — see CC-10
-//      defer note in the tracker.
-//   2. The provider also needs to react to admin-side settings updates
-//      that don't involve a login event; a generic event bus covers
-//      both cases without growing the AuthContext surface.
+//   After F-22 / CC-10 both providers sit above the router, so a
+//   direct React-context dependency would technically work. The
+//   event-bus contract stays because PlatformSettingsProvider also
+//   needs to react to admin-side settings updates (the
+//   `platform-settings:updated` event fired by /admin/platform-settings)
+//   that have nothing to do with auth — one shared bus covers both
+//   cases without growing the AuthContext surface or coupling the
+//   providers more tightly than needed.
 //
 // Memory anchor: see `feedback-ci-green-before-merge.md` Phase CC-11.
 export function PlatformSettingsProvider({ children }: { children: React.ReactNode }): JSX.Element {
