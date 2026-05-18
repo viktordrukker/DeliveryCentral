@@ -13,8 +13,10 @@
 -- Reversible: rollback drops both columns.
 
 ALTER TABLE "project_activation_approvals"
-  ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
+
+ALTER TABLE "project_activation_approvals"
+  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT NOW();
 
 -- Backfill existing rows: createdAt mirrors requestedAt; updatedAt
 -- mirrors decidedAt when present, otherwise requestedAt.
