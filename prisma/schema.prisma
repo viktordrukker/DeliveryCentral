@@ -192,6 +192,10 @@ model ProjectActivationApproval {
   decidedById     String?                      @db.Uuid
   decision        ProjectActivationDecision?
   reason          String?
+  // F-21 / D-104 — framework-time timestamps standardised across
+  // registry aggregates; business-time stays in requestedAt/decidedAt.
+  createdAt       DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                     @updatedAt @db.Timestamptz(3)
   project         Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   requestedBy     Person                       @relation("ProjectActivationApproval_requestedBy", fields: [requestedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
   decidedBy       Person?                      @relation("ProjectActivationApproval_decidedBy", fields: [decidedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
