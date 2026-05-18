@@ -8,9 +8,11 @@ import { fetchSetupStatus, type SetupStatus } from '@/lib/api/setup';
  * funnels every request to `/setup`. The /setup route itself is exempt
  * from the gate (otherwise we'd redirect-loop).
  *
- * Wraps every top-level route in router.tsx — sits BEFORE AuthProvider
- * so a fresh install doesn't try to log in / refresh tokens against a
- * platform that hasn't been provisioned.
+ * Wraps every top-level route in router.tsx. AuthProvider is hoisted
+ * above the router (F-22 / CC-10) so it survives /login → / transitions;
+ * on a fresh install the gate still funnels every route to /setup, and
+ * AuthProvider's mount-time `/auth/me` probe quietly 401s against an
+ * un-provisioned platform without blocking the redirect.
  */
 export function SetupGate({ children }: { children: React.ReactNode }): JSX.Element {
   const location = useLocation();

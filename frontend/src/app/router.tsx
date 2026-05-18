@@ -29,7 +29,6 @@ import {
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
 } from './route-manifest';
-import { AuthProvider } from './auth-context';
 import { ImpersonationProvider } from './impersonation-context';
 import { AppShell } from '@/components/layout/AppShell';
 import { SetupGate } from '@/app/setup-gate';
@@ -429,25 +428,25 @@ export const appRouter = createBrowserRouter([
     path: '/setup',
   },
   {
-    element: <SetupGate><AuthProvider><LoginPage /></AuthProvider></SetupGate>,
+    // F-22 / CC-10 — AuthProvider hoisted to App.tsx; SetupGate stays
+    // here because it uses `useLocation` and must run inside the router.
+    element: <SetupGate><LoginPage /></SetupGate>,
     path: '/login',
   },
   {
-    element: <SetupGate><AuthProvider><ForgotPasswordPage /></AuthProvider></SetupGate>,
+    element: <SetupGate><ForgotPasswordPage /></SetupGate>,
     path: '/forgot-password',
   },
   {
-    element: <SetupGate><AuthProvider><ResetPasswordPage /></AuthProvider></SetupGate>,
+    element: <SetupGate><ResetPasswordPage /></SetupGate>,
     path: '/reset-password',
   },
   {
     element: (
       <SetupGate>
-        <AuthProvider>
-          <ProtectedRoute>
-            <TwoFactorSetupPage />
-          </ProtectedRoute>
-        </AuthProvider>
+        <ProtectedRoute>
+          <TwoFactorSetupPage />
+        </ProtectedRoute>
       </SetupGate>
     ),
     path: '/auth/2fa-setup',
@@ -459,15 +458,13 @@ export const appRouter = createBrowserRouter([
     ],
     element: (
       <SetupGate>
-        <AuthProvider>
-          <ImpersonationProvider>
-            <ProtectedRoute>
-              <ErrorBoundary>
-                <AppShell routes={appRoutes} />
-              </ErrorBoundary>
-            </ProtectedRoute>
-          </ImpersonationProvider>
-        </AuthProvider>
+        <ImpersonationProvider>
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <AppShell routes={appRoutes} />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        </ImpersonationProvider>
       </SetupGate>
     ),
     path: '/',

@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { toast, Toaster } from 'sonner';
 
 import { appRouter } from './router';
+import { AuthProvider } from './auth-context';
 import { PlatformSettingsProvider } from './platform-settings-context';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { apiClientConfig } from '@/lib/api/config';
@@ -146,9 +147,20 @@ export function App(): JSX.Element {
         </div>
       ) : null}
       <ErrorBoundary>
-        <PlatformSettingsProvider>
-          <RouterProvider router={appRouter} future={{ v7_startTransition: true }} />
-        </PlatformSettingsProvider>
+        {/* F-22 / CC-10 — single AuthProvider above the router so it
+            survives /login → / transitions. Previously each top-level
+            route mounted its own AuthProvider, which triggered redundant
+            `/auth/me` + `/auth/refresh` calls on every login-to-dashboard
+            hop and made the per-instance `initComplete.current` ref
+            ineffective across route changes. PlatformSettingsProvider
+            stays just below — it depends on auth via the window event
+            bus, not React context, so order between the two is purely
+            ergonomic (see CC-11 doc in platform-settings-context.tsx). */}
+        <AuthProvider>
+          <PlatformSettingsProvider>
+            <RouterProvider router={appRouter} future={{ v7_startTransition: true }} />
+          </PlatformSettingsProvider>
+        </AuthProvider>
       </ErrorBoundary>
       <Toaster position="bottom-right" richColors />
       <Modal
