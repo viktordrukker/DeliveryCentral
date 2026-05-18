@@ -1921,8 +1921,13 @@ model HelpFeedback {
 // uses either as a "don't show this tour again" signal.
 model OnboardingTourProgress {
   id              String     @id @default(uuid()) @db.Uuid
-  personId        String     @db.Uuid
-  person          Person     @relation("OnboardingTourPerson", fields: [personId], references: [id], onDelete: Cascade)
+  // F-20 / D-109 — audit-adjacent analytics survive person deletion.
+  // `onDelete: SetNull` keeps onboarding-effectiveness signals when
+  // a person row is removed; the orphan rows are no longer queryable
+  // by the (personId, tourKey) unique key but still feed retention
+  // analytics.
+  personId        String?    @db.Uuid
+  person          Person?    @relation("OnboardingTourPerson", fields: [personId], references: [id], onDelete: SetNull)
   // Tour identifier. Stable, lowercase, kebab-case. e.g. `staffing-desk-101`.
   tourKey         String
   completedSteps  String[]   @default([])
