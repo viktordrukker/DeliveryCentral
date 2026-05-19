@@ -529,6 +529,11 @@ model Person {
   updatedNotificationTemplates           NotificationTemplate[]              @relation("NotificationTemplateUpdatedBy")
   createdResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleCreatedBy")
   updatedResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleUpdatedBy")
+  // F-40 / D-103 + DM-5-5 round 10
+  createdOvertimePolicies                OvertimePolicy[]                    @relation("OvertimePolicyCreatedBy")
+  updatedOvertimePolicies                OvertimePolicy[]                    @relation("OvertimePolicyUpdatedBy")
+  createdPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingCreatedBy")
+  updatedPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1944,9 +1949,20 @@ model InAppNotification {
 model PlatformSetting {
   key       String   @id
   value     Json
+  // Legacy free-form actor text; superseded by the FK columns below
+  // but kept for back-compat with any existing rows.
   updatedBy String?
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  // F-40 / D-103 + DM-5-5 round 10 — actor-audit columns. Replace
+  // the legacy `updatedBy` text column with proper FK linkage so
+  // join-by-actor queries are uniform across aggregates.
+  createdByPersonId String? @db.Uuid
+  updatedByPersonId String? @db.Uuid
+  createdByPerson   Person? @relation("PlatformSettingCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person? @relation("PlatformSettingUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("platform_settings")
 }
 
@@ -2351,15 +2367,24 @@ model OvertimePolicy {
   effectiveTo             DateTime? @db.Timestamptz(3)
   createdAt               DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
+  // F-40 / D-103 + DM-5-5 round 10 — actor-audit columns. `setByPersonId`
+  // is the business actor; these capture the row author (often == setBy)
+  // and last editor for uniform join-by-actor queries.
+  createdByPersonId       String?   @db.Uuid
+  updatedByPersonId       String?   @db.Uuid
 
   orgUnit      OrgUnit?      @relation(fields: [orgUnitId], references: [id])
   resourcePool ResourcePool? @relation(fields: [resourcePoolId], references: [id])
   setBy        Person        @relation("OvertimePolicySetBy", fields: [setByPersonId], references: [id])
   approvalCase CaseRecord?   @relation("OvertimePolicyApprovalCase", fields: [approvalCaseId], references: [id], onDelete: SetNull)
+  createdByPerson Person?    @relation("OvertimePolicyCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?    @relation("OvertimePolicyUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([orgUnitId, effectiveFrom])
   @@index([resourcePoolId, effectiveFrom])
   @@index([approvalCaseId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("overtime_policies")
   @@index([setByPersonId])
 }
