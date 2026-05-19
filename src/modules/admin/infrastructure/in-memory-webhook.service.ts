@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, randomUUID } from 'crypto';
 
+import {
+  WEBHOOK_EVENT_TYPES,
+  WebhookEventType,
+  isWebhookEventType,
+} from '@src/shared/events/webhook-event-types';
+
 export interface WebhookSubscription {
   id: string;
   url: string;
   secret: string;
-  eventTypes: string[];
+  /** Empty array means "subscribe to every event" (wildcard). */
+  eventTypes: WebhookEventType[];
   createdByPersonId: string;
   active: boolean;
   createdAt: string;
@@ -13,7 +20,11 @@ export interface WebhookSubscription {
 
 export interface WebhookDeliveryAttempt {
   subscriptionId: string;
-  eventType: string;
+  /**
+   * `test.ping` is the synthetic event fired by `testDelivery`; all
+   * other deliveries carry a value from `WEBHOOK_EVENT_TYPES`.
+   */
+  eventType: WebhookEventType | 'test.ping';
   statusCode: number | null;
   success: boolean;
   attemptedAt: string;
@@ -32,11 +43,21 @@ export class InMemoryWebhookService {
     eventTypes: string[],
     createdByPersonId: string,
   ): WebhookSubscription {
+    // F-27 / D-170 — fail fast if an unknown event type slips past the
+    // controller-side DTO validation (e.g., direct service calls from
+    // future bulk-import flows). Keeps the registry single-source.
+    const unknown = eventTypes.filter((e) => !isWebhookEventType(e));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Unknown webhook event type(s): ${unknown.join(', ')}. ` +
+          `Known: ${WEBHOOK_EVENT_TYPES.length} entries — see /admin/webhooks/event-types.`,
+      );
+    }
     const sub: WebhookSubscription = {
       id: randomUUID(),
       url,
       secret,
-      eventTypes,
+      eventTypes: eventTypes as WebhookEventType[],
       createdByPersonId,
       active: true,
       createdAt: new Date().toISOString(),
@@ -65,7 +86,7 @@ export class InMemoryWebhookService {
     return log.slice(0, 10);
   }
 
-  public async dispatch(eventType: string, payload: unknown): Promise<void> {
+  public async dispatch(eventType: WebhookEventType, payload: unknown): Promise<void> {
     const matching = Array.from(this.subscriptions.values()).filter(
       (s) => s.active && (s.eventTypes.length === 0 || s.eventTypes.includes(eventType)),
     );
@@ -87,7 +108,7 @@ export class InMemoryWebhookService {
 
   private async deliverToSubscription(
     sub: WebhookSubscription,
-    eventType: string,
+    eventType: WebhookEventType | 'test.ping',
     payload: unknown,
   ): Promise<WebhookDeliveryAttempt> {
     const body = JSON.stringify({ eventType, payload, timestamp: new Date().toISOString() });
