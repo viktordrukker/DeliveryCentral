@@ -485,6 +485,11 @@ model Person {
   updatedCaseRecords                     CaseRecord[]                        @relation("CaseRecordUpdatedBy")
   createdPersonReleaseRequests           PersonReleaseRequest[]              @relation("PersonReleaseRequestCreatedBy")
   updatedPersonReleaseRequests           PersonReleaseRequest[]              @relation("PersonReleaseRequestUpdatedBy")
+  // F-26 / D-103 + DM-5-5 round 3
+  createdLeaveRequests                   LeaveRequest[]                      @relation("LeaveRequestCreatedBy")
+  updatedLeaveRequests                   LeaveRequest[]                      @relation("LeaveRequestUpdatedBy")
+  createdAssignmentApprovals             AssignmentApproval[]                @relation("AssignmentApprovalCreatedBy")
+  updatedAssignmentApprovals             AssignmentApproval[]                @relation("AssignmentApprovalUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -981,12 +986,21 @@ model AssignmentApproval {
   decisionAt        DateTime?         @db.Timestamptz(3)
   createdAt         DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
+  // F-26 / D-103 + DM-5-5 round 3 — actor-audit columns. The
+  // `decidedByPersonId` captures who decided the approval; these
+  // capture who initiated and who last touched the row.
+  createdByPersonId String?           @db.Uuid
+  updatedByPersonId String?           @db.Uuid
   assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
   decidedBy         Person?           @relation("AssignmentApprovalDecidedBy", fields: [decidedByPersonId], references: [id])
+  createdByPerson   Person?           @relation("AssignmentApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?           @relation("AssignmentApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([assignmentId, sequenceNumber])
   @@index([assignmentId, decision])
   @@index([decidedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("AssignmentApproval")
 }
 
@@ -2190,13 +2204,23 @@ model LeaveRequest {
   reviewedAt DateTime?          @db.Timestamptz(3)
   createdAt  DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime           @updatedAt @db.Timestamptz(3)
+  // F-26 / D-103 + DM-5-5 round 3 — actor-audit columns. The
+  // legacy `reviewedBy` column captures who approved/rejected; these
+  // capture who created the leave request (potentially != `personId`
+  // when HR creates on behalf) and who last modified it.
+  createdByPersonId String?     @db.Uuid
+  updatedByPersonId String?     @db.Uuid
   version    Int                @default(1)
   tenantId   String?            @db.Uuid
   Tenant     Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson Person?       @relation("LeaveRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?       @relation("LeaveRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([personId, status])
   @@index([status])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("leave_requests")
 }
 
