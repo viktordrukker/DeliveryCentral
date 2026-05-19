@@ -22,7 +22,8 @@ import {
 } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
-import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+import { CasePresenterService } from '../application/case-presenter.service';
 
 import { CaseResponseDto, ListCasesResponseDto } from '../application/contracts/case.response';
 import { CancelCaseRequestDto } from '../application/contracts/cancel-case.request';
@@ -38,7 +39,6 @@ import { CreateCaseService } from '../application/create-case.service';
 import { GetCaseByIdService } from '../application/get-case-by-id.service';
 import { ListCasesService } from '../application/list-cases.service';
 import { ReopenCaseService } from '../application/reopen-case.service';
-import { CaseRecord } from '../domain/entities/case-record.entity';
 import { PrismaCaseCommentService, CaseCommentDto } from '../infrastructure/services/prisma-case-comment.service';
 import { InMemoryCaseSlaService } from '../infrastructure/services/in-memory-case-sla.service';
 import { AddCaseStepRequestDto } from '../application/contracts/add-case-step.request';
@@ -61,7 +61,7 @@ export class CasesController {
     private readonly caseCommentService: PrismaCaseCommentService,
     private readonly caseSlaService: InMemoryCaseSlaService,
     private readonly reopenCaseService: ReopenCaseService,
-    private readonly prisma: PrismaService,
+    private readonly casePresenter: CasePresenterService,
   ) {}
 
   @Post()
@@ -73,8 +73,7 @@ export class CasesController {
     try {
       const caseRecord = await this.createCaseService.execute(request);
       await this.completeCaseStepService.initializeSteps(caseRecord.id, caseRecord.caseType.key);
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(caseRecord, peopleMap);
+      return this.casePresenter.presentSingle(caseRecord);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Case creation failed.',
@@ -93,9 +92,8 @@ export class CasesController {
   @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async listCases(@Query() query: ListCasesQueryDto): Promise<ListCasesResponseDto> {
     const result = await this.listCasesService.execute(query);
-    const peopleMap = await this.loadPeopleMap();
     return {
-      items: result.items.map((item) => this.mapCase(item, peopleMap)),
+      items: await this.casePresenter.presentMany(result.items),
       page: result.page,
       pageSize: result.pageSize,
       total: result.total,
@@ -114,8 +112,7 @@ export class CasesController {
       throw new NotFoundException('Case not found.');
     }
 
-    const peopleMap = await this.loadPeopleMap();
-    return this.mapCase(caseRecord, peopleMap);
+    return this.casePresenter.presentSingle(caseRecord);
   }
 
   @Get(':id/steps')
@@ -135,8 +132,7 @@ export class CasesController {
   @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async closeCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
     try {
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(await this.closeCaseService.execute(id), peopleMap);
+      return this.casePresenter.presentSingle(await this.closeCaseService.execute(id));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case close failed.';
       if (message === 'Case not found.') {
@@ -154,8 +150,7 @@ export class CasesController {
   @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async reopenCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
     try {
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(await this.reopenCaseService.execute(id), peopleMap);
+      return this.casePresenter.presentSingle(await this.reopenCaseService.execute(id));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case reopen failed.';
       if (message === 'Case not found.') {
@@ -176,8 +171,9 @@ export class CasesController {
     @Body() request: CancelCaseRequestDto,
   ): Promise<CaseResponseDto> {
     try {
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(await this.cancelCaseService.execute({ caseId: id, reason: request.reason }), peopleMap);
+      return this.casePresenter.presentSingle(
+        await this.cancelCaseService.execute({ caseId: id, reason: request.reason }),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case cancel failed.';
       if (message === 'Case not found.') {
@@ -201,10 +197,8 @@ export class CasesController {
     try {
       const actorId =
         httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(
+      return this.casePresenter.presentSingle(
         await this.approveCaseService.approve({ caseId: id, actorId }),
-        peopleMap,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case approve failed.';
@@ -229,10 +223,8 @@ export class CasesController {
     try {
       const actorId =
         httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(
+      return this.casePresenter.presentSingle(
         await this.approveCaseService.reject({ caseId: id, actorId, reason: request.reason }),
-        peopleMap,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case reject failed.';
@@ -251,8 +243,7 @@ export class CasesController {
   @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async archiveCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
     try {
-      const peopleMap = await this.loadPeopleMap();
-      return this.mapCase(await this.archiveCaseService.execute(id), peopleMap);
+      return this.casePresenter.presentSingle(await this.archiveCaseService.execute(id));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case archive failed.';
       if (message === 'Case not found.') {
@@ -427,35 +418,4 @@ export class CasesController {
     return this.caseSlaService.getSlaConfig();
   }
 
-  private async loadPeopleMap(): Promise<Map<string, { id: string; displayName: string }>> {
-    const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
-    return new Map(dbPeople.map((p) => [p.id, p]));
-  }
-
-  private mapCase(caseRecord: CaseRecord, allPeopleById: Map<string, { id: string; displayName: string }>): CaseResponseDto {
-    const subjectPerson = allPeopleById.get(caseRecord.subjectPersonId);
-    const ownerPerson = allPeopleById.get(caseRecord.ownerPersonId);
-
-    return {
-      cancelReason: caseRecord.cancelReason,
-      caseNumber: caseRecord.caseNumber,
-      caseTypeDisplayName: caseRecord.caseType.displayName,
-      caseTypeKey: caseRecord.caseType.key,
-      closedAt: caseRecord.closedAt?.toISOString(),
-      id: caseRecord.caseId.value,
-      openedAt: caseRecord.openedAt.toISOString(),
-      ownerPersonId: caseRecord.ownerPersonId,
-      ownerPersonName: ownerPerson?.displayName,
-      participants: caseRecord.participants.map((participant) => ({
-        personId: participant.personId,
-        role: participant.role,
-      })),
-      relatedAssignmentId: caseRecord.relatedAssignmentId,
-      relatedProjectId: caseRecord.relatedProjectId,
-      status: caseRecord.status,
-      subjectPersonId: caseRecord.subjectPersonId,
-      subjectPersonName: subjectPerson?.displayName,
-      summary: caseRecord.summary,
-    };
-  }
 }

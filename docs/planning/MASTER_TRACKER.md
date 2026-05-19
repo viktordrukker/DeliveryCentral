@@ -2303,7 +2303,7 @@ _The following endpoints were flagged by the scanner but are intentionally open 
 #### 20c-II: Service Decomposition
 
 - [ ] **20c-06** Split `AuthService` (498 lines, 16 methods) into: `AuthenticationService`, `TwoFactorService`, `PasswordManagementService`, `AccountManagementService` — BE · Severity: High
-- [ ] **20c-07** Extract controller presentation logic — `cases.controller.ts:365-395` has `loadPeopleMap()` and `mapCase()` data fetching/mapping in controller. Create `CasePresenterService` — BE · Severity: Medium
+- [x] **20c-07** Extract controller presentation logic — `cases.controller.ts:365-395` has `loadPeopleMap()` and `mapCase()` data fetching/mapping in controller. Create `CasePresenterService` — BE · Severity: Medium _shipped: Sprint F-28. New `case-presenter.service.ts` owns `loadPeopleMap` + `mapCase`; exposes `presentSingle(record)` and `presentMany(records[])` (latter loads the people map once). 9 controller call sites converted; controller no longer touches Prisma directly. `PrismaService` and `CaseRecord` imports dropped from the controller._
 - [ ] **20c-08** Resolve circular dependencies — 4 modules use `forwardRef()`: organization ↔ assignments ↔ project-registry ↔ exceptions. Establish clear dependency hierarchy — BE · Severity: Medium
 
 #### 20c-III: DTO & Type Safety
