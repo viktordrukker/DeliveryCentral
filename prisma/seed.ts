@@ -22,6 +22,9 @@ import {
   itCompanyDatasetSummary,
   itCompanyExternalSyncStates,
   itCompanyOrgUnits,
+  itCompanyBudgetApprovals,
+  itCompanyContacts,
+  itCompanyEmploymentEvents,
   itCompanyPeople,
   itCompanyPersonOrgMemberships,
   itCompanyPersonSkillAssignments,
@@ -1253,9 +1256,16 @@ async function main(): Promise<void> {
     await createManyInChunks('projectChangeRequest', itCompanyProjectChangeRequests);
     await createManyInChunks('projectRagSnapshot', itCompanyProjectRagSnapshots);
     await createManyInChunks('projectBudget', itCompanyProjectBudgets);
+    // F-24 / DM-6a-8 — BudgetApproval depends on projectBudget rows landing first.
+    await createManyInChunks('budgetApproval', itCompanyBudgetApprovals);
     await createManyInChunks('projectRolePlan', itCompanyProjectRolePlans);
     await createManyInChunks('projectRisk', itCompanyProjectRisks);
     await createManyInChunks('projectRetrospective', itCompanyProjectRetrospectives);
+
+    // F-24 / DM-6a-8 — Contact + EmploymentEvent. Both reference Person
+    // (already inserted above via dataset.people) so this is safe here.
+    await createManyInChunks('contact', itCompanyContacts);
+    await createManyInChunks('employmentEvent', itCompanyEmploymentEvents);
 
     // Timesheets — last 12 weeks for everyone, +8 weeks history for actives.
     const { weeks: itWeeks, entries: itEntries } = generateItCompanyTimesheets();
