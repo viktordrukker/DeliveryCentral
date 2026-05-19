@@ -808,7 +808,10 @@ model Project {
   status                ProjectStatus             @default(DRAFT)
   shape                 ProjectShape              @default(STANDARD)
   programId             String?                   @db.Uuid
-  leadPmPersonId        String?                   @db.Uuid
+  // F-25 / D-97 — `leadPmPersonId` removed; `projectManagerId` is the
+  // single canonical FK to the project's PM (47 referenced sites,
+  // FK-backed via the `ProjectManager` relation). The shadow column
+  // had zero readers + 1 dual-writer.
   settingsOverride      Json                      @default("{}")
   hasLiveSpcRates       Boolean                   @default(false)
   startsOn              DateTime?                 @db.Timestamptz(3)
