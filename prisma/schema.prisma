@@ -505,6 +505,11 @@ model Person {
   updatedOrgUnits                        OrgUnit[]                           @relation("OrgUnitUpdatedBy")
   createdProposalSlates                  StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateCreatedBy")
   updatedProposalSlates                  StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateUpdatedBy")
+  // F-34 / D-103 + DM-5-5 round 7
+  createdResourcePools                   ResourcePool[]                      @relation("ResourcePoolCreatedBy")
+  updatedResourcePools                   ResourcePool[]                      @relation("ResourcePoolUpdatedBy")
+  createdPositions                       Position[]                          @relation("PositionCreatedBy")
+  updatedPositions                       Position[]                          @relation("PositionUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -726,13 +731,22 @@ model Position {
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
   archivedAt           DateTime?             @db.Timestamptz(3)
+  // F-34 / D-103 + DM-5-5 round 7 — actor-audit columns.
+  // `occupantPersonId` is the person holding the position (business
+  // actor); these capture who created/edited the row.
+  createdByPersonId    String?               @db.Uuid
+  updatedByPersonId    String?               @db.Uuid
   orgUnit              OrgUnit               @relation(fields: [orgUnitId], references: [id])
   occupant             Person?               @relation("PositionOccupant", fields: [occupantPersonId], references: [id])
   personOrgMemberships PersonOrgMembership[]
+  createdByPerson      Person?               @relation("PositionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?               @relation("PositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([orgUnitId, code])
   @@index([occupantPersonId])
   @@index([orgUnitId, validFrom, validTo])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("Position")
 }
 
@@ -789,12 +803,19 @@ model ResourcePool {
   createdAt         DateTime                       @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime                       @updatedAt @db.Timestamptz(3)
   archivedAt        DateTime?                      @db.Timestamptz(3)
+  // F-34 / D-103 + DM-5-5 round 7 — actor-audit columns.
+  createdByPersonId String?                        @db.Uuid
+  updatedByPersonId String?                        @db.Uuid
   orgUnit           OrgUnit?                       @relation(fields: [orgUnitId], references: [id])
   personMemberships PersonResourcePoolMembership[]
   overtimePolicies  OvertimePolicy[]
+  createdByPerson   Person?                        @relation("ResourcePoolCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?                        @relation("ResourcePoolUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([orgUnitId])
   @@index([archivedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("ResourcePool")
 }
 
