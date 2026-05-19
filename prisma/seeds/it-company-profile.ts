@@ -75,6 +75,12 @@ const _CSU = 'bbbb0021'; // CaseParticipant (no participant rows seeded)
 const RET  = 'bbbb0022'; // ProjectRetrospective
 const _PVE = 'bbbb0023'; // ProjectVendorEngagement (skipped — Vendor model not seeded)
 const CLI  = 'bbbb0024'; // Client
+// F-24 / DM-6a-8 — seed coverage for DM-6a tables that previously
+// had zero rows in the it-company profile. VendorSkillArea is
+// intentionally skipped (Vendor is not seeded — see _PVE above).
+const CON  = 'bbbb0025'; // Contact (DM-6a-4)
+const EMP  = 'bbbb0026'; // EmploymentEvent (DM-6a-5)
+const BAP  = 'bbbb0027'; // BudgetApproval (DM-6a-3)
 
 // ---------------------------------------------------------------------------
 // Time anchors
@@ -1760,6 +1766,116 @@ function addBusinessDays(start: Date, days: number): Date {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// F-24 / DM-6a-8 — Contact, EmploymentEvent, BudgetApproval seed rows.
+// Each of these models shipped in DM-6a but has stayed empty in the
+// it-company profile (zero rows after seed runs). This populates them
+// with light realistic data so service-layer code paths that read them
+// have something to exercise and DM-R-13 migration-contract tests
+// don't trip on absence-of-data preconditions.
+// ---------------------------------------------------------------------------
+
+// CONTACT — one EMAIL contact per person mirroring `Person.primaryEmail`.
+let conSeq = 0;
+const conid = (): string => ns(CON, ++conSeq);
+
+const contacts = people.map((p) => ({
+  id: conid(),
+  personId: p.id,
+  kind: 'EMAIL' as const,
+  label: 'Work email',
+  value: p.primaryEmail,
+  isPrimary: true,
+  verified: true,
+  createdAt: p.hiredAt,
+  updatedAt: NOW,
+}));
+
+// EMPLOYMENT EVENT — at least one HIRE per person, plus
+// LEAVE_START for the person on leave + TERMINATE for terminated.
+let empSeq = 0;
+const empid = (): string => ns(EMP, ++empSeq);
+
+function toDateOnly(d: Date): Date {
+  // EmploymentEvent.occurredOn is `@db.Date` — strip the time component.
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+const employmentEvents: Array<{
+  id: string;
+  personId: string;
+  kind: 'HIRE' | 'TERMINATE' | 'LEAVE_START' | 'LEAVE_END' | 'REHIRE';
+  occurredOn: Date;
+  reason: string | null;
+  recordedByPersonId: string | null;
+  createdAt: Date;
+}> = [];
+
+for (const p of people) {
+  employmentEvents.push({
+    id: empid(),
+    personId: p.id,
+    kind: 'HIRE',
+    occurredOn: toDateOnly(p.hiredAt),
+    reason: null,
+    recordedByPersonId: null,
+    createdAt: p.hiredAt,
+  });
+  if (p.terminatedAt) {
+    employmentEvents.push({
+      id: empid(),
+      personId: p.id,
+      kind: 'TERMINATE',
+      occurredOn: toDateOnly(p.terminatedAt),
+      reason: 'voluntary',
+      recordedByPersonId: diana.id, // HR Manager records terminations
+      createdAt: p.terminatedAt,
+    });
+  } else if (p.employmentStatus === 'LEAVE') {
+    employmentEvents.push({
+      id: empid(),
+      personId: p.id,
+      kind: 'LEAVE_START',
+      occurredOn: toDateOnly(addMonths(NOW, -1)),
+      reason: 'parental leave',
+      recordedByPersonId: diana.id,
+      createdAt: addMonths(NOW, -1),
+    });
+  }
+}
+
+// BUDGET APPROVAL — one APPROVED row per ProjectBudget, requested by
+// the project's PM and decided by the Delivery Director. Most budgets
+// are historical (project already CLOSED) so decision dates predate NOW.
+let bapSeq = 0;
+const bapid = (): string => ns(BAP, ++bapSeq);
+
+const budgetApprovals = projectBudgets.map((b, idx) => {
+  const proj = projects.find((p) => p.id === b.projectId);
+  const requestedAt = proj ? proj.startsOn : addMonths(NOW, -12);
+  const decidedAt = new Date(requestedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  // requestedBy rotates across the PM pool deterministically; decidedBy
+  // is the Delivery Director.
+  const requestedByPerson = pms[idx % pms.length];
+  return {
+    id: bapid(),
+    projectBudgetId: b.id,
+    status: 'APPROVED' as const,
+    requestedByPersonId: requestedByPerson.id,
+    decidedByPersonId: delDir.id,
+    decisionAt: decidedAt,
+    decisionReason: 'Initial fiscal-year budget approval.',
+    requestedAt,
+    requestedChange: null,
+    createdAt: requestedAt,
+    updatedAt: decidedAt,
+  };
+});
+
+export const itCompanyContacts = contacts;
+export const itCompanyEmploymentEvents = employmentEvents;
+export const itCompanyBudgetApprovals = budgetApprovals;
 
 export const itCompanyAssignments = assignments.map(a => {
   const sla = SEED_SLA_STAGE[a.status] ?? null;
