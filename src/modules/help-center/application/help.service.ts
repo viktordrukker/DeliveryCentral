@@ -30,8 +30,9 @@ const ARTICLE_AUTHOR_INCLUDE = {
 } as const;
 
 type ArticleRow = Prisma.HelpArticleGetPayload<{ include: typeof ARTICLE_AUTHOR_INCLUDE }>;
-type TipRow = Prisma.HelpTipGetPayload<Record<string, never>>;
-type FeedbackRow = Prisma.HelpFeedbackGetPayload<Record<string, never>>;
+// `TipRow` and `FeedbackRow` were folded into local inference at the
+// callsite (no payload-shape variance) and aren't aliased; lint
+// complains about unused exports otherwise.
 type ProgressRow = Prisma.OnboardingTourProgressGetPayload<Record<string, never>>;
 
 // HD-9 — Help Center service. Centralizes the read + write paths so
@@ -313,8 +314,14 @@ export class HelpService {
   }
 
   private toProgressDto(row: ProgressRow): OnboardingTourProgressDto {
+    // F-20 / D-109 — schema column is nullable (FK SetNull on person
+    // delete) but every call site here goes through a
+    // `where: { personId_tourKey: ... }` lookup, so the row's
+    // `personId` always matches the input personId. The empty-string
+    // fallback is a defensive guard against an orphan row sneaking in
+    // through a future query path.
     return {
-      personId: row.personId,
+      personId: row.personId ?? '',
       tourKey: row.tourKey,
       completedSteps: row.completedSteps,
       dismissedAt: row.dismissedAt?.toISOString() ?? null,
