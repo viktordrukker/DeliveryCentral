@@ -37,13 +37,11 @@ interface DecideBudgetChangeResult {
   };
 }
 
-interface BudgetApprovalRow {
-  id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  projectBudgetId: string;
-  requestedByPersonId: string;
-  requestedChange: Prisma.JsonValue | null;
-}
+// F-37 / 20c-11 — drop the 6 `(this.prisma as unknown as {...})` casts
+// that used to coerce the Prisma client into a hand-rolled shape per
+// call site. The client already exposes typed `budgetApproval`,
+// `projectBudget`, and `project` delegates — no cast needed.
+type BudgetApprovalRow = Prisma.BudgetApprovalGetPayload<Record<string, never>>;
 
 /**
  * HD-6 — Director-side decision on a `BudgetApproval` row.
@@ -84,13 +82,9 @@ export class DecideBudgetChangeService {
       throw new BadRequestException('A reason is required when rejecting a budget change.');
     }
 
-    const approval = (await (this.prisma as unknown as {
-      budgetApproval: {
-        findUnique: (args: unknown) => Promise<BudgetApprovalRow | null>;
-      };
-    }).budgetApproval.findUnique({
+    const approval = await this.prisma.budgetApproval.findUnique({
       where: { id: command.approvalId },
-    })) as BudgetApprovalRow | null;
+    });
 
     if (!approval) {
       throw new NotFoundException(`Budget approval ${command.approvalId} not found.`);
@@ -114,11 +108,7 @@ export class DecideBudgetChangeService {
 
     const finalBudget = await this.prisma.$transaction(async (tx) => {
       // Update the approval row first (lock the row by primary key).
-      await (tx as unknown as {
-        budgetApproval: {
-          update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
-        };
-      }).budgetApproval.update({
+      await tx.budgetApproval.update({
         where: { id: approval.id },
         data: {
           status: finalDecision,
@@ -128,24 +118,7 @@ export class DecideBudgetChangeService {
         },
       });
 
-      const liveBudget = await (tx as unknown as {
-        projectBudget: {
-          findUnique: (args: unknown) => Promise<{
-            id: string;
-            projectId: string;
-            fiscalYear: number;
-            capexBudget: Prisma.Decimal;
-            opexBudget: Prisma.Decimal;
-          } | null>;
-          update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<{
-            id: string;
-            projectId: string;
-            fiscalYear: number;
-            capexBudget: Prisma.Decimal;
-            opexBudget: Prisma.Decimal;
-          }>;
-        };
-      }).projectBudget.findUnique({
+      const liveBudget = await tx.projectBudget.findUnique({
         where: { id: approval.projectBudgetId },
       });
       if (!liveBudget) {
@@ -161,17 +134,7 @@ export class DecideBudgetChangeService {
         if (!change || typeof change.capexBudget !== 'number' || typeof change.opexBudget !== 'number') {
           throw new ConflictException('Approval row is missing requestedChange data.');
         }
-        const updated = await (tx as unknown as {
-          projectBudget: {
-            update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<{
-              id: string;
-              projectId: string;
-              fiscalYear: number;
-              capexBudget: Prisma.Decimal;
-              opexBudget: Prisma.Decimal;
-            }>;
-          };
-        }).projectBudget.update({
+        const updated = await tx.projectBudget.update({
           where: { id: approval.projectBudgetId },
           data: {
             capexBudget: new Prisma.Decimal(change.capexBudget),
@@ -257,36 +220,14 @@ export class DecideBudgetChangeService {
       return null;
     }
     try {
-      const budget = await (this.prisma as unknown as {
-        projectBudget: {
-          findUnique: (q: {
-            where: { id: string };
-            select: {
-              projectId: boolean;
-              capexBudget: boolean;
-              opexBudget: boolean;
-            };
-          }) => Promise<{
-            projectId: string;
-            capexBudget: Prisma.Decimal;
-            opexBudget: Prisma.Decimal;
-          } | null>;
-        };
-      }).projectBudget.findUnique({
+      const budget = await this.prisma.projectBudget.findUnique({
         where: { id: approval.projectBudgetId },
         select: { projectId: true, capexBudget: true, opexBudget: true },
       });
       if (!budget) {
         return null;
       }
-      const project = await (this.prisma as unknown as {
-        project: {
-          findUnique: (q: {
-            where: { id: string };
-            select: { clientId: boolean; projectType: boolean };
-          }) => Promise<{ clientId: string | null; projectType: string | null } | null>;
-        };
-      }).project.findUnique({
+      const project = await this.prisma.project.findUnique({
         where: { id: budget.projectId },
         select: { clientId: true, projectType: true },
       });
