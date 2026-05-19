@@ -9,6 +9,7 @@ import { AuditLoggerService } from '@src/modules/audit-observability/application
 import { ApproveCaseService } from './application/approve-case.service';
 import { ArchiveCaseService } from './application/archive-case.service';
 import { CancelCaseService } from './application/cancel-case.service';
+import { CasePresenterService } from './application/case-presenter.service';
 import { CloseCaseService } from './application/close-case.service';
 import { CompleteCaseStepService } from './application/complete-case-step.service';
 import { CreateCaseService } from './application/create-case.service';
@@ -110,6 +111,12 @@ import { CasesController } from './presentation/cases.controller';
     {
       provide: PrismaCaseCommentService,
       useFactory: (prisma: PrismaService) => new PrismaCaseCommentService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      // F-28 / 20c-07 — extracted controller-side presentation logic.
+      provide: CasePresenterService,
+      useFactory: (prisma: PrismaService) => new CasePresenterService(prisma),
       inject: [PrismaService],
     },
     InMemoryCaseSlaService,
