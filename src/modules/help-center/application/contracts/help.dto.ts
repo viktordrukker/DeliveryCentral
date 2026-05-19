@@ -38,6 +38,9 @@ export class HelpFeedbackDto {
 }
 
 export class OnboardingTourProgressDto {
+  // F-20 / D-109 — schema column nullable (FK SetNull) but every API
+  // path here looks up via `personId_tourKey`, so the consumer always
+  // gets a non-null personId. Mapper coerces with `?? ''` defensively.
   personId!: string;
   tourKey!: string;
   completedSteps!: string[];

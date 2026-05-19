@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -19,48 +20,20 @@ import {
   UpsertTourProgressDto,
 } from './contracts/help.dto';
 
-interface ArticleRow {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  body: string;
-  tags: string[];
-  isPublished: boolean;
-  authorPersonId: string | null;
-  author: { displayName: string } | null;
-  createdAt: Date;
-  updatedAt: Date;
-  archivedAt: Date | null;
-}
+// F-31 / 20c-11 — drop the 12 `as unknown as XxxRow[]` casts that
+// previously lived here. The local row interfaces are now derived
+// straight from Prisma's generated client via `GetPayload`, so query
+// return types line up with consumers without a coercion step.
 
-interface TipRow {
-  id: string;
-  key: string;
-  routePath: string;
-  title: string;
-  body: string;
-  articleId: string | null;
-  displayOrder: number;
-}
+const ARTICLE_AUTHOR_INCLUDE = {
+  author: { select: { displayName: true } },
+} as const;
 
-interface FeedbackRow {
-  id: string;
-  articleId: string;
-  actorPersonId: string | null;
-  wasHelpful: boolean;
-  comment: string | null;
-  createdAt: Date;
-}
-
-interface ProgressRow {
-  personId: string;
-  tourKey: string;
-  completedSteps: string[];
-  dismissedAt: Date | null;
-  completedAt: Date | null;
-  updatedAt: Date;
-}
+type ArticleRow = Prisma.HelpArticleGetPayload<{ include: typeof ARTICLE_AUTHOR_INCLUDE }>;
+// `TipRow` and `FeedbackRow` were folded into local inference at the
+// callsite (no payload-shape variance) and aren't aliased; lint
+// complains about unused exports otherwise.
+type ProgressRow = Prisma.OnboardingTourProgressGetPayload<Record<string, never>>;
 
 // HD-9 — Help Center service. Centralizes the read + write paths so
 // the controllers stay thin. Article lookup is by slug or id; tips
@@ -78,7 +51,7 @@ export class HelpService {
     search?: string;
     tag?: string;
   }): Promise<HelpArticleDto[]> {
-    const rows = (await this.prisma.helpArticle.findMany({
+    const rows = await this.prisma.helpArticle.findMany({
       where: {
         isPublished: true,
         archivedAt: null,
@@ -92,17 +65,17 @@ export class HelpService {
             }
           : {}),
       },
-      include: { author: { select: { displayName: true } } },
+      include: ARTICLE_AUTHOR_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }],
-    })) as unknown as ArticleRow[];
+    });
     return rows.map((r) => this.toArticleDto(r));
   }
 
   public async getArticleBySlug(slug: string): Promise<HelpArticleDto> {
-    const row = (await this.prisma.helpArticle.findFirst({
+    const row = await this.prisma.helpArticle.findFirst({
       where: { slug, isPublished: true, archivedAt: null },
-      include: { author: { select: { displayName: true } } },
-    })) as unknown as ArticleRow | null;
+      include: ARTICLE_AUTHOR_INCLUDE,
+    });
     if (!row) throw new NotFoundException(`Help article '${slug}' not found.`);
     return this.toArticleDto(row);
   }
@@ -114,7 +87,7 @@ export class HelpService {
     search?: string;
     includeArchived?: boolean;
   } = {}): Promise<HelpArticleDto[]> {
-    const rows = (await this.prisma.helpArticle.findMany({
+    const rows = await this.prisma.helpArticle.findMany({
       where: {
         ...(query.includeArchived ? {} : { archivedAt: null }),
         ...(query.search
@@ -127,19 +100,19 @@ export class HelpService {
             }
           : {}),
       },
-      include: { author: { select: { displayName: true } } },
+      include: ARTICLE_AUTHOR_INCLUDE,
       orderBy: [{ updatedAt: 'desc' }],
-    })) as unknown as ArticleRow[];
+    });
     return rows.map((r) => this.toArticleDto(r));
   }
 
   // HD-9 Chunk 2 — admin-only get-by-id. Returns drafts + archived for
   // the admin editor; the public `getArticleBySlug` continues to filter.
   public async getArticleByIdForAdmin(id: string): Promise<HelpArticleDto> {
-    const row = (await this.prisma.helpArticle.findUnique({
+    const row = await this.prisma.helpArticle.findUnique({
       where: { id },
-      include: { author: { select: { displayName: true } } },
-    })) as unknown as ArticleRow | null;
+      include: ARTICLE_AUTHOR_INCLUDE,
+    });
     if (!row) throw new NotFoundException(`Help article ${id} not found.`);
     return this.toArticleDto(row);
   }
@@ -151,7 +124,7 @@ export class HelpService {
     dto: CreateHelpArticleDto,
   ): Promise<HelpArticleDto> {
     try {
-      const row = (await this.prisma.helpArticle.create({
+      const row = await this.prisma.helpArticle.create({
         data: {
           slug: dto.slug,
           title: dto.title,
@@ -161,8 +134,8 @@ export class HelpService {
           isPublished: dto.isPublished ?? false,
           authorPersonId: actorId,
         },
-        include: { author: { select: { displayName: true } } },
-      })) as unknown as ArticleRow;
+        include: ARTICLE_AUTHOR_INCLUDE,
+      });
       return this.toArticleDto(row);
     } catch (err) {
       const code = (err as { code?: string }).code;
@@ -177,12 +150,15 @@ export class HelpService {
     id: string,
     dto: UpdateHelpArticleDto,
   ): Promise<HelpArticleDto> {
-    const existing = (await this.prisma.helpArticle.findUnique({
+    // Existence check only — the row body isn't read, so a `select`
+    // is cheaper than fetching all columns plus the author include.
+    const existing = await this.prisma.helpArticle.findUnique({
       where: { id },
-    })) as unknown as ArticleRow | null;
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException(`Help article ${id} not found.`);
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.HelpArticleUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.summary !== undefined) data.summary = dto.summary;
     if (dto.body !== undefined) data.body = dto.body;
@@ -192,21 +168,21 @@ export class HelpService {
       data.archivedAt = dto.archive ? new Date() : null;
     }
 
-    const row = (await this.prisma.helpArticle.update({
+    const row = await this.prisma.helpArticle.update({
       where: { id },
       data,
-      include: { author: { select: { displayName: true } } },
-    })) as unknown as ArticleRow;
+      include: ARTICLE_AUTHOR_INCLUDE,
+    });
     return this.toArticleDto(row);
   }
 
   /* ── Tips ─────────────────────────────────────────────────── */
 
   public async listTipsForRoute(routePath: string): Promise<HelpTipDto[]> {
-    const rows = (await this.prisma.helpTip.findMany({
+    const rows = await this.prisma.helpTip.findMany({
       where: { routePath, isActive: true, archivedAt: null },
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
-    })) as unknown as TipRow[];
+    });
     return rows.map((r) => ({
       id: r.id,
       key: r.key,
@@ -220,7 +196,7 @@ export class HelpService {
 
   public async createTip(dto: CreateHelpTipDto): Promise<HelpTipDto> {
     try {
-      const row = (await this.prisma.helpTip.create({
+      const row = await this.prisma.helpTip.create({
         data: {
           key: dto.key,
           routePath: dto.routePath,
@@ -228,7 +204,7 @@ export class HelpService {
           body: dto.body,
           articleId: dto.articleId ?? null,
         },
-      })) as unknown as TipRow;
+      });
       return {
         id: row.id,
         key: row.key,
@@ -261,14 +237,14 @@ export class HelpService {
     if (!article || article.archivedAt) {
       throw new NotFoundException(`Help article ${articleId} not found.`);
     }
-    const row = (await this.prisma.helpFeedback.create({
+    const row = await this.prisma.helpFeedback.create({
       data: {
         articleId,
         actorPersonId: actorId,
         wasHelpful: dto.wasHelpful,
         comment: dto.comment ?? null,
       },
-    })) as unknown as FeedbackRow;
+    });
     return {
       id: row.id,
       articleId: row.articleId,
@@ -285,9 +261,9 @@ export class HelpService {
     personId: string,
     tourKey: string,
   ): Promise<OnboardingTourProgressDto | null> {
-    const row = (await this.prisma.onboardingTourProgress.findUnique({
+    const row = await this.prisma.onboardingTourProgress.findUnique({
       where: { personId_tourKey: { personId, tourKey } },
-    })) as unknown as ProgressRow | null;
+    });
     if (!row) return null;
     return this.toProgressDto(row);
   }
@@ -301,7 +277,7 @@ export class HelpService {
     const dismissedAt = dto.dismissed === true ? now : dto.dismissed === false ? null : undefined;
     const completedAt = dto.completed === true ? now : dto.completed === false ? null : undefined;
 
-    const row = (await this.prisma.onboardingTourProgress.upsert({
+    const row = await this.prisma.onboardingTourProgress.upsert({
       where: { personId_tourKey: { personId, tourKey } },
       create: {
         personId,
@@ -315,7 +291,7 @@ export class HelpService {
         ...(dismissedAt !== undefined ? { dismissedAt } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
       },
-    })) as unknown as ProgressRow;
+    });
     return this.toProgressDto(row);
   }
 
@@ -338,8 +314,14 @@ export class HelpService {
   }
 
   private toProgressDto(row: ProgressRow): OnboardingTourProgressDto {
+    // F-20 / D-109 — schema column is nullable (FK SetNull on person
+    // delete) but every call site here goes through a
+    // `where: { personId_tourKey: ... }` lookup, so the row's
+    // `personId` always matches the input personId. The empty-string
+    // fallback is a defensive guard against an orphan row sneaking in
+    // through a future query path.
     return {
-      personId: row.personId,
+      personId: row.personId ?? '',
       tourKey: row.tourKey,
       completedSteps: row.completedSteps,
       dismissedAt: row.dismissedAt?.toISOString() ?? null,
