@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -19,22 +20,9 @@ import {
 
 const SEEDED_DEFAULT_PREFIX = '00000000-0000-4000-8000-0000000d04';
 
-interface RuleRow {
-  id: string;
-  actionKind: string;
-  scopeKind: string;
-  scopeValue: string | null;
-  mode: string;
-  targetRole: string | null;
-  targetPersonId: string | null;
-  priority: number;
-  isActive: boolean;
-  notes: string | null;
-  tenantId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  archivedAt: Date | null;
-}
+// F-41 / 20c-11 — drop the 5 `(this.prisma as unknown as {...})` casts
+// that coerced the Prisma client into a hand-rolled shape per call site.
+type RuleRow = Prisma.ResponsibilityRuleGetPayload<Record<string, never>>;
 
 @Injectable()
 export class ResponsibilityRulesAdminService {
@@ -50,14 +38,10 @@ export class ResponsibilityRulesAdminService {
     const where: Record<string, unknown> = {};
     if (filter?.actionKind) where.actionKind = filter.actionKind;
     if (!filter?.includeArchived) where.archivedAt = null;
-    const rows = (await (this.prisma as unknown as {
-      responsibilityRule: {
-        findMany: (q: { where: Record<string, unknown>; orderBy: unknown }) => Promise<RuleRow[]>;
-      };
-    }).responsibilityRule.findMany({
+    const rows = await this.prisma.responsibilityRule.findMany({
       where,
       orderBy: [{ actionKind: 'asc' }, { priority: 'asc' }, { updatedAt: 'desc' }],
-    })) as RuleRow[];
+    });
     return rows.map((r) => this.toResponse(r));
   }
 
@@ -68,11 +52,7 @@ export class ResponsibilityRulesAdminService {
     this.assertModeTargetCoherence(dto.mode, dto.targetRole, dto.targetPersonId);
     this.assertScopeValueCoherence(dto.scopeKind, dto.scopeValue ?? null);
 
-    const created = await (this.prisma as unknown as {
-      responsibilityRule: {
-        create: (q: { data: Record<string, unknown> }) => Promise<RuleRow>;
-      };
-    }).responsibilityRule.create({
+    const created = await this.prisma.responsibilityRule.create({
       data: {
         actionKind: dto.actionKind,
         scopeKind: dto.scopeKind,
@@ -114,11 +94,7 @@ export class ResponsibilityRulesAdminService {
       dto.targetPersonId === undefined ? existing.targetPersonId : dto.targetPersonId;
     this.assertModeTargetCoherence(nextMode, nextTargetRole, nextTargetPersonId);
 
-    const updated = await (this.prisma as unknown as {
-      responsibilityRule: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<RuleRow>;
-      };
-    }).responsibilityRule.update({
+    const updated = await this.prisma.responsibilityRule.update({
       where: { id },
       data: {
         ...(dto.mode !== undefined ? { mode: dto.mode } : {}),
@@ -149,11 +125,7 @@ export class ResponsibilityRulesAdminService {
     if (existing.archivedAt) {
       throw new ConflictException(`Rule ${id} is already archived.`);
     }
-    const updated = await (this.prisma as unknown as {
-      responsibilityRule: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<RuleRow>;
-      };
-    }).responsibilityRule.update({
+    const updated = await this.prisma.responsibilityRule.update({
       where: { id },
       data: { archivedAt: new Date(), isActive: false },
     });
@@ -173,11 +145,7 @@ export class ResponsibilityRulesAdminService {
   }
 
   private async requireRule(id: string): Promise<RuleRow> {
-    const row = (await (this.prisma as unknown as {
-      responsibilityRule: {
-        findUnique: (q: { where: { id: string } }) => Promise<RuleRow | null>;
-      };
-    }).responsibilityRule.findUnique({ where: { id } })) as RuleRow | null;
+    const row = await this.prisma.responsibilityRule.findUnique({ where: { id } });
     if (!row) {
       throw new NotFoundException(`Responsibility rule ${id} not found.`);
     }
