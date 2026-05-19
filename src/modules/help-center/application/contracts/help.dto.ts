@@ -38,10 +38,10 @@ export class HelpFeedbackDto {
 }
 
 export class OnboardingTourProgressDto {
-  // F-20 / D-109 — OnboardingTourProgress.personId is nullable
-  // (FK action SetNull, audit-adjacent analytics survive person
-  // deletion). DTO mirrors that so orphan rows can be projected.
-  personId!: string | null;
+  // F-20 / D-109 — schema column nullable (FK SetNull) but every API
+  // path here looks up via `personId_tourKey`, so the consumer always
+  // gets a non-null personId. Mapper coerces with `?? ''` defensively.
+  personId!: string;
   tourKey!: string;
   completedSteps!: string[];
   dismissedAt!: string | null;
