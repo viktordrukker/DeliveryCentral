@@ -490,6 +490,11 @@ model Person {
   updatedLeaveRequests                   LeaveRequest[]                      @relation("LeaveRequestUpdatedBy")
   createdAssignmentApprovals             AssignmentApproval[]                @relation("AssignmentApprovalCreatedBy")
   updatedAssignmentApprovals             AssignmentApproval[]                @relation("AssignmentApprovalUpdatedBy")
+  // F-29 / D-103 + DM-5-5 round 4
+  createdTimesheetWeeks                  TimesheetWeek[]                     @relation("TimesheetWeekCreatedBy")
+  updatedTimesheetWeeks                  TimesheetWeek[]                     @relation("TimesheetWeekUpdatedBy")
+  createdProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskCreatedBy")
+  updatedProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1571,13 +1576,23 @@ model TimesheetWeek {
   version           Int              @default(1)
   createdAt         DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
+  // F-29 / D-103 + DM-5-5 round 4 — actor-audit columns. `approvedBy`
+  // captures the decision actor; these capture the timesheet author
+  // (often != `personId` when an admin corrects on behalf) and the
+  // last editor.
+  createdByPersonId String?          @db.Uuid
+  updatedByPersonId String?          @db.Uuid
   entries           TimesheetEntry[]
   tenantId          String?          @db.Uuid
   Tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson   Person?          @relation("TimesheetWeekCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?          @relation("TimesheetWeekUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([personId, weekStart])
   @@index([personId, weekStart])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("timesheet_weeks")
 }
 
@@ -2922,6 +2937,13 @@ model ProjectRisk {
   owner               Person?            @relation("ProjectRiskOwner", fields: [ownerPersonId], references: [id], onDelete: SetNull)
   assignee            Person?            @relation("ProjectRiskAssignee", fields: [assigneePersonId], references: [id], onDelete: SetNull)
   relatedCase         CaseRecord?        @relation("ProjectRiskRelatedCase", fields: [relatedCaseId], references: [id], onDelete: SetNull)
+  // F-29 / D-103 + DM-5-5 round 4 — actor-audit columns.
+  // `ownerPersonId` + `assigneePersonId` are business actors; these
+  // capture who raised the risk and who last touched the row.
+  createdByPersonId   String?            @db.Uuid
+  updatedByPersonId   String?            @db.Uuid
+  createdByPerson     Person?            @relation("ProjectRiskCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?            @relation("ProjectRiskUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   version             Int                @default(1)
 
   @@index([projectId, status])
@@ -2929,6 +2951,8 @@ model ProjectRisk {
   @@index([ownerPersonId])
   @@index([assigneePersonId])
   @@index([relatedCaseId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@index([title(ops: raw("gin_trgm_ops"))], map: "project_risks_title_trgm_idx", type: Gin)
   @@map("project_risks")
   @@index([convertedFromRiskId])
