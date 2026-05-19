@@ -231,7 +231,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'assignment.created',
       'assignment-created-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
     if (payload.personId) {
       this.createInAppNotification(
@@ -382,7 +382,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.submitted_for_approval',
       'project-submitted-for-approval-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -408,7 +408,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.approved',
       'project-approved-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -436,7 +436,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.rejected',
       'project-rejected-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -466,7 +466,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.budget_change.requested',
       'project-budget-change-requested-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -496,7 +496,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.budget_change.approved',
       'project-budget-change-approved-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -524,7 +524,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'project.budget_change.rejected',
       'project-budget-change-rejected-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -715,7 +715,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'person.release.requested',
       'person-release-requested-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -743,7 +743,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'person.release.partially_approved',
       'person-release-partially-approved-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -769,7 +769,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'person.release.approved',
       'person-release-approved-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -799,7 +799,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.sendEmail(
       'person.release.rejected',
       'person-release-rejected-email',
-      payload as unknown as Record<string, unknown>,
+      payload,
     );
   }
 
@@ -1549,10 +1549,15 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     }
   }
 
+  // F-35 / 20c-11 — accept any object-shaped payload. Callers previously
+  // had to `as unknown as Record<string, unknown>` because TS won't
+  // narrow an interface or inline typed payload into the open
+  // index-signature shape on its own. Centralising the conversion in
+  // one place drops 11 cast sites from the dispatchers below.
   private async sendEmail(
     eventName: string,
     templateKey: string,
-    payload: Record<string, unknown>,
+    payload: object,
   ): Promise<void> {
     if (!this.appConfig.notificationsDefaultEmailRecipient) {
       return;
@@ -1561,7 +1566,7 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     await this.dispatchQuietly({
       channelKey: 'email',
       eventName,
-      payload,
+      payload: payload as Record<string, unknown>,
       recipient: this.appConfig.notificationsDefaultEmailRecipient,
       templateKey,
     });
