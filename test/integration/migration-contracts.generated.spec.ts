@@ -3591,4 +3591,35 @@ describe('DM-R-13 per-migration contract', () => {
       expect(sha256File(path.join(migrationDir, 'rollback.sql'))).toBe("28f69f51286776e41d262092b289f82b26c6ce7ffc0326c2fc5551e70e9dbba7");
     });
   });
+
+  describe('20260519_d103_round4_actor_audit', () => {
+    const migrationDir = path.join(migrationsRoot, "20260519_d103_round4_actor_audit");
+  
+    it('migration.sql exists + non-empty', () => {
+      const p = path.join(migrationDir, 'migration.sql');
+      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.statSync(p).size).toBeGreaterThan(0);
+    });
+  
+    it('posture matches frozen classification (REVERSIBLE)', () => {
+      const hasReversible = fs.existsSync(path.join(migrationDir, 'REVERSIBLE.md'));
+      const hasForwardOnly = fs.existsSync(path.join(migrationDir, 'FORWARD_ONLY.md'));
+      const p = hasReversible ? 'REVERSIBLE' : hasForwardOnly ? 'FORWARD_ONLY' : 'UNCLASSIFIED';
+      expect(p).toBe("REVERSIBLE");
+    });
+  
+    it('migration.sql SHA-256 is frozen', () => {
+      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("4deef01d88d06c03cacc44d833da04b869343c8912e0c0a08bb386e50c02f6ce");
+    });
+  
+    it('rollback.sql exists + non-empty (REVERSIBLE)', () => {
+      const p = path.join(migrationDir, 'rollback.sql');
+      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.statSync(p).size).toBeGreaterThan(0);
+    });
+  
+    it('rollback.sql SHA-256 is frozen', () => {
+      expect(sha256File(path.join(migrationDir, 'rollback.sql'))).toBe("9bbb6505f6374c9b6f95a9c258fde4b12ae304cc25a4caa91c05a21238456987");
+    });
+  });
 });
