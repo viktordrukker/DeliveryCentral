@@ -23,41 +23,36 @@ import {
 // `RateCardsAdminPage` UI. Soft-deletes via `archivedAt`. Mode:
 // admin-only (controller @RequireRoles('admin')).
 
-interface CardRow {
-  id: string;
-  name: string;
-  currencyCode: string;
-  clientId: string | null;
-  validFrom: Date;
-  validTo: Date | null;
-  isActive: boolean;
-  notes: string | null;
-  tenantId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  archivedAt: Date | null;
-}
+// F-33 / 20c-11 — drop the 10 `(this.prisma as unknown as {…})` casts
+// that used to coerce the client into a hand-rolled shape. The Prisma
+// client already exposes `rateCard` / `rateCardEntry` delegates with
+// correct typing; the local row types are derived from `GetPayload`.
 
-interface CardWithEntriesRow extends CardRow {
-  entries: EntryRow[];
-  client?: { name: string } | null;
-  _count?: { entries: number };
-}
+// `Prisma.validator` preserves the literal types of the include shape
+// (so `GetPayload<typeof X>` works) while still type-checking the
+// shape against `Prisma.RateCardInclude`. This avoids the readonly /
+// `as const` clash with Prisma's mutable `orderBy: ...[]` slot.
+const LIST_CARD_INCLUDE = Prisma.validator<Prisma.RateCardInclude>()({
+  client: { select: { name: true } },
+  _count: { select: { entries: true } },
+});
 
-interface EntryRow {
-  id: string;
-  rateCardId: string;
-  staffingRole: string;
-  grade: string;
-  requiredSkills: string[];
-  hourlyRate: Prisma.Decimal;
-  notes: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  archivedAt: Date | null;
-  _count?: { pinnedAssignments: number };
-}
+const CARD_WITH_ENTRIES_INCLUDE = Prisma.validator<Prisma.RateCardInclude>()({
+  client: { select: { name: true } },
+  entries: {
+    include: { _count: { select: { pinnedAssignments: true } } },
+    orderBy: [{ staffingRole: 'asc' }, { grade: 'asc' }],
+  },
+  _count: { select: { entries: true } },
+});
+
+type CardRow = Prisma.RateCardGetPayload<Record<string, never>>;
+type CardWithListInclude = Prisma.RateCardGetPayload<{ include: typeof LIST_CARD_INCLUDE }>;
+type CardWithEntriesRow = Prisma.RateCardGetPayload<{ include: typeof CARD_WITH_ENTRIES_INCLUDE }>;
+type EntryRow = Prisma.RateCardEntryGetPayload<Record<string, never>>;
+type EntryWithCountRow = Prisma.RateCardEntryGetPayload<{
+  include: { _count: { select: { pinnedAssignments: true } } };
+}>;
 
 @Injectable()
 export class RateCardAdminService {
@@ -74,20 +69,9 @@ export class RateCardAdminService {
     if (filter?.clientId) where.clientId = filter.clientId;
     if (!filter?.includeArchived) where.archivedAt = null;
 
-    const rows = await (this.prisma as unknown as {
-      rateCard: {
-        findMany: (q: {
-          where: Record<string, unknown>;
-          include: unknown;
-          orderBy: unknown;
-        }) => Promise<Array<CardRow & { client?: { name: string } | null; _count?: { entries: number } }>>;
-      };
-    }).rateCard.findMany({
+    const rows = await this.prisma.rateCard.findMany({
       where,
-      include: {
-        client: { select: { name: true } },
-        _count: { select: { entries: true } },
-      },
+      include: LIST_CARD_INCLUDE,
       orderBy: [{ clientId: 'asc' }, { validFrom: 'desc' }, { name: 'asc' }],
     });
 
@@ -95,21 +79,10 @@ export class RateCardAdminService {
   }
 
   public async getById(id: string): Promise<RateCardWithEntriesResponseDto> {
-    const row = (await (this.prisma as unknown as {
-      rateCard: {
-        findUnique: (q: { where: { id: string }; include: unknown }) => Promise<CardWithEntriesRow | null>;
-      };
-    }).rateCard.findUnique({
+    const row = await this.prisma.rateCard.findUnique({
       where: { id },
-      include: {
-        client: { select: { name: true } },
-        entries: {
-          include: { _count: { select: { pinnedAssignments: true } } },
-          orderBy: [{ staffingRole: 'asc' }, { grade: 'asc' }],
-        },
-        _count: { select: { entries: true } },
-      },
-    })) as CardWithEntriesRow | null;
+      include: CARD_WITH_ENTRIES_INCLUDE,
+    });
 
     if (!row) throw new NotFoundException(`Rate card ${id} not found.`);
 
@@ -123,11 +96,7 @@ export class RateCardAdminService {
   public async create(dto: CreateRateCardDto, actorId: string): Promise<RateCardResponseDto> {
     this.assertValidityWindow(dto.validFrom, dto.validTo ?? null);
 
-    const created = await (this.prisma as unknown as {
-      rateCard: {
-        create: (q: { data: Record<string, unknown> }) => Promise<CardRow>;
-      };
-    }).rateCard.create({
+    const created = await this.prisma.rateCard.create({
       data: {
         name: dto.name.trim(),
         currencyCode: dto.currencyCode.toUpperCase(),
@@ -166,11 +135,7 @@ export class RateCardAdminService {
       throw new BadRequestException('validFrom must be on or before validTo.');
     }
 
-    const updated = await (this.prisma as unknown as {
-      rateCard: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<CardRow>;
-      };
-    }).rateCard.update({
+    const updated = await this.prisma.rateCard.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -201,11 +166,7 @@ export class RateCardAdminService {
       throw new ConflictException(`Rate card ${id} is already archived.`);
     }
 
-    const updated = await (this.prisma as unknown as {
-      rateCard: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<CardRow>;
-      };
-    }).rateCard.update({
+    const updated = await this.prisma.rateCard.update({
       where: { id },
       data: { archivedAt: new Date(), isActive: false },
     });
@@ -231,11 +192,7 @@ export class RateCardAdminService {
   ): Promise<RateCardEntryResponseDto> {
     await this.requireCard(cardId);
     try {
-      const created = await (this.prisma as unknown as {
-        rateCardEntry: {
-          create: (q: { data: Record<string, unknown> }) => Promise<EntryRow>;
-        };
-      }).rateCardEntry.create({
+      const created = await this.prisma.rateCardEntry.create({
         data: {
           rateCardId: cardId,
           staffingRole: dto.staffingRole.trim(),
@@ -285,11 +242,7 @@ export class RateCardAdminService {
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.notes !== undefined) data.notes = dto.notes;
 
-    const updated = await (this.prisma as unknown as {
-      rateCardEntry: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<EntryRow>;
-      };
-    }).rateCardEntry.update({
+    const updated = await this.prisma.rateCardEntry.update({
       where: { id: entry.id },
       data,
     });
@@ -318,11 +271,7 @@ export class RateCardAdminService {
       throw new ConflictException(`Rate card entry ${entryId} is already archived.`);
     }
 
-    const updated = await (this.prisma as unknown as {
-      rateCardEntry: {
-        update: (q: { where: { id: string }; data: Record<string, unknown> }) => Promise<EntryRow>;
-      };
-    }).rateCardEntry.update({
+    const updated = await this.prisma.rateCardEntry.update({
       where: { id: entry.id },
       data: { archivedAt: new Date(), isActive: false },
     });
@@ -342,21 +291,13 @@ export class RateCardAdminService {
   }
 
   private async requireCard(id: string): Promise<CardRow> {
-    const row = (await (this.prisma as unknown as {
-      rateCard: {
-        findUnique: (q: { where: { id: string } }) => Promise<CardRow | null>;
-      };
-    }).rateCard.findUnique({ where: { id } })) as CardRow | null;
+    const row = await this.prisma.rateCard.findUnique({ where: { id } });
     if (!row) throw new NotFoundException(`Rate card ${id} not found.`);
     return row;
   }
 
   private async requireEntry(cardId: string, entryId: string): Promise<EntryRow> {
-    const row = (await (this.prisma as unknown as {
-      rateCardEntry: {
-        findUnique: (q: { where: { id: string } }) => Promise<EntryRow | null>;
-      };
-    }).rateCardEntry.findUnique({ where: { id: entryId } })) as EntryRow | null;
+    const row = await this.prisma.rateCardEntry.findUnique({ where: { id: entryId } });
     if (!row) throw new NotFoundException(`Rate card entry ${entryId} not found.`);
     if (row.rateCardId !== cardId) {
       throw new BadRequestException(
@@ -383,7 +324,7 @@ export class RateCardAdminService {
   }
 
   private toCardResponse(
-    r: CardRow,
+    r: CardRow | CardWithListInclude | CardWithEntriesRow,
     clientName: string | null,
     entryCount: number,
   ): RateCardResponseDto {
@@ -405,7 +346,9 @@ export class RateCardAdminService {
     };
   }
 
-  private toEntryResponse(r: EntryRow): RateCardEntryResponseDto {
+  private toEntryResponse(r: EntryRow | EntryWithCountRow): RateCardEntryResponseDto {
+    const pinnedAssignmentCount =
+      '_count' in r ? r._count?.pinnedAssignments ?? 0 : 0;
     return {
       id: r.id,
       rateCardId: r.rateCardId,
@@ -418,7 +361,7 @@ export class RateCardAdminService {
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       archivedAt: r.archivedAt ? r.archivedAt.toISOString() : null,
-      pinnedAssignmentCount: r._count?.pinnedAssignments ?? 0,
+      pinnedAssignmentCount,
     };
   }
 }
