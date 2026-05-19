@@ -89,7 +89,7 @@ export class UpdateProjectService {
         where: { id: command.projectId },
         data: {
           ...(command.projectManagerId !== undefined
-            ? { projectManagerId: command.projectManagerId, leadPmPersonId: command.projectManagerId }
+            ? { projectManagerId: command.projectManagerId }
             : {}),
           ...(command.deliveryManagerId !== undefined
             ? { deliveryManagerId: command.deliveryManagerId }
