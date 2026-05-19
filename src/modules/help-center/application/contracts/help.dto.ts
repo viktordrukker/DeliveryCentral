@@ -38,7 +38,10 @@ export class HelpFeedbackDto {
 }
 
 export class OnboardingTourProgressDto {
-  personId!: string;
+  // F-20 / D-109 — OnboardingTourProgress.personId is nullable
+  // (FK action SetNull, audit-adjacent analytics survive person
+  // deletion). DTO mirrors that so orphan rows can be projected.
+  personId!: string | null;
   tourKey!: string;
   completedSteps!: string[];
   dismissedAt!: string | null;
