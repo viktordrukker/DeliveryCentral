@@ -253,10 +253,19 @@ model ResponsibilityRule {
   createdAt       DateTime                           @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime                           @updatedAt @db.Timestamptz(3)
   archivedAt      DateTime?                          @db.Timestamptz(3)
+  // F-38 / D-103 + DM-5-5 round 9 — actor-audit columns. `targetPersonId`
+  // is the rule's TARGET (PERSON mode); these capture who created/edited
+  // the rule itself.
+  createdByPersonId String?                          @db.Uuid
+  updatedByPersonId String?                          @db.Uuid
+  createdByPerson   Person?                          @relation("ResponsibilityRuleCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?                          @relation("ResponsibilityRuleUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([actionKind, scopeKind, isActive, priority])
   @@index([targetPersonId])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("responsibility_rules")
 }
 
@@ -515,6 +524,11 @@ model Person {
   updatedProjectBudgets                  ProjectBudget[]                     @relation("ProjectBudgetUpdatedBy")
   createdRateCards                       RateCard[]                          @relation("RateCardCreatedBy")
   updatedRateCards                       RateCard[]                          @relation("RateCardUpdatedBy")
+  // F-38 / D-103 + DM-5-5 round 9
+  createdNotificationTemplates           NotificationTemplate[]              @relation("NotificationTemplateCreatedBy")
+  updatedNotificationTemplates           NotificationTemplate[]              @relation("NotificationTemplateUpdatedBy")
+  createdResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleCreatedBy")
+  updatedResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1530,11 +1544,20 @@ model NotificationTemplate {
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime              @updatedAt @db.Timestamptz(3)
   archivedAt           DateTime?             @db.Timestamptz(3)
+  // F-38 / D-103 + DM-5-5 round 9 — actor-audit columns. `isSystemManaged`
+  // distinguishes baseline templates from tenant overrides; these
+  // capture the row author either way.
+  createdByPersonId    String?               @db.Uuid
+  updatedByPersonId    String?               @db.Uuid
   channel              NotificationChannel   @relation(fields: [channelId], references: [id])
   notificationRequests NotificationRequest[]
+  createdByPerson      Person?               @relation("NotificationTemplateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?               @relation("NotificationTemplateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([eventName, archivedAt])
   @@index([channelId, archivedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("NotificationTemplate")
 }
 
