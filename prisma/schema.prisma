@@ -495,6 +495,11 @@ model Person {
   updatedTimesheetWeeks                  TimesheetWeek[]                     @relation("TimesheetWeekUpdatedBy")
   createdProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskCreatedBy")
   updatedProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskUpdatedBy")
+  // F-30 / D-103 + DM-5-5 round 5
+  createdProjectMilestones               ProjectMilestone[]                  @relation("ProjectMilestoneCreatedBy")
+  updatedProjectMilestones               ProjectMilestone[]                  @relation("ProjectMilestoneUpdatedBy")
+  createdBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalCreatedBy")
+  updatedBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2705,14 +2710,24 @@ model BudgetApproval {
   requestedChange     Json?
   createdAt           DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime             @updatedAt @db.Timestamptz(3)
+  // F-30 / D-103 + DM-5-5 round 5 — actor-audit columns. The existing
+  // `requestedByPersonId` and `decidedByPersonId` capture the
+  // business actors; these mirror the canonical framework-time pair
+  // for uniform join-by-actor queries across aggregates.
+  createdByPersonId   String?              @db.Uuid
+  updatedByPersonId   String?              @db.Uuid
 
   projectBudget     ProjectBudget @relation(fields: [projectBudgetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   requestedByPerson Person        @relation("BudgetApproval_requestedBy", fields: [requestedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   decidedByPerson   Person?       @relation("BudgetApproval_decidedBy", fields: [decidedByPersonId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdByPerson   Person?       @relation("BudgetApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?       @relation("BudgetApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([projectBudgetId])
   @@index([status])
   @@index([requestedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("budget_approvals")
   @@index([decidedByPersonId])
 }
@@ -2838,10 +2853,17 @@ model ProjectMilestone {
   dependsOnMilestoneIds String[]        @default([])
   createdAt             DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  // F-30 / D-103 + DM-5-5 round 5 — actor-audit columns.
+  createdByPersonId     String?         @db.Uuid
+  updatedByPersonId     String?         @db.Uuid
   project               Project         @relation(fields: [projectId], references: [id])
+  createdByPerson       Person?         @relation("ProjectMilestoneCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson       Person?         @relation("ProjectMilestoneUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([projectId, plannedDate])
   @@index([projectId, status])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_milestones")
 }
 
