@@ -6,6 +6,10 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AbacPolicyRegistry } from '@src/modules/identity-access/application/abac/abac-policy.registry';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import {
+  WEBHOOK_EVENT_REGISTRY,
+  WebhookEventTypeDescriptor,
+} from '@src/shared/events/webhook-event-types';
 
 import { AdminConfigQueryService } from '../application/admin-config-query.service';
 import { InMemoryWebhookService, WebhookSubscription, WebhookDeliveryAttempt } from '../infrastructure/in-memory-webhook.service';
@@ -321,6 +325,22 @@ export class AdminConfigController {
     @Body() body: CreateWebhookDto,
   ): WebhookSubscription {
     return this.webhookService.create(body.url, body.secret, body.eventTypes ?? [], body.createdByPersonId ?? '');
+  }
+
+  /**
+   * F-27 / D-170 — webhook event-type registry. Returns the full list
+   * of subscribable events grouped by domain. Integrators GET this
+   * once on integration setup to populate their event-type selector;
+   * the response stays in lockstep with the producer-side
+   * `OUTBOX_HANDLERS` registry because both pipelines import from the
+   * same shared module.
+   */
+  @Get('webhooks/event-types')
+  @RequireRoles('admin')
+  @ApiOperation({ summary: 'List every event type webhooks can subscribe to' })
+  @ApiOkResponse({ description: 'Webhook event-type registry.' })
+  public listWebhookEventTypes(): WebhookEventTypeDescriptor[] {
+    return [...WEBHOOK_EVENT_REGISTRY];
   }
 
   @Get('webhooks')
