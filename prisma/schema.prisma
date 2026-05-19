@@ -500,6 +500,11 @@ model Person {
   updatedProjectMilestones               ProjectMilestone[]                  @relation("ProjectMilestoneUpdatedBy")
   createdBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalCreatedBy")
   updatedBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalUpdatedBy")
+  // F-32 / D-103 + DM-5-5 round 6
+  createdOrgUnits                        OrgUnit[]                           @relation("OrgUnitCreatedBy")
+  updatedOrgUnits                        OrgUnit[]                           @relation("OrgUnitUpdatedBy")
+  createdProposalSlates                  StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateCreatedBy")
+  updatedProposalSlates                  StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -691,11 +696,20 @@ model OrgUnit {
   version                Int                      @default(1)
   tenantId               String?                  @db.Uuid
   Tenant                 Tenant?                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  // F-32 / D-103 + DM-5-5 round 6 — actor-audit columns.
+  // `managerPersonId` is the business owner; these capture who created
+  // the org unit and who last touched the row.
+  createdByPersonId      String?                  @db.Uuid
+  updatedByPersonId      String?                  @db.Uuid
+  createdByPerson        Person?                  @relation("OrgUnitCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson        Person?                  @relation("OrgUnitUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([parentOrgUnitId])
   @@index([managerPersonId])
   @@index([status, archivedAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("OrgUnit")
 }
 
@@ -2141,13 +2155,22 @@ model StaffingRequestProposalSlate {
   decidedAt          DateTime?                          @db.Timestamptz(3)
   createdAt          DateTime                           @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime                           @updatedAt @db.Timestamptz(3)
+  // F-32 / D-103 + DM-5-5 round 6 — actor-audit columns. The existing
+  // `proposedByPersonId` captures the creator; the canonical pair
+  // brings this aggregate into uniform shape.
+  createdByPersonId  String?                            @db.Uuid
+  updatedByPersonId  String?                            @db.Uuid
   staffingRequest    StaffingRequest                    @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
   proposedBy         Person                             @relation("StaffingRequestProposalSlateProposedBy", fields: [proposedByPersonId], references: [id], onDelete: Restrict)
+  createdByPerson    Person?                            @relation("StaffingRequestProposalSlateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson    Person?                            @relation("StaffingRequestProposalSlateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   candidates         StaffingRequestProposalCandidate[]
 
   @@index([staffingRequestId])
   @@index([status, proposedAt])
   @@index([proposedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("StaffingRequestProposalSlate")
 }
 
