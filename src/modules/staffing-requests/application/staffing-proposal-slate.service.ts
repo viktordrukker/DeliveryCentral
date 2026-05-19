@@ -6,7 +6,6 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { TransactionContext } from '@src/shared/domain/transaction-context';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
@@ -196,9 +195,7 @@ export class StaffingProposalSlateService {
     await this.prisma.$transaction(async (tx) => {
       await this.slateRepository.save(slate, tx);
       if (request.status !== 'IN_REVIEW') {
-        await (tx as unknown as {
-          staffingRequest: { update: (args: unknown) => Promise<unknown> };
-        }).staffingRequest.update({
+        await tx.staffingRequest.update({
           where: { id: request.id },
           data: { status: 'IN_REVIEW' },
         });
@@ -332,12 +329,8 @@ export class StaffingProposalSlateService {
     const newHeadcount = Math.min(request.headcountFulfilled + 1, request.headcountRequired);
     const nextStatus = newHeadcount >= request.headcountRequired ? 'FULFILLED' : request.status;
     await this.prisma.$transaction(async (tx) => {
-      await this.slateRepository.save(slate, tx as unknown as TransactionContext);
-      await (tx as unknown as {
-        staffingRequest: {
-          update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
-        };
-      }).staffingRequest.update({
+      await this.slateRepository.save(slate, tx);
+      await tx.staffingRequest.update({
         where: { id: request.id },
         data: { headcountFulfilled: newHeadcount, status: nextStatus },
       });
@@ -401,9 +394,7 @@ export class StaffingProposalSlateService {
     // single $transaction so the rollback path on either failure is clean.
     await this.prisma.$transaction(async (tx) => {
       await this.slateRepository.save(slate, tx);
-      await (tx as unknown as {
-        staffingRequest: { update: (args: unknown) => Promise<unknown> };
-      }).staffingRequest.update({
+      await tx.staffingRequest.update({
         where: { id: request.id },
         data: {
           status: nextRequestStatus,
