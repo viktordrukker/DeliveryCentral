@@ -510,6 +510,11 @@ model Person {
   updatedResourcePools                   ResourcePool[]                      @relation("ResourcePoolUpdatedBy")
   createdPositions                       Position[]                          @relation("PositionCreatedBy")
   updatedPositions                       Position[]                          @relation("PositionUpdatedBy")
+  // F-36 / D-103 + DM-5-5 round 8
+  createdProjectBudgets                  ProjectBudget[]                     @relation("ProjectBudgetCreatedBy")
+  updatedProjectBudgets                  ProjectBudget[]                     @relation("ProjectBudgetUpdatedBy")
+  createdRateCards                       RateCard[]                          @relation("RateCardCreatedBy")
+  updatedRateCards                       RateCard[]                          @relation("RateCardUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1762,9 +1767,18 @@ model ProjectBudget {
   approvals       BudgetApproval[]
   updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
   version         Int              @default(1)
+  // F-36 / D-103 + DM-5-5 round 8 — actor-audit columns. Joins with
+  // BudgetApproval (business actors via requestedByPersonId +
+  // decidedByPersonId) for the full approval-chain trail.
+  createdByPersonId String?        @db.Uuid
+  updatedByPersonId String?        @db.Uuid
+  createdByPerson Person?          @relation("ProjectBudgetCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?          @relation("ProjectBudgetUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, fiscalYear])
   @@index([currencyCode])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_budgets")
 }
 
@@ -1824,10 +1838,19 @@ model RateCard {
   createdAt     DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
   archivedAt    DateTime?        @db.Timestamptz(3)
+  // F-36 / D-103 + DM-5-5 round 8 — actor-audit columns. RateCard is
+  // admin-curated and drives margin math; on-row creator/editor
+  // tracking is finance-grade.
+  createdByPersonId String?      @db.Uuid
+  updatedByPersonId String?      @db.Uuid
   entries       RateCardEntry[]
+  createdByPerson   Person?      @relation("RateCardCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?      @relation("RateCardUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([clientId, isActive])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("rate_cards")
   @@index([currencyCode])
 }
