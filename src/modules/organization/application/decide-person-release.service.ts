@@ -39,20 +39,12 @@ interface DecidePersonReleaseResult {
   fullyApproved: boolean;
 }
 
-interface ReleaseRequestRow {
-  id: string;
-  personId: string;
-  initiatedByPersonId: string;
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
-}
-
-interface ReleaseApprovalRow {
-  id: string;
-  requestId: string;
-  role: string;
-  actorPersonId: string;
-  decision: 'APPROVED' | 'REJECTED';
-}
+// F-45 / 20c-11 — drop the 5 `(this.prisma as unknown as {...})` casts
+// that used to coerce the Prisma client into a hand-rolled shape per
+// call site. The client already exposes typed `personReleaseRequest`,
+// `personReleaseApproval`, and `person` delegates — no cast needed.
+// Prisma return types are now inferred at each call site; local row
+// aliases were removed since they ended up unused after the cleanup.
 
 const REQUIRED_ROLES = ['hr_manager', 'director'] as const;
 
@@ -106,13 +98,9 @@ export class DecidePersonReleaseService {
       throw new BadRequestException('A reason is required when rejecting a release.');
     }
 
-    const request = (await (this.prisma as unknown as {
-      personReleaseRequest: {
-        findUnique: (args: unknown) => Promise<ReleaseRequestRow | null>;
-      };
-    }).personReleaseRequest.findUnique({
+    const request = await this.prisma.personReleaseRequest.findUnique({
       where: { id: command.requestId },
-    })) as ReleaseRequestRow | null;
+    });
 
     if (!request) {
       throw new NotFoundException(`Release request ${command.requestId} not found.`);
@@ -133,11 +121,7 @@ export class DecidePersonReleaseService {
       );
     }
 
-    const existingApprovals = await (this.prisma as unknown as {
-      personReleaseApproval: {
-        findMany: (args: unknown) => Promise<ReleaseApprovalRow[]>;
-      };
-    }).personReleaseApproval.findMany({
+    const existingApprovals = await this.prisma.personReleaseApproval.findMany({
       where: { requestId: command.requestId },
     });
 
@@ -170,11 +154,7 @@ export class DecidePersonReleaseService {
 
     const updatedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
-      await (tx as unknown as {
-        personReleaseApproval: {
-          create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
-        };
-      }).personReleaseApproval.create({
+      await tx.personReleaseApproval.create({
         data: {
           requestId: command.requestId,
           role: command.decisionRole,
@@ -185,11 +165,7 @@ export class DecidePersonReleaseService {
       });
 
       if (nextStatus !== 'PENDING_APPROVAL') {
-        await (tx as unknown as {
-          personReleaseRequest: {
-            update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
-          };
-        }).personReleaseRequest.update({
+        await tx.personReleaseRequest.update({
           where: { id: command.requestId },
           data: { status: nextStatus, updatedAt },
         });
@@ -270,16 +246,14 @@ export class DecidePersonReleaseService {
       return null;
     }
     try {
-      const person = await (this.prisma as unknown as {
-        person: {
-          findUnique: (q: {
-            where: { id: string };
-            select: { orgUnitId: boolean; grade: boolean };
-          }) => Promise<{ orgUnitId: string | null; grade: string | null } | null>;
-        };
-      }).person.findUnique({
+      // F-45 / 20c-11 — `Person` has no `orgUnitId` column; the
+      // previous `as unknown as { ... }` cast hid that and the original
+      // code always resolved with `orgUnitId: null`. The org-unit
+      // scope is via `PersonOrgMembership` and is not routed through
+      // this resolver — keeping the pre-existing behavior explicit.
+      const person = await this.prisma.person.findUnique({
         where: { id: personId },
-        select: { orgUnitId: true, grade: true },
+        select: { grade: true },
       });
       const actionKind: ResponsibilityActionKind =
         decisionRole === 'hr_manager'
@@ -287,7 +261,7 @@ export class DecidePersonReleaseService {
           : 'PERSON_RELEASE_DIRECTOR_APPROVAL';
       return await this.responsibilityResolver.resolve({
         actionKind,
-        orgUnitId: person?.orgUnitId ?? null,
+        orgUnitId: null,
         grade: person?.grade ?? null,
         fallbackRole: decisionRole,
       });
