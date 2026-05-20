@@ -558,6 +558,11 @@ model Person {
   updatedHelpArticles                    HelpArticle[]                       @relation("HelpArticleUpdatedBy")
   createdProjectVendorEngagements        ProjectVendorEngagement[]           @relation("ProjectVendorEngagementCreatedBy")
   updatedProjectVendorEngagements        ProjectVendorEngagement[]           @relation("ProjectVendorEngagementUpdatedBy")
+  // F-48 / D-103 + DM-5-5 round 14
+  createdProjectWorkstreams              ProjectWorkstream[]                 @relation("ProjectWorkstreamCreatedBy")
+  updatedProjectWorkstreams              ProjectWorkstream[]                 @relation("ProjectWorkstreamUpdatedBy")
+  createdWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionCreatedBy")
+  updatedWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1376,11 +1381,18 @@ model WorkflowDefinition {
   createdAt   DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime                  @updatedAt @db.Timestamptz(3)
   archivedAt  DateTime?                 @db.Timestamptz(3)
+  // F-48 / D-103 round 14 — actor-audit columns.
+  createdByPersonId String?             @db.Uuid
+  updatedByPersonId String?             @db.Uuid
+  createdByPerson   Person?             @relation("WorkflowDefinitionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?             @relation("WorkflowDefinitionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   caseTypes   CaseType[]
   states      WorkflowStateDefinition[]
 
   @@unique([entityType, workflowKey, version])
   @@index([entityType, status, archivedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("WorkflowDefinition")
 }
 
@@ -3233,9 +3245,16 @@ model ProjectWorkstream {
   displayOrder       Int       @default(0)
   createdAt          DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  // F-48 / D-103 round 14 — actor-audit columns.
+  createdByPersonId  String?   @db.Uuid
+  updatedByPersonId  String?   @db.Uuid
+  createdByPerson    Person?   @relation("ProjectWorkstreamCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson    Person?   @relation("ProjectWorkstreamUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   project            Project   @relation(fields: [projectId], references: [id])
 
   @@index([projectId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_workstreams")
 }
 
