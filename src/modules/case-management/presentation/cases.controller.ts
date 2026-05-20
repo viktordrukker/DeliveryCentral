@@ -286,11 +286,7 @@ export class CasesController {
     @Body() body: AddCaseStepRequestDto,
   ): Promise<CaseStepDto> {
     try {
-      const svc = this.completeCaseStepService as unknown as { addStep(caseId: string, displayName: string, stepKey?: string): Promise<CaseStepDto> };
-      if (typeof svc.addStep !== 'function') {
-        throw new Error('Step management not supported in this environment.');
-      }
-      return await svc.addStep(id, body.displayName, body.stepKey);
+      return await this.completeCaseStepService.addStep(id, body.displayName, body.stepKey);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Failed to add step.');
     }
@@ -306,11 +302,7 @@ export class CasesController {
     @Param('stepKey') stepKey: string,
   ): Promise<{ success: boolean }> {
     try {
-      const svc = this.completeCaseStepService as unknown as { removeStep(caseId: string, stepKey: string): Promise<void> };
-      if (typeof svc.removeStep !== 'function') {
-        throw new Error('Step management not supported in this environment.');
-      }
-      await svc.removeStep(id, stepKey);
+      await this.completeCaseStepService.removeStep(id, stepKey);
       return { success: true };
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Failed to remove step.');
