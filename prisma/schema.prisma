@@ -568,6 +568,11 @@ model Person {
   updatedProjectRetrospectives           ProjectRetrospective[]              @relation("ProjectRetrospectiveUpdatedBy")
   createdProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanCreatedBy")
   updatedProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanUpdatedBy")
+  // F-52 / D-103 + DM-5-5 round 16
+  createdRateCardEntries                 RateCardEntry[]                     @relation("RateCardEntryCreatedBy")
+  updatedRateCardEntries                 RateCardEntry[]                     @relation("RateCardEntryUpdatedBy")
+  createdLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceCreatedBy")
+  updatedLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1942,10 +1947,17 @@ model RateCardEntry {
   createdAt       DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime   @updatedAt @db.Timestamptz(3)
   archivedAt      DateTime?  @db.Timestamptz(3)
+  // F-52 / D-103 round 16 — actor-audit columns.
+  createdByPersonId String?  @db.Uuid
+  updatedByPersonId String?  @db.Uuid
+  createdByPerson   Person?  @relation("RateCardEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?  @relation("RateCardEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   pinnedAssignments ProjectAssignment[] @relation("AssignmentRateCardEntry")
 
   @@unique([rateCardId, staffingRole, grade])
   @@index([rateCardId, isActive])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("rate_card_entries")
 }
 
@@ -2470,11 +2482,18 @@ model LeaveBalance {
   pending     Decimal          @default(0) @db.Decimal(5, 1)
   createdAt   DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  // F-52 / D-103 round 16 — actor-audit columns.
+  createdByPersonId String?    @db.Uuid
+  updatedByPersonId String?    @db.Uuid
+  createdByPerson   Person?    @relation("LeaveBalanceCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?    @relation("LeaveBalanceUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   person Person @relation(fields: [personId], references: [id])
 
   @@unique([personId, year, leaveType])
   @@index([personId, year])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("leave_balances")
 }
 
