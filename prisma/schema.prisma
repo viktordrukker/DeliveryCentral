@@ -563,6 +563,11 @@ model Person {
   updatedProjectWorkstreams              ProjectWorkstream[]                 @relation("ProjectWorkstreamUpdatedBy")
   createdWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionCreatedBy")
   updatedWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionUpdatedBy")
+  // F-50 / D-103 + DM-5-5 round 15
+  createdProjectRetrospectives           ProjectRetrospective[]              @relation("ProjectRetrospectiveCreatedBy")
+  updatedProjectRetrospectives           ProjectRetrospective[]              @relation("ProjectRetrospectiveUpdatedBy")
+  createdProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanCreatedBy")
+  updatedProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2608,10 +2613,17 @@ model ProjectRolePlan {
   notes              String?
   createdAt          DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime       @updatedAt @db.Timestamptz(3)
+  // F-50 / D-103 round 15 — actor-audit columns.
+  createdByPersonId  String?        @db.Uuid
+  updatedByPersonId  String?        @db.Uuid
+  createdByPerson    Person?        @relation("ProjectRolePlanCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson    Person?        @relation("ProjectRolePlanUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   project            Project        @relation(fields: [projectId], references: [id])
 
   @@unique([projectId, roleName, seniorityLevel])
   @@index([projectId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_role_plans")
 }
 
@@ -3012,6 +3024,11 @@ model ProjectRetrospective {
   facilitatedByPersonId String?   @db.Uuid
   createdAt             DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+  // F-50 / D-103 round 15 — actor-audit columns.
+  createdByPersonId String?       @db.Uuid
+  updatedByPersonId String?       @db.Uuid
+  createdByPerson   Person?       @relation("ProjectRetrospectiveCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?       @relation("ProjectRetrospectiveUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   facilitatedByPerson Person? @relation(fields: [facilitatedByPersonId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -3019,6 +3036,8 @@ model ProjectRetrospective {
   @@index([projectId])
   @@map("project_retrospectives")
   @@index([facilitatedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
 }
 
 model ProjectMilestone {
