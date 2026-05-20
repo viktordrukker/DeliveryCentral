@@ -92,11 +92,7 @@ export class RequestBudgetChangeService {
     }
 
     // Refuse to stack a second pending request on the same budget.
-    const existing = await (this.prisma as unknown as {
-      budgetApproval: {
-        findFirst: (args: unknown) => Promise<{ id: string } | null>;
-      };
-    }).budgetApproval.findFirst({
+    const existing = await this.prisma.budgetApproval.findFirst({
       where: { projectBudgetId: budget.id, status: 'PENDING' },
     });
     if (existing) {
@@ -121,16 +117,12 @@ export class RequestBudgetChangeService {
       verdict !== null && (verdict.mode === 'SKIP' || verdict.mode === 'PM_SOLO');
 
     const approval = await this.prisma.$transaction(async (tx) => {
-      const created = await (tx as unknown as {
-        budgetApproval: {
-          create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
-        };
-      }).budgetApproval.create({
+      const created = await tx.budgetApproval.create({
         data: {
           projectBudgetId: budget.id,
           status: autoApprove ? 'APPROVED' : 'PENDING',
           requestedByPersonId: command.actorId,
-          requestedChange: requestedChange as unknown as Prisma.InputJsonValue,
+          requestedChange: requestedChange as Prisma.InputJsonValue,
           decisionReason: command.reason ?? null,
           ...(autoApprove
             ? {
@@ -142,14 +134,7 @@ export class RequestBudgetChangeService {
       });
 
       if (autoApprove) {
-        await (tx as unknown as {
-          projectBudget: {
-            update: (args: {
-              where: { id: string };
-              data: { capexBudget: Prisma.Decimal; opexBudget: Prisma.Decimal };
-            }) => Promise<unknown>;
-          };
-        }).projectBudget.update({
+        await tx.projectBudget.update({
           where: { id: budget.id },
           data: {
             capexBudget: new Prisma.Decimal(command.capexBudget),
@@ -234,14 +219,7 @@ export class RequestBudgetChangeService {
       return null;
     }
     try {
-      const project = await (this.prisma as unknown as {
-        project: {
-          findUnique: (q: {
-            where: { id: string };
-            select: { clientId: boolean; projectType: boolean };
-          }) => Promise<{ clientId: string | null; projectType: string | null } | null>;
-        };
-      }).project.findUnique({
+      const project = await this.prisma.project.findUnique({
         where: { id: args.projectId },
         select: { clientId: true, projectType: true },
       });
