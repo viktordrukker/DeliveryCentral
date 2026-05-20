@@ -207,13 +207,12 @@ export class OutboxEventPublisherService implements OnModuleInit, OnModuleDestro
     }
   }
 
+  // F-51 / 20c-11 — drop 4 identical `(this.prisma as unknown as {...})`
+  // gateway-coercion casts. The Prisma client already exposes the typed
+  // `outboxEvent` delegate. The `OutboxRow` local interface mirrors the
+  // selected fields and is the return type of `findMany({ select })`.
   private async claimBatch(now: Date, batchSize: number): Promise<OutboxRow[]> {
-    const client = this.prisma as unknown as {
-      outboxEvent: {
-        findMany(args: unknown): Promise<OutboxRow[]>;
-      };
-    };
-    return client.outboxEvent.findMany({
+    return this.prisma.outboxEvent.findMany({
       where: {
         status: { in: ['PENDING', 'RETRY'] },
         availableAt: { lte: now },
@@ -235,10 +234,7 @@ export class OutboxEventPublisherService implements OnModuleInit, OnModuleDestro
   }
 
   private async markPublished(id: string, now: Date): Promise<void> {
-    const client = this.prisma as unknown as {
-      outboxEvent: { update(args: unknown): Promise<unknown> };
-    };
-    await client.outboxEvent.update({
+    await this.prisma.outboxEvent.update({
       where: { id },
       data: { status: 'PUBLISHED', publishedAt: now, lastError: null },
     });
@@ -250,20 +246,14 @@ export class OutboxEventPublisherService implements OnModuleInit, OnModuleDestro
     error: string,
     availableAt: Date,
   ): Promise<void> {
-    const client = this.prisma as unknown as {
-      outboxEvent: { update(args: unknown): Promise<unknown> };
-    };
-    await client.outboxEvent.update({
+    await this.prisma.outboxEvent.update({
       where: { id },
       data: { status: 'RETRY', attempts, lastError: error, availableAt },
     });
   }
 
   private async markFailed(id: string, attempts: number, error: string): Promise<void> {
-    const client = this.prisma as unknown as {
-      outboxEvent: { update(args: unknown): Promise<unknown> };
-    };
-    await client.outboxEvent.update({
+    await this.prisma.outboxEvent.update({
       where: { id },
       data: { status: 'FAILED', attempts, lastError: error },
     });

@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { StaffingRequestProposalCandidate } from '@src/modules/staffing-requests/domain/entities/staffing-request-proposal-candidate.entity';
@@ -94,20 +96,12 @@ export class PrismaStaffingRequestProposalSlateRepository
     // staffing-request status flip in `submit`), use it directly. Otherwise
     // open a short internal transaction so the slate-row + candidate-row
     // upserts still commit atomically with each other.
-    const withinTx = async (txCtx: unknown): Promise<void> => {
-      const slateGateway = (
-        txCtx as unknown as { staffingRequestProposalSlate: Record<string, unknown> }
-      ).staffingRequestProposalSlate as {
-        upsert: (args: unknown) => Promise<unknown>;
-      };
-      const candidateGateway = (
-        txCtx as unknown as { staffingRequestProposalCandidate: Record<string, unknown> }
-      ).staffingRequestProposalCandidate as {
-        upsert: (args: unknown) => Promise<unknown>;
-        deleteMany: (args: unknown) => Promise<unknown>;
-      };
-
-      await slateGateway.upsert({
+    //
+    // F-51 / 20c-11 — typed as `Prisma.TransactionClient`; both
+    // `this.prisma` and an injected tx client are assignable, no coercion
+    // casts needed.
+    const withinTx = async (txCtx: Prisma.TransactionClient): Promise<void> => {
+      await txCtx.staffingRequestProposalSlate.upsert({
         where: { id: slate.id },
         create: slatePayload,
         update: {
@@ -118,7 +112,7 @@ export class PrismaStaffingRequestProposalSlateRepository
       });
 
       const keepIds = slate.candidates.map((c) => c.id);
-      await candidateGateway.deleteMany({
+      await txCtx.staffingRequestProposalCandidate.deleteMany({
         where: {
           slateId: slate.id,
           id: {
@@ -128,7 +122,7 @@ export class PrismaStaffingRequestProposalSlateRepository
       });
 
       for (const candidate of slate.candidates) {
-        await candidateGateway.upsert({
+        await txCtx.staffingRequestProposalCandidate.upsert({
           where: { id: candidate.id },
           create: {
             id: candidate.id,
@@ -156,19 +150,14 @@ export class PrismaStaffingRequestProposalSlateRepository
     };
 
     if (tx && typeof tx === 'object' && tx !== null && 'staffingRequestProposalSlate' in tx) {
-      await withinTx(tx);
+      await withinTx(tx as Prisma.TransactionClient);
     } else {
       await this.prisma.$transaction(async (innerTx) => withinTx(innerTx));
     }
   }
 
   public async findById(slateId: string): Promise<StaffingRequestProposalSlate | null> {
-    const gateway = (
-      this.prisma as unknown as {
-        staffingRequestProposalSlate: { findUnique: (args: unknown) => Promise<unknown> };
-      }
-    ).staffingRequestProposalSlate;
-    const row = (await gateway.findUnique({
+    const row = (await this.prisma.staffingRequestProposalSlate.findUnique({
       where: { id: slateId },
       include: { candidates: { orderBy: { rank: 'asc' } } },
     })) as SlateRow | null;
@@ -178,12 +167,7 @@ export class PrismaStaffingRequestProposalSlateRepository
   public async findByStaffingRequestId(
     staffingRequestId: string,
   ): Promise<StaffingRequestProposalSlate | null> {
-    const gateway = (
-      this.prisma as unknown as {
-        staffingRequestProposalSlate: { findUnique: (args: unknown) => Promise<unknown> };
-      }
-    ).staffingRequestProposalSlate;
-    const row = (await gateway.findUnique({
+    const row = (await this.prisma.staffingRequestProposalSlate.findUnique({
       where: { staffingRequestId },
       include: { candidates: { orderBy: { rank: 'asc' } } },
     })) as SlateRow | null;
