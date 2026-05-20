@@ -2996,3 +2996,65 @@ Authored 2026-05-10. Consumes Phase 10's 24-theme synthesis to produce the maste
 **Capacity honesty.** Sprint 1 + Sprint 2 are over-budget at 2 engineers × 2-week. Plan documents 3 deferrable options for stakeholder pre-commit (add 3rd engineer / defer T-04 / defer T-21). 7 open questions for stakeholders surfaced in the checkpoint.
 
 _Phase 11 contributed the master plan + xlsx; Phase 12 gate passed; 0 new D-ids or T-ids; counter still at D-171, theme counter still at T-24. Research program (Phases 1–12) closed pending final stakeholder review._
+
+---
+
+## Bug Log — 2026-05-20
+
+- [ ] **BUG-SR-1 — Cancelled staffing request renders as Open; slate "Pick" CTA throws 409.** Browser repro 2026-05-20 on `https://deliverit-test.agentic.uz/staffing-requests/c9085c62-…`: SR has `status='CANCELLED'` + `cancelledAt` set (via `POST /staffing-requests/:id/cancel`), but the detail page shows derivedStatus **Open**, workflow timeline pinned at the **Open** step, and the proposal slate still renders an active "Pick selected candidate" CTA. Clicking it surfaces the backend's correct refusal: _"Staffing request stf_… must be OPEN or IN_REVIEW to pick a candidate (current: CANCELLED)."_ The UI invites an action the backend rejects — the rendered state is a lie.
+
+  **Root cause — three bugs compound:**
+
+  1. **Deriver ignores raw `status`.** [src/modules/staffing-requests/application/derive-staffing-request-status.service.ts:45-70](../../src/modules/staffing-requests/application/derive-staffing-request-status.service.ts#L45-L70) — `classifyFromSummary` is driven solely by `ProjectAssignment` row counts. With `totalAssignments === 0` it returns `'Open'` (line 49-51) unconditionally, even when `StaffingRequest.status` is `CANCELLED` / `DRAFT` / `FULFILLED`. Sprint F-0.10 (B-07 / L-2 / D-11) introduced `derivedStatus` as "single source of truth" but the deriver never honored the raw column it was supposed to supersede. Same defect exists in `deriveForRequests` (batch path).
+  2. **`cancel()` orphans the OPEN slate.** [src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service.ts:316-331](../../src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service.ts#L316-L331) — flips `status → CANCELLED` and sets `cancelledAt`, but leaves any associated `StaffingRequestProposalSlate` untouched. The slate stays `OPEN`, all its candidate actions remain rendered. Compare to `staffing-proposal-slate.service.ts:rejectAll` which transactionally flips slate + request.
+  3. **UI gates the "Pick" CTA on slate-state alone.** [frontend/src/routes/staffing-requests/StaffingRequestDetailPage.tsx:341](../../frontend/src/routes/staffing-requests/StaffingRequestDetailPage.tsx#L341) — `canDecideSlate = Boolean(isPM && slate && slate.status === 'OPEN')` doesn't cross-check the request's status or `derivedStatus`. Once Bug #1 is fixed the derivedStatus is correct, but this gate must also tighten so the button literally cannot render on a Cancelled/Closed request.
+
+  **Replication path (deterministic):**
+  1. Create staffing request → status `OPEN`.
+  2. PM proposes a slate with candidates → slate.status `OPEN`.
+  3. Open the "Cancel request" panel below the slate and cancel → `status: CANCELLED`, `cancelledAt: now`, slate untouched.
+  4. Reload the page → derivedStatus = `'Open'` (totalAssignments=0), slate still `OPEN`, "Pick selected candidate" CTA visible.
+  5. Click Pick → 409 with the message above.
+
+  **Fix plan (three layers, smallest first):**
+
+  - **Layer A — Deriver respects raw status (mandatory, root cause).** Extend `classifyFromSummary` signature to accept `rawStatus?: StaffingRequest['status']` and short-circuit before the assignment-summary logic:
+    ```ts
+    if (rawStatus === 'CANCELLED') return 'Cancelled';
+    if (rawStatus === 'FULFILLED') return 'Filled';
+    if (rawStatus === 'DRAFT')     return 'Open';   // surface accurately, no assignments yet
+    ```
+    Wire it through both `deriveForRequest` and `deriveForRequests`. Both already query the SR row(s); extend the `select` to include `status`. Update the two existing call sites in `staffing-requests.controller.ts:127` and `:141` to pass `request.status` through (`enrich`/`enrichMany`).
+
+  - **Layer B — `cancel()` transactionally invalidates open slates (defensive + heals legacy data).** Wrap the cancel flow in a `prisma.$transaction`:
+    1. Fetch any `StaffingRequestProposalSlate` rows for the request with `status='OPEN'`.
+    2. For each, call `slate.rejectAll(timestamp)` (existing domain method — auto-declines pending candidates and sets `slate.status='DECIDED'`), persist via the slate repository's `save(slate, tx)`.
+    3. Apply the existing status flip on `staffing_requests`. All in one tx.
+    4. Audit-log a `staffing_request.cancelled.slate_auto_decided` row per slate touched (mirror the audit pattern from `staffing-proposal-slate.service.ts:rejectAll`).
+
+  - **Layer C — UI gate tightens.** In [StaffingRequestDetailPage.tsx:341](../../frontend/src/routes/staffing-requests/StaffingRequestDetailPage.tsx#L341):
+    ```ts
+    const requestIsActionable =
+      request.derivedStatus !== 'Cancelled' && request.derivedStatus !== 'Closed';
+    const canDecideSlate = Boolean(isPM && slate && slate.status === 'OPEN' && requestIsActionable);
+    ```
+    Also gate the "Reject all…" button on the same predicate. After Layer A lands, `derivedStatus` is trustworthy, so this becomes a thin defensive check (belt-and-braces against future state-machine additions).
+
+  **Acceptance criteria:**
+  1. Unit test in `derive-staffing-request-status.service.spec.ts`: a CANCELLED SR with zero assignments derives to `'Cancelled'`; a FULFILLED SR with zero assignments derives to `'Filled'`; existing assignment-pipeline cases unchanged.
+  2. Backend integration test: `cancel()` on a request with an OPEN slate marks the slate `DECIDED`, all `PENDING` candidates `DECLINED`, and writes the audit row — single transaction (fault-inject: slate save throws → request stays OPEN).
+  3. Backend conflict tests: `pickCandidate` / `rejectAll` / `proposeSlate` / `submit` on a CANCELLED request return 409 (already true — but add coverage).
+  4. FE component test on `StaffingRequestDetailPage`: with `request.derivedStatus === 'Cancelled'` and a slate fixture in `status='OPEN'`, neither "Pick selected candidate" nor "Reject all…" renders; timeline shows the Cancelled stage; derived-status badge reads "Cancelled".
+  5. Browser smoke on the repro path: after the fix the cancelled SR detail page shows derivedStatus **Cancelled**, the workflow timeline shows the Cancelled stage, the slate section either hides its action footer or shows a disabled banner ("Request cancelled — slate actions disabled"), and no 409 is reachable from the UI.
+
+  **Files in scope:**
+  - `src/modules/staffing-requests/application/derive-staffing-request-status.service.ts` (Layer A)
+  - `src/modules/staffing-requests/presentation/staffing-requests.controller.ts` (Layer A wire-through at `enrich`/`enrichMany`)
+  - `src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service.ts` — `cancel()` (Layer B)
+  - `src/modules/staffing-requests/domain/entities/staffing-request-proposal-slate.entity.ts` (no change — reuse `rejectAll`)
+  - `frontend/src/routes/staffing-requests/StaffingRequestDetailPage.tsx` (Layer C)
+  - Tests: `test/staffing-requests/derive-staffing-request-status.spec.ts`, new integration spec for `cancel()` transaction, `StaffingRequestDetailPage.test.tsx`
+
+  **Note on prior work:** The Sprint F-0.10 comment at `StaffingRequestDetailPage.tsx:89-95` ("single source of truth: derivedStatus") was the right intent but the deriver itself wasn't updated to honor the raw status column. This is the finishing patch on D-11. Cross-ref D-95 (Phase 2 — Functional Duplication) which proposes deriving `headcountFulfilled` similarly — same family of cached-vs-derived drift.
+
+  — BOTH
