@@ -108,12 +108,12 @@ export class OpenPersonReleaseRequestService {
       );
     }
 
-    const existing = await (this.prisma as unknown as {
-      personReleaseRequest: {
-        findFirst: (args: unknown) => Promise<{ id: string } | null>;
-      };
-    }).personReleaseRequest.findFirst({
+    // F-47 / 20c-11 — drop the 2 `(this.prisma as unknown as {...})` casts that
+    // used to coerce the Prisma client per call site. The client already
+    // exposes a typed `personReleaseRequest` delegate.
+    const existing = await this.prisma.personReleaseRequest.findFirst({
       where: { personId: command.personId, status: 'PENDING_APPROVAL' },
+      select: { id: true },
     });
     if (existing) {
       throw new ConflictException(
@@ -122,11 +122,7 @@ export class OpenPersonReleaseRequestService {
     }
 
     const created = await this.prisma.$transaction(async (tx) => {
-      return (tx as unknown as {
-        personReleaseRequest: {
-          create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
-        };
-      }).personReleaseRequest.create({
+      return tx.personReleaseRequest.create({
         data: {
           personId: command.personId,
           initiatedByPersonId: command.actorId,
@@ -134,6 +130,7 @@ export class OpenPersonReleaseRequestService {
           reasonCode: command.reasonCode ?? null,
           targetTerminationDate: targetDate,
         },
+        select: { id: true },
       });
     });
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -125,27 +126,12 @@ export interface ResponsibilityVerdict {
     | null;
 }
 
-interface RuleRow {
-  id: string;
-  actionKind: ResponsibilityActionKind;
-  scopeKind:
-    | 'TENANT'
-    | 'ORG_UNIT'
-    | 'CLIENT'
-    | 'PROJECT'
-    | 'PROJECT_TYPE'
-    | 'THRESHOLD_AMOUNT'
-    | 'ROLE_GRADE';
-  scopeValue: string | null;
-  mode: ResponsibilityResolutionMode;
-  targetRole: string | null;
-  targetPersonId: string | null;
-  priority: number;
-  isActive: boolean;
-  archivedAt: Date | null;
-  updatedAt: Date;
-  tenantId: string | null;
-}
+// F-47 / 20c-11 — `RuleRow` is the Prisma return shape for the
+// `ResponsibilityRule` model; the previous local interface duplicated the
+// fields and was paired with two `as unknown as RuleRow[]` casts on the
+// findMany() results. Using `GetPayload` keeps the local alias for sort
+// helpers while letting Prisma own the field set.
+type RuleRow = Prisma.ResponsibilityRuleGetPayload<Record<string, never>>;
 
 @Injectable()
 export class ResponsibilityResolverService {
@@ -167,7 +153,7 @@ export class ResponsibilityResolverService {
     const eligibleRules: RuleRow[] = [];
 
     for (const scope of candidateScopes) {
-      const rows = (await this.prisma.responsibilityRule.findMany({
+      const rows = await this.prisma.responsibilityRule.findMany({
         where: {
           actionKind: context.actionKind as never,
           scopeKind: scope.kind as never,
@@ -176,7 +162,7 @@ export class ResponsibilityResolverService {
           archivedAt: null,
           ...this.tenantFilter(context.tenantId),
         },
-      })) as unknown as RuleRow[];
+      });
       eligibleRules.push(...rows);
     }
 
@@ -184,7 +170,7 @@ export class ResponsibilityResolverService {
     // and the rule fires when amount ≥ scopeValue. Pull all candidate
     // threshold rules and keep the ones that satisfy.
     if (context.amount !== null && context.amount !== undefined) {
-      const thresholdRules = (await this.prisma.responsibilityRule.findMany({
+      const thresholdRules = await this.prisma.responsibilityRule.findMany({
         where: {
           actionKind: context.actionKind as never,
           scopeKind: 'THRESHOLD_AMOUNT' as never,
@@ -192,7 +178,7 @@ export class ResponsibilityResolverService {
           archivedAt: null,
           ...this.tenantFilter(context.tenantId),
         },
-      })) as unknown as RuleRow[];
+      });
       for (const rule of thresholdRules) {
         const threshold = Number(rule.scopeValue);
         if (Number.isFinite(threshold) && context.amount >= threshold) {
