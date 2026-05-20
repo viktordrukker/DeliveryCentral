@@ -534,6 +534,11 @@ model Person {
   updatedOvertimePolicies                OvertimePolicy[]                    @relation("OvertimePolicyUpdatedBy")
   createdPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingCreatedBy")
   updatedPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingUpdatedBy")
+  // F-42 / D-103 + DM-5-5 round 11
+  createdClients                         Client[]                            @relation("ClientCreatedBy")
+  updatedClients                         Client[]                            @relation("ClientUpdatedBy")
+  createdVendors                         Vendor[]                            @relation("VendorCreatedBy")
+  updatedVendors                         Vendor[]                            @relation("VendorUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2466,14 +2471,23 @@ model Client {
   isActive               Boolean   @default(true)
   createdAt              DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
+  // F-42 / D-103 + DM-5-5 round 11 — actor-audit columns.
+  // `accountManagerPersonId` is the business actor; these capture
+  // the row author + last editor.
+  createdByPersonId      String?   @db.Uuid
+  updatedByPersonId      String?   @db.Uuid
   accountManager         Person?   @relation("ClientAccountManager", fields: [accountManagerPersonId], references: [id])
   projects               Project[]
   rateCards              RateCard[]
   tenantId               String?   @db.Uuid
   Tenant                 Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson        Person?   @relation("ClientCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson        Person?   @relation("ClientUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([isActive])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("clients")
   @@index([accountManagerPersonId])
 }
@@ -2489,13 +2503,20 @@ model Vendor {
   isActive       Boolean                   @default(true)
   createdAt      DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime                  @updatedAt @db.Timestamptz(3)
+  // F-42 / D-103 + DM-5-5 round 11 — actor-audit columns.
+  createdByPersonId String?                @db.Uuid
+  updatedByPersonId String?                @db.Uuid
   engagements    ProjectVendorEngagement[]
   skillAreasList VendorSkillArea[]
   tenantId       String?                   @db.Uuid
   Tenant         Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson Person?                  @relation("VendorCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?                  @relation("VendorUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([isActive])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("vendors")
 }
 
