@@ -196,15 +196,24 @@ model ProjectActivationApproval {
   // registry aggregates; business-time stays in requestedAt/decidedAt.
   createdAt       DateTime                     @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime                     @default(now()) @updatedAt @db.Timestamptz(3)
+  // F-44 / D-103 + DM-5-5 round 12 — actor-audit columns. The
+  // existing `requestedById` and `decidedById` are business actors;
+  // these mirror the canonical framework-time pair.
+  createdByPersonId String?                    @db.Uuid
+  updatedByPersonId String?                    @db.Uuid
   project         Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   requestedBy     Person                       @relation("ProjectActivationApproval_requestedBy", fields: [requestedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
   decidedBy       Person?                      @relation("ProjectActivationApproval_decidedBy", fields: [decidedById], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tenantId        String?                      @db.Uuid
   Tenant          Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson Person?                      @relation("ProjectActivationApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?                      @relation("ProjectActivationApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([projectId, requestedAt])
   @@index([decidedAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_activation_approvals")
   @@index([requestedById])
   @@index([decidedById])
@@ -539,6 +548,11 @@ model Person {
   updatedClients                         Client[]                            @relation("ClientUpdatedBy")
   createdVendors                         Vendor[]                            @relation("VendorCreatedBy")
   updatedVendors                         Vendor[]                            @relation("VendorUpdatedBy")
+  // F-44 / D-103 + DM-5-5 round 12
+  createdProjectChangeRequests           ProjectChangeRequest[]              @relation("ProjectChangeRequestCreatedBy")
+  updatedProjectChangeRequests           ProjectChangeRequest[]              @relation("ProjectChangeRequestUpdatedBy")
+  createdProjectActivationApprovals      ProjectActivationApproval[]         @relation("ProjectActivationApprovalCreatedBy")
+  updatedProjectActivationApprovals      ProjectActivationApproval[]         @relation("ProjectActivationApprovalUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -3020,14 +3034,23 @@ model ProjectChangeRequest {
   decidedAt         DateTime?             @db.Timestamptz(3)
   createdAt         DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
+  // F-44 / D-103 + DM-5-5 round 12 — actor-audit columns. The
+  // existing `requesterPersonId` and `decidedByPersonId` are
+  // business actors; these mirror the canonical framework-time pair.
+  createdByPersonId String?               @db.Uuid
+  updatedByPersonId String?               @db.Uuid
   project           Project               @relation(fields: [projectId], references: [id])
   requester         Person?               @relation("ProjectChangeRequestRequester", fields: [requesterPersonId], references: [id], onDelete: SetNull)
   decidedBy         Person?               @relation("ProjectChangeRequestDecider", fields: [decidedByPersonId], references: [id], onDelete: SetNull)
+  createdByPerson   Person?               @relation("ProjectChangeRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?               @relation("ProjectChangeRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([projectId, status])
   @@index([projectId, createdAt])
   @@index([requesterPersonId])
   @@index([decidedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_change_requests")
 }
 
