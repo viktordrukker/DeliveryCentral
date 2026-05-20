@@ -1,7 +1,9 @@
+import { DeriveStaffingRequestStatusService } from '@src/modules/staffing-requests/application/derive-staffing-request-status.service';
 import {
   classifyFromSummary,
   type DerivedStaffingRequestSummary,
 } from '@src/modules/staffing-requests/application/derive-staffing-request-status.service';
+import type { PrismaService } from '@src/shared/persistence/prisma.service';
 
 /**
  * BUG-SR-1 / Layer A — `classifyFromSummary` must honor the raw
@@ -79,5 +81,75 @@ describe('classifyFromSummary — BUG-SR-1 raw-status honoring', () => {
     summary.totalAssignments = 2;
     summary.completed = 2;
     expect(classifyFromSummary(2, summary, 'OPEN')).toBe('Closed');
+  });
+});
+
+/**
+ * BUG-SR-1 round 2 — the controller passes the response-shape `id` field
+ * (set to the publicId `stf_…` per DMD-026) to `deriveForRequest`. The
+ * original Layer A fix queried `staffingRequest.findUnique({ where: { id }})`
+ * using the publicId as a uuid → returned null → no short-circuit. Verify
+ * `deriveForRequest` resolves a publicId via the publicId index, finds the
+ * CANCELLED SR, and returns `'Cancelled'`.
+ */
+describe('DeriveStaffingRequestStatusService — publicId resolution (round 2)', () => {
+  it('resolves publicId input to internal uuid before status fetch', async () => {
+    const UUID = '00000000-0000-0000-0000-000000000001';
+    const PUBLIC_ID = 'stf_aBcDeFgHiJ';
+
+    const prismaStub = {
+      staffingRequest: {
+        findUnique: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+          if (where.publicId === PUBLIC_ID) return { id: UUID };
+          if (where.id === UUID) return { status: 'CANCELLED' };
+          return null;
+        }),
+      },
+      projectAssignment: {
+        findMany: jest.fn(async () => []),
+      },
+    } as unknown as PrismaService;
+
+    const svc = new DeriveStaffingRequestStatusService(prismaStub);
+    const result = await svc.deriveForRequest(PUBLIC_ID, 1);
+
+    expect(result.derivedStatus).toBe('Cancelled');
+    expect(result.summary.totalAssignments).toBe(0);
+  });
+
+  it('passes a bare uuid through without an extra lookup', async () => {
+    const UUID = '00000000-0000-0000-0000-000000000002';
+
+    const findUnique = jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+      if (where.id === UUID) return { status: 'OPEN' };
+      return null;
+    });
+
+    const prismaStub = {
+      staffingRequest: { findUnique },
+      projectAssignment: { findMany: jest.fn(async () => []) },
+    } as unknown as PrismaService;
+
+    const svc = new DeriveStaffingRequestStatusService(prismaStub);
+    const result = await svc.deriveForRequest(UUID, 1);
+
+    expect(result.derivedStatus).toBe('Open');
+    // Only the status fetch — no publicId resolution round-trip.
+    expect(findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a coherent empty-summary result for an unresolvable publicId', async () => {
+    const prismaStub = {
+      staffingRequest: {
+        findUnique: jest.fn(async () => null),
+      },
+      projectAssignment: { findMany: jest.fn(async () => []) },
+    } as unknown as PrismaService;
+
+    const svc = new DeriveStaffingRequestStatusService(prismaStub);
+    const result = await svc.deriveForRequest('stf_doesNotExist', 1);
+
+    expect(result.derivedStatus).toBe('Open');
+    expect(result.summary.totalAssignments).toBe(0);
   });
 });
