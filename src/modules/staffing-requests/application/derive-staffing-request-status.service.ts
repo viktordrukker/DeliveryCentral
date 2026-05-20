@@ -83,19 +83,47 @@ export function classifyFromSummary(
 export class DeriveStaffingRequestStatusService {
   public constructor(private readonly prisma: PrismaService) {}
 
+  // BUG-SR-1 round 2 — the controller passes `request.id` here, but
+  // `StaffingRequest.toResponse()` sets `id` to the publicId (`stf_…`) per
+  // DMD-026. The raw findUnique by uuid was returning null for any input
+  // that wasn't already a bare UUID, which silently defeated Layer A's
+  // short-circuit on `CANCELLED`/`FULFILLED` and also kept the assignments
+  // lookup from finding anything (latent bug, but harmless before because
+  // the totalAssignments=0 path already returned 'Open'). Resolve the
+  // internal uuid up-front so both the SR-status fetch and the
+  // assignments-by-FK lookup use the right key.
+  private async resolveInternalUuid(idOrPublicId: string): Promise<string | null> {
+    if (/^stf_[A-Za-z0-9]{10,}$/.test(idOrPublicId)) {
+      const row = await this.prisma.staffingRequest.findUnique({
+        where: { publicId: idOrPublicId },
+        select: { id: true },
+      });
+      return row?.id ?? null;
+    }
+    return idOrPublicId;
+  }
+
   public async deriveForRequest(
     requestId: string,
     headcountRequired: number,
   ): Promise<DerivedStaffingRequestResult> {
+    const internalId = await this.resolveInternalUuid(requestId);
+    if (!internalId) {
+      return {
+        derivedStatus: classifyFromSummary(headcountRequired, emptySummary(), null),
+        summary: emptySummary(),
+      };
+    }
+
     // BUG-SR-1 / Layer A — also fetch raw `status` so the classifier can
     // honor terminal lifecycle states the assignment summary cannot infer.
     const [request, assignments] = await Promise.all([
       this.prisma.staffingRequest.findUnique({
-        where: { id: requestId },
+        where: { id: internalId },
         select: { status: true },
       }),
       this.prisma.projectAssignment.findMany({
-        where: { staffingRequestId: requestId },
+        where: { staffingRequestId: internalId },
         select: { status: true },
       }),
     ]);
@@ -147,26 +175,44 @@ export class DeriveStaffingRequestStatusService {
       return new Map();
     }
 
+    // BUG-SR-1 round 2 — callers pass response-shape ids which can be
+    // either a publicId (`stf_…`) or a uuid. Fetch via OR so both work,
+    // then key the result Map by the same id the caller provided.
+    const publicIds = requestIds.filter((id) => /^stf_[A-Za-z0-9]{10,}$/.test(id));
+    const uuidIds = requestIds.filter((id) => !/^stf_[A-Za-z0-9]{10,}$/.test(id));
+    const orFilters: Array<{ id?: { in: string[] }; publicId?: { in: string[] } }> = [];
+    if (uuidIds.length > 0) orFilters.push({ id: { in: uuidIds } });
+    if (publicIds.length > 0) orFilters.push({ publicId: { in: publicIds } });
+
     const requests = await this.prisma.staffingRequest.findMany({
-      where: { id: { in: [...requestIds] } },
-      // BUG-SR-1 / Layer A — also project raw `status` so the classifier can
-      // honor terminal lifecycle states the assignment summary cannot infer.
-      select: { id: true, headcountRequired: true, status: true },
+      where: orFilters.length > 0 ? { OR: orFilters } : { id: { in: [...requestIds] } },
+      // Project publicId so we can re-key the result back to the caller's input.
+      select: { id: true, publicId: true, headcountRequired: true, status: true },
     });
 
+    // uuid → original input id (which may be publicId OR uuid).
+    const inputIdByUuid = new Map<string, string>();
+    for (const r of requests) {
+      const original = publicIds.includes(r.publicId ?? '') ? r.publicId! : r.id;
+      inputIdByUuid.set(r.id, original);
+    }
+
     const assignments = await this.prisma.projectAssignment.findMany({
-      where: { staffingRequestId: { in: [...requestIds] } },
+      where: { staffingRequestId: { in: requests.map((r) => r.id) } },
       select: { staffingRequestId: true, status: true },
     });
 
     const summaryByRequest = new Map<string, DerivedStaffingRequestSummary>();
     for (const request of requests) {
-      summaryByRequest.set(request.id, emptySummary());
+      const inputId = inputIdByUuid.get(request.id) ?? request.id;
+      summaryByRequest.set(inputId, emptySummary());
     }
 
     for (const assignment of assignments) {
       if (!assignment.staffingRequestId) continue;
-      const summary = summaryByRequest.get(assignment.staffingRequestId);
+      const inputId = inputIdByUuid.get(assignment.staffingRequestId);
+      if (!inputId) continue;
+      const summary = summaryByRequest.get(inputId);
       if (!summary) continue;
       summary.totalAssignments += 1;
       const key = (() => {
@@ -198,8 +244,9 @@ export class DeriveStaffingRequestStatusService {
 
     const result = new Map<string, DerivedStaffingRequestResult>();
     for (const request of requests) {
-      const summary = summaryByRequest.get(request.id) ?? emptySummary();
-      result.set(request.id, {
+      const inputId = inputIdByUuid.get(request.id) ?? request.id;
+      const summary = summaryByRequest.get(inputId) ?? emptySummary();
+      result.set(inputId, {
         derivedStatus: classifyFromSummary(request.headcountRequired ?? 1, summary, request.status),
         summary,
       });
