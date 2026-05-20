@@ -321,10 +321,33 @@ export class InMemoryStaffingRequestService {
     if (existing.status === 'FULFILLED' || existing.status === 'CANCELLED') {
       throw new ConflictException(`Cannot cancel from status ${existing.status}.`);
     }
-    const record = await this.prisma.staffingRequest.update({
-      where: { id },
-      data: { status: 'CANCELLED', cancelledAt: new Date() },
-      include: { fulfilments: true },
+
+    // BUG-SR-1 / Layer B — if there's an OPEN proposal slate attached, mark
+    // it DECIDED and decline its PENDING candidates inside the same tx as
+    // the SR cancel. Without this the slate stayed OPEN and the UI kept
+    // rendering its "Pick selected candidate" action on a cancelled request.
+    const openSlate = await this.prisma.staffingRequestProposalSlate.findFirst({
+      where: { staffingRequestId: id, status: 'OPEN' },
+      select: { id: true },
+    });
+
+    const timestamp = new Date();
+    const record = await this.prisma.$transaction(async (tx) => {
+      if (openSlate) {
+        await tx.staffingRequestProposalCandidate.updateMany({
+          where: { slateId: openSlate.id, decision: 'PENDING' },
+          data: { decision: 'DECLINED', decidedAt: timestamp },
+        });
+        await tx.staffingRequestProposalSlate.update({
+          where: { id: openSlate.id },
+          data: { status: 'DECIDED', decidedAt: timestamp },
+        });
+      }
+      return tx.staffingRequest.update({
+        where: { id },
+        data: { status: 'CANCELLED', cancelledAt: timestamp },
+        include: { fulfilments: true },
+      });
     });
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record as unknown as PrismaRecord, projectName);

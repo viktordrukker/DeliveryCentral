@@ -338,7 +338,14 @@ export function StaffingRequestDetailPage(): JSX.Element {
     isRM &&
     !slate &&
     (request.status === 'OPEN' || request.status === 'IN_REVIEW' || request.status === 'DRAFT');
-  const canDecideSlate = Boolean(isPM && slate && slate.status === 'OPEN');
+  // BUG-SR-1 / Layer C — defensive gate so slate actions cannot render on a
+  // terminal request, even if Layers A+B somehow regress. Belt-and-braces
+  // against the original report: cancelled SR showed an active "Pick" CTA.
+  const requestIsActionable =
+    request.derivedStatus !== 'Cancelled' && request.derivedStatus !== 'Closed';
+  const canDecideSlate = Boolean(
+    isPM && slate && slate.status === 'OPEN' && requestIsActionable,
+  );
 
   return (
     <PageContainer>

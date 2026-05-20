@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { StaffingRequestStatus } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -45,7 +46,16 @@ function emptySummary(): DerivedStaffingRequestSummary {
 export function classifyFromSummary(
   headcountRequired: number,
   summary: DerivedStaffingRequestSummary,
+  rawStatus?: StaffingRequestStatus | null,
 ): DerivedStaffingRequestStatus {
+  // BUG-SR-1 / Layer A — raw `StaffingRequest.status` is authoritative for
+  // terminal/lifecycle states the assignment-summary cannot infer. A
+  // cancelled SR with zero assignments was rendering as `Open`; a fulfilled
+  // SR could regress to `Open` if its booked assignment was later cancelled.
+  // Short-circuit here so the raw column is honored when set.
+  if (rawStatus === 'CANCELLED') return 'Cancelled';
+  if (rawStatus === 'FULFILLED') return 'Filled';
+
   if (summary.totalAssignments === 0) {
     return 'Open';
   }
@@ -77,10 +87,18 @@ export class DeriveStaffingRequestStatusService {
     requestId: string,
     headcountRequired: number,
   ): Promise<DerivedStaffingRequestResult> {
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { staffingRequestId: requestId },
-      select: { status: true },
-    });
+    // BUG-SR-1 / Layer A — also fetch raw `status` so the classifier can
+    // honor terminal lifecycle states the assignment summary cannot infer.
+    const [request, assignments] = await Promise.all([
+      this.prisma.staffingRequest.findUnique({
+        where: { id: requestId },
+        select: { status: true },
+      }),
+      this.prisma.projectAssignment.findMany({
+        where: { staffingRequestId: requestId },
+        select: { status: true },
+      }),
+    ]);
 
     const summary = emptySummary();
     for (const assignment of assignments) {
@@ -117,7 +135,7 @@ export class DeriveStaffingRequestStatusService {
     }
 
     return {
-      derivedStatus: classifyFromSummary(headcountRequired, summary),
+      derivedStatus: classifyFromSummary(headcountRequired, summary, request?.status ?? null),
       summary,
     };
   }
@@ -131,7 +149,9 @@ export class DeriveStaffingRequestStatusService {
 
     const requests = await this.prisma.staffingRequest.findMany({
       where: { id: { in: [...requestIds] } },
-      select: { id: true, headcountRequired: true },
+      // BUG-SR-1 / Layer A — also project raw `status` so the classifier can
+      // honor terminal lifecycle states the assignment summary cannot infer.
+      select: { id: true, headcountRequired: true, status: true },
     });
 
     const assignments = await this.prisma.projectAssignment.findMany({
@@ -180,7 +200,7 @@ export class DeriveStaffingRequestStatusService {
     for (const request of requests) {
       const summary = summaryByRequest.get(request.id) ?? emptySummary();
       result.set(request.id, {
-        derivedStatus: classifyFromSummary(request.headcountRequired ?? 1, summary),
+        derivedStatus: classifyFromSummary(request.headcountRequired ?? 1, summary, request.status),
         summary,
       });
     }
