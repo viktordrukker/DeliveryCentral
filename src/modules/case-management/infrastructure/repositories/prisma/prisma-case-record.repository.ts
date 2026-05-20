@@ -3,7 +3,10 @@ import { CaseRecord } from '@src/modules/case-management/domain/entities/case-re
 import { CaseRecordRepositoryPort } from '@src/modules/case-management/domain/repositories/case-record-repository.port';
 import { CaseId } from '@src/modules/case-management/domain/value-objects/case-id';
 
-import { CaseManagementPrismaMapper } from './case-management-prisma.mapper';
+import {
+  CaseManagementPrismaMapper,
+  CASE_RECORD_MAPPER_INCLUDE,
+} from './case-management-prisma.mapper';
 
 export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
   public constructor(private readonly prisma: PrismaService) {}
@@ -26,14 +29,10 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
   public async findByCaseId(caseId: CaseId): Promise<CaseRecord | null> {
     const record = await this.prisma.caseRecord.findFirst({
       where: { id: caseId.value },
-      include: { caseType: true, participants: true },
+      include: CASE_RECORD_MAPPER_INCLUDE,
     });
 
-    return record
-      ? CaseManagementPrismaMapper.toDomain(
-          record as unknown as Parameters<typeof CaseManagementPrismaMapper.toDomain>[0],
-        )
-      : null;
+    return record ? CaseManagementPrismaMapper.toDomain(record) : null;
   }
 
   public async findById(id: string): Promise<CaseRecord | null> {
@@ -55,14 +54,10 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         ownerPersonId: query.ownerPersonId,
         subjectPersonId: query.subjectPersonId,
       },
-      include: { caseType: true, participants: true },
+      include: CASE_RECORD_MAPPER_INCLUDE,
     });
 
-    return records.map((record) =>
-      CaseManagementPrismaMapper.toDomain(
-        record as unknown as Parameters<typeof CaseManagementPrismaMapper.toDomain>[0],
-      ),
-    );
+    return records.map((record) => CaseManagementPrismaMapper.toDomain(record));
   }
 
   public async save(aggregate: CaseRecord): Promise<void> {
