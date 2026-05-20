@@ -7,8 +7,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { Prisma } from '@prisma/client';
-
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import {
   ResponsibilityActionKind,
@@ -45,8 +43,8 @@ interface DecidePersonReleaseResult {
 // that used to coerce the Prisma client into a hand-rolled shape per
 // call site. The client already exposes typed `personReleaseRequest`,
 // `personReleaseApproval`, and `person` delegates — no cast needed.
-type ReleaseRequestRow = Prisma.PersonReleaseRequestGetPayload<Record<string, never>>;
-type ReleaseApprovalRow = Prisma.PersonReleaseApprovalGetPayload<Record<string, never>>;
+// Prisma return types are now inferred at each call site; local row
+// aliases were removed since they ended up unused after the cleanup.
 
 const REQUIRED_ROLES = ['hr_manager', 'director'] as const;
 
