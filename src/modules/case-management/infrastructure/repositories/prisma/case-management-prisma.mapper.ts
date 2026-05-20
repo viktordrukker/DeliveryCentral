@@ -1,29 +1,23 @@
+import { Prisma } from '@prisma/client';
+
 import { CaseParticipant } from '@src/modules/case-management/domain/entities/case-participant.entity';
 import { CaseRecord } from '@src/modules/case-management/domain/entities/case-record.entity';
 import { CaseType } from '@src/modules/case-management/domain/entities/case-type.entity';
 import { CaseId } from '@src/modules/case-management/domain/value-objects/case-id';
 
-interface PrismaCaseRecord {
-  caseNumber: string;
-  caseType: {
-    displayName: string;
-    key: 'OFFBOARDING' | 'ONBOARDING' | 'PERFORMANCE' | 'TRANSFER' | 'EMPLOYEE_ISSUE';
-  };
-  id: string;
-  openedAt: Date;
-  participants: Array<{
-    id: string;
-    personId: string;
-    role: 'APPROVER' | 'OBSERVER' | 'OPERATOR' | 'REVIEWER' | 'REQUESTER' | 'SUBJECT';
-  }>;
-  relatedAssignmentId: string | null;
-  relatedProjectId: string | null;
-  status: 'ARCHIVED' | 'APPROVED' | 'CANCELLED' | 'COMPLETED' | 'IN_PROGRESS' | 'OPEN' | 'REJECTED';
-  subjectPersonId: string;
-}
+// F-49 / 20c-11 — replace the hand-rolled `PrismaCaseRecord` interface with a
+// Prisma-derived shape that mirrors the include set used by the repository.
+// Callers pass the include shape verbatim so no `as unknown as` cast is needed
+// to bridge the gap between Prisma's actual return type and the mapper input.
+export const CASE_RECORD_MAPPER_INCLUDE = Prisma.validator<Prisma.CaseRecordInclude>()({
+  caseType: true,
+  participants: true,
+});
+
+type CaseRecordRow = Prisma.CaseRecordGetPayload<{ include: typeof CASE_RECORD_MAPPER_INCLUDE }>;
 
 export class CaseManagementPrismaMapper {
-  public static toDomain(record: PrismaCaseRecord & { ownerPersonId: string; summary: string | null }): CaseRecord {
+  public static toDomain(record: CaseRecordRow): CaseRecord {
     return CaseRecord.create(
       {
         caseNumber: record.caseNumber,

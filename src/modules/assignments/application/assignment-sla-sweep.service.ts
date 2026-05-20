@@ -176,7 +176,10 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
   }
 
   private async findBreached(now: Date): Promise<BreachedRow[]> {
-    return (await this.prisma.projectAssignment.findMany({
+    // F-49 / 20c-11 — Prisma already infers the row shape from the `select`
+    // clause; the local `BreachedRow` interface mirrors that shape so no
+    // coercion is needed. Dropped the `as unknown as BreachedRow[]` cast.
+    return this.prisma.projectAssignment.findMany({
       where: {
         slaDueAt: { lt: now },
         slaBreachedAt: null,
@@ -190,7 +193,7 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
         projectId: true,
         requestedByPersonId: true,
       },
-    })) as unknown as BreachedRow[];
+    });
   }
 
   private async markBreached(assignmentId: string, breachedAt: Date): Promise<void> {
@@ -205,7 +208,7 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
   // crossed a warning threshold. We fetch a superset by date math
   // and filter precisely in `sweep()` so the SQL stays simple.
   private async findPreBreachCandidates(now: Date): Promise<PreBreachCandidateRow[]> {
-    return (await this.prisma.projectAssignment.findMany({
+    return this.prisma.projectAssignment.findMany({
       where: {
         slaDueAt: { gt: now },
         slaBreachedAt: null,
@@ -223,7 +226,7 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
         slaWarnedAt50pct: true,
         slaWarnedAt75pct: true,
       },
-    })) as unknown as PreBreachCandidateRow[];
+    });
   }
 
   private elapsedFraction(now: Date, start: Date, due: Date): number {

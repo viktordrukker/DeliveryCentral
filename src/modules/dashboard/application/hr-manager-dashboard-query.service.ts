@@ -152,15 +152,16 @@ export class HrManagerDashboardQueryService {
       allocationByPerson.set(a.personId, prev + (a.allocationPercent?.value ?? 0));
     }
 
+    // F-49 / 20c-11 — `CaseRecord` exposes `status` + `subjectPersonId` as
+    // typed public getters; the previous `as unknown as { status?: string }`
+    // casts hid the real types and forced fallback handling. Drop the casts
+    // and access the typed accessors directly.
     const { items: openCases } = await this.listCasesService.execute({});
     const openCasePersonIds = new Set(
       openCases
-        .filter((c) => {
-          const s = (c as unknown as { status?: string }).status ?? '';
-          return s === 'OPEN' || s === 'IN_PROGRESS';
-        })
-        .map((c) => (c as unknown as { subjectPersonId?: string }).subjectPersonId)
-        .filter(Boolean) as string[],
+        .filter((c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS')
+        .map((c) => c.subjectPersonId)
+        .filter((id): id is string => Boolean(id)),
     );
 
     const atRiskEmployees = people
