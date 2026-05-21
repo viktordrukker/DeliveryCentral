@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { isPlatformRole, type PlatformRole } from '../domain/platform-role';
@@ -29,15 +30,10 @@ export interface ReadAccessVerdict {
   allowedRoles: readonly PlatformRole[];
 }
 
-interface RuleRow {
-  id: string;
-  actionKind: string;
-  mode: string;
-  targetRole: string | null;
-  isActive: boolean;
-  archivedAt: Date | null;
-  tenantId: string | null;
-}
+// F-57 / 20c-11 — derive `RuleRow` from Prisma instead of hand-rolling
+// the subset of `ResponsibilityRule` fields used downstream. Same shape
+// as F-47's responsibility-resolver pattern.
+type RuleRow = Prisma.ResponsibilityRuleGetPayload<Record<string, never>>;
 
 @Injectable()
 export class ReadAccessResolverService {
@@ -51,7 +47,7 @@ export class ReadAccessResolverService {
   ): Promise<ReadAccessVerdict> {
     let rows: RuleRow[] = [];
     try {
-      rows = (await this.prisma.responsibilityRule.findMany({
+      rows = await this.prisma.responsibilityRule.findMany({
         where: {
           actionKind: action as never,
           isActive: true,
@@ -60,7 +56,7 @@ export class ReadAccessResolverService {
             ? { tenantId: null }
             : { OR: [{ tenantId: null }, { tenantId }] }),
         },
-      })) as unknown as RuleRow[];
+      });
     } catch (error) {
       this.logger.warn(
         `ReadAccessResolverService.resolveAllowedRoles(${action}) failed: ${

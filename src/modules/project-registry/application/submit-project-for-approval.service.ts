@@ -98,11 +98,9 @@ export class SubmitProjectForApprovalService {
 
     const approvalId = await this.prisma.$transaction(async (tx) => {
       await this.projectRepository.save(project, tx);
-      const created = await (tx as unknown as {
-        projectActivationApproval: {
-          create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
-        };
-      }).projectActivationApproval.create({
+      // F-57 / 20c-11 — drop the gateway coercion; Prisma exposes the
+      // `projectActivationApproval` delegate on the transaction client.
+      const created = await tx.projectActivationApproval.create({
         data: {
           projectId: project.projectId.value,
           requestedById: command.actorId,
@@ -115,6 +113,7 @@ export class SubmitProjectForApprovalService {
               }
             : {}),
         },
+        select: { id: true },
       });
       return created.id;
     });
