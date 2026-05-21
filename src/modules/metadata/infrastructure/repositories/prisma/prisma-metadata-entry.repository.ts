@@ -1,16 +1,17 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { MetadataEntry } from '@src/modules/metadata/domain/entities/metadata-entry.entity';
 import { MetadataEntryRepositoryPort } from '@src/modules/metadata/domain/repositories/metadata-entry-repository.port';
 
 import { MetadataPrismaMapper } from './metadata-prisma.mapper';
 
-interface MetadataEntryGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-73 / 20c-10 — drop the hand-rolled `MetadataEntryGateway` interface
+// (4 methods with `any` args + `any` returns) in favor of Prisma's typed
+// delegate. The Prisma client exposes `metadataEntry` as a typed delegate
+// with full method signatures; the repository constructor accepts that
+// delegate directly.
+type MetadataEntryGateway = Prisma.MetadataEntryDelegate;
 
 // F-18 / 20c-12 — cap on findByDictionaryId(). Dictionaries are
 // admin-curated; typical sizes are 5–50 entries. Real workloads

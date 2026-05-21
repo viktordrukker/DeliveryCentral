@@ -1,16 +1,14 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { MetadataDictionary } from '@src/modules/metadata/domain/entities/metadata-dictionary.entity';
 import { MetadataDictionaryRepositoryPort } from '@src/modules/metadata/domain/repositories/metadata-dictionary-repository.port';
 
 import { MetadataPrismaMapper } from './metadata-prisma.mapper';
 
-interface MetadataDictionaryGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-73 / 20c-10 — drop the hand-rolled Gateway interface (4 methods with
+// `any` args + `any` returns) in favor of Prisma's typed delegate.
+type MetadataDictionaryGateway = Prisma.MetadataDictionaryDelegate;
 
 /**
  * F-6.2 / D-144 — cap on list(). MetadataDictionary tables stay in the
