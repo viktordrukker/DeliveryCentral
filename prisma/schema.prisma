@@ -578,6 +578,11 @@ model Person {
   updatedMetadataDictionaries            MetadataDictionary[]                @relation("MetadataDictionaryUpdatedBy")
   createdCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionCreatedBy")
   updatedCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionUpdatedBy")
+  // F-56 / D-103 + DM-5-5 round 18
+  createdOvertimeExceptions              OvertimeException[]                 @relation("OvertimeExceptionCreatedBy")
+  updatedOvertimeExceptions              OvertimeException[]                 @relation("OvertimeExceptionUpdatedBy")
+  createdProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkCreatedBy")
+  updatedProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -993,12 +998,19 @@ model ProjectExternalLink {
   updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
   archivedAt          DateTime?          @db.Timestamptz(3)
   lastSeenAt          DateTime?          @db.Timestamptz(3)
+  // F-56 / D-103 round 18 — actor-audit columns.
+  createdByPersonId   String?            @db.Uuid
+  updatedByPersonId   String?            @db.Uuid
+  createdByPerson     Person?            @relation("ProjectExternalLinkCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?            @relation("ProjectExternalLinkUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   project             Project            @relation(fields: [projectId], references: [id])
   syncState           ExternalSyncState?
 
   @@unique([provider, externalProjectKey])
   @@index([projectId])
   @@index([provider, archivedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("ProjectExternalLink")
 }
 
@@ -2478,6 +2490,11 @@ model OvertimeException {
   effectiveTo             DateTime @db.Timestamptz(3)
   createdAt               DateTime @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime @updatedAt @db.Timestamptz(3)
+  // F-56 / D-103 round 18 — actor-audit columns.
+  createdByPersonId       String?  @db.Uuid
+  updatedByPersonId       String?  @db.Uuid
+  createdByPerson         Person?  @relation("OvertimeExceptionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?  @relation("OvertimeExceptionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   person     Person     @relation(fields: [personId], references: [id])
   caseRecord CaseRecord @relation(fields: [caseRecordId], references: [id])
@@ -2485,6 +2502,8 @@ model OvertimeException {
   @@index([personId, effectiveFrom, effectiveTo])
   @@map("overtime_exceptions")
   @@index([caseRecordId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
 }
 
 // =============================================================================
