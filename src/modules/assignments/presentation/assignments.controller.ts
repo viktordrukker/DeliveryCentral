@@ -20,6 +20,7 @@ import { RequestPrincipal } from '@src/modules/identity-access/application/reque
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { ALL_AUTHENTICATED_ROLES, EXEC_ROLES, PROJECT_DELIVERY_ROLES, RM_EXEC_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
+import { OptionalReasonBodyDto } from '@src/shared/http/reason-body.dto';
 import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
 import { DirectorApproveService } from '../application/director-approve.service';
 import { ScheduleOnboardingService } from '../application/schedule-onboarding.service';
@@ -401,7 +402,7 @@ export class AssignmentsController {
   @RequireRoles(...EXEC_ROLES)
   public async directorApprove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() request: { reason?: string } | undefined,
+    @Body() request: OptionalReasonBodyDto | undefined,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
   ): Promise<ProjectAssignmentResponseDto> {
     const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';

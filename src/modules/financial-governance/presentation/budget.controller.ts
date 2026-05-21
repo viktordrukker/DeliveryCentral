@@ -32,6 +32,7 @@ import {
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BudgetChangeRequestDto } from '../application/contracts/budget-change-request.response';
+import { RequestBudgetChangeBodyDto } from '../application/contracts/request-budget-change.dto';
 import { DecideBudgetChangeService } from '../application/decide-budget-change.service';
 import { FinancialService } from '../application/financial.service';
 import { RequestBudgetChangeService } from '../application/request-budget-change.service';
@@ -114,7 +115,7 @@ export class ProjectBudgetController {
   @ApiOkResponse({ description: 'Pending budget approval row.' })
   public async requestBudgetChange(
     @Param('id', ParseUUIDPipe) projectId: string,
-    @Body() dto: { fiscalYear: number; capexBudget: number; opexBudget: number; reason?: string },
+    @Body() dto: RequestBudgetChangeBodyDto,
     @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<{ approvalId: string; requestedChange: { capexBudget: number; opexBudget: number } }> {
     const actorId =
