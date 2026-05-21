@@ -13,91 +13,32 @@ function severity(ageHours: number): 'LOW' | 'MEDIUM' | 'HIGH' {
   return 'LOW';
 }
 
-interface PrismaQueryShape {
-  staffingRequest: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly id: string;
-        readonly publicId: string | null;
-        readonly role: string;
-        readonly projectId: string;
-        readonly createdAt: Date;
-      }>
-    >;
-  };
-  budgetApproval: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly id: string;
-        readonly requestedAt: Date;
-        readonly projectBudget: {
-          readonly projectId: string;
-          readonly fiscalYear: number;
-        };
-      }>
-    >;
-  };
-  leaveRequest: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly id: string;
-        readonly publicId: string | null;
-        readonly createdAt: Date;
-        readonly type: string;
-        readonly startDate: Date;
-        readonly endDate: Date;
-        readonly personId: string;
-      }>
-    >;
-  };
-  timesheetWeek: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly id: string;
-        readonly publicId: string | null;
-        readonly weekStart: Date;
-        readonly submittedAt: Date | null;
-        readonly personId: string;
-      }>
-    >;
-  };
-  reportingLine: {
-    findMany: (args: unknown) => Promise<ReadonlyArray<{ readonly subjectPersonId: string }>>;
-  };
-  project: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{ readonly id: string; readonly projectCode: string; readonly name: string }>
-    >;
-  };
-  person: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{ readonly id: string; readonly displayName: string }>
-    >;
-  };
-}
-
+// F-55 / 20c-11 — dropped the `PrismaQueryShape` hand-rolled gateway
+// interface and its `as unknown as PrismaQueryShape` coercion. Each
+// `p.X.findMany(...)` call now reads `this.prisma.X.findMany(...)` and
+// inherits the typed return shape Prisma generates from the `select`
+// clauses directly.
 @Injectable()
 export class PendingActionsQueryService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async execute(personId: string): Promise<PendingActionsResponseDto> {
     const now = Date.now();
-    const p = this.prisma as unknown as PrismaQueryShape;
 
-    const reportingLines = await p.reportingLine.findMany({
+    const reportingLines = await this.prisma.reportingLine.findMany({
       where: { managerPersonId: personId, archivedAt: null, validTo: null },
       select: { subjectPersonId: true },
     });
     const reportPersonIds = reportingLines.map((r) => r.subjectPersonId);
 
     const [staffingRows, budgetRows, leaveRows, timesheetRows] = await Promise.all([
-      p.staffingRequest.findMany({
+      this.prisma.staffingRequest.findMany({
         where: { requestedByPersonId: personId, status: { in: ['OPEN', 'IN_REVIEW'] } },
         orderBy: { createdAt: 'asc' },
         take: MAX_ITEMS,
         select: { id: true, publicId: true, role: true, projectId: true, createdAt: true },
       }),
-      p.budgetApproval.findMany({
+      this.prisma.budgetApproval.findMany({
         where: { status: 'PENDING' },
         orderBy: { requestedAt: 'asc' },
         take: MAX_ITEMS * 3,
@@ -109,7 +50,7 @@ export class PendingActionsQueryService {
       }),
       reportPersonIds.length === 0
         ? Promise.resolve([] as never[])
-        : p.leaveRequest.findMany({
+        : this.prisma.leaveRequest.findMany({
             where: { personId: { in: reportPersonIds }, status: 'PENDING' },
             orderBy: { createdAt: 'asc' },
             take: MAX_ITEMS,
@@ -125,7 +66,7 @@ export class PendingActionsQueryService {
           }),
       reportPersonIds.length === 0
         ? Promise.resolve([] as never[])
-        : p.timesheetWeek.findMany({
+        : this.prisma.timesheetWeek.findMany({
             where: { personId: { in: reportPersonIds }, status: 'SUBMITTED' },
             orderBy: { submittedAt: 'asc' },
             take: MAX_ITEMS,
@@ -151,13 +92,13 @@ export class PendingActionsQueryService {
     const [projects, persons] = await Promise.all([
       projectIds.size === 0
         ? Promise.resolve([] as never[])
-        : p.project.findMany({
+        : this.prisma.project.findMany({
             where: { id: { in: Array.from(projectIds) } },
             select: { id: true, projectCode: true, name: true },
           }),
       personIds.size === 0
         ? Promise.resolve([] as never[])
-        : p.person.findMany({
+        : this.prisma.person.findMany({
             where: { id: { in: Array.from(personIds) } },
             select: { id: true, displayName: true },
           }),
@@ -168,11 +109,7 @@ export class PendingActionsQueryService {
     // Filter budget approvals to projects the principal is PM or DM of.
     const ownedProjectIds = new Set<string>();
     if (projects.length > 0) {
-      const ownedRows = await (this.prisma as unknown as {
-        project: {
-          findMany: (args: unknown) => Promise<ReadonlyArray<{ readonly id: string }>>;
-        };
-      }).project.findMany({
+      const ownedRows = await this.prisma.project.findMany({
         where: {
           id: { in: projects.map((pr) => pr.id) },
           OR: [{ projectManagerId: personId }, { deliveryManagerId: personId }],

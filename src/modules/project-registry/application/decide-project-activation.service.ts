@@ -93,14 +93,13 @@ export class DecideProjectActivationService {
       );
     }
 
-    // Find the open approval row (most recent without a decision).
-    const openApproval = await (this.prisma as unknown as {
-      projectActivationApproval: {
-        findFirst: (args: unknown) => Promise<{ id: string; requestedById: string } | null>;
-      };
-    }).projectActivationApproval.findFirst({
+    // F-55 / 20c-11 — drop the `(this.prisma as unknown as {...})` gateway
+    // coercion. The Prisma client already exposes a typed
+    // `projectActivationApproval` delegate.
+    const openApproval = await this.prisma.projectActivationApproval.findFirst({
       where: { projectId: project.projectId.value, decidedAt: null },
       orderBy: { requestedAt: 'desc' },
+      select: { id: true, requestedById: true },
     });
 
     if (!openApproval) {
@@ -128,11 +127,7 @@ export class DecideProjectActivationService {
     const decidedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
       await this.projectRepository.save(project, tx);
-      await (tx as unknown as {
-        projectActivationApproval: {
-          update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
-        };
-      }).projectActivationApproval.update({
+      await tx.projectActivationApproval.update({
         where: { id: openApproval.id },
         data: {
           decision: command.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',

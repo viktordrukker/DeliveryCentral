@@ -206,7 +206,9 @@ export class NudgeSweeperService implements OnModuleInit, OnModuleDestroy {
     // OPEN slates proposed before the cutoff with NO candidates whose
     // decision has moved off PENDING. The candidates filter ensures
     // we don't nudge if someone has already engaged with the slate.
-    const rows = (await this.prisma.staffingRequestProposalSlate.findMany({
+    // F-55 / 20c-11 — Prisma already infers the row type from the `select`
+    // clause; the `as unknown as Array<...>` cast was a no-op.
+    const rows = await this.prisma.staffingRequestProposalSlate.findMany({
       where: {
         status: 'OPEN',
         proposedAt: { lt: cutoff },
@@ -218,12 +220,7 @@ export class NudgeSweeperService implements OnModuleInit, OnModuleDestroy {
         proposedAt: true,
         proposedByPersonId: true,
       },
-    })) as unknown as Array<{
-      id: string;
-      staffingRequestId: string;
-      proposedAt: Date;
-      proposedByPersonId: string;
-    }>;
+    });
     return rows.map((r) => ({
       slateId: r.id,
       staffingRequestId: r.staffingRequestId,
@@ -234,13 +231,13 @@ export class NudgeSweeperService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async findStaleTimesheets(weekStartCutoff: Date): Promise<TimesheetCandidate[]> {
-    const rows = (await this.prisma.timesheetWeek.findMany({
+    const rows = await this.prisma.timesheetWeek.findMany({
       where: {
         status: 'DRAFT',
         weekStart: { lt: weekStartCutoff },
       },
       select: { id: true, personId: true, weekStart: true },
-    })) as unknown as Array<{ id: string; personId: string; weekStart: Date }>;
+    });
     return rows.map((r) => ({
       weekId: r.id,
       personId: r.personId,

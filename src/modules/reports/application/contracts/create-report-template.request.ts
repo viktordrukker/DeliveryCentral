@@ -26,7 +26,7 @@ export class ReportFilterDto {
   public field!: string;
 
   @ApiProperty({ enum: REPORT_FILTER_OPERATORS })
-  @IsIn(REPORT_FILTER_OPERATORS as unknown as string[])
+  @IsIn([...REPORT_FILTER_OPERATORS])
   public operator!: (typeof REPORT_FILTER_OPERATORS)[number];
 
   @ApiProperty()
@@ -54,7 +54,7 @@ export class CreateReportTemplateRequestDto {
   public ownerPersonId!: string;
 
   @ApiProperty({ enum: REPORT_DATA_SOURCES })
-  @IsIn(REPORT_DATA_SOURCES as unknown as string[])
+  @IsIn([...REPORT_DATA_SOURCES])
   public dataSource!: (typeof REPORT_DATA_SOURCES)[number];
 
   @ApiProperty({ type: [String] })
@@ -77,7 +77,7 @@ export class CreateReportTemplateRequestDto {
 
   @ApiPropertyOptional({ enum: SORT_DIRECTIONS })
   @IsOptional()
-  @IsIn(SORT_DIRECTIONS as unknown as string[])
+  @IsIn([...SORT_DIRECTIONS])
   public sortDir?: (typeof SORT_DIRECTIONS)[number];
 
   @ApiProperty()
