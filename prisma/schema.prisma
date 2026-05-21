@@ -642,6 +642,11 @@ model Person {
   updatedEntityLayoutDefinitions           EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionUpdatedBy")
   createdHelpTips                          HelpTip[]                           @relation("HelpTipCreatedBy")
   updatedHelpTips                          HelpTip[]                           @relation("HelpTipUpdatedBy")
+  // F-80 / D-103 + DM-5-5 round 30
+  createdNotificationRequests              NotificationRequest[]               @relation("NotificationRequestCreatedBy")
+  updatedNotificationRequests              NotificationRequest[]               @relation("NotificationRequestUpdatedBy")
+  createdNotificationChannels              NotificationChannel[]               @relation("NotificationChannelCreatedBy")
+  updatedNotificationChannels              NotificationChannel[]               @relation("NotificationChannelUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1727,19 +1732,26 @@ model IntegrationSyncState {
 }
 
 model NotificationChannel {
-  id          String                 @id @default(uuid()) @db.Uuid
-  channelKey  String                 @unique
-  displayName String
-  kind        String
-  isEnabled   Boolean                @default(true)
-  config      Json?
-  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
-  templates   NotificationTemplate[]
-  requests    NotificationRequest[]
-  deliveries  NotificationDelivery[]
+  id                String                 @id @default(uuid()) @db.Uuid
+  channelKey        String                 @unique
+  displayName       String
+  kind              String
+  isEnabled         Boolean                @default(true)
+  config            Json?
+  createdAt         DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime               @updatedAt @db.Timestamptz(3)
+  // F-80 / D-103 + DM-5-5 round 30 — actor-audit columns.
+  createdByPersonId String?                @db.Uuid
+  updatedByPersonId String?                @db.Uuid
+  templates         NotificationTemplate[]
+  requests          NotificationRequest[]
+  deliveries        NotificationDelivery[]
+  createdByPerson   Person?                @relation("NotificationChannelCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?                @relation("NotificationChannelUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([kind, isEnabled])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("NotificationChannel")
 }
 
@@ -1773,30 +1785,37 @@ model NotificationTemplate {
 }
 
 model NotificationRequest {
-  id            String                    @id @default(uuid()) @db.Uuid
-  eventName     String
-  templateId    String                    @db.Uuid
-  channelId     String                    @db.Uuid
-  recipient     String
-  payload       Json
-  status        NotificationRequestStatus @default(QUEUED)
-  attemptCount  Int                       @default(0)
-  maxAttempts   Int                       @default(1)
-  failureReason String?
-  requestedAt   DateTime                  @default(now()) @db.Timestamptz(3)
-  deliveredAt   DateTime?                 @db.Timestamptz(3)
-  nextAttemptAt DateTime?                 @db.Timestamptz(3)
-  createdAt     DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime                  @updatedAt @db.Timestamptz(3)
-  channel       NotificationChannel       @relation(fields: [channelId], references: [id])
-  template      NotificationTemplate      @relation(fields: [templateId], references: [id])
-  deliveries    NotificationDelivery[]
+  id                String                    @id @default(uuid()) @db.Uuid
+  eventName         String
+  templateId        String                    @db.Uuid
+  channelId         String                    @db.Uuid
+  recipient         String
+  payload           Json
+  status            NotificationRequestStatus @default(QUEUED)
+  attemptCount      Int                       @default(0)
+  maxAttempts       Int                       @default(1)
+  failureReason     String?
+  requestedAt       DateTime                  @default(now()) @db.Timestamptz(3)
+  deliveredAt       DateTime?                 @db.Timestamptz(3)
+  nextAttemptAt     DateTime?                 @db.Timestamptz(3)
+  createdAt         DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                  @updatedAt @db.Timestamptz(3)
+  // F-80 / D-103 + DM-5-5 round 30 — actor-audit columns.
+  createdByPersonId String?                   @db.Uuid
+  updatedByPersonId String?                   @db.Uuid
+  channel           NotificationChannel       @relation(fields: [channelId], references: [id])
+  template          NotificationTemplate      @relation(fields: [templateId], references: [id])
+  deliveries        NotificationDelivery[]
+  createdByPerson   Person?                   @relation("NotificationRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?                   @relation("NotificationRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([eventName, status, requestedAt])
   @@index([status, nextAttemptAt])
   @@index([recipient, requestedAt])
   @@index([templateId])
   @@index([channelId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("NotificationRequest")
 }
 
