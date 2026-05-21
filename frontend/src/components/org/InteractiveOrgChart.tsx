@@ -166,9 +166,13 @@ function buildPeopleTree(people: OrgPersonEnriched[]): FlatPersonNode[] {
 
 /* ── Expand level helpers ─────────────────────────────────────────────────── */
 
+// F-69 / 20c-11 — typed via the module-augmentation in
+// `frontend/src/types/d3-org-chart.d.ts`; `getChartState()` + `update()`
+// are declared on the library type, so the in-body `as unknown as { ... }`
+// casts are gone.
 function computeMaxDepth(chart: OrgChart<unknown>): number {
   try {
-    const state = (chart as unknown as { getChartState: () => { root?: { descendants?: () => Array<{ depth: number }> } } }).getChartState();
+    const state = chart.getChartState();
     const descendants = state.root?.descendants?.() ?? [];
     return descendants.reduce((max, d) => Math.max(max, d.depth), 0);
   } catch {
@@ -178,12 +182,12 @@ function computeMaxDepth(chart: OrgChart<unknown>): number {
 
 function expandToLevel(chart: OrgChart<unknown>, level: number): void {
   try {
-    const state = (chart as unknown as { getChartState: () => { root?: { descendants?: () => Array<{ depth: number; data: { _expanded?: boolean } }> } } }).getChartState();
+    const state = chart.getChartState();
     const descendants = state.root?.descendants?.() ?? [];
     for (const d of descendants) {
       d.data._expanded = d.depth < level;
     }
-    (chart as unknown as { update: (d: unknown) => void }).update(state.root);
+    chart.update(state.root);
     chart.fit();
   } catch {
     // fallback: use built-in methods
@@ -219,7 +223,13 @@ export function InteractiveOrgChart({
   viewMode,
 }: InteractiveOrgChartProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<OrgChart<FlatPersonNode | FlatOrgNode> | null>(null);
+  // F-69 / 20c-11 — typed as `OrgChart<unknown>` (the helper functions'
+  // shape) so each branch's narrow-typed chart instance can flow in with
+  // a single `as OrgChart<unknown>` cast instead of a double `as unknown
+  // as` indirection. The chart instance's runtime data type is determined
+  // by which branch ran (FlatPersonNode vs FlatOrgNode), but the ref's
+  // declared type only needs to be wide enough for the structural helpers.
+  const chartRef = useRef<OrgChart<unknown> | null>(null);
   const [selectedPerson, setSelectedPerson] = useState<OrgPersonEnriched | null>(null);
   const [selectedDept, setSelectedDept] = useState<FlatOrgNode | null>(null);
   const [expandLevel, setExpandLevel] = useState(2);
@@ -323,8 +333,8 @@ export function InteractiveOrgChart({
         }
 
         chart.fit();
-        chartRef.current = chart as unknown as OrgChart<FlatPersonNode | FlatOrgNode>;
-        setMaxDepth(computeMaxDepth(chart as unknown as OrgChart<unknown>));
+        chartRef.current = chart as OrgChart<unknown>;
+        setMaxDepth(computeMaxDepth(chart as OrgChart<unknown>));
       } catch {
         // d3-org-chart may fail if container is not ready
       }
@@ -363,8 +373,8 @@ export function InteractiveOrgChart({
         }
 
         chart.fit();
-        chartRef.current = chart as unknown as OrgChart<FlatPersonNode | FlatOrgNode>;
-        setMaxDepth(computeMaxDepth(chart as unknown as OrgChart<unknown>));
+        chartRef.current = chart as OrgChart<unknown>;
+        setMaxDepth(computeMaxDepth(chart as OrgChart<unknown>));
       } catch {
         // d3-org-chart may fail if container is not ready
       }
@@ -395,7 +405,7 @@ export function InteractiveOrgChart({
   const handleLevelChange = (level: number) => {
     setExpandLevel(level);
     if (chartRef.current) {
-      expandToLevel(chartRef.current as unknown as OrgChart<unknown>, level);
+      expandToLevel(chartRef.current, level);
     }
   };
 
