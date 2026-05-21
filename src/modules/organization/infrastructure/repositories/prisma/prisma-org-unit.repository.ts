@@ -1,29 +1,18 @@
+import { Prisma } from '@prisma/client';
+
 import { OrgUnit } from '@src/modules/organization/domain/entities/org-unit.entity';
 import { OrgUnitRepositoryPort } from '@src/modules/organization/domain/repositories/org-unit-repository.port';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 
 import { OrganizationPrismaMapper } from './organization-prisma.mapper';
 
-interface OrgUnitGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<{
-    code: string;
-    id: string;
-    managerPersonId: string | null;
-    name: string;
-    parentOrgUnitId: string | null;
-  } | null>;
-  findMany(args?: any): Promise<
-    Array<{
-      code: string;
-      id: string;
-      managerPersonId: string | null;
-      name: string;
-      parentOrgUnitId: string | null;
-    }>
-  >;
-  upsert(args: any): Promise<unknown>;
-}
+// F-77 / 20c-10 — drop the hand-rolled Gateway (mix of `any` args + ~14
+// lines of duplicated inline payload-shape) in favor of `Pick<>` over
+// Prisma's typed delegate.
+type OrgUnitGateway = Pick<
+  Prisma.OrgUnitDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaOrgUnitRepository implements OrgUnitRepositoryPort {
   public constructor(private readonly gateway: OrgUnitGateway) {}

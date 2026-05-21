@@ -1,15 +1,16 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { NotificationTemplate } from '../../../domain/entities/notification-template.entity';
 import { NotificationTemplateRepositoryPort } from '../../../domain/repositories/notification-template-repository.port';
 import { NotificationsPrismaMapper } from './notifications-prisma.mapper';
 
-interface Gateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-77 / 20c-10 — drop the hand-rolled Gateway (4 `any` methods) in
+// favor of `Pick<>` over Prisma's typed delegate.
+type Gateway = Pick<
+  Prisma.NotificationTemplateDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 /**
  * F-6.2 / D-144 — cap on listActive(). Template tables are small (~50
