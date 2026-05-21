@@ -627,6 +627,11 @@ model Person {
   updatedPersonResourcePoolMemberships     PersonResourcePoolMembership[]      @relation("PersonResourcePoolMembershipUpdatedBy")
   createdMetadataEntries                   MetadataEntry[]                     @relation("MetadataEntryCreatedBy")
   updatedMetadataEntries                   MetadataEntry[]                     @relation("MetadataEntryUpdatedBy")
+  // F-74 / D-103 + DM-5-5 round 27
+  createdPulseReports                      PulseReport[]                       @relation("PulseReportCreatedBy")
+  updatedPulseReports                      PulseReport[]                       @relation("PulseReportUpdatedBy")
+  createdIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateCreatedBy")
+  updatedIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1674,19 +1679,26 @@ model OutboxEvent {
 
 // Technical sync cursor/state across provider resources and scopes.
 model IntegrationSyncState {
-  id           String     @id @default(uuid()) @db.Uuid
-  provider     String
-  resourceType String
-  scopeKey     String
-  lastCursor   String?
-  lastSyncedAt DateTime?  @db.Timestamptz(3)
-  lastStatus   SyncStatus @default(IDLE)
-  lastError    String?
-  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+  id                String     @id @default(uuid()) @db.Uuid
+  provider          String
+  resourceType      String
+  scopeKey          String
+  lastCursor        String?
+  lastSyncedAt      DateTime?  @db.Timestamptz(3)
+  lastStatus        SyncStatus @default(IDLE)
+  lastError         String?
+  createdAt         DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @db.Timestamptz(3)
+  // F-74 / D-103 + DM-5-5 round 27 — actor-audit columns.
+  createdByPersonId String?    @db.Uuid
+  updatedByPersonId String?    @db.Uuid
+  createdByPerson   Person?    @relation("IntegrationSyncStateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?    @relation("IntegrationSyncStateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, resourceType, scopeKey])
   @@index([provider, resourceType, lastStatus])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("IntegrationSyncState")
 }
 
@@ -3512,9 +3524,17 @@ model PulseReport {
   submittedAt         DateTime? @db.Timestamptz(3)
   createdAt           DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+  // F-74 / D-103 + DM-5-5 round 27 — actor-audit columns. Distinct from
+  // `submittedByPersonId` (the form submitter); these track row mutations.
+  createdByPersonId   String?   @db.Uuid
+  updatedByPersonId   String?   @db.Uuid
+  createdByPerson     Person?   @relation("PulseReportCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?   @relation("PulseReportUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, weekStarting])
   @@index([projectId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("pulse_reports")
 }
 
