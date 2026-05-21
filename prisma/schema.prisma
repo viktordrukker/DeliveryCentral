@@ -610,6 +610,10 @@ model Person {
   updatedPersonReleaseApprovals          PersonReleaseApproval[]             @relation("PersonReleaseApprovalUpdatedBy")
   createdStaffingRequestFulfilments      StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentCreatedBy")
   updatedStaffingRequestFulfilments      StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentUpdatedBy")
+  // F-66 / D-103 + DM-5-5 round 23
+  createdRadiatorThresholdConfigs        RadiatorThresholdConfig[]           @relation("RadiatorThresholdConfigCreatedBy")
+  createdSkills                          Skill[]                             @relation("SkillCreatedBy")
+  updatedSkills                          Skill[]                             @relation("SkillUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2296,11 +2300,21 @@ model Skill {
   name         String        @unique
   category     String?
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  // F-66 / D-103 round 23 — adds `updatedAt` + actor-audit pair. Skill
+  // was missing `updatedAt` entirely; the migration backfills via DEFAULT
+  // NOW() so legacy rows take install-time as their first "update" stamp.
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  createdByPersonId String?  @db.Uuid
+  updatedByPersonId String?  @db.Uuid
+  createdByPerson   Person?  @relation("SkillCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?  @relation("SkillUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   personSkills PersonSkill[]
   tenantId     String?       @db.Uuid
   Tenant       Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("skills")
 }
 
@@ -3265,8 +3279,14 @@ model RadiatorThresholdConfig {
   updatedByPersonId String?            @db.Uuid
   updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
   updatedBy         Person?            @relation(fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  // F-66 / D-103 round 23 — adds the canonical `createdByPersonId` to
+  // complete the actor-audit pair. The table already has `updatedByPersonId`
+  // + `updatedAt` from PR-v1.
+  createdByPersonId String?            @db.Uuid
+  createdByPerson   Person?            @relation("RadiatorThresholdConfigCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@index([updatedByPersonId])
+  @@index([createdByPersonId])
   @@map("radiator_threshold_configs")
 }
 
