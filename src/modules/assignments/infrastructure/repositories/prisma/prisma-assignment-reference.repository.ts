@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 
 import { AssignmentReferenceRepositoryPort } from '../../../application/ports/assignment-reference.repository.port';
 
-interface ProjectGateway {
-  findFirst(args: any): Promise<{ id: string; endsOn?: Date | null; [key: string]: unknown } | null>;
-}
+// F-79 / 20c-10 — drop the hand-rolled Gateway (single `any` method +
+// open `[key: string]: unknown` payload shape) in favor of `Pick<>` over
+// Prisma's typed delegate.
+type ProjectGateway = Pick<Prisma.ProjectDelegate, 'findFirst'>;
 
 @Injectable()
 export class PrismaAssignmentReferenceRepository implements AssignmentReferenceRepositoryPort {
