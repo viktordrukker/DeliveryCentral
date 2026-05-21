@@ -14,14 +14,10 @@ export interface NudgeResult {
   rateLimitedUntil: string | null;
 }
 
-interface PrismaShape {
-  staffingRequest: {
-    findUnique: (args: unknown) => Promise<{ readonly id: string; readonly status: string } | null>;
-  };
-  auditLog: {
-    findFirst: (args: unknown) => Promise<{ readonly createdAt: Date } | null>;
-  };
-}
+// F-57 / 20c-11 — deleted the hand-rolled `PrismaShape` gateway interface
+// and the `as unknown as PrismaShape` coercion. The Prisma client already
+// exposes typed `staffingRequest` + `auditLog` delegates; the `select`
+// clauses narrow the read shape directly.
 
 /**
  * F-3.4 / 21-09 — PM/RM can nudge a stalled staffing-request approver.
@@ -46,8 +42,7 @@ export class NudgeStaffingRequestService {
   ) {}
 
   public async nudge(staffingRequestId: string, actorId: string): Promise<NudgeResult> {
-    const p = this.prisma as unknown as PrismaShape;
-    const request = await p.staffingRequest.findUnique({
+    const request = await this.prisma.staffingRequest.findUnique({
       where: { id: staffingRequestId },
       select: { id: true, status: true },
     });
@@ -61,7 +56,7 @@ export class NudgeStaffingRequestService {
     }
 
     const since = new Date(Date.now() - NUDGE_RATE_LIMIT_MS);
-    const recent = await p.auditLog.findFirst({
+    const recent = await this.prisma.auditLog.findFirst({
       where: {
         aggregateId: staffingRequestId,
         eventName: 'staffing_request.nudged',

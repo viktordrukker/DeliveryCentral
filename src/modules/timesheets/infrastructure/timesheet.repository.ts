@@ -222,11 +222,12 @@ export class TimesheetRepository {
     projectId?: string,
     personId?: string,
   ): Promise<
-    Array<
-      Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
-        timesheetWeek: { personId: string; weekStart: Date };
-      }
-    >
+    // F-57 / 20c-11 — model the return as a proper `Prisma.GetPayload` over
+    // the actual `include` so the findMany call below doesn't need an
+    // `as unknown as Promise<...>` coercion.
+    Prisma.TimesheetEntryGetPayload<{
+      include: { timesheetWeek: { select: { personId: true; weekStart: true } } };
+    }>[]
   > {
     const weekWhere: Prisma.TimesheetWeekWhereInput = { status: 'APPROVED' };
 
@@ -259,12 +260,6 @@ export class TimesheetRepository {
       where: entryWhere,
       include: { timesheetWeek: { select: { personId: true, weekStart: true } } },
       orderBy: { date: 'asc' },
-    }) as unknown as Promise<
-      Array<
-        Prisma.TimesheetEntryGetPayload<Record<string, never>> & {
-          timesheetWeek: { personId: string; weekStart: Date };
-        }
-      >
-    >;
+    });
   }
 }
