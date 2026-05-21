@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { ReportingLine } from '@src/modules/organization/domain/entities/reporting-line.entity';
 import { ReportingLineRepositoryPort } from '@src/modules/organization/domain/repositories/reporting-line-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
@@ -5,22 +7,13 @@ import { ReportingLineType } from '@src/modules/organization/domain/value-object
 
 import { OrganizationPrismaMapper } from './organization-prisma.mapper';
 
-interface ReportingLinePersistenceGateway {
-  delete(args: any): Promise<unknown>;
-  findMany(args: any): Promise<
-    Array<{
-      authority: 'APPROVER' | 'REVIEWER' | 'VIEWER';
-      id: string;
-      isPrimary: boolean;
-      managerPersonId: string;
-      relationshipType: 'DOTTED_LINE' | 'FUNCTIONAL' | 'PROJECT' | 'SOLID_LINE';
-      subjectPersonId: string;
-      validFrom: Date;
-      validTo: Date | null;
-    }>
-  >;
-  upsert(args: any): Promise<unknown>;
-}
+// F-81 / 20c-10 — drop the hand-rolled gateway (~12 lines of inline
+// enum-literal payload duplication) in favor of `Pick<>` over Prisma's
+// typed delegate.
+type ReportingLinePersistenceGateway = Pick<
+  Prisma.ReportingLineDelegate,
+  'delete' | 'findMany' | 'upsert'
+>;
 
 export class PrismaReportingLineRepository implements ReportingLineRepositoryPort {
   public constructor(private readonly gateway: ReportingLinePersistenceGateway) {}
