@@ -5,8 +5,12 @@ import { DirectorySyncStateRepositoryPort } from '../../../domain/repositories/d
 import { M365PrismaMapper } from './m365-prisma.mapper';
 
 // F-73 / 20c-10 — drop the hand-rolled Gateway interface (3 methods
-// with `any` args + `any` returns) in favor of Prisma's typed delegate.
-type IntegrationSyncStateGateway = Prisma.IntegrationSyncStateDelegate;
+// with `any` args + `any` returns) in favor of `Pick<>` over Prisma's
+// typed delegate — narrows to just the methods this repo uses.
+type IntegrationSyncStateGateway = Pick<
+  Prisma.IntegrationSyncStateDelegate,
+  'delete' | 'findFirst' | 'upsert'
+>;
 
 export class PrismaDirectorySyncStateRepository implements DirectorySyncStateRepositoryPort {
   public constructor(private readonly gateway: IntegrationSyncStateGateway) {}

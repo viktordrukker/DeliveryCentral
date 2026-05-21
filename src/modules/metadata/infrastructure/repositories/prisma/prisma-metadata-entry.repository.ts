@@ -8,10 +8,13 @@ import { MetadataPrismaMapper } from './metadata-prisma.mapper';
 
 // F-73 / 20c-10 — drop the hand-rolled `MetadataEntryGateway` interface
 // (4 methods with `any` args + `any` returns) in favor of Prisma's typed
-// delegate. The Prisma client exposes `metadataEntry` as a typed delegate
-// with full method signatures; the repository constructor accepts that
-// delegate directly.
-type MetadataEntryGateway = Prisma.MetadataEntryDelegate;
+// delegate. Narrows via `Pick<>` to just the 4 methods this repo uses so
+// unit-test mocks remain a tight surface (and Prisma still type-checks
+// every argument shape).
+type MetadataEntryGateway = Pick<
+  Prisma.MetadataEntryDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 // F-18 / 20c-12 — cap on findByDictionaryId(). Dictionaries are
 // admin-curated; typical sizes are 5–50 entries. Real workloads

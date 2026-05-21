@@ -7,8 +7,13 @@ import { MetadataDictionaryRepositoryPort } from '@src/modules/metadata/domain/r
 import { MetadataPrismaMapper } from './metadata-prisma.mapper';
 
 // F-73 / 20c-10 — drop the hand-rolled Gateway interface (4 methods with
-// `any` args + `any` returns) in favor of Prisma's typed delegate.
-type MetadataDictionaryGateway = Prisma.MetadataDictionaryDelegate;
+// `any` args + `any` returns) in favor of `Pick<>` over Prisma's typed
+// delegate — narrows to just the methods this repo uses so unit-test
+// mocks stay a tight surface (and Prisma still type-checks args/returns).
+type MetadataDictionaryGateway = Pick<
+  Prisma.MetadataDictionaryDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 /**
  * F-6.2 / D-144 — cap on list(). MetadataDictionary tables stay in the
