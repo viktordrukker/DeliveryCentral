@@ -23,10 +23,18 @@ ALTER TABLE "radiator_threshold_configs"
 CREATE INDEX IF NOT EXISTS "radiator_threshold_configs_createdByPersonId_idx"
   ON "radiator_threshold_configs" ("createdByPersonId");
 
+-- Two-step backfill for `updatedAt`: Prisma's `@updatedAt` directive
+-- emits no SQL default (the ORM populates the value on insert/update), so
+-- using `DEFAULT NOW()` in DDL would drift the schema vs the generated
+-- baseline. Add nullable, backfill, then set NOT NULL.
 ALTER TABLE "skills"
-  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ(3),
   ADD COLUMN IF NOT EXISTS "createdByPersonId" UUID,
   ADD COLUMN IF NOT EXISTS "updatedByPersonId" UUID;
+
+UPDATE "skills" SET "updatedAt" = NOW() WHERE "updatedAt" IS NULL;
+
+ALTER TABLE "skills" ALTER COLUMN "updatedAt" SET NOT NULL;
 
 ALTER TABLE "skills"
   ADD CONSTRAINT "skills_createdByPersonId_fkey"
