@@ -29,16 +29,10 @@ export interface UndoConsumeResult {
   consumedAt: Date;
 }
 
-interface DbRow {
-  id: string;
-  actorId: string;
-  actionType: string;
-  entityId: string;
-  inversePayload: unknown;
-  expiresAt: Date;
-  consumedAt: Date | null;
-  createdAt: Date;
-}
+// F-61 / 20c-11 — derive `DbRow` from Prisma instead of hand-rolling the
+// `UndoAction` row shape. Same pattern as F-47's responsibility-resolver
+// + F-57's read-access-resolver.
+type DbRow = Prisma.UndoActionGetPayload<Record<string, never>>;
 
 // HD-8 / Chunk 8.2 — server-side undo for reversible destructive
 // actions. Two methods:
@@ -88,9 +82,9 @@ export class UndoService {
     undoActionId: string,
     actorId: string,
   ): Promise<UndoConsumeResult> {
-    const row = (await this.prisma.undoAction.findUnique({
+    const row: DbRow | null = await this.prisma.undoAction.findUnique({
       where: { id: undoActionId },
-    })) as unknown as DbRow | null;
+    });
     if (!row) throw new NotFoundException(`Undo action ${undoActionId} not found.`);
     if (row.actorId !== actorId) {
       throw new ForbiddenException(

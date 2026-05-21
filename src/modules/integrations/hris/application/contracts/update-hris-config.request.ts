@@ -43,7 +43,7 @@ class WorkdayConfigDto {
 export class UpdateHrisConfigRequestDto {
   @ApiPropertyOptional({ enum: HRIS_ADAPTER_NAMES })
   @IsOptional()
-  @IsIn(HRIS_ADAPTER_NAMES as unknown as string[])
+  @IsIn([...HRIS_ADAPTER_NAMES])
   public activeAdapter?: (typeof HRIS_ADAPTER_NAMES)[number];
 
   @ApiPropertyOptional({ type: BambooHrConfigDto })
