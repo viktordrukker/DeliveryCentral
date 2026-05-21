@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -66,31 +67,12 @@ export interface ListStaffingRequestsQuery {
   status?: StaffingRequestStatus;
 }
 
-// Prisma maps `@db.Decimal(5, 2)` to the runtime Decimal class (imported
-// from @prisma/client/runtime/library); expose it as `any` here to
-// avoid cross-cutting type wiring at this transitional point. Callers
-// convert via `.toNumber()`.
-interface PrismaRecord {
-  allocationPercent: { toNumber(): number };
-  cancelledAt: Date | null;
-  candidatePersonId: string | null;
-  createdAt: Date;
-  endDate: Date;
-  fulfilments: { assignedPersonId: string; fulfilledAt: Date; id: string; proposedByPersonId: string }[];
-  headcountFulfilled: number;
-  headcountRequired: number;
-  id: string;
-  publicId: string | null;
-  priority: string;
-  projectId: string;
-  requestedByPersonId: string;
-  role: string;
-  skills: string[];
-  startDate: Date;
-  status: string;
-  summary: string | null;
-  updatedAt: Date;
-}
+// F-53 / 20c-11 — the local `PrismaRecord` interface used to hand-roll the
+// Prisma `StaffingRequest` shape (including `fulfilments[]` from the include)
+// and was paired with 10 `as unknown as PrismaRecord` coercions on every
+// findUnique/findMany/update call. Replaced with the Prisma-derived payload
+// so callers can hand the row to `toResponse` without any coercion.
+type PrismaRecord = Prisma.StaffingRequestGetPayload<{ include: { fulfilments: true } }>;
 
 @Injectable()
 export class InMemoryStaffingRequestService {
@@ -121,7 +103,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(command.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   private async assertProjectIsOpenForRequests(projectId: string): Promise<void> {
@@ -185,7 +167,7 @@ export class InMemoryStaffingRequestService {
     const projectIds = [...new Set(records.map((r) => r.projectId))];
     const projectNameMap = await this.resolveProjectNames(projectIds);
 
-    return records.map((r) => this.toResponse(r as unknown as PrismaRecord, projectNameMap[r.projectId]));
+    return records.map((r) => this.toResponse(r, projectNameMap[r.projectId]));
   }
 
   // DM-2.5-8-staffing Sub-B: resolve the input id (uuid or `stf_…`) to
@@ -205,7 +187,7 @@ export class InMemoryStaffingRequestService {
     });
     if (!record) return undefined;
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async submit(idOrPublicId: string): Promise<StaffingRequest> {
@@ -220,7 +202,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async review(idOrPublicId: string): Promise<StaffingRequest> {
@@ -235,7 +217,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async release(idOrPublicId: string): Promise<StaffingRequest> {
@@ -250,7 +232,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async fulfil(idOrPublicId: string, proposedByPersonId: string, assignedPersonId: string): Promise<StaffingRequest> {
@@ -283,7 +265,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async duplicate(idOrPublicId: string): Promise<StaffingRequest> {
@@ -310,7 +292,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async cancel(idOrPublicId: string): Promise<StaffingRequest> {
@@ -350,7 +332,7 @@ export class InMemoryStaffingRequestService {
       });
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   public async update(
@@ -379,7 +361,7 @@ export class InMemoryStaffingRequestService {
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
-    return this.toResponse(record as unknown as PrismaRecord, projectName);
+    return this.toResponse(record, projectName);
   }
 
   private toResponse(record: PrismaRecord, projectName: string | undefined): StaffingRequest {
