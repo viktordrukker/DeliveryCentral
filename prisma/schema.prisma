@@ -588,6 +588,11 @@ model Person {
   updatedCaseTypes                       CaseType[]                          @relation("CaseTypeUpdatedBy")
   createdContacts                        Contact[]                           @relation("ContactCreatedBy")
   updatedContacts                        Contact[]                           @relation("ContactUpdatedBy")
+  // F-60 / D-103 + DM-5-5 round 20
+  createdCustomFieldValues               CustomFieldValue[]                  @relation("CustomFieldValueCreatedBy")
+  updatedCustomFieldValues               CustomFieldValue[]                  @relation("CustomFieldValueUpdatedBy")
+  createdStaffingRequestProposalCandidates StaffingRequestProposalCandidate[] @relation("StaffingRequestProposalCandidateCreatedBy")
+  updatedStaffingRequestProposalCandidates StaffingRequestProposalCandidate[] @relation("StaffingRequestProposalCandidateUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1415,11 +1420,18 @@ model CustomFieldValue {
   createdAt               DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
   archivedAt              DateTime?             @db.Timestamptz(3)
+  // F-60 / D-103 round 20 — actor-audit columns.
+  createdByPersonId       String?               @db.Uuid
+  updatedByPersonId       String?               @db.Uuid
+  createdByPerson         Person?               @relation("CustomFieldValueCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?               @relation("CustomFieldValueUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   customFieldDefinition   CustomFieldDefinition @relation(fields: [customFieldDefinitionId], references: [id], onDelete: Cascade)
 
   @@unique([entityType, entityId, customFieldDefinitionId])
   @@index([entityType, entityId, archivedAt])
   @@index([customFieldDefinitionId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("CustomFieldValue")
 }
 
@@ -2373,6 +2385,11 @@ model StaffingRequestProposalCandidate {
   decidedAt           DateTime?                                @db.Timestamptz(3)
   createdAt           DateTime                                 @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime                                 @updatedAt @db.Timestamptz(3)
+  // F-60 / D-103 round 20 — actor-audit columns.
+  createdByPersonId   String?                                  @db.Uuid
+  updatedByPersonId   String?                                  @db.Uuid
+  createdByPerson     Person?                                  @relation("StaffingRequestProposalCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?                                  @relation("StaffingRequestProposalCandidateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   slate               StaffingRequestProposalSlate             @relation(fields: [slateId], references: [id], onDelete: Cascade)
   candidate           Person                                   @relation("StaffingRequestProposalCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
 
@@ -2380,6 +2397,8 @@ model StaffingRequestProposalCandidate {
   @@index([slateId, rank])
   @@index([candidatePersonId])
   @@index([slateId, decision])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("StaffingRequestProposalCandidate")
 }
 
