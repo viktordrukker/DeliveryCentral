@@ -1,14 +1,15 @@
+import { Prisma } from '@prisma/client';
+
 import { PersonExternalIdentityLink } from '../../../domain/entities/person-external-identity-link.entity';
 import { PersonExternalIdentityLinkRepositoryPort } from '../../../domain/repositories/person-external-identity-link.repository.port';
 import { M365PrismaMapper } from './m365-prisma.mapper';
 
-interface PersonExternalIdentityLinkGateway {
-  count(args?: any): Promise<number>;
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-75 / 20c-10 — drop the hand-rolled Gateway (5 `any` methods) in favor
+// of `Pick<>` over Prisma's typed delegate.
+type PersonExternalIdentityLinkGateway = Pick<
+  Prisma.PersonExternalIdentityLinkDelegate,
+  'count' | 'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaPersonExternalIdentityLinkRepository
   implements PersonExternalIdentityLinkRepositoryPort
