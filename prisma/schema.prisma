@@ -583,6 +583,11 @@ model Person {
   updatedOvertimeExceptions              OvertimeException[]                 @relation("OvertimeExceptionUpdatedBy")
   createdProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkCreatedBy")
   updatedProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkUpdatedBy")
+  // F-58 / D-103 + DM-5-5 round 19
+  createdCaseTypes                       CaseType[]                          @relation("CaseTypeCreatedBy")
+  updatedCaseTypes                       CaseType[]                          @relation("CaseTypeUpdatedBy")
+  createdContacts                        Contact[]                           @relation("ContactCreatedBy")
+  updatedContacts                        Contact[]                           @relation("ContactUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1222,12 +1227,19 @@ model CaseType {
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
   archivedAt           DateTime?           @db.Timestamptz(3)
+  // F-58 / D-103 round 19 — actor-audit columns.
+  createdByPersonId    String?             @db.Uuid
+  updatedByPersonId    String?             @db.Uuid
+  createdByPerson      Person?             @relation("CaseTypeCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?             @relation("CaseTypeUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   caseRecords          CaseRecord[]
   workflowDefinition   WorkflowDefinition? @relation(fields: [workflowDefinitionId], references: [id])
 
   @@index([archivedAt])
   @@map("CaseType")
   @@index([workflowDefinitionId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
 }
 
 model CaseRecord {
@@ -2999,11 +3011,18 @@ model Contact {
   verified  Boolean     @default(false)
   createdAt DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+  // F-58 / D-103 round 19 — actor-audit columns.
+  createdByPersonId String? @db.Uuid
+  updatedByPersonId String? @db.Uuid
+  createdByPerson   Person? @relation("ContactCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person? @relation("ContactUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([personId])
   @@index([kind])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("contacts")
 }
 
