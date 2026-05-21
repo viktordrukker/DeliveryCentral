@@ -632,6 +632,11 @@ model Person {
   updatedPulseReports                      PulseReport[]                       @relation("PulseReportUpdatedBy")
   createdIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateCreatedBy")
   updatedIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateUpdatedBy")
+  // F-76 / D-103 + DM-5-5 round 28
+  createdLocalAccounts                     LocalAccount[]                      @relation("LocalAccountCreatedBy")
+  updatedLocalAccounts                     LocalAccount[]                      @relation("LocalAccountUpdatedBy")
+  createdWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceCreatedBy")
+  updatedWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1251,9 +1256,14 @@ model WorkEvidence {
   createdAt            DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
   archivedAt           DateTime?          @db.Timestamptz(3)
+  // F-76 / D-103 + DM-5-5 round 28 — actor-audit columns.
+  createdByPersonId    String?            @db.Uuid
+  updatedByPersonId    String?            @db.Uuid
   person               Person?            @relation(fields: [personId], references: [id])
   project              Project?           @relation(fields: [projectId], references: [id])
   workEvidenceSource   WorkEvidenceSource @relation(fields: [workEvidenceSourceId], references: [id])
+  createdByPerson      Person?            @relation("WorkEvidenceCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?            @relation("WorkEvidenceUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   links                WorkEvidenceLink[]
   version              Int                @default(1)
   tenantId             String?            @db.Uuid
@@ -1265,6 +1275,8 @@ model WorkEvidence {
   @@index([workEvidenceSourceId, recordedAt])
   @@index([status, archivedAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("WorkEvidence")
 }
 
@@ -1902,16 +1914,23 @@ model LocalAccount {
   mustChangePw        Boolean            @default(false)
   createdAt           DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+  // F-76 / D-103 + DM-5-5 round 28 — actor-audit columns.
+  createdByPersonId   String?            @db.Uuid
+  updatedByPersonId   String?            @db.Uuid
 
-  refreshTokens  RefreshToken[]
-  passwordResets PasswordResetToken[]
-  person         Person?              @relation(fields: [personId], references: [id], onDelete: SetNull)
-  tenantId       String?              @db.Uuid
-  Tenant         Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  refreshTokens   RefreshToken[]
+  passwordResets  PasswordResetToken[]
+  person          Person?              @relation(fields: [personId], references: [id], onDelete: SetNull)
+  createdByPerson Person?              @relation("LocalAccountCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?              @relation("LocalAccountUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  tenantId        String?              @db.Uuid
+  Tenant          Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([email])
   @@index([personId])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("LocalAccount")
 }
 
