@@ -8,19 +8,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const MIN_SAMPLE = 3;
 
-interface PrismaShape {
-  projectAssignment: {
-    count: (args: unknown) => Promise<number>;
-  };
-  staffingRequestFulfilment: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly fulfilledAt: Date;
-        readonly request: { readonly createdAt: Date };
-      }>
-    >;
-  };
-}
+// F-63 / 20c-11 — 3rd `PrismaShape` hand-rolled gateway interface deleted.
+// Same pattern as F-55 (pending-actions-query) + F-57 (nudge-staffing-request).
+// Prisma exposes typed `projectAssignment` + `staffingRequestFulfilment`
+// delegates directly.
 
 function median(xs: number[]): number | null {
   if (xs.length === 0) return null;
@@ -35,20 +26,19 @@ export class DirectorSlaSummaryQueryService {
 
   public async execute(): Promise<DirectorSlaSummaryDto> {
     const now = Date.now();
-    const p = this.prisma as unknown as PrismaShape;
 
     const slaWindowStart = new Date(now - DAY_MS);
     const slaWindowEnd = new Date(now + DAY_MS);
     const ttfWindowStart = new Date(now - 4 * WEEK_MS);
 
     const [slaBreaches24h, fulfilments] = await Promise.all([
-      p.projectAssignment.count({
+      this.prisma.projectAssignment.count({
         where: {
           slaDueAt: { gte: slaWindowStart, lte: slaWindowEnd },
           slaBreachedAt: null,
         },
       }),
-      p.staffingRequestFulfilment.findMany({
+      this.prisma.staffingRequestFulfilment.findMany({
         where: { fulfilledAt: { gte: ttfWindowStart } },
         select: {
           fulfilledAt: true,
