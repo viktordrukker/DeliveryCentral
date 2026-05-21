@@ -30,6 +30,7 @@ COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html ./
 COPY src ./src
+COPY public ./public
 
 RUN npm run build
 
