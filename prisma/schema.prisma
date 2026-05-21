@@ -593,6 +593,11 @@ model Person {
   updatedCustomFieldValues               CustomFieldValue[]                  @relation("CustomFieldValueUpdatedBy")
   createdStaffingRequestProposalCandidates StaffingRequestProposalCandidate[] @relation("StaffingRequestProposalCandidateCreatedBy")
   updatedStaffingRequestProposalCandidates StaffingRequestProposalCandidate[] @relation("StaffingRequestProposalCandidateUpdatedBy")
+  // F-62 / D-103 + DM-5-5 round 21
+  createdWorkflowStateDefinitions        WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionCreatedBy")
+  updatedWorkflowStateDefinitions        WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionUpdatedBy")
+  createdTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryCreatedBy")
+  updatedTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1472,11 +1477,18 @@ model WorkflowStateDefinition {
   validationSchema     Json?
   createdAt            DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+  // F-62 / D-103 round 21 — actor-audit columns.
+  createdByPersonId    String?            @db.Uuid
+  updatedByPersonId    String?            @db.Uuid
+  createdByPerson      Person?            @relation("WorkflowStateDefinitionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?            @relation("WorkflowStateDefinitionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   workflowDefinition   WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
   caseSteps            CaseStep[]
 
   @@unique([workflowDefinitionId, stateKey])
   @@index([workflowDefinitionId, sequenceNumber])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("WorkflowStateDefinition")
 }
 
@@ -1788,8 +1800,15 @@ model TimesheetEntry {
   description     String?
   createdAt       DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  // F-62 / D-103 round 21 — actor-audit columns.
+  createdByPersonId String?     @db.Uuid
+  updatedByPersonId String?     @db.Uuid
+  createdByPerson   Person?     @relation("TimesheetEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?     @relation("TimesheetEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([timesheetWeekId, projectId, benchCategory, workLabel, date])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("timesheet_entries")
 }
 
