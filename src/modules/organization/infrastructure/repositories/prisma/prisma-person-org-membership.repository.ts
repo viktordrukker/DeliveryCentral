@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { PersonOrgMembership } from '@src/modules/organization/domain/entities/person-org-membership.entity';
 import { PersonOrgMembershipRepositoryPort } from '@src/modules/organization/domain/repositories/person-org-membership-repository.port';
 import { EffectiveDateRange } from '@src/modules/organization/domain/value-objects/effective-date-range';
@@ -5,12 +7,12 @@ import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-un
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
 import { TransactionContext } from '@src/shared/domain/transaction-context';
 
-interface PersonOrgMembershipGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-75 / 20c-10 — drop the hand-rolled Gateway (4 `any` methods) in
+// favor of `Pick<>` over Prisma's typed delegate.
+type PersonOrgMembershipGateway = Pick<
+  Prisma.PersonOrgMembershipDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 interface TxClientWithMembership {
   personOrgMembership: PersonOrgMembershipGateway;

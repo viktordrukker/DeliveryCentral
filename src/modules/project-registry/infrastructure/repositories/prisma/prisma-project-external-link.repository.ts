@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { ProjectExternalLink } from '@src/modules/project-registry/domain/entities/project-external-link.entity';
 import { ProjectExternalLinkRepositoryPort } from '@src/modules/project-registry/domain/repositories/project-external-link-repository.port';
 import { ExternalProjectKey } from '@src/modules/project-registry/domain/value-objects/external-project-key';
@@ -6,34 +8,13 @@ import { ProjectId } from '@src/modules/project-registry/domain/value-objects/pr
 
 import { ProjectRegistryPrismaMapper } from './project-registry-prisma.mapper';
 
-interface ProjectExternalLinkGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args: any): Promise<{
-    archivedAt: Date | null;
-    connectionKey: string | null;
-    externalProjectKey: string;
-    externalProjectName: string | null;
-    externalUrl: string | null;
-    id: string;
-    projectId: string;
-    provider: string;
-    providerEnvironment: string | null;
-  } | null>;
-  findMany(args: any): Promise<
-    Array<{
-      archivedAt: Date | null;
-      connectionKey: string | null;
-      externalProjectKey: string;
-      externalProjectName: string | null;
-      externalUrl: string | null;
-      id: string;
-      projectId: string;
-      provider: string;
-      providerEnvironment: string | null;
-    }>
-  >;
-  upsert(args: any): Promise<unknown>;
-}
+// F-75 / 20c-10 — drop the hand-rolled Gateway (mix of `any` args + inline
+// payload-shape duplications) in favor of `Pick<>` over Prisma's typed
+// delegate.
+type ProjectExternalLinkGateway = Pick<
+  Prisma.ProjectExternalLinkDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaProjectExternalLinkRepository
   implements ProjectExternalLinkRepositoryPort
