@@ -614,6 +614,9 @@ model Person {
   createdRadiatorThresholdConfigs        RadiatorThresholdConfig[]           @relation("RadiatorThresholdConfigCreatedBy")
   createdSkills                          Skill[]                             @relation("SkillCreatedBy")
   updatedSkills                          Skill[]                             @relation("SkillUpdatedBy")
+  // F-68 / D-103 + DM-5-5 round 24
+  createdStaffingRequests                StaffingRequest[]                   @relation("StaffingRequestCreatedBy")
+  updatedStaffingRequests                StaffingRequest[]                   @relation("StaffingRequestUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2374,6 +2377,13 @@ model StaffingRequest {
   cancelledAt         DateTime?                     @db.Timestamptz(3)
   createdAt           DateTime                      @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime                      @updatedAt @db.Timestamptz(3)
+  // F-68 / D-103 round 24 — actor-audit columns. Distinct from
+  // `requestedByPersonId` (the requester) — the canonical pair captures
+  // "who created/last-edited this row" without conflating the two roles.
+  createdByPersonId   String?                       @db.Uuid
+  updatedByPersonId   String?                       @db.Uuid
+  createdByPerson     Person?                       @relation("StaffingRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?                       @relation("StaffingRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   fulfilments         StaffingRequestFulfilment[]
   assignments         ProjectAssignment[]           @relation("StaffingRequestAssignments")
   proposalSlate       StaffingRequestProposalSlate?
@@ -2385,6 +2395,8 @@ model StaffingRequest {
   @@index([requestedByPersonId, status])
   @@index([status, priority, startDate])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("staffing_requests")
 }
 
