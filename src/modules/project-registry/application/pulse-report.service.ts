@@ -159,7 +159,9 @@ export class PulseReportService {
 
     const shouldSubmit = Boolean(dto.submit);
     const now = new Date();
-    const dimensionsJson = mergedDims as unknown as Prisma.InputJsonValue;
+    // F-65 / 20c-11 — `PulseReportDimensions` is structurally compatible
+    // with `Prisma.InputJsonValue`; drop the `as unknown as` indirection.
+    const dimensionsJson = mergedDims as Prisma.InputJsonValue;
     const row = await this.prisma.pulseReport.upsert({
       where: { projectId_weekStarting: { projectId, weekStarting } },
       create: {

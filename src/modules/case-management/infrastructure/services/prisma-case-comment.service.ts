@@ -34,7 +34,10 @@ export class PrismaCaseCommentService {
     comments.push(comment);
 
     await this.prisma.caseRecord.update({
-      data: { payload: { ...payload, comments } as unknown as Prisma.InputJsonValue },
+      // F-65 / 20c-11 — the merged comments-array payload is structurally
+      // compatible with `Prisma.InputJsonValue`; drop the `as unknown as`
+      // indirection in favour of a direct cast.
+      data: { payload: { ...payload, comments } as Prisma.InputJsonValue },
       where: { id: caseId },
     });
 
