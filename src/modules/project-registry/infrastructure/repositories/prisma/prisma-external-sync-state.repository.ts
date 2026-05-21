@@ -1,21 +1,17 @@
+import { Prisma } from '@prisma/client';
+
 import { ExternalSyncState } from '@src/modules/project-registry/domain/entities/external-sync-state.entity';
 import { ExternalSyncStateRepositoryPort } from '@src/modules/project-registry/domain/repositories/external-sync-state-repository.port';
 
 import { ProjectRegistryPrismaMapper } from './project-registry-prisma.mapper';
 
-interface ExternalSyncStateGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args: any): Promise<{
-    id: string;
-    lastError: string | null;
-    lastPayloadFingerprint: string | null;
-    lastSuccessfulSyncedAt: Date | null;
-    lastSyncedAt: Date | null;
-    projectExternalLinkId: string;
-    syncStatus: 'FAILED' | 'IDLE' | 'PARTIAL' | 'RUNNING' | 'SUCCEEDED';
-  } | null>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-81 / 20c-10 — drop the hand-rolled gateway (~10 lines of inline
+// payload-shape duplication with the syncStatus enum literal) in favor
+// of `Pick<>` over Prisma's typed delegate.
+type ExternalSyncStateGateway = Pick<
+  Prisma.ExternalSyncStateDelegate,
+  'delete' | 'findFirst' | 'upsert'
+>;
 
 export class PrismaExternalSyncStateRepository implements ExternalSyncStateRepositoryPort {
   public constructor(private readonly gateway: ExternalSyncStateGateway) {}
