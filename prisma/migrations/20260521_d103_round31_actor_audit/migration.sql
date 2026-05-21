@@ -14,19 +14,19 @@ ALTER TABLE "onboarding_tour_progress"
   ADD COLUMN IF NOT EXISTS "updatedByPersonId" UUID;
 
 ALTER TABLE "onboarding_tour_progress"
-  ADD CONSTRAINT "OnboardingTourProgress_createdByPersonId_fkey"
+  ADD CONSTRAINT "onboarding_tour_progress_createdByPersonId_fkey"
   FOREIGN KEY ("createdByPersonId") REFERENCES "Person"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "onboarding_tour_progress"
-  ADD CONSTRAINT "OnboardingTourProgress_updatedByPersonId_fkey"
+  ADD CONSTRAINT "onboarding_tour_progress_updatedByPersonId_fkey"
   FOREIGN KEY ("updatedByPersonId") REFERENCES "Person"("id")
   ON DELETE SET NULL ON UPDATE CASCADE;
 
-CREATE INDEX IF NOT EXISTS "OnboardingTourProgress_createdByPersonId_idx"
+CREATE INDEX IF NOT EXISTS "onboarding_tour_progress_createdByPersonId_idx"
   ON "onboarding_tour_progress" ("createdByPersonId");
 
-CREATE INDEX IF NOT EXISTS "OnboardingTourProgress_updatedByPersonId_idx"
+CREATE INDEX IF NOT EXISTS "onboarding_tour_progress_updatedByPersonId_idx"
   ON "onboarding_tour_progress" ("updatedByPersonId");
 
 -- WorkEvidenceSource ----------------------------------------------------
