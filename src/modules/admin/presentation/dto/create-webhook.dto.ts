@@ -22,7 +22,7 @@ export class CreateWebhookDto {
    */
   @IsArray()
   @IsString({ each: true })
-  @IsIn(WEBHOOK_EVENT_TYPES as unknown as string[], { each: true })
+  @IsIn([...WEBHOOK_EVENT_TYPES], { each: true })
   @IsOptional()
   eventTypes?: string[];
 
