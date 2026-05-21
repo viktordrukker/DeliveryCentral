@@ -184,8 +184,10 @@ export class StaffingProposalSlateService {
     });
 
     for (const candidate of slate.candidates) {
-      // The slate id is now known; back-fill the candidate's slateId reference.
-      (candidate as unknown as { props: { slateId: string } }).props.slateId = slate.id;
+      // F-67 / 20c-11 — back-fill the candidate's slateId via the typed
+      // `bindToSlate` entity method instead of mutating `.props` through
+      // an `as unknown as` cast.
+      candidate.bindToSlate(slate.id);
     }
 
     // HD-0.2 Phase 2b: slate.save and the staffing-request status flip share

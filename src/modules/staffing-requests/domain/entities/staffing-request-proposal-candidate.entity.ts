@@ -73,6 +73,25 @@ export class StaffingRequestProposalCandidate extends AggregateRoot<StaffingRequ
     return this.props.slateId;
   }
 
+  /**
+   * F-67 / 20c-11 — slate-creation flow needs to back-fill the candidate
+   * with its parent slate's id once the slate is persisted (since the slate
+   * id is generated server-side at `slate.create()` time, but candidates
+   * are constructed before that point). Service-layer used to mutate
+   * `candidate.props.slateId` via an `as unknown as { props }` cast; this
+   * exposes the operation as an intent-revealing entity method with a
+   * guard so the slateId can be set exactly once.
+   */
+  public bindToSlate(slateId: string): void {
+    if (this.props.slateId === slateId) return;
+    if (this.props.slateId && this.props.slateId !== '') {
+      throw new Error(
+        `Candidate ${this.id} is already bound to slate ${this.props.slateId}; cannot rebind to ${slateId}.`,
+      );
+    }
+    this.props.slateId = slateId;
+  }
+
   public pick(timestamp: Date = new Date()): void {
     if (this.props.decision !== 'PENDING') {
       throw new Error(
