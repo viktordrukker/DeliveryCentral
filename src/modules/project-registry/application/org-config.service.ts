@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { getCached, setCache } from '@src/shared/cache/simple-cache';
+import { getCached, invalidateCache, setCache } from '@src/shared/cache/simple-cache';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { OrgConfigDto, UpdateOrgConfigDto } from './contracts/org-config.dto';
@@ -105,7 +105,7 @@ export class OrgConfigService {
       },
     });
 
-    setCache(CACHE_KEY, null as unknown as OrgConfigDto, 0);
+    invalidateCache(CACHE_KEY);
 
     this.auditLogger.record({
       actionType: 'org-config.updated',

@@ -24,3 +24,13 @@ export function setCache(key: string, data: unknown, ttlMs: number): void {
     cache.delete(oldest);
   }
 }
+
+/**
+ * F-59 / 20c-11 — Invalidate a cache entry by key. Callers used to write
+ * `setCache(key, null as unknown as <DTO>, 0)` which required a cast per
+ * call site (one for each DTO type). The new helper makes the intent
+ * obvious and removes the type-coercion need entirely.
+ */
+export function invalidateCache(key: string): void {
+  cache.delete(key);
+}

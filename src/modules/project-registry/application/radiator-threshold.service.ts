@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { getCached, setCache } from '@src/shared/cache/simple-cache';
+import { getCached, invalidateCache, setCache } from '@src/shared/cache/simple-cache';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { ThresholdConfigDto } from './contracts/radiator.dto';
@@ -91,6 +91,6 @@ export class RadiatorThresholdService {
     });
 
     // Invalidate cache; simple-cache has no wildcard delete so per-project caches will expire naturally.
-    setCache(THRESHOLDS_CACHE_KEY, null as unknown as Map<string, ThresholdSet>, 0);
+    invalidateCache(THRESHOLDS_CACHE_KEY);
   }
 }

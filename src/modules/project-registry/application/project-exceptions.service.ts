@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { getCached, setCache } from '@src/shared/cache/simple-cache';
+import { getCached, invalidateCache, setCache } from '@src/shared/cache/simple-cache';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { ExceptionRow, ExceptionSeverity, ExceptionsDto } from './contracts/project-exception.dto';
@@ -295,6 +295,6 @@ export class ProjectExceptionsService {
   }
 
   public invalidate(projectId: string): void {
-    setCache(`exceptions:${projectId}`, null as unknown as ExceptionsDto, 0);
+    invalidateCache(`exceptions:${projectId}`);
   }
 }
