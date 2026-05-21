@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { getCached, setCache } from '@src/shared/cache/simple-cache';
+import { getCached, invalidateCache, setCache } from '@src/shared/cache/simple-cache';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import {
@@ -326,6 +326,6 @@ export class RadiatorScoringService {
   }
 
   public invalidateCache(projectId: string): void {
-    setCache(`radiator:proj:${projectId}`, null as unknown as RadiatorSnapshotDto, 0);
+    invalidateCache(`radiator:proj:${projectId}`);
   }
 }
