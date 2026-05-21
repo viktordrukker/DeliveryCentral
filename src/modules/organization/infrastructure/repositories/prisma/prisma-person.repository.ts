@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { Person } from '@src/modules/organization/domain/entities/person.entity';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
@@ -5,12 +7,12 @@ import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { OrganizationPrismaMapper } from './organization-prisma.mapper';
 
-interface PersonGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-79 / 20c-10 — drop the hand-rolled Gateway (4 `any` methods) in
+// favor of `Pick<>` over Prisma's typed delegate.
+type PersonGateway = Pick<
+  Prisma.PersonDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 interface TxClientWithPerson {
   person: PersonGateway;
