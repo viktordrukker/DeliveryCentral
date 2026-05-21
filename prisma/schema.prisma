@@ -647,6 +647,11 @@ model Person {
   updatedNotificationRequests              NotificationRequest[]               @relation("NotificationRequestUpdatedBy")
   createdNotificationChannels              NotificationChannel[]               @relation("NotificationChannelCreatedBy")
   updatedNotificationChannels              NotificationChannel[]               @relation("NotificationChannelUpdatedBy")
+  // F-82 / D-103 + DM-5-5 round 31
+  createdOnboardingTourProgress            OnboardingTourProgress[]            @relation("OnboardingTourProgressCreatedBy")
+  updatedOnboardingTourProgress            OnboardingTourProgress[]            @relation("OnboardingTourProgressUpdatedBy")
+  createdWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceCreatedBy")
+  updatedWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1240,10 +1245,17 @@ model WorkEvidenceSource {
   createdAt           DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
   archivedAt          DateTime?      @db.Timestamptz(3)
+  // F-82 / D-103 + DM-5-5 round 31 — actor-audit columns.
+  createdByPersonId   String?        @db.Uuid
+  updatedByPersonId   String?        @db.Uuid
   workEvidenceRecords WorkEvidence[]
+  createdByPerson     Person?        @relation("WorkEvidenceSourceCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?        @relation("WorkEvidenceSourceUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, sourceType, connectionKey])
   @@index([provider, archivedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("WorkEvidenceSource")
 }
 
@@ -2318,27 +2330,34 @@ model HelpFeedback {
 // clicked "skip", `completedAt` means they ran every step. The FE
 // uses either as a "don't show this tour again" signal.
 model OnboardingTourProgress {
-  id             String    @id @default(uuid()) @db.Uuid
+  id                String    @id @default(uuid()) @db.Uuid
   // F-20 / D-109 — audit-adjacent analytics survive person deletion.
   // `onDelete: SetNull` keeps onboarding-effectiveness signals when
   // a person row is removed; the orphan rows are no longer queryable
   // by the (personId, tourKey) unique key but still feed retention
   // analytics.
-  personId       String?   @db.Uuid
-  person         Person?   @relation("OnboardingTourPerson", fields: [personId], references: [id], onDelete: SetNull)
+  personId          String?   @db.Uuid
+  person            Person?   @relation("OnboardingTourPerson", fields: [personId], references: [id], onDelete: SetNull)
   // Tour identifier. Stable, lowercase, kebab-case. e.g. `staffing-desk-101`.
-  tourKey        String
-  completedSteps String[]  @default([])
-  dismissedAt    DateTime? @db.Timestamptz(3)
-  completedAt    DateTime? @db.Timestamptz(3)
-  tenantId       String?   @db.Uuid
-  Tenant         Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+  tourKey           String
+  completedSteps    String[]  @default([])
+  dismissedAt       DateTime? @db.Timestamptz(3)
+  completedAt       DateTime? @db.Timestamptz(3)
+  tenantId          String?   @db.Uuid
+  Tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  // F-82 / D-103 + DM-5-5 round 31 — actor-audit columns.
+  createdByPersonId String?   @db.Uuid
+  updatedByPersonId String?   @db.Uuid
+  createdByPerson   Person?   @relation("OnboardingTourProgressCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?   @relation("OnboardingTourProgressUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([personId, tourKey])
   @@index([tourKey])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("onboarding_tour_progress")
 }
 
