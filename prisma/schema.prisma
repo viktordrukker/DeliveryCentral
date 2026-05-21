@@ -573,6 +573,11 @@ model Person {
   updatedRateCardEntries                 RateCardEntry[]                     @relation("RateCardEntryUpdatedBy")
   createdLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceCreatedBy")
   updatedLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceUpdatedBy")
+  // F-54 / D-103 + DM-5-5 round 17
+  createdMetadataDictionaries            MetadataDictionary[]                @relation("MetadataDictionaryCreatedBy")
+  updatedMetadataDictionaries            MetadataDictionary[]                @relation("MetadataDictionaryUpdatedBy")
+  createdCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionCreatedBy")
+  updatedCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1308,6 +1313,11 @@ model MetadataDictionary {
   createdAt              DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt              DateTime                @updatedAt @db.Timestamptz(3)
   archivedAt             DateTime?               @db.Timestamptz(3)
+  // F-54 / D-103 round 17 — actor-audit columns.
+  createdByPersonId      String?                 @db.Uuid
+  updatedByPersonId      String?                 @db.Uuid
+  createdByPerson        Person?                 @relation("MetadataDictionaryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson        Person?                 @relation("MetadataDictionaryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   scopeOrgUnit           OrgUnit?                @relation(fields: [scopeOrgUnitId], references: [id])
   entries                MetadataEntry[]
   customFieldDefinitions CustomFieldDefinition[]
@@ -1315,6 +1325,8 @@ model MetadataDictionary {
   @@unique([entityType, dictionaryKey, scopeOrgUnitId])
   @@index([entityType, archivedAt])
   @@index([scopeOrgUnitId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("MetadataDictionary")
 }
 
@@ -1352,6 +1364,11 @@ model CustomFieldDefinition {
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
   archivedAt           DateTime?           @db.Timestamptz(3)
+  // F-54 / D-103 round 17 — actor-audit columns.
+  createdByPersonId    String?             @db.Uuid
+  updatedByPersonId    String?             @db.Uuid
+  createdByPerson      Person?             @relation("CustomFieldDefinitionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?             @relation("CustomFieldDefinitionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   metadataDictionary   MetadataDictionary? @relation(fields: [metadataDictionaryId], references: [id])
   scopeOrgUnit         OrgUnit?            @relation(fields: [scopeOrgUnitId], references: [id])
   customFieldValues    CustomFieldValue[]
@@ -1360,6 +1377,8 @@ model CustomFieldDefinition {
   @@index([entityType, isEnabled, archivedAt])
   @@index([metadataDictionaryId])
   @@index([scopeOrgUnitId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("CustomFieldDefinition")
 }
 
