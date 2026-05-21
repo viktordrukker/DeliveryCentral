@@ -26,7 +26,21 @@ declare module 'd3-org-chart' {
     connections(val: Array<{ from: string; to: string; label?: string }>): this;
     connectionsUpdate(cb: (d: unknown, i: number, arr: unknown[]) => void): this;
     layout(val: 'top' | 'bottom' | 'left' | 'right'): this;
-    update(data: TDatum[]): this;
+    /** Re-render the chart with a new dataset, or trigger a refresh by passing
+     *  the current `root` node from `getChartState()`. The library is happy to
+     *  receive either shape. */
+    update(data: TDatum[] | unknown): this;
+    /** Returns the internal chart state, including the d3-hierarchy root node.
+     *  Undocumented in the upstream README but stable across recent releases —
+     *  used to enumerate descendants and trigger structural refreshes. */
+    getChartState(): {
+      root?: {
+        descendants?(): Array<{
+          depth: number;
+          data: TDatum & { _expanded?: boolean };
+        }>;
+      };
+    };
     /** Removes the window resize listener bound during render() and clears the SVG.
      *  Must be called when navigating away or before recreating the chart, otherwise
      *  the resize listener fires getBoundingClientRect() on a detached container. */
