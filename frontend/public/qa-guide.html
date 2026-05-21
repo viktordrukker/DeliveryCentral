@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>DeliveryCentral — QA Onboarding & Issue Reporting</title>
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --surface-alt: #f8fafc;
+    --border: #d7dde5;
+    --border-strong: #bcc5d0;
+    --text: #1b2430;
+    --text-muted: #5d6b7d;
+    --text-subtle: #667483;
+    --accent: #114b7a;
+    --accent-soft: #dbe9f4;
+    --danger: #a63f3f;
+    --warn: #b45309;
+    --ok: #1d5b34;
+    --ok-bg: #e8f5ec;
+    --info: #1a6f9c;
+    --info-bg: #e0f0fa;
+    --shadow: 0 12px 30px rgba(17, 31, 51, 0.06);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, kbd { font-family: var(--mono); font-size: 0.88em; background: var(--surface-alt); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+  pre { background: #1b2430; color: #e5edf5; padding: 16px 18px; border-radius: var(--radius-sm); overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.5; }
+  pre code { background: transparent; border: 0; padding: 0; color: inherit; font-size: inherit; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+
+  /* Top bar */
+  header.topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; gap: 16px;
+  }
+  header.topbar .brand {
+    display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px;
+  }
+  header.topbar .brand .dot {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+  }
+  header.topbar .env {
+    margin-left: auto;
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-weight: 600;
+    letter-spacing: 0.4px;
+  }
+  header.topbar .toc-toggle {
+    display: none; background: transparent; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; cursor: pointer; font: inherit; color: var(--text);
+  }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; gap: 32px; padding: 24px; }
+  nav.toc {
+    position: sticky; top: 72px; align-self: start; max-height: calc(100vh - 96px); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 14px; box-shadow: var(--shadow); font-size: 13px;
+  }
+  nav.toc .toc-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-subtle); margin-bottom: 8px; }
+  nav.toc ol { list-style: none; padding: 0; margin: 0; counter-reset: tocnum; }
+  nav.toc li { margin: 0; counter-increment: tocnum; }
+  nav.toc li a { display: block; padding: 6px 8px; border-radius: 6px; color: var(--text-muted); font-size: 13px; }
+  nav.toc li a::before { content: counter(tocnum) ". "; color: var(--text-subtle); margin-right: 4px; }
+  nav.toc li a:hover { background: var(--surface-alt); color: var(--text); text-decoration: none; }
+  nav.toc li a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  main { min-width: 0; }
+  main section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; box-shadow: var(--shadow); margin-bottom: 24px; }
+  main h1 { font-size: 26px; margin: 0 0 4px; }
+  main h1 + .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+  main section h2 { font-size: 19px; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  main section h3 { font-size: 15px; margin: 18px 0 8px; color: var(--text); }
+  main p { margin: 8px 0 12px; }
+
+  /* Callouts */
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 12px 0; font-size: 14px; }
+  .callout.warn { border-left-color: var(--warn); background: #fff4e0; color: #5d3a08; }
+  .callout.danger { border-left-color: var(--danger); background: #fde8e8; color: #6a1d1d; }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
+
+  /* Tables */
+  table.data { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  table.data th, table.data td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.data thead th { background: var(--surface-alt); color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+  table.data tr:last-child td { border-bottom: 0; }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); }
+  .pill.admin { background: #ede4fa; color: #5b21b6; border-color: #ddc7f5; }
+  .pill.p0 { background: #fde8e8; color: #6a1d1d; border-color: #f4bcbc; }
+  .pill.p1 { background: #fff4e0; color: #5d3a08; border-color: #f5d59a; }
+  .pill.p2 { background: var(--accent-soft); color: var(--accent); border-color: #b9d5ea; }
+  .pill.p3 { background: var(--surface-alt); color: var(--text-muted); }
+
+  /* KPI cards */
+  .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 8px 0 18px; }
+  .kpi-card { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--surface); }
+  .kpi-card .v { font-size: 22px; font-weight: 600; color: var(--text); }
+  .kpi-card .l { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 6px 0 6px 28px; position: relative; }
+  .checklist li::before { content: ""; position: absolute; left: 0; top: 9px; width: 16px; height: 16px; border: 2px solid var(--border-strong); border-radius: 4px; background: var(--surface); }
+
+  /* Numbered steps */
+  ol.steps { counter-reset: step; list-style: none; padding-left: 0; }
+  ol.steps > li { counter-increment: step; padding: 8px 0 8px 40px; position: relative; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 6px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; text-align: center; line-height: 28px; font-size: 13px; font-weight: 600; }
+
+  /* Section anchor offset for sticky header */
+  section[id] { scroll-margin-top: 80px; }
+
+  /* Footer */
+  footer { max-width: 1280px; margin: 0 auto; padding: 16px 24px 40px; color: var(--text-subtle); font-size: 12px; text-align: center; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+    nav.toc { position: static; max-height: none; display: none; }
+    nav.toc.open { display: block; }
+    header.topbar .toc-toggle { display: inline-block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> DeliveryCentral — QA Onboarding</div>
+  <button class="toc-toggle" type="button" aria-controls="toc" aria-expanded="false">Contents</button>
+  <span class="env">STAGING ONLY</span>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc" aria-label="On-page navigation">
+    <div class="toc-title">On this page</div>
+    <ol>
+      <li><a href="#welcome">Welcome</a></li>
+      <li><a href="#product">What DeliveryCentral is</a></li>
+      <li><a href="#accounts">Your accounts</a></li>
+      <li><a href="#env">Environment &amp; data</a></li>
+      <li><a href="#loop">How to test — the working loop</a></li>
+      <li><a href="#menu">First-week test menu</a></li>
+      <li><a href="#etiquette">Etiquette</a></li>
+      <li><a href="#issues-intro">Reporting findings</a></li>
+      <li><a href="#issues-checklist">Pre-flight checklist</a></li>
+      <li><a href="#issues-how">How to file</a></li>
+      <li><a href="#issues-templates">Templates</a></li>
+      <li><a href="#issues-title">Title formula</a></li>
+      <li><a href="#issues-labels">Labels</a></li>
+      <li><a href="#issues-lifecycle">Lifecycle</a></li>
+      <li><a href="#issues-example">Worked example</a></li>
+      <li><a href="#links">Quick links</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="welcome">
+      <h1>QA Onboarding &amp; Issue Reporting</h1>
+      <div class="subtitle">For: Anna Surkova · Alina Novikova · Ekaterina Vashurina · Ruslan Bogdanov · Last updated 2026‑05‑21</div>
+
+      <div class="kpi-strip">
+        <div class="kpi-card"><div class="v">4</div><div class="l">Admin accounts</div></div>
+        <div class="kpi-card"><div class="v">200</div><div class="l">Seeded people</div></div>
+        <div class="kpi-card"><div class="v">40</div><div class="l">Seeded projects</div></div>
+        <div class="kpi-card"><div class="v">5 yr</div><div class="l">Synthetic history</div></div>
+      </div>
+
+      <div class="callout ok">
+        <strong>You have full admin access on staging.</strong> All data is mocked — names, emails, projects are seeded fakes. There is no production data anywhere in scope. Test liberally.
+      </div>
+    </section>
+
+    <section id="product">
+      <h2>1 · What DeliveryCentral is</h2>
+      <p>A <strong>delivery‑operations platform</strong> for IT / professional‑services companies: people, projects, staffing, time &amp; cost, cases, audit, integrations. It replaces a stack of spreadsheets and ad‑hoc tools with one system of record around four primary jobs.</p>
+
+      <table class="data">
+        <thead><tr><th>Job</th><th>Owned by</th><th>Where you start</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Plan capacity</strong> — who is free, when</td><td>Resource Manager</td><td><code>/staffing-desk?view=planner</code></td></tr>
+          <tr><td><strong>Staff a project</strong> — fill a request with a person</td><td>PM + RM</td><td><code>/staffing-desk?view=requests</code></td></tr>
+          <tr><td><strong>Run the work</strong> — plan vs. actual, risks, milestones</td><td>PM + Delivery Manager</td><td><code>/projects/:id</code>, <code>/dashboard</code></td></tr>
+          <tr><td><strong>Govern the system</strong> — RBAC, integrations, audit</td><td>Admin</td><td><code>/admin/*</code></td></tr>
+        </tbody>
+      </table>
+      <p>Your accounts are full <code>admin</code> — you can see and do everything any role can.</p>
+    </section>
+
+    <section id="accounts">
+      <h2>2 · Your accounts (staging only)</h2>
+      <table class="data">
+        <thead><tr><th>Tester</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>Anna Surkova</td><td><code>qa.anna.surkova@deliverycentral.local</code></td><td><span class="pill admin">admin</span></td></tr>
+          <tr><td>Alina Novikova</td><td><code>qa.alina.novikova@deliverycentral.local</code></td><td><span class="pill admin">admin</span></td></tr>
+          <tr><td>Ekaterina Vashurina</td><td><code>qa.ekaterina.vashurina@deliverycentral.local</code></td><td><span class="pill admin">admin</span></td></tr>
+          <tr><td>Ruslan Bogdanov</td><td><code>qa.ruslan.bogdanov@deliverycentral.local</code></td><td><span class="pill admin">admin</span></td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Initial passwords are shared <strong>out‑of‑band</strong> (Viktor will deliver them).</li>
+        <li><code>mustChangePw = true</code> — you will be forced to set a new password on first login. Pick a strong one.</li>
+        <li><strong>Staging URL:</strong> <a href="https://deliverit-test.agentic.uz">deliverit-test.agentic.uz</a></li>
+        <li><strong>Staging only.</strong> Do NOT use these credentials anywhere else.</li>
+      </ul>
+    </section>
+
+    <section id="env">
+      <h2>3 · Environment &amp; data</h2>
+      <ul>
+        <li><strong>Stand:</strong> staging (<code>dc-staging-*</code> containers).</li>
+        <li><strong>Data:</strong> seeded <code>it-company</code> profile — 200 people, 40 projects, 5‑year history. <em>Everything is fake.</em></li>
+        <li><strong>Reset cadence:</strong> the DB is <strong>not</strong> auto‑reset between sessions. Prefix any test data you create with <code>QA-</code> (e.g. project <code>QA-2026-05-21-anna-flow-1</code>) so it's easy to find later.</li>
+        <li><strong>Impersonation:</strong> admins have a "View as" feature (top bar → user menu → View as…). Use it to verify what each role sees without logging out. Every impersonation is logged in the audit trail.</li>
+      </ul>
+
+      <h3>Other test accounts (for role‑behavior checks)</h3>
+      <table class="data">
+        <thead><tr><th>Role</th><th>Email</th><th>Password</th></tr></thead>
+        <tbody>
+          <tr><td>Project Manager</td><td><code>lucas.reed@itco.local</code></td><td><code>ProjectMgrPass1!</code></td></tr>
+          <tr><td>Resource Manager</td><td><code>sophia.kim@itco.local</code></td><td><code>ResourceMgrPass1!</code></td></tr>
+          <tr><td>HR Manager</td><td><code>diana.walsh@itco.local</code></td><td><code>HrManagerPass1!</code></td></tr>
+          <tr><td>Director</td><td><code>noah.bennett@itco.local</code></td><td><code>DirectorPass1!</code></td></tr>
+          <tr><td>Delivery Manager</td><td><code>carlos.vega@itco.local</code></td><td><code>DeliveryMgrPass1!</code></td></tr>
+          <tr><td>Employee</td><td><code>ethan.brooks@itco.local</code></td><td><code>EmployeePass1!</code></td></tr>
+          <tr><td>Dual‑role RM+HR</td><td><code>emma.garcia@itco.local</code></td><td><code>DualRolePass1!</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="loop">
+      <h2>4 · How to test — the working loop</h2>
+      <p>For each session, work one <strong>persona</strong> at a time. The aim is realistic, scenario‑based exploration — not exhaustive click‑coverage.</p>
+
+      <ol class="steps">
+        <li>Pick a persona + job from §1.</li>
+        <li>Log in (or "View as") that persona.</li>
+        <li>Walk the happy path end‑to‑end. Note any friction, confusing labels, or 2+ click detours.</li>
+        <li>Walk one edge case (empty data, filter to zero, slowest path, error case).</li>
+        <li>Check the four UX guardrails as you go (below).</li>
+        <li>Log findings — one GitHub Issue per finding.</li>
+      </ol>
+
+      <h3>The four UX guardrails (use as a checklist)</h3>
+      <ul class="checklist">
+        <li>Every page has a forward action — no dead‑ends.</li>
+        <li>Filters survive a back‑button round‑trip.</li>
+        <li>Every KPI on a dashboard is clickable.</li>
+        <li>You never have to scroll to find the Approve / Resolve button.</li>
+      </ul>
+
+      <h3>Priority of what to look for</h3>
+      <ol>
+        <li><strong>Broken happy path</strong> — a core flow (login, create project, staff a request, submit timesheet, run a report) fails or 500s. <span class="pill p0">P0</span></li>
+        <li><strong>Wrong data</strong> — number on a dashboard ≠ the list it links to. <span class="pill p1">P1</span></li>
+        <li><strong>RBAC leak / lockout</strong> — a role sees something it shouldn't, or can't reach something it must. <span class="pill p0">P0</span></li>
+        <li><strong>UX friction</strong> — pages that violate one of the four guardrails. <span class="pill p2">P2</span></li>
+        <li><strong>Copy / labels</strong> — confusing or inconsistent wording. <span class="pill p3">P3</span></li>
+        <li><strong>Performance</strong> — anything &gt; 3s to load (excluding exports). <span class="pill p2">P2</span></li>
+        <li><strong>Missing feature</strong> — a job the product wants to support but doesn't. File as a <em>feature proposal</em>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <strong>What NOT to file:</strong> 2‑px cosmetic tweaks (unless readability breaks), "should work like Jira/Workday" comparisons, anything you can't reproduce on a second try. Reproduce, write steps, then file.
+      </div>
+    </section>
+
+    <section id="menu">
+      <h2>5 · First‑week test menu</h2>
+      <p>Run through these in any order. Each is roughly 20–40 minutes.</p>
+      <ol>
+        <li><strong>PM happy path</strong> — log in as <code>lucas.reed@itco.local</code> → open a project → add a risk → log an actual hour → mark a milestone done.</li>
+        <li><strong>RM happy path</strong> — <code>sophia.kim@itco.local</code> → <code>/staffing-desk?view=planner</code> → run Auto‑match for next 4 weeks → propose a candidate for one open request.</li>
+        <li><strong>HR happy path</strong> — <code>diana.walsh@itco.local</code> → review pending leave requests → approve one → check audit log records the action.</li>
+        <li><strong>Director read‑only walk</strong> — <code>noah.bennett@itco.local</code> → open every dashboard → verify every KPI clicks through to a populated list.</li>
+        <li><strong>Employee walk</strong> — <code>ethan.brooks@itco.local</code> → submit a timesheet for last week → check it appears in PM's approval queue.</li>
+        <li><strong>Admin tour</strong> — your QA account → visit every page under <code>/admin/*</code> → confirm each loads without error.</li>
+        <li><strong>Impersonation cross‑check</strong> — admin "View as" each persona → re‑walk one of their flows → verify audit trail.</li>
+        <li><strong>Edge — empty filters.</strong> On any list page, filter to zero results → verify the empty state offers a forward action.</li>
+        <li><strong>Edge — deep link.</strong> Copy URL of a filtered list, paste in a new tab → filters must restore.</li>
+        <li><strong>Edge — back‑button.</strong> List → detail → Back → scroll position and filters must survive.</li>
+      </ol>
+    </section>
+
+    <section id="etiquette">
+      <h2>6 · Etiquette</h2>
+      <ul>
+        <li><strong>Stay on staging.</strong> Don't poke at any prod host even if creds appear in chat.</li>
+        <li><strong>Don't share your password.</strong> Each account is per‑person. Reusing one defeats the audit trail.</li>
+        <li><strong>One finding per issue.</strong> Don't bundle 5 unrelated bugs in one ticket.</li>
+        <li><strong>Search before filing.</strong> <code>is:open &lt;keyword&gt;</code> on the issues tab to avoid duplicates.</li>
+        <li><strong>Reference your seed data.</strong> If you used <code>QA-anna-2026-05-21</code> as a project name, mention it — reproduction becomes trivial.</li>
+      </ul>
+    </section>
+
+    <hr />
+
+    <section id="issues-intro">
+      <h1>How to file a bug, issue, or feature proposal</h1>
+      <div class="subtitle">Repo: <a href="https://github.com/viktordrukker/DeliveryCentral">github.com/viktordrukker/DeliveryCentral</a></div>
+
+      <h3>30‑second version</h3>
+      <ol>
+        <li>Reproduce it twice.</li>
+        <li>Take a screenshot or short screencast.</li>
+        <li>Open <a href="https://github.com/viktordrukker/DeliveryCentral/issues/new">a new issue</a>.</li>
+        <li>Pick the right template below (Bug / UX / Feature), paste, fill it out.</li>
+        <li>Add labels (see <a href="#issues-labels">§13</a>).</li>
+        <li>Submit. Do <strong>not</strong> assign yourself — the maintainer triages.</li>
+      </ol>
+    </section>
+
+    <section id="issues-checklist">
+      <h2>7 · Pre‑flight checklist</h2>
+      <ul class="checklist">
+        <li>I can reproduce it (closed tab, re‑ran, still happens).</li>
+        <li>I have numbered steps from a known starting state.</li>
+        <li>I searched existing issues — no duplicate.</li>
+        <li>I copied the URL from the browser at the point of failure.</li>
+        <li>I know the persona (my QA account, or a "View as" identity).</li>
+        <li>I have evidence — screenshot or screencast.</li>
+        <li>It's one finding (split if there are two).</li>
+      </ul>
+      <p>If any box is unchecked — stop and fix that first.</p>
+    </section>
+
+    <section id="issues-how">
+      <h2>8 · How to file</h2>
+      <h3>Via the GitHub web UI</h3>
+      <ol class="steps">
+        <li>Go to <a href="https://github.com/viktordrukker/DeliveryCentral/issues/new/choose">issues/new/choose</a> (or just <a href="https://github.com/viktordrukker/DeliveryCentral/issues/new">issues/new</a>).</li>
+        <li><strong>Title</strong> — use the title formula below.</li>
+        <li><strong>Body</strong> — paste the matching template and fill it in.</li>
+        <li><strong>Labels</strong> (right sidebar) — pick from <a href="#issues-labels">§13</a>.</li>
+        <li><strong>Attachments</strong> — drag‑drop screenshots/videos into the body. For files &gt; 10 MB, upload elsewhere and link.</li>
+        <li>Click <strong>Submit new issue</strong> and note the issue number.</li>
+      </ol>
+
+      <h3>Via the <code>gh</code> CLI (optional)</h3>
+<pre><code>gh issue create \
+  --repo viktordrukker/DeliveryCentral \
+  --title "[bug][P1][area:staffing] Auto-match returns 0 candidates when 'Frontend' filter is applied" \
+  --label "bug,qa-finding,area:staffing,severity:p1" \
+  --body-file /tmp/my-finding.md</code></pre>
+    </section>
+
+    <section id="issues-templates">
+      <h2>9 · Templates — copy into the issue body</h2>
+
+      <h3>A · Bug report</h3>
+<pre><code>## Summary
+_One sentence: what is broken._
+
+## Severity
+- [ ] **P0** — blocks a core flow / data loss / security. Fix today.
+- [ ] **P1** — broken happy path, no workaround.
+- [ ] **P2** — broken edge path, workaround exists.
+- [ ] **P3** — cosmetic / minor inconvenience.
+
+## Environment
+- Stand: **staging** (https://deliverit-test.agentic.uz)
+- Persona used: qa.anna.surkova@... (or "View as lucas.reed@itco.local")
+- Browser + version: Chrome 124 / Windows 11
+- Time observed: 2026-05-21 14:32 UTC
+
+## Steps to reproduce
+1. Log in as ...
+2. Open /staffing-desk?view=planner
+3. Apply filter "..."
+4. Click "..."
+
+## Expected
+_What you thought would happen._
+
+## Actual
+_What actually happened. Include the URL at the point of failure._
+
+## Evidence
+_Drag-drop screenshot/video here._
+
+## Reproduction rate
+- [ ] Every time
+- [ ] About half the time
+- [ ] Once — could not reproduce on retry
+
+## Notes / leads
+_Console errors? Network 500s? Did "View as" change behavior? QA-tagged seed data?_</code></pre>
+
+      <h3>B · Feature proposal / improvement</h3>
+<pre><code>## Job to be done
+_As a `<role>`, when I'm `<situation>`, I want to `<goal>` so I can `<outcome>`._
+
+## Why now
+_Cost of not doing this. Workaround today. Frequency the job comes up._
+
+## Suggested solution (optional)
+_One short paragraph. Describe the outcome, not the implementation._
+
+## Affected roles
+- [ ] Admin
+- [ ] Director
+- [ ] Delivery Manager
+- [ ] Project Manager
+- [ ] Resource Manager
+- [ ] HR Manager
+- [ ] Employee
+
+## Where it would live
+_Existing page + section, or "new page under /…"._
+
+## Out of scope
+_What this proposal is NOT asking for._</code></pre>
+
+      <h3>C · UX issue (UX‑law violation, friction, copy)</h3>
+<pre><code>## Summary
+_One sentence: what is awkward._
+
+## Which UX law (if any)
+- [ ] L1 Three-click rule
+- [ ] L2 No dead-end screens
+- [ ] L3 No context loss after actions
+- [ ] L4 Action-data adjacency (200px)
+- [ ] L5 Filter persistence via URL
+- [ ] L6 No duplicated user input
+- [ ] L7 One-screen approval
+- [ ] L8 One-screen exception resolution
+- [ ] L9 Every KPI is a clickable drilldown
+- [ ] L10 Workspace continuity
+- [ ] None — general friction / copy
+
+## Where
+- URL: /...
+- Persona: ...
+
+## What happens today
+_Steps + result._
+
+## What good looks like
+_One sentence._
+
+## Evidence
+_Screenshot._</code></pre>
+    </section>
+
+    <section id="issues-title">
+      <h2>10 · Title formula</h2>
+<pre><code>[&lt;type&gt;][&lt;priority&gt;][area:&lt;module&gt;] &lt;short, specific summary in present tense&gt;</code></pre>
+      <ul>
+        <li><code>&lt;type&gt;</code> — <code>bug</code>, <code>ux</code>, <code>feature</code>, <code>doc</code>, <code>perf</code></li>
+        <li><code>&lt;priority&gt;</code> — <code>P0</code>–<code>P3</code> for bugs; omit for feature/ux/doc.</li>
+        <li><code>area:&lt;module&gt;</code> — closest match: <code>dashboard</code>, <code>staffing</code>, <code>projects</code>, <code>timesheets</code>, <code>cases</code>, <code>org</code>, <code>admin</code>, <code>auth</code>, <code>integrations</code>, <code>reports</code>, <code>audit</code>.</li>
+      </ul>
+
+      <h3>Good titles</h3>
+      <ul>
+        <li><code>[bug][P1][area:staffing] Auto-match returns 0 candidates when "Frontend" filter is applied</code></li>
+        <li><code>[bug][P2][area:dashboard] KPI "Open requests" shows 7, drilldown list has 5 rows</code></li>
+        <li><code>[ux][area:projects] Risk-add button forces scroll on /projects/:id (L4)</code></li>
+        <li><code>[feature][area:reports] Export planner grid to XLSX</code></li>
+      </ul>
+
+      <h3>Bad titles (don't)</h3>
+      <ul>
+        <li><code>Bug</code> — useless</li>
+        <li><code>Staffing is broken</code> — vague</li>
+        <li>One run‑on sentence with five qualifiers — no shape, no actionability</li>
+      </ul>
+    </section>
+
+    <section id="issues-labels">
+      <h2>11 · Labels</h2>
+      <p>The repo has a curated set of QA labels (Viktor created these for you):</p>
+      <table class="data">
+        <thead><tr><th>Label</th><th>When to use</th></tr></thead>
+        <tbody>
+          <tr><td><code>bug</code></td><td>Any defect.</td></tr>
+          <tr><td><code>enhancement</code></td><td>Feature proposal / improvement.</td></tr>
+          <tr><td><code>documentation</code></td><td>Doc inconsistency.</td></tr>
+          <tr><td><code>question</code></td><td>You're not sure if it's a bug — let triage decide.</td></tr>
+          <tr><td><code>qa-finding</code></td><td><strong>Always add this</strong> on anything QA raises.</td></tr>
+          <tr><td><code>severity:p0</code> … <code>severity:p3</code></td><td>Add on bugs for fast filtering.</td></tr>
+          <tr><td><code>area:dashboard</code>, <code>area:staffing</code>, <code>area:projects</code>, <code>area:timesheets</code>, <code>area:cases</code>, <code>area:org</code>, <code>area:admin</code>, <code>area:auth</code>, <code>area:integrations</code>, <code>area:reports</code>, <code>area:audit</code></td><td>Route the issue to the right owner.</td></tr>
+          <tr><td><code>ux-law:L1</code> … <code>ux-law:L10</code></td><td>UX‑law violations specifically.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="issues-lifecycle">
+      <h2>12 · Lifecycle — what happens to your issue</h2>
+      <ol>
+        <li><strong>Open</strong> — you filed it.</li>
+        <li><strong>Triage</strong> — maintainer reads, may ask for clarification. Respond fast (same day) while context is fresh.</li>
+        <li><strong>Accepted</strong> — added to <code>docs/planning/MASTER_TRACKER.md</code> or directly into a sprint.</li>
+        <li><strong>In progress</strong> — linked to a PR.</li>
+        <li><strong>Closed via PR</strong> — fix is merged. <strong>Re‑verify on staging within 2 working days.</strong> If still broken, reopen with <code>RE‑OPENED:</code> prefixed to the comment and fresh repro steps.</li>
+      </ol>
+      <p>If an issue is closed as <code>duplicate</code>, <code>wontfix</code>, or <code>invalid</code> — read the closing comment. Don't refile. If you disagree, comment on the closed issue and tag Viktor.</p>
+    </section>
+
+    <section id="issues-example">
+      <h2>13 · Worked example — end‑to‑end</h2>
+      <div class="callout">
+        Walking as RM (<code>sophia.kim@itco.local</code> via "View as"), opened <code>/staffing-desk?view=planner</code>, set the date range to "next 4 weeks", applied skill filter <em>Frontend</em>, and clicked Auto‑match. The result panel said "0 candidates" — but the same filter on the Requests view shows 12 frontend people available.
+      </div>
+
+      <h3>Title</h3>
+<pre><code>[bug][P1][area:staffing] Auto-match returns 0 candidates with "Frontend" skill filter (Requests view shows 12)</code></pre>
+
+      <h3>Body (template A, filled in)</h3>
+<pre><code>## Summary
+Auto-match in the Planner returns "0 candidates" when the only filter is "Frontend",
+but switching to the Requests view shows 12 frontend candidates available in the
+same window.
+
+## Severity
+- [x] P1
+
+## Environment
+- Stand: staging (https://deliverit-test.agentic.uz)
+- Persona used: qa.anna.surkova@... ("View as" sophia.kim@itco.local)
+- Browser: Chrome 124 / Windows 11
+- Time: 2026-05-21 14:32 UTC
+
+## Steps to reproduce
+1. Log in as qa.anna.surkova@...
+2. Top bar → View as → sophia.kim@itco.local
+3. Open /staffing-desk?view=planner
+4. Date range = next 4 weeks
+5. Skill filter = Frontend
+6. Click "Auto-match"
+
+## Expected
+Auto-match returns the same candidates the Requests view shows (12).
+
+## Actual
+Result panel: "0 candidates matched."
+URL at failure: https://deliverit-test.agentic.uz/staffing-desk?view=planner&from=2026-05-22&to=2026-06-19&skill=frontend
+
+## Evidence
+[screenshot-planner-0-candidates.png]
+[screenshot-requests-12-candidates.png]
+
+## Reproduction rate
+- [x] Every time
+
+## Notes / leads
+Console: no errors. Network: /api/staffing/auto-match returns 200 with empty array.</code></pre>
+
+      <p><strong>Labels:</strong> <code>bug</code>, <code>qa-finding</code>, <code>severity:p1</code>, <code>area:staffing</code>.</p>
+    </section>
+
+    <section id="links">
+      <h2>14 · Quick links</h2>
+      <table class="data">
+        <thead><tr><th>Where</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/issues">GitHub Issues</a></td><td>Where every finding lives.</td></tr>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/issues/new">New issue</a></td><td>Open a fresh issue.</td></tr>
+          <tr><td><a href="https://deliverit-test.agentic.uz">Staging app</a></td><td>The test stand.</td></tr>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/blob/main/docs/planning/MASTER_TRACKER.md">MASTER_TRACKER.md</a></td><td>What's actively being built — sanity‑check feature proposals against this.</td></tr>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/blob/main/docs/planning/current-state.md">current-state.md</a></td><td>Implemented vs. outstanding.</td></tr>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/blob/main/docs/testing/MANUAL_TEST_PLAN.md">MANUAL_TEST_PLAN.md</a></td><td>142 pre‑written test cases.</td></tr>
+          <tr><td><a href="https://github.com/viktordrukker/DeliveryCentral/blob/main/.claude/rules/ux-laws.md">ux-laws.md</a></td><td>The 10 UX laws — useful as a checklist.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  DeliveryCentral · QA Onboarding · Staging only · This page is not indexed.
+</footer>
+
+<script>
+  // TOC toggle on small screens.
+  var btn = document.querySelector('.toc-toggle');
+  var toc = document.getElementById('toc');
+  if (btn && toc) {
+    btn.addEventListener('click', function () {
+      var open = toc.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+
+  // Highlight current section in TOC as user scrolls.
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section[id]'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var linkById = {};
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    linkById[id] = a;
+  });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = linkById[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        links.forEach(function (l) { l.classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  sections.forEach(function (s) { io.observe(s); });
+</script>
+
+</body>
+</html>
