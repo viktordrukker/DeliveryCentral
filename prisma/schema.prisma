@@ -637,6 +637,11 @@ model Person {
   updatedLocalAccounts                     LocalAccount[]                      @relation("LocalAccountUpdatedBy")
   createdWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceCreatedBy")
   updatedWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceUpdatedBy")
+  // F-78 / D-103 + DM-5-5 round 29
+  createdEntityLayoutDefinitions           EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionCreatedBy")
+  updatedEntityLayoutDefinitions           EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionUpdatedBy")
+  createdHelpTips                          HelpTip[]                           @relation("HelpTipCreatedBy")
+  updatedHelpTips                          HelpTip[]                           @relation("HelpTipUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1567,22 +1572,29 @@ model WorkflowStateDefinition {
 }
 
 model EntityLayoutDefinition {
-  id             String    @id @default(uuid()) @db.Uuid
-  entityType     String
-  layoutKey      String
-  displayName    String
-  scopeOrgUnitId String?   @db.Uuid
-  version        Int       @default(1)
-  isDefault      Boolean   @default(false)
-  layoutSchema   Json
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
-  archivedAt     DateTime? @db.Timestamptz(3)
-  scopeOrgUnit   OrgUnit?  @relation(fields: [scopeOrgUnitId], references: [id])
+  id                String    @id @default(uuid()) @db.Uuid
+  entityType        String
+  layoutKey         String
+  displayName       String
+  scopeOrgUnitId    String?   @db.Uuid
+  version           Int       @default(1)
+  isDefault         Boolean   @default(false)
+  layoutSchema      Json
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  archivedAt        DateTime? @db.Timestamptz(3)
+  // F-78 / D-103 + DM-5-5 round 29 — actor-audit columns.
+  createdByPersonId String?   @db.Uuid
+  updatedByPersonId String?   @db.Uuid
+  scopeOrgUnit      OrgUnit?  @relation(fields: [scopeOrgUnitId], references: [id])
+  createdByPerson   Person?   @relation("EntityLayoutDefinitionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?   @relation("EntityLayoutDefinitionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([entityType, layoutKey, version, scopeOrgUnitId])
   @@index([entityType, isDefault, archivedAt])
   @@index([scopeOrgUnitId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("EntityLayoutDefinition")
 }
 
@@ -2228,25 +2240,32 @@ model HelpArticle {
 // `staffing.desk.cell.dropzone`); `routePath` lets ops show only
 // route-relevant tips on each page.
 model HelpTip {
-  id           String       @id @default(uuid()) @db.Uuid
-  key          String       @unique
-  routePath    String
-  title        String
-  body         String
+  id                String       @id @default(uuid()) @db.Uuid
+  key               String       @unique
+  routePath         String
+  title             String
+  body              String
   // Optional deep-link to a full article. NULL = standalone tip.
-  articleId    String?      @db.Uuid
-  article      HelpArticle? @relation(fields: [articleId], references: [id], onDelete: SetNull)
-  displayOrder Int          @default(100)
-  isActive     Boolean      @default(true)
-  tenantId     String?      @db.Uuid
-  Tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
-  archivedAt   DateTime?    @db.Timestamptz(3)
+  articleId         String?      @db.Uuid
+  article           HelpArticle? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  displayOrder      Int          @default(100)
+  isActive          Boolean      @default(true)
+  tenantId          String?      @db.Uuid
+  Tenant            Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+  archivedAt        DateTime?    @db.Timestamptz(3)
+  // F-78 / D-103 + DM-5-5 round 29 — actor-audit columns.
+  createdByPersonId String?      @db.Uuid
+  updatedByPersonId String?      @db.Uuid
+  createdByPerson   Person?      @relation("HelpTipCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?      @relation("HelpTipUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([routePath, isActive])
   @@index([articleId])
   @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("help_tips")
 }
 
