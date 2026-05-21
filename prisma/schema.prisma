@@ -174,12 +174,19 @@ model PersonReleaseApproval {
   decidedAt     DateTime                 @default(now()) @db.Timestamptz(3)
   createdAt     DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime                 @default(now()) @updatedAt @db.Timestamptz(3)
+  // F-64 / D-103 round 22 — actor-audit columns.
+  createdByPersonId String?              @db.Uuid
+  updatedByPersonId String?              @db.Uuid
+  createdByPerson   Person?              @relation("PersonReleaseApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?              @relation("PersonReleaseApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   request       PersonReleaseRequest     @relation(fields: [requestId], references: [id], onDelete: Cascade)
   actor         Person                   @relation("PersonReleaseApprovalActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
 
   @@unique([requestId, role])
   @@index([requestId])
   @@index([actorPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("person_release_approvals")
 }
 
@@ -598,6 +605,11 @@ model Person {
   updatedWorkflowStateDefinitions        WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionUpdatedBy")
   createdTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryCreatedBy")
   updatedTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryUpdatedBy")
+  // F-64 / D-103 + DM-5-5 round 22
+  createdPersonReleaseApprovals          PersonReleaseApproval[]             @relation("PersonReleaseApprovalCreatedBy")
+  updatedPersonReleaseApprovals          PersonReleaseApproval[]             @relation("PersonReleaseApprovalUpdatedBy")
+  createdStaffingRequestFulfilments      StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentCreatedBy")
+  updatedStaffingRequestFulfilments      StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentUpdatedBy")
   managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject               PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator             PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2430,10 +2442,17 @@ model StaffingRequestFulfilment {
   fulfilledAt        DateTime        @default(now()) @db.Timestamptz(3)
   createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
+  // F-64 / D-103 round 22 — actor-audit columns.
+  createdByPersonId  String?         @db.Uuid
+  updatedByPersonId  String?         @db.Uuid
+  createdByPerson    Person?         @relation("StaffingRequestFulfilmentCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson    Person?         @relation("StaffingRequestFulfilmentUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   request            StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([requestId])
   @@index([assignedPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("staffing_request_fulfilments")
 }
 
