@@ -43,23 +43,9 @@ import {
   UpsertProjectBudgetDto,
 } from '../application/contracts/financial.dto';
 
-interface BudgetApprovalRowQuery {
-  budgetApproval: {
-    findMany: (args: unknown) => Promise<
-      ReadonlyArray<{
-        readonly id: string;
-        readonly projectBudgetId: string;
-        readonly status: string;
-        readonly requestedByPersonId: string;
-        readonly requestedAt: Date;
-        readonly requestedChange: unknown;
-        readonly decidedByPersonId: string | null;
-        readonly decisionAt: Date | null;
-        readonly decisionReason: string | null;
-      }>
-    >;
-  };
-}
+// F-61 / 20c-11 — dropped the hand-rolled `BudgetApprovalRowQuery` gateway
+// interface and its `as unknown as BudgetApprovalRowQuery` coercion. The
+// Prisma client already exposes the typed `budgetApproval` delegate.
 
 @ApiTags('projects')
 @Controller('projects')
@@ -99,7 +85,7 @@ export class ProjectBudgetController {
   public async listBudgetChangeRequests(
     @Param('id', ParseUUIDPipe) projectId: string,
   ): Promise<BudgetChangeRequestDto[]> {
-    const rows = await (this.prisma as unknown as BudgetApprovalRowQuery).budgetApproval.findMany({
+    const rows = await this.prisma.budgetApproval.findMany({
       where: { projectBudget: { projectId }, status: 'PENDING' },
       orderBy: { requestedAt: 'desc' },
     });
