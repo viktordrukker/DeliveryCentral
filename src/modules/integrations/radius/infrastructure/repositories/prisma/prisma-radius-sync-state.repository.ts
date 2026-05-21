@@ -1,12 +1,15 @@
+import { Prisma } from '@prisma/client';
+
 import { RadiusSyncState } from '../../../domain/entities/radius-sync-state.entity';
 import { RadiusSyncStateRepositoryPort } from '../../../domain/repositories/radius-sync-state.repository.port';
 import { RadiusPrismaMapper } from './radius-prisma.mapper';
 
-interface IntegrationSyncStateGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  upsert(args: any): Promise<unknown>;
-}
+// F-73 / 20c-10 — drop the hand-rolled Gateway interface in favor of
+// `Pick<>` over Prisma's typed delegate — narrows to the methods used.
+type IntegrationSyncStateGateway = Pick<
+  Prisma.IntegrationSyncStateDelegate,
+  'delete' | 'findFirst' | 'upsert'
+>;
 
 export class PrismaRadiusSyncStateRepository implements RadiusSyncStateRepositoryPort {
   public constructor(private readonly gateway: IntegrationSyncStateGateway) {}
