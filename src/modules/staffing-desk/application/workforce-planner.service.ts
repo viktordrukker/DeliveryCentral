@@ -1267,6 +1267,9 @@ export class WorkforcePlannerService {
             startDate: new Date(h.startDate),
             endDate: new Date(h.endDate),
             status: 'OPEN',
+            // F-128 / D-103-write-path round 38 — planner-applied actor.
+            createdByPersonId: request.actorId,
+            updatedByPersonId: request.actorId,
           },
         });
         staffingRequestsCreated++;
