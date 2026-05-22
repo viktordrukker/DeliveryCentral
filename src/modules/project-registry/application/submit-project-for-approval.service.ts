@@ -105,6 +105,10 @@ export class SubmitProjectForApprovalService {
           projectId: project.projectId.value,
           requestedById: command.actorId,
           reason: command.reason ?? null,
+          // F-109 / D-103-write-path — canonical actor-audit alongside
+          // the domain-specific requestedById / decidedById.
+          createdByPersonId: command.actorId,
+          updatedByPersonId: command.actorId,
           ...(autoApprove
             ? {
                 decision: 'APPROVED',

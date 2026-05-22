@@ -134,6 +134,8 @@ export class DecideProjectActivationService {
           decidedAt,
           decidedById: command.actorId,
           reason: command.reason ?? null,
+          // F-109 / D-103-write-path — track decider on every approval edit.
+          updatedByPersonId: command.actorId,
         },
       });
     });
