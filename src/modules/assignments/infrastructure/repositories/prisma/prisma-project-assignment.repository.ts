@@ -264,6 +264,8 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
           validFrom: aggregate.validFrom,
           validTo: aggregate.validTo ?? null,
           version: aggregate.version,
+          // F-91 / D-103-write-path — populate actor-audit column added by F-44.
+          createdByPersonId: aggregate.createdByPersonId ?? null,
         },
       });
       return;

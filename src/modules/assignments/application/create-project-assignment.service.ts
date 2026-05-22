@@ -165,6 +165,8 @@ export class CreateProjectAssignmentService {
       status: initialStatus,
       validFrom: startDate,
       validTo: endDate,
+      // F-91 / D-103-write-path — first service to populate actor-audit col.
+      createdByPersonId: command.actorId,
     });
 
     const initialApproval = AssignmentApproval.create({
