@@ -77,13 +77,16 @@ export class ClientService {
     };
   }
 
-  public async create(dto: CreateClientDto): Promise<ClientDto> {
+  public async create(dto: CreateClientDto, actorId?: string): Promise<ClientDto> {
     const c = await this.prisma.client.create({
       data: {
         name: dto.name,
         industry: dto.industry ?? null,
         accountManagerPersonId: dto.accountManagerPersonId ?? null,
         notes: dto.notes ?? null,
+        // F-104 / D-103-write-path — admin actor on client creation.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
       include: {
         accountManager: { select: { id: true, displayName: true } },
@@ -103,7 +106,7 @@ export class ClientService {
     };
   }
 
-  public async update(id: string, dto: UpdateClientDto): Promise<ClientDto> {
+  public async update(id: string, dto: UpdateClientDto, actorId?: string): Promise<ClientDto> {
     const c = await this.prisma.client.update({
       where: { id },
       data: {
@@ -112,6 +115,8 @@ export class ClientService {
         ...(dto.accountManagerPersonId !== undefined ? { accountManagerPersonId: dto.accountManagerPersonId } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        // F-104 / D-103-write-path — track editor.
+        updatedByPersonId: actorId ?? null,
       },
       include: {
         accountManager: { select: { id: true, displayName: true } },
