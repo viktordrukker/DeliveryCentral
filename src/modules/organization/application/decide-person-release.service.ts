@@ -161,13 +161,22 @@ export class DecidePersonReleaseService {
           actorPersonId: command.actorId,
           decision: finalDecision,
           reason: command.reason ?? null,
+          // F-110 / D-103-write-path — canonical actor-audit alongside
+          // domain-specific actorPersonId.
+          createdByPersonId: command.actorId,
+          updatedByPersonId: command.actorId,
         },
       });
 
       if (nextStatus !== 'PENDING_APPROVAL') {
         await tx.personReleaseRequest.update({
           where: { id: command.requestId },
-          data: { status: nextStatus, updatedAt },
+          data: {
+            status: nextStatus,
+            updatedAt,
+            // F-110 / D-103-write-path — track decider on parent request.
+            updatedByPersonId: command.actorId,
+          },
         });
       }
     });
