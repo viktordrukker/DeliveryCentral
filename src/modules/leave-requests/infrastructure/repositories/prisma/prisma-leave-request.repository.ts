@@ -29,6 +29,9 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
         startDate: input.startDate,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         type: input.type as any,
+        // F-112 / D-103-write-path round 22 — actor-audit.
+        createdByPersonId: input.actorId ?? null,
+        updatedByPersonId: input.actorId ?? null,
       },
     });
   }
@@ -79,6 +82,8 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
         reviewedBy: input.reviewedBy,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         status: input.status as any,
+        // F-112 / D-103-write-path round 22 — actor-audit.
+        updatedByPersonId: input.actorId ?? input.reviewedBy ?? null,
       },
       where: { id },
     });

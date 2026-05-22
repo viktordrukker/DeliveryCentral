@@ -28,12 +28,21 @@ export interface CreateLeaveRequestRowInput {
   startDate: Date;
   endDate: Date;
   notes: string | null;
+  // F-112 / D-103-write-path round 22 — actor-audit. `actorId` is the
+  // person who submitted the request (often == personId for self-serve,
+  // != when HR creates on behalf).
+  actorId?: string;
 }
 
 export interface UpdateLeaveRequestStatusInput {
   status: LeaveRequestStatus;
   reviewedAt: Date;
   reviewedBy: string;
+  // F-112 / D-103-write-path round 22 — actor-audit. Captures the
+  // reviewer in `updatedByPersonId` (same value as `reviewedBy` for
+  // approve/reject, but kept separate so the column population matches
+  // the uniform D-103 pair shape).
+  actorId?: string;
 }
 
 export interface FindLeaveRequestsFilter {
