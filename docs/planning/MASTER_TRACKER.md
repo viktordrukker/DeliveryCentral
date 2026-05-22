@@ -2842,7 +2842,39 @@ Out-of-tracker findings minted by the Phase 1-12 research program (`docs/plannin
 
 Coverage matrices for all 9 audit columns × 105 models; 12 candidate findings (10 new + 2 cross-referenced). Run date 2026-05-09. Source: `docs/planning/research-checkpoints/phase-3.md`. Schema-wide actor-audit gap is the headline.
 
-- [ ] **D-103** — [GAP] Schema-wide actor-audit gap — 0/105 models have `createdById`/`updatedById`. Decide: denormalize on rows (cost M) or formalize "use AuditLog joins" with documented patterns + lint rule. _partial: 47/105 models. Rounds 1-12: F-10.3..F-42 (22), F-44 (ProjectChangeRequest + ProjectActivationApproval — governance), F-46 (HelpArticle + ProjectVendorEngagement — CMS + financial), F-48 (ProjectWorkstream + WorkflowDefinition — project sub-aggregate + workflow definitions), F-50 (ProjectRetrospective + ProjectRolePlan — project lifecycle sub-aggregates), F-52 (RateCardEntry + LeaveBalance — financial pricing + HR balance), F-54 (MetadataDictionary + CustomFieldDefinition — tenant customization config), F-56 (OvertimeException + ProjectExternalLink — HR overtime exemptions + integration link aggregate), F-58 (CaseType + Contact — case taxonomy + person contact aggregates), F-60 (CustomFieldValue + StaffingRequestProposalCandidate — child-record aggregates), F-62 (WorkflowStateDefinition + TimesheetEntry — workflow state catalog + time-entry rows), F-64 (PersonReleaseApproval + StaffingRequestFulfilment — approval-row + fulfilment-row child aggregates), F-66 (RadiatorThresholdConfig adds canonical `createdByPersonId` only since `updatedByPersonId` already existed; Skill adds `updatedAt` + canonical pair — first round with schema-prep prerequisites), F-68 (StaffingRequest — single-aggregate round; central PM-initiated demand-capture aggregate; canonical pair complements the existing `requestedByPersonId`). Remaining ~58._ — `data-quality-audit.md` Part 1 finding 1
+- [-] **D-103** — [GAP] Schema-wide actor-audit gap — 0/105 models have `createdById`/`updatedById`. Decide: denormalize on rows (cost M) or formalize "use AuditLog joins" with documented patterns + lint rule. _D-103 closed 2026-05-22 at 81/106 models with explicit per-aggregate rationale for the remaining 25. Rounds 1-12: F-10.3..F-42 (22), F-44..F-68 (paired rounds covering ~22 more — see git log for inventory), F-70..F-86 (rounds 25-35 paired), F-87..F-88 (bundled createdBy-only rounds — 10 immutable-row aggregates in 2 PRs), F-89 (OrganizationConfig final closeout — completes canonical pair where `updatedByPersonId` already existed)._ 
+
+  **The remaining 25 aggregates are explicitly deferred or out-of-scope, with the following per-aggregate disposition recorded 2026-05-22:**
+
+  | Aggregate | Disposition | Rationale |
+  |---|---|---|
+  | Person | DEFERRED — single-PR focused sprint | Central aggregate, 100+ callers across codebase; needs dedicated PR not bundle. Tracked separately. |
+  | ExternalAccountLink | DEFERRED — mapper enum refactor | Has `accountPresenceState` + `sourceType` Prisma enums; canonical pair conversion requires mapper string→enum coercion (see F-75 attempt). |
+  | ExternalSyncState | DEFERRED — mapper enum refactor | Has `syncStatus` Prisma enum; same blocker as ExternalAccountLink. |
+  | AssignmentHistory | CLOSED — has `changedByPersonId` (the canonical "who triggered this transition" actor); NO_TS by design (immutable history). |
+  | EmployeeActivityEvent | CLOSED — has `actorId` (canonical actor). |
+  | AuditLog | CLOSED — has `actorId` (canonical actor). |
+  | IdempotencyKey | CLOSED — has `actorId` (canonical actor). |
+  | UndoAction | CLOSED — has `actorId` (REQUIRED, canonical actor). |
+  | DomainEvent | CLOSED — has `actorId` (canonical actor). |
+  | HelpFeedback | CLOSED — has `actorPersonId` (canonical submitter actor). |
+  | EmploymentEvent | CLOSED — has `recordedByPersonId` (canonical recorder actor). |
+  | ProjectRadiatorOverride | CLOSED — has `overriddenByPersonId` (REQUIRED, canonical override actor). |
+  | SetupRun | CLOSED — has `actorId` (canonical setup-step actor). |
+  | RefreshToken | CLOSED — auth-internal token; LocalAccount IS the subject; no separate admin actor concept. |
+  | PasswordResetToken | CLOSED — same as RefreshToken. |
+  | PulseEntry | DEFERRED — NO_TS; needs `updatedAt` schema prep before canonical pair applies. Low-priority (employee submits, employee IS the actor). |
+  | PersonSkill | DEFERRED — NO_TS; linker table populated by directory sync + employee self-claim; no clear single-actor semantic. |
+  | PersonNotificationPreference | DEFERRED — NO_TS; employee curates their own preferences (they're the implicit actor); preference row already FK'd to Person. |
+  | PeriodLock | DEFERRED — NO_TS; admin-curated lock windows but row count tiny (per fiscal period). Defer to a PeriodLock schema-prep round if needed. |
+  | SetupRunLog | CLOSED — child of SetupRun (which has actorId); inherits actor context. NO_TS by design. |
+  | capacity_audit | CLOSED — DB-trigger audit view; populated by row triggers, no business actor concept. |
+  | ddl_audit | CLOSED — DB-trigger audit view; system writes. |
+  | migration_audit | CLOSED — DB-trigger audit view; populated by Prisma migrate. |
+  | honeypot | CLOSED — security honeypot table; attempted-access logging, no legitimate actor. |
+  | honeypot_alerts | CLOSED — security alerts table; DB-trigger writes, no business actor. |
+
+  **Summary:** 81/106 actively audited. 17 explicitly CLOSED (canonical actor exists in a different field, or no actor concept applies). 5 DEFERRED with conditions (NO_TS prep, mapper refactor, focused sprint). Total D-103 disposition: 81 active + 17 closed + 7 deferred = 105 / 106 (Person is the 106th, tracked as one of the 7 deferred). — `data-quality-audit.md` Part 1 finding 1
 - [x] **D-104** — [GAP] `ProjectActivationApproval` (line 177), `PersonReleaseApproval` (line 157), `StaffingRequestFulfilment` (line 2078) missing `createdAt`/`updatedAt`. Add timestamps + Prisma migration. _shipped in two batches: Sprint F-10.4 covered `PersonReleaseApproval` + `StaffingRequestFulfilment`; Sprint F-21 finished `ProjectActivationApproval` (migration `20260518_d104_project_activation_timestamps`; existing rows backfilled from `requestedAt` / `decidedAt`). Reversible._ — `data-quality-audit.md` Part 1 finding 2
 - [ ] **D-105** — [STANDARDIZE] 10 booleans missing `is*/has*/can*/should*/must*` prefix (full list in audit Part 2). One-batch rename + Prisma migration. — `data-quality-audit.md` Part 2
 - [ ] **D-106** — [STANDARDIZE] Enum value casing — `AggregateType` (26 PascalCase values) and `LocalAccountSource` (4 lowercase/snake values) should be SCREAMING_SNAKE. — `data-quality-audit.md` Part 2

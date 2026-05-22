@@ -684,6 +684,8 @@ model Person {
   createdWorkEvidenceLinks                 WorkEvidenceLink[]                  @relation("WorkEvidenceLinkCreatedBy")
   createdInAppNotifications                InAppNotification[]                 @relation("InAppNotificationCreatedBy")
   createdFiscalPeriods                     FiscalPeriod[]                      @relation("FiscalPeriodCreatedBy")
+  // F-89 / D-103 + DM-5-5 round 38 — OrganizationConfig final closure
+  createdOrganizationConfigs               OrganizationConfig[]                @relation("OrganizationConfigCreatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -3709,7 +3711,12 @@ model OrganizationConfig {
   colourBlindMode           Boolean  @default(false)
   updatedByPersonId         String?  @db.Uuid
   updatedAt                 DateTime @updatedAt @db.Timestamptz(3)
+  // F-89 / D-103 round 38 — completes the canonical actor-audit pair
+  // (updatedByPersonId already existed; createdByPersonId added here).
+  createdByPersonId         String?  @db.Uuid
+  createdByPerson           Person?  @relation("OrganizationConfigCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
+  @@index([createdByPersonId])
   @@map("organization_configs")
 }
 
