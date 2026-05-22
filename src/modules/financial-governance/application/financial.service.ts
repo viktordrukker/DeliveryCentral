@@ -311,6 +311,8 @@ export class FinancialService {
   public async createPersonCostRate(
     personId: string,
     dto: CreatePersonCostRateDto,
+    // F-124 / D-103-write-path round 34 — actor for createdByPersonId.
+    actorId?: string,
   ): Promise<PersonCostRateDto> {
     const effectiveFrom = new Date(dto.effectiveFrom);
 
@@ -323,6 +325,8 @@ export class FinancialService {
       effectiveFrom,
       hourlyRate: new Prisma.Decimal(dto.hourlyRate),
       rateType: dto.rateType || 'INTERNAL',
+      // F-124 / D-103-write-path — thread actor through to repo.
+      actorId,
     });
 
     return {
