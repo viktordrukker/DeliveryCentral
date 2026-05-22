@@ -38,6 +38,11 @@ interface ProjectAssignmentProps {
   validFrom: Date;
   validTo?: Date;
   version?: number;
+  // F-91 / D-103-write-path — actor-audit: who created this row.
+  // Distinct from `requestedByPersonId` (the PM who initiated the demand);
+  // `createdByPersonId` is the system principal that wrote the row, which
+  // can be the requester or an admin acting on their behalf.
+  createdByPersonId?: string;
 }
 
 export interface TransitionOptions {
@@ -101,6 +106,11 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
 
   public get onboardingDate(): Date | undefined {
     return this.props.onboardingDate;
+  }
+
+  /** F-91 / D-103-write-path — actor who created this row. */
+  public get createdByPersonId(): string | undefined {
+    return this.props.createdByPersonId;
   }
 
   public get requiresDirectorApproval(): boolean {
