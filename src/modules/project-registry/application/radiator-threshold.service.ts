@@ -78,6 +78,8 @@ export class RadiatorThresholdService {
         thresholdScore2: data.t2,
         thresholdScore1: data.t1,
         direction: data.direction,
+        // F-107 / D-103-write-path — first writer IS the canonical creator.
+        createdByPersonId: updatedByPersonId,
         updatedByPersonId,
       },
       update: {
