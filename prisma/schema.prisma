@@ -678,6 +678,12 @@ model Person {
   createdCurrencies                        Currency[]                          @relation("CurrencyCreatedBy")
   createdFxRates                           FxRate[]                            @relation("FxRateCreatedBy")
   createdVendorSkillAreas                  VendorSkillArea[]                   @relation("VendorSkillAreaCreatedBy")
+  // F-88 / D-103 + DM-5-5 round 37 — second createdByPersonId-only bundle
+  createdCaseParticipants                  CaseParticipant[]                   @relation("CaseParticipantCreatedBy")
+  createdOutboxEvents                      OutboxEvent[]                       @relation("OutboxEventCreatedBy")
+  createdWorkEvidenceLinks                 WorkEvidenceLink[]                  @relation("WorkEvidenceLinkCreatedBy")
+  createdInAppNotifications                InAppNotification[]                 @relation("InAppNotificationCreatedBy")
+  createdFiscalPeriods                     FiscalPeriod[]                      @relation("FiscalPeriodCreatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1350,17 +1356,21 @@ model WorkEvidence {
 }
 
 model WorkEvidenceLink {
-  id             String               @id @default(uuid()) @db.Uuid
-  workEvidenceId String               @db.Uuid
-  provider       String
-  externalKey    String
-  externalUrl    String?
-  linkType       WorkEvidenceLinkType
-  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
-  workEvidence   WorkEvidence         @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
+  id                String               @id @default(uuid()) @db.Uuid
+  workEvidenceId    String               @db.Uuid
+  provider          String
+  externalKey       String
+  externalUrl       String?
+  linkType          WorkEvidenceLinkType
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  // F-88 / D-103 + DM-5-5 round 37 — createdByPersonId only (immutable row).
+  createdByPersonId String?              @db.Uuid
+  workEvidence      WorkEvidence         @relation(fields: [workEvidenceId], references: [id], onDelete: Cascade)
+  createdByPerson   Person?              @relation("WorkEvidenceLinkCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([workEvidenceId, provider, externalKey])
   @@index([provider, externalKey])
+  @@index([createdByPersonId])
   @@map("WorkEvidenceLink")
 }
 
@@ -1466,16 +1476,20 @@ model CaseStep {
 }
 
 model CaseParticipant {
-  id           String              @id @default(uuid()) @db.Uuid
-  caseRecordId String              @db.Uuid
-  personId     String              @db.Uuid
-  role         CaseParticipantRole
-  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
-  caseRecord   CaseRecord          @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
-  person       Person              @relation(fields: [personId], references: [id])
+  id                String              @id @default(uuid()) @db.Uuid
+  caseRecordId      String              @db.Uuid
+  personId          String              @db.Uuid
+  role              CaseParticipantRole
+  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
+  // F-88 / D-103 + DM-5-5 round 37 — createdByPersonId only (immutable row).
+  createdByPersonId String?             @db.Uuid
+  caseRecord        CaseRecord          @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
+  person            Person              @relation(fields: [personId], references: [id])
+  createdByPerson   Person?             @relation("CaseParticipantCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([caseRecordId, personId, role])
   @@index([personId, role])
+  @@index([createdByPersonId])
   @@map("CaseParticipant")
 }
 
@@ -1746,29 +1760,33 @@ model IdempotencyKey {
 }
 
 model OutboxEvent {
-  id            String            @id @default(uuid()) @db.Uuid
-  topic         String
-  eventName     String
-  aggregateType String
-  aggregateId   String            @db.Uuid
-  correlationId String?
-  payload       Json
-  status        OutboxEventStatus @default(PENDING)
-  availableAt   DateTime          @default(now()) @db.Timestamptz(3)
-  publishedAt   DateTime?         @db.Timestamptz(3)
+  id                String            @id @default(uuid()) @db.Uuid
+  topic             String
+  eventName         String
+  aggregateType     String
+  aggregateId       String            @db.Uuid
+  correlationId     String?
+  payload           Json
+  status            OutboxEventStatus @default(PENDING)
+  availableAt       DateTime          @default(now()) @db.Timestamptz(3)
+  publishedAt       DateTime?         @db.Timestamptz(3)
   // HD-0.3 retry bookkeeping for OutboxEventPublisher.
   // attempts: dispatch attempts so far (capped by outbox.maxAttempts).
   // lastError: most recent failure message for ops triage.
-  attempts      Int               @default(0)
-  lastError     String?
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  tenantId      String?           @db.Uuid
-  Tenant        Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  attempts          Int               @default(0)
+  lastError         String?
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  // F-88 / D-103 + DM-5-5 round 37 — createdByPersonId only (immutable row).
+  createdByPersonId String?           @db.Uuid
+  tenantId          String?           @db.Uuid
+  Tenant            Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson   Person?           @relation("OutboxEventCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@index([status, availableAt])
   @@index([aggregateType, aggregateId])
   @@index([createdAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
   @@map("OutboxEvent")
 }
 
@@ -2256,12 +2274,17 @@ model InAppNotification {
   link              String?
   readAt            DateTime? @db.Timestamptz(3)
   createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  // F-88 / D-103 + DM-5-5 round 37 — createdByPersonId only (immutable row).
+  // Distinct from `recipientPersonId` (the read-side).
+  createdByPersonId String?   @db.Uuid
   tenantId          String?   @db.Uuid
   Tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdByPerson   Person?   @relation("InAppNotificationCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@index([recipientPersonId, createdAt])
   @@index([recipientPersonId, readAt])
   @@index([tenantId])
+  @@index([createdByPersonId])
   @@map("in_app_notifications")
 }
 
@@ -3236,21 +3259,25 @@ model FiscalCalendar {
 /// from `quarter` (1–4). All periods are bounded by the parent
 /// calendar's [startDate, endDate].
 model FiscalPeriod {
-  id           String         @id @default(uuid()) @db.Uuid
-  calendarId   String         @db.Uuid
-  calendar     FiscalCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  id                String         @id @default(uuid()) @db.Uuid
+  calendarId        String         @db.Uuid
+  calendar          FiscalCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   /// 1–12 monthly period number within the fiscal year.
-  periodNumber Int
+  periodNumber      Int
   /// 1–4 quarter number within the fiscal year.
-  quarter      Int
-  startDate    DateTime       @db.Date
-  endDate      DateTime       @db.Date
+  quarter           Int
+  startDate         DateTime       @db.Date
+  endDate           DateTime       @db.Date
   /// Short label, e.g. "Apr 2026" or "P1". Display-only.
-  label        String?
-  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  label             String?
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  // F-88 / D-103 + DM-5-5 round 37 — createdByPersonId only (immutable row).
+  createdByPersonId String?        @db.Uuid
+  createdByPerson   Person?        @relation("FiscalPeriodCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([calendarId, periodNumber])
   @@index([calendarId, startDate])
+  @@index([createdByPersonId])
   @@map("fiscal_periods")
 }
 
