@@ -90,6 +90,10 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         summary: aggregate.summary ?? null,
         // F-93 / D-103-write-path — populate actor-audit col.
         createdByPersonId: aggregate.createdByPersonId ?? null,
+        // F-130 / D-103-write-path round 40 — also populate updatedByPersonId
+        // on first insert (defaults to createdByPersonId for new aggregates).
+        updatedByPersonId:
+          aggregate.updatedByPersonId ?? aggregate.createdByPersonId ?? null,
       },
       update: {
         caseNumber: aggregate.caseNumber,
@@ -113,6 +117,8 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         status: aggregate.status,
         subjectPersonId: aggregate.subjectPersonId,
         summary: aggregate.summary ?? null,
+        // F-130 / D-103-write-path round 40 — track editor on every update.
+        updatedByPersonId: aggregate.updatedByPersonId ?? null,
       },
       where: { id: aggregate.id },
     });

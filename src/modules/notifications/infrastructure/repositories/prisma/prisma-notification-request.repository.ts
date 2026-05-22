@@ -1,15 +1,15 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { NotificationRequest } from '../../../domain/entities/notification-request.entity';
 import { NotificationRequestRepositoryPort } from '../../../domain/repositories/notification-request-repository.port';
 import { NotificationsPrismaMapper } from './notifications-prisma.mapper';
 
-interface Gateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type Gateway = Pick<
+  Prisma.NotificationRequestDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 // F-18 / 20c-12 — cap on listAll(). Notification requests are
 // short-lived (deleted on dispatch) but a stuck queue could grow
@@ -44,6 +44,10 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
   }
 
   public async save(aggregate: NotificationRequest): Promise<void> {
+    // 20c-10 — domain entity holds `Record<string, unknown>`; Prisma's
+    // generated input is `Prisma.InputJsonValue`. Both are structural
+    // JSON objects; the cast preserves runtime shape.
+    const payload = aggregate.payload as Prisma.InputJsonValue;
     await this.gateway.upsert({
       create: {
         attemptCount: aggregate.attemptCount,
@@ -54,7 +58,7 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
         id: aggregate.id,
         maxAttempts: aggregate.maxAttempts,
         nextAttemptAt: aggregate.nextAttemptAt ?? null,
-        payload: aggregate.payload,
+        payload,
         recipient: aggregate.recipient,
         requestedAt: aggregate.requestedAt,
         status: aggregate.status,
@@ -66,7 +70,7 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
         failureReason: aggregate.failureReason ?? null,
         maxAttempts: aggregate.maxAttempts,
         nextAttemptAt: aggregate.nextAttemptAt ?? null,
-        payload: aggregate.payload,
+        payload,
         recipient: aggregate.recipient,
         status: aggregate.status,
       },

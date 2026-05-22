@@ -10,7 +10,7 @@ export class ReopenCaseService {
     private readonly caseRecordRepository: CaseRecordRepositoryPort,
   ) {}
 
-  public async execute(caseId: string): Promise<CaseRecord> {
+  public async execute(caseId: string, actorId?: string): Promise<CaseRecord> {
     const id = CaseId.from(caseId);
     const caseRecord = await this.caseRecordRepository.findByCaseId(id);
 
@@ -19,6 +19,8 @@ export class ReopenCaseService {
     }
 
     caseRecord.reopen();
+    // F-130 / D-103-write-path round 40 — stamp reopener before save.
+    caseRecord.setUpdatedBy(actorId);
     await this.caseRecordRepository.save(caseRecord);
 
     return caseRecord;

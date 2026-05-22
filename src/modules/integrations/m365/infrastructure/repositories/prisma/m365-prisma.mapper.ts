@@ -61,7 +61,9 @@ export class M365PrismaMapper {
 
   public static toM365DirectoryReconciliationRecord(record: {
     candidatePersonIds: string[];
-    category: 'AMBIGUOUS' | 'MATCHED' | 'STALE_CONFLICT' | 'UNMATCHED';
+    // 20c-10 — accept the wider Prisma string return; the domain entity
+    // re-narrows to the union via its own type.
+    category: string;
     externalDisplayName: string | null;
     externalEmail: string | null;
     externalPrincipalName: string | null;
@@ -82,7 +84,7 @@ export class M365PrismaMapper {
     return M365DirectoryReconciliationRecord.create(
       {
         candidatePersonIds: record.candidatePersonIds,
-        category: record.category,
+        category: record.category as 'AMBIGUOUS' | 'MATCHED' | 'STALE_CONFLICT' | 'UNMATCHED',
         externalDisplayName: record.externalDisplayName ?? undefined,
         externalEmail: record.externalEmail ?? undefined,
         externalPrincipalName: record.externalPrincipalName ?? undefined,

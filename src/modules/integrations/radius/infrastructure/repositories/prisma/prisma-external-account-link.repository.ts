@@ -1,13 +1,14 @@
+import { Prisma } from '@prisma/client';
+
 import { ExternalAccountLink } from '../../../domain/entities/external-account-link.entity';
 import { ExternalAccountLinkRepositoryPort } from '../../../domain/repositories/external-account-link.repository.port';
 import { RadiusPrismaMapper } from './radius-prisma.mapper';
 
-interface ExternalAccountLinkGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type ExternalAccountLinkGateway = Pick<
+  Prisma.ExternalAccountLinkDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkRepositoryPort {
   public constructor(private readonly gateway: ExternalAccountLinkGateway) {}
@@ -48,7 +49,8 @@ export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkR
     await this.gateway.upsert({
       create: {
         id: aggregate.id,
-        accountPresenceState: aggregate.accountPresenceState ?? null,
+        // 20c-10 — domain string ↔ Prisma enum.
+        accountPresenceState: (aggregate.accountPresenceState ?? null) as Prisma.ExternalAccountLinkCreateInput['accountPresenceState'],
         externalAccountId: aggregate.externalAccountId,
         externalDisplayName: aggregate.externalDisplayName ?? null,
         externalEmail: aggregate.externalEmail ?? null,
@@ -57,18 +59,21 @@ export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkR
         matchedByStrategy: aggregate.matchedByStrategy ?? null,
         personId: aggregate.personId ?? null,
         provider: aggregate.provider,
-        sourceType: aggregate.sourceType,
+        // 20c-10 — domain string ↔ Prisma enum; same union, cast through.
+        sourceType: aggregate.sourceType as Prisma.ExternalAccountLinkCreateInput['sourceType'],
         sourceUpdatedAt: aggregate.sourceUpdatedAt ?? null,
       },
       update: {
-        accountPresenceState: aggregate.accountPresenceState ?? null,
+        // 20c-10 — domain string ↔ Prisma enum.
+        accountPresenceState: (aggregate.accountPresenceState ?? null) as Prisma.ExternalAccountLinkCreateInput['accountPresenceState'],
         externalDisplayName: aggregate.externalDisplayName ?? null,
         externalEmail: aggregate.externalEmail ?? null,
         externalUsername: aggregate.externalUsername ?? null,
         lastSeenAt: aggregate.lastSeenAt ?? null,
         matchedByStrategy: aggregate.matchedByStrategy ?? null,
         personId: aggregate.personId ?? null,
-        sourceType: aggregate.sourceType,
+        // 20c-10 — domain string ↔ Prisma enum; same union, cast through.
+        sourceType: aggregate.sourceType as Prisma.ExternalAccountLinkCreateInput['sourceType'],
         sourceUpdatedAt: aggregate.sourceUpdatedAt ?? null,
       },
       where: {

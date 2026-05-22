@@ -23,7 +23,7 @@ interface PrismaProjectRecord {
   projectManagerId: string | null;
   projectType?: string | null;
   startsOn: Date | null;
-  status: 'ACTIVE' | 'ARCHIVED' | 'CLOSED' | 'COMPLETED' | 'DRAFT' | 'ON_HOLD';
+  status: 'ACTIVE' | 'ARCHIVED' | 'CLOSED' | 'COMPLETED' | 'DRAFT' | 'ON_HOLD' | 'PENDING_APPROVAL';
   tags?: string[];
   techStack?: string[];
   version?: number | null;

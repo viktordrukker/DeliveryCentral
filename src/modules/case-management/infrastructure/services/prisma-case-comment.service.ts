@@ -34,7 +34,11 @@ export class PrismaCaseCommentService {
     comments.push(comment);
 
     await this.prisma.caseRecord.update({
-      data: { payload: { ...payload, comments } as unknown as Prisma.InputJsonValue },
+      data: {
+        payload: { ...payload, comments } as unknown as Prisma.InputJsonValue,
+        // F-130 / D-103-write-path round 40 — track commenter as the editor.
+        updatedByPersonId: authorPersonId,
+      },
       where: { id: caseId },
     });
 

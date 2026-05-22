@@ -58,9 +58,11 @@ export class RadiusPrismaMapper {
   }
 
   public static toRadiusReconciliationRecord(record: {
+    // 20c-10 — widen enum-string columns to plain string (Prisma return);
+    // domain entity re-narrows on construction.
     accountPresenceState: string | null;
     candidatePersonIds: string[];
-    category: 'AMBIGUOUS' | 'MATCHED' | 'PRESENCE_DRIFT' | 'UNMATCHED';
+    category: string;
     externalAccountId: string;
     externalDisplayName: string | null;
     externalEmail: string | null;
@@ -79,7 +81,7 @@ export class RadiusPrismaMapper {
       {
         accountPresenceState: record.accountPresenceState ?? undefined,
         candidatePersonIds: record.candidatePersonIds,
-        category: record.category,
+        category: record.category as 'AMBIGUOUS' | 'MATCHED' | 'PRESENCE_DRIFT' | 'UNMATCHED',
         externalAccountId: record.externalAccountId,
         externalDisplayName: record.externalDisplayName ?? undefined,
         externalEmail: record.externalEmail ?? undefined,

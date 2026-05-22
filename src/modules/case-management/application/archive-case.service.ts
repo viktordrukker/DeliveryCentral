@@ -8,7 +8,7 @@ import { CaseRecordRepositoryPort } from '../domain/repositories/case-record-rep
 export class ArchiveCaseService {
   public constructor(private readonly caseRecordRepository: CaseRecordRepositoryPort) {}
 
-  public async execute(caseId: string): Promise<CaseRecord> {
+  public async execute(caseId: string, actorId?: string): Promise<CaseRecord> {
     const id = CaseId.from(caseId);
     const caseRecord = await this.caseRecordRepository.findByCaseId(id);
 
@@ -17,6 +17,8 @@ export class ArchiveCaseService {
     }
 
     caseRecord.archive();
+    // F-130 / D-103-write-path round 40 — stamp archiver before save.
+    caseRecord.setUpdatedBy(actorId);
     await this.caseRecordRepository.save(caseRecord);
 
     return caseRecord;

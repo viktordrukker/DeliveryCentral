@@ -13,7 +13,10 @@ import {
 import { AssignmentId } from '@src/modules/assignments/domain/value-objects/assignment-id';
 
 interface PrismaProjectAssignmentRecord {
-  allocationPercent: string | null;
+  // 20c-10 — Prisma `Decimal` columns return a `Prisma.Decimal` instance
+  // whose `.toString()` yields the numeric string the mapper consumes.
+  // Widen the mapper input so the typed Gateway return passes through.
+  allocationPercent: { toString(): string } | string | null;
   approvedAt: Date | null;
   archivedAt: Date | null;
   cancellationReason: string | null;
@@ -56,9 +59,11 @@ interface PrismaAssignmentHistoryRecord {
   changeType: string;
   changedByPersonId: string | null;
   id: string;
-  newSnapshot: Record<string, unknown> | null;
+  // 20c-10 — Prisma JSON columns return `Prisma.JsonValue`. Mapper narrows
+  // to object-or-null at consume-time via the `asJsonObject` helper.
+  newSnapshot: unknown;
   occurredAt: Date;
-  previousSnapshot: Record<string, unknown> | null;
+  previousSnapshot: unknown;
 }
 
 const VALID_STATUS_VALUES = new Set<AssignmentStatusValue>([
@@ -122,7 +127,7 @@ export class AssignmentsPrismaMapper {
     return ProjectAssignment.create(
       {
         allocationPercent: record.allocationPercent
-          ? AllocationPercent.from(Number(record.allocationPercent))
+          ? AllocationPercent.from(Number(record.allocationPercent.toString()))
           : undefined,
         approvedAt: record.approvedAt ?? undefined,
         archivedAt: record.archivedAt ?? undefined,
@@ -167,15 +172,22 @@ export class AssignmentsPrismaMapper {
   }
 
   public static toDomainHistory(record: PrismaAssignmentHistoryRecord): AssignmentHistory {
+    // 20c-10 — narrow JSON columns to object-or-undefined for the domain entity.
+    const toJsonObject = (v: unknown): Record<string, unknown> | undefined => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        return v as Record<string, unknown>;
+      }
+      return undefined;
+    };
     return AssignmentHistory.create(
       {
         assignmentId: AssignmentId.from(record.assignmentId),
         changeReason: record.changeReason ?? undefined,
         changeType: record.changeType,
         changedByPersonId: record.changedByPersonId ?? undefined,
-        newSnapshot: record.newSnapshot ?? undefined,
+        newSnapshot: toJsonObject(record.newSnapshot),
         occurredAt: record.occurredAt,
-        previousSnapshot: record.previousSnapshot ?? undefined,
+        previousSnapshot: toJsonObject(record.previousSnapshot),
       },
       record.id,
     );

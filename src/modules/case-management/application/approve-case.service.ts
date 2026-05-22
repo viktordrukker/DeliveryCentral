@@ -28,6 +28,8 @@ export class ApproveCaseService {
     if (!caseRecord) throw new NotFoundException('Case not found.');
 
     caseRecord.approve();
+    // F-130 / D-103-write-path round 40 — stamp approver before save.
+    caseRecord.setUpdatedBy(command.actorId);
     await this.caseRecordRepository.save(caseRecord);
 
     this.auditLogger?.record({
@@ -49,6 +51,8 @@ export class ApproveCaseService {
     if (!caseRecord) throw new NotFoundException('Case not found.');
 
     caseRecord.reject(command.reason);
+    // F-130 / D-103-write-path round 40 — stamp rejecter before save.
+    caseRecord.setUpdatedBy(command.actorId);
     await this.caseRecordRepository.save(caseRecord);
 
     this.auditLogger?.record({

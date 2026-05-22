@@ -77,6 +77,9 @@ export class CreateCaseService {
         summary: command.summary,
         // F-93 / D-103-write-path — populate actor-audit col.
         createdByPersonId: command.actorId,
+        // F-130 / D-103-write-path round 40 — initial insert sets BOTH cols
+        // to the same actor; subsequent edits flip updatedByPersonId only.
+        updatedByPersonId: command.actorId,
       });
 
       try {

@@ -28,6 +28,11 @@ interface CaseRecordProps {
   // (request actor) that wrote the row. Typically an HR/admin user
   // creating a case about a subject person they manage.
   createdByPersonId?: string;
+  // F-130 / D-103-write-path round 40 — actor-audit: who last mutated
+  // this row. Set by callers (close/reopen/approve/cancel/archive
+  // services) via `setUpdatedBy(actorId)` before `repository.save()`
+  // so the case-record's update branch captures the right actor.
+  updatedByPersonId?: string;
 }
 
 export class CaseRecord extends AggregateRoot<CaseRecordProps> {
@@ -149,6 +154,16 @@ export class CaseRecord extends AggregateRoot<CaseRecordProps> {
   /** F-93 / D-103-write-path — actor who created this row. */
   public get createdByPersonId(): string | undefined {
     return this.props.createdByPersonId;
+  }
+
+  /** F-130 / D-103-write-path round 40 — actor who last mutated this row. */
+  public get updatedByPersonId(): string | undefined {
+    return this.props.updatedByPersonId;
+  }
+
+  /** F-130 / D-103-write-path — set updatedBy before repository.save(). */
+  public setUpdatedBy(actorId: string | undefined): void {
+    this.props.updatedByPersonId = actorId;
   }
 
   public get participants(): CaseParticipant[] {
