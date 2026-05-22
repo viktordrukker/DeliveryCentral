@@ -195,7 +195,10 @@ export class InMemoryStaffingRequestService {
     return this.toResponse(record, projectName);
   }
 
-  public async submit(idOrPublicId: string): Promise<StaffingRequest> {
+  // F-97 / D-103-write-path — submit/review/release/cancel/update now accept
+  // an optional `actorId` so the SR.updatedByPersonId tracks each transition.
+
+  public async submit(idOrPublicId: string, actorId?: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
@@ -203,14 +206,14 @@ export class InMemoryStaffingRequestService {
     if (existing.status !== 'DRAFT') throw new ConflictException(`Cannot submit from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
-      data: { status: 'OPEN' },
+      data: { status: 'OPEN', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
 
-  public async review(idOrPublicId: string): Promise<StaffingRequest> {
+  public async review(idOrPublicId: string, actorId?: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
@@ -218,14 +221,14 @@ export class InMemoryStaffingRequestService {
     if (existing.status !== 'OPEN') throw new ConflictException(`Cannot review from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
-      data: { status: 'IN_REVIEW' },
+      data: { status: 'IN_REVIEW', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
 
-  public async release(idOrPublicId: string): Promise<StaffingRequest> {
+  public async release(idOrPublicId: string, actorId?: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
@@ -233,7 +236,7 @@ export class InMemoryStaffingRequestService {
     if (existing.status !== 'IN_REVIEW') throw new ConflictException(`Cannot release from status ${existing.status}.`);
     const record = await this.prisma.staffingRequest.update({
       where: { id },
-      data: { status: 'OPEN' },
+      data: { status: 'OPEN', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
@@ -311,7 +314,7 @@ export class InMemoryStaffingRequestService {
     return this.toResponse(record, projectName);
   }
 
-  public async cancel(idOrPublicId: string): Promise<StaffingRequest> {
+  public async cancel(idOrPublicId: string, actorId?: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
     const existing = await this.prisma.staffingRequest.findUnique({ where: { id }, select: { status: true } });
@@ -343,7 +346,8 @@ export class InMemoryStaffingRequestService {
       }
       return tx.staffingRequest.update({
         where: { id },
-        data: { status: 'CANCELLED', cancelledAt: timestamp },
+        // F-97 / D-103-write-path — record cancellation actor on SR.
+        data: { status: 'CANCELLED', cancelledAt: timestamp, updatedByPersonId: actorId ?? null },
         include: { fulfilments: true },
       });
     });
@@ -354,6 +358,7 @@ export class InMemoryStaffingRequestService {
   public async update(
     idOrPublicId: string,
     updates: Partial<Pick<StaffingRequest, 'allocationPercent' | 'endDate' | 'headcountRequired' | 'priority' | 'role' | 'skills' | 'startDate' | 'summary'>>,
+    actorId?: string,
   ): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
@@ -370,6 +375,8 @@ export class InMemoryStaffingRequestService {
     if (updates.skills !== undefined) data['skills'] = updates.skills;
     if (updates.startDate !== undefined) data['startDate'] = new Date(updates.startDate);
     if (updates.summary !== undefined) data['summary'] = updates.summary;
+    // F-97 / D-103-write-path — track who edited the row.
+    data['updatedByPersonId'] = actorId ?? null;
 
     const record = await this.prisma.staffingRequest.update({
       where: { id },
