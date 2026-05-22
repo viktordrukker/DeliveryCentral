@@ -672,6 +672,12 @@ model Person {
   updatedM365ReconciliationRecords         M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordUpdatedBy")
   createdRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordCreatedBy")
   updatedRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordUpdatedBy")
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId-only bundle (immutable rows)
+  createdPersonCostRates                   PersonCostRate[]                    @relation("PersonCostRateCreatedBy")
+  createdPublicHolidays                    PublicHoliday[]                     @relation("PublicHolidayCreatedBy")
+  createdCurrencies                        Currency[]                          @relation("CurrencyCreatedBy")
+  createdFxRates                           FxRate[]                            @relation("FxRateCreatedBy")
+  createdVendorSkillAreas                  VendorSkillArea[]                   @relation("VendorSkillAreaCreatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -2117,18 +2123,22 @@ model ProjectBudget {
 }
 
 model PersonCostRate {
-  id            String             @id @default(uuid())
-  idNew         String             @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  publicId      String?            @unique @db.VarChar(32)
-  personId      String
-  effectiveFrom DateTime           @db.Date
-  hourlyRate    Decimal            @db.Decimal(10, 2)
-  rateType      PersonCostRateType @default(INTERNAL)
-  currencyCode  String?            @db.VarChar(3)
-  currency      Currency?          @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
-  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  id                String             @id @default(uuid())
+  idNew             String             @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  publicId          String?            @unique @db.VarChar(32)
+  personId          String
+  effectiveFrom     DateTime           @db.Date
+  hourlyRate        Decimal            @db.Decimal(10, 2)
+  rateType          PersonCostRateType @default(INTERNAL)
+  currencyCode      String?            @db.VarChar(3)
+  currency          Currency?          @relation(fields: [currencyCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId only (immutable row).
+  createdByPersonId String?            @db.Uuid
+  createdByPerson   Person?            @relation("PersonCostRateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@index([currencyCode])
+  @@index([createdByPersonId])
   @@map("person_cost_rates")
 }
 
@@ -2812,17 +2822,21 @@ model LeaveBalance {
 }
 
 model PublicHoliday {
-  id          String   @id @default(uuid()) @db.Uuid
-  date        DateTime @db.Date
-  name        String
+  id                String   @id @default(uuid()) @db.Uuid
+  date              DateTime @db.Date
+  name              String
   // F-7.2 / D-163 — region code (country or sub-region like 'US-CA').
   // Default removed so multi-region tenants explicitly tag every row.
   // Existing AU rows continue to work; new rows must specify.
-  countryCode String
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  countryCode       String
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId only (immutable row).
+  createdByPersonId String?  @db.Uuid
+  createdByPerson   Person?  @relation("PublicHolidayCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([date, countryCode])
   @@index([countryCode, date])
+  @@index([createdByPersonId])
   @@map("public_holidays")
 }
 
@@ -3120,11 +3134,13 @@ enum ExternalAccountPresenceState {
 /// currency code here. The dev default is AUD; multi-tenant deploys
 /// override via `isDefault`. Minor units drive display precision.
 model Currency {
-  code      String   @id @db.VarChar(3)
-  name      String
-  minorUnit Int      @default(2)
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  code              String   @id @db.VarChar(3)
+  name              String
+  minorUnit         Int      @default(2)
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId only (admin seeded).
+  createdByPersonId String?  @db.Uuid
 
   projectBudgets           ProjectBudget[]
   personCostRates          PersonCostRate[]
@@ -3132,7 +3148,9 @@ model Currency {
   rateCards                RateCard[]
   fxRatesFrom              FxRate[]                  @relation("FxRateFromCurrency")
   fxRatesTo                FxRate[]                  @relation("FxRateToCurrency")
+  createdByPerson          Person?                   @relation("CurrencyCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
+  @@index([createdByPersonId])
   @@map("Currency")
 }
 
@@ -3151,20 +3169,24 @@ model Currency {
 /// table exists in v1 so the schema is portable, but the
 /// `FinancialService` only consults it when the flag is ON.
 model FxRate {
-  id           String   @id @default(uuid()) @db.Uuid
-  fromCurrency String   @db.VarChar(3)
-  toCurrency   String   @db.VarChar(3)
-  rate         Decimal  @db.Decimal(18, 8)
-  asOf         DateTime @db.Date
-  source       String?
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  id                String   @id @default(uuid()) @db.Uuid
+  fromCurrency      String   @db.VarChar(3)
+  toCurrency        String   @db.VarChar(3)
+  rate              Decimal  @db.Decimal(18, 8)
+  asOf              DateTime @db.Date
+  source            String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId only (immutable row).
+  createdByPersonId String?  @db.Uuid
 
-  from Currency @relation("FxRateFromCurrency", fields: [fromCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
-  to   Currency @relation("FxRateToCurrency", fields: [toCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  from            Currency @relation("FxRateFromCurrency", fields: [fromCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  to              Currency @relation("FxRateToCurrency", fields: [toCurrency], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  createdByPerson Person?  @relation("FxRateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([fromCurrency, toCurrency, asOf])
   @@index([fromCurrency, toCurrency, asOf(sort: Desc)])
   @@index([toCurrency])
+  @@index([createdByPersonId])
   @@map("fx_rates")
 }
 
@@ -3353,15 +3375,19 @@ model EmploymentEvent {
 // `Vendor.skillAreas` (all text[] denormalized). Zero rows populate
 // the text[] columns currently; DM-6b-1 drops them.
 model VendorSkillArea {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vendorId  String   @db.Uuid
-  skillArea String
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vendorId          String   @db.Uuid
+  skillArea         String
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId only (immutable row).
+  createdByPersonId String?  @db.Uuid
 
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  vendor          Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdByPerson Person? @relation("VendorSkillAreaCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([vendorId, skillArea])
   @@index([skillArea])
+  @@index([createdByPersonId])
   @@map("vendor_skill_areas")
 }
 
