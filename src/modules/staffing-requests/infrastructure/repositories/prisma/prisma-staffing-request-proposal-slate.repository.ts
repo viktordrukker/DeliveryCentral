@@ -81,6 +81,11 @@ export class PrismaStaffingRequestProposalSlateRepository
   public constructor(private readonly prisma: PrismaService) {}
 
   public async save(slate: StaffingRequestProposalSlate, tx?: TransactionContext): Promise<void> {
+    // F-122 / D-103-write-path round 32 — proposer IS the slate creator
+    // and (for the OPEN slate write itself) the editor. Subsequent
+    // status transitions like DECIDED are stamped by the decider via the
+    // direct prisma.update path in pick/decide flows; this repository
+    // only writes the OPEN-state shape.
     const slatePayload = {
       id: slate.id,
       staffingRequestId: slate.staffingRequestId,
@@ -89,6 +94,8 @@ export class PrismaStaffingRequestProposalSlateRepository
       proposedAt: slate.proposedAt,
       expiresAt: slate.expiresAt ?? null,
       decidedAt: slate.decidedAt ?? null,
+      createdByPersonId: slate.proposedByPersonId,
+      updatedByPersonId: slate.proposedByPersonId,
     };
 
     // When the caller supplies their own `$transaction` client (so the
@@ -108,6 +115,11 @@ export class PrismaStaffingRequestProposalSlateRepository
           status: slatePayload.status,
           expiresAt: slatePayload.expiresAt,
           decidedAt: slatePayload.decidedAt,
+          // F-122 / D-103-write-path — when the repository updates the
+          // slate row in place, the proposer is still the canonical
+          // editor at this layer (decide/cancel flows go through their
+          // own prisma.update paths and stamp their own actor).
+          updatedByPersonId: slate.proposedByPersonId,
         },
       });
 
@@ -135,6 +147,11 @@ export class PrismaStaffingRequestProposalSlateRepository
             rationale: candidate.rationale ?? null,
             decision: candidate.decision,
             decidedAt: candidate.decidedAt ?? null,
+            // F-122 / D-103-write-path round 32 — the slate proposer
+            // creates the candidates as part of the slate (the same
+            // RM atomically writes both).
+            createdByPersonId: slate.proposedByPersonId,
+            updatedByPersonId: slate.proposedByPersonId,
           },
           update: {
             rank: candidate.rank,
@@ -144,6 +161,10 @@ export class PrismaStaffingRequestProposalSlateRepository
             rationale: candidate.rationale ?? null,
             decision: candidate.decision,
             decidedAt: candidate.decidedAt ?? null,
+            // F-122 / D-103-write-path — decide/pick flows go through
+            // their own direct prisma paths; at the repo layer the
+            // proposer remains the canonical editor.
+            updatedByPersonId: slate.proposedByPersonId,
           },
         });
       }
