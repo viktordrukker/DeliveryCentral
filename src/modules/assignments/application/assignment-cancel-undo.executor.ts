@@ -76,6 +76,8 @@ export class AssignmentCancelUndoExecutor implements UndoActionExecutor {
       },
     });
 
+    // F-127 / D-103-write-path round 37 — stamp the undo actor before save.
+    assignment.setUpdatedBy(row.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
 

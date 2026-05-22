@@ -59,6 +59,8 @@ export class RejectProjectAssignmentService {
       occurredAt: new Date(),
     });
 
+    // F-127 / D-103-write-path round 37 — stamp rejecter before save.
+    assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendApproval(approval);
     await this.projectAssignmentRepository.appendHistory(history);
