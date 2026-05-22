@@ -31,9 +31,19 @@ export class TimesheetRepository {
   public async createWeek(
     personId: string,
     weekStart: Date,
+    // F-113 / D-103-write-path round 23 — actor for `createdByPersonId` +
+    // `updatedByPersonId`. Optional for legacy callers; field stays NULL
+    // when omitted.
+    actorId?: string,
   ): Promise<TimesheetWeekWithEntries> {
     return this.prisma.timesheetWeek.create({
-      data: { personId, weekStart },
+      data: {
+        personId,
+        weekStart,
+        // F-113 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
+      },
       include: { entries: true },
     });
   }
@@ -41,6 +51,8 @@ export class TimesheetRepository {
   public async updateWeek(
     id: string,
     data: Prisma.TimesheetWeekUpdateInput,
+    // F-113 / D-103-write-path round 23 — actor for `updatedByPersonId`.
+    actorId?: string,
   ): Promise<TimesheetWeekWithEntries> {
     // FIXME(DATA-06): TimesheetWeek has a version field but updates don't use optimistic locking.
     // Compare with prisma-project-assignment.repository.ts:228 — the right pattern is updateMany
@@ -48,7 +60,8 @@ export class TimesheetRepository {
     // are refactored to thread the current version through (currently service mutates by id only).
     return this.prisma.timesheetWeek.update({
       where: { id },
-      data,
+      // F-113 / D-103-write-path — track the editor on every update.
+      data: { ...data, updatedByPersonId: actorId ?? null },
       include: { entries: true },
     });
   }

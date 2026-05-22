@@ -201,10 +201,10 @@ export class TimesheetsController {
     @Body() dto: RejectTimesheetDto,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<TimesheetWeekDto> {
-    void req;
-
+    // F-113 / D-103-write-path round 23 — thread rejecter into the audit.
+    const rejecterId = req.principal?.personId ?? req.principal?.userId;
     try {
-      return await this.service.rejectWeek(id, dto);
+      return await this.service.rejectWeek(id, dto, rejecterId);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to reject timesheet.';
       if (message.includes('not found')) throw new NotFoundException(message);
