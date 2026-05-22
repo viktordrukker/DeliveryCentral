@@ -667,6 +667,11 @@ model Person {
   updatedPersonExternalIdentityLinks       PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkUpdatedBy")
   createdTenants                           Tenant[]                            @relation("TenantCreatedBy")
   updatedTenants                           Tenant[]                            @relation("TenantUpdatedBy")
+  // F-86 / D-103 + DM-5-5 round 35
+  createdM365ReconciliationRecords         M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordCreatedBy")
+  updatedM365ReconciliationRecords         M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordUpdatedBy")
+  createdRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordCreatedBy")
+  updatedRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -773,14 +778,21 @@ model M365DirectoryReconciliationRecord {
   lastEvaluatedAt         DateTime  @db.Timestamptz(3)
   createdAt               DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
+  // F-86 / D-103 + DM-5-5 round 35 — actor-audit columns.
+  createdByPersonId       String?   @db.Uuid
+  updatedByPersonId       String?   @db.Uuid
   person                  Person?   @relation("M365ReconciliationSubject", fields: [personId], references: [id], onDelete: SetNull)
   resolvedManager         Person?   @relation("M365ReconciliationResolvedManager", fields: [resolvedManagerPersonId], references: [id], onDelete: SetNull)
+  createdByPerson         Person?   @relation("M365DirectoryReconciliationRecordCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?   @relation("M365DirectoryReconciliationRecordUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalUserId])
   @@index([provider, category])
   @@index([personId])
   @@index([lastEvaluatedAt])
   @@index([resolvedManagerPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("M365DirectoryReconciliationRecord")
 }
 
@@ -829,12 +841,19 @@ model RadiusReconciliationRecord {
   lastEvaluatedAt      DateTime  @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @db.Timestamptz(3)
+  // F-86 / D-103 + DM-5-5 round 35 — actor-audit columns.
+  createdByPersonId    String?   @db.Uuid
+  updatedByPersonId    String?   @db.Uuid
   person               Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
+  createdByPerson      Person?   @relation("RadiusReconciliationRecordCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson      Person?   @relation("RadiusReconciliationRecordUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalAccountId])
   @@index([provider, category])
   @@index([personId])
   @@index([lastEvaluatedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("RadiusReconciliationRecord")
 }
 
