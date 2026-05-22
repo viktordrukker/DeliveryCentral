@@ -296,11 +296,17 @@ export class HelpService {
         completedSteps: dto.completedSteps ?? [],
         dismissedAt: dismissedAt ?? null,
         completedAt: completedAt ?? null,
+        // F-121 / D-103-write-path round 31 — self-served onboarding
+        // progress: the personId IS the actor on both create and edit.
+        createdByPersonId: personId,
+        updatedByPersonId: personId,
       },
       update: {
         ...(dto.completedSteps !== undefined ? { completedSteps: dto.completedSteps } : {}),
         ...(dismissedAt !== undefined ? { dismissedAt } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
+        // F-121 / D-103-write-path — track every edit.
+        updatedByPersonId: personId,
       },
     });
     return this.toProgressDto(row);
