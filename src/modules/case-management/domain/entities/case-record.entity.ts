@@ -22,6 +22,12 @@ interface CaseRecordProps {
   status: CaseStatus;
   subjectPersonId: string;
   summary?: string;
+  // F-93 / D-103-write-path — actor-audit: who created this row.
+  // Distinct from `ownerPersonId` (the case owner) and `subjectPersonId`
+  // (the case's subject); `createdByPersonId` is the system principal
+  // (request actor) that wrote the row. Typically an HR/admin user
+  // creating a case about a subject person they manage.
+  createdByPersonId?: string;
 }
 
 export class CaseRecord extends AggregateRoot<CaseRecordProps> {
@@ -138,6 +144,11 @@ export class CaseRecord extends AggregateRoot<CaseRecordProps> {
 
   public get ownerPersonId(): string {
     return this.props.ownerPersonId;
+  }
+
+  /** F-93 / D-103-write-path — actor who created this row. */
+  public get createdByPersonId(): string | undefined {
+    return this.props.createdByPersonId;
   }
 
   public get participants(): CaseParticipant[] {

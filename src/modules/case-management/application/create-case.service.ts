@@ -18,6 +18,10 @@ interface CreateCaseCommand {
   relatedProjectId?: string;
   subjectPersonId: string;
   summary?: string;
+  // F-93 / D-103-write-path — optional actor-id (request principal).
+  // Optional because legacy callers may not supply it; once all callers
+  // pass it the field can flip to required.
+  actorId?: string;
 }
 
 @Injectable()
@@ -71,6 +75,8 @@ export class CreateCaseService {
         status: 'OPEN',
         subjectPersonId: command.subjectPersonId,
         summary: command.summary,
+        // F-93 / D-103-write-path — populate actor-audit col.
+        createdByPersonId: command.actorId,
       });
 
       try {
