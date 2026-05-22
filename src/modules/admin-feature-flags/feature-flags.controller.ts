@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Req,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -76,6 +77,7 @@ export class FeatureFlagsAdminController {
   public async update(
     @Param('id') id: string,
     @Body() dto: UpdateFeatureFlagDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<{
     id: string;
     key: string;
@@ -87,10 +89,17 @@ export class FeatureFlagsAdminController {
       throw new NotFoundException(`Unknown feature flag: ${id}`);
     }
     const previousValue = await this.flags.isEnabledByKey(flag.key, flag.default);
+    // F-117 / D-103-write-path round 27 — actor-audit on flag flips.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? null;
     await this.prisma.platformSetting.upsert({
       where: { key: flag.key },
-      create: { key: flag.key, value: dto.value },
-      update: { value: dto.value },
+      create: {
+        key: flag.key,
+        value: dto.value,
+        createdByPersonId: actorId,
+        updatedByPersonId: actorId,
+      },
+      update: { value: dto.value, updatedByPersonId: actorId },
     });
     this.flags.invalidate();
     this.logger.log(
