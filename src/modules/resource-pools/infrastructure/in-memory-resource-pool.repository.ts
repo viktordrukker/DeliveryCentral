@@ -53,7 +53,7 @@ export class InMemoryResourcePoolRepository {
     return this.pools.find((pool) => pool.id === id) ?? null;
   }
 
-  public create(data: { code: string; description?: string; name: string; orgUnitId?: string }): ResourcePoolRecord {
+  public create(data: { code: string; description?: string; name: string; orgUnitId?: string; actorId?: string }): ResourcePoolRecord {
     const pool: ResourcePoolRecord = {
       code: data.code,
       description: data.description ?? null,
@@ -66,7 +66,7 @@ export class InMemoryResourcePoolRepository {
     return pool;
   }
 
-  public update(id: string, changes: { description?: string; name?: string }): ResourcePoolRecord | null {
+  public update(id: string, changes: { description?: string; name?: string; actorId?: string }): ResourcePoolRecord | null {
     const pool = this.pools.find((p) => p.id === id);
     if (!pool) return null;
     if (changes.name !== undefined) pool.name = changes.name;
