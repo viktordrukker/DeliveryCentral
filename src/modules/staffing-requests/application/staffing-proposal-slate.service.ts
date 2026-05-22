@@ -199,7 +199,12 @@ export class StaffingProposalSlateService {
       if (request.status !== 'IN_REVIEW') {
         await tx.staffingRequest.update({
           where: { id: request.id },
-          data: { status: 'IN_REVIEW' },
+          data: {
+            status: 'IN_REVIEW',
+            // F-129 / D-103-write-path round 39 — track slate submitter on
+            // the parent SR's status flip.
+            updatedByPersonId: input.actorId,
+          },
         });
       }
     });
