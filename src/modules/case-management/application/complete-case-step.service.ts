@@ -49,7 +49,12 @@ export class CompleteCaseStepService {
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
   ) {}
 
-  public async initializeSteps(caseId: string, caseTypeKey = 'ONBOARDING'): Promise<void> {
+  public async initializeSteps(
+    caseId: string,
+    caseTypeKey = 'ONBOARDING',
+    // F-116 / D-103-write-path round 26 — actor for createdBy/updatedBy.
+    actorId?: string,
+  ): Promise<void> {
     const template = STEP_TEMPLATES[caseTypeKey] ?? STEP_TEMPLATES['ONBOARDING'];
     await this.prisma.caseStep.createMany({
       data: template.map((step) => ({
@@ -57,12 +62,20 @@ export class CompleteCaseStepService {
         displayName: step.displayName,
         stepKey: step.stepKey,
         status: 'OPEN',
+        // F-116 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       })),
       skipDuplicates: true,
     });
   }
 
-  public async execute(caseId: string, stepKey: string): Promise<CaseStepDto> {
+  public async execute(
+    caseId: string,
+    stepKey: string,
+    // F-116 / D-103-write-path round 26 — actor for updatedBy on completion.
+    actorId?: string,
+  ): Promise<CaseStepDto> {
     const existing = await this.prisma.caseStep.findUnique({
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey } },
     });
@@ -79,6 +92,8 @@ export class CompleteCaseStepService {
       data: {
         completedAt: new Date(),
         status: 'COMPLETED',
+        // F-116 / D-103-write-path — track completer on update.
+        updatedByPersonId: actorId ?? null,
       },
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey } },
     });
@@ -101,7 +116,13 @@ export class CompleteCaseStepService {
     };
   }
 
-  public async addStep(caseId: string, displayName: string, stepKey?: string): Promise<CaseStepDto> {
+  public async addStep(
+    caseId: string,
+    displayName: string,
+    stepKey?: string,
+    // F-116 / D-103-write-path round 26 — actor for createdBy/updatedBy.
+    actorId?: string,
+  ): Promise<CaseStepDto> {
     const key = stepKey ?? displayName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const existing = await this.prisma.caseStep.findUnique({
       where: { caseRecordId_stepKey: { caseRecordId: caseId, stepKey: key } },
@@ -115,6 +136,9 @@ export class CompleteCaseStepService {
         displayName,
         stepKey: key,
         status: 'OPEN',
+        // F-116 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
     return {

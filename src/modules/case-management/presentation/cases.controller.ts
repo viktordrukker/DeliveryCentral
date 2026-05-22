@@ -79,7 +79,8 @@ export class CasesController {
       const actorId =
         httpRequest.principal?.personId ?? httpRequest.principal?.userId;
       const caseRecord = await this.createCaseService.execute({ ...request, actorId });
-      await this.completeCaseStepService.initializeSteps(caseRecord.id, caseRecord.caseType.key);
+      // F-116 / D-103-write-path round 26 — thread actor into initializeSteps.
+      await this.completeCaseStepService.initializeSteps(caseRecord.id, caseRecord.caseType.key, actorId);
       return this.casePresenter.presentSingle(caseRecord);
     } catch (error) {
       throw new BadRequestException(
@@ -269,9 +270,12 @@ export class CasesController {
   public async completeCaseStep(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('stepKey') stepKey: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<CaseStepDto> {
     try {
-      return await this.completeCaseStepService.execute(id, stepKey);
+      // F-116 / D-103-write-path round 26 — thread actor into completion.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return await this.completeCaseStepService.execute(id, stepKey, actorId);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case step completion failed.';
 
@@ -291,9 +295,12 @@ export class CasesController {
   public async addCaseStep(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: AddCaseStepRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<CaseStepDto> {
     try {
-      return await this.completeCaseStepService.addStep(id, body.displayName, body.stepKey);
+      // F-116 / D-103-write-path round 26 — thread actor into addStep.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return await this.completeCaseStepService.addStep(id, body.displayName, body.stepKey, actorId);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Failed to add step.');
     }
