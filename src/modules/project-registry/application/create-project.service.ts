@@ -23,6 +23,8 @@ interface CreateProjectInput {
   startDate?: string;
   tags?: string[];
   techStack?: string[];
+  // F-126 / D-103-write-path round 36 — actor for createdBy/updatedBy.
+  actorId?: string;
 }
 
 @Injectable()
@@ -93,6 +95,9 @@ export class CreateProjectService {
       status: 'DRAFT',
       tags: input.tags,
       techStack: input.techStack,
+      // F-126 / D-103-write-path round 36 — populate both cols on first insert.
+      createdByPersonId: input.actorId,
+      updatedByPersonId: input.actorId,
     });
 
     await this.projectRepository.save(project);
