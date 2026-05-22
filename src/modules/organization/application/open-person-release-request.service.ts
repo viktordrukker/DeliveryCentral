@@ -129,6 +129,10 @@ export class OpenPersonReleaseRequestService {
           reason: command.reason.trim(),
           reasonCode: command.reasonCode ?? null,
           targetTerminationDate: targetDate,
+          // F-110 / D-103-write-path — canonical actor-audit alongside
+          // existing initiatedByPersonId.
+          createdByPersonId: command.actorId,
+          updatedByPersonId: command.actorId,
         },
         select: { id: true },
       });
