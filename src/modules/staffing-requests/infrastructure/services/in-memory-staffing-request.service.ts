@@ -287,7 +287,7 @@ export class InMemoryStaffingRequestService {
     return this.toResponse(record, projectName);
   }
 
-  public async duplicate(idOrPublicId: string): Promise<StaffingRequest> {
+  public async duplicate(idOrPublicId: string, actorId?: string): Promise<StaffingRequest> {
     const id = await this.resolveInternalId(idOrPublicId);
     if (!id) throw new NotFoundException('Staffing request not found.');
     const source = await this.prisma.staffingRequest.findUnique({ where: { id } });
@@ -307,6 +307,11 @@ export class InMemoryStaffingRequestService {
         startDate: source.startDate,
         status: 'DRAFT',
         summary: source.summary,
+        // F-122 / D-103-write-path round 32 — duplicator is the actor
+        // for the new SR (falls back to original requester so we never
+        // write a NULL-pair).
+        createdByPersonId: actorId ?? source.requestedByPersonId,
+        updatedByPersonId: actorId ?? source.requestedByPersonId,
       },
       include: { fulfilments: true },
     });
@@ -337,11 +342,23 @@ export class InMemoryStaffingRequestService {
       if (openSlate) {
         await tx.staffingRequestProposalCandidate.updateMany({
           where: { slateId: openSlate.id, decision: 'PENDING' },
-          data: { decision: 'DECLINED', decidedAt: timestamp },
+          data: {
+            decision: 'DECLINED',
+            decidedAt: timestamp,
+            // F-122 / D-103-write-path round 32 — record canceller on
+            // implicit candidate decline.
+            updatedByPersonId: actorId ?? null,
+          },
         });
         await tx.staffingRequestProposalSlate.update({
           where: { id: openSlate.id },
-          data: { status: 'DECIDED', decidedAt: timestamp },
+          data: {
+            status: 'DECIDED',
+            decidedAt: timestamp,
+            // F-122 / D-103-write-path — record canceller on the
+            // slate's terminal status flip too.
+            updatedByPersonId: actorId ?? null,
+          },
         });
       }
       return tx.staffingRequest.update({

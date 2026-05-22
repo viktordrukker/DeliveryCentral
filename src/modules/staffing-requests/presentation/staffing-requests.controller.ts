@@ -411,9 +411,12 @@ export class StaffingRequestsController {
   @ApiCreatedResponse({ description: 'Duplicated draft created' })
   public async duplicate(
     @Param('id', ParsePublicIdOrUuid(AggregateType.StaffingRequest)) id: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<StaffingRequestWithDerived> {
     try {
-      const result = await this.service.duplicate(id);
+      // F-122 / D-103-write-path round 32 — actor-audit on duplicated SR.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      const result = await this.service.duplicate(id, actorId);
       return this.enrich(result);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Duplicate failed.';
