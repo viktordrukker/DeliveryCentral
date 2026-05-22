@@ -133,6 +133,11 @@ export class HelpService {
           tags: dto.tags ?? [],
           isPublished: dto.isPublished ?? false,
           authorPersonId: actorId,
+          // F-99 / D-103-write-path — author IS the canonical creator;
+          // updatedByPersonId tracks subsequent edits separately via
+          // updateArticle().
+          createdByPersonId: actorId,
+          updatedByPersonId: actorId,
         },
         include: ARTICLE_AUTHOR_INCLUDE,
       });
@@ -149,6 +154,7 @@ export class HelpService {
   public async updateArticle(
     id: string,
     dto: UpdateHelpArticleDto,
+    actorId?: string | null,
   ): Promise<HelpArticleDto> {
     // Existence check only — the row body isn't read, so a `select`
     // is cheaper than fetching all columns plus the author include.
@@ -167,6 +173,8 @@ export class HelpService {
     if (dto.archive !== undefined) {
       data.archivedAt = dto.archive ? new Date() : null;
     }
+    // F-99 / D-103-write-path — track editor on every update.
+    data.updatedByPerson = actorId ? { connect: { id: actorId } } : { disconnect: true };
 
     const row = await this.prisma.helpArticle.update({
       where: { id },
@@ -194,7 +202,7 @@ export class HelpService {
     }));
   }
 
-  public async createTip(dto: CreateHelpTipDto): Promise<HelpTipDto> {
+  public async createTip(dto: CreateHelpTipDto, actorId?: string | null): Promise<HelpTipDto> {
     try {
       const row = await this.prisma.helpTip.create({
         data: {
@@ -203,6 +211,9 @@ export class HelpService {
           title: dto.title,
           body: dto.body,
           articleId: dto.articleId ?? null,
+          // F-99 / D-103-write-path — actor-audit on HelpTip create.
+          createdByPersonId: actorId ?? null,
+          updatedByPersonId: actorId ?? null,
         },
       });
       return {
