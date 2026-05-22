@@ -98,7 +98,7 @@ export class VendorService {
     };
   }
 
-  public async createVendor(dto: CreateVendorDto): Promise<VendorDto> {
+  public async createVendor(dto: CreateVendorDto, actorId?: string): Promise<VendorDto> {
     const v = await this.prisma.vendor.create({
       data: {
         name: dto.name,
@@ -107,6 +107,9 @@ export class VendorService {
         contractType: (dto.contractType as any) ?? 'STAFF_AUGMENTATION',
         skillAreas: dto.skillAreas ?? [],
         notes: dto.notes ?? null,
+        // F-105 / D-103-write-path — admin actor on vendor create.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
       include: { _count: { select: { engagements: true } } },
     });
@@ -117,7 +120,7 @@ export class VendorService {
     };
   }
 
-  public async updateVendor(id: string, dto: UpdateVendorDto): Promise<VendorDto> {
+  public async updateVendor(id: string, dto: UpdateVendorDto, actorId?: string): Promise<VendorDto> {
     const v = await this.prisma.vendor.update({
       where: { id },
       data: {
@@ -128,6 +131,8 @@ export class VendorService {
         ...(dto.skillAreas !== undefined ? { skillAreas: dto.skillAreas } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        // F-105 / D-103-write-path — track editor.
+        updatedByPersonId: actorId ?? null,
       },
       include: { _count: { select: { engagements: true } } },
     });
