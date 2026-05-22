@@ -56,8 +56,19 @@ export class RadiatorOverrideService {
         budgetRag: 'GREEN',
         overallRag: 'GREEN',
         recordedByPersonId: personId,
+        // F-125 / D-103-write-path round 35 — actor-audit cols on the
+        // snapshot's first insert; `recordedByPersonId` is the recorder
+        // semantic, these track row mutations uniformly.
+        createdByPersonId: personId,
+        updatedByPersonId: personId,
       },
-      update: { updatedAt: new Date() },
+      update: {
+        updatedAt: new Date(),
+        // F-125 / D-103-write-path — track the overrider on the upsert
+        // update branch too (this is the same atomic write — the override
+        // touches the snapshot's updatedAt as a side effect).
+        updatedByPersonId: personId,
+      },
     });
 
     const current = await this.scoringService.computeRadiator(projectId);
@@ -86,6 +97,10 @@ export class RadiatorOverrideService {
         budgetScore: updated.quadrants[2].score,
         peopleScore: updated.quadrants[3].score,
         overallScore: updated.overallScore,
+        // F-125 / D-103-write-path round 35 — track the overrider on
+        // the score-recompute update too (same actor, same transaction
+        // conceptually with the upsert above).
+        updatedByPersonId: personId,
       },
     });
 
