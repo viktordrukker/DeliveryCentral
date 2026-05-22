@@ -657,6 +657,11 @@ model Person {
   updatedProjectRagSnapshots               ProjectRagSnapshot[]                @relation("ProjectRagSnapshotUpdatedBy")
   createdCaseSteps                         CaseStep[]                          @relation("CaseStepCreatedBy")
   updatedCaseSteps                         CaseStep[]                          @relation("CaseStepUpdatedBy")
+  // F-84 / D-103 + DM-5-5 round 33
+  createdNotificationDeliveries            NotificationDelivery[]              @relation("NotificationDeliveryCreatedBy")
+  updatedNotificationDeliveries            NotificationDelivery[]              @relation("NotificationDeliveryUpdatedBy")
+  createdFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarCreatedBy")
+  updatedFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1858,13 +1863,20 @@ model NotificationDelivery {
   nextAttemptAt         DateTime?                  @db.Timestamptz(3)
   createdAt             DateTime                   @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime                   @updatedAt @db.Timestamptz(3)
+  // F-84 / D-103 + DM-5-5 round 33 — actor-audit columns.
+  createdByPersonId     String?                    @db.Uuid
+  updatedByPersonId     String?                    @db.Uuid
   notificationRequest   NotificationRequest        @relation(fields: [notificationRequestId], references: [id], onDelete: Cascade)
   channel               NotificationChannel        @relation(fields: [channelId], references: [id])
+  createdByPerson       Person?                    @relation("NotificationDeliveryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson       Person?                    @relation("NotificationDeliveryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([notificationRequestId, attemptedAt])
   @@index([status, attemptedAt])
   @@index([status, nextAttemptAt])
   @@index([channelId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("NotificationDelivery")
 }
 
@@ -3137,26 +3149,33 @@ model FxRate {
 /// (default OFF). Until flipped, financial-report consumers stick with
 /// the simpler D-160a path (`general.fiscalYearStart` setting).
 model FiscalCalendar {
-  id         String   @id @default(uuid()) @db.Uuid
+  id                String   @id @default(uuid()) @db.Uuid
   /// Tenant-chosen handle, e.g. `FY2026` or `FY2026-GB`. Stable across
   /// admin edits so reports can pin to a name.
-  name       String   @unique
+  name              String   @unique
   /// Fiscal year number (e.g. 2026). Matches `ProjectBudget.fiscalYear`.
-  fiscalYear Int
+  fiscalYear        Int
   /// First day of the FY (inclusive).
-  startDate  DateTime @db.Date
+  startDate         DateTime @db.Date
   /// Last day of the FY (inclusive).
-  endDate    DateTime @db.Date
+  endDate           DateTime @db.Date
   /// Optional tag for multi-region tenants ("GB", "US", etc.). NULL
   /// means tenant-wide / default calendar.
-  regionCode String?
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+  regionCode        String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  // F-84 / D-103 + DM-5-5 round 33 — actor-audit columns.
+  createdByPersonId String?  @db.Uuid
+  updatedByPersonId String?  @db.Uuid
 
-  periods FiscalPeriod[]
+  periods         FiscalPeriod[]
+  createdByPerson Person?        @relation("FiscalCalendarCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson Person?        @relation("FiscalCalendarUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([fiscalYear, regionCode])
   @@index([startDate, endDate])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("fiscal_calendars")
 }
 
