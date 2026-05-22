@@ -43,6 +43,11 @@ interface ProjectAssignmentProps {
   // `createdByPersonId` is the system principal that wrote the row, which
   // can be the requester or an admin acting on their behalf.
   createdByPersonId?: string;
+  // F-118 / D-103-write-path round 28 — actor-audit: who last mutated this
+  // row. Set by callers (services) via `setUpdatedBy(actorId)` before the
+  // repository.save() so transition + bill-rate-pin write paths populate
+  // `updatedByPersonId` instead of leaving it NULL.
+  updatedByPersonId?: string;
 }
 
 export interface TransitionOptions {
@@ -111,6 +116,16 @@ export class ProjectAssignment extends AggregateRoot<ProjectAssignmentProps> {
   /** F-91 / D-103-write-path — actor who created this row. */
   public get createdByPersonId(): string | undefined {
     return this.props.createdByPersonId;
+  }
+
+  /** F-118 / D-103-write-path round 28 — actor who last mutated this row. */
+  public get updatedByPersonId(): string | undefined {
+    return this.props.updatedByPersonId;
+  }
+
+  /** F-118 / D-103-write-path — set updatedBy before repository.save(). */
+  public setUpdatedBy(actorId: string | undefined): void {
+    this.props.updatedByPersonId = actorId;
   }
 
   public get requiresDirectorApproval(): boolean {

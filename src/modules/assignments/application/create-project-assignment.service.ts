@@ -167,6 +167,9 @@ export class CreateProjectAssignmentService {
       validTo: endDate,
       // F-91 / D-103-write-path — first service to populate actor-audit col.
       createdByPersonId: command.actorId,
+      // F-118 / D-103-write-path round 28 — also populate updatedByPersonId
+      // on first insert (same actor as createdBy for new aggregates).
+      updatedByPersonId: command.actorId,
     });
 
     const initialApproval = AssignmentApproval.create({
