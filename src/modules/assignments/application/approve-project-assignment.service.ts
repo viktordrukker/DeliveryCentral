@@ -73,6 +73,9 @@ export class ApproveProjectAssignmentService {
       occurredAt: new Date(),
     });
 
+    // F-127 / D-103-write-path round 37 — stamp approver before save so
+    // the canonical updatedByPersonId reflects the approval actor.
+    assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendApproval(approval);
     await this.projectAssignmentRepository.appendHistory(history);

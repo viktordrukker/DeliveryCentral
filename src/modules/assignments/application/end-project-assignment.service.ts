@@ -54,6 +54,8 @@ export class EndProjectAssignmentService {
       previousSnapshot,
     });
 
+    // F-127 / D-103-write-path round 37 — stamp ender before save.
+    assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
     this.auditLogger?.record({
