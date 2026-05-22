@@ -12,6 +12,8 @@ export interface CreateLeaveRequestDto {
   personId: string;
   startDate: string;
   type: 'ANNUAL' | 'SICK' | 'OTHER';
+  // F-112 / D-103-write-path round 22 — actor for createdBy/updatedBy.
+  actorId?: string;
 }
 
 export interface LeaveRequestDto {
@@ -46,6 +48,9 @@ export class LeaveRequestsService {
       personId: dto.personId,
       startDate: new Date(dto.startDate),
       type: dto.type,
+      // F-112 / D-103-write-path round 22 — default to the subject when
+      // no explicit actor (self-serve submission).
+      actorId: dto.actorId ?? dto.personId,
     });
     return this.toDto(record);
   }
@@ -84,6 +89,8 @@ export class LeaveRequestsService {
       reviewedAt: new Date(),
       reviewedBy: reviewerId,
       status: 'APPROVED',
+      // F-112 / D-103-write-path round 22 — actor-audit.
+      actorId: reviewerId,
     });
     return this.toDto(updated);
   }
@@ -98,6 +105,8 @@ export class LeaveRequestsService {
       reviewedAt: new Date(),
       reviewedBy: reviewerId,
       status: 'REJECTED',
+      // F-112 / D-103-write-path round 22 — actor-audit.
+      actorId: reviewerId,
     });
     return this.toDto(updated);
   }
