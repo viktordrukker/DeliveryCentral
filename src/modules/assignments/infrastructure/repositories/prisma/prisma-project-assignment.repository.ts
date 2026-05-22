@@ -266,6 +266,9 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
           version: aggregate.version,
           // F-91 / D-103-write-path — populate actor-audit column added by F-44.
           createdByPersonId: aggregate.createdByPersonId ?? null,
+          // F-118 / D-103-write-path round 28 — also populate updatedByPersonId
+          // on first insert (matches the uniform "both cols on create" pattern).
+          updatedByPersonId: aggregate.updatedByPersonId ?? aggregate.createdByPersonId ?? null,
         },
       });
       return;
@@ -298,6 +301,8 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
         validFrom: aggregate.validFrom,
         validTo: aggregate.validTo ?? null,
         version: nextVersion,
+        // F-118 / D-103-write-path round 28 — track the editor on every update.
+        updatedByPersonId: aggregate.updatedByPersonId ?? null,
       },
       where: {
         id: aggregate.id,

@@ -129,6 +129,8 @@ export class TransitionProjectAssignmentService {
       previousSnapshot: { status: previousStatus },
     });
 
+    // F-118 / D-103-write-path round 28 — actor-audit on every transition.
+    assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
 
@@ -264,6 +266,8 @@ export class TransitionProjectAssignmentService {
         appliedRateCardEntryId: verdict.entryId,
         effectiveBillRate: verdict.hourlyRate,
         effectiveBillCurrency: verdict.currencyCode,
+        // F-118 / D-103-write-path round 28 — also stamp on bill-rate pin.
+        updatedByPersonId: command.actorId ?? null,
       },
     });
 
