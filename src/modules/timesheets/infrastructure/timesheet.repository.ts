@@ -58,10 +58,17 @@ export class TimesheetRepository {
     // Compare with prisma-project-assignment.repository.ts:228 — the right pattern is updateMany
     // with `where: { id, version: aggregate.version }` + throw on count == 0. Apply once callers
     // are refactored to thread the current version through (currently service mutates by id only).
+    // F-113 / D-103-write-path — use the unchecked input variant so the
+    // scalar `updatedByPersonId` FK can be assigned directly alongside the
+    // caller's data. Typed as a const so Prisma's generic inference still
+    // resolves the entries-include on the return type.
+    const updateData: Prisma.TimesheetWeekUncheckedUpdateInput = {
+      ...(data as Prisma.TimesheetWeekUncheckedUpdateInput),
+      updatedByPersonId: actorId ?? null,
+    };
     return this.prisma.timesheetWeek.update({
       where: { id },
-      // F-113 / D-103-write-path — track the editor on every update.
-      data: { ...data, updatedByPersonId: actorId ?? null },
+      data: updateData,
       include: { entries: true },
     });
   }
