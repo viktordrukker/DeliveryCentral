@@ -17,9 +17,15 @@ export class SkillsService {
     return skills.map((s) => this.toSkillDto(s));
   }
 
-  public async createSkill(dto: CreateSkillDto): Promise<SkillDto> {
+  public async createSkill(dto: CreateSkillDto, actorId?: string): Promise<SkillDto> {
     const skill = await this.prisma.skill.create({
-      data: { name: dto.name, category: dto.category ?? null },
+      data: {
+        name: dto.name,
+        category: dto.category ?? null,
+        // F-101 / D-103-write-path — admin creates skill taxonomy entries.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
+      },
     });
     return this.toSkillDto(skill);
   }
