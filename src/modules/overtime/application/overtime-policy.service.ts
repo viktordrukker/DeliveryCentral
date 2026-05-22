@@ -58,6 +58,12 @@ export class OvertimePolicyService {
         maxOvertimeHoursPerWeek: dto.maxOvertimeHoursPerWeek,
         setByPersonId: actorId,
         approvalStatus,
+        // F-103 / D-103-write-path — canonical actor-audit alongside the
+        // domain-specific `setByPersonId`. Same value at create-time but
+        // distinct semantic: setByPersonId is "who set the policy"
+        // (HR governance); createdByPersonId tracks row-mutation actor.
+        createdByPersonId: actorId,
+        updatedByPersonId: actorId,
       },
       include: {
         orgUnit: { select: { id: true, name: true } },
@@ -82,10 +88,14 @@ export class OvertimePolicyService {
     };
   }
 
-  public async remove(id: string): Promise<void> {
+  public async remove(id: string, actorId?: string): Promise<void> {
     await this.prisma.overtimePolicy.update({
       where: { id },
-      data: { effectiveTo: new Date() },
+      data: {
+        effectiveTo: new Date(),
+        // F-103 / D-103-write-path — record who archived the policy.
+        updatedByPersonId: actorId ?? null,
+      },
     });
   }
 }
