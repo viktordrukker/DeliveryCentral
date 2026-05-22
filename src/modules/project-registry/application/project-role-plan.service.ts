@@ -66,7 +66,7 @@ export interface StaffingSummary {
 export class ProjectRolePlanService {
   public constructor(private readonly prisma: PrismaService) {}
 
-  public async getRolePlan(projectId: string): Promise<RolePlanEntryDto[]> {
+  public async getRolePlan(projectId: string, actorId?: string): Promise<RolePlanEntryDto[]> {
     const entries = await this.prisma.projectRolePlan.findMany({
       where: { projectId },
       orderBy: [{ roleName: 'asc' }, { seniorityLevel: 'asc' }],
@@ -74,7 +74,9 @@ export class ProjectRolePlanService {
 
     // Auto-initialize from existing assignments if no plan exists
     if (entries.length === 0) {
-      const derived = await this.initializeFromAssignments(projectId);
+      // F-114 / D-103-write-path round 24 — thread actor through to the
+      // derivation path so initialized rows aren't NULL-audited.
+      const derived = await this.initializeFromAssignments(projectId, actorId);
       return derived.map((e) => this.toDto(e as any));
     }
 
@@ -82,7 +84,7 @@ export class ProjectRolePlanService {
   }
 
   /** Derive initial role plan from existing active/approved assignments + vendor engagements */
-  private async initializeFromAssignments(projectId: string): Promise<Array<{
+  private async initializeFromAssignments(projectId: string, actorId?: string): Promise<Array<{
     id: string; projectId: string; roleName: string; seniorityLevel: string | null;
     headcount: number; allocationPercent: Prisma.Decimal | null;
     plannedStartDate: Date | null; plannedEndDate: Date | null;
@@ -127,6 +129,9 @@ export class ProjectRolePlanService {
             headcount: data.count,
             allocationPercent: data.avgAlloc > 0 ? new Prisma.Decimal(Math.round(data.avgAlloc)) : null,
             source: 'INTERNAL',
+            // F-114 / D-103-write-path round 24 — actor-audit on derived entries.
+            createdByPersonId: actorId ?? null,
+            updatedByPersonId: actorId ?? null,
           },
         });
         created.push(entry);
@@ -138,7 +143,12 @@ export class ProjectRolePlanService {
     return created;
   }
 
-  public async upsertRolePlan(projectId: string, entries: UpsertRolePlanEntryDto[]): Promise<RolePlanEntryDto[]> {
+  public async upsertRolePlan(
+    projectId: string,
+    entries: UpsertRolePlanEntryDto[],
+    // F-114 / D-103-write-path round 24 — actor for createdBy/updatedBy.
+    actorId?: string,
+  ): Promise<RolePlanEntryDto[]> {
     const results: RolePlanEntryDto[] = [];
 
     for (const entry of entries) {
@@ -161,6 +171,8 @@ export class ProjectRolePlanService {
             requiredSkillIds: entry.requiredSkillIds ?? existing.requiredSkillIds,
             source: (entry.source as any) ?? existing.source,
             notes: entry.notes ?? existing.notes,
+            // F-114 / D-103-write-path — track the editor on every update.
+            updatedByPersonId: actorId ?? null,
           },
         });
         results.push(this.toDto(updated));
@@ -177,6 +189,9 @@ export class ProjectRolePlanService {
             requiredSkillIds: entry.requiredSkillIds ?? [],
             source: (entry.source as any) ?? 'INTERNAL',
             notes: entry.notes ?? null,
+            // F-114 / D-103-write-path — populate actor-audit cols on insert.
+            createdByPersonId: actorId ?? null,
+            updatedByPersonId: actorId ?? null,
           },
         });
         results.push(this.toDto(created));
