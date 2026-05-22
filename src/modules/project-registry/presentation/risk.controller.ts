@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RiskCategory, RiskStatus, RiskType } from '@prisma/client';
 
@@ -56,8 +56,11 @@ export class ProjectRiskController {
   public async create(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateProjectRiskDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.riskService.create(projectId, dto);
+    // F-123 / D-103-write-path round 33 — actor-audit threaded into all writes.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.riskService.create(projectId, dto, actorId);
   }
 
   // ── Parameterized :riskId routes ───────────────────────────────────────
@@ -70,8 +73,10 @@ export class ProjectRiskController {
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
     @Body() dto: UpdateProjectRiskDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.riskService.update(riskId, dto);
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.riskService.update(riskId, dto, actorId);
   }
 
   @Post(':id/risks/:riskId/convert-to-issue')
@@ -83,8 +88,10 @@ export class ProjectRiskController {
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
     @Body() dto: ConvertToIssueDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.riskService.convertToIssue(riskId, dto.assigneePersonId);
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.riskService.convertToIssue(riskId, dto.assigneePersonId, actorId);
   }
 
   @Post(':id/risks/:riskId/resolve')
@@ -95,8 +102,10 @@ export class ProjectRiskController {
   public async resolve(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.riskService.resolve(riskId);
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.riskService.resolve(riskId, actorId);
   }
 
   @Post(':id/risks/:riskId/close')
@@ -107,7 +116,9 @@ export class ProjectRiskController {
   public async close(
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('riskId', ParseUUIDPipe) riskId: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.riskService.close(riskId);
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.riskService.close(riskId, actorId);
   }
 }
