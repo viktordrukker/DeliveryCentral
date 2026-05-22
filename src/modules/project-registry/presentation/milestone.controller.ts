@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -28,8 +28,11 @@ export class MilestoneController {
   public async create(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: CreateMilestoneDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.service.create(projectId, dto);
+    // F-115 / D-103-write-path round 25 — actor-audit threaded into create.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.service.create(projectId, dto, actorId);
   }
 
   @Patch(':id/milestones/:milestoneId')
@@ -40,8 +43,11 @@ export class MilestoneController {
     @Param('id', ParseUUIDPipe) _projectId: string,
     @Param('milestoneId', ParseUUIDPipe) milestoneId: string,
     @Body() dto: UpdateMilestoneDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.service.update(milestoneId, dto);
+    // F-115 / D-103-write-path round 25 — actor-audit threaded into update.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.service.update(milestoneId, dto, actorId);
   }
 
   @Delete(':id/milestones/:milestoneId')

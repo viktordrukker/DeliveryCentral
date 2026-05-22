@@ -40,7 +40,12 @@ export class ProjectMilestoneService {
     return this.toDto(row);
   }
 
-  public async create(projectId: string, dto: CreateMilestoneDto): Promise<ProjectMilestoneDto> {
+  public async create(
+    projectId: string,
+    dto: CreateMilestoneDto,
+    // F-115 / D-103-write-path round 25 — actor for createdBy/updatedBy.
+    actorId?: string,
+  ): Promise<ProjectMilestoneDto> {
     if (!dto.name || dto.name.trim().length === 0) throw new BadRequestException('name is required');
     if (!dto.plannedDate) throw new BadRequestException('plannedDate is required');
 
@@ -51,12 +56,20 @@ export class ProjectMilestoneService {
         description: dto.description ?? null,
         plannedDate: new Date(dto.plannedDate),
         status: dto.status ?? MilestoneStatus.PLANNED,
+        // F-115 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
     return this.toDto(row);
   }
 
-  public async update(id: string, dto: UpdateMilestoneDto): Promise<ProjectMilestoneDto> {
+  public async update(
+    id: string,
+    dto: UpdateMilestoneDto,
+    // F-115 / D-103-write-path round 25 — actor for updatedBy.
+    actorId?: string,
+  ): Promise<ProjectMilestoneDto> {
     const existing = await this.prisma.projectMilestone.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Milestone not found.');
 
@@ -79,6 +92,8 @@ export class ProjectMilestoneService {
         ...(dto.dependsOnMilestoneIds !== undefined
           ? { dependsOnMilestoneIds: dto.dependsOnMilestoneIds }
           : {}),
+        // F-115 / D-103-write-path — track the editor on every update.
+        updatedByPersonId: actorId ?? null,
       },
     });
     return this.toDto(row);
