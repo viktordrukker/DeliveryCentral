@@ -7,6 +7,8 @@ import { CaseRecordRepositoryPort } from '../domain/repositories/case-record-rep
 interface CancelCaseCommand {
   caseId: string;
   reason: string;
+  // F-130 / D-103-write-path round 40 — actor for updatedByPersonId.
+  actorId?: string;
 }
 
 @Injectable()
@@ -26,6 +28,8 @@ export class CancelCaseService {
     }
 
     caseRecord.cancel(command.reason.trim());
+    // F-130 / D-103-write-path round 40 — stamp canceller before save.
+    caseRecord.setUpdatedBy(command.actorId);
     await this.caseRecordRepository.save(caseRecord);
 
     return caseRecord;

@@ -138,9 +138,14 @@ export class CasesController {
   @ApiOkResponse({ type: CaseResponseDto })
   @ApiNotFoundResponse({ description: 'Case not found.' })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
-  public async closeCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
+  public async closeCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
     try {
-      return this.casePresenter.presentSingle(await this.closeCaseService.execute(id));
+      // F-130 / D-103-write-path round 40 — thread actor into close.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return this.casePresenter.presentSingle(await this.closeCaseService.execute(id, actorId));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case close failed.';
       if (message === 'Case not found.') {
@@ -156,9 +161,14 @@ export class CasesController {
   @ApiOkResponse({ type: CaseResponseDto })
   @ApiNotFoundResponse({ description: 'Case not found.' })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
-  public async reopenCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
+  public async reopenCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
     try {
-      return this.casePresenter.presentSingle(await this.reopenCaseService.execute(id));
+      // F-130 / D-103-write-path round 40 — thread actor into reopen.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return this.casePresenter.presentSingle(await this.reopenCaseService.execute(id, actorId));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case reopen failed.';
       if (message === 'Case not found.') {
@@ -177,10 +187,13 @@ export class CasesController {
   public async cancelCase(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: CancelCaseRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<CaseResponseDto> {
     try {
+      // F-130 / D-103-write-path round 40 — thread actor into cancel.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
       return this.casePresenter.presentSingle(
-        await this.cancelCaseService.execute({ caseId: id, reason: request.reason }),
+        await this.cancelCaseService.execute({ caseId: id, reason: request.reason, actorId }),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case cancel failed.';
@@ -249,9 +262,14 @@ export class CasesController {
   @ApiOkResponse({ type: CaseResponseDto })
   @ApiNotFoundResponse({ description: 'Case not found.' })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
-  public async archiveCase(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
+  public async archiveCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
     try {
-      return this.casePresenter.presentSingle(await this.archiveCaseService.execute(id));
+      // F-130 / D-103-write-path round 40 — thread actor into archive.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return this.casePresenter.presentSingle(await this.archiveCaseService.execute(id, actorId));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Case archive failed.';
       if (message === 'Case not found.') {
