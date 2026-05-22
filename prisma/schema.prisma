@@ -652,6 +652,11 @@ model Person {
   updatedOnboardingTourProgress            OnboardingTourProgress[]            @relation("OnboardingTourProgressUpdatedBy")
   createdWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceCreatedBy")
   updatedWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceUpdatedBy")
+  // F-83 / D-103 + DM-5-5 round 32
+  createdProjectRagSnapshots               ProjectRagSnapshot[]                @relation("ProjectRagSnapshotCreatedBy")
+  updatedProjectRagSnapshots               ProjectRagSnapshot[]                @relation("ProjectRagSnapshotUpdatedBy")
+  createdCaseSteps                         CaseStep[]                          @relation("CaseStepCreatedBy")
+  updatedCaseSteps                         CaseStep[]                          @relation("CaseStepUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -1400,14 +1405,21 @@ model CaseStep {
   payload                   Json?
   createdAt                 DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt                 DateTime                 @updatedAt @db.Timestamptz(3)
+  // F-83 / D-103 + DM-5-5 round 32 — actor-audit columns.
+  createdByPersonId         String?                  @db.Uuid
+  updatedByPersonId         String?                  @db.Uuid
   caseRecord                CaseRecord               @relation(fields: [caseRecordId], references: [id], onDelete: Restrict)
   workflowStateDefinition   WorkflowStateDefinition? @relation(fields: [workflowStateDefinitionId], references: [id])
   assignedTo                Person?                  @relation("CaseStepAssignedTo", fields: [assignedToPersonId], references: [id])
+  createdByPerson           Person?                  @relation("CaseStepCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson           Person?                  @relation("CaseStepUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([caseRecordId, stepKey])
   @@index([caseRecordId])
   @@index([assignedToPersonId, status])
   @@index([workflowStateDefinitionId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("CaseStep")
 }
 
@@ -2934,13 +2946,21 @@ model ProjectRagSnapshot {
   recordedByPersonId  String                    @db.Uuid
   createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
+  // F-83 / D-103 + DM-5-5 round 32 — actor-audit columns. Distinct from
+  // `recordedByPersonId` (the recorder semantic); these track row mutations.
+  createdByPersonId   String?                   @db.Uuid
+  updatedByPersonId   String?                   @db.Uuid
   project             Project                   @relation(fields: [projectId], references: [id])
   overrides           ProjectRadiatorOverride[]
   recordedBy          Person                    @relation(fields: [recordedByPersonId], references: [id], onDelete: Restrict)
+  createdByPerson     Person?                   @relation("ProjectRagSnapshotCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?                   @relation("ProjectRagSnapshotUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([projectId, weekStarting])
   @@index([projectId, weekStarting])
   @@index([recordedByPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("project_rag_snapshots")
 }
 
