@@ -1244,6 +1244,10 @@ export class WorkforcePlannerService {
             status: 'PROPOSED',
             requestedAt: new Date(),
             notes: d.note ?? null,
+            // F-129 / D-103-write-path round 39 — planner-applied dispatch:
+            // the planner-execution actor is the canonical creator/editor.
+            createdByPersonId: request.actorId,
+            updatedByPersonId: request.actorId,
           },
         });
         assignmentsCreated++;
@@ -1293,6 +1297,8 @@ export class WorkforcePlannerService {
           data: {
             validTo: new Date(ext.newValidTo),
             notes: mergedNote.trim().length > 0 ? mergedNote : null,
+            // F-129 / D-103-write-path round 39 — track extension editor.
+            updatedByPersonId: request.actorId,
           },
         });
         extensionsUpdated++;
