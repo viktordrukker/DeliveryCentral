@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { NotificationChannel } from '../../../domain/entities/notification-channel.entity';
 import { NotificationDelivery } from '../../../domain/entities/notification-delivery.entity';
 import { NotificationRequest } from '../../../domain/entities/notification-request.entity';
@@ -7,7 +9,9 @@ export class NotificationsPrismaMapper {
   public static toNotificationChannel(record: {
     id: string;
     channelKey: string;
-    config: Record<string, unknown> | null;
+    // 20c-10 — widen to Prisma.JsonValue so the typed Gateway return passes
+    // through; the entity still receives a tightened Record<string, unknown>.
+    config: Prisma.JsonValue | null;
     displayName: string;
     isEnabled: boolean;
     kind: string;
@@ -15,7 +19,10 @@ export class NotificationsPrismaMapper {
     return NotificationChannel.create(
       {
         channelKey: record.channelKey,
-        config: record.config ?? undefined,
+        config:
+          record.config && typeof record.config === 'object' && !Array.isArray(record.config)
+            ? (record.config as Record<string, unknown>)
+            : undefined,
         displayName: record.displayName,
         isEnabled: record.isEnabled,
         kind: record.kind,
@@ -57,7 +64,10 @@ export class NotificationsPrismaMapper {
     failureReason: string | null;
     maxAttempts: number;
     nextAttemptAt: Date | null;
-    payload: Record<string, unknown>;
+    // 20c-10 — widen to Prisma.JsonValue (Prisma's actual return type for
+    // json columns) so the typed Gateway return passes through; cast on
+    // the entity side to the domain-expected shape.
+    payload: Prisma.JsonValue;
     recipient: string;
     requestedAt: Date;
     status: 'FAILED_TERMINAL' | 'QUEUED' | 'RETRYING' | 'SENT';
@@ -72,7 +82,10 @@ export class NotificationsPrismaMapper {
         failureReason: record.failureReason ?? undefined,
         maxAttempts: record.maxAttempts,
         nextAttemptAt: record.nextAttemptAt ?? undefined,
-        payload: record.payload,
+        payload:
+          record.payload && typeof record.payload === 'object' && !Array.isArray(record.payload)
+            ? (record.payload as Record<string, unknown>)
+            : {},
         recipient: record.recipient,
         requestedAt: record.requestedAt,
         status: record.status,

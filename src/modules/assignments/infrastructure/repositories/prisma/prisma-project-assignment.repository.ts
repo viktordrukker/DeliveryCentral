@@ -88,7 +88,10 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
     await gateway.create({
       data: {
         assignmentId: approval.assignmentId.value,
-        decision: approval.decisionState.value,
+        // 20c-10 — domain ApprovalStateValue ↔ Prisma ApprovalDecision are
+        // the same string union; cast through the Prisma input type so the
+        // typed Gateway accepts the value.
+        decision: approval.decisionState.value as Prisma.AssignmentApprovalCreateInput['decision'],
         decisionAt: approval.decisionAt ?? null,
         decisionReason: approval.decisionReason ?? null,
         decidedByPersonId: approval.decidedByPersonId ?? null,
@@ -104,6 +107,17 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
       throw new Error('Prisma assignment history gateway is not configured.');
     }
 
+    // 20c-10 — JSON snapshots → InputJsonValue for populated branches, JsonNull
+    // sentinel for empty.
+    const newSnapshot: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+      historyEntry.newSnapshot
+        ? (historyEntry.newSnapshot as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
+    const previousSnapshot: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+      historyEntry.previousSnapshot
+        ? (historyEntry.previousSnapshot as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
+
     await gateway.create({
       data: {
         assignmentId: historyEntry.assignmentId.value,
@@ -111,9 +125,9 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
         changeType: historyEntry.changeType,
         changedByPersonId: historyEntry.changedByPersonId ?? null,
         id: historyEntry.id,
-        newSnapshot: historyEntry.newSnapshot ?? null,
+        newSnapshot,
         occurredAt: historyEntry.occurredAt,
-        previousSnapshot: historyEntry.previousSnapshot ?? null,
+        previousSnapshot,
       },
     });
   }
@@ -135,7 +149,9 @@ export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepos
         ...(query.statuses?.length
           ? {
               status: {
-                in: query.statuses,
+                // 20c-10 — caller passes domain status strings; Prisma now wants
+                // the typed enum array. Both share the same string union.
+                in: query.statuses as Prisma.EnumAssignmentStatusFilter['in'],
               },
             }
           : {}),

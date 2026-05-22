@@ -49,7 +49,8 @@ export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkR
     await this.gateway.upsert({
       create: {
         id: aggregate.id,
-        accountPresenceState: aggregate.accountPresenceState ?? null,
+        // 20c-10 — domain string ↔ Prisma enum.
+        accountPresenceState: (aggregate.accountPresenceState ?? null) as Prisma.ExternalAccountLinkCreateInput['accountPresenceState'],
         externalAccountId: aggregate.externalAccountId,
         externalDisplayName: aggregate.externalDisplayName ?? null,
         externalEmail: aggregate.externalEmail ?? null,
@@ -58,18 +59,21 @@ export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkR
         matchedByStrategy: aggregate.matchedByStrategy ?? null,
         personId: aggregate.personId ?? null,
         provider: aggregate.provider,
-        sourceType: aggregate.sourceType,
+        // 20c-10 — domain string ↔ Prisma enum; same union, cast through.
+        sourceType: aggregate.sourceType as Prisma.ExternalAccountLinkCreateInput['sourceType'],
         sourceUpdatedAt: aggregate.sourceUpdatedAt ?? null,
       },
       update: {
-        accountPresenceState: aggregate.accountPresenceState ?? null,
+        // 20c-10 — domain string ↔ Prisma enum.
+        accountPresenceState: (aggregate.accountPresenceState ?? null) as Prisma.ExternalAccountLinkCreateInput['accountPresenceState'],
         externalDisplayName: aggregate.externalDisplayName ?? null,
         externalEmail: aggregate.externalEmail ?? null,
         externalUsername: aggregate.externalUsername ?? null,
         lastSeenAt: aggregate.lastSeenAt ?? null,
         matchedByStrategy: aggregate.matchedByStrategy ?? null,
         personId: aggregate.personId ?? null,
-        sourceType: aggregate.sourceType,
+        // 20c-10 — domain string ↔ Prisma enum; same union, cast through.
+        sourceType: aggregate.sourceType as Prisma.ExternalAccountLinkCreateInput['sourceType'],
         sourceUpdatedAt: aggregate.sourceUpdatedAt ?? null,
       },
       where: {

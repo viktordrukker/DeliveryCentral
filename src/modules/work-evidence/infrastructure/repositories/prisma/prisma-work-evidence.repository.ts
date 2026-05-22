@@ -91,11 +91,23 @@ export class PrismaWorkEvidenceRepository implements WorkEvidenceRepositoryPort 
       where: { id: aggregate.source.id },
     });
 
+    // 20c-10 — Prisma's nullable JSON input is `NullableJsonNullValueInput |
+    // InputJsonValue`. Cast through `Prisma.InputJsonValue` for populated
+    // values; `Prisma.JsonNull` sentinel for the empty branch.
+    const details: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+      aggregate.details !== undefined
+        ? (aggregate.details as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
+    const trace: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+      aggregate.trace !== undefined
+        ? (aggregate.trace as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
     await this.gateway.upsert({
       create: {
-        details: aggregate.details ?? null,
+        details,
         durationMinutes: aggregate.durationMinutes ?? null,
-        evidenceType: aggregate.evidenceType,
+        // 20c-10 — domain holds `string`; Prisma promoted to enum (DM-4-2).
+        evidenceType: aggregate.evidenceType as Prisma.WorkEvidenceCreateInput['evidenceType'],
         id: aggregate.id,
         occurredOn: aggregate.occurredOn ?? null,
         personId: aggregate.personId ?? null,
@@ -103,20 +115,21 @@ export class PrismaWorkEvidenceRepository implements WorkEvidenceRepositoryPort 
         recordedAt: aggregate.recordedAt,
         sourceRecordKey: aggregate.sourceRecordKey,
         summary: aggregate.summary ?? null,
-        trace: aggregate.trace ?? null,
+        trace,
         workEvidenceSourceId: aggregate.source.id,
       },
       update: {
-        details: aggregate.details ?? null,
+        details,
         durationMinutes: aggregate.durationMinutes ?? null,
-        evidenceType: aggregate.evidenceType,
+        // 20c-10 — domain holds `string`; Prisma promoted to enum (DM-4-2).
+        evidenceType: aggregate.evidenceType as Prisma.WorkEvidenceCreateInput['evidenceType'],
         occurredOn: aggregate.occurredOn ?? null,
         personId: aggregate.personId ?? null,
         projectId: aggregate.projectId ?? null,
         recordedAt: aggregate.recordedAt,
         sourceRecordKey: aggregate.sourceRecordKey,
         summary: aggregate.summary ?? null,
-        trace: aggregate.trace ?? null,
+        trace,
         workEvidenceSourceId: aggregate.source.id,
       },
       where: { id: aggregate.id },

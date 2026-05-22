@@ -44,6 +44,10 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
   }
 
   public async save(aggregate: NotificationRequest): Promise<void> {
+    // 20c-10 — domain entity holds `Record<string, unknown>`; Prisma's
+    // generated input is `Prisma.InputJsonValue`. Both are structural
+    // JSON objects; the cast preserves runtime shape.
+    const payload = aggregate.payload as Prisma.InputJsonValue;
     await this.gateway.upsert({
       create: {
         attemptCount: aggregate.attemptCount,
@@ -54,7 +58,7 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
         id: aggregate.id,
         maxAttempts: aggregate.maxAttempts,
         nextAttemptAt: aggregate.nextAttemptAt ?? null,
-        payload: aggregate.payload,
+        payload,
         recipient: aggregate.recipient,
         requestedAt: aggregate.requestedAt,
         status: aggregate.status,
@@ -66,7 +70,7 @@ export class PrismaNotificationRequestRepository implements NotificationRequestR
         failureReason: aggregate.failureReason ?? null,
         maxAttempts: aggregate.maxAttempts,
         nextAttemptAt: aggregate.nextAttemptAt ?? null,
-        payload: aggregate.payload,
+        payload,
         recipient: aggregate.recipient,
         status: aggregate.status,
       },

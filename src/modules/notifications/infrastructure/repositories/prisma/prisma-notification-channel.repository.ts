@@ -33,17 +33,25 @@ export class PrismaNotificationChannelRepository implements NotificationChannelR
   }
 
   public async save(aggregate: NotificationChannel): Promise<void> {
+    // 20c-10 — Prisma's nullable JSON input is `NullableJsonNullValueInput |
+    // InputJsonValue`. Domain `Record<string, unknown> | undefined` casts
+    // through `Prisma.InputJsonValue` for the populated branch; `null` for
+    // the empty branch uses Prisma's JsonNull sentinel.
+    const config: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+      aggregate.config !== undefined
+        ? (aggregate.config as Prisma.InputJsonValue)
+        : Prisma.JsonNull;
     await this.gateway.upsert({
       create: {
         id: aggregate.id,
         channelKey: aggregate.channelKey,
-        config: aggregate.config ?? null,
+        config,
         displayName: aggregate.displayName,
         isEnabled: aggregate.isEnabled,
         kind: aggregate.kind,
       },
       update: {
-        config: aggregate.config ?? null,
+        config,
         displayName: aggregate.displayName,
         isEnabled: aggregate.isEnabled,
         kind: aggregate.kind,
