@@ -336,8 +336,20 @@ export class StaffingProposalSlateService {
       startDate: request.startDate.toISOString(),
     });
 
-    // Increment fulfilment headcount; if it now meets the requirement, mark request FULFILLED.
-    const newHeadcount = Math.min(request.headcountFulfilled + 1, request.headcountRequired);
+    // D-95 — derive headcountFulfilled from the live assignment count
+    // instead of `+1` on the cached column. The cached counter drifted
+    // when subsequent cancellations didn't decrement it (BUG-SR-1 root
+    // cause). Counting BOOKED+ONBOARDING+ASSIGNED+ON_HOLD+COMPLETED
+    // assignments gives the truthful fill count. The freshly-created
+    // BOOKED assignment above is in this query window so we don't need
+    // a separate "+1 for the just-created row" adjustment.
+    const liveFilled = await this.prisma.projectAssignment.count({
+      where: {
+        staffingRequestId: request.id,
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED'] },
+      },
+    });
+    const newHeadcount = Math.min(liveFilled, request.headcountRequired);
     const nextStatus = newHeadcount >= request.headcountRequired ? 'FULFILLED' : request.status;
     await this.prisma.$transaction(async (tx) => {
       await this.slateRepository.save(slate, tx);
