@@ -261,12 +261,23 @@ export class InMemoryStaffingRequestService {
         assignedPersonId,
         proposedByPersonId,
         requestId: id,
+        // F-96 / D-103-write-path — actor on the fulfilment row is the
+        // proposer (the RM/PM who picked the candidate). Same value as
+        // proposedByPersonId today; canonical actor-audit semantic
+        // diverges if/when an admin acts on behalf.
+        createdByPersonId: proposedByPersonId,
+        updatedByPersonId: proposedByPersonId,
       },
     });
 
     const record = await this.prisma.staffingRequest.update({
       where: { id },
-      data: { headcountFulfilled: newFulfilled, status: newStatus },
+      data: {
+        headcountFulfilled: newFulfilled,
+        status: newStatus,
+        // F-96 / D-103-write-path — track who last touched the parent SR.
+        updatedByPersonId: proposedByPersonId,
+      },
       include: { fulfilments: true },
     });
     const projectName = await this.resolveProjectName(record.projectId);
