@@ -124,6 +124,11 @@ export class RequestBudgetChangeService {
           requestedByPersonId: command.actorId,
           requestedChange: requestedChange as Prisma.InputJsonValue,
           decisionReason: command.reason ?? null,
+          // F-108 / D-103-write-path — canonical actor-audit. Same value
+          // as requestedByPersonId at create-time; distinct semantic for
+          // future edits (decider on auto-approve, admin overrides etc.).
+          createdByPersonId: command.actorId,
+          updatedByPersonId: command.actorId,
           ...(autoApprove
             ? {
                 decidedByPersonId: command.actorId,

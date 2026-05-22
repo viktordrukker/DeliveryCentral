@@ -115,6 +115,8 @@ export class DecideBudgetChangeService {
           decidedByPersonId: command.actorId,
           decisionAt,
           decisionReason: command.reason ?? null,
+          // F-108 / D-103-write-path — track decider on every approval edit.
+          updatedByPersonId: command.actorId,
         },
       });
 
