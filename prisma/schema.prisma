@@ -662,6 +662,11 @@ model Person {
   updatedNotificationDeliveries            NotificationDelivery[]              @relation("NotificationDeliveryUpdatedBy")
   createdFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarCreatedBy")
   updatedFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarUpdatedBy")
+  // F-85 / D-103 + DM-5-5 round 34
+  createdPersonExternalIdentityLinks       PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkCreatedBy")
+  updatedPersonExternalIdentityLinks       PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkUpdatedBy")
+  createdTenants                           Tenant[]                            @relation("TenantCreatedBy")
+  updatedTenants                           Tenant[]                            @relation("TenantUpdatedBy")
   managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
   releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
   releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
@@ -729,14 +734,21 @@ model PersonExternalIdentityLink {
   createdAt               DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime  @updatedAt @db.Timestamptz(3)
   archivedAt              DateTime? @db.Timestamptz(3)
+  // F-85 / D-103 + DM-5-5 round 34 — actor-audit columns.
+  createdByPersonId       String?   @db.Uuid
+  updatedByPersonId       String?   @db.Uuid
   person                  Person    @relation(fields: [personId], references: [id])
   resolvedManager         Person?   @relation("PersonExternalIdentityResolvedManager", fields: [resolvedManagerPersonId], references: [id], onDelete: SetNull)
+  createdByPerson         Person?   @relation("PersonExternalIdentityLinkCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?   @relation("PersonExternalIdentityLinkUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([provider, externalUserId])
   @@unique([provider, personId])
   @@index([personId])
   @@index([externalPrincipalName])
   @@index([resolvedManagerPersonId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("PersonExternalIdentityLink")
 }
 
@@ -3699,13 +3711,18 @@ enum AggregateType {
 }
 
 model Tenant {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code        String    @unique
-  name        String
-  isActive    Boolean   @default(true)
-  suspendedAt DateTime? @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime  @default(now()) @db.Timestamptz(6)
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String    @unique
+  name              String
+  isActive          Boolean   @default(true)
+  suspendedAt       DateTime? @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @db.Timestamptz(6)
+  // F-85 / D-103 + DM-5-5 round 34 — actor-audit columns.
+  createdByPersonId String?   @db.Uuid
+  updatedByPersonId String?   @db.Uuid
+  createdByPerson   Person?   @relation("TenantCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?   @relation("TenantUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   AuditLog                  AuditLog[]
   CaseRecord                CaseRecord[]
@@ -3733,6 +3750,8 @@ model Tenant {
   TimesheetWeek             TimesheetWeek[]
   Vendor                    Vendor[]
 
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@map("Tenant")
 }
 
