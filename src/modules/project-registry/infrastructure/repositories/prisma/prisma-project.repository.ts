@@ -108,6 +108,10 @@ export class PrismaProjectRepository implements ProjectRepositoryPort {
           techStack: aggregate.techStack,
           version: aggregate.version,
           wouldStaffSameWay: aggregate.wouldStaffSameWay ?? null,
+          // F-126 / D-103-write-path round 36 — populate actor-audit
+          // cols on first insert (mirror F-118 ProjectAssignment).
+          createdByPersonId: aggregate.createdByPersonId ?? null,
+          updatedByPersonId: aggregate.updatedByPersonId ?? aggregate.createdByPersonId ?? null,
         },
       });
       return;
@@ -136,6 +140,8 @@ export class PrismaProjectRepository implements ProjectRepositoryPort {
         techStack: aggregate.techStack,
         version: nextVersion,
         wouldStaffSameWay: aggregate.wouldStaffSameWay ?? null,
+        // F-126 / D-103-write-path round 36 — track editor on every update.
+        updatedByPersonId: aggregate.updatedByPersonId ?? null,
       },
       where: {
         id: aggregate.id,

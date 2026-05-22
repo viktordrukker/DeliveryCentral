@@ -76,6 +76,8 @@ export class UpdateProjectService {
       name: command.name,
       status: command.status,
     });
+    // F-126 / D-103-write-path round 36 — stamp editor on every update.
+    project.setUpdatedBy(actor?.personId);
     await this.repository.save(project);
 
     // Manager reassignments are DB-level fields not covered by the domain entity today;
@@ -94,6 +96,8 @@ export class UpdateProjectService {
           ...(command.deliveryManagerId !== undefined
             ? { deliveryManagerId: command.deliveryManagerId }
             : {}),
+          // F-126 / D-103-write-path round 36 — also stamp manager-reassignment writes.
+          updatedByPersonId: actor?.personId ?? null,
         },
       });
       if (isPmReassignment) {

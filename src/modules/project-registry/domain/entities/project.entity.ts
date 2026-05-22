@@ -39,6 +39,11 @@ interface ProjectProps {
   techStack?: string[];
   version?: number;
   wouldStaffSameWay?: boolean;
+  // F-126 / D-103-write-path round 36 — actor-audit. Following the
+  // F-118 ProjectAssignment pattern: prop on entity + getter + setter,
+  // repository.save populates both branches.
+  createdByPersonId?: string;
+  updatedByPersonId?: string;
 }
 
 export class Project extends AggregateRoot<ProjectProps> {
@@ -193,6 +198,11 @@ export class Project extends AggregateRoot<ProjectProps> {
   public get tags(): string[] { return this.props.tags ?? []; }
   public get techStack(): string[] { return this.props.techStack ?? []; }
   public get wouldStaffSameWay(): boolean | undefined { return this.props.wouldStaffSameWay; }
+
+  /** F-126 / D-103-write-path round 36 — actor-audit getters + setter. */
+  public get createdByPersonId(): string | undefined { return this.props.createdByPersonId; }
+  public get updatedByPersonId(): string | undefined { return this.props.updatedByPersonId; }
+  public setUpdatedBy(actorId: string | undefined): void { this.props.updatedByPersonId = actorId; }
 
   public get version(): number {
     return this.props.version ?? 1;
