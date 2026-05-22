@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { Project } from '@src/modules/project-registry/domain/entities/project.entity';
 import { ProjectRepositoryPort } from '@src/modules/project-registry/domain/repositories/project-repository.port';
@@ -8,13 +9,11 @@ import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { ProjectRegistryPrismaMapper } from './project-registry-prisma.mapper';
 
-interface ProjectGateway {
-  create(args: any): Promise<unknown>;
-  delete(args: any): Promise<unknown>;
-  findMany(args?: any): Promise<any[]>;
-  findFirst(args: any): Promise<any | null>;
-  updateMany(args: any): Promise<{ count: number }>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type ProjectGateway = Pick<
+  Prisma.ProjectDelegate,
+  'create' | 'delete' | 'findMany' | 'findFirst' | 'updateMany'
+>;
 
 interface TxClientWithProject {
   project: ProjectGateway;

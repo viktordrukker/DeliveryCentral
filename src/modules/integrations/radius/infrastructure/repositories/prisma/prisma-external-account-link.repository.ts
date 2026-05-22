@@ -1,13 +1,14 @@
+import { Prisma } from '@prisma/client';
+
 import { ExternalAccountLink } from '../../../domain/entities/external-account-link.entity';
 import { ExternalAccountLinkRepositoryPort } from '../../../domain/repositories/external-account-link.repository.port';
 import { RadiusPrismaMapper } from './radius-prisma.mapper';
 
-interface ExternalAccountLinkGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type ExternalAccountLinkGateway = Pick<
+  Prisma.ExternalAccountLinkDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaExternalAccountLinkRepository implements ExternalAccountLinkRepositoryPort {
   public constructor(private readonly gateway: ExternalAccountLinkGateway) {}

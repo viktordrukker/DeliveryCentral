@@ -1,15 +1,15 @@
 import { Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { NotificationDelivery } from '../../../domain/entities/notification-delivery.entity';
 import { NotificationDeliveryRepositoryPort } from '../../../domain/repositories/notification-delivery-repository.port';
 import { NotificationsPrismaMapper } from './notifications-prisma.mapper';
 
-interface Gateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type Gateway = Pick<
+  Prisma.NotificationDeliveryDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 /**
  * F-6.2 / D-144 — hard caps to keep listAll() / listByRequestId() from

@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 import { AssignmentApproval } from '@src/modules/assignments/domain/entities/assignment-approval.entity';
 import { AssignmentHistory } from '@src/modules/assignments/domain/entities/assignment-history.entity';
 import { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
@@ -8,23 +10,21 @@ import { TransactionContext } from '@src/shared/domain/transaction-context';
 
 import { AssignmentsPrismaMapper } from './assignments-prisma.mapper';
 
-interface AssignmentGateway {
-  create(args: any): Promise<unknown>;
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  updateMany(args: any): Promise<{ count: number }>;
-}
+// 20c-10 — typed Prisma delegate slices.
+type AssignmentGateway = Pick<
+  Prisma.ProjectAssignmentDelegate,
+  'create' | 'delete' | 'findFirst' | 'findMany' | 'updateMany'
+>;
 
-interface AssignmentApprovalGateway {
-  create(args: any): Promise<unknown>;
-  findMany(args?: any): Promise<any[]>;
-}
+type AssignmentApprovalGateway = Pick<
+  Prisma.AssignmentApprovalDelegate,
+  'create' | 'findMany'
+>;
 
-interface AssignmentHistoryGateway {
-  create(args: any): Promise<unknown>;
-  findMany(args?: any): Promise<any[]>;
-}
+type AssignmentHistoryGateway = Pick<
+  Prisma.AssignmentHistoryDelegate,
+  'create' | 'findMany'
+>;
 
 interface TxClientWithAssignmentTables {
   projectAssignment?: AssignmentGateway;

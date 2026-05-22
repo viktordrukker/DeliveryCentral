@@ -1,13 +1,14 @@
+import { Prisma } from '@prisma/client';
+
 import { RadiusReconciliationRecord } from '../../../domain/entities/radius-reconciliation-record.entity';
 import { RadiusReconciliationRecordRepositoryPort } from '../../../domain/repositories/radius-reconciliation-record.repository.port';
 import { RadiusPrismaMapper } from './radius-prisma.mapper';
 
-interface RadiusReconciliationGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice.
+type RadiusReconciliationGateway = Pick<
+  Prisma.RadiusReconciliationRecordDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaRadiusReconciliationRecordRepository
   implements RadiusReconciliationRecordRepositoryPort

@@ -1,13 +1,17 @@
+import { Prisma } from '@prisma/client';
+
 import { M365DirectoryReconciliationRecord } from '../../../domain/entities/m365-directory-reconciliation-record.entity';
 import { M365DirectoryReconciliationRecordRepositoryPort } from '../../../domain/repositories/m365-directory-reconciliation-record.repository.port';
 import { M365PrismaMapper } from './m365-prisma.mapper';
 
-interface M365DirectoryReconciliationGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slice (replaces `args: any` / `Promise<any>`
+// gateway interface). `Pick` keeps the interface to the methods this
+// repository uses while inheriting Prisma's generated argument + return
+// types verbatim.
+type M365DirectoryReconciliationGateway = Pick<
+  Prisma.M365DirectoryReconciliationRecordDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
 export class PrismaM365DirectoryReconciliationRecordRepository
   implements M365DirectoryReconciliationRecordRepositoryPort

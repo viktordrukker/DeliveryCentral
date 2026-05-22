@@ -1,19 +1,18 @@
+import { Prisma } from '@prisma/client';
+
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 import { WorkEvidenceRepositoryPort } from '@src/modules/work-evidence/domain/repositories/work-evidence-repository.port';
 import { WorkEvidenceId } from '@src/modules/work-evidence/domain/value-objects/work-evidence-id';
 
 import { WorkEvidencePrismaMapper } from './work-evidence-prisma.mapper';
 
-interface WorkEvidenceGateway {
-  delete(args: any): Promise<unknown>;
-  findFirst(args?: any): Promise<any>;
-  findMany(args?: any): Promise<any[]>;
-  upsert(args: any): Promise<unknown>;
-}
+// 20c-10 — typed Prisma delegate slices.
+type WorkEvidenceGateway = Pick<
+  Prisma.WorkEvidenceDelegate,
+  'delete' | 'findFirst' | 'findMany' | 'upsert'
+>;
 
-interface WorkEvidenceSourceGateway {
-  upsert(args: any): Promise<unknown>;
-}
+type WorkEvidenceSourceGateway = Pick<Prisma.WorkEvidenceSourceDelegate, 'upsert'>;
 
 export class PrismaWorkEvidenceRepository implements WorkEvidenceRepositoryPort {
   public constructor(
