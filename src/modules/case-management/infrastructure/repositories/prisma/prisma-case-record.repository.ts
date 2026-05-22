@@ -88,6 +88,8 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         status: aggregate.status,
         subjectPersonId: aggregate.subjectPersonId,
         summary: aggregate.summary ?? null,
+        // F-93 / D-103-write-path — populate actor-audit col.
+        createdByPersonId: aggregate.createdByPersonId ?? null,
       },
       update: {
         caseNumber: aggregate.caseNumber,

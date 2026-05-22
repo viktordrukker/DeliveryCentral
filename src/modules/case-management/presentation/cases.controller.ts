@@ -69,9 +69,16 @@ export class CasesController {
   @ApiOperation({ summary: 'Create an onboarding case' })
   @ApiCreatedResponse({ type: CaseResponseDto })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
-  public async createCase(@Body() request: CreateCaseRequestDto): Promise<CaseResponseDto> {
+  public async createCase(
+    @Body() request: CreateCaseRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<CaseResponseDto> {
     try {
-      const caseRecord = await this.createCaseService.execute(request);
+      // F-93 / D-103-write-path — thread the request principal into the
+      // service command so the new CaseRecord row gets createdByPersonId.
+      const actorId =
+        httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      const caseRecord = await this.createCaseService.execute({ ...request, actorId });
       await this.completeCaseStepService.initializeSteps(caseRecord.id, caseRecord.caseType.key);
       return this.casePresenter.presentSingle(caseRecord);
     } catch (error) {
