@@ -201,6 +201,9 @@ export class RateCardAdminService {
           hourlyRate: new Prisma.Decimal(dto.hourlyRate),
           notes: dto.notes?.trim() || null,
           isActive: true,
+          // F-102 / D-103-write-path — admin actor on rate card entry create.
+          createdByPersonId: actorId,
+          updatedByPersonId: actorId,
         },
       });
 
@@ -241,6 +244,8 @@ export class RateCardAdminService {
     if (dto.hourlyRate !== undefined) data.hourlyRate = new Prisma.Decimal(dto.hourlyRate);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.notes !== undefined) data.notes = dto.notes;
+    // F-102 / D-103-write-path — track editor on every update.
+    data.updatedByPersonId = actorId;
 
     const updated = await this.prisma.rateCardEntry.update({
       where: { id: entry.id },
@@ -273,7 +278,12 @@ export class RateCardAdminService {
 
     const updated = await this.prisma.rateCardEntry.update({
       where: { id: entry.id },
-      data: { archivedAt: new Date(), isActive: false },
+      data: {
+        archivedAt: new Date(),
+        isActive: false,
+        // F-102 / D-103-write-path — record who archived it.
+        updatedByPersonId: actorId,
+      },
     });
 
     this.auditLogger?.record({
