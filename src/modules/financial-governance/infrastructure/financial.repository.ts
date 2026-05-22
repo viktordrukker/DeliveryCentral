@@ -116,6 +116,8 @@ export class FinancialRepository {
     fiscalYear: number;
     capexBudget: Prisma.Decimal;
     opexBudget: Prisma.Decimal;
+    // F-111 / D-103-write-path — optional actor for both create + update.
+    actorId?: string;
   }): Promise<{
     id: string;
     projectId: string;
@@ -130,10 +132,13 @@ export class FinancialRepository {
         fiscalYear: data.fiscalYear,
         capexBudget: data.capexBudget,
         opexBudget: data.opexBudget,
+        createdByPersonId: data.actorId ?? null,
+        updatedByPersonId: data.actorId ?? null,
       },
       update: {
         capexBudget: data.capexBudget,
         opexBudget: data.opexBudget,
+        updatedByPersonId: data.actorId ?? null,
       },
     });
   }
