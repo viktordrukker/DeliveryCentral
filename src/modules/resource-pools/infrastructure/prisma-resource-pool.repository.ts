@@ -103,7 +103,12 @@ export class PrismaResourcePoolRepository {
     return this.toRecord(pool);
   }
 
-  public async addMember(poolId: string, personId: string): Promise<ResourcePoolRecord | null> {
+  public async addMember(
+    poolId: string,
+    personId: string,
+    // F-120 / D-103-write-path round 30 — actor for membership create.
+    actorId?: string,
+  ): Promise<ResourcePoolRecord | null> {
     const pool = await this.prisma.resourcePool.findUnique({ where: { id: poolId } });
     if (!pool) return null;
 
@@ -117,6 +122,9 @@ export class PrismaResourcePoolRepository {
           personId,
           resourcePoolId: poolId,
           validFrom: new Date(),
+          // F-120 / D-103-write-path — populate actor-audit cols on insert.
+          createdByPersonId: actorId ?? null,
+          updatedByPersonId: actorId ?? null,
         },
       });
     }
@@ -124,7 +132,12 @@ export class PrismaResourcePoolRepository {
     return this.findById(poolId);
   }
 
-  public async removeMember(poolId: string, personId: string): Promise<ResourcePoolRecord | null> {
+  public async removeMember(
+    poolId: string,
+    personId: string,
+    // F-120 / D-103-write-path round 30 — actor for membership archive.
+    actorId?: string,
+  ): Promise<ResourcePoolRecord | null> {
     const pool = await this.prisma.resourcePool.findUnique({ where: { id: poolId } });
     if (!pool) return null;
 
@@ -135,7 +148,12 @@ export class PrismaResourcePoolRepository {
     if (membership) {
       await this.prisma.personResourcePoolMembership.update({
         where: { id: membership.id },
-        data: { archivedAt: new Date(), validTo: new Date() },
+        data: {
+          archivedAt: new Date(),
+          validTo: new Date(),
+          // F-120 / D-103-write-path — track the archiver on update.
+          updatedByPersonId: actorId ?? null,
+        },
       });
     }
 

@@ -74,7 +74,7 @@ export class InMemoryResourcePoolRepository {
     return pool;
   }
 
-  public addMember(poolId: string, personId: string): ResourcePoolRecord | null {
+  public addMember(poolId: string, personId: string, _actorId?: string): ResourcePoolRecord | null {
     const pool = this.pools.find((p) => p.id === poolId);
     if (!pool) return null;
     if (pool.members.some((m) => m.personId === personId)) return pool;
@@ -87,7 +87,7 @@ export class InMemoryResourcePoolRepository {
     return pool;
   }
 
-  public removeMember(poolId: string, personId: string): ResourcePoolRecord | null {
+  public removeMember(poolId: string, personId: string, _actorId?: string): ResourcePoolRecord | null {
     const pool = this.pools.find((p) => p.id === poolId);
     if (!pool) return null;
     pool.members = pool.members.filter((m) => m.personId !== personId);

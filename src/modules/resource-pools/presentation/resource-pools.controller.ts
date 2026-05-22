@@ -124,11 +124,14 @@ export class ResourcePoolsController {
   public async addMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: AddResourcePoolMemberRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ResourcePoolDto> {
     if (!request.personId?.trim()) {
       throw new BadRequestException('personId is required.');
     }
-    const pool = await this.repository.addMember(id, request.personId.trim());
+    // F-120 / D-103-write-path round 30 — actor-audit threaded into addMember.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    const pool = await this.repository.addMember(id, request.personId.trim(), actorId);
     if (!pool) throw new NotFoundException('Resource pool not found.');
     return this.toDto(pool);
   }
@@ -142,8 +145,11 @@ export class ResourcePoolsController {
   public async removeMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('personId') personId: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ResourcePoolDto> {
-    const pool = await this.repository.removeMember(id, personId);
+    // F-120 / D-103-write-path round 30 — actor-audit threaded into removeMember.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    const pool = await this.repository.removeMember(id, personId, actorId);
     if (!pool) throw new NotFoundException('Resource pool not found.');
     return this.toDto(pool);
   }
