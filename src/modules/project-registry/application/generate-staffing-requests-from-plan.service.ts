@@ -64,6 +64,10 @@ export class GenerateStaffingRequestsFromPlanService {
             priority: 'MEDIUM',
             status: 'OPEN',
             summary: `Auto-generated from role plan: ${row.roleName}${row.seniorityLevel ? ` (${row.seniorityLevel})` : ''}`,
+            // F-128 / D-103-write-path round 38 — generator-driven, the
+            // role-plan submitter is the canonical actor for the auto-created SR.
+            createdByPersonId: requestedByPersonId,
+            updatedByPersonId: requestedByPersonId,
           },
         });
         createdRequestIds.push(request.id);

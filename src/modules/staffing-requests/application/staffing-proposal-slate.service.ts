@@ -253,7 +253,11 @@ export class StaffingProposalSlateService {
 
     await this.prisma.staffingRequest.update({
       where: { id: request.id },
-      data: { status: 'IN_REVIEW' },
+      data: {
+        status: 'IN_REVIEW',
+        // F-128 / D-103-write-path round 38 — track acknowledger.
+        updatedByPersonId: input.actorId,
+      },
     });
 
     this.auditLogger?.record({
@@ -334,7 +338,12 @@ export class StaffingProposalSlateService {
       await this.slateRepository.save(slate, tx);
       await tx.staffingRequest.update({
         where: { id: request.id },
-        data: { headcountFulfilled: newHeadcount, status: nextStatus },
+        data: {
+          headcountFulfilled: newHeadcount,
+          status: nextStatus,
+          // F-128 / D-103-write-path round 38 — track picker.
+          updatedByPersonId: input.actorId,
+        },
       });
     });
 
@@ -401,6 +410,8 @@ export class StaffingProposalSlateService {
         data: {
           status: nextRequestStatus,
           cancelledAt: nextRequestStatus === 'CANCELLED' ? timestamp : null,
+          // F-128 / D-103-write-path round 38 — track rejecter.
+          updatedByPersonId: input.actorId,
         },
       });
     });
