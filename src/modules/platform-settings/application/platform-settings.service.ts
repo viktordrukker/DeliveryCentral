@@ -351,8 +351,20 @@ export class PlatformSettingsService {
 
     const updated = await this.prisma.platformSetting.upsert({
       where: { key },
-      update: { value: value as never, updatedBy: actorId ?? null },
-      create: { key, value: value as never, updatedBy: actorId ?? null },
+      update: {
+        value: value as never,
+        updatedBy: actorId ?? null,
+        // F-117 / D-103-write-path round 27 — actor-audit FK columns.
+        updatedByPersonId: actorId ?? null,
+      },
+      create: {
+        key,
+        value: value as never,
+        updatedBy: actorId ?? null,
+        // F-117 / D-103-write-path round 27 — populate both cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
+      },
     });
 
     this.auditLogger.record({
