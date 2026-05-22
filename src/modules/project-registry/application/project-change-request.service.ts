@@ -63,7 +63,18 @@ export class ProjectChangeRequestService {
     return this.toDto(row);
   }
 
-  public async create(projectId: string, dto: CreateChangeRequestDto): Promise<ProjectChangeRequestDto> {
+  // F-98 / D-103-write-path — create/update/approve/reject now thread the
+  // request principal as actor-audit. requesterPersonId/decidedByPersonId
+  // are domain-specific actors (the proposer + the decider); the canonical
+  // createdByPersonId/updatedByPersonId pair tracks row-mutation actors
+  // distinctly (matches the F-83 pattern for mutable aggregates with
+  // existing domain actors).
+
+  public async create(
+    projectId: string,
+    dto: CreateChangeRequestDto,
+    actorId?: string,
+  ): Promise<ProjectChangeRequestDto> {
     if (!dto.title || dto.title.trim().length === 0) throw new BadRequestException('title is required');
 
     const row = await this.prisma.projectChangeRequest.create({
@@ -77,12 +88,18 @@ export class ProjectChangeRequestService {
         impactSchedule: dto.impactSchedule ?? null,
         impactBudget: dto.impactBudget ?? null,
         requesterPersonId: dto.requesterPersonId ?? null,
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
     return this.toDto(row);
   }
 
-  public async update(id: string, dto: UpdateChangeRequestDto): Promise<ProjectChangeRequestDto> {
+  public async update(
+    id: string,
+    dto: UpdateChangeRequestDto,
+    actorId?: string,
+  ): Promise<ProjectChangeRequestDto> {
     const existing = await this.prisma.projectChangeRequest.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Change request not found.');
 
@@ -97,6 +114,7 @@ export class ProjectChangeRequestService {
         impactSchedule:
           dto.impactSchedule !== undefined ? dto.impactSchedule : existing.impactSchedule,
         impactBudget: dto.impactBudget !== undefined ? dto.impactBudget : existing.impactBudget,
+        updatedByPersonId: actorId ?? null,
       },
     });
     return this.toDto(row);
@@ -114,6 +132,8 @@ export class ProjectChangeRequestService {
         status: ChangeRequestStatus.APPROVED,
         decidedByPersonId,
         decidedAt: new Date(),
+        // Approver IS the canonical edit actor for this transition.
+        updatedByPersonId: decidedByPersonId,
       },
     });
     return this.toDto(row);
@@ -131,6 +151,7 @@ export class ProjectChangeRequestService {
         status: ChangeRequestStatus.REJECTED,
         decidedByPersonId,
         decidedAt: new Date(),
+        updatedByPersonId: decidedByPersonId,
       },
     });
     return this.toDto(row);
