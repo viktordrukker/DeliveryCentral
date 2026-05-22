@@ -409,8 +409,21 @@ export class ProjectRagService {
 
     const snapshot = await this.prisma.projectRagSnapshot.upsert({
       where: { projectId_weekStarting: { projectId, weekStarting } },
-      create: { projectId, weekStarting, ...commonData },
-      update: commonData,
+      create: {
+        projectId,
+        weekStarting,
+        ...commonData,
+        // F-125 / D-103-write-path round 35 — actor-audit cols on
+        // initial snapshot insert (recordedByPersonId is the recorder
+        // semantic; these track row mutations).
+        createdByPersonId: recordedByPersonId,
+        updatedByPersonId: recordedByPersonId,
+      },
+      update: {
+        ...commonData,
+        // F-125 / D-103-write-path — track the recorder on every edit.
+        updatedByPersonId: recordedByPersonId,
+      },
     });
 
     return this.snapshotToDto(snapshot);
