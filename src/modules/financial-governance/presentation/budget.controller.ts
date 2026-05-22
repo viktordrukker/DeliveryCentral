@@ -218,9 +218,12 @@ export class PersonCostRateController {
   public async setCostRate(
     @Param('id', ParseUUIDPipe) personId: string,
     @Body() dto: CreatePersonCostRateDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<PersonCostRateDto> {
     try {
-      return await this.service.createPersonCostRate(personId, dto);
+      // F-124 / D-103-write-path round 34 — actor-audit threaded.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return await this.service.createPersonCostRate(personId, dto, actorId);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Failed to set cost rate.',

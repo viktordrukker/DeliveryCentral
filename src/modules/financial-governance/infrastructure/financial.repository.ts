@@ -162,6 +162,9 @@ export class FinancialRepository {
     effectiveFrom: Date;
     hourlyRate: Prisma.Decimal;
     rateType: string;
+    // F-124 / D-103-write-path round 34 — actor for createdByPersonId
+    // (immutable row — no updatedByPersonId column on this aggregate).
+    actorId?: string;
   }): Promise<{
     id: string;
     personId: string;
@@ -173,8 +176,14 @@ export class FinancialRepository {
     // DM-4-2: rateType is now `PersonCostRateType` enum; cast the
     // string input via `as never` to keep the repo signature string-
     // typed for callers.
+    const { actorId, ...rest } = data;
     return this.prisma.personCostRate.create({
-      data: { ...data, rateType: data.rateType as never },
+      data: {
+        ...rest,
+        rateType: rest.rateType as never,
+        // F-124 / D-103-write-path — populate creator on insert.
+        createdByPersonId: actorId ?? null,
+      },
     });
   }
 
