@@ -19,8 +19,14 @@ export class ProjectRolePlanController {
   @ApiOperation({ summary: 'Get project role plan' })
   @ApiOkResponse({ description: 'Role plan entries.' })
   @RequireRoles(...STAFFING_ROLES)
-  public async getRolePlan(@Param('id', ParseUUIDPipe) projectId: string) {
-    return this.rolePlanService.getRolePlan(projectId);
+  public async getRolePlan(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ) {
+    // F-114 / D-103-write-path round 24 — actor-audit on the auto-initialized
+    // entries when the plan is empty on first read.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.rolePlanService.getRolePlan(projectId, actorId);
   }
 
   @Post(':id/role-plan')
@@ -31,8 +37,11 @@ export class ProjectRolePlanController {
   public async upsertRolePlan(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() entries: UpsertRolePlanEntryDto[],
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ) {
-    return this.rolePlanService.upsertRolePlan(projectId, entries);
+    // F-114 / D-103-write-path round 24 — actor-audit threaded into upsert.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+    return this.rolePlanService.upsertRolePlan(projectId, entries, actorId);
   }
 
   @Delete(':id/role-plan/:entryId')
