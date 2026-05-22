@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -73,15 +74,21 @@ export class ResourcePoolsController {
   @ApiOperation({ summary: 'Create a resource pool' })
   @ApiCreatedResponse({ type: ResourcePoolDto })
   @RequireRoles('resource_manager', 'admin')
-  public async createResourcePool(@Body() request: CreateResourcePoolRequestDto): Promise<ResourcePoolDto> {
+  public async createResourcePool(
+    @Body() request: CreateResourcePoolRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
+  ): Promise<ResourcePoolDto> {
     if (!request.code?.trim() || !request.name?.trim()) {
       throw new BadRequestException('Code and name are required.');
     }
+    // F-119 / D-103-write-path round 29 — actor-audit threaded into create.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
     const pool = await this.repository.create({
       code: request.code.trim(),
       description: request.description,
       name: request.name.trim(),
       orgUnitId: request.orgUnitId,
+      actorId,
     });
     return this.toDto(pool);
   }
@@ -95,10 +102,14 @@ export class ResourcePoolsController {
   public async updateResourcePool(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() request: UpdateResourcePoolRequestDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ResourcePoolDto> {
+    // F-119 / D-103-write-path round 29 — actor-audit threaded into update.
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
     const pool = await this.repository.update(id, {
       description: request.description,
       name: request.name,
+      actorId,
     });
     if (!pool) throw new NotFoundException('Resource pool not found.');
     return this.toDto(pool);

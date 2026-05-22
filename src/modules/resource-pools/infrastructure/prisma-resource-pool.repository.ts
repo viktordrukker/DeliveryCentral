@@ -44,6 +44,8 @@ export class PrismaResourcePoolRepository {
     description?: string;
     name: string;
     orgUnitId?: string;
+    // F-119 / D-103-write-path round 29 — actor for createdBy/updatedBy.
+    actorId?: string;
   }): Promise<ResourcePoolRecord> {
     const pool = await this.prisma.resourcePool.create({
       data: {
@@ -51,6 +53,9 @@ export class PrismaResourcePoolRepository {
         description: data.description ?? null,
         name: data.name,
         orgUnitId: data.orgUnitId ?? null,
+        // F-119 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: data.actorId ?? null,
+        updatedByPersonId: data.actorId ?? null,
       },
       include: {
         personMemberships: {
@@ -67,7 +72,12 @@ export class PrismaResourcePoolRepository {
 
   public async update(
     id: string,
-    changes: { description?: string; name?: string },
+    changes: {
+      description?: string;
+      name?: string;
+      // F-119 / D-103-write-path round 29 — actor for updatedBy.
+      actorId?: string;
+    },
   ): Promise<ResourcePoolRecord | null> {
     const existing = await this.prisma.resourcePool.findUnique({ where: { id } });
     if (!existing) return null;
@@ -77,6 +87,8 @@ export class PrismaResourcePoolRepository {
       data: {
         ...(changes.name !== undefined && { name: changes.name }),
         ...(changes.description !== undefined && { description: changes.description }),
+        // F-119 / D-103-write-path — track the editor on every update.
+        updatedByPersonId: changes.actorId ?? null,
       },
       include: {
         personMemberships: {
