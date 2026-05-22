@@ -163,7 +163,11 @@ export class VendorService {
     }));
   }
 
-  public async assignVendor(projectId: string, dto: CreateVendorEngagementDto): Promise<ProjectVendorEngagementDto> {
+  public async assignVendor(
+    projectId: string,
+    dto: CreateVendorEngagementDto,
+    actorId?: string,
+  ): Promise<ProjectVendorEngagementDto> {
     const vendor = await this.prisma.vendor.findUnique({ where: { id: dto.vendorId } });
     if (!vendor) throw new NotFoundException('Vendor not found.');
     if (!vendor.isActive) throw new BadRequestException('Cannot assign an inactive vendor.');
@@ -179,6 +183,9 @@ export class VendorService {
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         notes: dto.notes ?? null,
+        // F-100 / D-103-write-path — admin actor on engagement create.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
       include: { vendor: { select: { name: true } } },
     });
@@ -194,7 +201,11 @@ export class VendorService {
     };
   }
 
-  public async updateVendorEngagement(engagementId: string, dto: Partial<CreateVendorEngagementDto>): Promise<ProjectVendorEngagementDto> {
+  public async updateVendorEngagement(
+    engagementId: string,
+    dto: Partial<CreateVendorEngagementDto>,
+    actorId?: string,
+  ): Promise<ProjectVendorEngagementDto> {
     const e = await this.prisma.projectVendorEngagement.update({
       where: { id: engagementId },
       data: {
@@ -205,6 +216,8 @@ export class VendorService {
         ...(dto.startDate !== undefined ? { startDate: new Date(dto.startDate) } : {}),
         ...(dto.endDate !== undefined ? { endDate: new Date(dto.endDate) } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        // F-100 / D-103-write-path — track editor.
+        updatedByPersonId: actorId ?? null,
       },
       include: { vendor: { select: { name: true } } },
     });
@@ -220,10 +233,19 @@ export class VendorService {
     };
   }
 
-  public async endVendorEngagement(engagementId: string, status: 'COMPLETED' | 'TERMINATED' = 'COMPLETED'): Promise<ProjectVendorEngagementDto> {
+  public async endVendorEngagement(
+    engagementId: string,
+    status: 'COMPLETED' | 'TERMINATED' = 'COMPLETED',
+    actorId?: string,
+  ): Promise<ProjectVendorEngagementDto> {
     const e = await this.prisma.projectVendorEngagement.update({
       where: { id: engagementId },
-      data: { status, endDate: new Date() },
+      data: {
+        status,
+        endDate: new Date(),
+        // F-100 / D-103-write-path — track who ended the engagement.
+        updatedByPersonId: actorId ?? null,
+      },
       include: { vendor: { select: { name: true } } },
     });
 
