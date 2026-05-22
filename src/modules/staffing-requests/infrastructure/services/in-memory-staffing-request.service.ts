@@ -94,6 +94,11 @@ export class InMemoryStaffingRequestService {
         priority: command.priority,
         projectId: command.projectId,
         requestedByPersonId: command.requestedByPersonId,
+        // F-92 / D-103-write-path — actor-audit column added by F-68.
+        // In this flow the requester is the only available actor; if
+        // the controller starts distinguishing "admin acting on behalf"
+        // from "self-requested", swap this to the principal-derived id.
+        createdByPersonId: command.requestedByPersonId,
         role: command.role,
         skills: command.skills ?? [],
         startDate: new Date(command.startDate),
