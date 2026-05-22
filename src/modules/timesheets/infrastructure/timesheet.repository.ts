@@ -31,9 +31,19 @@ export class TimesheetRepository {
   public async createWeek(
     personId: string,
     weekStart: Date,
+    // F-113 / D-103-write-path round 23 — actor for `createdByPersonId` +
+    // `updatedByPersonId`. Optional for legacy callers; field stays NULL
+    // when omitted.
+    actorId?: string,
   ): Promise<TimesheetWeekWithEntries> {
     return this.prisma.timesheetWeek.create({
-      data: { personId, weekStart },
+      data: {
+        personId,
+        weekStart,
+        // F-113 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
+      },
       include: { entries: true },
     });
   }
@@ -41,14 +51,24 @@ export class TimesheetRepository {
   public async updateWeek(
     id: string,
     data: Prisma.TimesheetWeekUpdateInput,
+    // F-113 / D-103-write-path round 23 — actor for `updatedByPersonId`.
+    actorId?: string,
   ): Promise<TimesheetWeekWithEntries> {
     // FIXME(DATA-06): TimesheetWeek has a version field but updates don't use optimistic locking.
     // Compare with prisma-project-assignment.repository.ts:228 — the right pattern is updateMany
     // with `where: { id, version: aggregate.version }` + throw on count == 0. Apply once callers
     // are refactored to thread the current version through (currently service mutates by id only).
+    // F-113 / D-103-write-path — use the unchecked input variant so the
+    // scalar `updatedByPersonId` FK can be assigned directly alongside the
+    // caller's data. Typed as a const so Prisma's generic inference still
+    // resolves the entries-include on the return type.
+    const updateData: Prisma.TimesheetWeekUncheckedUpdateInput = {
+      ...(data as Prisma.TimesheetWeekUncheckedUpdateInput),
+      updatedByPersonId: actorId ?? null,
+    };
     return this.prisma.timesheetWeek.update({
       where: { id },
-      data,
+      data: updateData,
       include: { entries: true },
     });
   }

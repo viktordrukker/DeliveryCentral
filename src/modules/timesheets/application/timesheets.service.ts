@@ -91,7 +91,9 @@ export class TimesheetsService {
     let week = await this.repo.findWeekWithEntries(personId, weekDate);
 
     if (!week) {
-      week = await this.repo.createWeek(personId, weekDate);
+      // F-113 / D-103-write-path — personId IS the actor for self-served
+      // weeks. Admin-on-behalf would pass a different actor.
+      week = await this.repo.createWeek(personId, weekDate, personId);
     }
 
     return this.mapWeek(week);
@@ -105,7 +107,8 @@ export class TimesheetsService {
     let week = await this.repo.findWeekWithEntries(personId, weekDate);
 
     if (!week) {
-      week = await this.repo.createWeek(personId, weekDate);
+      // F-113 / D-103-write-path — personId IS the actor for self-entry.
+      week = await this.repo.createWeek(personId, weekDate, personId);
     }
 
     if (week.status === 'APPROVED') {
@@ -241,14 +244,19 @@ export class TimesheetsService {
     const standardHours = Math.min(totalHours, standardThreshold);
     const overtimeHours = Math.max(0, totalHours - standardThreshold);
 
-    const updated = await this.repo.updateWeek(week.id, {
-      status: 'SUBMITTED',
-      submittedAt: new Date(),
-      totalHours: new Prisma.Decimal(totalHours.toFixed(2)),
-      standardHours: new Prisma.Decimal(standardHours.toFixed(2)),
-      overtimeHours: new Prisma.Decimal(overtimeHours.toFixed(2)),
-      overtimeThreshold: standardThreshold,
-    });
+    const updated = await this.repo.updateWeek(
+      week.id,
+      {
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+        totalHours: new Prisma.Decimal(totalHours.toFixed(2)),
+        standardHours: new Prisma.Decimal(standardHours.toFixed(2)),
+        overtimeHours: new Prisma.Decimal(overtimeHours.toFixed(2)),
+        overtimeThreshold: standardThreshold,
+      },
+      // F-113 / D-103-write-path — personId is the actor for submit.
+      personId,
+    );
 
     return this.mapWeek(updated);
   }
@@ -267,11 +275,16 @@ export class TimesheetsService {
     if (week.status === 'APPROVED') {
       throw new BadRequestException('Cannot revoke an approved timesheet. Ask an admin to unlock it.');
     }
-    const updated = await this.repo.updateWeek(week.id, {
-      status: 'DRAFT',
-      submittedAt: null,
-      rejectedReason: null,
-    });
+    const updated = await this.repo.updateWeek(
+      week.id,
+      {
+        status: 'DRAFT',
+        submittedAt: null,
+        rejectedReason: null,
+      },
+      // F-113 / D-103-write-path — personId is the actor for revoke.
+      personId,
+    );
     return this.mapWeek(updated);
   }
 
@@ -332,11 +345,16 @@ export class TimesheetsService {
       );
     }
 
-    const updated = await this.repo.updateWeek(week.id, {
-      status: 'APPROVED',
-      approvedBy: approverId,
-      approvedAt: new Date(),
-    });
+    const updated = await this.repo.updateWeek(
+      week.id,
+      {
+        status: 'APPROVED',
+        approvedBy: approverId,
+        approvedAt: new Date(),
+      },
+      // F-113 / D-103-write-path — approver is the actor for approve.
+      approverId,
+    );
 
     void this.notificationEventTranslator?.timesheetApproved({
       weekId: week.id,
@@ -347,7 +365,14 @@ export class TimesheetsService {
     return this.mapWeek(updated);
   }
 
-  public async rejectWeek(weekId: string, dto: RejectTimesheetDto): Promise<TimesheetWeekDto> {
+  public async rejectWeek(
+    weekId: string,
+    dto: RejectTimesheetDto,
+    // F-113 / D-103-write-path round 23 — actor for `updatedByPersonId`.
+    // Optional for back-compat (existing tests call rejectWeek with 2 args);
+    // controller threads the principal personId.
+    rejecterId?: string,
+  ): Promise<TimesheetWeekDto> {
     const week = await this.repo.findWeekById(weekId);
 
     if (!week) {
@@ -360,10 +385,15 @@ export class TimesheetsService {
       );
     }
 
-    const updated = await this.repo.updateWeek(week.id, {
-      status: 'REJECTED',
-      rejectedReason: dto.reason,
-    });
+    const updated = await this.repo.updateWeek(
+      week.id,
+      {
+        status: 'REJECTED',
+        rejectedReason: dto.reason,
+      },
+      // F-113 / D-103-write-path — rejecter is the actor for reject.
+      rejecterId,
+    );
 
     void this.notificationEventTranslator?.timesheetRejected({
       weekId: week.id,

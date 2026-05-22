@@ -355,7 +355,15 @@ export class MonthlyTimesheetService {
       });
       if (!week) {
         week = await this.prisma.timesheetWeek.create({
-          data: { personId, weekStart, status: 'DRAFT' },
+          // F-113 / D-103-write-path — personId is the self-served actor
+          // for autoFill; on-behalf flows would override.
+          data: {
+            personId,
+            weekStart,
+            status: 'DRAFT',
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
+          },
         });
       }
       if (week.status !== 'DRAFT') continue; // Don't modify non-draft weeks
@@ -451,7 +459,15 @@ export class MonthlyTimesheetService {
       });
       if (!week) {
         week = await this.prisma.timesheetWeek.create({
-          data: { personId, weekStart, status: 'DRAFT' },
+          // F-113 / D-103-write-path — personId is the self-served actor
+          // for copyPrevious; on-behalf flows would override.
+          data: {
+            personId,
+            weekStart,
+            status: 'DRAFT',
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
+          },
         });
       }
       if (week.status !== 'DRAFT') continue;
