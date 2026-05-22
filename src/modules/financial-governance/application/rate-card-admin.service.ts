@@ -106,6 +106,9 @@ export class RateCardAdminService {
         isActive: true,
         notes: dto.notes?.trim() || null,
         tenantId: dto.tenantId ?? null,
+        // F-106 / D-103-write-path — admin actor on rate card create.
+        createdByPersonId: actorId,
+        updatedByPersonId: actorId,
       },
     });
 
@@ -143,6 +146,8 @@ export class RateCardAdminService {
         ...(dto.validTo !== undefined ? { validTo: dto.validTo ? new Date(dto.validTo) : null } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        // F-106 / D-103-write-path — track editor.
+        updatedByPersonId: actorId,
       },
     });
 
@@ -168,7 +173,12 @@ export class RateCardAdminService {
 
     const updated = await this.prisma.rateCard.update({
       where: { id },
-      data: { archivedAt: new Date(), isActive: false },
+      data: {
+        archivedAt: new Date(),
+        isActive: false,
+        // F-106 / D-103-write-path — record who archived.
+        updatedByPersonId: actorId,
+      },
     });
 
     this.auditLogger?.record({
