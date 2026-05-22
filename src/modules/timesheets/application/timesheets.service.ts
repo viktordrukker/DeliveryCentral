@@ -146,6 +146,9 @@ export class TimesheetsService {
       dto.benchCategory,
       dto.workLabel,
       dto.workItemId,
+      // F-94 / D-103-write-path — personId IS the actor for self-entry.
+      // When admin-on-behalf entry lands, swap this for the request principal.
+      personId,
     );
 
     return {

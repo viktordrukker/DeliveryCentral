@@ -63,6 +63,10 @@ export class TimesheetRepository {
     benchCategory?: string,
     workLabel?: string,
     workItemId?: string,
+    // F-94 / D-103-write-path — actor-id for createdByPersonId on insert
+    // and updatedByPersonId on edit. Optional for back-compat with
+    // legacy callers; field stays NULL when omitted.
+    actorId?: string,
   ): Promise<Prisma.TimesheetEntryGetPayload<Record<string, never>>> {
     const bench = benchCategory ?? '';
     const work = workLabel ?? '';
@@ -86,12 +90,17 @@ export class TimesheetRepository {
         benchCategory: bench,
         workLabel: work,
         workItemId: workItemId ?? null,
+        // F-94 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
       update: {
         hours,
         capex,
         description,
         workItemId: workItemId ?? null,
+        // F-94 / D-103-write-path — track the editor on every update.
+        updatedByPersonId: actorId ?? null,
       },
     });
   }
