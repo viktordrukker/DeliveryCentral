@@ -117,7 +117,12 @@ export class ProjectRiskService {
     }
   }
 
-  public async create(projectId: string, dto: CreateProjectRiskDto): Promise<ProjectRiskResponseDto> {
+  public async create(
+    projectId: string,
+    dto: CreateProjectRiskDto,
+    // F-123 / D-103-write-path round 33 — actor for createdBy/updatedBy.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw new NotFoundException('Project not found.');
 
@@ -140,13 +145,21 @@ export class ProjectRiskService {
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         lastReviewedAt: new Date(),
         reviewCadence: deriveRiskCadence(impact, probability),
+        // F-123 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
 
     return this.toResponseDto(risk);
   }
 
-  public async update(riskId: string, dto: UpdateProjectRiskDto): Promise<ProjectRiskResponseDto> {
+  public async update(
+    riskId: string,
+    dto: UpdateProjectRiskDto,
+    // F-123 / D-103-write-path round 33 — actor for updatedBy.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     const existing = await this.prisma.projectRisk.findUnique({ where: { id: riskId } });
     if (!existing) throw new NotFoundException('Risk not found.');
 
@@ -170,17 +183,27 @@ export class ProjectRiskService {
         ...(dto.dueDate !== undefined ? { dueDate: new Date(dto.dueDate) } : {}),
         lastReviewedAt: new Date(),
         ...(cadenceChanged ? { reviewCadence: deriveRiskCadence(nextImpact, nextProbability) } : {}),
+        // F-123 / D-103-write-path — track the editor on every update.
+        updatedByPersonId: actorId ?? null,
       },
     });
 
     return this.toResponseDto(risk);
   }
 
-  public async markReviewed(riskId: string): Promise<ProjectRiskResponseDto> {
+  public async markReviewed(
+    riskId: string,
+    // F-123 / D-103-write-path round 33 — actor for review stamping.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     await this.ensureRiskExists(riskId);
     const risk = await this.prisma.projectRisk.update({
       where: { id: riskId },
-      data: { lastReviewedAt: new Date() },
+      data: {
+        lastReviewedAt: new Date(),
+        // F-123 / D-103-write-path — track reviewer.
+        updatedByPersonId: actorId ?? null,
+      },
     });
     return this.toResponseDto(risk);
   }
@@ -208,7 +231,12 @@ export class ProjectRiskService {
     return this.toResponseDto(risk);
   }
 
-  public async convertToIssue(riskId: string, assigneePersonId: string): Promise<ProjectRiskResponseDto> {
+  public async convertToIssue(
+    riskId: string,
+    assigneePersonId: string,
+    // F-123 / D-103-write-path round 33 — actor for the conversion.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     const original = await this.prisma.projectRisk.findUnique({ where: { id: riskId } });
     if (!original) throw new NotFoundException('Risk not found.');
 
@@ -227,31 +255,55 @@ export class ProjectRiskService {
         ownerPersonId: original.ownerPersonId,
         assigneePersonId,
         convertedFromRiskId: original.id,
+        // F-123 / D-103-write-path — populate actor-audit cols on insert.
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
 
     await this.prisma.projectRisk.update({
       where: { id: riskId },
-      data: { status: 'CONVERTED_TO_ISSUE' },
+      data: {
+        status: 'CONVERTED_TO_ISSUE',
+        // F-123 / D-103-write-path — track the converter on the original risk.
+        updatedByPersonId: actorId ?? null,
+      },
     });
 
     return this.toResponseDto(issue);
   }
 
-  public async resolve(riskId: string): Promise<ProjectRiskResponseDto> {
+  public async resolve(
+    riskId: string,
+    // F-123 / D-103-write-path round 33 — actor for resolution.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     await this.ensureRiskExists(riskId);
     const risk = await this.prisma.projectRisk.update({
       where: { id: riskId },
-      data: { status: 'RESOLVED', resolvedAt: new Date() },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+        // F-123 / D-103-write-path — track the resolver.
+        updatedByPersonId: actorId ?? null,
+      },
     });
     return this.toResponseDto(risk);
   }
 
-  public async close(riskId: string): Promise<ProjectRiskResponseDto> {
+  public async close(
+    riskId: string,
+    // F-123 / D-103-write-path round 33 — actor for close.
+    actorId?: string,
+  ): Promise<ProjectRiskResponseDto> {
     await this.ensureRiskExists(riskId);
     const risk = await this.prisma.projectRisk.update({
       where: { id: riskId },
-      data: { status: 'CLOSED' },
+      data: {
+        status: 'CLOSED',
+        // F-123 / D-103-write-path — track the closer.
+        updatedByPersonId: actorId ?? null,
+      },
     });
     return this.toResponseDto(risk);
   }
