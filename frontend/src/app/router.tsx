@@ -73,12 +73,14 @@ import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
 import { IntegrationsPage } from '@/routes/integrations/IntegrationsPage';
 import { MetadataAdminPage } from '@/routes/metadata-admin/MetadataAdminPage';
 import { ManagerScopePage } from '@/routes/org/ManagerScopePage';
+import { BenchPage } from '@/routes/people/BenchPage';
 import { EmployeeDetailsPlaceholderPage } from '@/routes/people/EmployeeDetailsPlaceholderPage';
 import { EmployeeLifecycleAdminPage } from '@/routes/people/EmployeeLifecycleAdminPage';
 import { PeoplePage } from '@/routes/people/PeoplePage';
 import { ProjectDetailPage } from '@/routes/projects/ProjectDetailPage';
 import { ProjectsPage } from '@/routes/projects/ProjectsPage';
 import { CreateProjectPage } from '@/routes/projects/CreateProjectPage';
+import { PositionsListPage } from '@/routes/projects/PositionsListPage';
 import { PortfolioRadiatorPage } from '@/routes/dashboard/PortfolioRadiatorPage';
 import { OrganizationConfigPage } from '@/routes/admin/OrganizationConfigPage';
 import { RadiatorThresholdsPage } from '@/routes/admin/RadiatorThresholdsPage';
@@ -311,6 +313,9 @@ const dashboardChildren = [
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
   { element: <StaffingRequestsPage />, path: 'staffing-requests' },
+  // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
   {
     element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'staffing-board',
