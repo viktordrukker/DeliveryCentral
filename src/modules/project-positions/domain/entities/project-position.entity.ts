@@ -19,14 +19,14 @@ import {
  * with services in S2-3. This scaffold is sufficient for transition-matrix
  * unit tests and for the S2-3 service layer to compose against.
  */
-export type PositionFillSnapshot = {
+export interface PositionFillSnapshot {
   status: PositionFillStatusValue;
   activePersonId?: string;
   activeAllocationPercent?: number;
   activeValidFrom?: Date;
   activeValidTo?: Date;
   releaseReason?: string;
-};
+}
 
 interface ProjectPositionProps {
   projectId: string;
