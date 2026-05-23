@@ -47,9 +47,9 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
   const [filterCategory, setFilterCategory] = useState<RiskCategory | null>(null);
   const [filterStatus, setFilterStatus] = useState<RiskStatus | null>(null);
 
-  // Create form — GitHub #190: creation form now captures every field that the
-  // view/expanded row displays (Strategy, Strategy description, Damage Control
-  // Plan, Owner, Due date), so the create and view shapes match.
+  // Create form — GitHub issue 190: creation form now captures every field that
+  // the view/expanded row displays (Strategy, Strategy description, Damage
+  // Control Plan, Owner, Due date), so the create and view shapes match.
   const [showCreate, setShowCreate] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createDescription, setCreateDescription] = useState('');

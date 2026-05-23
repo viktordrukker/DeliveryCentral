@@ -29,7 +29,7 @@ interface MilestonesTabProps {
 
 const STATUS_OPTIONS: MilestoneStatus[] = ['PLANNED', 'IN_PROGRESS', 'HIT', 'MISSED'];
 
-// GitHub #195 — client-side sortable columns for the milestone register.
+// GitHub issue 195 — client-side sortable columns for the milestone register.
 type MilestoneSortKey = 'plannedDate' | 'actualDate' | 'name' | 'status';
 type SortDir = 'asc' | 'desc';
 const STATUS_RANK: Record<MilestoneStatus, number> = { PLANNED: 0, IN_PROGRESS: 1, HIT: 2, MISSED: 3 };
@@ -68,7 +68,7 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
 
   const [deleteTarget, setDeleteTarget] = useState<ProjectMilestoneDto | null>(null);
 
-  // GitHub #195 — sort state. Default = planned date ascending (matches backend).
+  // GitHub issue 195 — sort state. Default = planned date ascending (matches backend).
   const [sortKey, setSortKey] = useState<MilestoneSortKey>('plannedDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 

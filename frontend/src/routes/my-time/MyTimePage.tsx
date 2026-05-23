@@ -641,11 +641,10 @@ export function MyTimePage(): JSX.Element {
               ...projectWorkRows.map((r) => r.projectId),
             ]));
             if (projectIds.length === 0) {
-              // GitHub #174 — previously rendered a "+ Add line" trigger with scope='bench'
-              // here, which made the click land in the Bench Time section even though the
-              // button visually sat under PROJECT TIME. Drop the trigger entirely; the
-              // Bench section below has its own Add line, and an empty Project Time strip
-              // honestly reflects "no project assignments".
+              // GitHub issue 174 — previously rendered a "+ Add line" trigger with
+              // scope='bench' here, which made the click land in the Bench Time
+              // section even though the button visually sat under PROJECT TIME.
+              // Drop the trigger entirely; the Bench section has its own Add line.
               calendarRows.push({ kind: 'empty-project-hint', key: 'empty-no-project' });
             }
             for (const pid of projectIds) {
