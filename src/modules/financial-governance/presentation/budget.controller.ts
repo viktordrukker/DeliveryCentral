@@ -66,9 +66,13 @@ export class ProjectBudgetController {
   public async upsertBudget(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Body() dto: UpsertProjectBudgetDto,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string } },
   ): Promise<ProjectBudgetDto> {
     try {
-      return await this.service.upsertProjectBudget(projectId, dto);
+      // Sprint 4 / S4-5 — actor threads into the upsert so the
+      // auto-triggered BudgetApproval row carries `requestedByPersonId`.
+      const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId;
+      return await this.service.upsertProjectBudget(projectId, dto, actorId);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Failed to upsert project budget.',

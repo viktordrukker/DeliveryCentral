@@ -4,9 +4,12 @@ import { AuditLoggerService } from '@src/modules/audit-observability/application
 import { ResponsibilityResolverService } from '@src/modules/identity-access/application/responsibility-resolver.service';
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
+import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { BudgetApprovalAutoTriggerService } from './application/budget-approval-auto-trigger.service';
 import { DecideBudgetChangeService } from './application/decide-budget-change.service';
 import { EffectiveBillRateResolverService } from './application/effective-bill-rate-resolver.service';
 import { EvmComputationService } from './application/evm-computation.service';
@@ -22,7 +25,7 @@ import { AdminEvmController, ProjectEvmController } from './presentation/evm.con
 import { RateCardsAdminController } from './presentation/rate-cards-admin.controller';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, PlatformSettingsModule],
   controllers: [
     CapitalisationController,
     PeriodLocksController,
@@ -39,9 +42,18 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
       inject: [PrismaService],
     },
     {
+      provide: BudgetApprovalAutoTriggerService,
+      useFactory: (prisma: PrismaService, settings: PlatformSettingsService) =>
+        new BudgetApprovalAutoTriggerService(prisma, settings),
+      inject: [PrismaService, PlatformSettingsService],
+    },
+    {
       provide: FinancialService,
-      useFactory: (repo: FinancialRepository) => new FinancialService(repo),
-      inject: [FinancialRepository],
+      useFactory: (
+        repo: FinancialRepository,
+        autoTrigger: BudgetApprovalAutoTriggerService,
+      ) => new FinancialService(repo, undefined, autoTrigger),
+      inject: [FinancialRepository, BudgetApprovalAutoTriggerService],
     },
     {
       provide: RequestBudgetChangeService,
@@ -126,6 +138,7 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     FxRateService,
     FiscalCalendarService,
     EvmComputationService,
+    BudgetApprovalAutoTriggerService,
   ],
 })
 export class FinancialGovernanceModule {}
