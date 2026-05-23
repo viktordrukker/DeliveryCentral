@@ -1,5 +1,7 @@
 # Project Lifecycle
 
+> **PARTIALLY STALE — 2026-05-23 reconciliation note.** Core DRAFT → ACTIVE → CLOSED lifecycle below is intact. Missing: Phase PR-v1 (2026-04-18) added `ProjectMilestone`, `ProjectChangeRequest`, `ProjectRadiatorOverride`, `RadiatorThresholdConfig`, and 5 EVM columns on `ProjectBudget` (`plannedValue`, `earnedValue`, `actualCost`, `costVariance`, `scheduleVariance`). 16-axis PMBOK radar + portfolio rollup + PDF/PPTX export shipped. Project closure now exercises `ProjectClosureReadinessService` (budget variance + work hours). See [`docs/features/project-radiator.md`](../features/project-radiator.md) + [`docs/features/project-budget-evm.md`](../features/project-budget-evm.md).
+
 ## Scope
 
 Project creation establishes the internal project identity before any external integration linkage exists.

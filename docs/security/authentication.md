@@ -1,95 +1,101 @@
 # Authentication
 
+_Last reconciled: 2026-05-23 (post Sprint F-8). Auth strategy + identity surface have been substantially extended since the original 2026-04 doc._
+
 ## Scope
 
-The platform now resolves authenticated principals from signed bearer tokens instead of trusting caller-supplied identity headers.
+Authentication establishes who the caller is. Authorization is in [rbac.md](./rbac.md).
 
-This keeps authentication separate from RBAC:
+The platform supports **three identity sources** in production: local-account, OIDC (Entra-primary, IdP-agnostic), and LDAP / AD. All three converge on the same in-process `PrincipalModel` consumed by `RbacGuard` + `@AllowSelfScope` + `@ReadAction`.
 
-- authentication establishes who the caller is
-- RBAC decides what that caller is allowed to do
+## Identity sources
 
-## Runtime model
+### Local-account (default)
 
-Normal runtime expects:
+- `LocalAccount` Prisma model — email + bcrypt password hash + 2FA secret + lockout state.
+- `POST /api/auth/login` issues a signed JWT cookie + refresh token.
+- `POST /api/auth/password-reset/request` + `/api/auth/password-reset/confirm` — `PasswordResetToken` model (single-use, time-boxed).
+- 2FA TOTP enrollment + verify under `auth` controller.
+- `RefreshToken` model — rotated on refresh, revocable.
+- Bank-IT seed accounts at CLAUDE.md §10 (admin@deliverycentral.local + 7 role accounts in `it-company` profile).
 
-- `Authorization: Bearer <token>`
+### OIDC (D-155, Sprint F-4.4 / PR #44)
 
-Validated token fields:
+- `auth/oidc` controller — `/api/auth/oidc/login` + `/api/auth/oidc/callback`.
+- Entra-primary; provider-agnostic via standard OIDC discovery.
+- Bank-IT pivot decision (2026-05-10): OIDC is the primary IdP for bank installs.
+- Token claims validated: `iss`, `aud`, `sub`, `email`, group claims.
+- Group → role mapping: configured via `oidc.groupRoleMap` in `PlatformSetting`.
 
-- `iss`
-- `aud`
-- `sub`
-- `roles` or `platform_roles`
-- optional `person_id`
+### LDAP / AD (NEW C1-LDAP, Sprint F-4.7 / PR #47)
 
-Current implementation uses an HMAC-signed JWT boundary suitable for local and controlled deployment environments. The principal model is intentionally aligned with future OIDC-compatible provider integration so Entra/OIDC adoption can reuse the same RBAC layer.
+- `src/shared/ldap/ldap-directory-adapter.ts` (uses `ldapts` MIT package — see CLAUDE.md approved packages).
+- Pulls users + manager hierarchy + group membership.
+- Maps groups → platform roles via `ldap.groupRoleMap`.
+- Bind credentials in env (`LDAP_BIND_DN`, `LDAP_BIND_PASSWORD`) — never committed.
+- Schedule + cursor managed via `IntegrationSyncState` + appears in `/admin/integrations/registry`.
 
-## Configuration
+### M365 directory adapter
 
-Relevant env vars:
+- `src/modules/integrations/m365/directory/`.
+- Auto-provision: unmatched users create INACTIVE `Person` rows via `CreateEmployeeService`. Gated by `sso.autoProvisionUsers` (default ON; OFF routes unmatched users to UNMATCHED reconciliation for operator review — `M365DirectoryReconciliationRecord`). D-156, Sprint F-8.2.
 
-- `AUTH_ISSUER`
-- `AUTH_AUDIENCE`
-- `AUTH_JWT_SECRET`
-- `AUTH_ALLOW_TEST_HEADERS`
-- `AUTH_DEV_BOOTSTRAP_ENABLED`
-- `AUTH_DEV_BOOTSTRAP_USER_ID`
-- `AUTH_DEV_BOOTSTRAP_PERSON_ID`
-- `AUTH_DEV_BOOTSTRAP_ROLES`
+## Principal model
 
-Recommended defaults:
+`request.principal` shape (in-process):
 
-- keep `AUTH_ALLOW_TEST_HEADERS=false`
-- keep `AUTH_DEV_BOOTSTRAP_ENABLED=false` unless you deliberately want a non-production bootstrap identity
-
-## Local Docker token generation
-
-For local Docker-only development, mint a signed bearer token inside the backend container:
-
-```powershell
-docker compose run --rm backend npx ts-node --transpile-only --project tsconfig.json scripts/mint-auth-token.ts --subject local-admin --person-id 11111111-1111-1111-1111-111111111004 --roles admin
+```ts
+{
+  userId: string;           // LocalAccount.id or external sub
+  personId?: string;        // Person.id (may be unset for system / unmatched)
+  displayName: string;
+  email: string;
+  roles: PlatformRole[];    // see platform-role.ts (7 roles)
+  tenantId?: string;        // DM-7.5 — single-tenant install today
+  impersonatedBy?: { userId, displayName };  // when admin "View as" is active
+}
 ```
 
-Example with multiple roles:
+`PlatformRole` is the const tuple in `src/modules/identity-access/domain/platform-role.ts`:
 
-```powershell
-docker compose run --rm backend npx ts-node --transpile-only --project tsconfig.json scripts/mint-auth-token.ts --subject local-manager --person-id 11111111-1111-1111-1111-111111111005 --roles project_manager,director
+```ts
+['employee', 'project_manager', 'resource_manager', 'director',
+ 'hr_manager', 'delivery_manager', 'admin']
 ```
 
-Use the returned token as:
+"Dual-role" is a UX concept (user holding 2+ roles, e.g. RM+HR), not a separate role value.
 
-```text
-Authorization: Bearer <token>
-```
+## Impersonation overlay
 
-## Test-only fallback
+Admin "View as" feature: an active admin can overlay any other person's identity for read flows + UI checks. `useAuth()` in the frontend returns the impersonated `principal` transparently — all downstream code (dashboards, role guards, data hooks) automatically reflects the impersonated user. Original admin id surfaces as `impersonatedBy` for audit. See CLAUDE.md Pitfall #13.
 
-The old raw header path is retained only as an explicit non-production fallback:
+## JWT layer
 
-- `AUTH_ALLOW_TEST_HEADERS=true`
+- Cookies: `dc_access` (short-lived JWT) + `dc_refresh` (refresh token).
+- Server-side, `Authorization: Bearer <token>` headers are also accepted (useful for SDK / Swagger).
+- Signed with HMAC; key rotation via env (`AUTH_JWT_SECRET`).
+- Issuer / audience claims validated (`AUTH_ISSUER`, `AUTH_AUDIENCE`).
 
-When enabled, the backend can accept:
+## Environment
 
-- `x-platform-user-id`
-- `x-platform-roles`
+| Var | Purpose |
+|---|---|
+| `AUTH_JWT_SECRET` | HMAC signing key (rotate out-of-band) |
+| `AUTH_ISSUER` | Token issuer claim |
+| `AUTH_AUDIENCE` | Token audience claim |
+| `OIDC_ISSUER_URL` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | OIDC config (D-155) |
+| `LDAP_URL` / `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | LDAP / AD adapter (NEW C1-LDAP) |
 
-This path exists to keep narrow test scenarios practical. It must stay disabled in normal runtime.
+The legacy `AUTH_ALLOW_TEST_HEADERS` raw-header path described in the 2026-04 doc has been retired in normal runtime. Tests use minted bearer tokens or the dev-mode bootstrap.
 
-## Self-scope support
+## Setup wizard auth path
 
-The auth layer now supports optional self-scope metadata.
-
-This makes it possible to express policies like:
-
-- employee can access their own dashboard
-- HR/admin can access broader organizational views
-
-That scaffolding is available without changing the core RBAC model.
+The in-app `/setup` wizard (CLAUDE.md §10) is gated by a one-time `X-Setup-Token` (issued in `docker logs` at first boot). Operators paste it on first visit, then run through the 8 screens (preflight → migrations → tenant → admin → integrations → monitoring → seed → complete). Once the admin account is created, the setup token is invalidated.
 
 ## Security notes
 
-- never expose `AUTH_JWT_SECRET` in frontend code or browser-visible config
-- never rely on `x-platform-*` headers as real authentication in normal runtime
-- rotate shared secrets outside version control
-- keep production issuer/audience values environment-driven
+- Never expose `AUTH_JWT_SECRET` in frontend code or browser-visible config.
+- Never use raw `x-platform-*` headers as real authentication in normal runtime.
+- Rotate shared secrets outside version control.
+- Hash-chained `AuditLog` records every privileged action; D-167 v1 redact-payload (Sprint F-5.5) replaces PII fields after right-to-erasure requests.
+- Tenant isolation gaps tracked at D-153 / D-154 in MASTER_TRACKER (P0 for any future SaaS pivot; non-blocking for bank-IT single-tenant install).

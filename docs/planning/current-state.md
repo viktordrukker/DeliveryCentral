@@ -2,9 +2,9 @@
 
 This document summarizes the platform as it exists in code today, oriented to the **bank-IT supply/demand application** framing locked on 2026-05-10.
 
-For going-forward work, read [`NEXT_ITERATION_PLAN.md`](NEXT_ITERATION_PLAN.md) (master plan) + [`synthesis-themes.md`](synthesis-themes.md) (24-theme catalog). For outstanding work, [`MASTER_TRACKER.md`](MASTER_TRACKER.md). For the bank-IT 3-category re-categorization, [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md).
+**Roadmap source-of-truth:** [`MASTER_TRACKER.md`](MASTER_TRACKER.md) (live execution tracker) + [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md) (bank-IT pivot strategic plan, Cat-1/Cat-2/Cat-3). For the thematic index, [`synthesis-themes.md`](synthesis-themes.md) (24 themes). For doc topology, [`README.md`](README.md). Superseded pre-pivot roadmaps (`NEXT_ITERATION_PLAN.md`, `ULTIMATE_ANALYSIS_AND_PLAN.md`, `master-plan.md`) moved to `docs/archive/2026-05-23/`.
 
-_Last updated: 2026-05-15 (Sprint F-8 Cat-1 Residuals in flight — PR #71 integrations registry shipped (NEW C1-INT-FRAMEWORK), PR #72 M365 auto-provision gate (D-156). Doc sweep marks D-93 period-locks FE, D-114 audit log admin page, D-116 work-evidence self-scope, D-155 OIDC handler, NEW C1-LDAP as shipped per earlier sprints. Previous: Sprint F-7 Locale-Agnostic Finalization COMPLETE — PRs #64–#70. Sprint F-6 (Stability + Perf Ratchets) PRs #57–#63. Sprint F-5 (RBAC + Governance) PRs #49–#56._
+_Last updated: 2026-05-23 (doc cleanup pass — pointer fix to remove stale "master plan" reference; cumulative sprint state: F-2..F-11 closed per MASTER_TRACKER status table; Cat-1 stack shipped end-to-end through F-8; F-9 hardening + F-10/F-11 obsolete sweep + customization L1 closed 2026-05-16; F-12+ D-103-write-path + dictionary migrations in flight per memory)._
 
 ---
 
