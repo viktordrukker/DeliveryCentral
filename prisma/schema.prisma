@@ -3839,6 +3839,8 @@ enum AggregateType {
   Contact
   BudgetApproval
   Migration
+  // Sprint 2 / S2-7 — lean staffing aggregate (S2-1).
+  ProjectPosition
 }
 
 model Tenant {

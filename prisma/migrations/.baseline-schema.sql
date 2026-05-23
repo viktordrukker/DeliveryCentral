@@ -69,7 +69,8 @@ CREATE TYPE public."AggregateType" AS ENUM (
     'Migration',
     'ProjectChangeRequest',
     'ProjectMilestone',
-    'ProjectRadiatorOverride'
+    'ProjectRadiatorOverride',
+    'ProjectPosition'
 );
 
 
