@@ -621,6 +621,7 @@ export function MyTimePage(): JSX.Element {
               | { kind: 'data'; key: string; row: GridRow }
               | { kind: 'add-trigger'; key: string; scope: 'bench' | 'overtime' | { project: string }; tone?: 'warning' }
               | { kind: 'add-draft'; key: string }
+              | { kind: 'empty-project-hint'; key: string }
               | { kind: 'leave'; key: string; type: string }
               | { kind: 'footer-day-total'; key: string }
               | { kind: 'footer-gap'; key: string };
@@ -640,7 +641,12 @@ export function MyTimePage(): JSX.Element {
               ...projectWorkRows.map((r) => r.projectId),
             ]));
             if (projectIds.length === 0) {
-              calendarRows.push({ kind: 'add-trigger', key: 'add-no-project', scope: 'bench' });
+              // GitHub #174 — previously rendered a "+ Add line" trigger with scope='bench'
+              // here, which made the click land in the Bench Time section even though the
+              // button visually sat under PROJECT TIME. Drop the trigger entirely; the
+              // Bench section below has its own Add line, and an empty Project Time strip
+              // honestly reflects "no project assignments".
+              calendarRows.push({ kind: 'empty-project-hint', key: 'empty-no-project' });
             }
             for (const pid of projectIds) {
               const auto = projectAutoRows.find((r) => r.projectId === pid);
@@ -939,6 +945,18 @@ export function MyTimePage(): JSX.Element {
                           letterSpacing: '0.05em',
                         }}>
                           {cr.label}
+                        </div>
+                      );
+                    }
+                    if (cr.kind === 'empty-project-hint') {
+                      return (
+                        <div style={{
+                          padding: '6px 8px 6px 32px',
+                          color: 'var(--color-text-muted)',
+                          fontSize: 11,
+                          fontStyle: 'italic',
+                        }}>
+                          No active project assignments — log non-project hours in Bench Time below.
                         </div>
                       );
                     }
