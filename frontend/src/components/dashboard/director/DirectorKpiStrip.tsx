@@ -2,8 +2,18 @@ import { Link } from 'react-router-dom';
 
 import { Sparkline } from '@/components/charts/Sparkline';
 import { TipBalloon } from '@/components/common/TipBalloon';
-import { tc } from '@/lib/threshold';
-import type { PortfolioSummaryResponse } from '@/lib/api/portfolio';
+import type { PortfolioSummaryResponse } from '@/lib/api/portfolio-dashboard';
+
+function tc(val: number, warn: number, danger: number, higherIsBad = true): string {
+  if (higherIsBad) {
+    if (val >= danger) return 'var(--color-status-danger)';
+    if (val >= warn) return 'var(--color-status-warning)';
+    return 'var(--color-status-active)';
+  }
+  if (val <= danger) return 'var(--color-status-danger)';
+  if (val <= warn) return 'var(--color-status-warning)';
+  return 'var(--color-status-active)';
+}
 
 interface DirectorSummary {
   activeProjectCount: number;
