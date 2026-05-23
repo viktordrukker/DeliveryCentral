@@ -4,7 +4,7 @@
 
 
 -- Dumped from database version 16.13
--- Dumped by pg_dump version 16.13
+-- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -66,7 +66,10 @@ CREATE TYPE public."AggregateType" AS ENUM (
     'EmploymentEvent',
     'Contact',
     'BudgetApproval',
-    'Migration'
+    'Migration',
+    'ProjectChangeRequest',
+    'ProjectMilestone',
+    'ProjectRadiatorOverride'
 );
 
 
@@ -163,7 +166,8 @@ CREATE TYPE public."CaseTypeKey" AS ENUM (
     'ONBOARDING',
     'PERFORMANCE',
     'TRANSFER',
-    'OVERTIME_EXCEPTION'
+    'OVERTIME_EXCEPTION',
+    'EMPLOYEE_ISSUE'
 );
 
 
@@ -253,13 +257,25 @@ CREATE TYPE public."ExternalAccountSourceType" AS ENUM (
 
 
 --
+-- Name: IdempotencyKeyStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."IdempotencyKeyStatus" AS ENUM (
+    'PENDING',
+    'COMPLETED',
+    'FAILED'
+);
+
+
+--
 -- Name: LeaveRequestStatus; Type: TYPE; Schema: public; Owner: -
 --
 
 CREATE TYPE public."LeaveRequestStatus" AS ENUM (
     'PENDING',
     'APPROVED',
-    'REJECTED'
+    'REJECTED',
+    'CANCELLED'
 );
 
 
@@ -270,10 +286,12 @@ CREATE TYPE public."LeaveRequestStatus" AS ENUM (
 CREATE TYPE public."LeaveRequestType" AS ENUM (
     'ANNUAL',
     'SICK',
+    'PARENTAL',
+    'COMPASSIONATE',
+    'UNPAID',
     'OTHER',
     'OT_OFF',
     'PERSONAL',
-    'PARENTAL',
     'BEREAVEMENT',
     'STUDY'
 );
@@ -322,20 +340,6 @@ CREATE TYPE public."MilestoneStatus" AS ENUM (
 
 
 --
--- Name: NotificationChannelKind; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public."NotificationChannelKind" AS ENUM (
-    'EMAIL',
-    'SMS',
-    'IN_APP',
-    'PUSH',
-    'SLACK',
-    'WEBHOOK'
-);
-
-
---
 -- Name: NotificationDeliveryStatus; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -356,19 +360,6 @@ CREATE TYPE public."NotificationRequestStatus" AS ENUM (
     'SENT',
     'FAILED_TERMINAL',
     'RETRYING'
-);
-
-
---
--- Name: NotificationStatus; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public."NotificationStatus" AS ENUM (
-    'PENDING',
-    'SENT',
-    'DELIVERED',
-    'FAILED',
-    'READ'
 );
 
 
@@ -417,6 +408,79 @@ CREATE TYPE public."PersonEmploymentStatus" AS ENUM (
 
 
 --
+-- Name: PersonReleaseStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."PersonReleaseStatus" AS ENUM (
+    'PENDING_APPROVAL',
+    'APPROVED',
+    'REJECTED',
+    'CANCELLED',
+    'COMPLETED'
+);
+
+
+--
+-- Name: ProjectActivationDecision; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ProjectActivationDecision" AS ENUM (
+    'APPROVED',
+    'REJECTED'
+);
+
+
+--
+-- Name: ProjectPositionCandidateDecision; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ProjectPositionCandidateDecision" AS ENUM (
+    'PENDING',
+    'PICKED',
+    'DECLINED',
+    'AUTO_DECLINED'
+);
+
+
+--
+-- Name: ProjectPositionFillChangeType; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ProjectPositionFillChangeType" AS ENUM (
+    'DRAFTED',
+    'OPENED',
+    'PROPOSED',
+    'BOOKED',
+    'ONBOARDED',
+    'ASSIGNED',
+    'HELD',
+    'RELEASED',
+    'CANDIDATES_ADDED',
+    'CANDIDATE_PICKED',
+    'CANDIDATE_DECLINED',
+    'RATE_PINNED',
+    'ALLOCATION_CHANGED',
+    'DATES_CHANGED'
+);
+
+
+--
+-- Name: ProjectPositionFillStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ProjectPositionFillStatus" AS ENUM (
+    'DRAFT',
+    'OPEN',
+    'PROPOSED',
+    'BOOKED',
+    'ONBOARDING',
+    'ASSIGNED',
+    'ON_HOLD',
+    'RELEASED'
+);
+
+
+--
 -- Name: ProjectPriority; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -450,7 +514,8 @@ CREATE TYPE public."ProjectStatus" AS ENUM (
     'ON_HOLD',
     'COMPLETED',
     'ARCHIVED',
-    'CLOSED'
+    'CLOSED',
+    'PENDING_APPROVAL'
 );
 
 
@@ -462,6 +527,16 @@ CREATE TYPE public."RagRating" AS ENUM (
     'GREEN',
     'AMBER',
     'RED'
+);
+
+
+--
+-- Name: ReleaseApprovalDecision; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ReleaseApprovalDecision" AS ENUM (
+    'APPROVED',
+    'REJECTED'
 );
 
 
@@ -485,6 +560,48 @@ CREATE TYPE public."ReportingLineType" AS ENUM (
     'DOTTED_LINE',
     'FUNCTIONAL',
     'PROJECT'
+);
+
+
+--
+-- Name: ResponsibilityActionKind; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ResponsibilityActionKind" AS ENUM (
+    'PROJECT_ACTIVATION_APPROVAL',
+    'BUDGET_CHANGE_APPROVAL',
+    'ASSIGNMENT_DIRECTOR_APPROVAL',
+    'ASSIGNMENT_OVERRIDE_APPROVAL',
+    'PERSON_RELEASE_HR_APPROVAL',
+    'PERSON_RELEASE_DIRECTOR_APPROVAL',
+    'PROJECT_CLOSE_APPROVAL'
+);
+
+
+--
+-- Name: ResponsibilityResolutionMode; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ResponsibilityResolutionMode" AS ENUM (
+    'ROLE',
+    'PERSON',
+    'PM_SOLO',
+    'SKIP'
+);
+
+
+--
+-- Name: ResponsibilityScope; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."ResponsibilityScope" AS ENUM (
+    'TENANT',
+    'ORG_UNIT',
+    'CLIENT',
+    'PROJECT',
+    'PROJECT_TYPE',
+    'THRESHOLD_AMOUNT',
+    'ROLE_GRADE'
 );
 
 
@@ -559,6 +676,32 @@ CREATE TYPE public."RolePlanSource" AS ENUM (
     'INTERNAL',
     'VENDOR',
     'EITHER'
+);
+
+
+--
+-- Name: SetupRunLogLevel; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."SetupRunLogLevel" AS ENUM (
+    'TRACE',
+    'DEBUG',
+    'INFO',
+    'WARN',
+    'ERROR'
+);
+
+
+--
+-- Name: SetupRunStatus; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."SetupRunStatus" AS ENUM (
+    'PENDING',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'FAILED',
+    'ROLLED_BACK'
 );
 
 
@@ -1159,7 +1302,9 @@ CREATE TABLE public."AssignmentApproval" (
     "decisionReason" text,
     "decisionAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1195,7 +1340,15 @@ CREATE TABLE public."AuditLog" (
     "prevHash" text,
     "rowHash" text,
     "chainSeq" bigint NOT NULL,
-    "tenantId" uuid
+    "tenantId" uuid,
+    CONSTRAINT "AuditLog_chainSeq_positive_check" CHECK (("chainSeq" > 0)),
+    CONSTRAINT "AuditLog_correlationId_maxlen_check" CHECK ((("correlationId" IS NULL) OR (length("correlationId") <= 256))),
+    CONSTRAINT "AuditLog_createdAt_not_future_check" CHECK (("createdAt" <= (now() + '01:00:00'::interval))),
+    CONSTRAINT "AuditLog_eventName_maxlen_check" CHECK ((length("eventName") <= 256)),
+    CONSTRAINT "AuditLog_eventName_nonempty_check" CHECK ((length("eventName") > 0)),
+    CONSTRAINT "AuditLog_payload_is_object_check" CHECK ((jsonb_typeof(payload) = 'object'::text)),
+    CONSTRAINT "AuditLog_prevHash_shape_check" CHECK ((("prevHash" IS NULL) OR ("prevHash" ~ '^[0-9a-f]{64}$'::text))),
+    CONSTRAINT "AuditLog_rowHash_shape_check" CHECK ((("rowHash" IS NULL) OR ("rowHash" ~ '^[0-9a-f]{64}$'::text)))
 );
 
 
@@ -1227,7 +1380,8 @@ CREATE TABLE public."CaseParticipant" (
     "caseRecordId" uuid NOT NULL,
     "personId" uuid NOT NULL,
     role public."CaseParticipantRole" NOT NULL,
-    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -1253,7 +1407,9 @@ CREATE TABLE public."CaseRecord" (
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
     "tenantId" uuid,
-    version integer DEFAULT 1 NOT NULL
+    version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1273,7 +1429,9 @@ CREATE TABLE public."CaseStep" (
     "completedAt" timestamp(3) with time zone,
     payload jsonb,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1289,7 +1447,9 @@ CREATE TABLE public."CaseType" (
     "workflowDefinitionId" uuid,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1302,7 +1462,8 @@ CREATE TABLE public."Currency" (
     name text NOT NULL,
     "minorUnit" integer DEFAULT 2 NOT NULL,
     "isDefault" boolean DEFAULT false NOT NULL,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -1325,7 +1486,9 @@ CREATE TABLE public."CustomFieldDefinition" (
     "isEnabled" boolean DEFAULT true NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1341,7 +1504,9 @@ CREATE TABLE public."CustomFieldValue" (
     value jsonb NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1441,7 +1606,9 @@ CREATE TABLE public."EntityLayoutDefinition" (
     "layoutSchema" jsonb NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1499,7 +1666,9 @@ CREATE TABLE public."IntegrationSyncState" (
     "lastStatus" public."SyncStatus" DEFAULT 'IDLE'::public."SyncStatus" NOT NULL,
     "lastError" text,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1524,7 +1693,9 @@ CREATE TABLE public."LocalAccount" (
     "mustChangePw" boolean DEFAULT false NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "tenantId" uuid
+    "tenantId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1552,7 +1723,9 @@ CREATE TABLE public."M365DirectoryReconciliationRecord" (
     "lastSeenAt" timestamp(3) with time zone,
     "lastEvaluatedAt" timestamp(3) with time zone NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1570,7 +1743,9 @@ CREATE TABLE public."MetadataDictionary" (
     "isSystemManaged" boolean DEFAULT false NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1588,35 +1763,9 @@ CREATE TABLE public."MetadataEntry" (
     "isEnabled" boolean DEFAULT true NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
-);
-
-
---
--- Name: Notification; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public."Notification" (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    "recipientPersonId" uuid NOT NULL,
-    "channelKind" public."NotificationChannelKind" NOT NULL,
-    "eventType" text NOT NULL,
-    title text NOT NULL,
-    body text,
-    link text,
-    payload jsonb,
-    status public."NotificationStatus" DEFAULT 'PENDING'::public."NotificationStatus" NOT NULL,
-    "sentAt" timestamp with time zone,
-    "deliveredAt" timestamp with time zone,
-    "readAt" timestamp with time zone,
-    "failedAt" timestamp with time zone,
-    "failureReason" text,
-    "providerId" text,
-    "providerMessageId" text,
-    "correlationId" text,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1632,7 +1781,9 @@ CREATE TABLE public."NotificationChannel" (
     "isEnabled" boolean DEFAULT true NOT NULL,
     config jsonb,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1654,7 +1805,9 @@ CREATE TABLE public."NotificationDelivery" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "attemptNumber" integer DEFAULT 1 NOT NULL,
-    "nextAttemptAt" timestamp(3) with time zone
+    "nextAttemptAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1677,7 +1830,9 @@ CREATE TABLE public."NotificationRequest" (
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "attemptCount" integer DEFAULT 0 NOT NULL,
     "maxAttempts" integer DEFAULT 1 NOT NULL,
-    "nextAttemptAt" timestamp(3) with time zone
+    "nextAttemptAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1696,7 +1851,9 @@ CREATE TABLE public."NotificationTemplate" (
     "isSystemManaged" boolean DEFAULT true NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1720,6 +1877,8 @@ CREATE TABLE public."OrgUnit" (
     "deletedAt" timestamp(3) with time zone,
     "tenantId" uuid,
     version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "OrgUnit_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
 
@@ -1740,7 +1899,10 @@ CREATE TABLE public."OutboxEvent" (
     "availableAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "publishedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "tenantId" uuid
+    "tenantId" uuid,
+    attempts integer DEFAULT 0 NOT NULL,
+    "lastError" text,
+    "createdByPersonId" uuid
 );
 
 
@@ -1782,10 +1944,7 @@ CREATE TABLE public."Person" (
     location text,
     timezone text,
     "tenantId" uuid,
-    version integer DEFAULT 1 NOT NULL,
-    "gradeId" uuid,
-    "jobRoleId" uuid,
-    "locationId" uuid
+    version integer DEFAULT 1 NOT NULL
 );
 
 
@@ -1809,7 +1968,9 @@ CREATE TABLE public."PersonExternalIdentityLink" (
     "lastSeenAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -1828,6 +1989,8 @@ CREATE TABLE public."PersonOrgMembership" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "PersonOrgMembership_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
 
@@ -1845,6 +2008,8 @@ CREATE TABLE public."PersonResourcePoolMembership" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "PersonResourcePoolMembership_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
 
@@ -1866,6 +2031,8 @@ CREATE TABLE public."Position" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "Position_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
 
@@ -1887,30 +2054,29 @@ CREATE TABLE public."Project" (
     "archivedAt" timestamp(3) with time zone,
     "deletedAt" timestamp(3) with time zone,
     "projectManagerId" uuid,
-    version integer DEFAULT 1 NOT NULL,
     "clientId" uuid,
     "deliveryManagerId" uuid,
-    domain text,
     "engagementModel" public."EngagementModel",
-    "lessonsLearned" text,
-    "outcomeRating" text,
-    priority public."ProjectPriority" DEFAULT 'MEDIUM'::public."ProjectPriority",
     "projectType" text,
-    tags text[] DEFAULT ARRAY[]::text[],
+    priority public."ProjectPriority" DEFAULT 'MEDIUM'::public."ProjectPriority",
+    domain text,
     "techStack" text[] DEFAULT ARRAY[]::text[],
+    tags text[] DEFAULT ARRAY[]::text[],
+    "outcomeRating" text,
+    "lessonsLearned" text,
     "wouldStaffSameWay" boolean,
+    version integer DEFAULT 1 NOT NULL,
     "baselineEndsOn" timestamp(3) with time zone,
     "forecastEndsOn" timestamp(3) with time zone,
     "criticalPathFloatDays" integer,
     "baselineRequirements" integer,
     shape public."ProjectShape" DEFAULT 'STANDARD'::public."ProjectShape" NOT NULL,
     "programId" uuid,
-    "leadPmPersonId" uuid,
     "settingsOverride" jsonb DEFAULT '{}'::jsonb NOT NULL,
     "hasLiveSpcRates" boolean DEFAULT false NOT NULL,
     "tenantId" uuid,
-    "domainId" uuid,
-    "projectTypeId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "Project_startsOn_before_endsOn_check" CHECK ((("endsOn" IS NULL) OR ("startsOn" IS NULL) OR ("startsOn" <= "endsOn")))
 );
 
@@ -1950,6 +2116,13 @@ CREATE TABLE public."ProjectAssignment" (
     "slaStage" public."AssignmentSlaStage",
     "slaDueAt" timestamp(3) with time zone,
     "slaBreachedAt" timestamp(3) with time zone,
+    "appliedRateCardEntryId" uuid,
+    "effectiveBillRate" numeric(10,2),
+    "effectiveBillCurrency" character varying(3),
+    "slaWarnedAt50pct" timestamp(3) with time zone,
+    "slaWarnedAt75pct" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "ProjectAssignment_allocationPercent_range_check" CHECK ((("allocationPercent" IS NULL) OR (("allocationPercent" >= (0)::numeric) AND ("allocationPercent" <= (100)::numeric)))),
     CONSTRAINT "ProjectAssignment_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
@@ -1971,7 +2144,102 @@ CREATE TABLE public."ProjectExternalLink" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
-    "lastSeenAt" timestamp(3) with time zone
+    "lastSeenAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: ProjectPosition; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."ProjectPosition" (
+    id uuid NOT NULL,
+    "publicId" character varying(32),
+    "projectId" uuid NOT NULL,
+    "workstreamId" uuid,
+    role text NOT NULL,
+    skills text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    summary text,
+    "requiredAllocationPercent" numeric(5,2) NOT NULL,
+    "startDate" date NOT NULL,
+    "endDate" date NOT NULL,
+    priority public."StaffingRequestPriority" DEFAULT 'MEDIUM'::public."StaffingRequestPriority" NOT NULL,
+    "requestedByPersonId" uuid,
+    "fillStatus" public."ProjectPositionFillStatus" DEFAULT 'DRAFT'::public."ProjectPositionFillStatus" NOT NULL,
+    "activePersonId" uuid,
+    "activeAllocationPercent" numeric(5,2),
+    "activeValidFrom" timestamp(3) with time zone,
+    "activeValidTo" timestamp(3) with time zone,
+    "onboardingDate" timestamp(3) with time zone,
+    notes text,
+    "requiresDirectorApproval" boolean DEFAULT false NOT NULL,
+    "slaStage" public."AssignmentSlaStage",
+    "slaDueAt" timestamp(3) with time zone,
+    "slaBreachedAt" timestamp(3) with time zone,
+    "slaWarnedAt50pct" timestamp(3) with time zone,
+    "slaWarnedAt75pct" timestamp(3) with time zone,
+    "appliedRateCardEntryId" uuid,
+    "effectiveBillRate" numeric(10,2),
+    "effectiveBillCurrency" character varying(3),
+    "rejectionReason" text,
+    "rejectionReasonCode" text,
+    "cancellationReason" text,
+    "onHoldReason" text,
+    "onHoldCaseId" uuid,
+    "releaseReason" text,
+    version integer DEFAULT 1 NOT NULL,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
+    "archivedAt" timestamp(3) with time zone,
+    "tenantId" uuid,
+    "legacyStaffingRequestId" uuid,
+    "legacyAssignmentId" uuid
+);
+
+
+--
+-- Name: ProjectPositionCandidate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."ProjectPositionCandidate" (
+    id uuid NOT NULL,
+    "positionId" uuid NOT NULL,
+    "candidatePersonId" uuid NOT NULL,
+    rank integer NOT NULL,
+    "matchScore" numeric(6,3) NOT NULL,
+    "availabilityPercent" numeric(5,2),
+    "mismatchedSkills" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    rationale text,
+    decision public."ProjectPositionCandidateDecision" DEFAULT 'PENDING'::public."ProjectPositionCandidateDecision" NOT NULL,
+    "decidedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: ProjectPositionFillHistory; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."ProjectPositionFillHistory" (
+    id uuid NOT NULL,
+    "positionId" uuid NOT NULL,
+    "changeType" public."ProjectPositionFillChangeType" NOT NULL,
+    "changedByPersonId" uuid,
+    "changeReason" text,
+    "previousPersonId" uuid,
+    "newPersonId" uuid,
+    "previousStatus" public."ProjectPositionFillStatus",
+    "newStatus" public."ProjectPositionFillStatus",
+    "previousSnapshot" jsonb,
+    "newSnapshot" jsonb,
+    "occurredAt" timestamp(3) with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -1997,7 +2265,9 @@ CREATE TABLE public."RadiusReconciliationRecord" (
     "lastSeenAt" timestamp(3) with time zone,
     "lastEvaluatedAt" timestamp(3) with time zone NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2033,6 +2303,8 @@ CREATE TABLE public."ReportingLine" (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "ReportingLine_validFrom_before_validTo_check" CHECK ((("validTo" IS NULL) OR ("validFrom" <= "validTo")))
 );
 
@@ -2049,7 +2321,9 @@ CREATE TABLE public."ResourcePool" (
     description text,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2069,7 +2343,9 @@ CREATE TABLE public."StaffingRequestProposalCandidate" (
     decision public."StaffingRequestProposalCandidateDecision" DEFAULT 'PENDING'::public."StaffingRequestProposalCandidateDecision" NOT NULL,
     "decidedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2086,7 +2362,9 @@ CREATE TABLE public."StaffingRequestProposalSlate" (
     "expiresAt" timestamp(3) with time zone,
     "decidedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2101,7 +2379,9 @@ CREATE TABLE public."Tenant" (
     "isActive" boolean DEFAULT true NOT NULL,
     "suspendedAt" timestamp with time zone,
     "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2128,7 +2408,9 @@ CREATE TABLE public."WorkEvidence" (
     "archivedAt" timestamp(3) with time zone,
     capex boolean DEFAULT false NOT NULL,
     "tenantId" uuid,
-    version integer DEFAULT 1 NOT NULL
+    version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2143,7 +2425,8 @@ CREATE TABLE public."WorkEvidenceLink" (
     "externalKey" text NOT NULL,
     "externalUrl" text,
     "linkType" public."WorkEvidenceLinkType" NOT NULL,
-    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -2159,7 +2442,9 @@ CREATE TABLE public."WorkEvidenceSource" (
     "displayName" text NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2177,7 +2462,9 @@ CREATE TABLE public."WorkflowDefinition" (
     definition jsonb,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "archivedAt" timestamp(3) with time zone
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2195,7 +2482,9 @@ CREATE TABLE public."WorkflowStateDefinition" (
     "isTerminal" boolean DEFAULT false NOT NULL,
     "validationSchema" jsonb,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2225,12 +2514,14 @@ CREATE TABLE public.budget_approvals (
     status public."BudgetApprovalStatus" DEFAULT 'PENDING'::public."BudgetApprovalStatus" NOT NULL,
     "requestedByPersonId" uuid NOT NULL,
     "decidedByPersonId" uuid,
-    "decisionAt" timestamp with time zone,
+    "decisionAt" timestamp(3) with time zone,
     "decisionReason" text,
-    "requestedAt" timestamp with time zone DEFAULT now() NOT NULL,
+    "requestedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
     "requestedChange" jsonb,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2261,7 +2552,9 @@ CREATE TABLE public.clients (
     "isActive" boolean DEFAULT true NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "tenantId" uuid
+    "tenantId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2277,8 +2570,10 @@ CREATE TABLE public.contacts (
     value text NOT NULL,
     "isPrimary" boolean DEFAULT false NOT NULL,
     verified boolean DEFAULT false NOT NULL,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2371,24 +2666,117 @@ CREATE TABLE public.employment_events (
     "occurredOn" date NOT NULL,
     reason text,
     "recordedByPersonId" uuid,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL
 );
 
 
 --
--- Name: grades; Type: TABLE; Schema: public; Owner: -
+-- Name: fiscal_calendars; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.grades (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    code text NOT NULL,
-    label text NOT NULL,
-    description text,
-    "sortOrder" integer DEFAULT 0 NOT NULL,
-    "archivedAt" timestamp with time zone,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+CREATE TABLE public.fiscal_calendars (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    "fiscalYear" integer NOT NULL,
+    "startDate" date NOT NULL,
+    "endDate" date NOT NULL,
+    "regionCode" text,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: fiscal_periods; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fiscal_periods (
+    id uuid NOT NULL,
+    "calendarId" uuid NOT NULL,
+    "periodNumber" integer NOT NULL,
+    quarter integer NOT NULL,
+    "startDate" date NOT NULL,
+    "endDate" date NOT NULL,
+    label text,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "createdByPersonId" uuid
+);
+
+
+--
+-- Name: fx_rates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fx_rates (
+    id uuid NOT NULL,
+    "fromCurrency" character varying(3) NOT NULL,
+    "toCurrency" character varying(3) NOT NULL,
+    rate numeric(18,8) NOT NULL,
+    "asOf" date NOT NULL,
+    source text,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "createdByPersonId" uuid
+);
+
+
+--
+-- Name: help_articles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.help_articles (
+    id uuid NOT NULL,
+    slug text NOT NULL,
+    title text NOT NULL,
+    summary text NOT NULL,
+    body text NOT NULL,
+    tags text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    "isPublished" boolean DEFAULT false NOT NULL,
+    "authorPersonId" uuid,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: help_feedback; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.help_feedback (
+    id uuid NOT NULL,
+    "articleId" uuid NOT NULL,
+    "actorPersonId" uuid,
+    "wasHelpful" boolean NOT NULL,
+    comment text,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: help_tips; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.help_tips (
+    id uuid NOT NULL,
+    key text NOT NULL,
+    "routePath" text NOT NULL,
+    title text NOT NULL,
+    body text NOT NULL,
+    "articleId" uuid,
+    "displayOrder" integer DEFAULT 100 NOT NULL,
+    "isActive" boolean DEFAULT true NOT NULL,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2423,6 +2811,26 @@ CREATE TABLE public.honeypot_alerts (
 
 
 --
+-- Name: idempotency_keys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.idempotency_keys (
+    id uuid NOT NULL,
+    idempotency_key text NOT NULL,
+    method text NOT NULL,
+    path text NOT NULL,
+    actor_id uuid,
+    request_hash text NOT NULL,
+    status public."IdempotencyKeyStatus" DEFAULT 'PENDING'::public."IdempotencyKeyStatus" NOT NULL,
+    response_status integer,
+    response_body jsonb,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    completed_at timestamp(3) with time zone,
+    expires_at timestamp(3) with time zone NOT NULL
+);
+
+
+--
 -- Name: in_app_notifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2435,25 +2843,10 @@ CREATE TABLE public.in_app_notifications (
     link text,
     "readAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
-    "tenantId" uuid
-);
-
-
---
--- Name: job_roles; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.job_roles (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    code text NOT NULL,
-    label text NOT NULL,
-    description text,
-    "archivedAt" timestamp with time zone,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "tenantId" uuid,
+    "createdByPersonId" uuid
 );
 
 
@@ -2470,7 +2863,9 @@ CREATE TABLE public.leave_balances (
     used numeric(5,1) DEFAULT 0 NOT NULL,
     pending numeric(5,1) DEFAULT 0 NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2490,28 +2885,13 @@ CREATE TABLE public.leave_requests (
     "reviewedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
     "tenantId" uuid,
     version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "leave_requests_startDate_before_endDate_check" CHECK (("startDate" <= "endDate"))
-);
-
-
---
--- Name: locations; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.locations (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    code text NOT NULL,
-    label text NOT NULL,
-    "countryCode" character varying(2),
-    timezone text,
-    "archivedAt" timestamp with time zone,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2557,6 +2937,25 @@ ALTER SEQUENCE public."migration_audit_chainSeq_seq" OWNED BY public.migration_a
 
 
 --
+-- Name: onboarding_tour_progress; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.onboarding_tour_progress (
+    id uuid NOT NULL,
+    "personId" uuid,
+    "tourKey" text NOT NULL,
+    "completedSteps" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    "dismissedAt" timestamp(3) with time zone,
+    "completedAt" timestamp(3) with time zone,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
 -- Name: organization_configs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2577,7 +2976,8 @@ CREATE TABLE public.organization_configs (
     "ragThresholdCritical" numeric(3,2) DEFAULT 1.0 NOT NULL,
     "ragThresholdRed" numeric(3,2) DEFAULT 2.0 NOT NULL,
     "ragThresholdAmber" numeric(3,2) DEFAULT 3.0 NOT NULL,
-    "colourBlindMode" boolean DEFAULT false NOT NULL
+    "colourBlindMode" boolean DEFAULT false NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -2595,6 +2995,8 @@ CREATE TABLE public.overtime_exceptions (
     "effectiveTo" timestamp(3) with time zone NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT overtime_exceptions_effective_range_check CHECK (("effectiveFrom" <= "effectiveTo")),
     CONSTRAINT "overtime_exceptions_maxOvertimeHoursPerWeek_nonnegative_check" CHECK ((("maxOvertimeHoursPerWeek" >= 0) AND ("maxOvertimeHoursPerWeek" <= 168)))
 );
@@ -2617,6 +3019,8 @@ CREATE TABLE public.overtime_policies (
     "effectiveTo" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT overtime_policies_effective_range_check CHECK ((("effectiveTo" IS NULL) OR ("effectiveFrom" <= "effectiveTo"))),
     CONSTRAINT "overtime_policies_maxOvertimeHoursPerWeek_nonnegative_check" CHECK ((("maxOvertimeHoursPerWeek" >= 0) AND ("maxOvertimeHoursPerWeek" <= 168))),
     CONSTRAINT "overtime_policies_standardHoursPerWeek_nonnegative_check" CHECK ((("standardHoursPerWeek" >= 0) AND ("standardHoursPerWeek" <= 168)))
@@ -2633,7 +3037,7 @@ CREATE TABLE public.period_locks (
     "periodTo" date NOT NULL,
     "lockedBy" text NOT NULL,
     "lockedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
     CONSTRAINT period_locks_period_range_check CHECK (("periodFrom" <= "periodTo"))
 );
@@ -2650,9 +3054,10 @@ CREATE TABLE public.person_cost_rates (
     "hourlyRate" numeric(10,2) NOT NULL,
     "rateType" public."PersonCostRateType" DEFAULT 'INTERNAL'::public."PersonCostRateType" NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
     "currencyCode" character varying(3),
+    "createdByPersonId" uuid,
     CONSTRAINT "person_cost_rates_hourlyRate_positive_check" CHECK (("hourlyRate" > (0)::numeric))
 );
 
@@ -2671,17 +3076,59 @@ CREATE TABLE public.person_notification_preferences (
 
 
 --
+-- Name: person_release_approvals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.person_release_approvals (
+    id uuid NOT NULL,
+    "requestId" uuid NOT NULL,
+    role character varying(40) NOT NULL,
+    "actorPersonId" uuid NOT NULL,
+    decision public."ReleaseApprovalDecision" NOT NULL,
+    reason text,
+    "decidedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: person_release_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.person_release_requests (
+    id uuid NOT NULL,
+    "personId" uuid NOT NULL,
+    "initiatedByPersonId" uuid NOT NULL,
+    reason text NOT NULL,
+    "reasonCode" character varying(60),
+    "targetTerminationDate" date NOT NULL,
+    status public."PersonReleaseStatus" DEFAULT 'PENDING_APPROVAL'::public."PersonReleaseStatus" NOT NULL,
+    "cancelledAt" timestamp(3) with time zone,
+    "completedAt" timestamp(3) with time zone,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    "tenantId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
 -- Name: person_skills; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.person_skills (
     id text NOT NULL,
-    "personId" text NOT NULL,
+    "personId" uuid NOT NULL,
     "skillId" text NOT NULL,
     proficiency integer NOT NULL,
     certified boolean DEFAULT false NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     CONSTRAINT person_skills_proficiency_range_check CHECK (((proficiency >= 1) AND (proficiency <= 5)))
 );
 
@@ -2717,7 +3164,30 @@ CREATE TABLE public.platform_settings (
     key text NOT NULL,
     value jsonb NOT NULL,
     "updatedBy" text,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: project_activation_approvals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.project_activation_approvals (
+    id uuid NOT NULL,
+    "projectId" uuid NOT NULL,
+    "requestedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "requestedById" uuid NOT NULL,
+    "decidedAt" timestamp(3) with time zone,
+    "decidedById" uuid,
+    decision public."ProjectActivationDecision",
+    reason text,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2732,17 +3202,19 @@ CREATE TABLE public.project_budgets (
     "capexBudget" numeric(15,2) DEFAULT 0 NOT NULL,
     "opexBudget" numeric(15,2) DEFAULT 0 NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
+    "publicId" character varying(32),
     "earnedValue" numeric(15,2),
     "actualCost" numeric(15,2),
     "plannedToDate" numeric(15,2),
     eac numeric(15,2),
     "capexCorrectPct" numeric(5,4),
-    id_new uuid DEFAULT gen_random_uuid(),
-    "publicId" character varying(32),
     "workstreamId" uuid,
     "vendorBudget" numeric(15,2),
     "currencyCode" character varying(3),
     version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "project_budgets_capexBudget_nonnegative_check" CHECK (("capexBudget" >= (0)::numeric)),
     CONSTRAINT "project_budgets_opexBudget_nonnegative_check" CHECK (("opexBudget" >= (0)::numeric))
 );
@@ -2753,7 +3225,7 @@ CREATE TABLE public.project_budgets (
 --
 
 CREATE TABLE public.project_change_requests (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "projectId" uuid NOT NULL,
     title text NOT NULL,
     description text,
@@ -2768,23 +3240,9 @@ CREATE TABLE public.project_change_requests (
     "decidedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "workstreamId" uuid
-);
-
-
---
--- Name: project_domains; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.project_domains (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    code text NOT NULL,
-    label text NOT NULL,
-    description text,
-    "archivedAt" timestamp with time zone,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "workstreamId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2793,7 +3251,7 @@ CREATE TABLE public.project_domains (
 --
 
 CREATE TABLE public.project_milestones (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "projectId" uuid NOT NULL,
     name text NOT NULL,
     description text,
@@ -2804,7 +3262,9 @@ CREATE TABLE public.project_milestones (
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "workstreamId" uuid,
     "progressPct" integer DEFAULT 0 NOT NULL,
-    "dependsOnMilestoneIds" text[] DEFAULT ARRAY[]::text[] NOT NULL
+    "dependsOnMilestoneIds" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2813,7 +3273,7 @@ CREATE TABLE public.project_milestones (
 --
 
 CREATE TABLE public.project_radiator_overrides (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "snapshotId" uuid NOT NULL,
     "subDimensionKey" text NOT NULL,
     "autoScore" integer,
@@ -2855,7 +3315,9 @@ CREATE TABLE public.project_rag_snapshots (
     "scheduleScore" integer,
     "budgetScore" integer,
     "peopleScore" integer,
-    "overallScore" integer
+    "overallScore" integer,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2871,8 +3333,10 @@ CREATE TABLE public.project_retrospectives (
     "wouldStaffSameWay" boolean,
     "retrospectiveDate" date,
     "facilitatedByPersonId" uuid,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -2881,7 +3345,7 @@ CREATE TABLE public.project_retrospectives (
 --
 
 CREATE TABLE public.project_risks (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "projectId" uuid NOT NULL,
     title text NOT NULL,
     description text,
@@ -2906,6 +3370,8 @@ CREATE TABLE public.project_risks (
     "lastReviewedAt" timestamp(3) with time zone,
     "reviewCadence" public."RiskReviewCadence",
     version integer DEFAULT 1 NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT project_risks_impact_range_check CHECK (((impact >= 1) AND (impact <= 5))),
     CONSTRAINT project_risks_probability_range_check CHECK (((probability >= 1) AND (probability <= 5)))
 );
@@ -2930,48 +3396,10 @@ CREATE TABLE public.project_role_plans (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "standardHourlyRate" numeric(10,2),
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "project_role_plans_allocationPercent_range_check" CHECK ((("allocationPercent" IS NULL) OR (("allocationPercent" >= (0)::numeric) AND ("allocationPercent" <= (100)::numeric)))),
     CONSTRAINT project_role_plans_headcount_positive_check CHECK ((headcount >= 1))
-);
-
-
---
--- Name: project_tags; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.project_tags (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "projectId" uuid NOT NULL,
-    tag text NOT NULL,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: project_technologies; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.project_technologies (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "projectId" uuid NOT NULL,
-    technology text NOT NULL,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: project_types; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.project_types (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    "tenantId" uuid NOT NULL,
-    code text NOT NULL,
-    label text NOT NULL,
-    description text,
-    "archivedAt" timestamp with time zone,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL,
-    "updatedAt" timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2994,6 +3422,8 @@ CREATE TABLE public.project_vendor_engagements (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "currencyCode" character varying(3),
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "project_vendor_engagements_dateRange_check" CHECK ((("endDate" IS NULL) OR ("startDate" IS NULL) OR ("startDate" <= "endDate"))),
     CONSTRAINT project_vendor_engagements_headcount_positive_check CHECK ((headcount >= 1))
 );
@@ -3004,7 +3434,7 @@ CREATE TABLE public.project_vendor_engagements (
 --
 
 CREATE TABLE public.project_workstreams (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "projectId" uuid NOT NULL,
     name text NOT NULL,
     "streamLeadPersonId" uuid,
@@ -3014,7 +3444,9 @@ CREATE TABLE public.project_workstreams (
     status text DEFAULT 'ACTIVE'::text NOT NULL,
     "displayOrder" integer DEFAULT 0 NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -3026,8 +3458,9 @@ CREATE TABLE public.public_holidays (
     id uuid NOT NULL,
     date date NOT NULL,
     name text NOT NULL,
-    "countryCode" text DEFAULT 'AU'::text NOT NULL,
-    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    "countryCode" text NOT NULL,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -3042,7 +3475,7 @@ CREATE TABLE public.pulse_entries (
     mood integer NOT NULL,
     note text,
     "submittedAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     CONSTRAINT pulse_entries_mood_range_check CHECK (((mood >= 1) AND (mood <= 5)))
 );
 
@@ -3052,7 +3485,7 @@ CREATE TABLE public.pulse_entries (
 --
 
 CREATE TABLE public.pulse_reports (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "projectId" uuid NOT NULL,
     "weekStarting" date NOT NULL,
     dimensions jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -3060,7 +3493,9 @@ CREATE TABLE public.pulse_reports (
     "submittedByPersonId" uuid,
     "submittedAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -3069,7 +3504,7 @@ CREATE TABLE public.pulse_reports (
 --
 
 CREATE TABLE public.radiator_threshold_configs (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id uuid NOT NULL,
     "subDimensionKey" text NOT NULL,
     "thresholdScore4" double precision NOT NULL,
     "thresholdScore3" double precision NOT NULL,
@@ -3077,7 +3512,112 @@ CREATE TABLE public.radiator_threshold_configs (
     "thresholdScore1" double precision NOT NULL,
     direction public."ThresholdDirection" DEFAULT 'HIGHER_IS_BETTER'::public."ThresholdDirection" NOT NULL,
     "updatedByPersonId" uuid,
-    "updatedAt" timestamp(3) with time zone NOT NULL
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid
+);
+
+
+--
+-- Name: rate_card_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rate_card_entries (
+    id uuid NOT NULL,
+    "rateCardId" uuid NOT NULL,
+    "staffingRole" text NOT NULL,
+    grade text NOT NULL,
+    "requiredSkills" text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    "hourlyRate" numeric(10,2) NOT NULL,
+    notes text,
+    "isActive" boolean DEFAULT true NOT NULL,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: rate_cards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rate_cards (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    "currencyCode" character varying(3) NOT NULL,
+    "clientId" uuid,
+    "validFrom" date NOT NULL,
+    "validTo" date,
+    "isActive" boolean DEFAULT true NOT NULL,
+    notes text,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: responsibility_rules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.responsibility_rules (
+    id uuid NOT NULL,
+    "actionKind" public."ResponsibilityActionKind" NOT NULL,
+    "scopeKind" public."ResponsibilityScope" NOT NULL,
+    "scopeValue" text,
+    mode public."ResponsibilityResolutionMode" NOT NULL,
+    "targetRole" text,
+    "targetPersonId" uuid,
+    priority integer DEFAULT 100 NOT NULL,
+    "isActive" boolean DEFAULT true NOT NULL,
+    notes text,
+    "tenantId" uuid,
+    "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "archivedAt" timestamp(3) with time zone,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
+);
+
+
+--
+-- Name: setup_run_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.setup_run_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    run_id uuid NOT NULL,
+    step_key text NOT NULL,
+    sequence integer NOT NULL,
+    level public."SetupRunLogLevel" DEFAULT 'INFO'::public."SetupRunLogLevel" NOT NULL,
+    event text NOT NULL,
+    payload_redacted jsonb,
+    duration_ms integer,
+    occurred_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: setup_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.setup_runs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    run_id uuid NOT NULL,
+    step_key text NOT NULL,
+    status public."SetupRunStatus" DEFAULT 'PENDING'::public."SetupRunStatus" NOT NULL,
+    started_at timestamp(3) with time zone,
+    finished_at timestamp(3) with time zone,
+    error_payload jsonb,
+    actor_id uuid,
+    payload_redacted jsonb,
+    version integer DEFAULT 1 NOT NULL,
+    created_at timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) with time zone NOT NULL
 );
 
 
@@ -3090,9 +3630,12 @@ CREATE TABLE public.skills (
     name text NOT NULL,
     category text,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
-    "tenantId" uuid
+    "tenantId" uuid,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -3106,7 +3649,11 @@ CREATE TABLE public.staffing_request_fulfilments (
     "assignedPersonId" text NOT NULL,
     "proposedByPersonId" text NOT NULL,
     "fulfilledAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid()
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updatedAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -3119,7 +3666,7 @@ CREATE TABLE public.staffing_requests (
     "projectId" text NOT NULL,
     "requestedByPersonId" text NOT NULL,
     role text NOT NULL,
-    skills text[],
+    skills text[] NOT NULL,
     summary text,
     "allocationPercent" numeric(5,2) NOT NULL,
     "headcountRequired" integer DEFAULT 1 NOT NULL,
@@ -3131,11 +3678,13 @@ CREATE TABLE public.staffing_requests (
     "cancelledAt" timestamp(3) with time zone,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
     "tenantId" uuid,
     version integer DEFAULT 1 NOT NULL,
     "candidatePersonId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "staffing_requests_allocationPercent_range_check" CHECK ((("allocationPercent" >= (0)::numeric) AND ("allocationPercent" <= (100)::numeric))),
     CONSTRAINT "staffing_requests_headcountFulfilled_nonnegative_check" CHECK ((("headcountFulfilled" >= 0) AND ("headcountFulfilled" <= "headcountRequired"))),
     CONSTRAINT "staffing_requests_headcountRequired_positive_check" CHECK (("headcountRequired" >= 1)),
@@ -3159,9 +3708,11 @@ CREATE TABLE public.timesheet_entries (
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     "benchCategory" text DEFAULT ''::text NOT NULL,
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "workLabel" text DEFAULT ''::text NOT NULL,
     "workItemId" text,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT timesheet_entries_hours_nonnegative_check CHECK (((hours >= (0)::numeric) AND (hours <= (24)::numeric)))
 );
 
@@ -3187,9 +3738,11 @@ CREATE TABLE public.timesheet_weeks (
     "overtimeThreshold" integer,
     "standardHours" numeric(5,2),
     "totalHours" numeric(5,2),
-    id_new uuid DEFAULT gen_random_uuid(),
+    id_new uuid DEFAULT gen_random_uuid() NOT NULL,
     "publicId" character varying(32),
     "tenantId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid,
     CONSTRAINT "timesheet_weeks_overtimeHours_nonnegative_check" CHECK ((("overtimeHours" IS NULL) OR ("overtimeHours" >= (0)::numeric))),
     CONSTRAINT "timesheet_weeks_standardHours_nonnegative_check" CHECK ((("standardHours" IS NULL) OR ("standardHours" >= (0)::numeric))),
     CONSTRAINT "timesheet_weeks_totalHours_nonnegative_check" CHECK ((("totalHours" IS NULL) OR ("totalHours" >= (0)::numeric)))
@@ -3220,7 +3773,8 @@ CREATE TABLE public.vendor_skill_areas (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     "vendorId" uuid NOT NULL,
     "skillArea" text NOT NULL,
-    "createdAt" timestamp with time zone DEFAULT now() NOT NULL
+    "createdAt" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "createdByPersonId" uuid
 );
 
 
@@ -3239,7 +3793,9 @@ CREATE TABLE public.vendors (
     "isActive" boolean DEFAULT true NOT NULL,
     "createdAt" timestamp(3) with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
-    "tenantId" uuid
+    "tenantId" uuid,
+    "createdByPersonId" uuid,
+    "updatedByPersonId" uuid
 );
 
 
@@ -3512,14 +4068,6 @@ ALTER TABLE ONLY public."NotificationTemplate"
 
 
 --
--- Name: Notification Notification_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Notification"
-    ADD CONSTRAINT "Notification_pkey" PRIMARY KEY (id);
-
-
---
 -- Name: OrgUnit OrgUnit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3597,6 +4145,30 @@ ALTER TABLE ONLY public."ProjectAssignment"
 
 ALTER TABLE ONLY public."ProjectExternalLink"
     ADD CONSTRAINT "ProjectExternalLink_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ProjectPositionCandidate ProjectPositionCandidate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionCandidate"
+    ADD CONSTRAINT "ProjectPositionCandidate_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ProjectPositionFillHistory ProjectPositionFillHistory_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionFillHistory"
+    ADD CONSTRAINT "ProjectPositionFillHistory_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: ProjectPosition ProjectPosition_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_pkey" PRIMARY KEY (id);
 
 
 --
@@ -3768,19 +4340,67 @@ ALTER TABLE ONLY public.employment_events
 
 
 --
--- Name: grades grades_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: fiscal_calendars fiscal_calendars_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.grades
-    ADD CONSTRAINT grades_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.fiscal_calendars
+    ADD CONSTRAINT fiscal_calendars_pkey PRIMARY KEY (id);
 
 
 --
--- Name: grades grades_tenantId_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: fiscal_periods fiscal_periods_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.grades
-    ADD CONSTRAINT "grades_tenantId_code_key" UNIQUE ("tenantId", code);
+ALTER TABLE ONLY public.fiscal_periods
+    ADD CONSTRAINT fiscal_periods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fx_rates fx_rates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fx_rates
+    ADD CONSTRAINT fx_rates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: help_articles help_articles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT help_articles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: help_articles help_articles_slug_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT help_articles_slug_key UNIQUE (slug);
+
+
+--
+-- Name: help_feedback help_feedback_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_feedback
+    ADD CONSTRAINT help_feedback_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: help_tips help_tips_key_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT help_tips_key_key UNIQUE (key);
+
+
+--
+-- Name: help_tips help_tips_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT help_tips_pkey PRIMARY KEY (id);
 
 
 --
@@ -3808,27 +4428,19 @@ ALTER TABLE ONLY public.honeypot
 
 
 --
+-- Name: idempotency_keys idempotency_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.idempotency_keys
+    ADD CONSTRAINT idempotency_keys_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: in_app_notifications in_app_notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.in_app_notifications
     ADD CONSTRAINT in_app_notifications_pkey PRIMARY KEY (id);
-
-
---
--- Name: job_roles job_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.job_roles
-    ADD CONSTRAINT job_roles_pkey PRIMARY KEY (id);
-
-
---
--- Name: job_roles job_roles_tenantId_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.job_roles
-    ADD CONSTRAINT "job_roles_tenantId_code_key" UNIQUE ("tenantId", code);
 
 
 --
@@ -3848,27 +4460,27 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.locations
-    ADD CONSTRAINT locations_pkey PRIMARY KEY (id);
-
-
---
--- Name: locations locations_tenantId_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.locations
-    ADD CONSTRAINT "locations_tenantId_code_key" UNIQUE ("tenantId", code);
-
-
---
 -- Name: migration_audit migration_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.migration_audit
     ADD CONSTRAINT migration_audit_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_personId_tourKey_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT "onboarding_tour_progress_personId_tourKey_key" UNIQUE ("personId", "tourKey");
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT onboarding_tour_progress_pkey PRIMARY KEY (id);
 
 
 --
@@ -3920,6 +4532,22 @@ ALTER TABLE ONLY public.person_notification_preferences
 
 
 --
+-- Name: person_release_approvals person_release_approvals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_approvals
+    ADD CONSTRAINT person_release_approvals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: person_release_requests person_release_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT person_release_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: person_skills person_skills_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3944,6 +4572,14 @@ ALTER TABLE ONLY public.platform_settings
 
 
 --
+-- Name: project_activation_approvals project_activation_approvals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT project_activation_approvals_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: project_budgets project_budgets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3965,22 +4601,6 @@ ALTER TABLE ONLY public.project_budgets
 
 ALTER TABLE ONLY public.project_change_requests
     ADD CONSTRAINT project_change_requests_pkey PRIMARY KEY (id);
-
-
---
--- Name: project_domains project_domains_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_domains
-    ADD CONSTRAINT project_domains_pkey PRIMARY KEY (id);
-
-
---
--- Name: project_domains project_domains_tenantId_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_domains
-    ADD CONSTRAINT "project_domains_tenantId_code_key" UNIQUE ("tenantId", code);
 
 
 --
@@ -4040,54 +4660,6 @@ ALTER TABLE ONLY public.project_role_plans
 
 
 --
--- Name: project_tags project_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_tags
-    ADD CONSTRAINT project_tags_pkey PRIMARY KEY (id);
-
-
---
--- Name: project_tags project_tags_projectId_tag_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_tags
-    ADD CONSTRAINT "project_tags_projectId_tag_key" UNIQUE ("projectId", tag);
-
-
---
--- Name: project_technologies project_technologies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_technologies
-    ADD CONSTRAINT project_technologies_pkey PRIMARY KEY (id);
-
-
---
--- Name: project_technologies project_technologies_projectId_technology_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_technologies
-    ADD CONSTRAINT "project_technologies_projectId_technology_key" UNIQUE ("projectId", technology);
-
-
---
--- Name: project_types project_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_types
-    ADD CONSTRAINT project_types_pkey PRIMARY KEY (id);
-
-
---
--- Name: project_types project_types_tenantId_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_types
-    ADD CONSTRAINT "project_types_tenantId_code_key" UNIQUE ("tenantId", code);
-
-
---
 -- Name: project_vendor_engagements project_vendor_engagements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4133,6 +4705,46 @@ ALTER TABLE ONLY public.pulse_reports
 
 ALTER TABLE ONLY public.radiator_threshold_configs
     ADD CONSTRAINT radiator_threshold_configs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rate_card_entries rate_card_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_card_entries
+    ADD CONSTRAINT rate_card_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rate_cards rate_cards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT rate_cards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: responsibility_rules responsibility_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.responsibility_rules
+    ADD CONSTRAINT responsibility_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: setup_run_logs setup_run_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.setup_run_logs
+    ADD CONSTRAINT setup_run_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: setup_runs setup_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.setup_runs
+    ADD CONSTRAINT setup_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -4222,10 +4834,24 @@ CREATE UNIQUE INDEX "AssignmentApproval_assignmentId_sequenceNumber_key" ON publ
 
 
 --
+-- Name: AssignmentApproval_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentApproval_createdByPersonId_idx" ON public."AssignmentApproval" USING btree ("createdByPersonId");
+
+
+--
 -- Name: AssignmentApproval_decidedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "AssignmentApproval_decidedByPersonId_idx" ON public."AssignmentApproval" USING btree ("decidedByPersonId");
+
+
+--
+-- Name: AssignmentApproval_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "AssignmentApproval_updatedByPersonId_idx" ON public."AssignmentApproval" USING btree ("updatedByPersonId");
 
 
 --
@@ -4285,6 +4911,13 @@ CREATE UNIQUE INDEX "CaseParticipant_caseRecordId_personId_role_key" ON public."
 
 
 --
+-- Name: CaseParticipant_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseParticipant_createdByPersonId_idx" ON public."CaseParticipant" USING btree ("createdByPersonId");
+
+
+--
 -- Name: CaseParticipant_personId_role_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4299,10 +4932,24 @@ CREATE INDEX "CaseRecord_active_idx" ON public."CaseRecord" USING btree (id) WHE
 
 
 --
+-- Name: CaseRecord_caseNumber_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "CaseRecord_caseNumber_key" ON public."CaseRecord" USING btree ("caseNumber");
+
+
+--
 -- Name: CaseRecord_caseTypeId_status_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "CaseRecord_caseTypeId_status_idx" ON public."CaseRecord" USING btree ("caseTypeId", status);
+
+
+--
+-- Name: CaseRecord_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseRecord_createdByPersonId_idx" ON public."CaseRecord" USING btree ("createdByPersonId");
 
 
 --
@@ -4341,17 +4988,17 @@ CREATE INDEX "CaseRecord_summary_trgm_idx" ON public."CaseRecord" USING gin (sum
 
 
 --
--- Name: CaseRecord_tenantId_caseNumber_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "CaseRecord_tenantId_caseNumber_key" ON public."CaseRecord" USING btree ("tenantId", "caseNumber");
-
-
---
 -- Name: CaseRecord_tenantId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "CaseRecord_tenantId_idx" ON public."CaseRecord" USING btree ("tenantId");
+
+
+--
+-- Name: CaseRecord_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseRecord_updatedByPersonId_idx" ON public."CaseRecord" USING btree ("updatedByPersonId");
 
 
 --
@@ -4376,6 +5023,20 @@ CREATE UNIQUE INDEX "CaseStep_caseRecordId_stepKey_key" ON public."CaseStep" USI
 
 
 --
+-- Name: CaseStep_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseStep_createdByPersonId_idx" ON public."CaseStep" USING btree ("createdByPersonId");
+
+
+--
+-- Name: CaseStep_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseStep_updatedByPersonId_idx" ON public."CaseStep" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: CaseStep_workflowStateDefinitionId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4390,10 +5051,45 @@ CREATE INDEX "CaseType_archivedAt_idx" ON public."CaseType" USING btree ("archiv
 
 
 --
+-- Name: CaseType_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseType_createdByPersonId_idx" ON public."CaseType" USING btree ("createdByPersonId");
+
+
+--
 -- Name: CaseType_key_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX "CaseType_key_key" ON public."CaseType" USING btree (key);
+
+
+--
+-- Name: CaseType_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseType_updatedByPersonId_idx" ON public."CaseType" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: CaseType_workflowDefinitionId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CaseType_workflowDefinitionId_idx" ON public."CaseType" USING btree ("workflowDefinitionId");
+
+
+--
+-- Name: Currency_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Currency_createdByPersonId_idx" ON public."Currency" USING btree ("createdByPersonId");
+
+
+--
+-- Name: CustomFieldDefinition_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CustomFieldDefinition_createdByPersonId_idx" ON public."CustomFieldDefinition" USING btree ("createdByPersonId");
 
 
 --
@@ -4425,6 +5121,20 @@ CREATE INDEX "CustomFieldDefinition_scopeOrgUnitId_idx" ON public."CustomFieldDe
 
 
 --
+-- Name: CustomFieldDefinition_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CustomFieldDefinition_updatedByPersonId_idx" ON public."CustomFieldDefinition" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: CustomFieldValue_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CustomFieldValue_createdByPersonId_idx" ON public."CustomFieldValue" USING btree ("createdByPersonId");
+
+
+--
 -- Name: CustomFieldValue_customFieldDefinitionId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4443,6 +5153,13 @@ CREATE INDEX "CustomFieldValue_entityType_entityId_archivedAt_idx" ON public."Cu
 --
 
 CREATE UNIQUE INDEX "CustomFieldValue_entityType_entityId_customFieldDefinitionI_key" ON public."CustomFieldValue" USING btree ("entityType", "entityId", "customFieldDefinitionId");
+
+
+--
+-- Name: CustomFieldValue_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "CustomFieldValue_updatedByPersonId_idx" ON public."CustomFieldValue" USING btree ("updatedByPersonId");
 
 
 --
@@ -4551,6 +5268,13 @@ CREATE INDEX "EmployeeActivityEvent_personId_occurredAt_idx" ON public."Employee
 
 
 --
+-- Name: EntityLayoutDefinition_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EntityLayoutDefinition_createdByPersonId_idx" ON public."EntityLayoutDefinition" USING btree ("createdByPersonId");
+
+
+--
 -- Name: EntityLayoutDefinition_entityType_isDefault_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4572,6 +5296,13 @@ CREATE INDEX "EntityLayoutDefinition_scopeOrgUnitId_idx" ON public."EntityLayout
 
 
 --
+-- Name: EntityLayoutDefinition_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "EntityLayoutDefinition_updatedByPersonId_idx" ON public."EntityLayoutDefinition" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: ExternalAccountLink_externalEmail_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4583,6 +5314,13 @@ CREATE INDEX "ExternalAccountLink_externalEmail_idx" ON public."ExternalAccountL
 --
 
 CREATE INDEX "ExternalAccountLink_externalUsername_idx" ON public."ExternalAccountLink" USING btree ("externalUsername");
+
+
+--
+-- Name: ExternalAccountLink_personId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ExternalAccountLink_personId_idx" ON public."ExternalAccountLink" USING btree ("personId");
 
 
 --
@@ -4607,6 +5345,13 @@ CREATE UNIQUE INDEX "ExternalSyncState_projectExternalLinkId_key" ON public."Ext
 
 
 --
+-- Name: IntegrationSyncState_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IntegrationSyncState_createdByPersonId_idx" ON public."IntegrationSyncState" USING btree ("createdByPersonId");
+
+
+--
 -- Name: IntegrationSyncState_provider_resourceType_lastStatus_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4618,6 +5363,20 @@ CREATE INDEX "IntegrationSyncState_provider_resourceType_lastStatus_idx" ON publ
 --
 
 CREATE UNIQUE INDEX "IntegrationSyncState_provider_resourceType_scopeKey_key" ON public."IntegrationSyncState" USING btree (provider, "resourceType", "scopeKey");
+
+
+--
+-- Name: IntegrationSyncState_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IntegrationSyncState_updatedByPersonId_idx" ON public."IntegrationSyncState" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: LocalAccount_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "LocalAccount_createdByPersonId_idx" ON public."LocalAccount" USING btree ("createdByPersonId");
 
 
 --
@@ -4656,6 +5415,20 @@ CREATE INDEX "LocalAccount_tenantId_idx" ON public."LocalAccount" USING btree ("
 
 
 --
+-- Name: LocalAccount_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "LocalAccount_updatedByPersonId_idx" ON public."LocalAccount" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: M365DirectoryReconciliationRecord_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "M365DirectoryReconciliationRecord_createdByPersonId_idx" ON public."M365DirectoryReconciliationRecord" USING btree ("createdByPersonId");
+
+
+--
 -- Name: M365DirectoryReconciliationRecord_lastEvaluatedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4691,6 +5464,20 @@ CREATE INDEX "M365DirectoryReconciliationRecord_resolvedManagerPersonId_idx" ON 
 
 
 --
+-- Name: M365DirectoryReconciliationRecord_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "M365DirectoryReconciliationRecord_updatedByPersonId_idx" ON public."M365DirectoryReconciliationRecord" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: MetadataDictionary_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MetadataDictionary_createdByPersonId_idx" ON public."MetadataDictionary" USING btree ("createdByPersonId");
+
+
+--
 -- Name: MetadataDictionary_entityType_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4712,6 +5499,20 @@ CREATE INDEX "MetadataDictionary_scopeOrgUnitId_idx" ON public."MetadataDictiona
 
 
 --
+-- Name: MetadataDictionary_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MetadataDictionary_updatedByPersonId_idx" ON public."MetadataDictionary" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: MetadataEntry_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MetadataEntry_createdByPersonId_idx" ON public."MetadataEntry" USING btree ("createdByPersonId");
+
+
+--
 -- Name: MetadataEntry_metadataDictionaryId_entryKey_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4726,10 +5527,24 @@ CREATE INDEX "MetadataEntry_metadataDictionaryId_isEnabled_archivedAt_idx" ON pu
 
 
 --
+-- Name: MetadataEntry_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "MetadataEntry_updatedByPersonId_idx" ON public."MetadataEntry" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: NotificationChannel_channelKey_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX "NotificationChannel_channelKey_key" ON public."NotificationChannel" USING btree ("channelKey");
+
+
+--
+-- Name: NotificationChannel_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationChannel_createdByPersonId_idx" ON public."NotificationChannel" USING btree ("createdByPersonId");
 
 
 --
@@ -4740,10 +5555,24 @@ CREATE INDEX "NotificationChannel_kind_isEnabled_idx" ON public."NotificationCha
 
 
 --
+-- Name: NotificationChannel_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationChannel_updatedByPersonId_idx" ON public."NotificationChannel" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: NotificationDelivery_channelId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "NotificationDelivery_channelId_idx" ON public."NotificationDelivery" USING btree ("channelId");
+
+
+--
+-- Name: NotificationDelivery_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationDelivery_createdByPersonId_idx" ON public."NotificationDelivery" USING btree ("createdByPersonId");
 
 
 --
@@ -4765,6 +5594,27 @@ CREATE INDEX "NotificationDelivery_status_attemptedAt_idx" ON public."Notificati
 --
 
 CREATE INDEX "NotificationDelivery_status_nextAttemptAt_idx" ON public."NotificationDelivery" USING btree (status, "nextAttemptAt");
+
+
+--
+-- Name: NotificationDelivery_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationDelivery_updatedByPersonId_idx" ON public."NotificationDelivery" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: NotificationRequest_channelId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationRequest_channelId_idx" ON public."NotificationRequest" USING btree ("channelId");
+
+
+--
+-- Name: NotificationRequest_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationRequest_createdByPersonId_idx" ON public."NotificationRequest" USING btree ("createdByPersonId");
 
 
 --
@@ -4796,10 +5646,24 @@ CREATE INDEX "NotificationRequest_templateId_idx" ON public."NotificationRequest
 
 
 --
+-- Name: NotificationRequest_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationRequest_updatedByPersonId_idx" ON public."NotificationRequest" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: NotificationTemplate_channelId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "NotificationTemplate_channelId_archivedAt_idx" ON public."NotificationTemplate" USING btree ("channelId", "archivedAt");
+
+
+--
+-- Name: NotificationTemplate_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "NotificationTemplate_createdByPersonId_idx" ON public."NotificationTemplate" USING btree ("createdByPersonId");
 
 
 --
@@ -4817,38 +5681,10 @@ CREATE UNIQUE INDEX "NotificationTemplate_templateKey_key" ON public."Notificati
 
 
 --
--- Name: Notification_correlation_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: NotificationTemplate_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "Notification_correlation_idx" ON public."Notification" USING btree ("correlationId") WHERE ("correlationId" IS NOT NULL);
-
-
---
--- Name: Notification_recipient_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Notification_recipient_idx" ON public."Notification" USING btree ("recipientPersonId", "createdAt" DESC);
-
-
---
--- Name: Notification_status_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Notification_status_idx" ON public."Notification" USING btree (status) WHERE (status = ANY (ARRAY['PENDING'::public."NotificationStatus", 'FAILED'::public."NotificationStatus"]));
-
-
---
--- Name: Notification_tenantId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Notification_tenantId_idx" ON public."Notification" USING btree ("tenantId");
-
-
---
--- Name: Notification_unread_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Notification_unread_idx" ON public."Notification" USING btree ("recipientPersonId", "readAt") WHERE (("channelKind" = 'IN_APP'::public."NotificationChannelKind") AND ("readAt" IS NULL));
+CREATE INDEX "NotificationTemplate_updatedByPersonId_idx" ON public."NotificationTemplate" USING btree ("updatedByPersonId");
 
 
 --
@@ -4856,6 +5692,20 @@ CREATE INDEX "Notification_unread_idx" ON public."Notification" USING btree ("re
 --
 
 CREATE INDEX "OrgUnit_active_idx" ON public."OrgUnit" USING btree (id) WHERE ("archivedAt" IS NULL);
+
+
+--
+-- Name: OrgUnit_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "OrgUnit_code_key" ON public."OrgUnit" USING btree (code);
+
+
+--
+-- Name: OrgUnit_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "OrgUnit_createdByPersonId_idx" ON public."OrgUnit" USING btree ("createdByPersonId");
 
 
 --
@@ -4880,17 +5730,17 @@ CREATE INDEX "OrgUnit_status_archivedAt_idx" ON public."OrgUnit" USING btree (st
 
 
 --
--- Name: OrgUnit_tenantId_code_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX "OrgUnit_tenantId_code_key" ON public."OrgUnit" USING btree ("tenantId", code);
-
-
---
 -- Name: OrgUnit_tenantId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "OrgUnit_tenantId_idx" ON public."OrgUnit" USING btree ("tenantId");
+
+
+--
+-- Name: OrgUnit_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "OrgUnit_updatedByPersonId_idx" ON public."OrgUnit" USING btree ("updatedByPersonId");
 
 
 --
@@ -4905,6 +5755,13 @@ CREATE INDEX "OutboxEvent_aggregateType_aggregateId_idx" ON public."OutboxEvent"
 --
 
 CREATE INDEX "OutboxEvent_createdAt_idx" ON public."OutboxEvent" USING btree ("createdAt");
+
+
+--
+-- Name: OutboxEvent_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "OutboxEvent_createdByPersonId_idx" ON public."OutboxEvent" USING btree ("createdByPersonId");
 
 
 --
@@ -4943,6 +5800,13 @@ CREATE UNIQUE INDEX "PasswordResetToken_tokenHash_key" ON public."PasswordResetT
 
 
 --
+-- Name: PersonExternalIdentityLink_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonExternalIdentityLink_createdByPersonId_idx" ON public."PersonExternalIdentityLink" USING btree ("createdByPersonId");
+
+
+--
 -- Name: PersonExternalIdentityLink_externalPrincipalName_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4978,6 +5842,20 @@ CREATE INDEX "PersonExternalIdentityLink_resolvedManagerPersonId_idx" ON public.
 
 
 --
+-- Name: PersonExternalIdentityLink_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonExternalIdentityLink_updatedByPersonId_idx" ON public."PersonExternalIdentityLink" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: PersonOrgMembership_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonOrgMembership_createdByPersonId_idx" ON public."PersonOrgMembership" USING btree ("createdByPersonId");
+
+
+--
 -- Name: PersonOrgMembership_orgUnitId_validFrom_validTo_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5006,6 +5884,20 @@ CREATE INDEX "PersonOrgMembership_positionId_idx" ON public."PersonOrgMembership
 
 
 --
+-- Name: PersonOrgMembership_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonOrgMembership_updatedByPersonId_idx" ON public."PersonOrgMembership" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: PersonResourcePoolMembership_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonResourcePoolMembership_createdByPersonId_idx" ON public."PersonResourcePoolMembership" USING btree ("createdByPersonId");
+
+
+--
 -- Name: PersonResourcePoolMembership_personId_resourcePoolId_validF_key; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5024,6 +5916,13 @@ CREATE INDEX "PersonResourcePoolMembership_personId_validFrom_validTo_idx" ON pu
 --
 
 CREATE INDEX "PersonResourcePoolMembership_resourcePoolId_validFrom_valid_idx" ON public."PersonResourcePoolMembership" USING btree ("resourcePoolId", "validFrom", "validTo");
+
+
+--
+-- Name: PersonResourcePoolMembership_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "PersonResourcePoolMembership_updatedByPersonId_idx" ON public."PersonResourcePoolMembership" USING btree ("updatedByPersonId");
 
 
 --
@@ -5055,24 +5954,17 @@ CREATE INDEX "Person_familyName_givenName_idx" ON public."Person" USING btree ("
 
 
 --
--- Name: Person_gradeId_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: Person_personNumber_key; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "Person_gradeId_idx" ON public."Person" USING btree ("gradeId");
-
-
---
--- Name: Person_jobRoleId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Person_jobRoleId_idx" ON public."Person" USING btree ("jobRoleId");
+CREATE UNIQUE INDEX "Person_personNumber_key" ON public."Person" USING btree ("personNumber");
 
 
 --
--- Name: Person_locationId_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: Person_primaryEmail_key; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "Person_locationId_idx" ON public."Person" USING btree ("locationId");
+CREATE UNIQUE INDEX "Person_primaryEmail_key" ON public."Person" USING btree ("primaryEmail");
 
 
 --
@@ -5104,6 +5996,13 @@ CREATE INDEX "Position_active_idx" ON public."Position" USING btree (id) WHERE (
 
 
 --
+-- Name: Position_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Position_createdByPersonId_idx" ON public."Position" USING btree ("createdByPersonId");
+
+
+--
 -- Name: Position_occupantPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5125,10 +6024,38 @@ CREATE INDEX "Position_orgUnitId_validFrom_validTo_idx" ON public."Position" USI
 
 
 --
+-- Name: Position_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Position_updatedByPersonId_idx" ON public."Position" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: ProjectAssignment_active_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "ProjectAssignment_active_idx" ON public."ProjectAssignment" USING btree (id) WHERE ("archivedAt" IS NULL);
+
+
+--
+-- Name: ProjectAssignment_appliedRateCardEntryId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectAssignment_appliedRateCardEntryId_idx" ON public."ProjectAssignment" USING btree ("appliedRateCardEntryId");
+
+
+--
+-- Name: ProjectAssignment_assignmentCode_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "ProjectAssignment_assignmentCode_key" ON public."ProjectAssignment" USING btree ("assignmentCode");
+
+
+--
+-- Name: ProjectAssignment_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectAssignment_createdByPersonId_idx" ON public."ProjectAssignment" USING btree ("createdByPersonId");
 
 
 --
@@ -5195,6 +6122,20 @@ CREATE INDEX "ProjectAssignment_tenantId_idx" ON public."ProjectAssignment" USIN
 
 
 --
+-- Name: ProjectAssignment_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectAssignment_updatedByPersonId_idx" ON public."ProjectAssignment" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: ProjectExternalLink_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectExternalLink_createdByPersonId_idx" ON public."ProjectExternalLink" USING btree ("createdByPersonId");
+
+
+--
 -- Name: ProjectExternalLink_projectId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5216,6 +6157,167 @@ CREATE UNIQUE INDEX "ProjectExternalLink_provider_externalProjectKey_key" ON pub
 
 
 --
+-- Name: ProjectExternalLink_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectExternalLink_updatedByPersonId_idx" ON public."ProjectExternalLink" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: ProjectPositionCandidate_candidatePersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionCandidate_candidatePersonId_idx" ON public."ProjectPositionCandidate" USING btree ("candidatePersonId");
+
+
+--
+-- Name: ProjectPositionCandidate_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionCandidate_createdByPersonId_idx" ON public."ProjectPositionCandidate" USING btree ("createdByPersonId");
+
+
+--
+-- Name: ProjectPositionCandidate_positionId_candidatePersonId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "ProjectPositionCandidate_positionId_candidatePersonId_key" ON public."ProjectPositionCandidate" USING btree ("positionId", "candidatePersonId");
+
+
+--
+-- Name: ProjectPositionCandidate_positionId_decision_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionCandidate_positionId_decision_idx" ON public."ProjectPositionCandidate" USING btree ("positionId", decision);
+
+
+--
+-- Name: ProjectPositionCandidate_positionId_rank_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionCandidate_positionId_rank_idx" ON public."ProjectPositionCandidate" USING btree ("positionId", rank);
+
+
+--
+-- Name: ProjectPositionCandidate_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionCandidate_updatedByPersonId_idx" ON public."ProjectPositionCandidate" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: ProjectPositionFillHistory_changeType_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionFillHistory_changeType_idx" ON public."ProjectPositionFillHistory" USING btree ("changeType");
+
+
+--
+-- Name: ProjectPositionFillHistory_changedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionFillHistory_changedByPersonId_idx" ON public."ProjectPositionFillHistory" USING btree ("changedByPersonId");
+
+
+--
+-- Name: ProjectPositionFillHistory_positionId_occurredAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPositionFillHistory_positionId_occurredAt_idx" ON public."ProjectPositionFillHistory" USING btree ("positionId", "occurredAt");
+
+
+--
+-- Name: ProjectPosition_activePerson_window_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_activePerson_window_idx" ON public."ProjectPosition" USING btree ("activePersonId", "fillStatus", "activeValidFrom", "activeValidTo");
+
+
+--
+-- Name: ProjectPosition_appliedRateCardEntryId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_appliedRateCardEntryId_idx" ON public."ProjectPosition" USING btree ("appliedRateCardEntryId");
+
+
+--
+-- Name: ProjectPosition_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_createdByPersonId_idx" ON public."ProjectPosition" USING btree ("createdByPersonId");
+
+
+--
+-- Name: ProjectPosition_fillStatus_priority_startDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_fillStatus_priority_startDate_idx" ON public."ProjectPosition" USING btree ("fillStatus", priority, "startDate");
+
+
+--
+-- Name: ProjectPosition_fillStatus_slaDueAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_fillStatus_slaDueAt_idx" ON public."ProjectPosition" USING btree ("fillStatus", "slaDueAt");
+
+
+--
+-- Name: ProjectPosition_legacyAssignmentId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_legacyAssignmentId_idx" ON public."ProjectPosition" USING btree ("legacyAssignmentId");
+
+
+--
+-- Name: ProjectPosition_legacyStaffingRequestId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_legacyStaffingRequestId_idx" ON public."ProjectPosition" USING btree ("legacyStaffingRequestId");
+
+
+--
+-- Name: ProjectPosition_projectId_fillStatus_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_projectId_fillStatus_idx" ON public."ProjectPosition" USING btree ("projectId", "fillStatus");
+
+
+--
+-- Name: ProjectPosition_publicId_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "ProjectPosition_publicId_key" ON public."ProjectPosition" USING btree ("publicId");
+
+
+--
+-- Name: ProjectPosition_requestedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_requestedByPersonId_idx" ON public."ProjectPosition" USING btree ("requestedByPersonId");
+
+
+--
+-- Name: ProjectPosition_slaStage_slaDueAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_slaStage_slaDueAt_idx" ON public."ProjectPosition" USING btree ("slaStage", "slaDueAt");
+
+
+--
+-- Name: ProjectPosition_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_tenantId_idx" ON public."ProjectPosition" USING btree ("tenantId");
+
+
+--
+-- Name: ProjectPosition_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ProjectPosition_updatedByPersonId_idx" ON public."ProjectPosition" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: Project_active_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5230,17 +6332,17 @@ CREATE INDEX "Project_clientId_idx" ON public."Project" USING btree ("clientId")
 
 
 --
+-- Name: Project_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Project_createdByPersonId_idx" ON public."Project" USING btree ("createdByPersonId");
+
+
+--
 -- Name: Project_deliveryManagerId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "Project_deliveryManagerId_idx" ON public."Project" USING btree ("deliveryManagerId");
-
-
---
--- Name: Project_domainId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Project_domainId_idx" ON public."Project" USING btree ("domainId");
 
 
 --
@@ -5265,17 +6367,17 @@ CREATE INDEX "Project_programId_idx" ON public."Project" USING btree ("programId
 
 
 --
+-- Name: Project_projectCode_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "Project_projectCode_key" ON public."Project" USING btree ("projectCode");
+
+
+--
 -- Name: Project_projectManagerId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "Project_projectManagerId_idx" ON public."Project" USING btree ("projectManagerId");
-
-
---
--- Name: Project_projectTypeId_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "Project_projectTypeId_idx" ON public."Project" USING btree ("projectTypeId");
 
 
 --
@@ -5300,10 +6402,17 @@ CREATE INDEX "Project_tenantId_idx" ON public."Project" USING btree ("tenantId")
 
 
 --
--- Name: Project_tenantId_projectCode_key; Type: INDEX; Schema: public; Owner: -
+-- Name: Project_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX "Project_tenantId_projectCode_key" ON public."Project" USING btree ("tenantId", "projectCode");
+CREATE INDEX "Project_updatedByPersonId_idx" ON public."Project" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: RadiusReconciliationRecord_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "RadiusReconciliationRecord_createdByPersonId_idx" ON public."RadiusReconciliationRecord" USING btree ("createdByPersonId");
 
 
 --
@@ -5335,6 +6444,13 @@ CREATE UNIQUE INDEX "RadiusReconciliationRecord_provider_externalAccountId_key" 
 
 
 --
+-- Name: RadiusReconciliationRecord_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "RadiusReconciliationRecord_updatedByPersonId_idx" ON public."RadiusReconciliationRecord" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: RefreshToken_accountId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5360,6 +6476,13 @@ CREATE INDEX "RefreshToken_tokenHash_idx" ON public."RefreshToken" USING btree (
 --
 
 CREATE UNIQUE INDEX "RefreshToken_tokenHash_key" ON public."RefreshToken" USING btree ("tokenHash");
+
+
+--
+-- Name: ReportingLine_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportingLine_createdByPersonId_idx" ON public."ReportingLine" USING btree ("createdByPersonId");
 
 
 --
@@ -5391,6 +6514,13 @@ CREATE INDEX "ReportingLine_subjectPersonId_relationshipType_validFrom_va_idx" O
 
 
 --
+-- Name: ReportingLine_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ReportingLine_updatedByPersonId_idx" ON public."ReportingLine" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: ResourcePool_active_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5412,6 +6542,13 @@ CREATE UNIQUE INDEX "ResourcePool_code_key" ON public."ResourcePool" USING btree
 
 
 --
+-- Name: ResourcePool_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ResourcePool_createdByPersonId_idx" ON public."ResourcePool" USING btree ("createdByPersonId");
+
+
+--
 -- Name: ResourcePool_orgUnitId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5419,10 +6556,24 @@ CREATE INDEX "ResourcePool_orgUnitId_idx" ON public."ResourcePool" USING btree (
 
 
 --
+-- Name: ResourcePool_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "ResourcePool_updatedByPersonId_idx" ON public."ResourcePool" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: StaffingRequestProposalCandidate_candidatePersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "StaffingRequestProposalCandidate_candidatePersonId_idx" ON public."StaffingRequestProposalCandidate" USING btree ("candidatePersonId");
+
+
+--
+-- Name: StaffingRequestProposalCandidate_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalCandidate_createdByPersonId_idx" ON public."StaffingRequestProposalCandidate" USING btree ("createdByPersonId");
 
 
 --
@@ -5454,6 +6605,20 @@ CREATE INDEX "StaffingRequestProposalCandidate_slateId_rank_idx" ON public."Staf
 
 
 --
+-- Name: StaffingRequestProposalCandidate_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalCandidate_updatedByPersonId_idx" ON public."StaffingRequestProposalCandidate" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: StaffingRequestProposalSlate_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalSlate_createdByPersonId_idx" ON public."StaffingRequestProposalSlate" USING btree ("createdByPersonId");
+
+
+--
 -- Name: StaffingRequestProposalSlate_proposedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5482,6 +6647,34 @@ CREATE INDEX "StaffingRequestProposalSlate_status_proposedAt_idx" ON public."Sta
 
 
 --
+-- Name: StaffingRequestProposalSlate_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "StaffingRequestProposalSlate_updatedByPersonId_idx" ON public."StaffingRequestProposalSlate" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: Tenant_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Tenant_createdByPersonId_idx" ON public."Tenant" USING btree ("createdByPersonId");
+
+
+--
+-- Name: Tenant_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "Tenant_updatedByPersonId_idx" ON public."Tenant" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: WorkEvidenceLink_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkEvidenceLink_createdByPersonId_idx" ON public."WorkEvidenceLink" USING btree ("createdByPersonId");
+
+
+--
 -- Name: WorkEvidenceLink_provider_externalKey_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5496,6 +6689,13 @@ CREATE UNIQUE INDEX "WorkEvidenceLink_workEvidenceId_provider_externalKey_key" O
 
 
 --
+-- Name: WorkEvidenceSource_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkEvidenceSource_createdByPersonId_idx" ON public."WorkEvidenceSource" USING btree ("createdByPersonId");
+
+
+--
 -- Name: WorkEvidenceSource_provider_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5507,6 +6707,20 @@ CREATE INDEX "WorkEvidenceSource_provider_archivedAt_idx" ON public."WorkEvidenc
 --
 
 CREATE UNIQUE INDEX "WorkEvidenceSource_provider_sourceType_connectionKey_key" ON public."WorkEvidenceSource" USING btree (provider, "sourceType", "connectionKey");
+
+
+--
+-- Name: WorkEvidenceSource_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkEvidenceSource_updatedByPersonId_idx" ON public."WorkEvidenceSource" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: WorkEvidence_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkEvidence_createdByPersonId_idx" ON public."WorkEvidence" USING btree ("createdByPersonId");
 
 
 --
@@ -5538,6 +6752,13 @@ CREATE INDEX "WorkEvidence_tenantId_idx" ON public."WorkEvidence" USING btree ("
 
 
 --
+-- Name: WorkEvidence_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkEvidence_updatedByPersonId_idx" ON public."WorkEvidence" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: WorkEvidence_workEvidenceSourceId_recordedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5549,6 +6770,13 @@ CREATE INDEX "WorkEvidence_workEvidenceSourceId_recordedAt_idx" ON public."WorkE
 --
 
 CREATE UNIQUE INDEX "WorkEvidence_workEvidenceSourceId_sourceRecordKey_key" ON public."WorkEvidence" USING btree ("workEvidenceSourceId", "sourceRecordKey");
+
+
+--
+-- Name: WorkflowDefinition_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkflowDefinition_createdByPersonId_idx" ON public."WorkflowDefinition" USING btree ("createdByPersonId");
 
 
 --
@@ -5566,6 +6794,27 @@ CREATE UNIQUE INDEX "WorkflowDefinition_entityType_workflowKey_version_key" ON p
 
 
 --
+-- Name: WorkflowDefinition_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkflowDefinition_updatedByPersonId_idx" ON public."WorkflowDefinition" USING btree ("updatedByPersonId");
+
+
+--
+-- Name: WorkflowStateDefinition_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkflowStateDefinition_createdByPersonId_idx" ON public."WorkflowStateDefinition" USING btree ("createdByPersonId");
+
+
+--
+-- Name: WorkflowStateDefinition_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "WorkflowStateDefinition_updatedByPersonId_idx" ON public."WorkflowStateDefinition" USING btree ("updatedByPersonId");
+
+
+--
 -- Name: WorkflowStateDefinition_workflowDefinitionId_sequenceNumber_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5577,6 +6826,20 @@ CREATE INDEX "WorkflowStateDefinition_workflowDefinitionId_sequenceNumber_idx" O
 --
 
 CREATE UNIQUE INDEX "WorkflowStateDefinition_workflowDefinitionId_stateKey_key" ON public."WorkflowStateDefinition" USING btree ("workflowDefinitionId", "stateKey");
+
+
+--
+-- Name: budget_approvals_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "budget_approvals_createdByPersonId_idx" ON public.budget_approvals USING btree ("createdByPersonId");
+
+
+--
+-- Name: budget_approvals_decidedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "budget_approvals_decidedByPersonId_idx" ON public.budget_approvals USING btree ("decidedByPersonId");
 
 
 --
@@ -5601,10 +6864,31 @@ CREATE INDEX budget_approvals_status_idx ON public.budget_approvals USING btree 
 
 
 --
+-- Name: budget_approvals_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "budget_approvals_updatedByPersonId_idx" ON public.budget_approvals USING btree ("updatedByPersonId");
+
+
+--
 -- Name: capacity_audit_table_recorded_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX capacity_audit_table_recorded_idx ON public.capacity_audit USING btree ("tableName", "recordedAt" DESC);
+
+
+--
+-- Name: clients_accountManagerPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "clients_accountManagerPersonId_idx" ON public.clients USING btree ("accountManagerPersonId");
+
+
+--
+-- Name: clients_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "clients_createdByPersonId_idx" ON public.clients USING btree ("createdByPersonId");
 
 
 --
@@ -5629,6 +6913,20 @@ CREATE INDEX "clients_tenantId_idx" ON public.clients USING btree ("tenantId");
 
 
 --
+-- Name: clients_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "clients_updatedByPersonId_idx" ON public.clients USING btree ("updatedByPersonId");
+
+
+--
+-- Name: contacts_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "contacts_createdByPersonId_idx" ON public.contacts USING btree ("createdByPersonId");
+
+
+--
 -- Name: contacts_kind_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5647,6 +6945,13 @@ CREATE INDEX "contacts_personId_idx" ON public.contacts USING btree ("personId")
 --
 
 CREATE UNIQUE INDEX contacts_person_kind_primary_idx ON public.contacts USING btree ("personId", kind) WHERE ("isPrimary" = true);
+
+
+--
+-- Name: contacts_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "contacts_updatedByPersonId_idx" ON public.contacts USING btree ("updatedByPersonId");
 
 
 --
@@ -5678,10 +6983,185 @@ CREATE INDEX "employment_events_personId_occurredOn_idx" ON public.employment_ev
 
 
 --
--- Name: grades_tenantId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: employment_events_recordedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "grades_tenantId_archivedAt_idx" ON public.grades USING btree ("tenantId", "archivedAt");
+CREATE INDEX "employment_events_recordedByPersonId_idx" ON public.employment_events USING btree ("recordedByPersonId");
+
+
+--
+-- Name: fiscal_calendars_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fiscal_calendars_createdByPersonId_idx" ON public.fiscal_calendars USING btree ("createdByPersonId");
+
+
+--
+-- Name: fiscal_calendars_fiscalYear_regionCode_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "fiscal_calendars_fiscalYear_regionCode_key" ON public.fiscal_calendars USING btree ("fiscalYear", "regionCode");
+
+
+--
+-- Name: fiscal_calendars_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fiscal_calendars_name_key ON public.fiscal_calendars USING btree (name);
+
+
+--
+-- Name: fiscal_calendars_startDate_endDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fiscal_calendars_startDate_endDate_idx" ON public.fiscal_calendars USING btree ("startDate", "endDate");
+
+
+--
+-- Name: fiscal_calendars_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fiscal_calendars_updatedByPersonId_idx" ON public.fiscal_calendars USING btree ("updatedByPersonId");
+
+
+--
+-- Name: fiscal_periods_calendarId_periodNumber_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "fiscal_periods_calendarId_periodNumber_key" ON public.fiscal_periods USING btree ("calendarId", "periodNumber");
+
+
+--
+-- Name: fiscal_periods_calendarId_startDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fiscal_periods_calendarId_startDate_idx" ON public.fiscal_periods USING btree ("calendarId", "startDate");
+
+
+--
+-- Name: fiscal_periods_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fiscal_periods_createdByPersonId_idx" ON public.fiscal_periods USING btree ("createdByPersonId");
+
+
+--
+-- Name: fx_rates_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fx_rates_createdByPersonId_idx" ON public.fx_rates USING btree ("createdByPersonId");
+
+
+--
+-- Name: fx_rates_fromCurrency_toCurrency_asOf_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fx_rates_fromCurrency_toCurrency_asOf_idx" ON public.fx_rates USING btree ("fromCurrency", "toCurrency", "asOf" DESC);
+
+
+--
+-- Name: fx_rates_fromCurrency_toCurrency_asOf_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "fx_rates_fromCurrency_toCurrency_asOf_key" ON public.fx_rates USING btree ("fromCurrency", "toCurrency", "asOf");
+
+
+--
+-- Name: fx_rates_toCurrency_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "fx_rates_toCurrency_idx" ON public.fx_rates USING btree ("toCurrency");
+
+
+--
+-- Name: help_articles_authorPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_articles_authorPersonId_idx" ON public.help_articles USING btree ("authorPersonId");
+
+
+--
+-- Name: help_articles_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_articles_createdByPersonId_idx" ON public.help_articles USING btree ("createdByPersonId");
+
+
+--
+-- Name: help_articles_isPublished_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_articles_isPublished_archivedAt_idx" ON public.help_articles USING btree ("isPublished", "archivedAt");
+
+
+--
+-- Name: help_articles_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_articles_tenantId_idx" ON public.help_articles USING btree ("tenantId");
+
+
+--
+-- Name: help_articles_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_articles_updatedByPersonId_idx" ON public.help_articles USING btree ("updatedByPersonId");
+
+
+--
+-- Name: help_feedback_actorPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_feedback_actorPersonId_idx" ON public.help_feedback USING btree ("actorPersonId");
+
+
+--
+-- Name: help_feedback_articleId_createdAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_feedback_articleId_createdAt_idx" ON public.help_feedback USING btree ("articleId", "createdAt");
+
+
+--
+-- Name: help_feedback_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_feedback_tenantId_idx" ON public.help_feedback USING btree ("tenantId");
+
+
+--
+-- Name: help_tips_articleId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_tips_articleId_idx" ON public.help_tips USING btree ("articleId");
+
+
+--
+-- Name: help_tips_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_tips_createdByPersonId_idx" ON public.help_tips USING btree ("createdByPersonId");
+
+
+--
+-- Name: help_tips_routePath_isActive_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_tips_routePath_isActive_idx" ON public.help_tips USING btree ("routePath", "isActive");
+
+
+--
+-- Name: help_tips_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_tips_tenantId_idx" ON public.help_tips USING btree ("tenantId");
+
+
+--
+-- Name: help_tips_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "help_tips_updatedByPersonId_idx" ON public.help_tips USING btree ("updatedByPersonId");
 
 
 --
@@ -5699,6 +7179,13 @@ CREATE INDEX idx_audit_log_aggregate ON public."AuditLog" USING btree ("aggregat
 
 
 --
+-- Name: idx_idempotency_key_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_idempotency_key_expires_at ON public.idempotency_keys USING btree (expires_at);
+
+
+--
 -- Name: idx_staffing_request_project; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5706,10 +7193,10 @@ CREATE INDEX idx_staffing_request_project ON public.staffing_requests USING btre
 
 
 --
--- Name: in_app_notifications_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: in_app_notifications_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX in_app_notifications_id_new_key ON public.in_app_notifications USING btree (id_new);
+CREATE INDEX "in_app_notifications_createdByPersonId_idx" ON public.in_app_notifications USING btree ("createdByPersonId");
 
 
 --
@@ -5741,10 +7228,10 @@ CREATE INDEX "in_app_notifications_tenantId_idx" ON public.in_app_notifications 
 
 
 --
--- Name: job_roles_tenantId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: leave_balances_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "job_roles_tenantId_archivedAt_idx" ON public.job_roles USING btree ("tenantId", "archivedAt");
+CREATE INDEX "leave_balances_createdByPersonId_idx" ON public.leave_balances USING btree ("createdByPersonId");
 
 
 --
@@ -5762,10 +7249,17 @@ CREATE UNIQUE INDEX "leave_balances_personId_year_leaveType_key" ON public.leave
 
 
 --
--- Name: leave_requests_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: leave_balances_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX leave_requests_id_new_key ON public.leave_requests USING btree (id_new);
+CREATE INDEX "leave_balances_updatedByPersonId_idx" ON public.leave_balances USING btree ("updatedByPersonId");
+
+
+--
+-- Name: leave_requests_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "leave_requests_createdByPersonId_idx" ON public.leave_requests USING btree ("createdByPersonId");
 
 
 --
@@ -5797,10 +7291,10 @@ CREATE INDEX "leave_requests_tenantId_idx" ON public.leave_requests USING btree 
 
 
 --
--- Name: locations_tenantId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: leave_requests_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "locations_tenantId_archivedAt_idx" ON public.locations USING btree ("tenantId", "archivedAt");
+CREATE INDEX "leave_requests_updatedByPersonId_idx" ON public.leave_requests USING btree ("updatedByPersonId");
 
 
 --
@@ -5818,6 +7312,55 @@ CREATE INDEX migration_audit_recorded_at_idx ON public.migration_audit USING btr
 
 
 --
+-- Name: onboarding_tour_progress_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "onboarding_tour_progress_createdByPersonId_idx" ON public.onboarding_tour_progress USING btree ("createdByPersonId");
+
+
+--
+-- Name: onboarding_tour_progress_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "onboarding_tour_progress_tenantId_idx" ON public.onboarding_tour_progress USING btree ("tenantId");
+
+
+--
+-- Name: onboarding_tour_progress_tourKey_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "onboarding_tour_progress_tourKey_idx" ON public.onboarding_tour_progress USING btree ("tourKey");
+
+
+--
+-- Name: onboarding_tour_progress_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "onboarding_tour_progress_updatedByPersonId_idx" ON public.onboarding_tour_progress USING btree ("updatedByPersonId");
+
+
+--
+-- Name: organization_configs_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "organization_configs_createdByPersonId_idx" ON public.organization_configs USING btree ("createdByPersonId");
+
+
+--
+-- Name: overtime_exceptions_caseRecordId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "overtime_exceptions_caseRecordId_idx" ON public.overtime_exceptions USING btree ("caseRecordId");
+
+
+--
+-- Name: overtime_exceptions_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "overtime_exceptions_createdByPersonId_idx" ON public.overtime_exceptions USING btree ("createdByPersonId");
+
+
+--
 -- Name: overtime_exceptions_personId_effectiveFrom_effectiveTo_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5825,10 +7368,24 @@ CREATE INDEX "overtime_exceptions_personId_effectiveFrom_effectiveTo_idx" ON pub
 
 
 --
+-- Name: overtime_exceptions_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "overtime_exceptions_updatedByPersonId_idx" ON public.overtime_exceptions USING btree ("updatedByPersonId");
+
+
+--
 -- Name: overtime_policies_approvalCaseId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "overtime_policies_approvalCaseId_idx" ON public.overtime_policies USING btree ("approvalCaseId");
+
+
+--
+-- Name: overtime_policies_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "overtime_policies_createdByPersonId_idx" ON public.overtime_policies USING btree ("createdByPersonId");
 
 
 --
@@ -5846,10 +7403,17 @@ CREATE INDEX "overtime_policies_resourcePoolId_effectiveFrom_idx" ON public.over
 
 
 --
--- Name: period_locks_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: overtime_policies_setByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX period_locks_id_new_key ON public.period_locks USING btree (id_new);
+CREATE INDEX "overtime_policies_setByPersonId_idx" ON public.overtime_policies USING btree ("setByPersonId");
+
+
+--
+-- Name: overtime_policies_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "overtime_policies_updatedByPersonId_idx" ON public.overtime_policies USING btree ("updatedByPersonId");
 
 
 --
@@ -5860,17 +7424,17 @@ CREATE UNIQUE INDEX "period_locks_publicId_key" ON public.period_locks USING btr
 
 
 --
+-- Name: person_cost_rates_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_cost_rates_createdByPersonId_idx" ON public.person_cost_rates USING btree ("createdByPersonId");
+
+
+--
 -- Name: person_cost_rates_currencyCode_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "person_cost_rates_currencyCode_idx" ON public.person_cost_rates USING btree ("currencyCode");
-
-
---
--- Name: person_cost_rates_id_new_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX person_cost_rates_id_new_key ON public.person_cost_rates USING btree (id_new);
 
 
 --
@@ -5895,10 +7459,80 @@ CREATE INDEX "person_notification_preferences_personId_idx" ON public.person_not
 
 
 --
--- Name: person_skills_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: person_release_approvals_actorPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX person_skills_id_new_key ON public.person_skills USING btree (id_new);
+CREATE INDEX "person_release_approvals_actorPersonId_idx" ON public.person_release_approvals USING btree ("actorPersonId");
+
+
+--
+-- Name: person_release_approvals_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_approvals_createdByPersonId_idx" ON public.person_release_approvals USING btree ("createdByPersonId");
+
+
+--
+-- Name: person_release_approvals_requestId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_approvals_requestId_idx" ON public.person_release_approvals USING btree ("requestId");
+
+
+--
+-- Name: person_release_approvals_requestId_role_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "person_release_approvals_requestId_role_key" ON public.person_release_approvals USING btree ("requestId", role);
+
+
+--
+-- Name: person_release_approvals_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_approvals_updatedByPersonId_idx" ON public.person_release_approvals USING btree ("updatedByPersonId");
+
+
+--
+-- Name: person_release_requests_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_createdByPersonId_idx" ON public.person_release_requests USING btree ("createdByPersonId");
+
+
+--
+-- Name: person_release_requests_initiatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_initiatedByPersonId_idx" ON public.person_release_requests USING btree ("initiatedByPersonId");
+
+
+--
+-- Name: person_release_requests_personId_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_personId_status_idx" ON public.person_release_requests USING btree ("personId", status);
+
+
+--
+-- Name: person_release_requests_status_targetTerminationDate_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_status_targetTerminationDate_idx" ON public.person_release_requests USING btree (status, "targetTerminationDate");
+
+
+--
+-- Name: person_release_requests_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_tenantId_idx" ON public.person_release_requests USING btree ("tenantId");
+
+
+--
+-- Name: person_release_requests_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_release_requests_updatedByPersonId_idx" ON public.person_release_requests USING btree ("updatedByPersonId");
 
 
 --
@@ -5916,6 +7550,13 @@ CREATE UNIQUE INDEX "person_skills_personId_skillId_key" ON public.person_skills
 
 
 --
+-- Name: person_skills_skillId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "person_skills_skillId_idx" ON public.person_skills USING btree ("skillId");
+
+
+--
 -- Name: planner_scenarios_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5930,6 +7571,76 @@ CREATE INDEX "planner_scenarios_createdByPersonId_idx" ON public.planner_scenari
 
 
 --
+-- Name: platform_settings_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "platform_settings_createdByPersonId_idx" ON public.platform_settings USING btree ("createdByPersonId");
+
+
+--
+-- Name: platform_settings_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "platform_settings_updatedByPersonId_idx" ON public.platform_settings USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_activation_approvals_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_createdByPersonId_idx" ON public.project_activation_approvals USING btree ("createdByPersonId");
+
+
+--
+-- Name: project_activation_approvals_decidedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_decidedAt_idx" ON public.project_activation_approvals USING btree ("decidedAt");
+
+
+--
+-- Name: project_activation_approvals_decidedById_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_decidedById_idx" ON public.project_activation_approvals USING btree ("decidedById");
+
+
+--
+-- Name: project_activation_approvals_projectId_requestedAt_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_projectId_requestedAt_idx" ON public.project_activation_approvals USING btree ("projectId", "requestedAt");
+
+
+--
+-- Name: project_activation_approvals_requestedById_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_requestedById_idx" ON public.project_activation_approvals USING btree ("requestedById");
+
+
+--
+-- Name: project_activation_approvals_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_tenantId_idx" ON public.project_activation_approvals USING btree ("tenantId");
+
+
+--
+-- Name: project_activation_approvals_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_activation_approvals_updatedByPersonId_idx" ON public.project_activation_approvals USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_budgets_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_budgets_createdByPersonId_idx" ON public.project_budgets USING btree ("createdByPersonId");
+
+
+--
 -- Name: project_budgets_currencyCode_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5937,17 +7648,24 @@ CREATE INDEX "project_budgets_currencyCode_idx" ON public.project_budgets USING 
 
 
 --
--- Name: project_budgets_id_new_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX project_budgets_id_new_key ON public.project_budgets USING btree (id_new);
-
-
---
 -- Name: project_budgets_publicId_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX "project_budgets_publicId_key" ON public.project_budgets USING btree ("publicId");
+
+
+--
+-- Name: project_budgets_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_budgets_updatedByPersonId_idx" ON public.project_budgets USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_change_requests_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_change_requests_createdByPersonId_idx" ON public.project_change_requests USING btree ("createdByPersonId");
 
 
 --
@@ -5979,10 +7697,17 @@ CREATE INDEX "project_change_requests_requesterPersonId_idx" ON public.project_c
 
 
 --
--- Name: project_domains_tenantId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: project_change_requests_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "project_domains_tenantId_archivedAt_idx" ON public.project_domains USING btree ("tenantId", "archivedAt");
+CREATE INDEX "project_change_requests_updatedByPersonId_idx" ON public.project_change_requests USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_milestones_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_milestones_createdByPersonId_idx" ON public.project_milestones USING btree ("createdByPersonId");
 
 
 --
@@ -6000,6 +7725,13 @@ CREATE INDEX "project_milestones_projectId_status_idx" ON public.project_milesto
 
 
 --
+-- Name: project_milestones_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_milestones_updatedByPersonId_idx" ON public.project_milestones USING btree ("updatedByPersonId");
+
+
+--
 -- Name: project_radiator_overrides_overriddenByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6011,6 +7743,13 @@ CREATE INDEX "project_radiator_overrides_overriddenByPersonId_idx" ON public.pro
 --
 
 CREATE INDEX "project_radiator_overrides_snapshotId_idx" ON public.project_radiator_overrides USING btree ("snapshotId");
+
+
+--
+-- Name: project_rag_snapshots_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_rag_snapshots_createdByPersonId_idx" ON public.project_rag_snapshots USING btree ("createdByPersonId");
 
 
 --
@@ -6035,6 +7774,27 @@ CREATE INDEX "project_rag_snapshots_recordedByPersonId_idx" ON public.project_ra
 
 
 --
+-- Name: project_rag_snapshots_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_rag_snapshots_updatedByPersonId_idx" ON public.project_rag_snapshots USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_retrospectives_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_retrospectives_createdByPersonId_idx" ON public.project_retrospectives USING btree ("createdByPersonId");
+
+
+--
+-- Name: project_retrospectives_facilitatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_retrospectives_facilitatedByPersonId_idx" ON public.project_retrospectives USING btree ("facilitatedByPersonId");
+
+
+--
 -- Name: project_retrospectives_projectId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6042,10 +7802,31 @@ CREATE INDEX "project_retrospectives_projectId_idx" ON public.project_retrospect
 
 
 --
+-- Name: project_retrospectives_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_retrospectives_updatedByPersonId_idx" ON public.project_retrospectives USING btree ("updatedByPersonId");
+
+
+--
 -- Name: project_risks_assigneePersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "project_risks_assigneePersonId_idx" ON public.project_risks USING btree ("assigneePersonId");
+
+
+--
+-- Name: project_risks_convertedFromRiskId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_risks_convertedFromRiskId_idx" ON public.project_risks USING btree ("convertedFromRiskId");
+
+
+--
+-- Name: project_risks_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_risks_createdByPersonId_idx" ON public.project_risks USING btree ("createdByPersonId");
 
 
 --
@@ -6084,6 +7865,20 @@ CREATE INDEX project_risks_title_trgm_idx ON public.project_risks USING gin (tit
 
 
 --
+-- Name: project_risks_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_risks_updatedByPersonId_idx" ON public.project_risks USING btree ("updatedByPersonId");
+
+
+--
+-- Name: project_role_plans_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_role_plans_createdByPersonId_idx" ON public.project_role_plans USING btree ("createdByPersonId");
+
+
+--
 -- Name: project_role_plans_projectId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6098,24 +7893,17 @@ CREATE UNIQUE INDEX "project_role_plans_projectId_roleName_seniorityLevel_key" O
 
 
 --
--- Name: project_tags_tag_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: project_role_plans_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX project_tags_tag_idx ON public.project_tags USING btree (tag);
-
-
---
--- Name: project_technologies_technology_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX project_technologies_technology_idx ON public.project_technologies USING btree (technology);
+CREATE INDEX "project_role_plans_updatedByPersonId_idx" ON public.project_role_plans USING btree ("updatedByPersonId");
 
 
 --
--- Name: project_types_tenantId_archivedAt_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: project_vendor_engagements_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "project_types_tenantId_archivedAt_idx" ON public.project_types USING btree ("tenantId", "archivedAt");
+CREATE INDEX "project_vendor_engagements_createdByPersonId_idx" ON public.project_vendor_engagements USING btree ("createdByPersonId");
 
 
 --
@@ -6140,10 +7928,24 @@ CREATE UNIQUE INDEX "project_vendor_engagements_projectId_vendorId_key" ON publi
 
 
 --
+-- Name: project_vendor_engagements_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_vendor_engagements_updatedByPersonId_idx" ON public.project_vendor_engagements USING btree ("updatedByPersonId");
+
+
+--
 -- Name: project_vendor_engagements_vendorId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "project_vendor_engagements_vendorId_idx" ON public.project_vendor_engagements USING btree ("vendorId");
+
+
+--
+-- Name: project_workstreams_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_workstreams_createdByPersonId_idx" ON public.project_workstreams USING btree ("createdByPersonId");
 
 
 --
@@ -6154,6 +7956,13 @@ CREATE INDEX "project_workstreams_projectId_idx" ON public.project_workstreams U
 
 
 --
+-- Name: project_workstreams_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "project_workstreams_updatedByPersonId_idx" ON public.project_workstreams USING btree ("updatedByPersonId");
+
+
+--
 -- Name: public_holidays_countryCode_date_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6161,17 +7970,17 @@ CREATE INDEX "public_holidays_countryCode_date_idx" ON public.public_holidays US
 
 
 --
+-- Name: public_holidays_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "public_holidays_createdByPersonId_idx" ON public.public_holidays USING btree ("createdByPersonId");
+
+
+--
 -- Name: public_holidays_date_countryCode_key; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX "public_holidays_date_countryCode_key" ON public.public_holidays USING btree (date, "countryCode");
-
-
---
--- Name: pulse_entries_id_new_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX pulse_entries_id_new_key ON public.pulse_entries USING btree (id_new);
 
 
 --
@@ -6189,6 +7998,13 @@ CREATE UNIQUE INDEX "pulse_entries_personId_weekStart_key" ON public.pulse_entri
 
 
 --
+-- Name: pulse_reports_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "pulse_reports_createdByPersonId_idx" ON public.pulse_reports USING btree ("createdByPersonId");
+
+
+--
 -- Name: pulse_reports_projectId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6200,6 +8016,20 @@ CREATE INDEX "pulse_reports_projectId_idx" ON public.pulse_reports USING btree (
 --
 
 CREATE UNIQUE INDEX "pulse_reports_projectId_weekStarting_key" ON public.pulse_reports USING btree ("projectId", "weekStarting");
+
+
+--
+-- Name: pulse_reports_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "pulse_reports_updatedByPersonId_idx" ON public.pulse_reports USING btree ("updatedByPersonId");
+
+
+--
+-- Name: radiator_threshold_configs_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "radiator_threshold_configs_createdByPersonId_idx" ON public.radiator_threshold_configs USING btree ("createdByPersonId");
 
 
 --
@@ -6217,10 +8047,157 @@ CREATE INDEX "radiator_threshold_configs_updatedByPersonId_idx" ON public.radiat
 
 
 --
--- Name: skills_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: rate_card_entries_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX skills_id_new_key ON public.skills USING btree (id_new);
+CREATE INDEX "rate_card_entries_createdByPersonId_idx" ON public.rate_card_entries USING btree ("createdByPersonId");
+
+
+--
+-- Name: rate_card_entries_rateCardId_isActive_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_card_entries_rateCardId_isActive_idx" ON public.rate_card_entries USING btree ("rateCardId", "isActive");
+
+
+--
+-- Name: rate_card_entries_rateCardId_staffingRole_grade_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "rate_card_entries_rateCardId_staffingRole_grade_key" ON public.rate_card_entries USING btree ("rateCardId", "staffingRole", grade);
+
+
+--
+-- Name: rate_card_entries_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_card_entries_updatedByPersonId_idx" ON public.rate_card_entries USING btree ("updatedByPersonId");
+
+
+--
+-- Name: rate_cards_clientId_isActive_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_cards_clientId_isActive_idx" ON public.rate_cards USING btree ("clientId", "isActive");
+
+
+--
+-- Name: rate_cards_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_cards_createdByPersonId_idx" ON public.rate_cards USING btree ("createdByPersonId");
+
+
+--
+-- Name: rate_cards_currencyCode_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_cards_currencyCode_idx" ON public.rate_cards USING btree ("currencyCode");
+
+
+--
+-- Name: rate_cards_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_cards_tenantId_idx" ON public.rate_cards USING btree ("tenantId");
+
+
+--
+-- Name: rate_cards_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "rate_cards_updatedByPersonId_idx" ON public.rate_cards USING btree ("updatedByPersonId");
+
+
+--
+-- Name: responsibility_rules_actionKind_scopeKind_isActive_priority_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "responsibility_rules_actionKind_scopeKind_isActive_priority_idx" ON public.responsibility_rules USING btree ("actionKind", "scopeKind", "isActive", priority);
+
+
+--
+-- Name: responsibility_rules_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "responsibility_rules_createdByPersonId_idx" ON public.responsibility_rules USING btree ("createdByPersonId");
+
+
+--
+-- Name: responsibility_rules_targetPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "responsibility_rules_targetPersonId_idx" ON public.responsibility_rules USING btree ("targetPersonId");
+
+
+--
+-- Name: responsibility_rules_tenantId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "responsibility_rules_tenantId_idx" ON public.responsibility_rules USING btree ("tenantId");
+
+
+--
+-- Name: responsibility_rules_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "responsibility_rules_updatedByPersonId_idx" ON public.responsibility_rules USING btree ("updatedByPersonId");
+
+
+--
+-- Name: setup_run_logs_level_occurred_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX setup_run_logs_level_occurred_at_idx ON public.setup_run_logs USING btree (level, occurred_at);
+
+
+--
+-- Name: setup_run_logs_run_id_sequence_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX setup_run_logs_run_id_sequence_idx ON public.setup_run_logs USING btree (run_id, sequence);
+
+
+--
+-- Name: setup_run_logs_run_id_step_key_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX setup_run_logs_run_id_step_key_idx ON public.setup_run_logs USING btree (run_id, step_key);
+
+
+--
+-- Name: setup_runs_run_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX setup_runs_run_id_idx ON public.setup_runs USING btree (run_id);
+
+
+--
+-- Name: setup_runs_run_id_step_key_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX setup_runs_run_id_step_key_key ON public.setup_runs USING btree (run_id, step_key);
+
+
+--
+-- Name: setup_runs_status_started_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX setup_runs_status_started_at_idx ON public.setup_runs USING btree (status, started_at);
+
+
+--
+-- Name: skills_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "skills_createdByPersonId_idx" ON public.skills USING btree ("createdByPersonId");
+
+
+--
+-- Name: skills_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX skills_name_key ON public.skills USING btree (name);
 
 
 --
@@ -6238,10 +8215,10 @@ CREATE INDEX "skills_tenantId_idx" ON public.skills USING btree ("tenantId");
 
 
 --
--- Name: skills_tenantId_name_key; Type: INDEX; Schema: public; Owner: -
+-- Name: skills_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX "skills_tenantId_name_key" ON public.skills USING btree ("tenantId", name);
+CREATE INDEX "skills_updatedByPersonId_idx" ON public.skills USING btree ("updatedByPersonId");
 
 
 --
@@ -6252,10 +8229,10 @@ CREATE INDEX "staffing_request_fulfilments_assignedPersonId_idx" ON public.staff
 
 
 --
--- Name: staffing_request_fulfilments_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: staffing_request_fulfilments_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX staffing_request_fulfilments_id_new_key ON public.staffing_request_fulfilments USING btree (id_new);
+CREATE INDEX "staffing_request_fulfilments_createdByPersonId_idx" ON public.staffing_request_fulfilments USING btree ("createdByPersonId");
 
 
 --
@@ -6266,10 +8243,17 @@ CREATE INDEX "staffing_request_fulfilments_requestId_idx" ON public.staffing_req
 
 
 --
--- Name: staffing_requests_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: staffing_request_fulfilments_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX staffing_requests_id_new_key ON public.staffing_requests USING btree (id_new);
+CREATE INDEX "staffing_request_fulfilments_updatedByPersonId_idx" ON public.staffing_request_fulfilments USING btree ("updatedByPersonId");
+
+
+--
+-- Name: staffing_requests_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "staffing_requests_createdByPersonId_idx" ON public.staffing_requests USING btree ("createdByPersonId");
 
 
 --
@@ -6308,10 +8292,17 @@ CREATE INDEX "staffing_requests_tenantId_idx" ON public.staffing_requests USING 
 
 
 --
--- Name: timesheet_entries_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: staffing_requests_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX timesheet_entries_id_new_key ON public.timesheet_entries USING btree (id_new);
+CREATE INDEX "staffing_requests_updatedByPersonId_idx" ON public.staffing_requests USING btree ("updatedByPersonId");
+
+
+--
+-- Name: timesheet_entries_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "timesheet_entries_createdByPersonId_idx" ON public.timesheet_entries USING btree ("createdByPersonId");
 
 
 --
@@ -6322,10 +8313,17 @@ CREATE UNIQUE INDEX "timesheet_entries_timesheetWeekId_projectId_benchCategory_w
 
 
 --
--- Name: timesheet_weeks_id_new_key; Type: INDEX; Schema: public; Owner: -
+-- Name: timesheet_entries_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX timesheet_weeks_id_new_key ON public.timesheet_weeks USING btree (id_new);
+CREATE INDEX "timesheet_entries_updatedByPersonId_idx" ON public.timesheet_entries USING btree ("updatedByPersonId");
+
+
+--
+-- Name: timesheet_weeks_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "timesheet_weeks_createdByPersonId_idx" ON public.timesheet_weeks USING btree ("createdByPersonId");
 
 
 --
@@ -6357,6 +8355,13 @@ CREATE INDEX "timesheet_weeks_tenantId_idx" ON public.timesheet_weeks USING btre
 
 
 --
+-- Name: timesheet_weeks_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "timesheet_weeks_updatedByPersonId_idx" ON public.timesheet_weeks USING btree ("updatedByPersonId");
+
+
+--
 -- Name: undo_actions_actorId_expiresAt_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6371,10 +8376,31 @@ CREATE INDEX "undo_actions_entityId_idx" ON public.undo_actions USING btree ("en
 
 
 --
+-- Name: uq_idempotency_key_actor_route; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_idempotency_key_actor_route ON public.idempotency_keys USING btree (idempotency_key, method, path, actor_id);
+
+
+--
+-- Name: vendor_skill_areas_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "vendor_skill_areas_createdByPersonId_idx" ON public.vendor_skill_areas USING btree ("createdByPersonId");
+
+
+--
 -- Name: vendor_skill_areas_skillArea_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "vendor_skill_areas_skillArea_idx" ON public.vendor_skill_areas USING btree ("skillArea");
+
+
+--
+-- Name: vendors_createdByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "vendors_createdByPersonId_idx" ON public.vendors USING btree ("createdByPersonId");
 
 
 --
@@ -6396,6 +8422,13 @@ CREATE UNIQUE INDEX vendors_name_key ON public.vendors USING btree (name);
 --
 
 CREATE INDEX "vendors_tenantId_idx" ON public.vendors USING btree ("tenantId");
+
+
+--
+-- Name: vendors_updatedByPersonId_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "vendors_updatedByPersonId_idx" ON public.vendors USING btree ("updatedByPersonId");
 
 
 --
@@ -6767,7 +8800,15 @@ CREATE TRIGGER timesheet_weeks_dm2_dualmaintain BEFORE INSERT OR UPDATE ON publi
 --
 
 ALTER TABLE ONLY public."AssignmentApproval"
-    ADD CONSTRAINT "AssignmentApproval_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT "AssignmentApproval_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: AssignmentApproval AssignmentApproval_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentApproval"
+    ADD CONSTRAINT "AssignmentApproval_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6779,11 +8820,19 @@ ALTER TABLE ONLY public."AssignmentApproval"
 
 
 --
+-- Name: AssignmentApproval AssignmentApproval_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."AssignmentApproval"
+    ADD CONSTRAINT "AssignmentApproval_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: AssignmentHistory AssignmentHistory_assignmentId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."AssignmentHistory"
-    ADD CONSTRAINT "AssignmentHistory_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT "AssignmentHistory_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES public."ProjectAssignment"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 
 --
@@ -6815,7 +8864,15 @@ ALTER TABLE ONLY public."AuditLog"
 --
 
 ALTER TABLE ONLY public."CaseParticipant"
-    ADD CONSTRAINT "CaseParticipant_caseRecordId_fkey" FOREIGN KEY ("caseRecordId") REFERENCES public."CaseRecord"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT "CaseParticipant_caseRecordId_fkey" FOREIGN KEY ("caseRecordId") REFERENCES public."CaseRecord"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: CaseParticipant CaseParticipant_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseParticipant"
+    ADD CONSTRAINT "CaseParticipant_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6832,6 +8889,14 @@ ALTER TABLE ONLY public."CaseParticipant"
 
 ALTER TABLE ONLY public."CaseRecord"
     ADD CONSTRAINT "CaseRecord_caseTypeId_fkey" FOREIGN KEY ("caseTypeId") REFERENCES public."CaseType"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: CaseRecord CaseRecord_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseRecord"
+    ADD CONSTRAINT "CaseRecord_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6875,6 +8940,14 @@ ALTER TABLE ONLY public."CaseRecord"
 
 
 --
+-- Name: CaseRecord CaseRecord_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseRecord"
+    ADD CONSTRAINT "CaseRecord_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: CaseStep CaseStep_assignedToPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6887,7 +8960,23 @@ ALTER TABLE ONLY public."CaseStep"
 --
 
 ALTER TABLE ONLY public."CaseStep"
-    ADD CONSTRAINT "CaseStep_caseRecordId_fkey" FOREIGN KEY ("caseRecordId") REFERENCES public."CaseRecord"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT "CaseStep_caseRecordId_fkey" FOREIGN KEY ("caseRecordId") REFERENCES public."CaseRecord"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: CaseStep CaseStep_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseStep"
+    ADD CONSTRAINT "CaseStep_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: CaseStep CaseStep_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseStep"
+    ADD CONSTRAINT "CaseStep_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6899,11 +8988,43 @@ ALTER TABLE ONLY public."CaseStep"
 
 
 --
+-- Name: CaseType CaseType_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseType"
+    ADD CONSTRAINT "CaseType_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: CaseType CaseType_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CaseType"
+    ADD CONSTRAINT "CaseType_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: CaseType CaseType_workflowDefinitionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."CaseType"
     ADD CONSTRAINT "CaseType_workflowDefinitionId_fkey" FOREIGN KEY ("workflowDefinitionId") REFERENCES public."WorkflowDefinition"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Currency Currency_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Currency"
+    ADD CONSTRAINT "Currency_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: CustomFieldDefinition CustomFieldDefinition_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CustomFieldDefinition"
+    ADD CONSTRAINT "CustomFieldDefinition_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6923,11 +9044,35 @@ ALTER TABLE ONLY public."CustomFieldDefinition"
 
 
 --
+-- Name: CustomFieldDefinition CustomFieldDefinition_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CustomFieldDefinition"
+    ADD CONSTRAINT "CustomFieldDefinition_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: CustomFieldValue CustomFieldValue_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CustomFieldValue"
+    ADD CONSTRAINT "CustomFieldValue_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: CustomFieldValue CustomFieldValue_customFieldDefinitionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."CustomFieldValue"
     ADD CONSTRAINT "CustomFieldValue_customFieldDefinitionId_fkey" FOREIGN KEY ("customFieldDefinitionId") REFERENCES public."CustomFieldDefinition"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: CustomFieldValue CustomFieldValue_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."CustomFieldValue"
+    ADD CONSTRAINT "CustomFieldValue_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6955,11 +9100,27 @@ ALTER TABLE ONLY public."EmployeeActivityEvent"
 
 
 --
+-- Name: EntityLayoutDefinition EntityLayoutDefinition_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."EntityLayoutDefinition"
+    ADD CONSTRAINT "EntityLayoutDefinition_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: EntityLayoutDefinition EntityLayoutDefinition_scopeOrgUnitId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."EntityLayoutDefinition"
     ADD CONSTRAINT "EntityLayoutDefinition_scopeOrgUnitId_fkey" FOREIGN KEY ("scopeOrgUnitId") REFERENCES public."OrgUnit"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: EntityLayoutDefinition EntityLayoutDefinition_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."EntityLayoutDefinition"
+    ADD CONSTRAINT "EntityLayoutDefinition_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -6979,6 +9140,30 @@ ALTER TABLE ONLY public."ExternalSyncState"
 
 
 --
+-- Name: IntegrationSyncState IntegrationSyncState_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."IntegrationSyncState"
+    ADD CONSTRAINT "IntegrationSyncState_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: IntegrationSyncState IntegrationSyncState_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."IntegrationSyncState"
+    ADD CONSTRAINT "IntegrationSyncState_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: LocalAccount LocalAccount_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."LocalAccount"
+    ADD CONSTRAINT "LocalAccount_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: LocalAccount LocalAccount_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6992,6 +9177,22 @@ ALTER TABLE ONLY public."LocalAccount"
 
 ALTER TABLE ONLY public."LocalAccount"
     ADD CONSTRAINT "LocalAccount_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: LocalAccount LocalAccount_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."LocalAccount"
+    ADD CONSTRAINT "LocalAccount_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: M365DirectoryReconciliationRecord M365DirectoryReconciliationRecord_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."M365DirectoryReconciliationRecord"
+    ADD CONSTRAINT "M365DirectoryReconciliationRecord_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7011,11 +9212,43 @@ ALTER TABLE ONLY public."M365DirectoryReconciliationRecord"
 
 
 --
+-- Name: M365DirectoryReconciliationRecord M365DirectoryReconciliationRecord_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."M365DirectoryReconciliationRecord"
+    ADD CONSTRAINT "M365DirectoryReconciliationRecord_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: MetadataDictionary MetadataDictionary_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MetadataDictionary"
+    ADD CONSTRAINT "MetadataDictionary_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: MetadataDictionary MetadataDictionary_scopeOrgUnitId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."MetadataDictionary"
     ADD CONSTRAINT "MetadataDictionary_scopeOrgUnitId_fkey" FOREIGN KEY ("scopeOrgUnitId") REFERENCES public."OrgUnit"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: MetadataDictionary MetadataDictionary_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MetadataDictionary"
+    ADD CONSTRAINT "MetadataDictionary_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: MetadataEntry MetadataEntry_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MetadataEntry"
+    ADD CONSTRAINT "MetadataEntry_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7027,11 +9260,43 @@ ALTER TABLE ONLY public."MetadataEntry"
 
 
 --
+-- Name: MetadataEntry MetadataEntry_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."MetadataEntry"
+    ADD CONSTRAINT "MetadataEntry_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: NotificationChannel NotificationChannel_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationChannel"
+    ADD CONSTRAINT "NotificationChannel_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: NotificationChannel NotificationChannel_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationChannel"
+    ADD CONSTRAINT "NotificationChannel_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: NotificationDelivery NotificationDelivery_channelId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."NotificationDelivery"
     ADD CONSTRAINT "NotificationDelivery_channelId_fkey" FOREIGN KEY ("channelId") REFERENCES public."NotificationChannel"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: NotificationDelivery NotificationDelivery_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationDelivery"
+    ADD CONSTRAINT "NotificationDelivery_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7043,11 +9308,27 @@ ALTER TABLE ONLY public."NotificationDelivery"
 
 
 --
+-- Name: NotificationDelivery NotificationDelivery_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationDelivery"
+    ADD CONSTRAINT "NotificationDelivery_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: NotificationRequest NotificationRequest_channelId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."NotificationRequest"
     ADD CONSTRAINT "NotificationRequest_channelId_fkey" FOREIGN KEY ("channelId") REFERENCES public."NotificationChannel"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: NotificationRequest NotificationRequest_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationRequest"
+    ADD CONSTRAINT "NotificationRequest_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7059,6 +9340,14 @@ ALTER TABLE ONLY public."NotificationRequest"
 
 
 --
+-- Name: NotificationRequest NotificationRequest_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationRequest"
+    ADD CONSTRAINT "NotificationRequest_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: NotificationTemplate NotificationTemplate_channelId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7067,11 +9356,27 @@ ALTER TABLE ONLY public."NotificationTemplate"
 
 
 --
--- Name: Notification Notification_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: NotificationTemplate NotificationTemplate_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."Notification"
-    ADD CONSTRAINT "Notification_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public."NotificationTemplate"
+    ADD CONSTRAINT "NotificationTemplate_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: NotificationTemplate NotificationTemplate_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."NotificationTemplate"
+    ADD CONSTRAINT "NotificationTemplate_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: OrgUnit OrgUnit_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."OrgUnit"
+    ADD CONSTRAINT "OrgUnit_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7099,6 +9404,22 @@ ALTER TABLE ONLY public."OrgUnit"
 
 
 --
+-- Name: OrgUnit OrgUnit_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."OrgUnit"
+    ADD CONSTRAINT "OrgUnit_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: OutboxEvent OutboxEvent_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."OutboxEvent"
+    ADD CONSTRAINT "OutboxEvent_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: OutboxEvent OutboxEvent_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7115,6 +9436,14 @@ ALTER TABLE ONLY public."PasswordResetToken"
 
 
 --
+-- Name: PersonExternalIdentityLink PersonExternalIdentityLink_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PersonExternalIdentityLink"
+    ADD CONSTRAINT "PersonExternalIdentityLink_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: PersonExternalIdentityLink PersonExternalIdentityLink_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7128,6 +9457,22 @@ ALTER TABLE ONLY public."PersonExternalIdentityLink"
 
 ALTER TABLE ONLY public."PersonExternalIdentityLink"
     ADD CONSTRAINT "PersonExternalIdentityLink_resolvedManagerPersonId_fkey" FOREIGN KEY ("resolvedManagerPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: PersonExternalIdentityLink PersonExternalIdentityLink_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PersonExternalIdentityLink"
+    ADD CONSTRAINT "PersonExternalIdentityLink_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: PersonOrgMembership PersonOrgMembership_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PersonOrgMembership"
+    ADD CONSTRAINT "PersonOrgMembership_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7155,6 +9500,22 @@ ALTER TABLE ONLY public."PersonOrgMembership"
 
 
 --
+-- Name: PersonOrgMembership PersonOrgMembership_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PersonOrgMembership"
+    ADD CONSTRAINT "PersonOrgMembership_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: PersonResourcePoolMembership PersonResourcePoolMembership_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."PersonResourcePoolMembership"
+    ADD CONSTRAINT "PersonResourcePoolMembership_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: PersonResourcePoolMembership PersonResourcePoolMembership_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7171,27 +9532,11 @@ ALTER TABLE ONLY public."PersonResourcePoolMembership"
 
 
 --
--- Name: Person Person_gradeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: PersonResourcePoolMembership PersonResourcePoolMembership_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public."Person"
-    ADD CONSTRAINT "Person_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES public.grades(id) ON DELETE SET NULL;
-
-
---
--- Name: Person Person_jobRoleId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Person"
-    ADD CONSTRAINT "Person_jobRoleId_fkey" FOREIGN KEY ("jobRoleId") REFERENCES public.job_roles(id) ON DELETE SET NULL;
-
-
---
--- Name: Person Person_locationId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Person"
-    ADD CONSTRAINT "Person_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES public.locations(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public."PersonResourcePoolMembership"
+    ADD CONSTRAINT "PersonResourcePoolMembership_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7200,6 +9545,14 @@ ALTER TABLE ONLY public."Person"
 
 ALTER TABLE ONLY public."Person"
     ADD CONSTRAINT "Person_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Position Position_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Position"
+    ADD CONSTRAINT "Position_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7216,6 +9569,30 @@ ALTER TABLE ONLY public."Position"
 
 ALTER TABLE ONLY public."Position"
     ADD CONSTRAINT "Position_orgUnitId_fkey" FOREIGN KEY ("orgUnitId") REFERENCES public."OrgUnit"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Position Position_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Position"
+    ADD CONSTRAINT "Position_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectAssignment ProjectAssignment_appliedRateCardEntryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectAssignment"
+    ADD CONSTRAINT "ProjectAssignment_appliedRateCardEntryId_fkey" FOREIGN KEY ("appliedRateCardEntryId") REFERENCES public.rate_card_entries(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectAssignment ProjectAssignment_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectAssignment"
+    ADD CONSTRAINT "ProjectAssignment_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7259,11 +9636,139 @@ ALTER TABLE ONLY public."ProjectAssignment"
 
 
 --
+-- Name: ProjectAssignment ProjectAssignment_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectAssignment"
+    ADD CONSTRAINT "ProjectAssignment_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectExternalLink ProjectExternalLink_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectExternalLink"
+    ADD CONSTRAINT "ProjectExternalLink_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: ProjectExternalLink ProjectExternalLink_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."ProjectExternalLink"
     ADD CONSTRAINT "ProjectExternalLink_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProjectExternalLink ProjectExternalLink_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectExternalLink"
+    ADD CONSTRAINT "ProjectExternalLink_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPositionCandidate ProjectPositionCandidate_candidatePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionCandidate"
+    ADD CONSTRAINT "ProjectPositionCandidate_candidatePersonId_fkey" FOREIGN KEY ("candidatePersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProjectPositionCandidate ProjectPositionCandidate_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionCandidate"
+    ADD CONSTRAINT "ProjectPositionCandidate_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPositionCandidate ProjectPositionCandidate_positionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionCandidate"
+    ADD CONSTRAINT "ProjectPositionCandidate_positionId_fkey" FOREIGN KEY ("positionId") REFERENCES public."ProjectPosition"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ProjectPositionCandidate ProjectPositionCandidate_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionCandidate"
+    ADD CONSTRAINT "ProjectPositionCandidate_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPositionFillHistory ProjectPositionFillHistory_changedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionFillHistory"
+    ADD CONSTRAINT "ProjectPositionFillHistory_changedByPersonId_fkey" FOREIGN KEY ("changedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE;
+
+
+--
+-- Name: ProjectPositionFillHistory ProjectPositionFillHistory_positionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPositionFillHistory"
+    ADD CONSTRAINT "ProjectPositionFillHistory_positionId_fkey" FOREIGN KEY ("positionId") REFERENCES public."ProjectPosition"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_activePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_activePersonId_fkey" FOREIGN KEY ("activePersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_appliedRateCardEntryId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_appliedRateCardEntryId_fkey" FOREIGN KEY ("appliedRateCardEntryId") REFERENCES public.rate_card_entries(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_requestedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_requestedByPersonId_fkey" FOREIGN KEY ("requestedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ProjectPosition ProjectPosition_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ProjectPosition"
+    ADD CONSTRAINT "ProjectPosition_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7275,19 +9780,19 @@ ALTER TABLE ONLY public."Project"
 
 
 --
+-- Name: Project Project_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Project"
+    ADD CONSTRAINT "Project_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: Project Project_deliveryManagerId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."Project"
     ADD CONSTRAINT "Project_deliveryManagerId_fkey" FOREIGN KEY ("deliveryManagerId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
-
-
---
--- Name: Project Project_domainId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Project"
-    ADD CONSTRAINT "Project_domainId_fkey" FOREIGN KEY ("domainId") REFERENCES public.project_domains(id) ON DELETE SET NULL;
 
 
 --
@@ -7299,19 +9804,27 @@ ALTER TABLE ONLY public."Project"
 
 
 --
--- Name: Project Project_projectTypeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public."Project"
-    ADD CONSTRAINT "Project_projectTypeId_fkey" FOREIGN KEY ("projectTypeId") REFERENCES public.project_types(id) ON DELETE SET NULL;
-
-
---
 -- Name: Project Project_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."Project"
     ADD CONSTRAINT "Project_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: Project Project_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Project"
+    ADD CONSTRAINT "Project_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: RadiusReconciliationRecord RadiusReconciliationRecord_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."RadiusReconciliationRecord"
+    ADD CONSTRAINT "RadiusReconciliationRecord_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7323,11 +9836,27 @@ ALTER TABLE ONLY public."RadiusReconciliationRecord"
 
 
 --
+-- Name: RadiusReconciliationRecord RadiusReconciliationRecord_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."RadiusReconciliationRecord"
+    ADD CONSTRAINT "RadiusReconciliationRecord_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: RefreshToken RefreshToken_accountId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."RefreshToken"
     ADD CONSTRAINT "RefreshToken_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES public."LocalAccount"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ReportingLine ReportingLine_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportingLine"
+    ADD CONSTRAINT "ReportingLine_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7347,11 +9876,35 @@ ALTER TABLE ONLY public."ReportingLine"
 
 
 --
+-- Name: ReportingLine ReportingLine_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ReportingLine"
+    ADD CONSTRAINT "ReportingLine_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ResourcePool ResourcePool_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ResourcePool"
+    ADD CONSTRAINT "ResourcePool_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: ResourcePool ResourcePool_orgUnitId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."ResourcePool"
     ADD CONSTRAINT "ResourcePool_orgUnitId_fkey" FOREIGN KEY ("orgUnitId") REFERENCES public."OrgUnit"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ResourcePool ResourcePool_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."ResourcePool"
+    ADD CONSTRAINT "ResourcePool_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7363,11 +9916,35 @@ ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
 
 
 --
+-- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
+    ADD CONSTRAINT "StaffingRequestProposalCandidate_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_slateId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
     ADD CONSTRAINT "StaffingRequestProposalCandidate_slateId_fkey" FOREIGN KEY ("slateId") REFERENCES public."StaffingRequestProposalSlate"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: StaffingRequestProposalCandidate StaffingRequestProposalCandidate_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalCandidate"
+    ADD CONSTRAINT "StaffingRequestProposalCandidate_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: StaffingRequestProposalSlate StaffingRequestProposalSlate_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalSlate"
+    ADD CONSTRAINT "StaffingRequestProposalSlate_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7387,11 +9964,67 @@ ALTER TABLE ONLY public."StaffingRequestProposalSlate"
 
 
 --
+-- Name: StaffingRequestProposalSlate StaffingRequestProposalSlate_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."StaffingRequestProposalSlate"
+    ADD CONSTRAINT "StaffingRequestProposalSlate_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Tenant Tenant_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Tenant"
+    ADD CONSTRAINT "Tenant_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: Tenant Tenant_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."Tenant"
+    ADD CONSTRAINT "Tenant_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkEvidenceLink WorkEvidenceLink_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkEvidenceLink"
+    ADD CONSTRAINT "WorkEvidenceLink_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: WorkEvidenceLink WorkEvidenceLink_workEvidenceId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."WorkEvidenceLink"
     ADD CONSTRAINT "WorkEvidenceLink_workEvidenceId_fkey" FOREIGN KEY ("workEvidenceId") REFERENCES public."WorkEvidence"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: WorkEvidenceSource WorkEvidenceSource_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkEvidenceSource"
+    ADD CONSTRAINT "WorkEvidenceSource_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkEvidenceSource WorkEvidenceSource_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkEvidenceSource"
+    ADD CONSTRAINT "WorkEvidenceSource_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkEvidence WorkEvidence_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkEvidence"
+    ADD CONSTRAINT "WorkEvidence_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7419,6 +10052,14 @@ ALTER TABLE ONLY public."WorkEvidence"
 
 
 --
+-- Name: WorkEvidence WorkEvidence_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkEvidence"
+    ADD CONSTRAINT "WorkEvidence_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: WorkEvidence WorkEvidence_workEvidenceSourceId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7427,11 +10068,51 @@ ALTER TABLE ONLY public."WorkEvidence"
 
 
 --
+-- Name: WorkflowDefinition WorkflowDefinition_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkflowDefinition"
+    ADD CONSTRAINT "WorkflowDefinition_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkflowDefinition WorkflowDefinition_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkflowDefinition"
+    ADD CONSTRAINT "WorkflowDefinition_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkflowStateDefinition WorkflowStateDefinition_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkflowStateDefinition"
+    ADD CONSTRAINT "WorkflowStateDefinition_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: WorkflowStateDefinition WorkflowStateDefinition_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."WorkflowStateDefinition"
+    ADD CONSTRAINT "WorkflowStateDefinition_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: WorkflowStateDefinition WorkflowStateDefinition_workflowDefinitionId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public."WorkflowStateDefinition"
     ADD CONSTRAINT "WorkflowStateDefinition_workflowDefinitionId_fkey" FOREIGN KEY ("workflowDefinitionId") REFERENCES public."WorkflowDefinition"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: budget_approvals budget_approvals_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_approvals
+    ADD CONSTRAINT "budget_approvals_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7459,11 +10140,27 @@ ALTER TABLE ONLY public.budget_approvals
 
 
 --
+-- Name: budget_approvals budget_approvals_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.budget_approvals
+    ADD CONSTRAINT "budget_approvals_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: clients clients_accountManagerPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.clients
     ADD CONSTRAINT "clients_accountManagerPersonId_fkey" FOREIGN KEY ("accountManagerPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: clients clients_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT "clients_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7475,11 +10172,35 @@ ALTER TABLE ONLY public.clients
 
 
 --
+-- Name: clients clients_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT "clients_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: contacts contacts_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contacts
+    ADD CONSTRAINT "contacts_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: contacts contacts_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.contacts
     ADD CONSTRAINT "contacts_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: contacts contacts_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contacts
+    ADD CONSTRAINT "contacts_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7499,11 +10220,155 @@ ALTER TABLE ONLY public.employment_events
 
 
 --
--- Name: grades grades_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: fiscal_calendars fiscal_calendars_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.grades
-    ADD CONSTRAINT "grades_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.fiscal_calendars
+    ADD CONSTRAINT "fiscal_calendars_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: fiscal_calendars fiscal_calendars_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fiscal_calendars
+    ADD CONSTRAINT "fiscal_calendars_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: fiscal_periods fiscal_periods_calendarId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fiscal_periods
+    ADD CONSTRAINT "fiscal_periods_calendarId_fkey" FOREIGN KEY ("calendarId") REFERENCES public.fiscal_calendars(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: fiscal_periods fiscal_periods_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fiscal_periods
+    ADD CONSTRAINT "fiscal_periods_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: fx_rates fx_rates_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fx_rates
+    ADD CONSTRAINT "fx_rates_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: fx_rates fx_rates_fromCurrency_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fx_rates
+    ADD CONSTRAINT "fx_rates_fromCurrency_fkey" FOREIGN KEY ("fromCurrency") REFERENCES public."Currency"(code) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: fx_rates fx_rates_toCurrency_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fx_rates
+    ADD CONSTRAINT "fx_rates_toCurrency_fkey" FOREIGN KEY ("toCurrency") REFERENCES public."Currency"(code) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: help_articles help_articles_authorPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT "help_articles_authorPersonId_fkey" FOREIGN KEY ("authorPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_articles help_articles_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT "help_articles_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_articles help_articles_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT "help_articles_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: help_articles help_articles_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_articles
+    ADD CONSTRAINT "help_articles_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_feedback help_feedback_actorPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_feedback
+    ADD CONSTRAINT "help_feedback_actorPersonId_fkey" FOREIGN KEY ("actorPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_feedback help_feedback_articleId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_feedback
+    ADD CONSTRAINT "help_feedback_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES public.help_articles(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: help_feedback help_feedback_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_feedback
+    ADD CONSTRAINT "help_feedback_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: help_tips help_tips_articleId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT "help_tips_articleId_fkey" FOREIGN KEY ("articleId") REFERENCES public.help_articles(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_tips help_tips_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT "help_tips_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: help_tips help_tips_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT "help_tips_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: help_tips help_tips_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.help_tips
+    ADD CONSTRAINT "help_tips_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: in_app_notifications in_app_notifications_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.in_app_notifications
+    ADD CONSTRAINT "in_app_notifications_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7515,11 +10380,11 @@ ALTER TABLE ONLY public.in_app_notifications
 
 
 --
--- Name: job_roles job_roles_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: leave_balances leave_balances_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.job_roles
-    ADD CONSTRAINT "job_roles_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.leave_balances
+    ADD CONSTRAINT "leave_balances_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7531,6 +10396,22 @@ ALTER TABLE ONLY public.leave_balances
 
 
 --
+-- Name: leave_balances leave_balances_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_balances
+    ADD CONSTRAINT "leave_balances_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: leave_requests leave_requests_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT "leave_requests_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: leave_requests leave_requests_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7539,11 +10420,51 @@ ALTER TABLE ONLY public.leave_requests
 
 
 --
--- Name: locations locations_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: leave_requests leave_requests_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.locations
-    ADD CONSTRAINT "locations_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT "leave_requests_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT "onboarding_tour_progress_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT "onboarding_tour_progress_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT "onboarding_tour_progress_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: onboarding_tour_progress onboarding_tour_progress_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.onboarding_tour_progress
+    ADD CONSTRAINT "onboarding_tour_progress_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: organization_configs organization_configs_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_configs
+    ADD CONSTRAINT "organization_configs_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7555,6 +10476,14 @@ ALTER TABLE ONLY public.overtime_exceptions
 
 
 --
+-- Name: overtime_exceptions overtime_exceptions_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.overtime_exceptions
+    ADD CONSTRAINT "overtime_exceptions_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: overtime_exceptions overtime_exceptions_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7563,11 +10492,27 @@ ALTER TABLE ONLY public.overtime_exceptions
 
 
 --
+-- Name: overtime_exceptions overtime_exceptions_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.overtime_exceptions
+    ADD CONSTRAINT "overtime_exceptions_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: overtime_policies overtime_policies_approvalCaseId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.overtime_policies
     ADD CONSTRAINT "overtime_policies_approvalCaseId_fkey" FOREIGN KEY ("approvalCaseId") REFERENCES public."CaseRecord"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: overtime_policies overtime_policies_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.overtime_policies
+    ADD CONSTRAINT "overtime_policies_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7595,6 +10540,22 @@ ALTER TABLE ONLY public.overtime_policies
 
 
 --
+-- Name: overtime_policies overtime_policies_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.overtime_policies
+    ADD CONSTRAINT "overtime_policies_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: person_cost_rates person_cost_rates_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_cost_rates
+    ADD CONSTRAINT "person_cost_rates_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: person_cost_rates person_cost_rates_currencyCode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7608,6 +10569,86 @@ ALTER TABLE ONLY public.person_cost_rates
 
 ALTER TABLE ONLY public.person_notification_preferences
     ADD CONSTRAINT "person_notification_preferences_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: person_release_approvals person_release_approvals_actorPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_approvals
+    ADD CONSTRAINT "person_release_approvals_actorPersonId_fkey" FOREIGN KEY ("actorPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: person_release_approvals person_release_approvals_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_approvals
+    ADD CONSTRAINT "person_release_approvals_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: person_release_approvals person_release_approvals_requestId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_approvals
+    ADD CONSTRAINT "person_release_approvals_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES public.person_release_requests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: person_release_approvals person_release_approvals_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_approvals
+    ADD CONSTRAINT "person_release_approvals_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: person_release_requests person_release_requests_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT "person_release_requests_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: person_release_requests person_release_requests_initiatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT "person_release_requests_initiatedByPersonId_fkey" FOREIGN KEY ("initiatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: person_release_requests person_release_requests_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT "person_release_requests_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: person_release_requests person_release_requests_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT "person_release_requests_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: person_release_requests person_release_requests_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_release_requests
+    ADD CONSTRAINT "person_release_requests_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: person_skills person_skills_personId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.person_skills
+    ADD CONSTRAINT "person_skills_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
@@ -7627,11 +10668,99 @@ ALTER TABLE ONLY public.planner_scenarios
 
 
 --
+-- Name: platform_settings platform_settings_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.platform_settings
+    ADD CONSTRAINT "platform_settings_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: platform_settings platform_settings_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.platform_settings
+    ADD CONSTRAINT "platform_settings_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_decidedById_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_decidedById_fkey" FOREIGN KEY ("decidedById") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_requestedById_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_requestedById_fkey" FOREIGN KEY ("requestedById") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_activation_approvals project_activation_approvals_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_activation_approvals
+    ADD CONSTRAINT "project_activation_approvals_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_budgets project_budgets_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_budgets
+    ADD CONSTRAINT "project_budgets_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: project_budgets project_budgets_currencyCode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.project_budgets
     ADD CONSTRAINT "project_budgets_currencyCode_fkey" FOREIGN KEY ("currencyCode") REFERENCES public."Currency"(code) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_budgets project_budgets_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_budgets
+    ADD CONSTRAINT "project_budgets_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_change_requests project_change_requests_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_change_requests
+    ADD CONSTRAINT "project_change_requests_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7659,11 +10788,19 @@ ALTER TABLE ONLY public.project_change_requests
 
 
 --
--- Name: project_domains project_domains_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: project_change_requests project_change_requests_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.project_domains
-    ADD CONSTRAINT "project_domains_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.project_change_requests
+    ADD CONSTRAINT "project_change_requests_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_milestones project_milestones_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_milestones
+    ADD CONSTRAINT "project_milestones_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7672,6 +10809,14 @@ ALTER TABLE ONLY public.project_domains
 
 ALTER TABLE ONLY public.project_milestones
     ADD CONSTRAINT "project_milestones_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_milestones project_milestones_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_milestones
+    ADD CONSTRAINT "project_milestones_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7691,6 +10836,14 @@ ALTER TABLE ONLY public.project_radiator_overrides
 
 
 --
+-- Name: project_rag_snapshots project_rag_snapshots_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_rag_snapshots
+    ADD CONSTRAINT "project_rag_snapshots_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: project_rag_snapshots project_rag_snapshots_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7704,6 +10857,22 @@ ALTER TABLE ONLY public.project_rag_snapshots
 
 ALTER TABLE ONLY public.project_rag_snapshots
     ADD CONSTRAINT "project_rag_snapshots_recordedByPersonId_fkey" FOREIGN KEY ("recordedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_rag_snapshots project_rag_snapshots_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_rag_snapshots
+    ADD CONSTRAINT "project_rag_snapshots_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_retrospectives project_retrospectives_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_retrospectives
+    ADD CONSTRAINT "project_retrospectives_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7723,6 +10892,14 @@ ALTER TABLE ONLY public.project_retrospectives
 
 
 --
+-- Name: project_retrospectives project_retrospectives_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_retrospectives
+    ADD CONSTRAINT "project_retrospectives_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: project_risks project_risks_assigneePersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7736,6 +10913,14 @@ ALTER TABLE ONLY public.project_risks
 
 ALTER TABLE ONLY public.project_risks
     ADD CONSTRAINT "project_risks_convertedFromRiskId_fkey" FOREIGN KEY ("convertedFromRiskId") REFERENCES public.project_risks(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_risks project_risks_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_risks
+    ADD CONSTRAINT "project_risks_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7763,6 +10948,22 @@ ALTER TABLE ONLY public.project_risks
 
 
 --
+-- Name: project_risks project_risks_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_risks
+    ADD CONSTRAINT "project_risks_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: project_role_plans project_role_plans_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_role_plans
+    ADD CONSTRAINT "project_role_plans_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: project_role_plans project_role_plans_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7771,27 +10972,19 @@ ALTER TABLE ONLY public.project_role_plans
 
 
 --
--- Name: project_tags project_tags_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: project_role_plans project_role_plans_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.project_tags
-    ADD CONSTRAINT "project_tags_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: project_technologies project_technologies_projectId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.project_technologies
-    ADD CONSTRAINT "project_technologies_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES public."Project"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY public.project_role_plans
+    ADD CONSTRAINT "project_role_plans_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
--- Name: project_types project_types_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: project_vendor_engagements project_vendor_engagements_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.project_types
-    ADD CONSTRAINT "project_types_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+ALTER TABLE ONLY public.project_vendor_engagements
+    ADD CONSTRAINT "project_vendor_engagements_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7811,11 +11004,27 @@ ALTER TABLE ONLY public.project_vendor_engagements
 
 
 --
+-- Name: project_vendor_engagements project_vendor_engagements_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_vendor_engagements
+    ADD CONSTRAINT "project_vendor_engagements_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: project_vendor_engagements project_vendor_engagements_vendorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.project_vendor_engagements
     ADD CONSTRAINT "project_vendor_engagements_vendorId_fkey" FOREIGN KEY ("vendorId") REFERENCES public.vendors(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: project_workstreams project_workstreams_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_workstreams
+    ADD CONSTRAINT "project_workstreams_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7827,11 +11036,155 @@ ALTER TABLE ONLY public.project_workstreams
 
 
 --
+-- Name: project_workstreams project_workstreams_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_workstreams
+    ADD CONSTRAINT "project_workstreams_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: public_holidays public_holidays_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_holidays
+    ADD CONSTRAINT "public_holidays_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: pulse_reports pulse_reports_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pulse_reports
+    ADD CONSTRAINT "pulse_reports_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: pulse_reports pulse_reports_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pulse_reports
+    ADD CONSTRAINT "pulse_reports_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: radiator_threshold_configs radiator_threshold_configs_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.radiator_threshold_configs
+    ADD CONSTRAINT "radiator_threshold_configs_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: radiator_threshold_configs radiator_threshold_configs_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.radiator_threshold_configs
     ADD CONSTRAINT "radiator_threshold_configs_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: rate_card_entries rate_card_entries_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_card_entries
+    ADD CONSTRAINT "rate_card_entries_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: rate_card_entries rate_card_entries_rateCardId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_card_entries
+    ADD CONSTRAINT "rate_card_entries_rateCardId_fkey" FOREIGN KEY ("rateCardId") REFERENCES public.rate_cards(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: rate_card_entries rate_card_entries_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_card_entries
+    ADD CONSTRAINT "rate_card_entries_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: rate_cards rate_cards_clientId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT "rate_cards_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES public.clients(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: rate_cards rate_cards_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT "rate_cards_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: rate_cards rate_cards_currencyCode_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT "rate_cards_currencyCode_fkey" FOREIGN KEY ("currencyCode") REFERENCES public."Currency"(code) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: rate_cards rate_cards_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT "rate_cards_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: rate_cards rate_cards_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rate_cards
+    ADD CONSTRAINT "rate_cards_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: responsibility_rules responsibility_rules_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.responsibility_rules
+    ADD CONSTRAINT "responsibility_rules_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: responsibility_rules responsibility_rules_targetPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.responsibility_rules
+    ADD CONSTRAINT "responsibility_rules_targetPersonId_fkey" FOREIGN KEY ("targetPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: responsibility_rules responsibility_rules_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.responsibility_rules
+    ADD CONSTRAINT "responsibility_rules_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: responsibility_rules responsibility_rules_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.responsibility_rules
+    ADD CONSTRAINT "responsibility_rules_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: skills skills_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.skills
+    ADD CONSTRAINT "skills_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7843,11 +11196,43 @@ ALTER TABLE ONLY public.skills
 
 
 --
+-- Name: skills skills_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.skills
+    ADD CONSTRAINT "skills_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: staffing_request_fulfilments staffing_request_fulfilments_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staffing_request_fulfilments
+    ADD CONSTRAINT "staffing_request_fulfilments_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: staffing_request_fulfilments staffing_request_fulfilments_requestId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.staffing_request_fulfilments
     ADD CONSTRAINT "staffing_request_fulfilments_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES public.staffing_requests(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: staffing_request_fulfilments staffing_request_fulfilments_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staffing_request_fulfilments
+    ADD CONSTRAINT "staffing_request_fulfilments_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: staffing_requests staffing_requests_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staffing_requests
+    ADD CONSTRAINT "staffing_requests_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7859,11 +11244,43 @@ ALTER TABLE ONLY public.staffing_requests
 
 
 --
+-- Name: staffing_requests staffing_requests_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staffing_requests
+    ADD CONSTRAINT "staffing_requests_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: timesheet_entries timesheet_entries_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timesheet_entries
+    ADD CONSTRAINT "timesheet_entries_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: timesheet_entries timesheet_entries_timesheetWeekId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.timesheet_entries
     ADD CONSTRAINT "timesheet_entries_timesheetWeekId_fkey" FOREIGN KEY ("timesheetWeekId") REFERENCES public.timesheet_weeks(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: timesheet_entries timesheet_entries_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timesheet_entries
+    ADD CONSTRAINT "timesheet_entries_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: timesheet_weeks timesheet_weeks_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timesheet_weeks
+    ADD CONSTRAINT "timesheet_weeks_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7875,11 +11292,27 @@ ALTER TABLE ONLY public.timesheet_weeks
 
 
 --
+-- Name: timesheet_weeks timesheet_weeks_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timesheet_weeks
+    ADD CONSTRAINT "timesheet_weeks_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: undo_actions undo_actions_actorId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.undo_actions
     ADD CONSTRAINT "undo_actions_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: vendor_skill_areas vendor_skill_areas_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendor_skill_areas
+    ADD CONSTRAINT "vendor_skill_areas_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -7891,11 +11324,27 @@ ALTER TABLE ONLY public.vendor_skill_areas
 
 
 --
+-- Name: vendors vendors_createdByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendors
+    ADD CONSTRAINT "vendors_createdByPersonId_fkey" FOREIGN KEY ("createdByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
 -- Name: vendors vendors_tenantId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vendors
     ADD CONSTRAINT "vendors_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES public."Tenant"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: vendors vendors_updatedByPersonId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vendors
+    ADD CONSTRAINT "vendors_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
