@@ -998,13 +998,16 @@ export class WorkforcePlannerService {
       const weekEndStr = addDaysStr(demand.weekStart, 6);
       const coverageWeeks = enumerateCoverageWeeks(demand.startDate, demand.endDate);
       let filled = 0;
+      let belowFloorSkipped = 0;
 
       for (let hc = 0; hc < demand.headcountOpen; hc++) {
         // Three-tier selection:
         //   Tier 0 — chain candidate: person whose previous assignment ends <= this demand's start.
         //            Ranked by busyUntil descending (tighter chain = better), then strategy score.
         //   Tier 1 — skill-qualified fresh candidate (passes minSkillMatch), ranked by strategy score.
-        //   Tier 2 — fallback: longest-benched eligible person regardless of skill.
+        //   Tier 2 — fallback: longest-benched eligible person, also gated on minSkillMatch
+        //            so the strategy never silently fills demand with zero-overlap people
+        //            (GitHub #218 — Best-fit returned 133 assignments at 0% avg match before the gate).
         let bestChain: {
           person: (typeof benchPeople)[number];
           stratScore: number;
@@ -1055,13 +1058,17 @@ export class WorkforcePlannerService {
           const costPerMonth = costByPerson.get(person.id);
           if (costPerMonth !== undefined && costPerMonth > maxCost * 0.85) warnings.push('High cost-per-month');
 
-          // Tier 2: any eligible person ranked by longest bench time
+          // All tiers respect the skill floor — fallback is "longest bench among
+          // candidates who still clear minSkillMatch", not "any warm body".
+          if (skillScore < minSkillMatch) {
+            belowFloorSkipped++;
+            continue;
+          }
+
+          // Tier 2: any floor-clearing person ranked by longest bench time
           if (!bestFallback || benchDays > bestFallback.benchDays) {
             bestFallback = { person, benchDays, skillScore, matched, missing, warnings };
           }
-
-          // Tiers 0/1: only candidates clearing the skill floor
-          if (skillScore < minSkillMatch) continue;
           const stratScore = scoreByStrategy(skillScore, benchRatio, costRatio, isJunior);
           if (stratScore <= 0) continue;
 
@@ -1123,13 +1130,17 @@ export class WorkforcePlannerService {
       }
 
       if (filled < demand.headcountOpen) {
+        const floorPct = Math.round(minSkillMatch * 100);
+        const reason = belowFloorSkipped > 0 && minSkillMatch > 0
+          ? `No bench person clears the ${floorPct}% skill floor — lower Min Skill Match or broaden the required skills`
+          : 'No eligible bench person (capacity, or leave constraints)';
         unmatchedDemand.push({
           demandId: demand.id,
           role: demand.role,
           skills: demand.skillNames,
           headcountOpen: demand.headcountOpen - filled,
           projectName: demand.projectName,
-          reason: 'No eligible bench person (capacity, or leave constraints)',
+          reason,
         });
       }
     }

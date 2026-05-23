@@ -52,6 +52,25 @@ export { FormField } from './FormField';
 export { SearchInput } from './SearchInput';
 export { DatePicker } from './DatePicker';
 export { DateRangePicker } from './DateRangePicker';
+
+// Phase DS — lean-simplification amendments (Calendar = month-grid date picker /
+// year-overview surface; BalanceMeter = entitlement-vs-used breakdown).
+export { Calendar } from './Calendar';
+export type {
+  CalendarSize,
+  CalendarMode,
+  CalendarEventKind,
+  CalendarEvent,
+  CalendarProps,
+} from './Calendar';
+
+export { BalanceMeter } from './BalanceMeter';
+export type {
+  BalanceMeterSize,
+  BalanceSegmentKind,
+  BalanceMeterBreakdownEntry,
+  BalanceMeterProps,
+} from './BalanceMeter';
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
 export { Combobox } from './Combobox';
@@ -78,10 +97,12 @@ export type {
   RowAction,
 } from './DataView';
 
-export { Timeline } from './Timeline';
+export { Timeline, lifecycleStatusOf } from './Timeline';
 export type {
   TimelineSize,
   TimelineVariant,
+  TimelineColorMode,
+  LifecycleStatus,
   TimelineSegment,
   TimelineMarker,
   TimelineHoverContext,

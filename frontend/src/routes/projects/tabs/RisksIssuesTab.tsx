@@ -14,6 +14,7 @@ import {
   type RiskType,
   type RiskCategory,
   type RiskStatus,
+  type RiskStrategy,
   type CreateRiskRequest,
   fetchRisks,
   fetchRiskMatrix,
@@ -25,12 +26,14 @@ import {
   closeRisk,
 } from '@/lib/api/project-risks';
 import { Button } from '@/components/ds';
+import { PersonSelect } from '@/components/common/PersonSelect';
 
 interface RisksIssuesTabProps {
   projectId: string;
 }
 
 const CATEGORIES: RiskCategory[] = ['SCOPE', 'SCHEDULE', 'BUDGET', 'BUSINESS', 'TECHNICAL', 'OPERATIONAL'];
+const STRATEGIES: RiskStrategy[] = ['MITIGATE', 'ACCEPT', 'TRANSFER', 'AVOID', 'ESCALATE'];
 
 export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element {
   const [risks, setRisks] = useState<ProjectRiskDto[]>([]);
@@ -44,13 +47,20 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
   const [filterCategory, setFilterCategory] = useState<RiskCategory | null>(null);
   const [filterStatus, setFilterStatus] = useState<RiskStatus | null>(null);
 
-  // Create form
+  // Create form — GitHub issue 190: creation form now captures every field that
+  // the view/expanded row displays (Strategy, Strategy description, Damage
+  // Control Plan, Owner, Due date), so the create and view shapes match.
   const [showCreate, setShowCreate] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createDescription, setCreateDescription] = useState('');
   const [createCategory, setCreateCategory] = useState<RiskCategory>('TECHNICAL');
   const [createProbability, setCreateProbability] = useState('3');
   const [createImpact, setCreateImpact] = useState('3');
+  const [createStrategy, setCreateStrategy] = useState<RiskStrategy | ''>('');
+  const [createStrategyDescription, setCreateStrategyDescription] = useState('');
+  const [createDamageControlPlan, setCreateDamageControlPlan] = useState('');
+  const [createOwnerPersonId, setCreateOwnerPersonId] = useState('');
+  const [createDueDate, setCreateDueDate] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   async function loadData(): Promise<void> {
@@ -92,6 +102,11 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
         category: createCategory,
         probability: Number(createProbability),
         impact: Number(createImpact),
+        strategy: createStrategy || undefined,
+        strategyDescription: createStrategyDescription.trim() || undefined,
+        damageControlPlan: createDamageControlPlan.trim() || undefined,
+        ownerPersonId: createOwnerPersonId || undefined,
+        dueDate: createDueDate || undefined,
       };
       await createRisk(projectId, data);
       toast.success('Risk created');
@@ -100,6 +115,11 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
       setCreateCategory('TECHNICAL');
       setCreateProbability('3');
       setCreateImpact('3');
+      setCreateStrategy('');
+      setCreateStrategyDescription('');
+      setCreateDamageControlPlan('');
+      setCreateOwnerPersonId('');
+      setCreateDueDate('');
       setShowCreate(false);
       await loadData();
     } catch {
@@ -187,10 +207,34 @@ export function RisksIssuesTab({ projectId }: RisksIssuesTabProps): JSX.Element 
                 <span className="field__label">Impact (1-5)</span>
                 <input className="field__control" type="number" min={1} max={5} value={createImpact} onChange={(e) => setCreateImpact(e.target.value)} />
               </label>
+              <label className="field">
+                <span className="field__label">Strategy</span>
+                <select className="field__control" value={createStrategy} onChange={(e) => setCreateStrategy(e.target.value as RiskStrategy | '')}>
+                  <option value="">(none)</option>
+                  {STRATEGIES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field__label">Due</span>
+                <input className="field__control" type="date" value={createDueDate} onChange={(e) => setCreateDueDate(e.target.value)} />
+              </label>
+              <PersonSelect
+                label="Owner"
+                value={createOwnerPersonId}
+                onChange={setCreateOwnerPersonId}
+              />
             </div>
             <label className="field" style={{ marginTop: 'var(--space-3)' }}>
               <span className="field__label">Description</span>
               <textarea className="field__control" rows={2} value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} />
+            </label>
+            <label className="field" style={{ marginTop: 'var(--space-3)' }}>
+              <span className="field__label">Strategy description</span>
+              <textarea className="field__control" rows={2} value={createStrategyDescription} onChange={(e) => setCreateStrategyDescription(e.target.value)} />
+            </label>
+            <label className="field" style={{ marginTop: 'var(--space-3)' }}>
+              <span className="field__label">Damage control plan</span>
+              <textarea className="field__control" rows={2} value={createDamageControlPlan} onChange={(e) => setCreateDamageControlPlan(e.target.value)} />
             </label>
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
               <Button variant="primary" type="submit" disabled={isCreating}>

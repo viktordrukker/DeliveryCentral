@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
@@ -28,6 +28,11 @@ interface MilestonesTabProps {
 }
 
 const STATUS_OPTIONS: MilestoneStatus[] = ['PLANNED', 'IN_PROGRESS', 'HIT', 'MISSED'];
+
+// GitHub issue 195 — client-side sortable columns for the milestone register.
+type MilestoneSortKey = 'plannedDate' | 'actualDate' | 'name' | 'status';
+type SortDir = 'asc' | 'desc';
+const STATUS_RANK: Record<MilestoneStatus, number> = { PLANNED: 0, IN_PROGRESS: 1, HIT: 2, MISSED: 3 };
 
 function statusTone(status: MilestoneStatus): 'active' | 'warning' | 'danger' | 'neutral' {
   if (status === 'HIT') return 'active';
@@ -62,6 +67,48 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
   const [editStatus, setEditStatus] = useState<MilestoneStatus>('PLANNED');
 
   const [deleteTarget, setDeleteTarget] = useState<ProjectMilestoneDto | null>(null);
+
+  // GitHub issue 195 — sort state. Default = planned date ascending (matches backend).
+  const [sortKey, setSortKey] = useState<MilestoneSortKey>('plannedDate');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const sortedMilestones = useMemo(() => {
+    const copy = [...milestones];
+    copy.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortKey === 'status') {
+        cmp = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      } else if (sortKey === 'plannedDate') {
+        cmp = a.plannedDate.localeCompare(b.plannedDate);
+      } else {
+        // actualDate — null sorts last in ascending, first in descending.
+        const aHas = a.actualDate !== null;
+        const bHas = b.actualDate !== null;
+        if (!aHas && !bHas) cmp = 0;
+        else if (!aHas) cmp = 1;
+        else if (!bHas) cmp = -1;
+        else cmp = (a.actualDate as string).localeCompare(b.actualDate as string);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [milestones, sortKey, sortDir]);
+
+  function toggleSort(key: MilestoneSortKey): void {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  function sortArrow(key: MilestoneSortKey): string {
+    if (key !== sortKey) return '';
+    return sortDir === 'asc' ? ' ▲' : ' ▼';
+  }
 
   useEffect(() => {
     let active = true;
@@ -263,8 +310,27 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
             title="No milestones"
           />
         ) : (() => {
+          const sortableHeader = (label: string, key: MilestoneSortKey): JSX.Element => (
+            <button
+              type="button"
+              onClick={() => toggleSort(key)}
+              data-sort-key={key}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                color: 'inherit',
+                font: 'inherit',
+                cursor: 'pointer',
+                fontWeight: 'inherit',
+              }}
+              aria-label={`Sort by ${label}`}
+            >
+              {label}{sortArrow(key)}
+            </button>
+          );
           const baseColumns: Column<ProjectMilestoneDto>[] = [
-            { key: 'name', title: 'Name', getValue: (m) => m.name, render: (m) => (
+            { key: 'name', title: sortableHeader('Name', 'name'), getValue: (m) => m.name, render: (m) => (
               editId === m.id
                 ? <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
                 : <span style={{ fontWeight: 500 }}>{m.name}</span>
@@ -274,17 +340,17 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
                 ? <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
                 : <span style={{ color: 'var(--color-text-muted)' }}>{m.description ?? '—'}</span>
             ) },
-            { key: 'planned', title: 'Planned', width: 130, getValue: (m) => m.plannedDate, render: (m) => (
+            { key: 'planned', title: sortableHeader('Planned', 'plannedDate'), width: 130, getValue: (m) => m.plannedDate, render: (m) => (
               editId === m.id
                 ? <DatePicker onValueChange={setEditPlannedDate} value={editPlannedDate} />
                 : formatDate(m.plannedDate)
             ) },
-            { key: 'actual', title: 'Actual', width: 130, getValue: (m) => m.actualDate ?? '', render: (m) => (
+            { key: 'actual', title: sortableHeader('Actual', 'actualDate'), width: 130, getValue: (m) => m.actualDate ?? '', render: (m) => (
               editId === m.id
                 ? <DatePicker onValueChange={setEditActualDate} value={editActualDate} />
                 : (m.actualDate ? formatDate(m.actualDate) : '—')
             ) },
-            { key: 'status', title: 'Status', width: 120, getValue: (m) => m.status, render: (m) => (
+            { key: 'status', title: sortableHeader('Status', 'status'), width: 120, getValue: (m) => m.status, render: (m) => (
               editId === m.id ? (
                 <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value as MilestoneStatus)}>
                   {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
@@ -313,7 +379,7 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
             <Table
               variant="compact"
               columns={baseColumns}
-              rows={milestones}
+              rows={sortedMilestones}
               getRowKey={(m) => m.id}
             />
           );

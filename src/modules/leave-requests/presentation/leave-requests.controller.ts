@@ -16,6 +16,7 @@ import { RequestPrincipal } from '@src/modules/identity-access/application/reque
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
+import { LeaveBalanceDto, LeaveBalanceService } from '../application/leave-balance.service';
 import {
   CreateLeaveRequestDto,
   LeaveRequestDto,
@@ -25,7 +26,10 @@ import {
 @ApiTags('leave-requests')
 @Controller('leave-requests')
 export class LeaveRequestsController {
-  public constructor(private readonly service: LeaveRequestsService) {}
+  public constructor(
+    private readonly service: LeaveRequestsService,
+    private readonly balanceService: LeaveBalanceService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -49,6 +53,22 @@ export class LeaveRequestsController {
   ): Promise<LeaveRequestDto[]> {
     const personId = this.resolvePersonId(req);
     return this.service.findMy(personId);
+  }
+
+  @Get('my-balance')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @ApiOperation({ summary: 'Get own leave balances (entitlement / used / pending / remaining per type)' })
+  @ApiOkResponse({ description: 'Per-leave-type balance rows for the current calendar year' })
+  public async getMyBalance(
+    @Req() req: { principal?: RequestPrincipal },
+    @Query('year') year?: string,
+  ): Promise<LeaveBalanceDto[]> {
+    const personId = this.resolvePersonId(req);
+    const targetYear = year ? Number(year) : undefined;
+    if (year !== undefined && (Number.isNaN(targetYear) || targetYear === undefined)) {
+      throw new BadRequestException('year must be a number');
+    }
+    return this.balanceService.getBalances(personId, targetYear);
   }
 
   @Get()

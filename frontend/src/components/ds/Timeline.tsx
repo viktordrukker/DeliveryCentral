@@ -22,6 +22,23 @@ import { allocateZIndex, getPortalRoot } from './portal-stack';
 
 export type TimelineSize = 'xs' | 'sm' | 'md' | 'lg';
 export type TimelineVariant = 'bar' | 'stacked';
+/**
+ * Coloring mode. `tone` (default) uses StatusBadge tones — backwards-compatible
+ * with all existing callsites. `lifecycle` reads the position-fill status
+ * (draft / open / proposed / booked / onboarding / assigned / hold / released)
+ * and renders the bar with the `--lifecycle-*` token set so the workflow state
+ * is legible at any width.
+ */
+export type TimelineColorMode = 'tone' | 'lifecycle';
+export type LifecycleStatus =
+  | 'draft'
+  | 'open'
+  | 'proposed'
+  | 'booked'
+  | 'onboarding'
+  | 'assigned'
+  | 'hold'
+  | 'released';
 
 export interface TimelineSegment {
   id: string;
@@ -51,6 +68,8 @@ export interface TimelineProps {
   segments: TimelineSegment[];
   size?: TimelineSize;
   variant?: TimelineVariant;
+  /** Coloring mode. Defaults to 'tone' (backwards-compatible). 'lifecycle' uses --lifecycle-* tokens keyed by segment.status. */
+  colorMode?: TimelineColorMode;
   rangeStart?: string;
   rangeEnd?: string;
   markers?: TimelineMarker[];
@@ -66,6 +85,131 @@ export interface TimelineProps {
   ariaLabel?: string;
   testId?: string;
   className?: string;
+}
+
+/**
+ * Maps a free-form status string to a LifecycleStatus, or null if it
+ * doesn't match a known workflow state. Case-insensitive, dash/underscore
+ * tolerant: 'ON_HOLD' / 'on-hold' / 'On Hold' all map to 'hold'.
+ */
+export function lifecycleStatusOf(status: string | null | undefined): LifecycleStatus | null {
+  if (!status) return null;
+  const k = status.toLowerCase().replace(/[_\s-]+/g, '');
+  switch (k) {
+    case 'draft':
+      return 'draft';
+    case 'open':
+    case 'requested':
+    case 'pending':
+      return 'open';
+    case 'proposed':
+    case 'inreview':
+    case 'review':
+      return 'proposed';
+    case 'booked':
+    case 'approved':
+      return 'booked';
+    case 'onboarding':
+      return 'onboarding';
+    case 'assigned':
+    case 'active':
+      return 'assigned';
+    case 'onhold':
+    case 'hold':
+    case 'paused':
+      return 'hold';
+    case 'released':
+    case 'completed':
+    case 'cancelled':
+    case 'canceled':
+      return 'released';
+    default:
+      return null;
+  }
+}
+
+/** Resolves background + border + opacity for a segment in lifecycle mode. */
+function lifecycleStyleOf(status: LifecycleStatus): {
+  background: string;
+  borderColor: string;
+  borderStyle: 'solid' | 'dashed';
+  borderWidth: number;
+  opacity: number;
+} {
+  switch (status) {
+    case 'draft':
+      return {
+        background: 'transparent',
+        borderColor: 'var(--lifecycle-draft-stroke)',
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        opacity: 0.85,
+      };
+    case 'open':
+      return {
+        background: 'var(--lifecycle-open-fill)',
+        borderColor: 'var(--lifecycle-open-stroke)',
+        borderStyle: 'solid',
+        borderWidth: 1,
+        opacity: 1,
+      };
+    case 'proposed':
+      return {
+        background: 'var(--lifecycle-proposed-fill)',
+        borderColor: 'var(--lifecycle-proposed-stroke)',
+        borderStyle: 'solid',
+        borderWidth: 1,
+        opacity: 1,
+      };
+    case 'booked':
+      return {
+        background: 'var(--lifecycle-booked-fill)',
+        borderColor: 'var(--lifecycle-booked-fill)',
+        borderStyle: 'solid',
+        borderWidth: 0,
+        opacity: 1,
+      };
+    case 'onboarding':
+      return {
+        background: 'var(--lifecycle-onboarding-fill)',
+        borderColor: 'var(--lifecycle-onboarding-stroke)',
+        borderStyle: 'solid',
+        borderWidth: 1,
+        opacity: 1,
+      };
+    case 'assigned':
+      return {
+        background: 'var(--lifecycle-assigned-fill)',
+        borderColor: 'var(--lifecycle-assigned-fill)',
+        borderStyle: 'solid',
+        borderWidth: 0,
+        opacity: 1,
+      };
+    case 'hold':
+      return {
+        background: 'var(--lifecycle-hold-fill)',
+        borderColor: 'var(--lifecycle-hold-stroke)',
+        borderStyle: 'solid',
+        borderWidth: 1,
+        opacity: 0.75,
+      };
+    case 'released':
+      return {
+        background: 'var(--lifecycle-released-fill)',
+        borderColor: 'var(--lifecycle-released-fill)',
+        borderStyle: 'solid',
+        borderWidth: 0,
+        opacity: 0.5,
+      };
+    default:
+      return {
+        background: 'var(--color-status-info)',
+        borderColor: 'var(--color-status-info)',
+        borderStyle: 'solid',
+        borderWidth: 0,
+        opacity: 0.7,
+      };
+  }
 }
 
 const TRACK_HEIGHT: Record<TimelineSize, number> = { xs: 14, sm: 24, md: 36, lg: 56 };
@@ -235,6 +379,7 @@ export function Timeline({
   segments,
   size = 'md',
   variant = 'stacked',
+  colorMode = 'tone',
   rangeStart,
   rangeEnd,
   markers,
@@ -492,7 +637,10 @@ export function Timeline({
         {variant === 'bar' && data.spans.map((s) => {
           const left = (s.startDay / data.totalDays) * 100;
           const width = Math.max(0.3, ((s.endDay - s.startDay + 1) / data.totalDays) * 100);
-          const color = statusToneColor(s.tone);
+          const lifecycle = colorMode === 'lifecycle' ? lifecycleStatusOf(s.segment.status) : null;
+          const useLifecycle = colorMode === 'lifecycle' && lifecycle !== null;
+          const lifecycleStyle = useLifecycle ? lifecycleStyleOf(lifecycle as LifecycleStatus) : null;
+          const toneBg = statusToneColor(s.tone);
           const isHovered = hover?.segment.id === s.segment.id;
           const aria = `${s.segment.label}, ${s.segment.status ?? ''}, from ${formatDateShort(s.segment.startDate)} to ${s.segment.endDate ? formatDateShort(s.segment.endDate) : 'open'}`.trim();
           return (
@@ -505,6 +653,7 @@ export function Timeline({
               aria-label={aria}
               className="ds-timeline__bar"
               data-tone={s.tone}
+              data-lifecycle={useLifecycle ? lifecycle : undefined}
               data-hovered={isHovered || undefined}
               onBlur={closeHover}
               onClick={() => handleClick(s.segment)}
@@ -512,12 +661,24 @@ export function Timeline({
               onKeyDown={(e) => handleKey(e, s.segment)}
               onMouseEnter={(e) => openHover(s.segment, e.currentTarget.getBoundingClientRect())}
               onMouseLeave={closeHover}
-              style={{
-                background: color,
-                left: `${left}%`,
-                opacity: ALLOC_OPACITY[s.tone],
-                width: `${width}%`,
-              }}
+              style={
+                lifecycleStyle
+                  ? {
+                      background: lifecycleStyle.background,
+                      borderColor: lifecycleStyle.borderColor,
+                      borderStyle: lifecycleStyle.borderStyle,
+                      borderWidth: lifecycleStyle.borderWidth,
+                      left: `${left}%`,
+                      opacity: lifecycleStyle.opacity,
+                      width: `${width}%`,
+                    }
+                  : {
+                      background: toneBg,
+                      left: `${left}%`,
+                      opacity: ALLOC_OPACITY[s.tone],
+                      width: `${width}%`,
+                    }
+              }
               type="button"
             />
           );
@@ -526,7 +687,10 @@ export function Timeline({
         {variant === 'stacked' && data.blocks.map((b, i) => {
           const left = (b.startDay / data.totalDays) * 100;
           const width = Math.max(0.3, ((b.endDay - b.startDay + 1) / data.totalDays) * 100);
-          const color = statusToneColor(b.span.tone);
+          const lifecycle = colorMode === 'lifecycle' ? lifecycleStatusOf(b.span.segment.status) : null;
+          const useLifecycle = colorMode === 'lifecycle' && lifecycle !== null;
+          const lifecycleStyle = useLifecycle ? lifecycleStyleOf(lifecycle as LifecycleStatus) : null;
+          const toneBg = statusToneColor(b.span.tone);
           const isHovered = hover?.segment.id === b.span.segment.id;
           const aria = `${b.span.segment.label}, ${b.span.segment.status ?? ''}, ${b.span.alloc}%, from ${formatDateShort(b.span.segment.startDate)} to ${b.span.segment.endDate ? formatDateShort(b.span.segment.endDate) : 'open'}`.trim();
           return (
@@ -538,6 +702,7 @@ export function Timeline({
               aria-label={aria}
               className="ds-timeline__block"
               data-tone={b.span.tone}
+              data-lifecycle={useLifecycle ? lifecycle : undefined}
               data-hovered={isHovered || undefined}
               onBlur={closeHover}
               onClick={() => handleClick(b.span.segment)}
@@ -545,14 +710,28 @@ export function Timeline({
               onKeyDown={(e) => handleKey(e, b.span.segment)}
               onMouseEnter={(e) => openHover(b.span.segment, e.currentTarget.getBoundingClientRect())}
               onMouseLeave={closeHover}
-              style={{
-                background: color,
-                bottom: `${b.bottomPercent}%`,
-                height: `${Math.max(b.heightPercent, 3)}%`,
-                left: `${left}%`,
-                opacity: ALLOC_OPACITY[b.span.tone],
-                width: `${width}%`,
-              }}
+              style={
+                lifecycleStyle
+                  ? {
+                      background: lifecycleStyle.background,
+                      borderColor: lifecycleStyle.borderColor,
+                      borderStyle: lifecycleStyle.borderStyle,
+                      borderWidth: lifecycleStyle.borderWidth,
+                      bottom: `${b.bottomPercent}%`,
+                      height: `${Math.max(b.heightPercent, 3)}%`,
+                      left: `${left}%`,
+                      opacity: lifecycleStyle.opacity,
+                      width: `${width}%`,
+                    }
+                  : {
+                      background: toneBg,
+                      bottom: `${b.bottomPercent}%`,
+                      height: `${Math.max(b.heightPercent, 3)}%`,
+                      left: `${left}%`,
+                      opacity: ALLOC_OPACITY[b.span.tone],
+                      width: `${width}%`,
+                    }
+              }
               type="button"
             />
           );

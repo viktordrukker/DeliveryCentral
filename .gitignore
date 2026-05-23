@@ -36,4 +36,6 @@ docs/planning/workforce-ops-benchmark-synthesis.md
 *:Zone.Identifier
 
 # DS design canvas — local-only reference scaffold, not built into the app.
-DS/
+# Anchored to repo root so we don't accidentally ignore frontend/src/components/ds/
+# under `core.ignoreCase=true`.
+/DS/
