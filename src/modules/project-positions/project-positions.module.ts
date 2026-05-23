@@ -1,0 +1,70 @@
+import { Module } from '@nestjs/common';
+
+import { PrismaModule } from '@src/shared/persistence/prisma.module';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+import { CreateProjectPositionService } from './application/create-project-position.service';
+import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
+import { ListBenchPeopleService } from './application/list-bench-people.service';
+import { ListProjectPositionsService } from './application/list-project-positions.service';
+import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
+import { PROJECT_POSITION_REPOSITORY } from './application/tokens';
+import { PrismaProjectPositionRepository } from './infrastructure/repositories/prisma/prisma-project-position.repository';
+
+/**
+ * Sprint 2 / S2-3 — lean staffing aggregate module wiring.
+ *
+ * Provides services + Prisma adapter. Controllers land in S2-4. The legacy
+ * `assignments`/`staffing-requests`/`staffing-desk` modules continue to run
+ * alongside until the Sprint 5 contract phase.
+ */
+@Module({
+  imports: [PrismaModule],
+  providers: [
+    {
+      provide: PROJECT_POSITION_REPOSITORY,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) =>
+        new PrismaProjectPositionRepository(prisma.projectPosition),
+    },
+    {
+      provide: CreateProjectPositionService,
+      inject: [PROJECT_POSITION_REPOSITORY],
+      useFactory: (repo: PrismaProjectPositionRepository) =>
+        new CreateProjectPositionService(repo),
+    },
+    {
+      provide: TransitionProjectPositionFillService,
+      inject: [PROJECT_POSITION_REPOSITORY],
+      useFactory: (repo: PrismaProjectPositionRepository) =>
+        new TransitionProjectPositionFillService(repo),
+    },
+    {
+      provide: ListProjectPositionsService,
+      inject: [PROJECT_POSITION_REPOSITORY],
+      useFactory: (repo: PrismaProjectPositionRepository) =>
+        new ListProjectPositionsService(repo),
+    },
+    {
+      provide: GetProjectPositionByIdService,
+      inject: [PROJECT_POSITION_REPOSITORY],
+      useFactory: (repo: PrismaProjectPositionRepository) =>
+        new GetProjectPositionByIdService(repo),
+    },
+    {
+      provide: ListBenchPeopleService,
+      inject: [PROJECT_POSITION_REPOSITORY],
+      useFactory: (repo: PrismaProjectPositionRepository) =>
+        new ListBenchPeopleService(repo),
+    },
+  ],
+  exports: [
+    CreateProjectPositionService,
+    TransitionProjectPositionFillService,
+    ListProjectPositionsService,
+    GetProjectPositionByIdService,
+    ListBenchPeopleService,
+    PROJECT_POSITION_REPOSITORY,
+  ],
+})
+export class ProjectPositionsModule {}
