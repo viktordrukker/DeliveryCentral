@@ -397,6 +397,45 @@ enum ApprovalDecision {
   CANCELLED
 }
 
+// Lean staffing aggregate — Sprint 2 / S2-1.
+// ProjectPosition collapses StaffingRequest + ProjectAssignment + AssignmentProposalSlate
+// into one model whose `fillStatus` carries the full lifecycle. See
+// docs/planning/claude-design/lean-simplification-initiative.md §2.
+enum ProjectPositionFillStatus {
+  DRAFT
+  OPEN
+  PROPOSED
+  BOOKED
+  ONBOARDING
+  ASSIGNED
+  ON_HOLD
+  RELEASED
+}
+
+enum ProjectPositionCandidateDecision {
+  PENDING
+  PICKED
+  DECLINED
+  AUTO_DECLINED
+}
+
+enum ProjectPositionFillChangeType {
+  DRAFTED
+  OPENED
+  PROPOSED
+  BOOKED
+  ONBOARDED
+  ASSIGNED
+  HELD
+  RELEASED
+  CANDIDATES_ADDED
+  CANDIDATE_PICKED
+  CANDIDATE_DECLINED
+  RATE_PINNED
+  ALLOCATION_CHANGED
+  DATES_CHANGED
+}
+
 enum WorkEvidenceStatus {
   CAPTURED
   RECONCILED
@@ -725,6 +764,15 @@ model Person {
   employmentEvents                         EmploymentEvent[]                   @relation("EmploymentEvent_person")
   employmentEventsRecorded                 EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
   projectRetrospectivesFacilitated         ProjectRetrospective[]
+  // Sprint 2 / S2-1 — lean staffing aggregate inverse relations.
+  projectPositionsActive                   ProjectPosition[]                   @relation("ProjectPositionActivePerson")
+  projectPositionsRequested                ProjectPosition[]                   @relation("ProjectPositionRequestedBy")
+  projectPositionsCreated                  ProjectPosition[]                   @relation("ProjectPositionCreatedBy")
+  projectPositionsUpdated                  ProjectPosition[]                   @relation("ProjectPositionUpdatedBy")
+  projectPositionCandidates                ProjectPositionCandidate[]          @relation("ProjectPositionCandidatePerson")
+  projectPositionCandidatesCreated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateCreatedBy")
+  projectPositionCandidatesUpdated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateUpdatedBy")
+  projectPositionFillHistoryChanges        ProjectPositionFillHistory[]        @relation("ProjectPositionFillHistoryChangedBy")
   version                                  Int                                 @default(1)
   tenantId                                 String?                             @db.Uuid
   Tenant                                   Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -1113,6 +1161,8 @@ model Project {
   changeRequests        ProjectChangeRequest[]
   workstreams           ProjectWorkstream[]
   retrospective         ProjectRetrospective?
+  // Sprint 2 / S2-1 — lean staffing aggregate.
+  projectPositions      ProjectPosition[]           @relation("ProjectPositions")
   tenantId              String?                     @db.Uuid
   Tenant                Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
@@ -2243,6 +2293,8 @@ model RateCardEntry {
   createdByPerson   Person?             @relation("RateCardEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
   updatedByPerson   Person?             @relation("RateCardEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   pinnedAssignments ProjectAssignment[] @relation("AssignmentRateCardEntry")
+  // Sprint 2 / S2-1 — lean staffing aggregate.
+  pinnedPositions   ProjectPosition[]   @relation("ProjectPositionRateCardEntry")
 
   @@unique([rateCardId, staffingRole, grade])
   @@index([rateCardId, isActive])
@@ -3828,10 +3880,153 @@ model Tenant {
   StaffingRequest           StaffingRequest[]
   TimesheetWeek             TimesheetWeek[]
   Vendor                    Vendor[]
+  // Sprint 2 / S2-1 — lean staffing aggregate.
+  ProjectPosition           ProjectPosition[]        @relation("ProjectPositionTenant")
 
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
   @@map("Tenant")
+}
+
+/// Sprint 2 / S2-1 — lean staffing aggregate.
+///
+/// ProjectPosition is the canonical "position on a project". It collapses
+/// the legacy three-model pattern (StaffingRequest = demand,
+/// ProjectAssignment = supply, AssignmentProposalSlate = proposed match)
+/// into a single aggregate where `fillStatus` carries the full lifecycle.
+///
+/// Expand-phase model (Sprint 2). Backfilled from existing data in S2-5.
+/// Dual-write enabled in S2-6. Legacy models dropped in Sprint 5 contract.
+///
+/// See docs/planning/claude-design/lean-simplification-initiative.md §2.
+model ProjectPosition {
+  id                       String                       @id @default(uuid()) @db.Uuid
+  publicId                 String?                      @unique @db.VarChar(32)
+  projectId                String                       @db.Uuid
+  workstreamId             String?                      @db.Uuid
+  // Demand definition (was: StaffingRequest fields).
+  role                     String
+  skills                   String[]                     @default([])
+  summary                  String?
+  requiredAllocationPercent Decimal                     @db.Decimal(5, 2)
+  startDate                DateTime                     @db.Date
+  endDate                  DateTime                     @db.Date
+  priority                 StaffingRequestPriority      @default(MEDIUM)
+  requestedByPersonId      String?                      @db.Uuid
+  // Active fill (was: the row in ProjectAssignment with status in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD).
+  fillStatus               ProjectPositionFillStatus    @default(DRAFT)
+  activePersonId           String?                      @db.Uuid
+  activeAllocationPercent  Decimal?                     @db.Decimal(5, 2)
+  activeValidFrom          DateTime?                    @db.Timestamptz(3)
+  activeValidTo            DateTime?                    @db.Timestamptz(3)
+  onboardingDate           DateTime?                    @db.Timestamptz(3)
+  notes                    String?
+  // SLA tracking (was: ProjectAssignment SLA fields).
+  requiresDirectorApproval Boolean                      @default(false)
+  slaStage                 AssignmentSlaStage?
+  slaDueAt                 DateTime?                    @db.Timestamptz(3)
+  slaBreachedAt            DateTime?                    @db.Timestamptz(3)
+  slaWarnedAt50pct         DateTime?                    @db.Timestamptz(3)
+  slaWarnedAt75pct         DateTime?                    @db.Timestamptz(3)
+  // Billing rate pinning (was: ProjectAssignment rate fields).
+  appliedRateCardEntryId   String?                      @db.Uuid
+  appliedRateCardEntry     RateCardEntry?               @relation("ProjectPositionRateCardEntry", fields: [appliedRateCardEntryId], references: [id], onDelete: SetNull)
+  effectiveBillRate        Decimal?                     @db.Decimal(10, 2)
+  effectiveBillCurrency    String?                      @db.VarChar(3)
+  // Reason text preserved across transitions.
+  rejectionReason          String?
+  rejectionReasonCode      String?
+  cancellationReason       String?
+  onHoldReason             String?
+  onHoldCaseId             String?                      @db.Uuid
+  releaseReason            String?
+  // Concurrency + audit.
+  version                  Int                          @default(1)
+  createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
+  createdByPersonId        String?                      @db.Uuid
+  updatedByPersonId        String?                      @db.Uuid
+  archivedAt               DateTime?                    @db.Timestamptz(3)
+  // Tenant.
+  tenantId                 String?                      @db.Uuid
+  Tenant                   Tenant?                      @relation("ProjectPositionTenant", fields: [tenantId], references: [id], onDelete: Restrict)
+  // Migration provenance — populated by the Sprint-2 backfill so the
+  // Sprint-5 contract migration can confirm clean backfill before dropping legacy.
+  legacyStaffingRequestId  String?                      @db.Uuid
+  legacyAssignmentId       String?                      @db.Uuid
+  // Relations.
+  project                  Project                      @relation("ProjectPositions", fields: [projectId], references: [id], onDelete: Restrict)
+  activePerson             Person?                      @relation("ProjectPositionActivePerson", fields: [activePersonId], references: [id], onDelete: SetNull)
+  requestedByPerson        Person?                      @relation("ProjectPositionRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: SetNull)
+  createdByPerson          Person?                      @relation("ProjectPositionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson          Person?                      @relation("ProjectPositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  candidates               ProjectPositionCandidate[]
+  fillHistory              ProjectPositionFillHistory[]
+
+  @@index([projectId, fillStatus])
+  @@index([activePersonId, fillStatus, activeValidFrom, activeValidTo], map: "ProjectPosition_activePerson_window_idx")
+  @@index([fillStatus, priority, startDate])
+  @@index([slaStage, slaDueAt])
+  @@index([fillStatus, slaDueAt])
+  @@index([tenantId])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
+  @@index([requestedByPersonId])
+  @@index([appliedRateCardEntryId])
+  @@index([legacyStaffingRequestId])
+  @@index([legacyAssignmentId])
+  @@map("ProjectPosition")
+}
+
+model ProjectPositionCandidate {
+  id                  String                            @id @default(uuid()) @db.Uuid
+  positionId          String                            @db.Uuid
+  candidatePersonId   String                            @db.Uuid
+  rank                Int
+  matchScore          Decimal                           @db.Decimal(6, 3)
+  availabilityPercent Decimal?                          @db.Decimal(5, 2)
+  mismatchedSkills    String[]                          @default([])
+  rationale           String?
+  decision            ProjectPositionCandidateDecision  @default(PENDING)
+  decidedAt           DateTime?                         @db.Timestamptz(3)
+  createdAt           DateTime                          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                          @updatedAt @db.Timestamptz(3)
+  createdByPersonId   String?                           @db.Uuid
+  updatedByPersonId   String?                           @db.Uuid
+  position            ProjectPosition                   @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  candidate           Person                            @relation("ProjectPositionCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
+  createdByPerson     Person?                           @relation("ProjectPositionCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?                           @relation("ProjectPositionCandidateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+
+  @@unique([positionId, candidatePersonId])
+  @@index([positionId, rank])
+  @@index([candidatePersonId])
+  @@index([positionId, decision])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
+  @@map("ProjectPositionCandidate")
+}
+
+model ProjectPositionFillHistory {
+  id                String                          @id @default(uuid()) @db.Uuid
+  positionId        String                          @db.Uuid
+  changeType        ProjectPositionFillChangeType
+  changedByPersonId String?                         @db.Uuid
+  changeReason      String?
+  previousPersonId  String?                         @db.Uuid
+  newPersonId       String?                         @db.Uuid
+  previousStatus    ProjectPositionFillStatus?
+  newStatus         ProjectPositionFillStatus?
+  previousSnapshot  Json?
+  newSnapshot       Json?
+  occurredAt        DateTime                        @default(now()) @db.Timestamptz(3)
+  position          ProjectPosition                 @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  changedBy         Person?                         @relation("ProjectPositionFillHistoryChangedBy", fields: [changedByPersonId], references: [id], onDelete: NoAction)
+
+  @@index([positionId, occurredAt])
+  @@index([changedByPersonId])
+  @@index([changeType])
+  @@map("ProjectPositionFillHistory")
 }
 
 /// DomainEvent is a partitioned table with a BEFORE INSERT hash-chain trigger.
