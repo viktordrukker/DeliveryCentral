@@ -8,9 +8,9 @@ import { SectionCard } from '@/components/common/SectionCard';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
-import { LeaveRequestPage } from '@/routes/leave/LeaveRequestPage';
 import { MyTimePage } from '@/routes/my-time/MyTimePage';
 
+import { LeaveTab } from './LeaveTab';
 import { OverviewTab } from './OverviewTab';
 import { ProjectsTab } from './ProjectsTab';
 
@@ -166,7 +166,7 @@ export function WorkspaceShellPage(): JSX.Element {
       >
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'time' && <MyTimePage />}
-        {activeTab === 'leave' && <LeaveRequestPage />}
+        {activeTab === 'leave' && <LeaveTab />}
         {activeTab === 'projects' && <ProjectsTab />}
         {activeTab === 'inbox' && <InboxPage />}
         {activeTab === 'settings' && <AccountSettingsPage />}
