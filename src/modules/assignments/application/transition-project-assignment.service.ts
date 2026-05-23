@@ -4,6 +4,7 @@ import { AuditLoggerService } from '@src/modules/audit-observability/application
 import { EffectiveBillRateResolverService } from '@src/modules/financial-governance/application/effective-bill-rate-resolver.service';
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import type { ProjectPositionMirrorService } from '@src/modules/project-positions/application/project-position-mirror.service';
 import { UndoService } from '@src/modules/undo/application/undo.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -85,6 +86,9 @@ export class TransitionProjectAssignmentService {
     // pre-HD-3 behaviour preserved.
     private readonly billRateResolver?: EffectiveBillRateResolverService,
     private readonly prisma?: PrismaService,
+    // Sprint 2 / S2-6 — dual-write mirror into the lean staffing aggregate.
+    // Optional: legacy test fixtures that don't supply it stay backward-compatible.
+    private readonly projectPositionMirror?: ProjectPositionMirrorService,
   ) {}
 
   /**
@@ -163,6 +167,19 @@ export class TransitionProjectAssignmentService {
     assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
+
+    // Sprint 2 / S2-6 — dual-write mirror into the lean staffing aggregate.
+    // Best-effort; never blocks the legacy primary path. See
+    // ProjectPositionMirrorService for failure semantics.
+    if (this.projectPositionMirror) {
+      try {
+        await this.projectPositionMirror.mirrorAssignment(assignment, command.actorId);
+      } catch (err) {
+        this.logger.warn(
+          `ProjectPosition mirror failed for ${assignment.assignmentId.value}: ${(err as Error).message}`,
+        );
+      }
+    }
 
     // D-95 — keep the parent SR's `headcountFulfilled` cached column in sync
     // with the live assignment count. The cached counter previously only

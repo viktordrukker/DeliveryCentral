@@ -5,6 +5,8 @@ import { EffectiveBillRateResolverService } from '../financial-governance/applic
 import { FinancialGovernanceModule } from '../financial-governance/financial-governance.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ProjectPositionMirrorService } from '../project-positions/application/project-position-mirror.service';
+import { ProjectPositionsModule } from '../project-positions/project-positions.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { MetricsService } from '@src/shared/observability/metrics.service';
 import { AmendProjectAssignmentService } from './application/amend-project-assignment.service';
@@ -35,7 +37,12 @@ import { PrismaAssignmentReferenceRepository } from './infrastructure/repositori
 import { AssignmentsController } from './presentation/assignments.controller';
 
 @Module({
-  imports: [forwardRef(() => OrganizationModule), NotificationsModule, FinancialGovernanceModule],
+  imports: [
+    forwardRef(() => OrganizationModule),
+    NotificationsModule,
+    FinancialGovernanceModule,
+    ProjectPositionsModule,
+  ],
   controllers: [AssignmentsController],
   providers: [
     {
@@ -221,6 +228,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
         undoService: UndoService,
         billRateResolver: EffectiveBillRateResolverService,
         prisma: PrismaService,
+        projectPositionMirror: ProjectPositionMirrorService,
       ) =>
         new TransitionProjectAssignmentService(
           repository,
@@ -230,6 +238,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
           undoService,
           billRateResolver,
           prisma,
+          projectPositionMirror,
         ),
       inject: [
         InMemoryProjectAssignmentRepository,
@@ -239,6 +248,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
         UndoService,
         EffectiveBillRateResolverService,
         PrismaService,
+        ProjectPositionMirrorService,
       ],
     },
     {
