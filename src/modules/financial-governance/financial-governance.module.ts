@@ -9,6 +9,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { DecideBudgetChangeService } from './application/decide-budget-change.service';
 import { EffectiveBillRateResolverService } from './application/effective-bill-rate-resolver.service';
+import { EvmComputationService } from './application/evm-computation.service';
 import { FinancialService } from './application/financial.service';
 import { FiscalCalendarService } from './application/fiscal-calendar.service';
 import { FxRateService } from './application/fx-rate.service';
@@ -17,6 +18,7 @@ import { RequestBudgetChangeService } from './application/request-budget-change.
 import { FinancialRepository } from './infrastructure/financial.repository';
 import { CapitalisationController, PeriodLocksController } from './presentation/capitalisation.controller';
 import { PersonCostRateController, ProjectBudgetController } from './presentation/budget.controller';
+import { AdminEvmController, ProjectEvmController } from './presentation/evm.controller';
 import { RateCardsAdminController } from './presentation/rate-cards-admin.controller';
 
 @Module({
@@ -27,6 +29,8 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     ProjectBudgetController,
     PersonCostRateController,
     RateCardsAdminController,
+    ProjectEvmController,
+    AdminEvmController,
   ],
   providers: [
     {
@@ -107,6 +111,11 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
         new FiscalCalendarService(prisma, flags),
       inject: [PrismaService, PlatformFlagsService],
     },
+    {
+      provide: EvmComputationService,
+      useFactory: (prisma: PrismaService) => new EvmComputationService(prisma),
+      inject: [PrismaService],
+    },
   ],
   exports: [
     FinancialService,
@@ -116,6 +125,7 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     RateCardAdminService,
     FxRateService,
     FiscalCalendarService,
+    EvmComputationService,
   ],
 })
 export class FinancialGovernanceModule {}

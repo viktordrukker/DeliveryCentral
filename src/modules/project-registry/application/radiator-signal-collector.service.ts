@@ -228,6 +228,15 @@ export class RadiatorSignalCollectorService {
   }
 
   // ── Budget ────────────────────────────────────────────────────────────────
+  //
+  // Sprint 4 / S4-2 — the four Budget collectors below (CPI, spendRate,
+  // forecastAccuracy, capexCompliance) read EV / AC / plannedToDate / EAC /
+  // capexCorrectPct directly off ProjectBudget. Those columns are written by
+  // `EvmComputationService.recomputeForProject(...)` in financial-governance.
+  // When the recompute runs (admin endpoint POST /api/projects/:id/evm/recompute
+  // or portfolio-wide POST /api/admin/evm/recompute-all), the Radiator Budget
+  // quadrant on the next render automatically reflects the truthful values.
+  // No coupling change here: this is the read side of a write-side feature.
 
   private async latestBudget(projectId: string) {
     return this.prisma.projectBudget.findFirst({
