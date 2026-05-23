@@ -7,9 +7,11 @@ import { useDrilldown } from '@/app/drilldown-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+// WO-4.12 — replace PageContainer + PageHeader composition with DetailLayout
+// per the Detail Surface grammar (DS-5).
+import { DetailLayout } from '@/components/layout/DetailLayout';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ProposalBuilderDrawer } from '@/components/staffing-requests/ProposalBuilderDrawer';
@@ -347,30 +349,57 @@ export function StaffingRequestDetailPage(): JSX.Element {
     isPM && slate && slate.status === 'OPEN' && requestIsActionable,
   );
 
-  return (
-    <PageContainer>
-      <PageHeader
-        actions={
-          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            <Button
-              variant="secondary"
-              disabled={duplicating}
-              onClick={() => void handleDuplicate()}
-              title="One request = one person. Duplicate this request to staff another person on the same role."
-            >
-              {duplicating ? 'Duplicating…' : 'Duplicate request'}
-            </Button>
-            <Button as={Link} variant="secondary" to="/staffing-requests">
-              Back to requests
-            </Button>
-          </div>
-        }
-        eyebrow="Staffing Request"
-        subtitle={request.summary ?? 'No summary provided.'}
-        title={`${request.role} — ${request.projectName ?? request.projectId}`}
-      />
+  // WO-4.12 — stage-specific action card content. Renders the next action
+  // the current user can take given the derived status (no dead-end screen,
+  // satisfies UX Law 2). Falls back to a brief status line when no action
+  // applies (Filled / Cancelled / Closed terminals).
+  const stageActionCard = renderStageActionCard({
+    derivedStatus: request.derivedStatus,
+    isPM,
+    isRM,
+    hasOpenSlate: Boolean(slate && slate.status === 'OPEN'),
+    showBuildSlateCta,
+    nudgeFeedback,
+    nudgeBusy,
+    onNudge: () => void handleNudge(),
+    onBuildSlate: () => setBuilderOpen(true),
+  });
 
-      {error ? <ErrorState description={error} /> : null}
+  return (
+    <DetailLayout
+      testId="staffing-request-detail-page"
+      eyebrow="Staffing Request"
+      title={`${request.role} — ${request.projectName ?? request.projectId}`}
+      subtitle={request.summary ?? 'No summary provided.'}
+      actions={
+        <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+          <Button
+            variant="secondary"
+            disabled={duplicating}
+            onClick={() => void handleDuplicate()}
+            title="One request = one person. Duplicate this request to staff another person on the same role."
+          >
+            {duplicating ? 'Duplicating…' : 'Duplicate request'}
+          </Button>
+          <Button as={Link} variant="secondary" to="/staffing-requests">
+            Back to requests
+          </Button>
+        </div>
+      }
+      banners={
+        <>
+          {/* WO-4.12 — WorkflowStages promoted to a top-of-page banner
+              (was buried inside a SectionCard). At-a-glance: where are we? */}
+          <SectionCard title="Workflow stage">
+            <WorkflowStages stages={stages} ariaLabel="Staffing request workflow" />
+          </SectionCard>
+          {/* WO-4.12 — Stage-specific action card. Always rendered so the
+              "what should I do next" answer is one click away. */}
+          {stageActionCard}
+          {error ? <ErrorState description={error} /> : null}
+        </>
+      }
+    >
 
       {/* ─── Project context strip — sticky header with the data the PM needs at a glance. */}
       <SectionCard title="Project context">
@@ -465,10 +494,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
         </div>
       </SectionCard>
 
-      {/* ─── Workflow timeline */}
-      <SectionCard title="Workflow timeline">
-        <WorkflowStages stages={stages} ariaLabel="Staffing request workflow" />
-      </SectionCard>
+      {/* WO-4.12 — Workflow timeline moved to DetailLayout banners (above). */}
 
       {/* ─── Workload timeline. Only shown pre-slate — once a slate exists,
             the per-candidate timeline lives inline in the side-by-side
@@ -637,7 +663,132 @@ export function StaffingRequestDetailPage(): JSX.Element {
           setRefreshToken((n) => n + 1);
         }}
       />
-    </PageContainer>
+    </DetailLayout>
+  );
+}
+
+/**
+ * WO-4.12 — stage-specific action card. Renders the single most-likely
+ * next action for the current viewer given the derived status. No
+ * dead-end screens (UX Law 2) — even terminal states get a "what now"
+ * message so the user never wonders if they're stuck.
+ */
+function renderStageActionCard(params: {
+  derivedStatus: DerivedStaffingRequestStatus;
+  isPM: boolean;
+  isRM: boolean;
+  hasOpenSlate: boolean;
+  showBuildSlateCta: boolean;
+  nudgeFeedback: NudgeResult | null;
+  nudgeBusy: boolean;
+  onNudge: () => void;
+  onBuildSlate: () => void;
+}): JSX.Element {
+  const {
+    derivedStatus,
+    isPM,
+    isRM,
+    hasOpenSlate,
+    showBuildSlateCta,
+    nudgeFeedback,
+    nudgeBusy,
+    onNudge,
+    onBuildSlate,
+  } = params;
+
+  // Terminal states — informational only (no dead-end, but no CTA either).
+  if (derivedStatus === 'Cancelled') {
+    return (
+      <SectionCard title="Next action">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+          This request has been cancelled and is no longer in any RM queue. Use
+          "Duplicate request" in the header to start a fresh request for the same role.
+        </p>
+      </SectionCard>
+    );
+  }
+  if (derivedStatus === 'Filled') {
+    return (
+      <SectionCard title="Next action">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+          Requirement met. The assigned person(s) are visible in the proposal slate panel below.
+        </p>
+      </SectionCard>
+    );
+  }
+  if (derivedStatus === 'Closed') {
+    return (
+      <SectionCard title="Next action">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+          Request is closed. All linked assignments have completed.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  // RM gets the slate-building CTA when no slate exists yet.
+  if (isRM && showBuildSlateCta) {
+    return (
+      <SectionCard title="Next action" data-jtbd="As RM, propose candidates">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+          Build a candidate slate and submit it to the PM for review.
+        </p>
+        <Button variant="primary" onClick={onBuildSlate} type="button">
+          Build proposal slate
+        </Button>
+      </SectionCard>
+    );
+  }
+
+  // PM with an open slate waiting for decision.
+  if (isPM && hasOpenSlate) {
+    return (
+      <SectionCard title="Next action" data-jtbd="As PM, pick a candidate">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+          A slate is waiting for your decision. Pick or reject candidates in the proposal slate panel below.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  // Stalled state — surface the nudge button as the next action.
+  if (derivedStatus === 'Open' || derivedStatus === 'In progress') {
+    return (
+      <SectionCard title="Next action" data-jtbd="Stalled — get a decision">
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+          {isPM
+            ? 'Waiting on RM to propose a slate. Nudge the approver to speed things up — rate-limited to one nudge per 4 hours.'
+            : isRM
+              ? 'Waiting on PM decision. Nudge the approver to speed things up — rate-limited to one nudge per 4 hours.'
+              : 'Request is in flight. Use Nudge to remind the approver(s) — rate-limited to one nudge per 4 hours.'}
+        </p>
+        <Button variant="secondary" disabled={nudgeBusy} onClick={onNudge} type="button">
+          {nudgeBusy ? 'Nudging…' : 'Nudge approver'}
+        </Button>
+        {nudgeFeedback ? (
+          <div
+            style={{
+              marginTop: 'var(--space-2)',
+              fontSize: 12,
+              color: nudgeFeedback.nudged ? 'var(--color-status-active)' : 'var(--color-status-warning)',
+            }}
+          >
+            {nudgeFeedback.nudged
+              ? `Approver nudged at ${new Date(nudgeFeedback.lastNudgedAt).toLocaleTimeString()}.`
+              : `Already nudged within the last 4 hours. Try again after ${nudgeFeedback.rateLimitedUntil ? new Date(nudgeFeedback.rateLimitedUntil).toLocaleTimeString() : 'a few hours'}.`}
+          </div>
+        ) : null}
+      </SectionCard>
+    );
+  }
+
+  // Fallback — should be unreachable given the derivedStatus union.
+  return (
+    <SectionCard title="Next action">
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
+        Awaiting next step.
+      </p>
+    </SectionCard>
   );
 }
 

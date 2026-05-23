@@ -87,6 +87,36 @@ export class TransitionProjectAssignmentService {
     private readonly prisma?: PrismaService,
   ) {}
 
+  /**
+   * D-95 — recompute the parent SR's cached `headcountFulfilled` from the
+   * live ProjectAssignment count after a transition. Inlined here (rather
+   * than calling DeriveStaffingRequestStatusService) to avoid a circular
+   * dependency between AssignmentsModule ↔ StaffingRequestsModule. The
+   * authoritative path for UI remains `DeriveStaffingRequestStatusService`
+   * which computes derivedStatus from the same query; the cached column
+   * is kept in sync as convenience for legacy consumers.
+   */
+  private async syncParentSrHeadcount(staffingRequestId: string): Promise<void> {
+    if (!this.prisma) return;
+    const sr = await this.prisma.staffingRequest.findUnique({
+      where: { id: staffingRequestId },
+      select: { headcountRequired: true },
+    });
+    if (!sr) return;
+    const filledCount = await this.prisma.projectAssignment.count({
+      where: {
+        staffingRequestId,
+        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED'] },
+      },
+    });
+    const cap = sr.headcountRequired > 0 ? sr.headcountRequired : 1;
+    const headcountFulfilled = Math.min(filledCount, cap);
+    await this.prisma.staffingRequest.update({
+      where: { id: staffingRequestId },
+      data: { headcountFulfilled },
+    });
+  }
+
   public async execute(command: TransitionAssignmentCommand): Promise<TransitionAssignmentResult> {
     const assignment = await this.projectAssignmentRepository.findByAssignmentId(
       AssignmentId.from(command.assignmentId),
@@ -133,6 +163,23 @@ export class TransitionProjectAssignmentService {
     assignment.setUpdatedBy(command.actorId);
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
+
+    // D-95 — keep the parent SR's `headcountFulfilled` cached column in sync
+    // with the live assignment count. The cached counter previously only
+    // moved +1 on slate pick; cancelling an assignment left it inflated,
+    // which made the SR derive as Filled/In-progress when it was actually
+    // open again (BUG-SR-1). Only fires when the assignment links to an
+    // SR and the prisma client is wired (test fixtures may not supply it).
+    if (assignment.staffingRequestId && this.prisma) {
+      try {
+        await this.syncParentSrHeadcount(assignment.staffingRequestId);
+      } catch (err) {
+        // Counter sync failure must NEVER block the primary transition.
+        this.logger.warn(
+          `Headcount-recompute failed for SR ${assignment.staffingRequestId}: ${(err as Error).message}`,
+        );
+      }
+    }
 
     this.auditLogger?.record({
       actionType: AUDIT_ACTION_TYPE[command.target],

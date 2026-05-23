@@ -168,6 +168,67 @@ export class DeriveStaffingRequestStatusService {
     };
   }
 
+  /**
+   * D-95 — derive `headcountFulfilled` from the live assignment count.
+   *
+   * The legacy `StaffingRequest.headcountFulfilled` cached counter was a
+   * monotonic `+1` per slate pick; it never decremented when an
+   * assignment later cancelled or completed back to open. That drift was
+   * the root cause behind BUG-SR-1 (cancelled SR rendering as `Filled`
+   * because the counter said so).
+   *
+   * Counts ProjectAssignment rows that genuinely occupy a slot:
+   *   BOOKED + ONBOARDING + ASSIGNED + ON_HOLD + COMPLETED.
+   * REJECTED / CANCELLED / DRAFT / CREATED / PROPOSED don't occupy a slot
+   * — those are either pre-fill states or failures.
+   *
+   * `headcountRequired` caps the result so a misbehaving over-fill (more
+   * actives than required) still presents as fully-filled, never above.
+   */
+  public async recomputeHeadcountFulfilled(
+    requestIdOrPublicId: string,
+    headcountRequired: number,
+  ): Promise<number> {
+    const internalId = await this.resolveInternalUuid(requestIdOrPublicId);
+    if (!internalId) return 0;
+    const assignments = await this.prisma.projectAssignment.findMany({
+      where: { staffingRequestId: internalId },
+      select: { status: true },
+    });
+    const filledCount = assignments.filter((a) =>
+      ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED'].includes(a.status),
+    ).length;
+    const cap = headcountRequired > 0 ? headcountRequired : 1;
+    return Math.min(filledCount, cap);
+  }
+
+  /**
+   * D-95 — recompute + persist the cached counter on the SR row so legacy
+   * consumers (workforce-planner, dashboards) reading `headcountFulfilled`
+   * directly stay in sync with reality. Call this from any service that
+   * mutates an assignment's status (transitions, slate picks, undo).
+   */
+  public async recomputeAndPersistHeadcount(
+    requestIdOrPublicId: string,
+  ): Promise<{ headcountFulfilled: number; headcountRequired: number } | null> {
+    const internalId = await this.resolveInternalUuid(requestIdOrPublicId);
+    if (!internalId) return null;
+    const row = await this.prisma.staffingRequest.findUnique({
+      where: { id: internalId },
+      select: { headcountRequired: true },
+    });
+    if (!row) return null;
+    const headcountFulfilled = await this.recomputeHeadcountFulfilled(
+      internalId,
+      row.headcountRequired,
+    );
+    await this.prisma.staffingRequest.update({
+      where: { id: internalId },
+      data: { headcountFulfilled },
+    });
+    return { headcountFulfilled, headcountRequired: row.headcountRequired };
+  }
+
   public async deriveForRequests(
     requestIds: readonly string[],
   ): Promise<Map<string, DerivedStaffingRequestResult>> {

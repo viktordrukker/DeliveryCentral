@@ -127,6 +127,11 @@ function buildPrismaStub(
         publicId: null,
       }),
     },
+    // D-95 — `pickCandidate` now queries `prisma.projectAssignment.count`
+    // to derive headcountFulfilled from live assignment status.
+    projectAssignment: {
+      count: async () => 1,
+    },
   } as unknown as PrismaService;
   stub.prisma = prisma;
   return stub;
