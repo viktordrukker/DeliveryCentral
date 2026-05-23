@@ -7,19 +7,25 @@ import { CreateProjectPositionService } from './application/create-project-posit
 import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from './application/list-bench-people.service';
 import { ListProjectPositionsService } from './application/list-project-positions.service';
+import { ProjectPositionMirrorService } from './application/project-position-mirror.service';
 import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
 import { PROJECT_POSITION_REPOSITORY } from './application/tokens';
 import { PrismaProjectPositionRepository } from './infrastructure/repositories/prisma/prisma-project-position.repository';
+import {
+  PeopleBenchController,
+  ProjectPositionsController,
+} from './presentation/project-positions.controller';
 
 /**
- * Sprint 2 / S2-3 — lean staffing aggregate module wiring.
+ * Sprint 2 / S2-3..S2-6 — lean staffing aggregate module wiring.
  *
- * Provides services + Prisma adapter. Controllers land in S2-4. The legacy
- * `assignments`/`staffing-requests`/`staffing-desk` modules continue to run
- * alongside until the Sprint 5 contract phase.
+ * Provides services + Prisma adapter + REST controllers + S2-6 dual-write
+ * mirror. The legacy `assignments`/`staffing-requests`/`staffing-desk`
+ * modules continue to run alongside until the Sprint 5 contract phase.
  */
 @Module({
   imports: [PrismaModule],
+  controllers: [ProjectPositionsController, PeopleBenchController],
   providers: [
     {
       provide: PROJECT_POSITION_REPOSITORY,
@@ -57,6 +63,7 @@ import { PrismaProjectPositionRepository } from './infrastructure/repositories/p
       useFactory: (repo: PrismaProjectPositionRepository) =>
         new ListBenchPeopleService(repo),
     },
+    ProjectPositionMirrorService,
   ],
   exports: [
     CreateProjectPositionService,
@@ -64,6 +71,7 @@ import { PrismaProjectPositionRepository } from './infrastructure/repositories/p
     ListProjectPositionsService,
     GetProjectPositionByIdService,
     ListBenchPeopleService,
+    ProjectPositionMirrorService,
     PROJECT_POSITION_REPOSITORY,
   ],
 })
