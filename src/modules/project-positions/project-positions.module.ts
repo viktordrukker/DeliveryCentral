@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { AuditObservabilityModule } from '@src/modules/audit-observability/audit-observability.module';
+import { DomainEventService } from '@src/modules/audit-observability/application/domain-event.service';
 import { PrismaModule } from '@src/shared/persistence/prisma.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -24,7 +26,7 @@ import {
  * modules continue to run alongside until the Sprint 5 contract phase.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuditObservabilityModule],
   controllers: [ProjectPositionsController, PeopleBenchController],
   providers: [
     {
@@ -63,7 +65,12 @@ import {
       useFactory: (repo: PrismaProjectPositionRepository) =>
         new ListBenchPeopleService(repo),
     },
-    ProjectPositionMirrorService,
+    {
+      provide: ProjectPositionMirrorService,
+      inject: [PrismaService, DomainEventService],
+      useFactory: (prisma: PrismaService, domainEvents: DomainEventService) =>
+        new ProjectPositionMirrorService(prisma, domainEvents),
+    },
   ],
   exports: [
     CreateProjectPositionService,

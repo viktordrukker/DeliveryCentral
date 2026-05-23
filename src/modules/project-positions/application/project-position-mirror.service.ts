@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import type { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
+import { DomainEventService } from '@src/modules/audit-observability/application/domain-event.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { mapLegacyAssignmentStatus } from '../domain/value-objects/position-fill-status';
@@ -33,7 +34,12 @@ import { mapLegacyAssignmentStatus } from '../domain/value-objects/position-fill
 export class ProjectPositionMirrorService {
   private readonly logger = new Logger(ProjectPositionMirrorService.name);
 
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    // Sprint 2 / S2-7 — outbox emission. Optional so existing test fixtures
+    // that don't supply the service continue to work.
+    private readonly domainEvents?: DomainEventService,
+  ) {}
 
   public async mirrorAssignment(assignment: ProjectAssignment, actorId: string): Promise<void> {
     try {
@@ -63,7 +69,9 @@ export class ProjectPositionMirrorService {
         select: { id: true, version: true },
       });
 
+      let positionId: string;
       if (existing) {
+        positionId = existing.id;
         await this.prisma.projectPosition.update({
           where: { id: existing.id },
           data: {
@@ -82,7 +90,7 @@ export class ProjectPositionMirrorService {
       } else {
         const fallbackEnd = assignment.validTo
           ?? new Date(assignment.validFrom.getTime() + 365 * 24 * 60 * 60 * 1000);
-        await this.prisma.projectPosition.create({
+        const created = await this.prisma.projectPosition.create({
           data: {
             projectId: assignment.projectId,
             role: assignment.staffingRole,
@@ -99,7 +107,38 @@ export class ProjectPositionMirrorService {
             legacyAssignmentId: assignmentId,
             legacyStaffingRequestId: assignment.staffingRequestId ?? null,
           },
+          select: { id: true },
         });
+        positionId = created.id;
+      }
+
+      // Sprint 2 / S2-7 — emit a DomainEvent into the transactional outbox.
+      // Best-effort: failure here doesn't roll back the mirror write above.
+      // The event is consumed by future notification translator updates
+      // (Sprint 5 contract phase switches from legacy `assignment.*` to this
+      // family). For now it's just a durable signal that downstream consumers
+      // can subscribe to.
+      if (this.domainEvents) {
+        try {
+          await this.domainEvents.recordAtomic({
+            aggregateType: 'ProjectPosition',
+            aggregateId: positionId,
+            eventName: 'project_position.fill.changed',
+            actorId,
+            payload: {
+              fillStatus,
+              activePersonId: activeFields.activePersonId ?? null,
+              activeAllocationPercent:
+                activeFields.activeAllocationPercent ?? null,
+              legacyAssignmentId: assignmentId,
+              source: 'dual-write-mirror',
+            },
+          });
+        } catch (err) {
+          this.logger.warn(
+            `DomainEvent emit failed for position ${positionId}: ${(err as Error).message}`,
+          );
+        }
       }
     } catch (err) {
       this.logger.warn(
