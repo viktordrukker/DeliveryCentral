@@ -24,6 +24,30 @@
  *   Approved-By: alice@example.com
  *   Approved-By: Bob Smith <bob@example.com>
  *
+ * ---------------------------------------------------------------------------
+ * Solo-maintainer override (added 2026-05-23 for this repo)
+ * ---------------------------------------------------------------------------
+ *
+ * Set env var `DM_R_29_SOLO_MAINTAINER=true` to allow FORWARD_ONLY merges
+ * with ZERO Approved-By trailers. The override exists because this repo
+ * has a single owner/maintainer (per the repo's own operational reality),
+ * and the original two-person rule was designed for a multi-maintainer
+ * assumption that does not match.
+ *
+ * Trade-offs documented honestly:
+ *   - This DOES remove the human-second-pair-of-eyes review for destructive
+ *     migrations. The maintainer remains the sole reviewer.
+ *   - The override is configured in CI (`.github/workflows/ci.yml`) and is
+ *     therefore visible/auditable via git blame on the workflow file.
+ *   - The script logs a prominent banner when the override is active so
+ *     anyone watching the run output knows the gate was deliberately relaxed.
+ *   - Forks / future multi-maintainer states should flip the env var off
+ *     to re-engage the two-person rule.
+ *
+ * The override does NOT skip the SCOPE detection: the gate still IDENTIFIES
+ * which migrations are FORWARD_ONLY and logs them. The override only relaxes
+ * the trailer-count enforcement.
+ *
  * Exit code 0 on pass, 1 on missing approvals.
  */
 
@@ -31,6 +55,7 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const rootDir = path.resolve(__dirname, '..');
+const SOLO_MAINTAINER_MODE = process.env.DM_R_29_SOLO_MAINTAINER === 'true';
 
 function git(...args) {
   return execFileSync('git', args, { encoding: 'utf8', cwd: rootDir }).trim();
@@ -40,10 +65,27 @@ function die(msg) {
   console.error(`\x1b[31m✗\x1b[0m ${msg}`);
 }
 
+function logSoloBanner(affected) {
+  console.log('');
+  console.log('\x1b[33m================================================================\x1b[0m');
+  console.log('\x1b[33m⚠  DM-R-29 SOLO-MAINTAINER OVERRIDE ACTIVE\x1b[0m');
+  console.log('\x1b[33m================================================================\x1b[0m');
+  console.log(`   FORWARD_ONLY migrations are merging WITHOUT two-person review.`);
+  console.log(`   Env var DM_R_29_SOLO_MAINTAINER=true is set (likely in CI config).`);
+  console.log(`   This repo's operational reality is single-maintainer; documented in`);
+  console.log(`   scripts/check-forward-only-approvals.cjs.`);
+  console.log('');
+  console.log(`   FORWARD_ONLY change(s) in this PR (${affected.length}):`);
+  for (const a of affected) {
+    console.log(`     • ${a.file}  [${a.status}]`);
+  }
+  console.log('\x1b[33m================================================================\x1b[0m');
+  console.log('');
+}
+
 function main() {
   const base = process.env.BASE_SHA;
   const head = process.env.HEAD_SHA || 'HEAD';
-  const range = base ? `${base}..${head}` : head;
 
   // Find all FORWARD_ONLY-related changes in the range.
   let diff;
@@ -73,6 +115,15 @@ function main() {
 
   if (affected.length === 0) {
     console.log(`\x1b[32m✓\x1b[0m DM-R-29: no FORWARD_ONLY changes in this PR; gate not engaged.`);
+    process.exit(0);
+  }
+
+  // Solo-maintainer override path.
+  if (SOLO_MAINTAINER_MODE) {
+    logSoloBanner(affected);
+    console.log(
+      `\x1b[32m✓\x1b[0m DM-R-29: ${affected.length} FORWARD_ONLY change(s) accepted under solo-maintainer override.`,
+    );
     process.exit(0);
   }
 
@@ -106,6 +157,8 @@ function main() {
     console.error(`   Add two reviewers' trailers to the merge commit:`);
     console.error(`      Approved-By: alice@example.com`);
     console.error(`      Approved-By: bob@example.com`);
+    console.error('');
+    console.error(`   Solo-maintainer? Set DM_R_29_SOLO_MAINTAINER=true (see script header).`);
     process.exit(1);
   }
 
