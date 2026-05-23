@@ -8,11 +8,11 @@ import { SectionCard } from '@/components/common/SectionCard';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
-import { MyTimePage } from '@/routes/my-time/MyTimePage';
 
 import { LeaveTab } from './LeaveTab';
 import { OverviewTab } from './OverviewTab';
 import { ProjectsTab } from './ProjectsTab';
+import { TimeTab } from './TimeTab';
 
 export type WorkspaceTab = 'overview' | 'time' | 'leave' | 'projects' | 'inbox' | 'settings';
 
@@ -165,7 +165,7 @@ export function WorkspaceShellPage(): JSX.Element {
         data-testid={`me-tabpanel-${activeTab}`}
       >
         {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'time' && <MyTimePage />}
+        {activeTab === 'time' && <TimeTab />}
         {activeTab === 'leave' && <LeaveTab />}
         {activeTab === 'projects' && <ProjectsTab />}
         {activeTab === 'inbox' && <InboxPage />}
