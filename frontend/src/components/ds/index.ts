@@ -63,6 +63,14 @@ export type {
   CalendarEvent,
   CalendarProps,
 } from './Calendar';
+
+export { BalanceMeter } from './BalanceMeter';
+export type {
+  BalanceMeterSize,
+  BalanceSegmentKind,
+  BalanceMeterBreakdownEntry,
+  BalanceMeterProps,
+} from './BalanceMeter';
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
 export { Combobox } from './Combobox';
