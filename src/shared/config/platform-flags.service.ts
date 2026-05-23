@@ -934,6 +934,26 @@ export const PLATFORM_FLAGS = {
     owner: 'frontend-eng',
     category: 'ui',
   },
+  workspaceMe: {
+    key: 'flag.workspaceMe.enabled',
+    description:
+      'Master switch for the /me Employee Workspace shell (Overview/Time/Leave/Projects/Inbox/Settings tabs). OFF keeps the existing /my-time, /leave, /notifications, /settings/account, /timesheets routes as the canonical surfaces; ON activates the unified /me shell that hosts them. Lean-simplification employee-workspace amendment.',
+    default: false,
+    maturityLevel: 'developing',
+    expectedGaSprint: 'v1.2',
+    owner: 'frontend-eng',
+    category: 'ui',
+  },
+  dsRefresh: {
+    key: 'flag.dsRefresh.enabled',
+    description:
+      'DS visual refresh (lifecycle Timeline colors, Calendar/BalanceMeter primitives, page chrome refresh per lean-simplification amendments). Additive primitives stay shipped; this flag gates the consumer-visible adoption sites until staging review signs off.',
+    default: false,
+    maturityLevel: 'developing',
+    expectedGaSprint: 'v1.2',
+    owner: 'frontend-eng',
+    category: 'ui',
+  },
 } as const satisfies Record<string, PlatformFlagDefinition>;
 
 export type PlatformFlagId = keyof typeof PLATFORM_FLAGS;

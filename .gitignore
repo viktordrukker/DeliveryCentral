@@ -31,3 +31,9 @@ docs/planning/CLAUDE_CODE_TASKS.md
 docs/planning/HARDEN_BRIEF.md
 docs/planning/HARDEN_WIRING_MAP.md
 docs/planning/workforce-ops-benchmark-synthesis.md
+
+# Windows/WSL copy metadata — never relevant to source.
+*:Zone.Identifier
+
+# DS design canvas — local-only reference scaffold, not built into the app.
+DS/
