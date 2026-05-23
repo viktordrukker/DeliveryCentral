@@ -112,7 +112,25 @@ export function BalanceMeter({
     }
   };
 
-  const SegmentTag = interactive ? 'button' : 'div';
+  const renderSegment = (
+    kind: BalanceSegmentKind,
+    label: string,
+    style: CSSProperties,
+    title: string,
+  ): JSX.Element =>
+    interactive ? (
+      <button
+        type="button"
+        aria-label={label}
+        data-segment={kind}
+        onClick={() => onSegmentClick?.(kind)}
+        onKeyDown={onSegmentKey(kind)}
+        style={style}
+        title={title}
+      />
+    ) : (
+      <div data-segment={kind} style={style} title={title} aria-hidden="true" />
+    );
 
   return (
     <div
@@ -163,66 +181,39 @@ export function BalanceMeter({
         }}
       >
         {/* Used */}
-        <SegmentTag
-          {...(interactive
-            ? {
-                type: 'button' as const,
-                'aria-label': `Used ${fmt(u)}`,
-                onClick: () => onSegmentClick?.('used'),
-                onKeyDown: onSegmentKey('used'),
-              }
-            : {})}
-          data-segment="used"
-          style={{
-            ...segmentBase,
-            left: 0,
-            width: pct(u) + '%',
-            background: 'var(--color-accent)',
-          }}
-          title={`Used: ${fmt(u)}`}
-        />
+        {renderSegment(
+          'used',
+          `Used ${fmt(u)}`,
+          { ...segmentBase, left: 0, width: pct(u) + '%', background: 'var(--color-accent)' },
+          `Used: ${fmt(u)}`,
+        )}
         {/* Pending (striped) */}
-        <SegmentTag
-          {...(interactive
-            ? {
-                type: 'button' as const,
-                'aria-label': `Pending ${fmt(p)}`,
-                onClick: () => onSegmentClick?.('pending'),
-                onKeyDown: onSegmentKey('pending'),
-              }
-            : {})}
-          data-segment="pending"
-          style={{
+        {renderSegment(
+          'pending',
+          `Pending ${fmt(p)}`,
+          {
             ...segmentBase,
             left: pct(u) + '%',
             width: pct(p) + '%',
             background:
               'repeating-linear-gradient(135deg, var(--color-status-warning) 0 4px, color-mix(in oklab, var(--color-status-warning) 60%, white) 4px 8px)',
-          }}
-          title={`Pending: ${fmt(p)}`}
-        />
+          },
+          `Pending: ${fmt(p)}`,
+        )}
         {/* Overdrawn (striped, after entitlement) */}
-        {overdrawn > 0 && (
-          <SegmentTag
-            {...(interactive
-              ? {
-                  type: 'button' as const,
-                  'aria-label': `Overdrawn ${fmt(overdrawn)}`,
-                  onClick: () => onSegmentClick?.('overdrawn'),
-                  onKeyDown: onSegmentKey('overdrawn'),
-                }
-              : {})}
-            data-segment="overdrawn"
-            style={{
+        {overdrawn > 0 &&
+          renderSegment(
+            'overdrawn',
+            `Overdrawn ${fmt(overdrawn)}`,
+            {
               ...segmentBase,
               left: pct(ent) + '%',
               width: pct(overdrawn) + '%',
               background:
                 'repeating-linear-gradient(135deg, var(--color-status-danger) 0 3px, color-mix(in oklab, var(--color-status-danger) 60%, white) 3px 6px)',
-            }}
-            title={`Overdrawn: ${fmt(overdrawn)}`}
-          />
-        )}
+            },
+            `Overdrawn: ${fmt(overdrawn)}`,
+          )}
         {/* 100% marker when scale exceeds entitlement (overdrawn case) */}
         {ent > 0 && scale > ent && (
           <span

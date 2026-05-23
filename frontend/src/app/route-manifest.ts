@@ -217,6 +217,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },
+  { allowedRoles: ALL_ROLES, description: 'Unified self-service workspace — Overview, Time, Leave, Projects, Inbox, Settings.', flag: 'workspaceMe', group: 'time', navVisible: true, path: '/me', title: 'My Workspace' },
   { allowedRoles: RESOURCE_POOL_ROLES, description: 'Named pools of people available for staffing allocation.', group: 'staffing', navVisible: true, path: '/resource-pools', title: 'Resource Pools' },
   { allowedRoles: RESOURCE_POOL_ROLES, path: '/resource-pools/:id' },
   { allowedRoles: EVIDENCE_MANAGEMENT_ROLES, description: 'Observed-work records, source review, and specialist diagnostics.', group: 'reports', navVisible: true, path: '/work-evidence', title: 'Evidence Management' },

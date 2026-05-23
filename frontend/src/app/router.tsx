@@ -98,6 +98,7 @@ import { WorkEvidencePage } from '@/routes/work-evidence/WorkEvidencePage';
 import { LeaveRequestPage } from '@/routes/leave/LeaveRequestPage';
 import { MyTimePage } from '@/routes/my-time/MyTimePage';
 import { TimeManagementPage } from '@/routes/time-management/TimeManagementPage';
+import { WorkspaceShellPage } from '@/routes/me/WorkspaceShellPage';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -257,6 +258,18 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentDetailsPlaceholderPage /></RoleGuard>, path: 'assignments/:id' },
   { element: <AccountSettingsPage />, path: 'settings/account' },
   { element: <InboxPage />, path: 'notifications' },
+  // /me — Employee Workspace shell. Gated by flag.workspaceMe (default OFF in
+  // prod; ON in v2-staging via VITE_FORCE_FLAGS_ON). Hosts the existing
+  // self-service pages inside a unified tab strip; subsequent PRs ship the
+  // redesigned Overview / Leave / Projects content.
+  {
+    element: (
+      <FeatureGuard flag="workspaceMe">
+        <WorkspaceShellPage />
+      </FeatureGuard>
+    ),
+    path: 'me',
+  },
   {
     element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><ResourcePoolsPage /></RoleGuard>,
     path: 'resource-pools',
