@@ -19,6 +19,8 @@ export interface LeaveRequestRow {
   notes: string | null;
   reviewedAt: Date | null;
   reviewedBy: string | null;
+  // Track B.1 — reviewer's free-text justification on approve / reject.
+  reviewComment: string | null;
   createdAt: Date;
 }
 
@@ -43,6 +45,9 @@ export interface UpdateLeaveRequestStatusInput {
   // approve/reject, but kept separate so the column population matches
   // the uniform D-103 pair shape).
   actorId?: string;
+  // Track B.1 — optional reviewer comment captured at decision time.
+  // Persisted onto LeaveRequest.reviewComment.
+  reviewComment?: string | null;
 }
 
 export interface FindLeaveRequestsFilter {
