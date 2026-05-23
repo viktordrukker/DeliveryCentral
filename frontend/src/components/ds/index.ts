@@ -52,6 +52,17 @@ export { FormField } from './FormField';
 export { SearchInput } from './SearchInput';
 export { DatePicker } from './DatePicker';
 export { DateRangePicker } from './DateRangePicker';
+
+// Phase DS — lean-simplification amendments (Calendar = month-grid date picker /
+// year-overview surface; BalanceMeter = entitlement-vs-used breakdown).
+export { Calendar } from './Calendar';
+export type {
+  CalendarSize,
+  CalendarMode,
+  CalendarEventKind,
+  CalendarEvent,
+  CalendarProps,
+} from './Calendar';
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
 export { Combobox } from './Combobox';
