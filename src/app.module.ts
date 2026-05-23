@@ -34,6 +34,7 @@ import { SkillsModule } from './modules/skills/skills.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { RequireSetupCompleteGuard } from './modules/setup/application/require-setup-complete.guard';
+import { ProjectPositionsModule } from './modules/project-positions/project-positions.module';
 import { StaffingDeskModule } from './modules/staffing-desk/staffing-desk.module';
 import { StaffingRequestsModule } from './modules/staffing-requests/staffing-requests.module';
 import { LeaveRequestsModule } from './modules/leave-requests/leave-requests.module';
@@ -94,6 +95,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     PulseModule,
     PlatformSettingsModule,
     SkillsModule,
+    ProjectPositionsModule,
     StaffingDeskModule,
     StaffingRequestsModule,
     LeaveRequestsModule,
