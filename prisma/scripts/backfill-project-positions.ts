@@ -202,7 +202,7 @@ async function backfillFromStaffingRequest(
 }
 
 async function backfillOrphanAssignment(
-  assignment: Prisma.ProjectAssignmentGetPayload<{}>,
+  assignment: Prisma.ProjectAssignmentGetPayload<Record<string, never>>,
   counters: BackfillCounters,
 ): Promise<void> {
   counters.orphanAssignmentsScanned += 1;
