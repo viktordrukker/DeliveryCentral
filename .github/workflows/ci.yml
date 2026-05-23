@@ -175,6 +175,13 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Solo-maintainer override — this repo has a single owner/maintainer
+          # so the two-person rule is relaxed. The override is configured here
+          # (auditable via git blame on this file) and logs a prominent banner
+          # on every triggered run. Flip to 'false' if this repo gains a second
+          # maintainer. See scripts/check-forward-only-approvals.cjs header for
+          # full rationale + trade-offs.
+          DM_R_29_SOLO_MAINTAINER: 'true'
         run: node scripts/check-forward-only-approvals.cjs
 
   backend-fast:
