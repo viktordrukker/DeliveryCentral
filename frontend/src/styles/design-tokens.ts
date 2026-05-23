@@ -90,6 +90,21 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-threshold-warning': '#f59e0b',
     '--color-threshold-danger': '#ef4444',
     '--focus-ring-color': 'rgba(17, 75, 122, 0.45)',
+    // Lifecycle bars (Timeline colorMode='lifecycle'). Encode position-fill
+    // state visually — bars read at any width. Additive: existing consumers
+    // pass `tone` and never hit these vars.
+    '--lifecycle-draft-stroke': '#bcc5d0',
+    '--lifecycle-open-fill': 'transparent',
+    '--lifecycle-open-stroke': '#b8730a',
+    '--lifecycle-proposed-fill': '#fbf1dd',
+    '--lifecycle-proposed-stroke': '#b8730a',
+    '--lifecycle-booked-fill': '#114b7a',
+    '--lifecycle-onboarding-fill': '#e0f3f7',
+    '--lifecycle-onboarding-stroke': '#0a7490',
+    '--lifecycle-assigned-fill': '#1f8a4d',
+    '--lifecycle-hold-fill': '#cfd5dd',
+    '--lifecycle-hold-stroke': '#5f6b7a',
+    '--lifecycle-released-fill': '#cfd5dd',
   },
   dark: {
     '--color-bg': '#0f1117',
@@ -134,6 +149,19 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
     '--color-threshold-warning': '#fbbf24',
     '--color-threshold-danger': '#f87171',
     '--focus-ring-color': 'rgba(96, 165, 250, 0.55)',
+    // Lifecycle bars — dark mode. Fills tuned for dark surfaces; strokes brighter.
+    '--lifecycle-draft-stroke': '#3d4158',
+    '--lifecycle-open-fill': 'transparent',
+    '--lifecycle-open-stroke': '#fbbf24',
+    '--lifecycle-proposed-fill': '#3a2f1a',
+    '--lifecycle-proposed-stroke': '#fbbf24',
+    '--lifecycle-booked-fill': '#4f8cdb',
+    '--lifecycle-onboarding-fill': '#1a2d36',
+    '--lifecycle-onboarding-stroke': '#22d3ee',
+    '--lifecycle-assigned-fill': '#4ade80',
+    '--lifecycle-hold-fill': '#3d4158',
+    '--lifecycle-hold-stroke': '#94a3b8',
+    '--lifecycle-released-fill': '#2d3244',
   },
 };
 

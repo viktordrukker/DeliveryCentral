@@ -97,10 +97,12 @@ export type {
   RowAction,
 } from './DataView';
 
-export { Timeline } from './Timeline';
+export { Timeline, lifecycleStatusOf } from './Timeline';
 export type {
   TimelineSize,
   TimelineVariant,
+  TimelineColorMode,
+  LifecycleStatus,
   TimelineSegment,
   TimelineMarker,
   TimelineHoverContext,
