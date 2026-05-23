@@ -1,0 +1,38 @@
+# V2-staging overlay — DS-redesign preview surface.
+#
+# Layered on top of docker-compose.prod.yml. Applied at
+# /opt/deliverycentral-staging-v2/ on the VM by the build-and-stage-v2 workflow.
+#
+# Usage by hand (operator, host shell):
+#   cd /opt/deliverycentral-staging-v2
+#   BACKEND_IMAGE=ghcr.io/<owner>/deliverycentral-backend:<sha> \
+#   FRONTEND_IMAGE=ghcr.io/<owner>/deliverycentral-frontend:v2-<sha> \
+#   docker compose -p dc-v2-staging \
+#     -f docker-compose.prod.yml \
+#     -f docker-compose.v2-staging.yml \
+#     --env-file .env up -d backend frontend
+#
+# What this overlay does:
+#   • Backend gets FORCE_ALL_FLAGS_ON=true. PlatformFlagsService.isEnabledByKey
+#     short-circuits to true, lighting up every flag-gated API path so the v2
+#     stack can serve the redesigned UI end-to-end.
+#   • Frontend image is REQUIRED to be the `:v2-<sha>` tag built with
+#     VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (or VITE_FORCE_ALL_FLAGS_ON=true).
+#     Vite env vars are baked at build time, so a separate image tag is
+#     mandatory — the regular `:<sha>` frontend image has the flags off.
+#
+# DB + network:
+#   • Same dc-shared external network as prod/staging → same postgres + same
+#     data. Stakeholders compare redesign vs legacy against identical state.
+#   • If write-isolation is later required, point .env DATABASE_URL at a
+#     separate database without touching this overlay.
+#
+# Caddy:
+#   • Operator manually adds an upstream block routing
+#     ${STAGING_V2_CADDY_DOMAIN} → dc-v2-staging-frontend-1:8080 +
+#     /api/* → dc-v2-staging-backend-1:3000 (mirrors the staging block).
+
+services:
+  backend:
+    environment:
+      FORCE_ALL_FLAGS_ON: 'true'

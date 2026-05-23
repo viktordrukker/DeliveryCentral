@@ -26,6 +26,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 ENV NODE_ENV=production
 
+# v2-staging preview: pass `--build-arg VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh`
+# (or `VITE_FORCE_ALL_FLAGS_ON=true`) when building the DS-refresh preview image.
+# Prod + regular staging leave these empty, so callers see registry defaults.
+ARG VITE_FORCE_FLAGS_ON=""
+ARG VITE_FORCE_ALL_FLAGS_ON=""
+ENV VITE_FORCE_FLAGS_ON=$VITE_FORCE_FLAGS_ON
+ENV VITE_FORCE_ALL_FLAGS_ON=$VITE_FORCE_ALL_FLAGS_ON
+
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html ./

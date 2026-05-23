@@ -75,6 +75,31 @@
     }
 }
 
+# V2 staging — DS redesign preview surface. Hosts the v2 frontend image
+# (flags baked in via VITE_FORCE_FLAGS_ON) + the regular backend with
+# FORCE_ALL_FLAGS_ON=true via docker-compose.v2-staging.yml overlay.
+# Compose project: dc-v2-staging. Same dc-shared network, same staging DB.
+{$V2_STAGING_DOMAIN} {
+    import security_baseline
+    handle /api/* {
+        rate_limit {
+            zone api_v2 {
+                key {remote_host}
+                events 600
+                window 1m
+            }
+        }
+        reverse_proxy dc-v2-staging-backend-1:3000
+    }
+    handle {
+        reverse_proxy dc-v2-staging-frontend-1:8080
+    }
+    log {
+        output stdout
+        format json
+    }
+}
+
 # Uptime Kuma — only resolves when --profile monitoring is up.
 {$MONITOR_DOMAIN} {
     basic_auth {

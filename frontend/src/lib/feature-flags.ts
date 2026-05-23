@@ -97,7 +97,9 @@ export type FeatureFlagId =
   | 'actionItems'
   | 'pulseEnabled'
   | 'helpCenterMaster'
-  | 'undoToast';
+  | 'undoToast'
+  | 'workspaceMe'
+  | 'dsRefresh';
 
 export interface FeatureFlagMirror {
   key: string;
@@ -193,7 +195,28 @@ export const FEATURE_FLAGS: Record<FeatureFlagId, FeatureFlagMirror> = {
   pulseEnabled: { key: 'flag.pulse.enabled', default: false },
   helpCenterMaster: { key: 'flag.helpCenter.enabled', default: false },
   undoToast: { key: 'flag.undo.toast.enabled', default: false },
+  workspaceMe: { key: 'flag.workspaceMe.enabled', default: false },
+  dsRefresh: { key: 'flag.dsRefresh.enabled', default: false },
 };
+
+// Build-time overrides for non-prod previews (e.g., the v2 staging container
+// that hosts the DS redesign). Vite bakes `import.meta.env.VITE_*` at build,
+// so this is set once when the FE image is built and cannot be flipped at
+// runtime — kept narrow and matched to the backend `FORCE_ALL_FLAGS_ON`
+// emergency lever in PlatformFlagsService.
+//
+//   VITE_FORCE_ALL_FLAGS_ON=true        → every flag returns true
+//   VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh  → those flags return true
+//
+// Prod + regular staging builds leave both unset, so callers see registry
+// defaults exactly as before.
+const FE_FORCE_ALL = (import.meta.env.VITE_FORCE_ALL_FLAGS_ON as string | undefined) === 'true';
+const FE_FORCE_KEYS = new Set<string>(
+  ((import.meta.env.VITE_FORCE_FLAGS_ON as string | undefined) ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 /**
  * Returns the static default for a flag. v1: registry defaults only.
@@ -201,5 +224,7 @@ export const FEATURE_FLAGS: Record<FeatureFlagId, FeatureFlagMirror> = {
  * `useFeatureFlags()` after `/api/feature-flags/me` ships.
  */
 export function isFeatureEnabled(id: FeatureFlagId): boolean {
+  if (FE_FORCE_ALL) return true;
+  if (FE_FORCE_KEYS.has(id)) return true;
   return FEATURE_FLAGS[id].default;
 }

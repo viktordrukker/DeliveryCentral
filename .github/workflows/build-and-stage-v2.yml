@@ -1,0 +1,176 @@
+name: build-and-stage-v2
+
+# DS-redesign preview pipeline.
+#
+# Sibling of build-and-stage.yml that builds a SEPARATE frontend image (with
+# VITE_FORCE_FLAGS_ON baked in) and deploys it to /opt/deliverycentral-staging-v2/
+# on the staging VM. Backend image is shared with regular staging — flag-gating
+# is flipped at runtime via the docker-compose.v2-staging.yml overlay
+# (FORCE_ALL_FLAGS_ON=true).
+#
+# Trigger: manual only. The v2 surface is a stakeholder preview, not a
+# continuous-deploy target. Run via the Actions UI or:
+#   gh workflow run build-and-stage-v2.yml \
+#     -f frontend_force_flags=workspaceMe,dsRefresh
+#
+# Required GitHub secrets / vars (in addition to those shared with build-and-stage):
+#   secrets.STAGING_VPS_HOST                — shared
+#   secrets.STAGING_VPS_SSH_KEY             — shared
+#   secrets.STAGING_V2_CADDY_DOMAIN         — NEW. e.g. deliverit-test-v2.agentic.uz
+#   vars.V2_STAGING_DEPLOY_ENABLED == 'true' — NEW. Gate for the deploy job.
+#
+# Required host prep (one-time, by operator):
+#   ssh deploy@<staging-host>
+#   sudo mkdir -p /opt/deliverycentral-staging-v2
+#   sudo chown deploy:deploy /opt/deliverycentral-staging-v2
+#   cd /opt/deliverycentral-staging-v2
+#   git clone https://github.com/<owner>/DeliveryCentral.git .
+#   cp /opt/deliverycentral-staging/.env .env   # or write a v2-specific .env
+#   # Add Caddy upstream for STAGING_V2_CADDY_DOMAIN → dc-v2-staging-frontend-1
+#   # (and /api/* → dc-v2-staging-backend-1). Reload Caddy.
+
+on:
+  workflow_dispatch:
+    inputs:
+      frontend_force_flags:
+        description: 'Comma-separated FeatureFlagId list to force-on in the v2 FE bundle (default: workspaceMe,dsRefresh).'
+        required: false
+        default: 'workspaceMe,dsRefresh'
+      frontend_force_all:
+        description: 'Force every flag on in the v2 FE bundle. Overrides frontend_force_flags.'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+concurrency:
+  group: build-and-stage-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push-v2:
+    name: Build & push v2 frontend image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      backend_image: ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ steps.meta.outputs.tag }}
+      frontend_image: ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:v2-${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: meta
+        run: echo "tag=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3
+
+      - name: Build and push backend (shared image — reused from regular staging build if already pushed)
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6
+        with:
+          context: .
+          file: Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-backend:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push v2 frontend (flags baked in)
+        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:v2-${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/deliverycentral-frontend:v2-latest
+          build-args: |
+            VITE_FORCE_FLAGS_ON=${{ inputs.frontend_force_flags }}
+            VITE_FORCE_ALL_FLAGS_ON=${{ inputs.frontend_force_all }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-v2-staging:
+    name: Deploy to v2 staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push-v2]
+    environment: staging
+    if: vars.V2_STAGING_DEPLOY_ENABLED == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_VPS_SSH_KEY }}
+
+      - name: Add VM host key
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via SSH (v2 staging)
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_VPS_HOST }}
+          STAGING_DOMAIN: ${{ secrets.STAGING_V2_CADDY_DOMAIN }}
+          IMAGE_TAG: ${{ needs.build-and-push-v2.outputs.image_tag }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -l deploy "$STAGING_HOST" bash <<EOF
+            set -e
+            cd /opt/deliverycentral-staging-v2
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            export BACKEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-backend:$IMAGE_TAG
+            export FRONTEND_IMAGE=ghcr.io/$GHCR_OWNER/deliverycentral-frontend:v2-$IMAGE_TAG
+
+            docker compose -p dc-v2-staging \
+              -f docker-compose.prod.yml \
+              -f docker-compose.v2-staging.yml \
+              pull
+            # Migrations: skipped here. v2 shares the staging DB; schema is
+            # owned by the regular staging deploy. Do NOT add `migrate` here.
+            docker compose -p dc-v2-staging \
+              -f docker-compose.prod.yml \
+              -f docker-compose.v2-staging.yml \
+              up -d --no-build backend frontend
+            echo "$DEPLOY_SHA" > /opt/deliverycentral-staging-v2/.current-sha
+
+            sleep 20
+            curl -sf "https://$STAGING_DOMAIN/api/health" > /dev/null
+            curl -sf "https://$STAGING_DOMAIN/api/health/deep" | grep -q '"status":"ready"' \
+              || { echo "v2 deep health failed"; exit 1; }
+
+            echo "$IMAGE_TAG" > /opt/deliverycentral-staging-v2/.v2-staging-tag
+            date -u +%FT%TZ  > /opt/deliverycentral-staging-v2/.v2-staging-tag-deployed-at
+          EOF
+
+      - name: V2 staging deploy summary
+        run: |
+          echo "::notice title=V2 staging deploy green::TAG=${{ needs.build-and-push-v2.outputs.image_tag }} SHA=${{ github.sha }} at $(date -u +%FT%TZ)"
