@@ -41,6 +41,7 @@ import { PortfolioRadiatorService } from './application/portfolio-radiator.servi
 import { ProjectChangeRequestService } from './application/project-change-request.service';
 import { OrgConfigService } from './application/org-config.service';
 import { ProjectExceptionsService } from './application/project-exceptions.service';
+import { ProjectPulseQueryService } from './application/project-pulse-query.service';
 import { ProjectPulseService } from './application/project-pulse.service';
 import { PulseReportService } from './application/pulse-report.service';
 import { SpcService } from './application/spc.service';
@@ -343,6 +344,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     RadiatorOverrideService,
     PortfolioRadiatorService,
     ProjectPulseService,
+    ProjectPulseQueryService,
     ProjectExceptionsService,
     SpcService,
     OrgConfigService,
