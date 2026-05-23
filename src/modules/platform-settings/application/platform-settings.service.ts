@@ -141,6 +141,12 @@ const DEFAULTS: Record<string, unknown> = {
   // F-11.7 / D-129 — ProjectClosureReadinessService budget variance
   // threshold above which closure is blocked. Default +10% over budget.
   'project.closure.budgetVarianceThresholdPercent': 10,
+  // Sprint 4 / S4-5 — BudgetApprovalAutoTriggerService variance threshold.
+  // Any ProjectBudget upsert whose |Δ(capex+opex)| / prior(capex+opex)
+  // crosses this percentage auto-creates a PENDING BudgetApproval row.
+  // Initial-budget creates (prior total = 0) always trigger regardless.
+  // Default 10% mirrors the closure-readiness precedent above.
+  'finance.budgetApproval.autoTriggerVariancePercent': 10,
   // ─── Setup wizard sentinels ─────────────────────────────────────────
   'setup.completedAt': null,
   'setup.profile': null,

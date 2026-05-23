@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
+
+import { BudgetApprovalAutoTriggerService } from './budget-approval-auto-trigger.service';
 import { FinancialRepository } from '../infrastructure/financial.repository';
 import {
   BurnDownPoint,
@@ -54,6 +56,8 @@ export class FinancialService {
   public constructor(
     private readonly repo: FinancialRepository,
     private readonly auditLogger?: AuditLoggerService,
+    // Sprint 4 / S4-5 — optional so test fixtures + DI bootstrap stays simple.
+    private readonly budgetApprovalAutoTrigger?: BudgetApprovalAutoTriggerService,
   ) {}
 
   // ─── Capitalisation ───────────────────────────────────────────────────────
@@ -244,13 +248,35 @@ export class FinancialService {
   public async upsertProjectBudget(
     projectId: string,
     dto: UpsertProjectBudgetDto,
+    // Sprint 4 / S4-5 — actor threads through for the auto-triggered
+    // BudgetApproval row's `requestedByPersonId`. Optional so existing
+    // callers + tests stay compiling.
+    actorId?: string,
   ): Promise<ProjectBudgetDto> {
+    const prior = await this.repo.findProjectBudget(projectId, dto.fiscalYear);
+
     const budget = await this.repo.upsertProjectBudget({
       projectId,
       fiscalYear: dto.fiscalYear,
       capexBudget: new Prisma.Decimal(dto.capexBudget),
       opexBudget: new Prisma.Decimal(dto.opexBudget),
+      actorId,
     });
+
+    // Sprint 4 / S4-5 — auto-trigger fires when |Δ| ≥ threshold (or initial
+    // budget create). Never blocks the write; errors are swallowed inside.
+    if (this.budgetApprovalAutoTrigger) {
+      await this.budgetApprovalAutoTrigger.maybeTriggerForBudgetMutation({
+        budgetId: budget.id,
+        projectId: budget.projectId,
+        fiscalYear: budget.fiscalYear,
+        priorCapex: prior ? Number(prior.capexBudget) : 0,
+        priorOpex: prior ? Number(prior.opexBudget) : 0,
+        newCapex: Number(budget.capexBudget),
+        newOpex: Number(budget.opexBudget),
+        actorId,
+      });
+    }
 
     return {
       id: budget.id,
