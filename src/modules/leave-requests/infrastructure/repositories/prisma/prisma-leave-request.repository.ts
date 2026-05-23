@@ -84,6 +84,10 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
         status: input.status as any,
         // F-112 / D-103-write-path round 22 — actor-audit.
         updatedByPersonId: input.actorId ?? input.reviewedBy ?? null,
+        // Track B.1 — only set the column when the caller provided a value;
+        // `undefined` leaves the existing value untouched (matches Prisma
+        // partial-update semantics). `null` explicitly clears it.
+        ...(input.reviewComment !== undefined ? { reviewComment: input.reviewComment } : {}),
       },
       where: { id },
     });

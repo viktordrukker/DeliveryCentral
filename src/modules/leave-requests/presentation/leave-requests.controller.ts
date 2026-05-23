@@ -10,12 +10,14 @@ import {
   Post,
   Query,
   Req,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
+import { LeaveDecisionBodyDto } from '../application/contracts/leave-decision-body.dto';
 import { LeaveBalanceDto, LeaveBalanceService } from '../application/leave-balance.service';
 import {
   CreateLeaveRequestDto,
@@ -84,28 +86,38 @@ export class LeaveRequestsController {
 
   @Post(':id/approve')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Approve a leave request' })
+  @ApiOperation({ summary: 'Approve a leave request (optional reviewComment)' })
   @ApiOkResponse({ description: 'Approved leave request' })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async approve(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
+    // Track B.1 — optional decision body. The legacy callers send no body
+    // at all; class-validator with `whitelist: true` accepts the empty
+    // object case and yields `body.reviewComment === undefined`.
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    body: LeaveDecisionBodyDto = {} as LeaveDecisionBodyDto,
   ): Promise<LeaveRequestDto> {
     const reviewerId = this.resolvePersonId(req);
-    return this.service.approve(id, reviewerId);
+    return this.service.approve(id, reviewerId, body.reviewComment);
   }
 
   @Post(':id/reject')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Reject a leave request' })
+  @ApiOperation({ summary: 'Reject a leave request (optional reviewComment)' })
   @ApiOkResponse({ description: 'Rejected leave request' })
   @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async reject(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
+    // Track B.1 — manager Leave Decision Drawer sends the rejection
+    // justification here. Body is optional to stay backwards-compatible
+    // with the existing no-body POST.
+    @Body(new ValidationPipe({ whitelist: true, transform: true }))
+    body: LeaveDecisionBodyDto = {} as LeaveDecisionBodyDto,
   ): Promise<LeaveRequestDto> {
     const reviewerId = this.resolvePersonId(req);
-    return this.service.reject(id, reviewerId);
+    return this.service.reject(id, reviewerId, body.reviewComment);
   }
 
   private resolvePersonId(req: { principal?: RequestPrincipal }): string {
