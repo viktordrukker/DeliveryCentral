@@ -4694,7 +4694,7 @@ describe('DM-R-13 per-migration contract', () => {
     });
   
     it('migration.sql SHA-256 is frozen', () => {
-      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("31d1105fbd5396f6c18d808ad567ec9adf59172db88406d6a35fc33056a5244c");
+      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("2dfe27b326ad49af2a8ac5c00cd68d9cbcd0b5a780ddef8b4d933d1fe0eca7e6");
     });
   
     it('rollback.sql exists + non-empty (REVERSIBLE)', () => {

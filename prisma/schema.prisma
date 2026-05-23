@@ -3964,7 +3964,7 @@ model ProjectPosition {
   fillHistory              ProjectPositionFillHistory[]
 
   @@index([projectId, fillStatus])
-  @@index([activePersonId, fillStatus, activeValidFrom, activeValidTo])
+  @@index([activePersonId, fillStatus, activeValidFrom, activeValidTo], map: "ProjectPosition_activePerson_window_idx")
   @@index([fillStatus, priority, startDate])
   @@index([slaStage, slaDueAt])
   @@index([fillStatus, slaDueAt])

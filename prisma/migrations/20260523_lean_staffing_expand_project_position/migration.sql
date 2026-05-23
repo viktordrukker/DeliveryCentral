@@ -41,7 +41,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS "ProjectPosition" (
-  "id"                         UUID                              NOT NULL DEFAULT gen_random_uuid(),
+  "id"                         UUID                              NOT NULL,
   "publicId"                   VARCHAR(32),
   "projectId"                  UUID                              NOT NULL,
   "workstreamId"               UUID,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS "ProjectPosition" (
   "releaseReason"              TEXT,
   "version"                    INTEGER                           NOT NULL DEFAULT 1,
   "createdAt"                  TIMESTAMP(3) WITH TIME ZONE       NOT NULL DEFAULT now(),
-  "updatedAt"                  TIMESTAMP(3) WITH TIME ZONE       NOT NULL DEFAULT now(),
+  "updatedAt"                  TIMESTAMP(3) WITH TIME ZONE       NOT NULL,
   "createdByPersonId"          UUID,
   "updatedByPersonId"          UUID,
   "archivedAt"                 TIMESTAMP(3) WITH TIME ZONE,
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS "ProjectPosition" (
 CREATE UNIQUE INDEX IF NOT EXISTS "ProjectPosition_publicId_key" ON "ProjectPosition" ("publicId");
 
 CREATE INDEX IF NOT EXISTS "ProjectPosition_projectId_fillStatus_idx" ON "ProjectPosition" ("projectId", "fillStatus");
-CREATE INDEX IF NOT EXISTS "ProjectPosition_activePersonId_fillStatus_activeValidFrom_activeValidTo_idx" ON "ProjectPosition" ("activePersonId", "fillStatus", "activeValidFrom", "activeValidTo");
+CREATE INDEX IF NOT EXISTS "ProjectPosition_activePerson_window_idx" ON "ProjectPosition" ("activePersonId", "fillStatus", "activeValidFrom", "activeValidTo");
 CREATE INDEX IF NOT EXISTS "ProjectPosition_fillStatus_priority_startDate_idx" ON "ProjectPosition" ("fillStatus", "priority", "startDate");
 CREATE INDEX IF NOT EXISTS "ProjectPosition_slaStage_slaDueAt_idx" ON "ProjectPosition" ("slaStage", "slaDueAt");
 CREATE INDEX IF NOT EXISTS "ProjectPosition_fillStatus_slaDueAt_idx" ON "ProjectPosition" ("fillStatus", "slaDueAt");
@@ -156,7 +156,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS "ProjectPositionCandidate" (
-  "id"                  UUID                                NOT NULL DEFAULT gen_random_uuid(),
+  "id"                  UUID                                NOT NULL,
   "positionId"          UUID                                NOT NULL,
   "candidatePersonId"   UUID                                NOT NULL,
   "rank"                INTEGER                             NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS "ProjectPositionCandidate" (
   "decision"            "ProjectPositionCandidateDecision"  NOT NULL DEFAULT 'PENDING',
   "decidedAt"           TIMESTAMP(3) WITH TIME ZONE,
   "createdAt"           TIMESTAMP(3) WITH TIME ZONE         NOT NULL DEFAULT now(),
-  "updatedAt"           TIMESTAMP(3) WITH TIME ZONE         NOT NULL DEFAULT now(),
+  "updatedAt"           TIMESTAMP(3) WITH TIME ZONE         NOT NULL,
   "createdByPersonId"   UUID,
   "updatedByPersonId"   UUID,
   CONSTRAINT "ProjectPositionCandidate_pkey" PRIMARY KEY ("id")
@@ -215,7 +215,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS "ProjectPositionFillHistory" (
-  "id"                UUID                               NOT NULL DEFAULT gen_random_uuid(),
+  "id"                UUID                               NOT NULL,
   "positionId"        UUID                               NOT NULL,
   "changeType"        "ProjectPositionFillChangeType"    NOT NULL,
   "changedByPersonId" UUID,
