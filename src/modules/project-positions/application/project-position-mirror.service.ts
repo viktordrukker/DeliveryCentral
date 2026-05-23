@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import type { ProjectAssignment } from '@src/modules/assignments/domain/entities/project-assignment.entity';
+import { DomainEventService } from '@src/modules/audit-observability/application/domain-event.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { mapLegacyAssignmentStatus } from '../domain/value-objects/position-fill-status';
@@ -33,7 +34,13 @@ import { mapLegacyAssignmentStatus } from '../domain/value-objects/position-fill
 export class ProjectPositionMirrorService {
   private readonly logger = new Logger(ProjectPositionMirrorService.name);
 
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    // Sprint 2 / S2-7b — outbox emission via DomainEvent. Optional so legacy
+    // test fixtures keep working. Runtime no-ops until the paired PR-A
+    // (`AggregateType.ProjectPosition` enum extension) lands.
+    private readonly domainEvents?: DomainEventService,
+  ) {}
 
   public async mirrorAssignment(assignment: ProjectAssignment, actorId: string): Promise<void> {
     try {
@@ -63,7 +70,9 @@ export class ProjectPositionMirrorService {
         select: { id: true, version: true },
       });
 
+      let positionId: string;
       if (existing) {
+        positionId = existing.id;
         await this.prisma.projectPosition.update({
           where: { id: existing.id },
           data: {
@@ -82,7 +91,7 @@ export class ProjectPositionMirrorService {
       } else {
         const fallbackEnd = assignment.validTo
           ?? new Date(assignment.validFrom.getTime() + 365 * 24 * 60 * 60 * 1000);
-        await this.prisma.projectPosition.create({
+        const created = await this.prisma.projectPosition.create({
           data: {
             projectId: assignment.projectId,
             role: assignment.staffingRole,
@@ -99,7 +108,41 @@ export class ProjectPositionMirrorService {
             legacyAssignmentId: assignmentId,
             legacyStaffingRequestId: assignment.staffingRequestId ?? null,
           },
+          select: { id: true },
         });
+        positionId = created.id;
+      }
+
+      // Sprint 2 / S2-7b — emit a DomainEvent into the transactional outbox.
+      // Best-effort: failure here doesn't roll back the mirror write above.
+      // No-ops at runtime until the paired PR-A `AggregateType.ProjectPosition`
+      // enum value lands — Postgres will reject the INSERT with "invalid input
+      // value for enum AggregateType: 'ProjectPosition'" and the try/catch
+      // swallows it. Once the enum value exists, emissions start automatically.
+      if (this.domainEvents) {
+        try {
+          await this.domainEvents.recordAtomic({
+            aggregateType: 'ProjectPosition',
+            aggregateId: positionId,
+            eventName: 'project_position.fill.changed',
+            actorId,
+            payload: {
+              fillStatus,
+              activePersonId: activeFields.activePersonId ?? null,
+              activeAllocationPercent: activeFields.activeAllocationPercent ?? null,
+              legacyAssignmentId: assignmentId,
+              source: 'dual-write-mirror',
+            },
+          });
+        } catch (err) {
+          // Expected pre-PR-A; harmless. Logged at debug-equivalent level
+          // (warn) so an operator can confirm coupling at first staging deploy.
+          this.logger.warn(
+            `DomainEvent emit skipped/failed for position ${positionId} ` +
+              `(expected until PR-A AggregateType extension lands): ` +
+              `${(err as Error).message}`,
+          );
+        }
       }
     } catch (err) {
       this.logger.warn(
