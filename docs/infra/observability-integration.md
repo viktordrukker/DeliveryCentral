@@ -1,18 +1,17 @@
 # Observability Integration
 
+_Last reconciled: 2026-05-23 (post HD-11 prom-client + F-9 outbox round-trip; Windows path in prior doc removed)._
+
 ## Goal
 
-The platform keeps monitoring infrastructure separate from business services
-while exposing practical operational signals through the backend.
+The platform keeps monitoring infrastructure separate from business services while exposing practical operational signals through the backend.
 
 ## Monitoring stack
 
-The Docker monitoring profile now contains:
+The Docker monitoring profile contains:
 
-- `monitoring`
-  - Dozzle log viewer for local container browsing
-- `monitoring-agent`
-  - Vector sidecar for Docker log collection and normalized JSON output
+- `monitoring` — Dozzle log viewer for local container browsing
+- `monitoring-agent` — Vector sidecar for Docker log collection + normalized JSON output
 
 Start both with:
 
@@ -27,120 +26,79 @@ URLs:
 
 ## Structured logging
 
-Backend logs are emitted as structured JSON and now include:
+Backend logs are emitted as structured JSON and include:
 
-- `timestamp`
-- `service`
-- `environment`
-- `level`
-- `context`
-- `correlationId`
-- `pid`
-- `logger`
-- `message`
+`timestamp · service · environment · level · context · correlationId · pid · logger · message`
 
-This keeps app logs consistent for local review and future forwarding.
+## Prometheus metrics (HD-11)
+
+`GET /metrics` (`@Public()`, `prom-client`) — Prometheus-format scrape endpoint. See [monitoring.md](./monitoring.md) for the current metric families.
 
 ## Diagnostic endpoints
 
-### `GET /health`
+### `GET /api/health`
 
 Liveness plus a pointer to diagnostics.
 
-### `GET /readiness`
+### `GET /api/readiness`
 
-Readiness summary with explicit checks for:
+Readiness summary with explicit checks for: database connectivity, migration sanity, integration summary, notification readiness.
 
-- database connectivity
-- migration sanity
-- integration summary
-- notification readiness
+### `GET /api/health/deep` (DM-R-8)
 
-### `GET /diagnostics`
+Per-aggregate probe exercising the repository layer for 12 aggregate roots — returns `{ name, status, latencyMs, count }` per aggregate. CI deploy gate asserts `"status":"ready"`. Sprint F-9.1 added outbox-backlog snapshot to this surface.
 
-Operational diagnostics surface including:
+### `GET /api/diagnostics`
 
-- database host/connectivity/version
-- database query latency and server time when reachable
-- schema-level sanity signal separate from raw connectivity
-- migration application count and latest timestamp
-- local-vs-applied migration sanity heuristic
-- integration status summary for Jira, M365, and RADIUS
-- provider capability summaries and safe per-provider metrics
-- notification template/channel readiness
-- recent notification retry and terminal-failure counts
-- business audit visibility counts
+Operational diagnostics surface, bounded + credential-free:
 
-The diagnostics contract stays safe for operator use:
-
-- no credentials or provider secrets
-- no raw provider payload dumps
-- bounded summaries only
+- Database host + connectivity + version
+- DB query latency + server time when reachable
+- Schema-level sanity signal separate from raw connectivity
+- Migration application count + latest timestamp
+- Local-vs-applied migration sanity heuristic
+- Integration status summary (Jira, M365, RADIUS, JSM, LDAP, LLM)
+- Provider capability summaries + safe per-provider metrics
+- Notification template / channel readiness
+- Recent notification retry + terminal-failure counts
+- Business audit visibility counts
 
 ## Business-level linkage
 
-Observability now links into business visibility without coupling domains to the
-monitoring stack:
+Observability links into business visibility without coupling domains to the monitoring stack:
 
-- integration failures surface through integration summaries
-- recent integration sync-run history is available through `GET /integrations/history`
-- sync-run history exposes bounded fields only:
-  - provider
-  - resource type
-  - started/finished timestamps
-  - success/failure status
-  - processed-item summary
-  - failure summary
-- notification failures are counted from business-audit records
-- notification retry cycles surface as distinct business-audit outcomes:
-  - `RETRYING`
-  - `FAILED_TERMINAL`
-  - `SUCCEEDED`
-- business audit visibility reports total records and last audit timestamp
-
-## Operational notes
-
-- monitoring containers remain separate from business services
-- diagnostics are read-only
-- no secrets are emitted intentionally through business audit or diagnostics
-- this is a pragmatic local/dev observability layer, not a full production telemetry platform
+- Integration failures surface through `GET /api/integrations` history (bounded fields only: provider, resource type, started/finished, success/failure, processed-item summary, failure summary)
+- Notification failures are counted from business-audit records
+- Notification retry cycles surface as distinct business-audit outcomes: `RETRYING`, `FAILED_TERMINAL`, `SUCCEEDED`
+- Business-audit visibility reports total records + last audit timestamp
+- Outbox backlog snapshot — published via `/metrics` + `/api/health/deep` since F-9.1
 
 ## Operator drill alignment
 
-The platform now has an operator drill pack for rehearsing degradation and
-incident handling against the implemented monitoring and governance surfaces.
-
-Primary drill guide:
-
-- [operator-drills.md](C:\VDISK1\DeliveryCentral\docs\testing\operator-drills.md)
-
-Read-first drill helper:
+Operator drill pack at [`docs/testing/operator-drills.md`](../testing/operator-drills.md).
 
 ```bash
 docker compose exec -T backend npm run platform:operator-drills
 ```
 
-The drill helper snapshots the same operational surfaces operators use during
-triage, including:
+Snapshots the operational surfaces operators use during triage:
 
-- `/api/health`
-- `/api/readiness`
-- `/api/diagnostics`
-- `/api/integrations/history`
-- `/api/notifications/outcomes`
+- `/api/health`, `/api/readiness`, `/api/health/deep`, `/api/diagnostics`
+- `/api/integrations` (history)
+- `/api/notifications` outcomes
 - `/api/exceptions`
 - `/api/audit/business`
 
-Focused drills can optionally execute targeted backend specs before taking a
-snapshot. This keeps drills reproducible and bounded without introducing
-destructive chaos behavior into the local or staging workflow.
+Focused drills can optionally execute targeted backend specs before taking a snapshot. Reproducible, bounded; no destructive chaos behavior in local / staging.
+
+## Operational notes
+
+- Monitoring containers stay separate from business services.
+- Diagnostics are read-only.
+- No secrets emitted through business audit or diagnostics by design.
+- `D-167 v1 redact-payload` (Sprint F-5.5) replaces PII on `AuditLog.payload` after right-to-erasure; hash chain stays intact.
+- Staging URL: `https://deliverit-test.agentic.uz` — same path layout.
 
 ## Sanity coverage
 
-Current automated checks cover:
-
-- `GET /health`
-- `GET /readiness`
-- `GET /diagnostics`
-- degraded notification and schema-sanity behavior in `HealthService`
-- business audit visibility expectations
+Automated checks cover `/api/health`, `/api/readiness`, `/api/diagnostics`, degraded notification + schema-sanity behavior in `HealthService`, business audit visibility expectations, outbox round-trip (F-9.1).

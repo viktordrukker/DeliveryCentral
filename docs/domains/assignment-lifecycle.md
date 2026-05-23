@@ -1,5 +1,7 @@
 # Assignment Lifecycle
 
+> **STALE — 2026-05-23 reconciliation note.** The 4 statuses below (REQUESTED / APPROVED / REJECTED / ACTIVE / ENDED) are pre-CSW. The canonical 9-state staffing workflow shipped 2026-04-18 (Phase CSW): `Proposed`, `Rejected`, `Booked`, `Onboarding`, `Assigned`, `On hold`, `Released`, `Completed`, `Cancelled`. Transitions are constrained by `ASSIGNMENT_STATUS_TRANSITIONS` in `src/modules/assignments/domain/` and exposed via 8 transition endpoints (`/propose /reject /book /onboarding /assign /hold /release /complete /cancel`). See [`docs/planning/canonical-staffing-workflow.md`](../planning/canonical-staffing-workflow.md) for the closure doc.
+
 ## Purpose
 
 Assignments are preserved as auditable staffing records across request, approval, rejection, and end-of-assignment transitions.

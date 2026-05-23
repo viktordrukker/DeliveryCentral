@@ -1,100 +1,89 @@
 # RBAC
 
+_Last reconciled: 2026-05-23 (post Sprints F-5 + F-8). Customizable RBAC + governance work shipped F-5 / PRs #49–#55._
+
 ## Scope
 
-The platform now enforces a lightweight role-based access control layer at the HTTP boundary.
-
-This is the authorization layer that sits on top of authenticated request principals.
+RBAC enforces authorization at the HTTP boundary on top of the authenticated principal (see [authentication.md](./authentication.md)). Implemented in `src/modules/identity-access/application/`.
 
 ## Roles
 
-- `employee`
-- `project_manager`
-- `resource_manager`
-- `director`
-- `hr_manager`
-- `admin`
+7 platform roles, defined as a const tuple in `src/modules/identity-access/domain/platform-role.ts`:
 
-## Principal model
+| Role | Typical scope |
+|---|---|
+| `employee` | Self-time, self-evidence, self-leave, self-dashboard |
+| `project_manager` | Project lifecycle + approval + closure |
+| `resource_manager` | Resource pools, staffing approval, capacity decisions |
+| `delivery_manager` | Cross-project delivery oversight |
+| `director` | Portfolio + exec dashboards + approvals SLA |
+| `hr_manager` | Org structure mutations + business audit + person admin |
+| `admin` | Platform settings + RBAC presets + audit retention + impersonation overlay |
 
-Request principals are resolved from bearer tokens:
+"Dual-role" is a UX concept (e.g. emma.garcia is RM+HR) — a user can hold any subset of these 7. Bank-specific shapes (Squad/Tribe Lead, IT Service Owner) are added by the tenant admin via the D-159 admin UI on installation, not pre-baked.
 
-- `Authorization: Bearer <token>`
+## Decorators (controller policy)
 
-The token boundary is intentionally compatible with standard OAuth/OIDC-style bearer authentication:
+| Decorator | File | Purpose |
+|---|---|---|
+| `@RequireRoles(...roles)` | `roles.decorator.ts` | Require ≥1 listed role. Throws 401 if no principal, 403 if no role overlap. |
+| `@AllowSelfScope({ param: 'personId' })` | `self-scope.decorator.ts` | Allow ownership-based access — request passes if `principal.personId === request.params[param]`. Used alongside `@RequireRoles` for "employee can do X to their own row, manager can do X to anyone in scope" patterns. |
+| `@ReadAction(actionName)` | `read-action.decorator.ts` | D-158 (Sprint F-5.3, flag OFF default) — read-action coverage. Resolves visibility via `ReadAccessResolverService` consulting `ResponsibilityRule`. |
+| `@Public()` | `public.decorator.ts` | Bypass auth + RBAC (operator endpoints: health / metrics / setup). |
+| `@SkipDemoGuard()` | `skip-demo-guard.decorator.ts` | Bypass demo-mode write guard. |
 
-- `iss` is validated against configured issuer
-- `aud` is validated against configured audience
-- `sub` becomes the authenticated principal user id
-- `roles` or `platform_roles` populate platform roles
-- optional `person_id` can support self-scope decisions
+## Customizable RBAC presets (D-159, Sprint F-5.4)
 
-The RBAC guard consumes an extensible principal object, so route policy stays stable while the authentication source evolves.
+- `role-presets.ts` — literal-array role bundles for common policies. Ratchet at `scripts/check-role-literal-baseline.cjs` (role-literal sites: 198 → 42 after F-5.1/F-5.2).
+- `role-presets.service.ts` — runtime-resolved presets from `PlatformSetting` overrides (D-130 step 2).
+- `@RequireRolePreset('preset-name')` decorator behaves identically to `@RequireRoles(...PRESET)` but reads the current preset from DB.
+- Admin UI: `/admin/role-presets` (`RolePermissionAdminPage`). FE-flag OFF by default (set via `flag.adminRolePresetsEnabled`).
 
-## Roles
+## Responsibility rules (`ResponsibilityRule`)
 
-Role semantics remain unchanged:
+Per-row visibility policy for read-action coverage (D-158). Schema model `ResponsibilityRule` joins `(principalRole, actionName, scopeType, scopePredicate)`. Drives `ReadAccessResolverService.allowedRoles()`. Admin surface at `/admin/responsibility-rules`.
 
-- `employee`
-- `project_manager`
-- `resource_manager`
-- `director`
-- `hr_manager`
-- `admin`
+## Self-scope ownership pattern
 
-## Enforcement
+Controllers that mix "I can act on my own row" with "manager can act on anyone's":
 
-### Assignment creation
+```ts
+@Post(':personId/timesheets/:week/submit')
+@RequireRoles('employee', 'hr_manager', 'admin')
+@AllowSelfScope({ param: 'personId' })
+public submit(@Param('personId') personId: string, ...) { ... }
+```
 
-`POST /assignments` requires one of:
+`SelfScopeGuard` runs alongside `RbacGuard`: passes if either role check passes OR self-scope check passes. Do not duplicate ownership logic in the service layer (CLAUDE.md §4 / Pitfall #8).
 
-- `project_manager`
-- `resource_manager`
-- `director`
-- `admin`
+## Demo-mode write guard
 
-### Organization modification
+`demo-mode.guard.ts` — when `platform.demoMode=true`, all non-`@SkipDemoGuard()` write endpoints reject with 403. Used in investor demo + UAT seed profiles to make destructive paths safe.
 
-The following endpoints require one of:
+## ABAC scaffolding
 
-- `hr_manager`
-- `director`
-- `admin`
+`abac/` subdir — attribute-based scaffolding for future policies that need richer context (org-unit hierarchy, project membership, time-bounded delegation). Not consumed by any production policy yet.
 
-Endpoints:
+## Audit + privacy
 
-- `POST /org/people`
-- `POST /org/people/{id}/deactivate`
-
-`POST /org/reporting-lines` requires one of:
-
-- `resource_manager`
-- `hr_manager`
-- `director`
-- `admin`
-
-### Project closure
-
-`POST /projects/{id}/close` requires one of:
-
-- `project_manager`
-- `director`
-- `admin`
+- All RBAC failures (`401`/`403`) emit structured logs with correlation id.
+- Hash-chained `AuditLog` records every write decision with actor + entity + payload + reason.
+- **D-167 v1 redact-payload** (Sprint F-5.5) — on right-to-erasure, PII fields on `AuditLog.payload` get replaced with `<REDACTED>` markers; hash chain stays intact.
+- **D-168 retention + cron** (Sprint F-5.6) — `admin/audit-retention` admin surface + scheduled purge job per policy.
+- **D-111 AuditLog CHECK constraints** (Sprint F-5.7) — actor present + payload validity enforced at DB level.
 
 ## Failure behavior
 
-- missing principal or missing roles -> `401`
-- principal present but lacking required role -> `403`
+- Missing / invalid principal → `401 Unauthorized`.
+- Principal present but no matching role + no self-scope match → `403 Forbidden`.
+- Demo mode write rejection → `403 Forbidden` with `code: 'DEMO_MODE_READONLY'`.
 
-## Extensibility
+## Tenant scoping (DM-7.5, single-tenant per-bank install)
 
-- roles are stored as an array on the request principal
-- multiple roles per principal are supported
-- route policy is declared through role metadata rather than hardcoded in service logic
-- optional self-scope metadata can be layered on top of role checks without rewriting controllers
+Per the bank-IT pivot (2026-05-10), each install is single-tenant. `Tenant` model exists; `tenantId` flows through the principal and is enforced via RLS on 15 aggregates. Multi-tenant code paths (T-01 in MASTER_TRACKER) stay behind `flag.tenancy.multiTenant.enabled=false` for a future SaaS pivot.
 
-## Test and local-runtime notes
+## Open work tracked in MASTER_TRACKER
 
-- normal runtime no longer trusts raw `x-platform-*` headers as identity
-- a non-production header bypass can be enabled explicitly through `AUTH_ALLOW_TEST_HEADERS=true` for targeted test scenarios only
-- local Docker development can use signed bearer tokens generated with the repository helper script described in [authentication.md](./authentication.md)
+- **DM-2.5-8..12** — publicId rollout (raw UUIDs are still in some URL params; CLAUDE.md memory rule forbids them in browser). Effort 8-12d.
+- **D-167 v2** — cryptographic forgetting (per-row encryption + key-shred). Required for high-bar EU/UK banks. Cat-3.
+- **D-153 / D-154** — notification + IdempotencyKey + IntegrationSyncState + PlatformSetting tenant scoping. P0 for multi-tenant; non-blocking for bank-IT single-tenant install.

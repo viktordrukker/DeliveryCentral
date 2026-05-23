@@ -1,5 +1,7 @@
 # Notifications Domain
 
+> **PARTIALLY STALE — 2026-05-23 reconciliation note.** Channel + delivery model below is intact. Missing: **outbox publisher** wired in Sprint F-6.5 (D-142) — `flag.outboxEnabled` ON; events flow via `DomainEvent` + `OutboxEvent`. **In-app notifications** shipped (`InAppNotification` + `/notifications/inbox`). **Nudge sweeper** runs every 60 min (HD-8 chunk 8.3) — emits `nudge.proposal_acknowledgment_overdue` + `nudge.timesheet_submission_overdue`. **Approver nudge button** wired (21-09, Sprint F-3.4) with 24h rate-limit at `POST /api/notifications/nudge`. **SLA pre-breach** sweep at 50%/75% + breach (HD-10). **All 9 CSW transitions** + period-lock events + case lifecycle + leave + overtime events publish through the translator. **prom-client `/metrics`** exposes outbox + SLA + nudge gauges (HD-11).
+
 ## Purpose
 
 The notification subsystem owns notification requests, templates, channel abstraction, and delivery records. Business contexts publish intent through application services instead of calling email or webhook implementations directly.
