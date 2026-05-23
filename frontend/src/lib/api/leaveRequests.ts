@@ -49,3 +49,19 @@ export async function approveLeaveRequest(id: string): Promise<LeaveRequestDto> 
 export async function rejectLeaveRequest(id: string): Promise<LeaveRequestDto> {
   return httpPost<LeaveRequestDto, Record<string, never>>(`/leave-requests/${id}/reject`, {});
 }
+
+export interface LeaveBalanceDto {
+  id: string;
+  personId: string;
+  year: number;
+  leaveType: LeaveRequestType | string;
+  entitlement: number;
+  used: number;
+  pending: number;
+  remaining: number;
+}
+
+export async function fetchMyLeaveBalance(year?: number): Promise<LeaveBalanceDto[]> {
+  const qs = year ? `?year=${year}` : '';
+  return httpGet<LeaveBalanceDto[]>(`/leave-requests/my-balance${qs}`);
+}
