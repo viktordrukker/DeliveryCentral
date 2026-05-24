@@ -20,6 +20,8 @@ import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 // inside the page render). Same KPIs, same `data-jtbd` attrs, same threshold
 // colors.
 import { DirectorKpiStrip } from '@/components/dashboard/director/DirectorKpiStrip';
+import { DirectorAnomalyRail } from '@/components/dashboard/DirectorAnomalyRail';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -193,6 +195,9 @@ export function DirectorDashboardPage(): JSX.Element {
             portfolioSummary={ps}
             slaSummary={slaSummary}
           />
+
+          {/* Phase B3 — "What needs you now" anomaly rail (DS/page-director.jsx). */}
+          {isFeatureEnabled('dsRefresh') ? <DirectorAnomalyRail /> : null}
 
           <PendingApprovalsCard />
 
