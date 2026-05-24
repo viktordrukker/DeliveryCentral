@@ -301,7 +301,7 @@ export function TimesheetInspectorDrawer({
             Day-by-day breakdown
           </h3>
           <p style={{ margin: 0, color: 'var(--color-text-subtle)', fontSize: 13 }}>
-            The per-day entry grid + project breakdown ships once the manager-scope week-detail endpoint lands (tracked in #254). Approve / reject below works against the summary-level data already in this queue.
+            The per-day entry grid + project breakdown ships once the manager-scope week-detail endpoint lands (tracked in issue 254). Approve / reject below works against the summary-level data already in this queue.
           </p>
         </section>
 
