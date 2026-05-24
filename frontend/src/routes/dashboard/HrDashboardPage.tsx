@@ -23,6 +23,8 @@ import { HrRolesTab } from './hr-tabs/RolesTab';
 import { HrLifecycleTab } from './hr-tabs/LifecycleTab';
 import { HrWellbeingTab } from './hr-tabs/WellbeingTab';
 import { Button } from '@/components/ds';
+import { HrActionCardsPanel } from '@/components/hr/HrActionCardsPanel';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 const HR_TABS = [
   { id: 'headcount', label: 'Headcount' },
@@ -233,6 +235,8 @@ export function HrDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Open Cases</span>
             </Link>
           </div>
+
+          {isFeatureEnabled('dsRefresh') ? <HrActionCardsPanel /> : null}
 
           <div className="tab-bar-sticky">
             <TabBar activeTab={activeTab} onTabChange={handleTabChange} tabs={HR_TABS} />
