@@ -14,11 +14,12 @@ import { PlannerScenarioService } from './application/planner-scenario.service';
 import { WorkforcePlannerService } from './application/workforce-planner.service';
 import { JqlService } from './application/jql/jql.service';
 import { JqlController } from './presentation/jql.controller';
+import { SolverController } from './presentation/solver.controller';
 import { StaffingDeskController } from './presentation/staffing-desk.controller';
 
 @Module({
   imports: [PlatformSettingsModule],
-  controllers: [StaffingDeskController, JqlController],
+  controllers: [StaffingDeskController, JqlController, SolverController],
   providers: [
     {
       provide: StaffingDeskService,
