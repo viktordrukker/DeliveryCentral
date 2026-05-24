@@ -1,4 +1,29 @@
+import { httpGet } from './http-client';
 import { fetchDashboardEndpoint } from './dashboard-fetch';
+
+/** Issue 265 — Director "What needs you now" anomaly cards. */
+export type DirectorAnomalyKind =
+  | 'project_rag_dropped'
+  | 'utilization_spike'
+  | 'pending_approval_age'
+  | 'budget_overrun'
+  | 'milestone_slip';
+
+export type DirectorAnomalySeverity = 'info' | 'warning' | 'danger' | 'critical';
+
+export interface DirectorAnomalyDto {
+  kind: DirectorAnomalyKind;
+  severity: DirectorAnomalySeverity;
+  title: string;
+  detail: string;
+  href: string;
+  decayRate: number;
+  detectedAt: string;
+}
+
+export async function fetchDirectorAnomalies(limit = 5): Promise<DirectorAnomalyDto[]> {
+  return httpGet<DirectorAnomalyDto[]>(`/dashboards/director/anomalies?limit=${limit}`);
+}
 
 export interface DirectorDashboardSummary {
   activeProjectCount: number;
