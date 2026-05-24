@@ -84,6 +84,10 @@ export { SparklineDs } from './SparklineDs';
 export type { SparklineTone, SparklineDsProps } from './SparklineDs';
 export { MiniBars } from './MiniBars';
 export type { MiniBarsTone, MiniBarsProps } from './MiniBars';
+export { VarianceBar } from './VarianceBar';
+export type { VarianceBarTone, VarianceBarProps } from './VarianceBar';
+export { Donut } from './Donut';
+export type { DonutTone, DonutProps } from './Donut';
 
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
