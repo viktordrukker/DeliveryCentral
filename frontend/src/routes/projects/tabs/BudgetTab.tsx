@@ -146,7 +146,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       {/* Phase B1.4 — DS-redesign Money panel (atom-driven KPI) */}
-      {dsRefreshEnabled && dashboard ? <MoneyPanel dashboard={dashboard} /> : null}
+      {dsRefreshEnabled && dashboard ? <MoneyPanel dashboard={dashboard} projectId={projectId} /> : null}
 
       {/* Hero: CAPEX/OPEX Visual Summary */}
       {dashboard ? (
