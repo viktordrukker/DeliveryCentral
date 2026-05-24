@@ -13,7 +13,23 @@ import {
   FindLeaveRequestsFilter,
   FindOverlappingApprovedInput,
 } from '@src/modules/leave-requests/domain/repositories/leave-request-repository.port';
+import { LeaveBalanceService } from '@src/modules/leave-requests/application/leave-balance.service';
 import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
+
+// 20c-05 hot-patch — service now calls LeaveBalanceService after every
+// status mutation. These tests only care about reviewComment routing,
+// so the balance side is a no-op stub.
+function noopBalanceService(): LeaveBalanceService {
+  const noop = async (): Promise<void> => {};
+  return {
+    ensureBalance: noop,
+    addPending: noop,
+    deduct: noop,
+    restorePending: noop,
+    restoreUsed: noop,
+    getBalances: async () => [],
+  } as unknown as LeaveBalanceService;
+}
 
 class InMemoryFake implements LeaveRequestRepositoryPort {
   public lastUpdate: { id: string; input: UpdateLeaveRequestStatusInput } | null = null;
@@ -72,7 +88,7 @@ const seedRow: LeaveRequestRow = {
 describe('LeaveRequestsService.reject — reviewComment (Track B.1)', () => {
   it('persists a non-empty reviewComment and surfaces it on the DTO', async () => {
     const fake = new InMemoryFake([{ ...seedRow }]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     const dto = await svc.reject('lr-1', 'mgr-1', 'Conflict with sprint cut-over');
     expect(dto.status).toBe('REJECTED');
     expect(dto.reviewComment).toBe('Conflict with sprint cut-over');
@@ -81,14 +97,14 @@ describe('LeaveRequestsService.reject — reviewComment (Track B.1)', () => {
 
   it('trims surrounding whitespace before persisting', async () => {
     const fake = new InMemoryFake([{ ...seedRow }]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     const dto = await svc.reject('lr-1', 'mgr-1', '   Coverage gap   ');
     expect(dto.reviewComment).toBe('Coverage gap');
   });
 
   it('normalises whitespace-only comments to null', async () => {
     const fake = new InMemoryFake([{ ...seedRow }]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     const dto = await svc.reject('lr-1', 'mgr-1', '   ');
     expect(dto.reviewComment).toBeNull();
     expect(fake.lastUpdate?.input.reviewComment).toBeNull();
@@ -96,7 +112,7 @@ describe('LeaveRequestsService.reject — reviewComment (Track B.1)', () => {
 
   it('omits reviewComment from the update payload when no value supplied (undefined ⇒ keep existing)', async () => {
     const fake = new InMemoryFake([{ ...seedRow }]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     const dto = await svc.reject('lr-1', 'mgr-1');
     // service passes undefined down; column stays NULL because the seed row had null.
     expect(dto.reviewComment).toBeNull();
@@ -106,7 +122,7 @@ describe('LeaveRequestsService.reject — reviewComment (Track B.1)', () => {
   it('still rejects only PENDING requests', async () => {
     const approved = { ...seedRow, status: 'APPROVED' as const };
     const fake = new InMemoryFake([approved]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     await expect(svc.reject('lr-1', 'mgr-1', 'too late')).rejects.toThrow(
       /Only pending requests can be rejected/,
     );
@@ -117,7 +133,7 @@ describe('LeaveRequestsService.reject — reviewComment (Track B.1)', () => {
 describe('LeaveRequestsService.approve — reviewComment (Track B.1)', () => {
   it('persists an approval comment symmetrically', async () => {
     const fake = new InMemoryFake([{ ...seedRow }]);
-    const svc = new LeaveRequestsService(fake);
+    const svc = new LeaveRequestsService(fake, noopBalanceService());
     const dto = await svc.approve('lr-1', 'mgr-1', 'Coverage confirmed');
     expect(dto.status).toBe('APPROVED');
     expect(dto.reviewComment).toBe('Coverage confirmed');

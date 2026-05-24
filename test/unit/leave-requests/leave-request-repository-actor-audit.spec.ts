@@ -52,7 +52,12 @@ describe('D-103 write-path — LeaveRequest actor-audit (source-shape)', () => {
       serviceSrc.indexOf('public async create'),
       serviceSrc.indexOf('public async findMy'),
     );
-    expect(createSection).toMatch(/actorId:\s*dto\.actorId\s*\?\?\s*dto\.personId/);
+    // Accept either inline `actorId: dto.actorId ?? dto.personId` or a
+    // local-variable form `const actorId = dto.actorId ?? dto.personId;`
+    // (the latter is what the 20c-05 hot-patch introduced).
+    expect(createSection).toMatch(
+      /(?:actorId:\s*dto\.actorId\s*\?\?\s*dto\.personId|const\s+actorId\s*=\s*dto\.actorId\s*\?\?\s*dto\.personId)/,
+    );
   });
 
   it('service.approve + service.reject: pass actorId = reviewerId', () => {

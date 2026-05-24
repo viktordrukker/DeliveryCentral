@@ -1,10 +1,12 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { LeaveRequestType } from '@prisma/client';
 
 import {
   LEAVE_REQUEST_REPOSITORY,
   LeaveRequestRepositoryPort,
   LeaveRequestRow,
 } from '../domain/repositories/leave-request-repository.port';
+import { LeaveBalanceService } from './leave-balance.service';
 
 export interface CreateLeaveRequestDto {
   endDate: string;
@@ -32,28 +34,70 @@ export interface LeaveRequestDto {
 }
 
 /**
- * F-14.2 / 20c-02 — service now consumes `LeaveRequestRepositoryPort`
- * instead of `PrismaService` directly. Repository pattern restored;
- * Prisma row-shape leakage stops at the port boundary.
+ * F-14.2 / 20c-02 — service consumes `LeaveRequestRepositoryPort` instead
+ * of `PrismaService` directly. Repository pattern keeps Prisma row-shape
+ * leakage stopped at the port boundary.
+ *
+ * Hot-patch 2026-05-25 / 20c-05 — `create` / `approve` / `reject`
+ * previously mutated `LeaveRequest.status` without ever updating
+ * `LeaveBalance`, leaving `used` and `pending` perpetually 0 in
+ * production. The bug is closed by composing `LeaveBalanceService`
+ * calls after the repository write on each path:
+ *
+ *   create  → ensureBalance + addPending(days)
+ *   approve → deduct(days)            // pending → used
+ *   reject  → restorePending(days)
+ *
+ * **Atomicity caveat:** writes are sequential, not wrapped in a Prisma
+ * `$transaction`. If the balance write fails after the status write
+ * succeeded, state is inconsistent (status mutated, balance not). This
+ * is acceptable for the hot-patch — the prior state was "balance NEVER
+ * updated"; the post-hot-patch state is "balance almost always
+ * updated, reconciliable on retry". The proper atomic version
+ * (tx-aware repository + balance service) is EW sprint S5-E5.
  */
 @Injectable()
 export class LeaveRequestsService {
   public constructor(
     @Inject(LEAVE_REQUEST_REPOSITORY)
     private readonly repository: LeaveRequestRepositoryPort,
+    private readonly balanceService: LeaveBalanceService,
   ) {}
 
   public async create(dto: CreateLeaveRequestDto): Promise<LeaveRequestDto> {
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    const actorId = dto.actorId ?? dto.personId;
+
     const record = await this.repository.create({
-      endDate: new Date(dto.endDate),
+      endDate,
       notes: dto.notes ?? null,
       personId: dto.personId,
-      startDate: new Date(dto.startDate),
+      startDate,
       type: dto.type,
       // F-112 / D-103-write-path round 22 — default to the subject when
       // no explicit actor (self-serve submission).
-      actorId: dto.actorId ?? dto.personId,
+      actorId,
     });
+
+    // 20c-05 hot-patch — reserve balance against pending column.
+    const days = calculateLeaveDaysInclusive(startDate, endDate);
+    const year = startDate.getUTCFullYear();
+    await this.balanceService.ensureBalance(
+      dto.personId,
+      year,
+      dto.type as LeaveRequestType,
+      0,
+      actorId,
+    );
+    await this.balanceService.addPending(
+      dto.personId,
+      year,
+      dto.type as LeaveRequestType,
+      days,
+      actorId,
+    );
+
     return this.toDto(record);
   }
 
@@ -100,6 +144,25 @@ export class LeaveRequestsService {
       actorId: reviewerId,
       reviewComment: normaliseReviewComment(reviewComment),
     });
+
+    // 20c-05 hot-patch — on approval: pending → used.
+    const days = calculateLeaveDaysInclusive(record.startDate, record.endDate);
+    const year = record.startDate.getUTCFullYear();
+    await this.balanceService.ensureBalance(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      0,
+      reviewerId,
+    );
+    await this.balanceService.deduct(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      days,
+      reviewerId,
+    );
+
     return this.toDto(updated);
   }
 
@@ -123,6 +186,25 @@ export class LeaveRequestsService {
       actorId: reviewerId,
       reviewComment: normalisedComment,
     });
+
+    // 20c-05 hot-patch — on rejection: pending released, no `used` change.
+    const days = calculateLeaveDaysInclusive(record.startDate, record.endDate);
+    const year = record.startDate.getUTCFullYear();
+    await this.balanceService.ensureBalance(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      0,
+      reviewerId,
+    );
+    await this.balanceService.restorePending(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      days,
+      reviewerId,
+    );
+
     return this.toDto(updated);
   }
 
@@ -150,4 +232,14 @@ function normaliseReviewComment(raw: string | null | undefined): string | null |
   if (raw === null) return null;
   const trimmed = raw.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+// 20c-05 hot-patch — inclusive day count (e.g. start = end → 1 day).
+// Calendar-day granularity; matches the leave-balance Decimal scale.
+// Proper policy (working-day vs calendar-day vs half-day) is EW S5-E2.
+function calculateLeaveDaysInclusive(startDate: Date, endDate: Date): number {
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const start = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
+  const end = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
+  return Math.max(1, Math.floor((end - start) / MS_PER_DAY) + 1);
 }
