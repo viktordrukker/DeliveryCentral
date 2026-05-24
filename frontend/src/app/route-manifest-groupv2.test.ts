@@ -83,13 +83,17 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
     const me = routeManifest.find((r) => r.path === '/me');
     const cases = routeManifest.find((r) => r.path === '/cases');
     const settings = routeManifest.find((r) => r.path === '/admin/settings');
+    const staffingDesk = routeManifest.find((r) => r.path === '/staffing-desk');
     expect(me?.titleV2).toBe('Home');
     expect(cases?.titleV2).toBe('HR Queue');
     expect(settings?.titleV2).toBe('Settings');
+    expect(staffingDesk?.titleV2).toBe('Staffing Desk');
   });
 
-  it('matches the canvas-exact 10-item label set', () => {
-    // Source of truth: DS/chrome.jsx:32-66.
+  it('matches the canvas-exact 10-item label set (post-Phase-E reconciliation)', () => {
+    // Source of truth: DS/chrome.jsx:32-66 + amendments.
+    // Reconciliation 2026-05-24: `/teams` sunset (folds into People Directory filter);
+    // `/staffing-desk` promoted as Workspace flagship per staffing-desk amendment.
     const labels = v2NavRoutes().map(v2Label).sort();
     expect(labels).toEqual(
       [
@@ -102,12 +106,12 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
         'Projects',
         'Reports',
         'Settings',
-        'Teams',
+        'Staffing Desk',
       ].sort(),
     );
   });
 
-  it('distributes the 10 items across 3 canvas buckets as 4 / 4 / 2', () => {
+  it('distributes the 10 items across 3 canvas buckets as 5 / 3 / 2', () => {
     const buckets: Record<RouteGroupV2, number> = {
       workspace: 0,
       workforce: 0,
@@ -117,8 +121,8 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
       const v2 = route.groupV2 ?? groupV2For(route.group!);
       buckets[v2] += 1;
     }
-    expect(buckets.workspace).toBe(4); // Home, Projects, Approvals, Reports
-    expect(buckets.workforce).toBe(4); // People, Bench, Teams, HR Queue
+    expect(buckets.workspace).toBe(5); // Home, Projects, Approvals, Reports, Staffing Desk
+    expect(buckets.workforce).toBe(3); // People, Bench, HR Queue
     expect(buckets.operations).toBe(2); // Admin, Settings
   });
 
@@ -159,15 +163,19 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
     expect(paths).not.toContain('/integrations');
   });
 
-  it('excludes already-consolidated surfaces (my-time / org / assignments / resource-pools / staffing-desk / time-management)', () => {
+  it('excludes already-consolidated surfaces (my-time / org / assignments / resource-pools / time-management / teams)', () => {
+    // /staffing-desk was previously listed here but Phase-E reconciliation
+    // (2026-05-24) promoted it back as a flagship Workspace surface per the
+    // staffing-desk amendment. /teams was previously a sidebar item but
+    // reconciliation sunsets it into the People Directory filter.
     const paths = v2NavRoutes().map((r) => r.path);
     expect(paths).not.toContain('/my-time');
     expect(paths).not.toContain('/org');
     expect(paths).not.toContain('/assignments');
     expect(paths).not.toContain('/assignments/queue');
     expect(paths).not.toContain('/resource-pools');
-    expect(paths).not.toContain('/staffing-desk');
     expect(paths).not.toContain('/time-management');
+    expect(paths).not.toContain('/teams');
     expect(paths).not.toContain('/help');
   });
 
