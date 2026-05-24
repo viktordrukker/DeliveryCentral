@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { DistributionStudio } from './DistributionStudio';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -65,6 +67,7 @@ function serializeColWidths(widths: Record<string, number>): string {
 
 export function StaffingDeskPage(): JSX.Element {
   const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
   const [selectedRow, setSelectedRow] = useState<StaffingDeskRow | null>(null);
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
@@ -176,7 +179,11 @@ export function StaffingDeskPage(): JSX.Element {
       )}
 
       {filters.view === 'planner' && (
-        <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
+        dsRefreshEnabled ? (
+          <DistributionStudio canEdit />
+        ) : (
+          <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
+        )
       )}
 
       {/* Pagination — includes "X of Y records" */}

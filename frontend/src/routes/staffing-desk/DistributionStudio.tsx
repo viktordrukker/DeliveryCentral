@@ -1,0 +1,302 @@
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorState } from '@/components/common/ErrorState';
+import { LoadingState } from '@/components/common/LoadingState';
+import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { Button } from '@/components/ds';
+import {
+  type PlannerScenarioDto,
+  type SolverStrategy,
+  applyScenario,
+  createScenario,
+  deleteScenario,
+  listScenarios,
+  runSolver,
+} from '@/lib/api/planner-scenarios';
+
+const STRATEGIES: { id: SolverStrategy; label: string; hint: string }[] = [
+  { id: 'BALANCED', label: 'Balanced', hint: 'Fairness + utilization + bench drain' },
+  { id: 'BEST_FIT', label: 'Best fit', hint: 'Highest skill/role match' },
+  { id: 'UTILIZE_BENCH', label: 'Use bench', hint: 'Prefer people currently on bench' },
+  { id: 'CHEAPEST', label: 'Cheapest', hint: 'Minimize cost rate' },
+  { id: 'GROWTH', label: 'Growth', hint: 'Stretch assignments for grade growth' },
+];
+
+interface DistributionStudioProps {
+  /** When true, surfaces destructive actions (delete / apply). */
+  canEdit?: boolean;
+}
+
+/**
+ * Phase B4 — Distribution Studio (planner scenarios surface).
+ *
+ * Backed by:
+ *   GET    /api/staffing/scenarios          — list
+ *   POST   /api/staffing/scenarios          — create
+ *   DELETE /api/staffing/scenarios/:id      — soft-delete (archive)
+ *   POST   /api/staffing/solver/run         — solver (5 strategies)
+ *   POST   /api/staffing/scenarios/:id/apply — transactional apply
+ *
+ * v1 surfaces the scenarios list + create + delete + solver-run + apply
+ * actions. The editable swimlane Timeline + JQL filter bar are tracked as
+ * follow-ups (Phase B4.2+); they require the Timeline editable-mode
+ * upgrade which is a separate change.
+ *
+ * Reference: DS/page-staffing-desk.jsx — Planner view.
+ */
+export function DistributionStudio({ canEdit = false }: DistributionStudioProps): JSX.Element {
+  const [scenarios, setScenarios] = useState<PlannerScenarioDto[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [strategy, setStrategy] = useState<SolverStrategy>('BALANCED');
+  const [solverOutput, setSolverOutput] = useState<{ score: number; explanation: string } | null>(null);
+
+  async function reload(): Promise<void> {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await listScenarios({ ownedByMe: true });
+      setScenarios(rows);
+      if (rows.length > 0 && !activeId) setActiveId(rows[0].id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scenarios');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const active = scenarios?.find((s) => s.id === activeId) ?? null;
+
+  async function handleCreate(): Promise<void> {
+    setBusy(true);
+    try {
+      const name = window.prompt('Scenario name?', `Scenario ${(scenarios?.length ?? 0) + 1}`);
+      if (!name) return;
+      const created = await createScenario({
+        name,
+        state: { proposedAssignments: [] },
+      });
+      setActiveId(created.id);
+      toast.success(`Scenario "${created.name}" created`);
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create scenario');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(id: string): Promise<void> {
+    if (!window.confirm('Archive this scenario?')) return;
+    setBusy(true);
+    try {
+      await deleteScenario(id);
+      if (activeId === id) setActiveId(null);
+      toast.success('Scenario archived');
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to archive');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRunSolver(): Promise<void> {
+    if (!active) return;
+    setBusy(true);
+    setSolverOutput(null);
+    try {
+      const result = await runSolver({ scenarioId: active.id, strategy });
+      setSolverOutput({ score: result.score, explanation: result.explanation });
+      toast.success(`Solver (${strategy}) proposed ${result.proposedSegmentChanges.length} changes`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Solver failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleApply(): Promise<void> {
+    if (!active) return;
+    if (!window.confirm(`Apply scenario "${active.name}" to real assignments? This is transactional.`)) return;
+    setBusy(true);
+    try {
+      const result = await applyScenario(active.id);
+      toast.success(
+        `Applied: +${result.assignmentsCreated} · ~${result.assignmentsUpdated} · −${result.assignmentsReleased}`,
+      );
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Apply failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <LoadingState variant="skeleton" skeletonType="cards" />;
+  if (error) return <ErrorState description={error} onRetry={() => void reload()} />;
+
+  return (
+    <div data-testid="distribution-studio" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <SectionCard
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <span>Scenarios ({scenarios?.length ?? 0})</span>
+            <Button size="sm" onClick={handleCreate} disabled={busy}>
+              + New scenario
+            </Button>
+          </span>
+        }
+      >
+        {!scenarios || scenarios.length === 0 ? (
+          <EmptyState
+            title="No scenarios yet"
+            description="Create a new scenario to draft proposed assignments without affecting live staffing."
+          />
+        ) : (
+          <ul
+            data-testid="scenarios-list"
+            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}
+          >
+            {scenarios.map((s) => (
+              <li
+                key={s.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 80px 80px 80px 80px 70px',
+                  gap: 8,
+                  padding: '6px 10px',
+                  alignItems: 'center',
+                  background:
+                    s.id === activeId ? 'var(--color-surface-alt)' : 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 6,
+                  borderLeft:
+                    s.id === activeId
+                      ? '3px solid var(--color-accent)'
+                      : '3px solid var(--color-border)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+                onClick={() => setActiveId(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setActiveId(s.id);
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>{s.name}</span>
+                  {s.description ? (
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                      {s.description}
+                    </span>
+                  ) : null}
+                </div>
+                <span style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  +{s.summary.hires}
+                </span>
+                <span style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  −{s.summary.releases}
+                </span>
+                <span style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  ~{s.summary.extensions}
+                </span>
+                {s.summary.anomalies > 0 ? (
+                  <StatusBadge tone="warning" variant="chip" label={`${s.summary.anomalies} anomalies`} />
+                ) : (
+                  <StatusBadge tone="active" variant="chip" label="clean" />
+                )}
+                {canEdit ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDelete(s.id);
+                    }}
+                    disabled={busy}
+                  >
+                    Archive
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+
+      {active ? (
+        <SectionCard title={`Solver — ${active.name}`}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {STRATEGIES.map((s) => {
+                const isActive = s.id === strategy;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStrategy(s.id)}
+                    title={s.hint}
+                    style={{
+                      background: isActive ? 'var(--color-accent)' : 'var(--color-surface-alt)',
+                      color: isActive ? 'var(--color-text-inverse)' : 'var(--color-text)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 999,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      padding: '4px 12px',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button onClick={handleRunSolver} disabled={busy}>
+                Run solver ({strategy})
+              </Button>
+              {canEdit ? (
+                <Button variant="primary" onClick={handleApply} disabled={busy}>
+                  Apply scenario to live
+                </Button>
+              ) : null}
+            </div>
+            {solverOutput ? (
+              <div
+                data-testid="solver-output"
+                style={{
+                  padding: 12,
+                  background: 'var(--color-surface-alt)',
+                  borderRadius: 6,
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <strong>Solver score</strong>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{solverOutput.score.toFixed(2)}</span>
+                </div>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 12 }}>
+                  {solverOutput.explanation}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </SectionCard>
+      ) : null}
+    </div>
+  );
+}
