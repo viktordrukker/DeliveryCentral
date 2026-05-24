@@ -82,7 +82,7 @@ function deriveAnomalies(target: TimesheetInspectorTarget): Anomaly[] {
  *  • Body:   KPI triple (reported / standard / overtime) +
  *            anomalies callout +
  *            scoped placeholder for the per-day grid (waits for the
- *            manager-scope week-detail endpoint — issue #254)
+ *            manager-scope week-detail endpoint — issue 254)
  *  • Footer: Approve / Reject buttons ≤ 200 px from the data (Law 4)
  *
  * Reject path requires a reason (POST /timesheets/:id/reject { reason }).
