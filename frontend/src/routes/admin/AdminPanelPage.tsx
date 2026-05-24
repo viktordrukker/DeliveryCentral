@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 import { useImpersonation } from '@/app/impersonation-context';
 
@@ -84,7 +86,28 @@ interface AccountFormState {
 }
 
 export function AdminPanelPage(): JSX.Element {
-  const [selectedSection, setSelectedSection] = useState<AdminSectionKey>('accounts');
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionParam = searchParams.get('section');
+  const isValidSection = (key: string | null): key is AdminSectionKey =>
+    !!key && adminSections.some((s) => s.key === key);
+  const initialSection: AdminSectionKey = isValidSection(sectionParam) ? sectionParam : 'accounts';
+  const [selectedSection, setSelectedSectionState] = useState<AdminSectionKey>(initialSection);
+  // Phase B5 — keep URL in sync so reload + deep links work + the new tabbed
+  // shell can be driven by ?section=...
+  const setSelectedSection = (key: AdminSectionKey): void => {
+    setSelectedSectionState(key);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('section', key);
+      return next;
+    }, { replace: true });
+  };
+  useEffect(() => {
+    if (isValidSection(sectionParam) && sectionParam !== selectedSection) {
+      setSelectedSectionState(sectionParam);
+    }
+  }, [sectionParam]);
   const state = useAdminPanel();
   const [accountForm, setAccountForm] = useState<AccountFormState>({
     email: '',
@@ -141,12 +164,29 @@ export function AdminPanelPage(): JSX.Element {
       state.data.settings.systemFlags.length
     : 0;
 
+  const sectionBody = (
+    <>
+      {selectedSection === 'accounts'
+        ? <AdminAccountsSection
+            accountForm={accountForm}
+            onFormChange={setAccountForm}
+            onCreateAccount={handleCreateAccount}
+          />
+        : state.data
+          ? renderSection(selectedSection, state.data)
+          : null}
+    </>
+  );
+
   return (
     <PageContainer viewport>
       <PageHeader
         eyebrow="Administration"
         subtitle="Consolidate metadata, integrations, notifications, and runtime settings behind explicit admin aggregation endpoints. The UI stays config-driven and avoids embedding business-specific entities."
         title="Admin Panel"
+        tabs={dsRefreshEnabled ? adminSections.map((s) => ({ id: s.key, label: s.title })) : undefined}
+        activeTab={dsRefreshEnabled ? selectedSection : undefined}
+        onTabChange={dsRefreshEnabled ? (id) => setSelectedSection(id as AdminSectionKey) : undefined}
       />
 
       {state.isLoading ? <LoadingState label="Loading admin panel..." variant="skeleton" skeletonType="page" /> : null}
@@ -158,6 +198,14 @@ export function AdminPanelPage(): JSX.Element {
             description="Admin aggregation endpoints returned no data for dictionaries, integrations, notifications, or system settings."
             title="No admin configuration available"
           />
+        ) : dsRefreshEnabled ? (
+          <section className="admin-panel admin-panel--tabbed" data-testid="admin-tabbed">
+            <header className="admin-panel__main-header">
+              <h2>{activeSection.title}</h2>
+              <p>{activeSection.description}</p>
+            </header>
+            {sectionBody}
+          </section>
         ) : (
           <div className="admin-panel">
             <aside className="admin-panel__sidebar">
@@ -185,16 +233,7 @@ export function AdminPanelPage(): JSX.Element {
                 <h2>{activeSection.title}</h2>
                 <p>{activeSection.description}</p>
               </header>
-
-              {selectedSection === 'accounts'
-                ? <AdminAccountsSection
-                    accountForm={accountForm}
-                    onFormChange={setAccountForm}
-                    onCreateAccount={handleCreateAccount}
-                  />
-                : state.data
-                  ? renderSection(selectedSection, state.data)
-                  : null}
+              {sectionBody}
             </section>
           </div>
         )
