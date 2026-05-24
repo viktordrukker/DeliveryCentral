@@ -5,13 +5,17 @@ import { InAppNotificationService } from './application/in-app-notification.serv
 import { NotificationPreferencesService } from './application/notification-preferences.service';
 import { InAppNotificationRepository } from './infrastructure/in-app-notification.repository';
 import { InboxController } from './presentation/inbox.controller';
-import { MeNotificationPrefsController } from './presentation/me-notification-prefs.controller';
+import {
+  MeNotificationDigestController,
+  MeNotificationPrefsController,
+} from './presentation/me-notification-prefs.controller';
 import { NotificationChannelsController } from './presentation/notification-channels.controller';
 
 @Module({
   controllers: [
     InboxController,
     MeNotificationPrefsController,
+    MeNotificationDigestController,
     NotificationChannelsController,
   ],
   providers: [
