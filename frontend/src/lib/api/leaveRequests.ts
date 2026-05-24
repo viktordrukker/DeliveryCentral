@@ -11,9 +11,16 @@ export interface LeaveRequestDto {
   personId: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
+  /** Track B.1 — reviewer's free-text justification on approve/reject. NULL when blank. */
+  reviewComment: string | null;
   startDate: string;
   status: LeaveRequestStatus;
   type: LeaveRequestType;
+}
+
+export interface LeaveDecisionBody {
+  /** Optional reviewer comment. Trimmed server-side; whitespace-only becomes NULL. Max 1000 chars. */
+  reviewComment?: string;
 }
 
 export interface CreateLeaveRequestBody {
@@ -42,12 +49,18 @@ export async function fetchLeaveRequests(params?: {
   return httpGet<LeaveRequestDto[]>(`/leave-requests${qs ? `?${qs}` : ''}`);
 }
 
-export async function approveLeaveRequest(id: string): Promise<LeaveRequestDto> {
-  return httpPost<LeaveRequestDto, Record<string, never>>(`/leave-requests/${id}/approve`, {});
+export async function approveLeaveRequest(
+  id: string,
+  body: LeaveDecisionBody = {},
+): Promise<LeaveRequestDto> {
+  return httpPost<LeaveRequestDto, LeaveDecisionBody>(`/leave-requests/${id}/approve`, body);
 }
 
-export async function rejectLeaveRequest(id: string): Promise<LeaveRequestDto> {
-  return httpPost<LeaveRequestDto, Record<string, never>>(`/leave-requests/${id}/reject`, {});
+export async function rejectLeaveRequest(
+  id: string,
+  body: LeaveDecisionBody = {},
+): Promise<LeaveRequestDto> {
+  return httpPost<LeaveRequestDto, LeaveDecisionBody>(`/leave-requests/${id}/reject`, body);
 }
 
 export interface LeaveBalanceDto {

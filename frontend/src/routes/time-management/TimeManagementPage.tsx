@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { approveTimesheet, rejectTimesheet } from '@/lib/api/timesheets';
 import { approveLeaveRequest, rejectLeaveRequest } from '@/lib/api/leaveRequests';
+import { LeaveDecisionDrawer, type LeaveDecisionTarget } from '@/components/time-management/LeaveDecisionDrawer';
 import { httpGet } from '@/lib/api/http-client';
 import {
   fetchApprovalQueue,
@@ -119,6 +120,19 @@ export function TimeManagementPage(): JSX.Element {
   const [tick, setTick] = useState(0);
   const [rejectTarget, setRejectTarget] = useState<ApprovalQueueItem | null>(null);
   const [rejectionReasons, setRejectionReasons] = useState<RejectionReason[]>([]);
+  // ds-trunk-11 — leave decision drawer state (per surface #7)
+  const [leaveDrawerTarget, setLeaveDrawerTarget] = useState<ApprovalQueueItem | null>(null);
+
+  const openLeaveDecisionDrawer = (item: ApprovalQueueItem): void => {
+    setLeaveDrawerTarget(item);
+  };
+
+  const advanceToNextPendingLeave = useCallback((currentId: string): void => {
+    const next = queue.find(
+      (q) => q.type === 'leave' && (q.status === 'SUBMITTED' || q.status === 'PENDING') && q.id !== currentId,
+    );
+    setLeaveDrawerTarget(next ?? null);
+  }, [queue]);
 
   const ms = monthStr(year, month);
   const { data: otData } = useOvertimeSummary({ weeks: 4 });
@@ -312,9 +326,18 @@ export function TimeManagementPage(): JSX.Element {
                     { key: 'period', title: 'Period', render: (item) => item.type === 'timesheet' ? `Week of ${item.weekStart}` : `${item.leaveStartDate} – ${item.leaveEndDate}` },
                     { key: 'hours', title: 'Hours/Days', align: 'right', render: (item) => <span style={NUM}>{item.type === 'timesheet' ? `${item.totalHours}h` : `${item.leaveDays}d`}{item.overtimeHours && item.overtimeHours > 0 ? <span style={{ color: 'var(--color-status-warning)', fontSize: 10 }}> +{item.overtimeHours}h OT</span> : null}</span> },
                     { key: 'status', title: 'Status', render: (item) => <StatusBadge label={item.status} size="small" tone={item.status === 'APPROVED' ? 'active' : item.status === 'SUBMITTED' || item.status === 'PENDING' ? 'warning' : 'danger'} /> },
-                    { key: 'actions', title: 'Actions', width: 130, render: (item) => {
+                    { key: 'actions', title: 'Actions', width: 180, render: (item) => {
                       const isPending = item.status === 'SUBMITTED' || item.status === 'PENDING';
                       if (!isPending) return null;
+                      if (item.type === 'leave') {
+                        // Leave items open the full decision drawer (balance impact +
+                        // conflicting assignments + reject-with-reason).
+                        return (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <Button type="button" variant="primary" size="sm" onClick={() => openLeaveDecisionDrawer(item)} style={{ fontSize: 10 }}>Review…</Button>
+                          </div>
+                        );
+                      }
                       return (
                         <div style={{ display: 'flex', gap: 4 }}>
                           <Button type="button" variant="primary" size="sm" onClick={() => handleApprove(item)} style={{ fontSize: 10 }}>Approve</Button>
@@ -441,6 +464,34 @@ export function TimeManagementPage(): JSX.Element {
         onConfirm={confirmReject}
         onCancel={() => setRejectTarget(null)}
       />
+
+      <LeaveDecisionDrawer
+        open={leaveDrawerTarget !== null}
+        target={leaveDrawerTarget ? toDecisionTarget(leaveDrawerTarget) : null}
+        onClose={() => setLeaveDrawerTarget(null)}
+        onDecided={(decision) => {
+          toast.success(`${decision === 'approved' ? 'Approved' : 'Rejected'} ${leaveDrawerTarget?.personName ?? ''}`);
+          setTick((t) => t + 1);
+        }}
+        onAdvance={() => {
+          if (leaveDrawerTarget) advanceToNextPendingLeave(leaveDrawerTarget.id);
+        }}
+        onError={(msg) => toast.error(msg)}
+      />
     </PageContainer>
   );
+}
+
+function toDecisionTarget(item: ApprovalQueueItem): LeaveDecisionTarget {
+  return {
+    id: item.id,
+    personId: item.personId,
+    personName: item.personName,
+    leaveType: item.leaveType,
+    leaveStartDate: item.leaveStartDate,
+    leaveEndDate: item.leaveEndDate,
+    leaveDays: item.leaveDays,
+    notes: item.notes,
+    submittedAt: item.submittedAt,
+  };
 }
