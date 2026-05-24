@@ -9,6 +9,8 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Table, type Column } from '@/components/ds';
 import { fetchPersonDirectory, type PersonDirectoryItem } from '@/lib/api/person-directory';
 import { checkBench, type BenchPerson } from '@/lib/api/project-positions';
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 
 /**
  * Sprint 2 / S2-8 — read-only bench list.
@@ -93,6 +95,14 @@ export function BenchPage(): JSX.Element {
   }, []);
 
   const visible = showAll ? rows : rows.filter((r) => r.bench.isOnBench);
+
+  if (isFeatureEnabled('dsRefresh')) {
+    return (
+      <PageContainer testId="bench-page">
+        <BenchEnrichedPanel />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer testId="bench-page">
