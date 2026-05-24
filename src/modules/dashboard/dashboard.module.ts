@@ -26,19 +26,26 @@ import { RoleDashboardQueryService } from './application/role-dashboard-query.se
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
+import { UnifiedApprovalQueueService } from './application/unified-approval-queue.service';
 import { PortfolioDashboardController } from './presentation/portfolio-dashboard.controller';
 import { RoleDashboardController } from './presentation/role-dashboard.controller';
 import { WorkloadDashboardController } from './presentation/workload-dashboard.controller';
 import { HrActionCardsController } from './presentation/hr-action-cards.controller';
+import { UnifiedApprovalQueueController } from './presentation/unified-approval-queue.controller';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
   imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
-  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController],
+  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController],
   providers: [
     {
       provide: HrActionCardsService,
       useFactory: (prisma: PrismaService) => new HrActionCardsService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: UnifiedApprovalQueueService,
+      useFactory: (prisma: PrismaService) => new UnifiedApprovalQueueService(prisma),
       inject: [PrismaService],
     },
     PortfolioDashboardService,
@@ -89,6 +96,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     PendingActionsQueryService,
     DirectorSlaSummaryQueryService,
     HrActionCardsService,
+    UnifiedApprovalQueueService,
   ],
 })
 export class DashboardModule {}
