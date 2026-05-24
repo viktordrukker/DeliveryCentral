@@ -80,6 +80,10 @@ export { Money } from './Money';
 export type { MoneyProps } from './Money';
 export { Pct } from './Pct';
 export type { PctProps } from './Pct';
+export { SparklineDs } from './SparklineDs';
+export type { SparklineTone, SparklineDsProps } from './SparklineDs';
+export { MiniBars } from './MiniBars';
+export type { MiniBarsTone, MiniBarsProps } from './MiniBars';
 
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
