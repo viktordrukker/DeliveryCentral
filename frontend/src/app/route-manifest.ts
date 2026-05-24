@@ -231,6 +231,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, description: 'People directory and manager visibility.', group: 'people-org', navVisible: true, path: '/people', title: 'People' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/people/new' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Unified operational queue for staffing, project, and time-compliance anomalies.', group: 'reports', navVisible: true, path: '/exceptions', title: 'Exceptions' },
+  { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
   { allowedRoles: ALL_ROLES, description: 'Operational team management distinct from the organization hierarchy.', group: 'people-org', navVisible: true, path: '/teams', title: 'Teams' },
   { allowedRoles: ALL_ROLES, path: '/teams/:id/dashboard' },
   { allowedRoles: ALL_ROLES, path: '/people/:id' },
