@@ -20,9 +20,10 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
       useFactory: (prisma: PrismaService) => new PrismaLeaveRequestRepository(prisma),
     },
     {
-      inject: [LEAVE_REQUEST_REPOSITORY],
+      inject: [LEAVE_REQUEST_REPOSITORY, LeaveBalanceService],
       provide: LeaveRequestsService,
-      useFactory: (repo) => new LeaveRequestsService(repo),
+      useFactory: (repo: PrismaLeaveRequestRepository, balance: LeaveBalanceService) =>
+        new LeaveRequestsService(repo, balance),
     },
     LeaveBalanceService,
   ],
