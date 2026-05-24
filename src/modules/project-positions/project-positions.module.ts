@@ -8,6 +8,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { CreateProjectPositionService } from './application/create-project-position.service';
 import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from './application/list-bench-people.service';
+import { ListEnrichedBenchService } from './application/list-enriched-bench.service';
 import { ListProjectPositionsService } from './application/list-project-positions.service';
 import { ProjectPositionMirrorService } from './application/project-position-mirror.service';
 import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
@@ -66,6 +67,11 @@ import {
         new ListBenchPeopleService(repo),
     },
     {
+      provide: ListEnrichedBenchService,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => new ListEnrichedBenchService(prisma),
+    },
+    {
       provide: ProjectPositionMirrorService,
       inject: [PrismaService, DomainEventService],
       useFactory: (prisma: PrismaService, domainEvents: DomainEventService) =>
@@ -78,6 +84,7 @@ import {
     ListProjectPositionsService,
     GetProjectPositionByIdService,
     ListBenchPeopleService,
+    ListEnrichedBenchService,
     ProjectPositionMirrorService,
     PROJECT_POSITION_REPOSITORY,
   ],
