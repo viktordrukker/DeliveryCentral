@@ -1,5 +1,7 @@
 import { createTheme, type Theme } from '@mui/material';
 
+import { isFeatureEnabled } from '@/lib/feature-flags';
+
 export const COLOR_MODE_STORAGE_KEY = 'dc:dark-mode';
 const COLOR_MODE_EVENT = 'dc:color-mode-change';
 
@@ -44,6 +46,147 @@ const sharedTokens: TokenMap = {
   '--touch-target-min': '44px',
   // Phase DS — focus ring width (color is theme-specific, see colorModeTokens)
   '--focus-ring-width': '2px',
+};
+
+/**
+ * Phase D — DS-canvas token overlay (DeliverIT brand).
+ *
+ * When `dsRefresh` is on, these tokens overlay the platform defaults to
+ * match the DS canvas spec (DS/handoff/tokens.ts):
+ *   - Geist font family
+ *   - OKLCH-grade colors (banking-grade depth, P3 gamut)
+ *   - DS canvas layout dims (sidebar 236px, content padding 24px)
+ *   - Additional CSS vars: border-subtle, accent-text, status-bg pairs,
+ *     row-hover/selected, shadow-card-hover/inset
+ *
+ * Reference: DS/handoff/tokens.ts.
+ */
+const dsSharedTokens: TokenMap = {
+  '--font-sans': '"Geist", -apple-system, "Segoe UI", system-ui, sans-serif',
+  '--font-mono': '"Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
+  '--radius-sm': '4px',
+  '--radius-md': '6px',
+  '--radius-lg': '10px',
+  '--radius-control': '6px',
+  '--radius-card': '10px',
+  '--radius-pill': '999px',
+  '--sidebar-width-expanded': '236px',
+  '--content-padding': '24px',
+  '--card-gap': '16px',
+  '--page-header-height': '52px',
+  '--font-size-code': '12px',
+  '--font-size-compact-sm': '11px',
+  '--font-size-compact': '12px',
+  '--font-size-body-sm': '13px',
+  '--font-size-body': '14px',
+  '--font-size-body-lg': '16px',
+  '--font-size-h3': '18px',
+  '--font-size-h2': '22px',
+  '--font-size-h1': '28px',
+  '--font-size-kpi': '32px',
+  '--motion-duration-instant': '80ms',
+  '--motion-duration-fast': '150ms',
+  '--motion-duration-base': '200ms',
+  '--motion-duration-slow': '250ms',
+  '--motion-ease-out': 'cubic-bezier(0.16, 1, 0.3, 1)',
+  '--motion-ease-in-out': 'cubic-bezier(0.65, 0, 0.35, 1)',
+};
+
+const dsColorTokens: Record<ColorMode, TokenMap> = {
+  light: {
+    '--color-bg': 'oklch(0.985 0.004 250)',
+    '--color-surface': '#ffffff',
+    '--color-surface-alt': 'oklch(0.975 0.005 250)',
+    '--color-surface-raised': '#ffffff',
+    '--color-border': 'oklch(0.91 0.006 250)',
+    '--color-border-strong': 'oklch(0.83 0.008 250)',
+    '--color-border-subtle': 'oklch(0.945 0.005 250)',
+    '--color-overlay': 'rgba(15, 23, 42, 0.42)',
+    '--color-text': 'oklch(0.20 0.018 252)',
+    '--color-text-muted': 'oklch(0.46 0.012 252)',
+    '--color-text-subtle': 'oklch(0.58 0.010 252)',
+    '--color-text-inverse': 'oklch(1 0 0)',
+    '--color-accent': 'oklch(0.40 0.13 254)',
+    '--color-accent-hover': 'oklch(0.34 0.13 254)',
+    '--color-accent-active': 'oklch(0.30 0.13 254)',
+    '--color-accent-soft': 'oklch(0.95 0.03 254)',
+    '--color-accent-text': 'oklch(0.36 0.13 254)',
+    '--focus-ring-color': 'oklch(0.55 0.15 254 / 0.45)',
+    '--color-status-active': 'oklch(0.55 0.16 145)',
+    '--color-status-warning': 'oklch(0.62 0.14 65)',
+    '--color-status-danger': 'oklch(0.55 0.18 25)',
+    '--color-status-critical': 'oklch(0.35 0.16 22)',
+    '--color-status-info': 'oklch(0.55 0.13 215)',
+    '--color-status-pending': 'oklch(0.55 0.02 252)',
+    '--color-status-active-bg': 'oklch(0.945 0.05 145)',
+    '--color-status-warning-bg': 'oklch(0.955 0.05 75)',
+    '--color-status-danger-bg': 'oklch(0.94 0.05 25)',
+    '--color-status-critical-bg': 'oklch(0.92 0.06 22)',
+    '--color-status-info-bg': 'oklch(0.95 0.04 210)',
+    '--color-status-pending-bg': 'oklch(0.945 0.012 250)',
+    '--color-row-hover': 'oklch(0.97 0.008 254)',
+    '--color-row-selected': 'oklch(0.945 0.024 254)',
+    '--shadow-card': '0 1px 0 rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.04)',
+    '--shadow-card-hover': '0 2px 0 rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.06)',
+    '--shadow-dropdown': '0 4px 16px rgba(15,23,42,0.10), 0 1px 2px rgba(15,23,42,0.06)',
+    '--shadow-modal': '0 24px 56px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08)',
+    '--shadow-inset': 'inset 0 1px 0 rgba(15,23,42,0.04)',
+    '--color-chart-1': 'oklch(0.45 0.14 254)',
+    '--color-chart-2': 'oklch(0.52 0.13 175)',
+    '--color-chart-3': 'oklch(0.55 0.16 60)',
+    '--color-chart-4': 'oklch(0.50 0.18 28)',
+    '--color-chart-5': 'oklch(0.50 0.15 305)',
+    '--color-chart-6': 'oklch(0.58 0.12 220)',
+    '--color-chart-7': 'oklch(0.55 0.13 145)',
+    '--color-chart-8': 'oklch(0.50 0.12 350)',
+  },
+  dark: {
+    '--color-bg': 'oklch(0.16 0.012 252)',
+    '--color-surface': 'oklch(0.205 0.014 252)',
+    '--color-surface-alt': 'oklch(0.235 0.014 252)',
+    '--color-surface-raised': 'oklch(0.235 0.014 252)',
+    '--color-border': 'oklch(0.30 0.012 252)',
+    '--color-border-strong': 'oklch(0.38 0.014 252)',
+    '--color-border-subtle': 'oklch(0.255 0.012 252)',
+    '--color-overlay': 'rgba(0, 0, 0, 0.62)',
+    '--color-text': 'oklch(0.94 0.008 252)',
+    '--color-text-muted': 'oklch(0.72 0.012 252)',
+    '--color-text-subtle': 'oklch(0.58 0.012 252)',
+    '--color-text-inverse': 'oklch(0.15 0.012 252)',
+    '--color-accent': 'oklch(0.70 0.14 254)',
+    '--color-accent-hover': 'oklch(0.76 0.14 254)',
+    '--color-accent-active': 'oklch(0.82 0.14 254)',
+    '--color-accent-soft': 'oklch(0.30 0.07 254)',
+    '--color-accent-text': 'oklch(0.78 0.14 254)',
+    '--focus-ring-color': 'oklch(0.72 0.15 254 / 0.55)',
+    '--color-status-active': 'oklch(0.75 0.16 145)',
+    '--color-status-warning': 'oklch(0.80 0.14 75)',
+    '--color-status-danger': 'oklch(0.72 0.18 25)',
+    '--color-status-critical': 'oklch(0.65 0.18 22)',
+    '--color-status-info': 'oklch(0.75 0.13 210)',
+    '--color-status-pending': 'oklch(0.70 0.02 252)',
+    '--color-status-active-bg': 'oklch(0.28 0.06 150)',
+    '--color-status-warning-bg': 'oklch(0.30 0.07 75)',
+    '--color-status-danger-bg': 'oklch(0.30 0.08 25)',
+    '--color-status-critical-bg': 'oklch(0.26 0.09 22)',
+    '--color-status-info-bg': 'oklch(0.30 0.07 210)',
+    '--color-status-pending-bg': 'oklch(0.28 0.012 250)',
+    '--color-row-hover': 'oklch(0.245 0.014 252)',
+    '--color-row-selected': 'oklch(0.27 0.04 254)',
+    '--shadow-card': '0 1px 0 rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.3)',
+    '--shadow-card-hover': '0 6px 18px rgba(0,0,0,0.45)',
+    '--shadow-dropdown': '0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
+    '--shadow-modal': '0 30px 60px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.04)',
+    '--shadow-inset': 'inset 0 1px 0 rgba(255,255,255,0.04)',
+    '--color-chart-1': 'oklch(0.72 0.14 254)',
+    '--color-chart-2': 'oklch(0.72 0.13 175)',
+    '--color-chart-3': 'oklch(0.74 0.15 60)',
+    '--color-chart-4': 'oklch(0.70 0.16 28)',
+    '--color-chart-5': 'oklch(0.72 0.14 305)',
+    '--color-chart-6': 'oklch(0.74 0.11 220)',
+    '--color-chart-7': 'oklch(0.74 0.13 145)',
+    '--color-chart-8': 'oklch(0.70 0.13 350)',
+  },
 };
 
 const colorModeTokens: Record<ColorMode, TokenMap> = {
@@ -166,7 +309,14 @@ const colorModeTokens: Record<ColorMode, TokenMap> = {
 };
 
 function getTokenMap(mode: ColorMode): TokenMap {
-  return { ...sharedTokens, ...colorModeTokens[mode] };
+  const base = { ...sharedTokens, ...colorModeTokens[mode] };
+  // Phase D — DS-canvas brand overlay when `dsRefresh` is enabled.
+  // We DO NOT mutate the platform palette in legacy mode so prod renders
+  // unchanged until C0 flips the flag default ON.
+  if (isFeatureEnabled('dsRefresh')) {
+    return { ...base, ...dsSharedTokens, ...dsColorTokens[mode] };
+  }
+  return base;
 }
 
 export function readStoredColorModePreference(): ColorMode | null {
@@ -193,6 +343,14 @@ export function applyDesignTokens(mode: ColorMode): void {
     root.style.setProperty(key, value);
   });
   root.setAttribute('data-theme', mode);
+  // Phase D — toggle the `ds-refresh` class on the root so the new CSS
+  // class set in global.css (`.ds-refresh .kpi`, `.ds-refresh .quad`, etc.)
+  // activates only when the flag is on.
+  if (isFeatureEnabled('dsRefresh')) {
+    root.classList.add('ds-refresh');
+  } else {
+    root.classList.remove('ds-refresh');
+  }
 }
 
 export function setColorModePreference(mode: ColorMode | null): void {
