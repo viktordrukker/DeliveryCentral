@@ -531,6 +531,8 @@ model Person {
   subjectReportingLines                    ReportingLine[]                     @relation("ReportingLineSubject")
   resourcePoolMemberships                  PersonResourcePoolMembership[]
   personSkills                             PersonSkill[]
+  // FE-#266 — inverse of PlannerScenario.owner.
+  plannerScenarios                         PlannerScenario[]                   @relation("PlannerScenarioOwner")
   requestedAssignments                     ProjectAssignment[]                 @relation("AssignmentRequestedBy")
   projectAssignments                       ProjectAssignment[]                 @relation("AssignmentPerson")
   assignmentApprovalsMade                  AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
@@ -3762,6 +3764,37 @@ model UndoAction {
 
 // ── V2-0 Foundation: Workstreams (stub — unused in v2 UI), OrganizationConfig ──
 
+// FE-#266 — Distribution Studio scenarios. A scenario is a draft set of
+// proposed assignments the planner can review, tweak, and either apply
+// transactionally (#269) or cancel without side effects on the live
+// ProjectAssignment table.
+enum PlannerScenarioStatus {
+  DRAFT
+  SUBMITTED
+  APPLIED
+  CANCELLED
+}
+
+model PlannerScenario {
+  id                  String                @id @default(uuid()) @db.Uuid
+  tenantId            String?               @db.Uuid
+  name                String
+  baselineSnapshotId  String?               @db.Uuid
+  proposedAssignments Json
+  status              PlannerScenarioStatus @default(DRAFT)
+  ownerId             String                @db.Uuid
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+
+  owner  Person  @relation("PlannerScenarioOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([ownerId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("planner_scenarios")
+}
+
 model ProjectWorkstream {
   id                 String    @id @default(uuid()) @db.Uuid
   projectId          String    @db.Uuid
@@ -3928,6 +3961,8 @@ model Tenant {
   Vendor                    Vendor[]
   // Sprint 2 / S2-1 — lean staffing aggregate.
   ProjectPosition           ProjectPosition[]        @relation("ProjectPositionTenant")
+  // FE-#266 — inverse of PlannerScenario.tenant.
+  PlannerScenario           PlannerScenario[]
 
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
