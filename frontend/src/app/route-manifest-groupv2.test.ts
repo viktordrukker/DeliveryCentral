@@ -71,12 +71,12 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
     return r.titleV2 ?? r.title ?? '';
   }
 
-  it('produces 10 sidebar items after obsoleteInV2 filter', () => {
-    // Note: `/reports` shell route is added in Phase E3 — until then this
-    // assertion expects 9. After E3 ships the count goes to 10.
+  it('produces exactly 10 sidebar items after obsoleteInV2 filter', () => {
+    // Canvas authoritative count: 4 Workspace + 4 Workforce + 2 Operations.
+    // If this number drifts, the canvas-required labels assertion below tells
+    // you which item was added/removed.
     const routes = v2NavRoutes();
-    expect(routes.length).toBeGreaterThanOrEqual(9);
-    expect(routes.length).toBeLessThanOrEqual(11);
+    expect(routes.length).toBe(10);
   });
 
   it('uses canvas-canonical labels via titleV2 where renamed', () => {
@@ -88,17 +88,38 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
     expect(settings?.titleV2).toBe('Settings');
   });
 
-  it('includes canvas-required items by canonical label', () => {
-    const labels = v2NavRoutes().map(v2Label);
-    expect(labels).toContain('Projects');
-    expect(labels).toContain('Approvals');
-    expect(labels).toContain('People');
-    expect(labels).toContain('Bench');
-    expect(labels).toContain('Teams');
-    expect(labels).toContain('Home');
-    expect(labels).toContain('HR Queue');
-    expect(labels).toContain('Admin');
-    expect(labels).toContain('Settings');
+  it('matches the canvas-exact 10-item label set', () => {
+    // Source of truth: DS/chrome.jsx:32-66.
+    const labels = v2NavRoutes().map(v2Label).sort();
+    expect(labels).toEqual(
+      [
+        'Admin',
+        'Approvals',
+        'Bench',
+        'HR Queue',
+        'Home',
+        'People',
+        'Projects',
+        'Reports',
+        'Settings',
+        'Teams',
+      ].sort(),
+    );
+  });
+
+  it('distributes the 10 items across 3 canvas buckets as 4 / 4 / 2', () => {
+    const buckets: Record<RouteGroupV2, number> = {
+      workspace: 0,
+      workforce: 0,
+      operations: 0,
+    };
+    for (const route of v2NavRoutes()) {
+      const v2 = route.groupV2 ?? groupV2For(route.group!);
+      buckets[v2] += 1;
+    }
+    expect(buckets.workspace).toBe(4); // Home, Projects, Approvals, Reports
+    expect(buckets.workforce).toBe(4); // People, Bench, Teams, HR Queue
+    expect(buckets.operations).toBe(2); // Admin, Settings
   });
 
   it('excludes legacy dashboard duplicates from v2 sidebar', () => {
