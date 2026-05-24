@@ -21,7 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
-import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
+import { HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 
 import { CasePresenterService } from '../application/case-presenter.service';
 
@@ -97,7 +97,7 @@ export class CasesController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiOkResponse({ type: ListCasesResponseDto })
-  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async listCases(@Query() query: ListCasesQueryDto): Promise<ListCasesResponseDto> {
     const result = await this.listCasesService.execute(query);
     return {
@@ -112,7 +112,7 @@ export class CasesController {
   @ApiOperation({ summary: 'Get a case by id' })
   @ApiOkResponse({ type: CaseResponseDto })
   @ApiNotFoundResponse({ description: 'Case not found.' })
-  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async getCaseById(@Param('id', ParseUUIDPipe) id: string): Promise<CaseResponseDto> {
     const caseRecord = await this.getCaseByIdService.execute(id);
 
@@ -127,7 +127,7 @@ export class CasesController {
   @ApiOperation({ summary: 'List steps for a case' })
   @ApiOkResponse({ description: 'Case steps' })
   @ApiNotFoundResponse({ description: 'Case not found.' })
-  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async listCaseSteps(@Param('id', ParseUUIDPipe) id: string): Promise<CaseStepDto[]> {
     return this.completeCaseStepService.listSteps(id);
   }
@@ -387,7 +387,7 @@ export class CasesController {
   @Get(':id/comments')
   @ApiOperation({ summary: 'List comments on a case' })
   @ApiOkResponse({ description: 'Case comments' })
-  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async listCaseComments(@Param('id', ParseUUIDPipe) id: string): Promise<CaseCommentDto[]> {
     return this.caseCommentService.listComments(id);
   }
@@ -396,7 +396,7 @@ export class CasesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add a comment to a case' })
   @ApiCreatedResponse({ description: 'Comment added' })
-  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
   public async addCaseComment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: AddCaseNoteRequestDto,
