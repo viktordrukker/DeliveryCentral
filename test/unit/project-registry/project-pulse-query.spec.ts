@@ -139,19 +139,21 @@ function buildPrismaStub(seed: {
     },
   };
   const projectActivationApproval = {
-    findFirst: async (q: {
+    findMany: async (q: {
       where: { projectId: string; decision: null };
-    }): Promise<FakeActivationApproval | null> => {
+      take?: number;
+    }): Promise<FakeActivationApproval[]> => {
       const rows = (seed.activations ?? [])
         .filter((a) => a.projectId === q.where.projectId && a.decision === null)
         .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-      return rows[0] ?? null;
+      return rows.slice(0, q.take ?? 5);
     },
   };
   const budgetApproval = {
-    findFirst: async (q: {
+    findMany: async (q: {
       where: { projectBudget: { projectId: string }; status: string };
-    }): Promise<FakeBudgetApproval | null> => {
+      take?: number;
+    }): Promise<FakeBudgetApproval[]> => {
       const rows = (seed.budgetApprovals ?? [])
         .filter(
           (a) =>
@@ -159,29 +161,58 @@ function buildPrismaStub(seed: {
             a.status === q.where.status,
         )
         .sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
-      return rows[0] ?? null;
+      return rows.slice(0, q.take ?? 5);
     },
   };
   const projectChangeRequest = {
-    findFirst: async (q: {
+    findMany: async (q: {
       where: { projectId: string; status: string };
-    }): Promise<FakeChangeRequest | null> => {
+      take?: number;
+    }): Promise<FakeChangeRequest[]> => {
       const rows = (seed.changeRequests ?? [])
         .filter((c) => c.projectId === q.where.projectId && c.status === q.where.status)
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      return rows[0] ?? null;
+      return rows.slice(0, q.take ?? 5);
     },
+  };
+
+  // FE-#259 additive aggregator dependencies — return empty arrays / zeros
+  // so tests that don't seed these surfaces still pass.
+  const projectPositionExt = {
+    ...projectPosition,
+    findMany: async (_q: unknown): Promise<unknown[]> => [],
+    count: async (_q: unknown): Promise<number> => 0,
+  };
+  const projectMilestoneExt = {
+    ...projectMilestone,
+    findMany: async (q: { where: { projectId: string } }): Promise<unknown[]> => {
+      return (seed.milestones ?? [])
+        .filter((m) => m.projectId === q.where.projectId)
+        .map((m) => ({ status: m.status, plannedDate: m.plannedDate }));
+    },
+  };
+  const projectPositionFillHistory = {
+    count: async (_q: unknown): Promise<number> => 0,
+  };
+  const projectExternalLink = {
+    findMany: async (_q: unknown): Promise<unknown[]> => [],
+  };
+  const auditLog = {
+    findMany: async (_q: unknown): Promise<unknown[]> => [],
   };
 
   return {
     project,
-    projectPosition,
+    projectPosition: projectPositionExt,
     projectBudget,
-    projectMilestone,
+    projectMilestone: projectMilestoneExt,
     projectRisk,
     projectActivationApproval,
     budgetApproval,
     projectChangeRequest,
+    projectPositionFillHistory,
+    projectExternalLink,
+    auditLog,
   } as unknown as PrismaService;
 }
 
