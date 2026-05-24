@@ -25,9 +25,42 @@ type RouteGroup =
   | 'admin-integrations'
   | 'admin-governance';
 
+/**
+ * Phase A2 — DS-redesign 3-group sidebar taxonomy.
+ *
+ * The redesigned SidebarNavV2 (gated by `dsRefresh`) collapses the legacy
+ * 9-group taxonomy above into 3 sections matching DS/chrome.jsx:32-66:
+ *   - `workspace` — what I'm working on (dashboard, time, projects, staffing, reports)
+ *   - `workforce` — who works here (people, org, teams)
+ *   - `operations` — system admin (admin-*)
+ *
+ * Both fields coexist during the migration so the legacy SidebarNav keeps
+ * working when `dsRefresh` is off.
+ */
+export type RouteGroupV2 = 'workspace' | 'workforce' | 'operations';
+
+const GROUP_V2_MAP: Record<RouteGroup, RouteGroupV2> = {
+  dashboard: 'workspace',
+  time: 'workspace',
+  projects: 'workspace',
+  staffing: 'workspace',
+  reports: 'workspace',
+  'people-org': 'workforce',
+  'admin-config': 'operations',
+  'admin-integrations': 'operations',
+  'admin-governance': 'operations',
+};
+
+/** Resolve the V2 (3-group) bucket for a legacy group. */
+export function groupV2For(group: RouteGroup): RouteGroupV2 {
+  return GROUP_V2_MAP[group];
+}
+
 export interface AppRouteDefinition {
   description?: string;
   group: RouteGroup;
+  /** Phase A2 — optional override; otherwise derived from `group` via `groupV2For`. */
+  groupV2?: RouteGroupV2;
   path: string;
   title: string;
   allowedRoles?: AppRole[];
@@ -39,6 +72,8 @@ export interface RouteManifestEntry {
   allowedRoles?: AppRole[];
   description?: string;
   group?: RouteGroup;
+  /** Phase A2 — optional override; otherwise derived from `group` via `groupV2For`. */
+  groupV2?: RouteGroupV2;
   navVisible?: boolean;
   path: string;
   title?: string;
