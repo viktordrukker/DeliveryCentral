@@ -220,9 +220,45 @@ export function TimeManagementPage(): JSX.Element {
     return () => setActions(null);
   }, [setActions, year, month, queue, queueExportColumns, ms]);
 
-  // KPIs
-  const pendingCount = queue.filter((q) => q.status === 'SUBMITTED' || q.status === 'PENDING').length;
+  // KPIs — ds-trunk-14 surface #12 refresh.
+  // Split pending counts by item type per the amendment spec; existing
+  // gap-day + compliance tiles preserved as bonus context.
+  const pendingTimesheetCount = queue.filter(
+    (q) => q.type === 'timesheet' && (q.status === 'SUBMITTED' || q.status === 'PENDING'),
+  ).length;
+  const pendingLeaveCount = queue.filter(
+    (q) => q.type === 'leave' && (q.status === 'SUBMITTED' || q.status === 'PENDING'),
+  ).length;
+  const pendingCount = pendingTimesheetCount + pendingLeaveCount;
   const approvedCount = queue.filter((q) => q.status === 'APPROVED').length;
+  // Hours awaiting approval — sum of submitted-timesheet totals.
+  const hoursAwaiting = queue
+    .filter((q) => q.type === 'timesheet' && (q.status === 'SUBMITTED' || q.status === 'PENDING'))
+    .reduce((sum, q) => sum + (q.totalHours ?? 0), 0);
+  // People on leave in the next 7 days — count of unique persons in
+  // the team calendar whose days[] has any non-empty leave inside the
+  // window. ApprovalQueueItem's leave dates also count (covers requests
+  // that have been approved but not yet rendered in team calendar).
+  const peopleOnLeaveNext7Days = (() => {
+    const now = new Date();
+    const horizon = new Date(now.getTime() + 7 * 86_400_000);
+    const ids = new Set<string>();
+    for (const p of calendar) {
+      if (p.days.some((d) => {
+        const dDate = new Date(d.date);
+        return dDate >= now && dDate <= horizon && d.type;
+      })) {
+        ids.add(p.personId);
+      }
+    }
+    for (const q of queue) {
+      if (q.type !== 'leave' || q.status !== 'APPROVED') continue;
+      const ls = q.leaveStartDate ? new Date(q.leaveStartDate) : null;
+      const le = q.leaveEndDate ? new Date(q.leaveEndDate) : null;
+      if (ls && le && ls <= horizon && le >= now) ids.add(q.personId);
+    }
+    return ids.size;
+  })();
   const gapDays = compliance.reduce((s, c) => s + c.gapDays, 0);
   const totalOT = compliance.reduce((s, c) => s + c.overtimeHours, 0);
   const leaveCount = queue.filter((q) => q.type === 'leave').length;
@@ -281,32 +317,101 @@ export function TimeManagementPage(): JSX.Element {
 
       {!loading && !error ? (
         <>
-          {/* KPI Strip */}
+          {/* KPI Strip — ds-trunk-14 refresh per amendment surface #12.
+              Primary row (5 tiles): the decision-driving counts. Each tile is
+              a clickable doorway into the corresponding filtered queue (Law 9). */}
           <div className="kpi-strip" aria-label="Time management summary">
-            <a className="kpi-strip__item" href="#" onClick={(e) => { e.preventDefault(); setTab('queue'); }} style={{ borderLeft: `3px solid ${pendingCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
-              <span className="kpi-strip__value">{pendingCount}</span>
-              <span className="kpi-strip__label">Pending</span>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('queue'); }}
+              style={{ borderLeft: `3px solid ${pendingTimesheetCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            >
+              <span className="kpi-strip__value">{pendingTimesheetCount}</span>
+              <span className="kpi-strip__label">Pending timesheets</span>
             </a>
-            <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
-              <span className="kpi-strip__value">{approvedCount}</span>
-              <span className="kpi-strip__label">Approved</span>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('queue'); }}
+              style={{ borderLeft: `3px solid ${pendingLeaveCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            >
+              <span className="kpi-strip__value">{pendingLeaveCount}</span>
+              <span className="kpi-strip__label">Pending leave</span>
+            </a>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('queue'); }}
+              style={{ borderLeft: '3px solid var(--color-status-info)' }}
+            >
+              <span className="kpi-strip__value">{Math.round(hoursAwaiting)}h</span>
+              <span className="kpi-strip__label">Hours awaiting</span>
+            </a>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('calendar'); }}
+              style={{ borderLeft: `3px solid ${peopleOnLeaveNext7Days > 0 ? 'var(--color-chart-1)' : 'var(--color-border-strong)'}` }}
+            >
+              <span className="kpi-strip__value">{peopleOnLeaveNext7Days}</span>
+              <span className="kpi-strip__label">On leave (next 7 d)</span>
+            </a>
+            <div
+              className="kpi-strip__item"
+              title="SLA breach data not yet exposed via the approval queue API (tracked in issue 257)."
+              style={{ borderLeft: '3px solid var(--color-border-strong)', opacity: 0.6 }}
+            >
+              <span className="kpi-strip__value">—</span>
+              <span className="kpi-strip__label">SLA breach</span>
             </div>
-            <a className="kpi-strip__item" href="#" onClick={(e) => { e.preventDefault(); setTab('compliance'); }} style={{ borderLeft: `3px solid ${gapDays > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
+          </div>
+
+          {/* Secondary row — compliance + overtime + approved-total context.
+              Kept as a smaller-density second strip below the primary 5. */}
+          <div
+            className="kpi-strip"
+            aria-label="Time management secondary metrics"
+            style={{ marginTop: 'var(--space-2)' }}
+          >
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('compliance'); }}
+              style={{ borderLeft: `3px solid ${gapDays > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
+            >
               <span className="kpi-strip__value">{gapDays}</span>
-              <span className="kpi-strip__label">Gap Days</span>
+              <span className="kpi-strip__label">Gap days</span>
             </a>
-            <a className="kpi-strip__item" href="#" onClick={(e) => { e.preventDefault(); setTab('overtime'); }} style={{ borderLeft: `3px solid ${totalOT > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('overtime'); }}
+              style={{ borderLeft: `3px solid ${totalOT > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            >
               <span className="kpi-strip__value">{Math.round(totalOT)}h</span>
               <span className="kpi-strip__label">Overtime</span>
             </a>
-            <a className="kpi-strip__item" href="#" onClick={(e) => { e.preventDefault(); setTab('calendar'); }} style={{ borderLeft: `3px solid var(--color-chart-1)` }}>
-              <span className="kpi-strip__value">{leaveCount}</span>
-              <span className="kpi-strip__label">Leave Requests</span>
-            </a>
-            <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${complianceRate >= 80 ? 'var(--color-status-active)' : 'var(--color-status-danger)'}` }}>
+            <div
+              className="kpi-strip__item"
+              style={{ borderLeft: `3px solid ${complianceRate >= 80 ? 'var(--color-status-active)' : 'var(--color-status-danger)'}` }}
+            >
               <span className="kpi-strip__value">{complianceRate}%</span>
               <span className="kpi-strip__label">Compliance</span>
             </div>
+            <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
+              <span className="kpi-strip__value">{approvedCount}</span>
+              <span className="kpi-strip__label">Approved this month</span>
+            </div>
+            <a
+              className="kpi-strip__item"
+              href="#"
+              onClick={(e) => { e.preventDefault(); setTab('calendar'); }}
+              style={{ borderLeft: '3px solid var(--color-chart-1)' }}
+            >
+              <span className="kpi-strip__value">{leaveCount}</span>
+              <span className="kpi-strip__label">All leave (month)</span>
+            </a>
           </div>
 
           {/* Tab buttons */}
