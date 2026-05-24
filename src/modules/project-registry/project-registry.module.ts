@@ -38,6 +38,7 @@ import { PrismaProjectRepository } from './infrastructure/repositories/prisma/pr
 import { ClientService } from './application/client.service';
 import { GenerateStaffingRequestsFromPlanService } from './application/generate-staffing-requests-from-plan.service';
 import { PortfolioRadiatorService } from './application/portfolio-radiator.service';
+import { PortfolioRadiatorSummaryService } from './application/portfolio-radiator-summary.service';
 import { ProjectChangeRequestService } from './application/project-change-request.service';
 import { OrgConfigService } from './application/org-config.service';
 import { ProjectExceptionsService } from './application/project-exceptions.service';
@@ -60,6 +61,7 @@ import { ChangeRequestController } from './presentation/change-request.controlle
 import { ClientController } from './presentation/client.controller';
 import { MilestoneController } from './presentation/milestone.controller';
 import { PortfolioRadiatorController } from './presentation/portfolio-radiator.controller';
+import { PortfolioRadiatorSummaryController } from './presentation/portfolio-radiator-summary.controller';
 import { OrgConfigController } from './presentation/org-config.controller';
 import { ProjectExceptionsController } from './presentation/project-exceptions.controller';
 import { ProjectPulseController } from './presentation/project-pulse.controller';
@@ -97,6 +99,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     ProjectRiskController,
     RadiatorController,
     PortfolioRadiatorController,
+    PortfolioRadiatorSummaryController,
     RadiatorThresholdController,
     MilestoneController,
     ChangeRequestController,
@@ -343,6 +346,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     RadiatorNotificationService,
     RadiatorOverrideService,
     PortfolioRadiatorService,
+    PortfolioRadiatorSummaryService,
     ProjectPulseService,
     ProjectPulseQueryService,
     ProjectExceptionsService,
