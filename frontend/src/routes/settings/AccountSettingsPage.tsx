@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useAuth } from '@/app/auth-context';
 import { changePassword } from '@/lib/api/admin';
+import { DigestAndQuietHoursCard } from './DigestAndQuietHoursCard';
 import {
   fetchMyNotificationPrefs,
   fetchNotificationChannels,
@@ -255,6 +256,8 @@ export function AccountSettingsPage(): JSX.Element {
           ))}
         </div>
       </SectionCard>
+
+      <DigestAndQuietHoursCard />
 
       <SectionCard title="Locale &amp; Timezone">
         {prefsToast ? <p className="form-success">{prefsToast}</p> : null}

@@ -755,6 +755,7 @@ model Person {
   radiusReconciliationRecords              RadiusReconciliationRecord[]
   plannerScenarios                         PlannerScenario[]                   @relation("PlannerScenarioCreator")
   notificationPreferences                  PersonNotificationPreference[]
+  notificationDigest                       PersonNotificationDigest?
   undoActionsRegistered                    UndoAction[]                        @relation("UndoActionActor")
   budgetApprovalsRequested                 BudgetApproval[]                    @relation("BudgetApproval_requestedBy")
   budgetApprovalsDecided                   BudgetApproval[]                    @relation("BudgetApproval_decidedBy")
@@ -3702,6 +3703,32 @@ model PersonNotificationPreference {
   @@unique([personId, channelKey])
   @@index([personId])
   @@map("person_notification_preferences")
+}
+
+// ds-trunk-10 — per-person notification digest + quiet-hours settings.
+// One row per person (keyed by personId). Absent row = defaults apply:
+// IMMEDIATE digest, no quiet hours, email-only quiet hours preference.
+//
+// Capture-only in this migration; the NotificationDispatcher honors these
+// values in a follow-up PR. Settings UI lives at /me?tab=settings.
+model PersonNotificationDigest {
+  personId            String         @id @db.Uuid
+  digestSchedule      DigestSchedule @default(IMMEDIATE)
+  /// `HH:MM` 24h. Null = no quiet-hours window configured.
+  quietHoursStart     String?
+  quietHoursEnd       String?
+  quietHoursEmailOnly Boolean        @default(true)
+  updatedAt           DateTime       @updatedAt @db.Timestamptz(3)
+
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@map("person_notification_digest")
+}
+
+enum DigestSchedule {
+  IMMEDIATE
+  DAILY_9AM
+  WEEKLY_MON_9AM
 }
 
 // Phase 21-11 — server-side undo support for reversible destructive actions
