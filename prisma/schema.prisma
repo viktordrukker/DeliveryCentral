@@ -517,6 +517,10 @@ model Person {
   employmentStatus                         PersonEmploymentStatus              @default(ACTIVE)
   hiredAt                                  DateTime?                           @db.Timestamptz(3)
   terminatedAt                             DateTime?                           @db.Timestamptz(3)
+  // FE-#263 — HR action-cards source fields. All nullable; default NULL.
+  probationEndsAt                          DateTime?                           @db.Date
+  contractEndsAt                           DateTime?                           @db.Date
+  lastHrReviewAt                           DateTime?                           @db.Date
   createdAt                                DateTime                            @default(now()) @db.Timestamptz(3)
   updatedAt                                DateTime                            @updatedAt @db.Timestamptz(3)
   archivedAt                               DateTime?                           @db.Timestamptz(3)
@@ -2599,6 +2603,8 @@ model PersonSkill {
   skill       Skill    @relation(fields: [skillId], references: [id])
   proficiency Int
   certified   Boolean  @default(false)
+  // FE-#263 — drives "certification_stale" HR action-cards. NULL = no expiry.
+  certificationExpiresAt DateTime? @db.Date
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([personId, skillId])

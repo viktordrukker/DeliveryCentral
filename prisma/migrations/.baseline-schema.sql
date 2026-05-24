@@ -1449,7 +1449,10 @@ CREATE TABLE public."Person" (
     location text,
     timezone text,
     "tenantId" uuid,
-    version integer DEFAULT 1 NOT NULL
+    version integer DEFAULT 1 NOT NULL,
+    "probationEndsAt" date,
+    "contractEndsAt" date,
+    "lastHrReviewAt" date
 );
 --
 --
@@ -2416,6 +2419,7 @@ CREATE TABLE public.person_skills (
     certified boolean DEFAULT false NOT NULL,
     "updatedAt" timestamp(3) with time zone NOT NULL,
     id_new uuid DEFAULT gen_random_uuid() NOT NULL,
+    "certificationExpiresAt" date,
     CONSTRAINT person_skills_proficiency_range_check CHECK (((proficiency >= 1) AND (proficiency <= 5)))
 );
 --
