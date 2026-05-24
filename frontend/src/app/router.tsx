@@ -333,7 +333,7 @@ const dashboardChildren = [
   { element: <StaffingRequestsPage />, path: 'staffing-requests' },
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
+  { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
   {
     element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'staffing-board',
