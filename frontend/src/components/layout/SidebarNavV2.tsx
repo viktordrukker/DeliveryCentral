@@ -49,7 +49,13 @@ export function SidebarNavV2({
 }: SidebarNavV2Props): JSX.Element {
   const { principal } = useAuth();
 
-  const visibleRoutes = routes.filter((route) => canAccessRoute(route.path, principal?.roles));
+  // Phase E — exclude routes flagged `obsoleteInV2: true`. The route stays
+  // reachable by URL (router still mounts it); only sidebar visibility is
+  // suppressed in v2. Legacy SidebarNav (when `dsRefresh` OFF) is unaffected.
+  const visibleRoutes = routes.filter(
+    (route) =>
+      canAccessRoute(route.path, principal?.roles) && route.obsoleteInV2 !== true,
+  );
 
   const byGroup = GROUP_ORDER.reduce<Record<RouteGroupV2, AppRouteDefinition[]>>(
     (acc, group) => {
@@ -66,6 +72,9 @@ export function SidebarNavV2({
     byGroup[group].some((r) => r.path === activePath);
 
   function renderNavItem(route: AppRouteDefinition): JSX.Element {
+    // Phase E — sidebar label override (e.g. /cases → "HR Queue", /me → "Home").
+    // Canonical `title` still used for tooltip + icon resolution.
+    const label = route.titleV2 ?? route.title;
     const iconKey = getIconKey(route.path, route.title);
     return (
       <NavLink
@@ -85,7 +94,7 @@ export function SidebarNavV2({
         to={route.path}
       >
         <NavIcon name={iconKey} size={16} />
-        <span className="sidebar-nav__item-title">{route.title}</span>
+        <span className="sidebar-nav__item-title">{label}</span>
       </NavLink>
     );
   }
@@ -119,7 +128,7 @@ export function SidebarNavV2({
                   markSidebarNavigation();
                   onNavigate?.();
                 }}
-                title={route.title}
+                title={route.titleV2 ?? route.title}
                 to={route.path}
               >
                 <NavIcon name={getIconKey(route.path, route.title)} size={18} />
