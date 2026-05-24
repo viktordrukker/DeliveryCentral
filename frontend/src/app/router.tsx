@@ -125,6 +125,7 @@ function ProjectDashboardRedirect(): JSX.Element {
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingBoardPage = lazy(() => import('@/routes/staffing-board/StaffingBoardPage').then(m => ({ default: m.StaffingBoardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
+const ReportsPage = lazy(() => import('@/routes/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
 const ReportBuilderPage = lazy(() => import('@/routes/reports/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
 const TimeReportPage = lazy(() => import('@/routes/reports/TimeReportPage').then(m => ({ default: m.TimeReportPage })));
@@ -310,6 +311,10 @@ const dashboardChildren = [
   { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
   { element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><Navigate to="/time-management" replace /></RoleGuard>, path: 'timesheets/approval' },
   { element: <LeaveRequestPage />, path: 'leave' },
+  {
+    element: <RoleGuard allowedRoles={EXCEPTIONS_ROLES}><LazyPage><ReportsPage /></LazyPage></RoleGuard>,
+    path: 'reports',
+  },
   {
     element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><LazyPage><TimeReportPage /></LazyPage></RoleGuard>,
     path: 'reports/time',
