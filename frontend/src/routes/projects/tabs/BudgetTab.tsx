@@ -23,6 +23,8 @@ import {
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
 import { Button } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { MoneyPanel } from './MoneyPanel';
 
 interface BudgetTabProps {
   projectId: string;
@@ -139,8 +141,13 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
   if (loading) return <LoadingState label="Loading budget..." variant="skeleton" skeletonType="detail" />;
   if (error) return <ErrorState description={error} />;
 
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      {/* Phase B1.4 — DS-redesign Money panel (atom-driven KPI) */}
+      {dsRefreshEnabled && dashboard ? <MoneyPanel dashboard={dashboard} /> : null}
+
       {/* Hero: CAPEX/OPEX Visual Summary */}
       {dashboard ? (
         <div className="dashboard-hero">
