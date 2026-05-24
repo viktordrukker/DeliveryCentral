@@ -32,9 +32,11 @@ import {
   ListProjectPositionsResponseDto,
   ProjectPositionResponseDto,
 } from '../application/contracts/project-position-responses';
+import { BenchEnrichedRowDto } from '../application/contracts/bench-enriched.dto';
 import { CreateProjectPositionService } from '../application/create-project-position.service';
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
+import { ListEnrichedBenchService } from '../application/list-enriched-bench.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
 import { TransitionProjectPositionFillService } from '../application/transition-project-position-fill.service';
 
@@ -153,7 +155,10 @@ export class ProjectPositionsController {
 @ApiTags('people')
 @Controller('people')
 export class PeopleBenchController {
-  public constructor(private readonly benchService: ListBenchPeopleService) {}
+  public constructor(
+    private readonly benchService: ListBenchPeopleService,
+    private readonly enrichedBenchService: ListEnrichedBenchService,
+  ) {}
 
   @Post('bench/check')
   @HttpCode(HttpStatus.OK)
@@ -167,5 +172,17 @@ export class PeopleBenchController {
     const asOf = body.asOf ? new Date(body.asOf) : new Date();
     const people = await this.benchService.checkPeople(body.personIds, asOf);
     return { people };
+  }
+
+  @Get('bench')
+  @ApiOperation({
+    summary:
+      'FE-#261 — enriched bench listing (name / role / office / grade / daysOnBench / ' +
+      'availabilityHours14d / suggestedProjectIds). Tenant-scoped.',
+  })
+  @ApiOkResponse({ type: [Object] })
+  @RequireRoles(...STAFFING_ROLES)
+  public async listEnrichedBench(): Promise<BenchEnrichedRowDto[]> {
+    return this.enrichedBenchService.listBench();
   }
 }
