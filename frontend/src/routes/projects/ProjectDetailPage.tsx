@@ -26,8 +26,9 @@ import { RisksIssuesTab } from './tabs/RisksIssuesTab';
 import { TeamVendorsTab } from './tabs/TeamVendorsTab';
 import { BudgetTab } from './tabs/BudgetTab';
 import { LifecycleTab } from './tabs/LifecycleTab';
+import { PulseTab } from './tabs/PulseTab';
 
-const TABS = [
+const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
   { id: 'milestones', label: 'Milestones' },
   { id: 'change-requests', label: 'Change Requests' },
@@ -45,7 +46,10 @@ const LEGACY_TAB_REDIRECTS: Record<string, string> = {
 export function ProjectDetailPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get('tab') ?? 'radiator';
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+  const TABS = dsRefreshEnabled ? [{ id: 'pulse', label: 'Pulse' }, ...BASE_TABS] : BASE_TABS;
+  const defaultTab = dsRefreshEnabled ? 'pulse' : 'radiator';
+  const rawTab = searchParams.get('tab') ?? defaultTab;
   const activeTab = LEGACY_TAB_REDIRECTS[rawTab] ?? rawTab;
   const { principal } = useAuth();
   const canManage = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
@@ -176,6 +180,7 @@ export function ProjectDetailPage(): JSX.Element {
     >
       {project ? (
         <>
+          {activeTab === 'pulse' && dsRefreshEnabled ? <PulseTab projectId={id!} /> : null}
           {activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
           {activeTab === 'milestones' ? <MilestonesTab projectId={id!} shape={state.data?.shape} /> : null}
           {activeTab === 'change-requests' ? <ChangeRequestsTab projectId={id!} /> : null}
