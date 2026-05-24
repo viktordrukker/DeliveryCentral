@@ -18,6 +18,9 @@ import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Button } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { TabBar } from '@/components/common/TabBar';
+import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 
 const defaultPageSize = 25;
 
@@ -25,7 +28,8 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
-  const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '' });
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+  const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
   const { setActions } = useTitleBarActions();
@@ -80,8 +84,24 @@ export function EmployeeDirectoryPage(): JSX.Element {
     return () => setActions(null);
   }, [setActions, canManagePeople, state.data, state.visibleItems, state.isLoading, navigate]);
 
+  const peopleTabs = [
+    { id: 'directory', label: 'Directory' },
+    { id: 'bench', label: 'Bench' },
+  ];
+  const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
+
   return (
     <PageContainer testId="employee-directory-page" viewport>
+      {dsRefreshEnabled ? (
+        <TabBar
+          tabs={peopleTabs}
+          activeTab={activeView}
+          onTabChange={(tab) => setFilters({ view: tab })}
+        />
+      ) : null}
+      {dsRefreshEnabled && activeView === 'bench' ? <BenchEnrichedPanel /> : null}
+      {dsRefreshEnabled && activeView !== 'directory' ? null : (
+      <>
       <FilterBar>
         <label className="field">
           <span className="field__label">Search</span>
@@ -171,6 +191,8 @@ export function EmployeeDirectoryPage(): JSX.Element {
           </>
         ) : null}
       </ViewportTable>
+      </>
+      )}
     </PageContainer>
   );
 }
