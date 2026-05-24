@@ -70,6 +70,8 @@ import { StaffingRequestDetailPage } from '@/routes/staffing-requests/StaffingRe
 import { CreateStaffingRequestPage } from '@/routes/staffing-requests/CreateStaffingRequestPage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
 import { HomeRedirect } from '@/routes/HomeRedirect';
+import { V2Redirect } from '@/routes/V2Redirect';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
 import { IntegrationsPage } from '@/routes/integrations/IntegrationsPage';
 import { MetadataAdminPage } from '@/routes/metadata-admin/MetadataAdminPage';
@@ -117,10 +119,13 @@ const ManagerDashboardPage = lazy(() => import('@/routes/dashboard/ManagerDashbo
 const ExecDashboardPage = lazy(() => import('@/routes/dashboard/ExecDashboardPage').then(m => ({ default: m.ExecDashboardPage })));
 const PlannedVsActualPage = lazy(() => import('@/routes/dashboard/PlannedVsActualPage').then(m => ({ default: m.PlannedVsActualPage })));
 const OrgPage = lazy(() => import('@/routes/org/OrgPage').then(m => ({ default: m.OrgPage })));
-// ProjectDashboardPage merged into ProjectDetailPage — route redirects to ?tab=radiator
+// ProjectDashboardPage merged into ProjectDetailPage.
+// Phase E5: under dsRefresh, the canvas "Pulse" tab is the headline view;
+// pre-flag the legacy radiator tab remains the destination.
 function ProjectDashboardRedirect(): JSX.Element {
   const { id } = useParams();
-  return <Navigate to={`/projects/${id ?? ''}?tab=radiator`} replace />;
+  const tab = isFeatureEnabled('dsRefresh') ? 'pulse' : 'radiator';
+  return <Navigate to={`/projects/${id ?? ''}?tab=${tab}`} replace />;
 }
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingBoardPage = lazy(() => import('@/routes/staffing-board/StaffingBoardPage').then(m => ({ default: m.StaffingBoardPage })));
@@ -147,7 +152,7 @@ const dashboardChildren = [
   {
     element: (
       <RoleGuard allowedRoles={['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin']}>
-        <LazyPage><ManagerDashboardPage /></LazyPage>
+        <V2Redirect to="/me"><LazyPage><ManagerDashboardPage /></LazyPage></V2Redirect>
       </RoleGuard>
     ),
     path: 'dashboard/manager',
@@ -155,13 +160,13 @@ const dashboardChildren = [
   {
     element: (
       <RoleGuard allowedRoles={['director', 'admin', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager']}>
-        <LazyPage><ExecDashboardPage /></LazyPage>
+        <V2Redirect to="/dashboard/director"><LazyPage><ExecDashboardPage /></LazyPage></V2Redirect>
       </RoleGuard>
     ),
     path: 'dashboard/exec',
   },
   {
-    element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><LazyPage><EmployeeDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><V2Redirect to="/me"><LazyPage><EmployeeDashboardPage /></LazyPage></V2Redirect></RoleGuard>,
     path: 'dashboard/employee',
   },
   {
@@ -189,7 +194,7 @@ const dashboardChildren = [
     path: 'approvals',
   },
   {
-    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><PortfolioRadiatorPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/dashboard/director"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
     path: 'dashboards/portfolio-radiator',
   },
   {
@@ -390,7 +395,7 @@ const dashboardChildren = [
     path: 'admin/monitoring',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><IntegrationsPage /></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><V2Redirect to="/admin?section=integrations"><IntegrationsPage /></V2Redirect></RoleGuard>,
     path: 'integrations',
   },
   {
