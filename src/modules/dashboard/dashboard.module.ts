@@ -28,7 +28,9 @@ import { DirectorAnomalyDetectionService } from './application/director-anomaly-
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
+import { SidebarCountsService } from './application/sidebar-counts.service';
 import { UnifiedApprovalQueueService } from './application/unified-approval-queue.service';
+import { MeHomeService } from './application/me-home.service';
 import { DirectorAnomaliesController } from './presentation/director-anomalies.controller';
 import { PersonProfileController } from './presentation/person-profile.controller';
 import { PortfolioDashboardController } from './presentation/portfolio-dashboard.controller';
@@ -36,13 +38,13 @@ import { RoleDashboardController } from './presentation/role-dashboard.controlle
 import { WorkloadDashboardController } from './presentation/workload-dashboard.controller';
 import { HrActionCardsController } from './presentation/hr-action-cards.controller';
 import { UnifiedApprovalQueueController } from './presentation/unified-approval-queue.controller';
-import { MeHomeService } from './application/me-home.service';
+import { SidebarCountsController } from './presentation/sidebar-counts.controller';
 import { MeHomeController } from './presentation/me-home.controller';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
   imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
-  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController, MeHomeController],
+  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController, MeHomeController, SidebarCountsController],
   providers: [
     {
       provide: HrActionCardsService,
@@ -65,6 +67,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
       inject: [PrismaService],
     },
     MeHomeService,
+    {
+      provide: SidebarCountsService,
+      useFactory: (prisma: PrismaService) => new SidebarCountsService(prisma),
+      inject: [PrismaService],
+    },
     PortfolioDashboardService,
     DeliveryManagerDashboardQueryService,
     DirectorDashboardQueryService,
@@ -117,6 +124,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     PersonProfileService,
     DirectorAnomalyDetectionService,
     MeHomeService,
+    SidebarCountsService,
   ],
 })
 export class DashboardModule {}
