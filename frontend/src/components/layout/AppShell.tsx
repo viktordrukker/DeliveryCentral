@@ -9,11 +9,14 @@ import { CommandPalette, RecentPage } from '@/components/common/CommandPalette';
 import { TipsProvider } from '@/components/common/TipBalloon';
 import { OnboardingTourProvider } from '@/components/onboarding/OnboardingTourProvider';
 import { PendingMigrationsBanner } from '@/components/system/PendingMigrationsBanner';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { DrilldownBar } from './DrilldownBar';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { PageTitleBar } from './PageTitleBar';
 import { SidebarNav } from './SidebarNav';
+import { SidebarNavV2 } from './SidebarNavV2';
 import { TopHeader } from './TopHeader';
+import { TopHeaderV2 } from './TopHeaderV2';
 
 const RECENT_PAGES_KEY = 'dc_recent_pages';
 const RECENT_PAGES_MAX = 10;
@@ -64,6 +67,12 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [demoPanelOpen, setDemoPanelOpen] = useState(false);
   const [recentPages, setRecentPages] = useState<RecentPage[]>(loadRecentPages);
+  // Phase A2.4 — DS-redesign frame swap (sidebar + topbar) behind `dsRefresh`.
+  // V2 components (SidebarNavV2 / TopHeaderV2) live next to the originals;
+  // a single flag flip swaps both atomically so prod can revert by toggling
+  // the PlatformSetting back. Cleanup (C1) deletes the V1 components once
+  // V2 is the GA default.
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const visibleRoutes = useMemo(() => routes.filter((route) => (
     evidenceManagement.enabled || route.path !== '/work-evidence'
   )), [routes, evidenceManagement.enabled]);
@@ -200,24 +209,46 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
       ) : null}
       <aside className={`app-shell__sidebar${sidebarOpen ? ' app-shell__sidebar--open' : ''}`} aria-label="Main navigation">
         <nav>
-          <SidebarNav activePath={location.pathname} collapsed={sidebarCollapsed} onNavigate={closeSidebar} onToggleCollapse={toggleSidebarCollapse} routes={visibleRoutes} />
+          {dsRefreshEnabled ? (
+            <SidebarNavV2
+              activePath={location.pathname}
+              collapsed={sidebarCollapsed}
+              onNavigate={closeSidebar}
+              onToggleCollapse={toggleSidebarCollapse}
+              routes={visibleRoutes}
+            />
+          ) : (
+            <SidebarNav
+              activePath={location.pathname}
+              collapsed={sidebarCollapsed}
+              onNavigate={closeSidebar}
+              onToggleCollapse={toggleSidebarCollapse}
+              routes={visibleRoutes}
+            />
+          )}
         </nav>
       </aside>
       <div className="app-shell__main">
         <PendingMigrationsBanner />
         <ImpersonationBanner />
         <div className="app-shell__topbar">
-          <button
-            aria-label="Toggle navigation"
-            className="app-shell__hamburger"
-            onClick={() => setSidebarOpen((open) => !open)}
-            type="button"
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-          <TopHeader />
+          {dsRefreshEnabled ? null : (
+            <button
+              aria-label="Toggle navigation"
+              className="app-shell__hamburger"
+              onClick={() => setSidebarOpen((open) => !open)}
+              type="button"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          )}
+          {dsRefreshEnabled ? (
+            <TopHeaderV2 onToggleSidebar={() => setSidebarOpen((open) => !open)} />
+          ) : (
+            <TopHeader />
+          )}
         </div>
         <DrilldownProvider>
         <TipsProvider>
