@@ -1,8 +1,366 @@
+/* Phase D — DeliverIT canvas font (Geist) loaded from Google Fonts. Only
+ * applied when .ds-refresh is on the root; legacy chrome keeps Segoe UI.
+ * Pre-fetched so the first paint already has the font available. */
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600;700&display=swap');
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: rgba(150, 160, 175, 0.3) transparent;
 }
+
+/* ============================================================
+ * Phase D — DS-canvas class set (DeliverIT brand).
+ * Activated by `.ds-refresh` on the root (toggled in
+ * applyDesignTokens when `dsRefresh` is on). All rules below are
+ * scoped to `.ds-refresh` so legacy chrome is byte-identical when
+ * the flag is off.
+ * ============================================================ */
+
+.ds-refresh {
+  /* tabular numerals across the new chrome */
+  font-feature-settings: 'tnum' 1, 'cv01' 1, 'ss01' 1;
+}
+
+.ds-refresh body,
+.ds-refresh .app-shell {
+  font-family: var(--font-sans);
+  letter-spacing: -0.005em;
+}
+
+.ds-refresh .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Typography utilities ---------- */
+.ds-refresh .h1            { font-size: var(--font-size-h1); font-weight: 600; line-height: 1.15; letter-spacing: -0.011em; margin: 0; }
+.ds-refresh .h2            { font-size: var(--font-size-h2); font-weight: 600; line-height: 1.15; letter-spacing: -0.011em; margin: 0; }
+.ds-refresh .h3            { font-size: var(--font-size-h3); font-weight: 600; line-height: 1.30; margin: 0; }
+.ds-refresh .body          { font-size: var(--font-size-body); line-height: 1.45; }
+.ds-refresh .body-sm       { font-size: var(--font-size-body-sm); line-height: 1.45; }
+.ds-refresh .compact       { font-size: var(--font-size-compact); line-height: 1.45; }
+.ds-refresh .compact-sm    { font-size: var(--font-size-compact-sm); line-height: 1.45; }
+.ds-refresh .label-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
+.ds-refresh .muted         { color: var(--color-text-muted); }
+.ds-refresh .subtle        { color: var(--color-text-subtle); }
+
+/* ---------- Card surfaces ---------- */
+.ds-refresh .card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.ds-refresh .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  gap: 12px;
+}
+.ds-refresh .card-header h3 { font-size: var(--font-size-h3); font-weight: 600; margin: 0; }
+.ds-refresh .card-body { padding: 16px 20px; }
+
+/* ---------- Banner ---------- */
+.ds-refresh .banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.ds-refresh .banner-danger     { background: var(--color-status-danger-bg);   border-color: var(--color-status-danger); }
+.ds-refresh .banner-warning    { background: var(--color-status-warning-bg);  border-color: var(--color-status-warning); }
+.ds-refresh .banner-info       { background: var(--color-status-info-bg);     border-color: var(--color-status-info); }
+.ds-refresh .banner-active     { background: var(--color-status-active-bg);   border-color: var(--color-status-active); }
+.ds-refresh .banner-title      { font-weight: 600; font-size: var(--font-size-body); color: var(--color-text); }
+.ds-refresh .banner-body       { font-size: var(--font-size-body-sm); color: var(--color-text-muted); margin-top: 2px; }
+
+/* ---------- KPI strip + tiles ---------- */
+.ds-refresh .kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.ds-refresh .kpi {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ds-refresh .kpi.tone-active   { border-left-color: var(--color-status-active); }
+.ds-refresh .kpi.tone-warning  { border-left-color: var(--color-status-warning); }
+.ds-refresh .kpi.tone-danger   { border-left-color: var(--color-status-danger); }
+.ds-refresh .kpi.tone-critical { border-left-color: var(--color-status-critical); }
+.ds-refresh .kpi.tone-info     { border-left-color: var(--color-status-info); }
+.ds-refresh .kpi-label {
+  font-size: var(--font-size-compact-sm);
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ds-refresh .kpi-value {
+  font-size: var(--font-size-kpi);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+.ds-refresh .kpi-value .unit { font-size: 60%; font-weight: 500; color: var(--color-text-muted); }
+.ds-refresh .kpi-delta {
+  font-size: var(--font-size-compact-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+}
+.ds-refresh .kpi-delta.up   { color: var(--color-status-active); }
+.ds-refresh .kpi-delta.down { color: var(--color-status-danger); }
+.ds-refresh .kpi-foot { font-size: var(--font-size-compact-sm); color: var(--color-text-subtle); }
+
+/* ---------- Quadrant grid ---------- */
+.ds-refresh .quad-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.ds-refresh .quad {
+  padding: 16px 20px;
+  border-right: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+}
+.ds-refresh .quad:nth-child(2n)   { border-right: 0; }
+.ds-refresh .quad:nth-last-child(-n+2) { border-bottom: 0; }
+.ds-refresh .quad.tone-active   { background: var(--color-status-active-bg); }
+.ds-refresh .quad.tone-warning  { background: var(--color-status-warning-bg); }
+.ds-refresh .quad.tone-danger   { background: var(--color-status-danger-bg); }
+.ds-refresh .quad.tone-critical { background: var(--color-status-critical-bg); }
+.ds-refresh .quad.tone-info     { background: var(--color-status-info-bg); }
+.ds-refresh .quad-head { display: flex; justify-content: space-between; align-items: center; }
+.ds-refresh .quad-title { font-size: var(--font-size-body); font-weight: 600; }
+.ds-refresh .quad-score {
+  font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 8px;
+}
+.ds-refresh .quad-score .out { font-size: 50%; color: var(--color-text-muted); font-weight: 500; }
+.ds-refresh .quad-bar {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.ds-refresh .quad-bar i { display: block; height: 100%; background: var(--color-accent); border-radius: 2px; }
+.ds-refresh .quad.tone-active   .quad-bar i { background: var(--color-status-active); }
+.ds-refresh .quad.tone-warning  .quad-bar i { background: var(--color-status-warning); }
+.ds-refresh .quad.tone-danger   .quad-bar i { background: var(--color-status-danger); }
+.ds-refresh .quad.tone-critical .quad-bar i { background: var(--color-status-critical); }
+.ds-refresh .quad-meta { font-size: var(--font-size-compact-sm); color: var(--color-text-muted); margin-top: 6px; }
+
+/* ---------- Tone dots + chips ---------- */
+.ds-refresh .tone-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-text-muted);
+  display: inline-block;
+  flex-shrink: 0;
+}
+.ds-refresh .tone-dot.tone-active   { background: var(--color-status-active); }
+.ds-refresh .tone-dot.tone-warning  { background: var(--color-status-warning); }
+.ds-refresh .tone-dot.tone-danger   { background: var(--color-status-danger); }
+.ds-refresh .tone-dot.tone-critical { background: var(--color-status-critical); }
+.ds-refresh .tone-dot.tone-info     { background: var(--color-status-info); }
+
+.ds-refresh .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-compact-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.ds-refresh .badge-outline { background: transparent; }
+.ds-refresh .badge-active   { background: var(--color-status-active-bg);   border-color: var(--color-status-active);   color: var(--color-status-active); }
+.ds-refresh .badge-warning  { background: var(--color-status-warning-bg);  border-color: var(--color-status-warning);  color: var(--color-status-warning); }
+.ds-refresh .badge-danger   { background: var(--color-status-danger-bg);   border-color: var(--color-status-danger);   color: var(--color-status-danger); }
+.ds-refresh .badge-info     { background: var(--color-status-info-bg);     border-color: var(--color-status-info);     color: var(--color-status-info); }
+.ds-refresh .badge .dot {
+  width: 6px; height: 6px; border-radius: 999px; background: currentColor; display: inline-block;
+}
+
+/* ---------- Skill chip ---------- */
+.ds-refresh .skill-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-size: var(--font-size-compact-sm);
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+/* ---------- Buttons (.btn) ---------- */
+.ds-refresh .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--motion-duration-fast), color var(--motion-duration-fast), border-color var(--motion-duration-fast);
+}
+.ds-refresh .btn-sm  { height: 28px; padding: 0 10px; font-size: var(--font-size-compact); }
+.ds-refresh .btn-md  { height: 32px; padding: 0 12px; font-size: var(--font-size-body-sm); }
+.ds-refresh .btn-lg  { height: 38px; padding: 0 16px; font-size: var(--font-size-body); }
+.ds-refresh .btn-primary {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-color: var(--color-accent);
+}
+.ds-refresh .btn-primary:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.ds-refresh .btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.ds-refresh .btn-secondary:hover { background: var(--color-row-hover); }
+.ds-refresh .btn-tertiary {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+}
+.ds-refresh .btn-ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.ds-refresh .btn-ghost:hover { background: var(--color-row-hover); color: var(--color-text); }
+
+.ds-refresh .icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-control);
+  background: transparent; border: 1px solid transparent;
+  color: var(--color-text-muted); cursor: pointer;
+}
+.ds-refresh .icon-btn:hover { background: var(--color-row-hover); color: var(--color-text); }
+.ds-refresh .icon-btn-sm { width: 26px; height: 26px; }
+
+/* ---------- Inputs ---------- */
+.ds-refresh .input {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-body-sm);
+  font-family: inherit;
+}
+.ds-refresh .input-sm { height: 28px; font-size: var(--font-size-compact); }
+.ds-refresh .input:focus { outline: 2px solid var(--focus-ring-color); outline-offset: 1px; }
+
+/* ---------- Compact tables ---------- */
+.ds-refresh .table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-body-sm);
+}
+.ds-refresh .table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: var(--font-size-compact-sm);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+.ds-refresh .table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text);
+}
+.ds-refresh .table tr:last-child td { border-bottom: 0; }
+.ds-refresh .table tr:hover td { background: var(--color-row-hover); }
+.ds-refresh .table-compact td,
+.ds-refresh .table-compact th { padding: 6px 10px; }
+
+/* ---------- Variance bar (.varbar) ---------- */
+.ds-refresh .varbar {
+  position: relative;
+  height: 8px;
+  background: var(--color-surface-alt);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+.ds-refresh .varbar::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--color-border-strong);
+}
+.ds-refresh .varbar i {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--color-status-active);
+  border-radius: 2px;
+}
+.ds-refresh .varbar i.neg { background: var(--color-status-danger); }
+
+/* ---------- External link tile ---------- */
+.ds-refresh .ext-tile {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: background var(--motion-duration-fast), border-color var(--motion-duration-fast);
+}
+.ds-refresh .ext-tile:hover { background: var(--color-row-hover); border-color: var(--color-border-strong); }
+.ds-refresh .ext-tile .ext-icon {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-weight: 600;
+  font-size: 12px;
+}
+.ds-refresh .ext-tile .ext-title { font-weight: 500; font-size: var(--font-size-body-sm); }
+.ds-refresh .ext-tile .ext-meta  { font-size: var(--font-size-compact-sm); color: var(--color-text-muted); margin-top: 2px; }
+
 
 /* V2.1-G: Colour-blind safe palette — swaps RAG status tokens globally
    when the tenant has enabled colour-blind mode via OrgConfig.
