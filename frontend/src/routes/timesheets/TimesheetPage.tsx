@@ -14,7 +14,7 @@ import { fetchAssignments } from '@/lib/api/assignments';
 import { formatDateRange } from '@/lib/format-date';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchMyTimesheetWeek, UpsertEntryInput } from '@/lib/api/timesheets';
-import { Button, IconButton, Modal, Popover, Table, Textarea, type Column } from '@/components/ds';
+import { Button, IconButton, Modal, Popover, Table, Textarea, Timeline, type Column, type TimelineSegment } from '@/components/ds';
 
 // ISO week helpers ─────────────────────────────────────────────────────────────
 
@@ -628,8 +628,122 @@ export function TimesheetPage(): JSX.Element {
     );
   }
 
+  // ds-trunk-13 — KPI + hero Timeline header for the redesigned weekly grid.
+  const weekKpis = (() => {
+    const entries = week?.entries ?? [];
+    const filed = entries.reduce((sum, e) => sum + (e.hours || 0), 0);
+    const expected = 40;
+    const variance = filed - expected;
+    const statusLabel =
+      week?.status === 'APPROVED'
+        ? 'Approved'
+        : week?.status === 'SUBMITTED'
+          ? 'Awaiting review'
+          : week?.status === 'REJECTED'
+            ? 'Rejected'
+            : 'Draft';
+    const statusTone: 'active' | 'warning' | 'danger' | 'neutral' =
+      week?.status === 'APPROVED'
+        ? 'active'
+        : week?.status === 'SUBMITTED'
+          ? 'warning'
+          : week?.status === 'REJECTED'
+            ? 'danger'
+            : 'neutral';
+    return { filed, expected, variance, statusLabel, statusTone };
+  })();
+
+  const heroSegments: TimelineSegment[] = (() => {
+    if (!week) return [];
+    type Acc = { projectId: string; hours: number; minDate: string; maxDate: string };
+    const byProject = new Map<string, Acc>();
+    for (const e of week.entries) {
+      const cur = byProject.get(e.projectId);
+      if (cur) {
+        cur.hours += e.hours;
+        if (e.date < cur.minDate) cur.minDate = e.date;
+        if (e.date > cur.maxDate) cur.maxDate = e.date;
+      } else {
+        byProject.set(e.projectId, { projectId: e.projectId, hours: e.hours, minDate: e.date, maxDate: e.date });
+      }
+    }
+    const status = week.status === 'APPROVED' ? 'booked' : week.status === 'SUBMITTED' ? 'proposed' : week.status === 'REJECTED' ? 'released' : 'draft';
+    const out: TimelineSegment[] = [];
+    for (const p of byProject.values()) {
+      const projectName = projectNameMap.get(p.projectId) ?? 'Project';
+      out.push({
+        id: p.projectId,
+        label: `${projectName} · ${p.hours.toFixed(1)}h`,
+        startDate: p.minDate,
+        endDate: p.maxDate,
+        status,
+        allocationPercent: Math.round((p.hours / 40) * 100),
+      });
+    }
+    return out.sort((a, b) => (b.allocationPercent ?? 0) - (a.allocationPercent ?? 0));
+  })();
+
+  const weekEndStr = (() => {
+    const d = new Date(weekStart);
+    d.setUTCDate(d.getUTCDate() + 6);
+    return d.toISOString().slice(0, 10);
+  })();
+
   return (
     <PageContainer testId="timesheet-page" viewport>
+      {/* KPI strip + hero Timeline — ds-trunk-13 surface #10 chrome refresh */}
+      <div
+        className="kpi-strip"
+        aria-label="Timesheet summary"
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}
+      >
+        <KpiTile
+          label="Filed"
+          value={`${weekKpis.filed.toFixed(1)}h`}
+          tone={weekKpis.filed === 0 ? 'danger' : weekKpis.variance < -0.5 ? 'warning' : 'active'}
+        />
+        <KpiTile label="Expected" value={`${weekKpis.expected}h`} tone="neutral" />
+        <KpiTile
+          label="Variance"
+          value={`${weekKpis.variance >= 0 ? '+' : ''}${weekKpis.variance.toFixed(1)}h`}
+          tone={weekKpis.variance < -0.5 ? 'warning' : weekKpis.variance > 4 ? 'info' : 'active'}
+        />
+        <KpiTile label="Status" value={weekKpis.statusLabel} tone={weekKpis.statusTone} />
+      </div>
+
+      {heroSegments.length > 0 && (
+        <div
+          style={{
+            marginBottom: 'var(--space-4)',
+            padding: 'var(--space-3)',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+            <span style={{ fontSize: 12, color: 'var(--color-text-subtle)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              This week's logged hours by project
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+              {weekStart} – {weekEndStr}
+            </span>
+          </div>
+          <div style={{ height: 120 }}>
+            <Timeline
+              segments={heroSegments}
+              colorMode="lifecycle"
+              variant="stacked"
+              size="md"
+              rangeStart={weekStart}
+              rangeEnd={weekEndStr}
+              showToday
+              ariaLabel="Logged hours by project for this week"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Week Navigation */}
       <div className="timesheet-nav" style={{ position: 'relative' }}>
         <Button aria-label="Previous week" variant="secondary" onClick={() => navigateWeek(-1)} type="button">
@@ -967,5 +1081,65 @@ function DescriptionPopover({
         onChange={(e) => setValue(e.target.value)}
       />
     </Modal>
+  );
+}
+
+// ds-trunk-13 — KPI tile used in the timesheet weekly header strip.
+function KpiTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'active' | 'warning' | 'danger' | 'info' | 'neutral';
+}): JSX.Element {
+  const borderColor =
+    tone === 'active'
+      ? 'var(--color-status-active)'
+      : tone === 'warning'
+        ? 'var(--color-status-warning)'
+        : tone === 'danger'
+          ? 'var(--color-status-danger)'
+          : tone === 'info'
+            ? 'var(--color-status-info)'
+            : 'var(--color-border-strong)';
+  return (
+    <div
+      className="kpi-strip__item"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        padding: 'var(--space-3) var(--space-4)',
+        background: 'var(--color-surface)',
+        borderRadius: 'var(--radius-card)',
+        border: '1px solid var(--color-border)',
+        borderLeft: `3px solid ${borderColor}`,
+        boxShadow: 'var(--shadow-card)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 11,
+          color: 'var(--color-text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 22,
+          fontWeight: 600,
+          color: 'var(--color-text)',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
