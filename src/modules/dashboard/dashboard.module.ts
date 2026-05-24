@@ -24,10 +24,12 @@ import { ProjectManagerDashboardQueryService } from './application/project-manag
 import { ResourceManagerDashboardQueryService } from './application/resource-manager-dashboard-query.service';
 import { RoleDashboardQueryService } from './application/role-dashboard-query.service';
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
+import { DirectorAnomalyDetectionService } from './application/director-anomaly-detection.service';
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
 import { UnifiedApprovalQueueService } from './application/unified-approval-queue.service';
+import { DirectorAnomaliesController } from './presentation/director-anomalies.controller';
 import { PersonProfileController } from './presentation/person-profile.controller';
 import { PortfolioDashboardController } from './presentation/portfolio-dashboard.controller';
 import { RoleDashboardController } from './presentation/role-dashboard.controller';
@@ -38,7 +40,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
   imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
-  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController],
+  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController],
   providers: [
     {
       provide: HrActionCardsService,
@@ -53,6 +55,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     {
       provide: PersonProfileService,
       useFactory: (prisma: PrismaService) => new PersonProfileService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: DirectorAnomalyDetectionService,
+      useFactory: (prisma: PrismaService) => new DirectorAnomalyDetectionService(prisma),
       inject: [PrismaService],
     },
     PortfolioDashboardService,
@@ -105,6 +112,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     HrActionCardsService,
     UnifiedApprovalQueueService,
     PersonProfileService,
+    DirectorAnomalyDetectionService,
   ],
 })
 export class DashboardModule {}
