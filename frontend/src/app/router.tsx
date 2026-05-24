@@ -69,6 +69,7 @@ import { StaffingRequestsPage } from '@/routes/staffing-requests/StaffingRequest
 import { StaffingRequestDetailPage } from '@/routes/staffing-requests/StaffingRequestDetailPage';
 import { CreateStaffingRequestPage } from '@/routes/staffing-requests/CreateStaffingRequestPage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
+import { HomeRedirect } from '@/routes/HomeRedirect';
 import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
 import { IntegrationsPage } from '@/routes/integrations/IntegrationsPage';
 import { MetadataAdminPage } from '@/routes/metadata-admin/MetadataAdminPage';
@@ -137,7 +138,7 @@ function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
 }
 
 const dashboardChildren = [
-  { element: <DashboardPage />, path: '/' },
+  { element: <HomeRedirect />, path: '/' },
   { element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><LazyPage><PlannedVsActualPage /></LazyPage></RoleGuard>, path: 'dashboard/planned-vs-actual' },
   // Sprint F-0.11 (Decision-11) — merged Manager + Exec dashboards.
   // The per-role routes below remain for direct access; the merged routes
