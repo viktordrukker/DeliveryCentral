@@ -14,6 +14,7 @@ import { TipTrigger } from '@/components/common/TipBalloon';
 import { approveTimesheet, rejectTimesheet } from '@/lib/api/timesheets';
 import { approveLeaveRequest, rejectLeaveRequest } from '@/lib/api/leaveRequests';
 import { LeaveDecisionDrawer, type LeaveDecisionTarget } from '@/components/time-management/LeaveDecisionDrawer';
+import { TimesheetInspectorDrawer, type TimesheetInspectorTarget } from '@/components/time-management/TimesheetInspectorDrawer';
 import { httpGet } from '@/lib/api/http-client';
 import {
   fetchApprovalQueue,
@@ -122,9 +123,15 @@ export function TimeManagementPage(): JSX.Element {
   const [rejectionReasons, setRejectionReasons] = useState<RejectionReason[]>([]);
   // ds-trunk-11 — leave decision drawer state (per surface #7)
   const [leaveDrawerTarget, setLeaveDrawerTarget] = useState<ApprovalQueueItem | null>(null);
+  // ds-trunk-12 — timesheet inspector drawer state (per surface #11)
+  const [timesheetDrawerTarget, setTimesheetDrawerTarget] = useState<ApprovalQueueItem | null>(null);
 
   const openLeaveDecisionDrawer = (item: ApprovalQueueItem): void => {
     setLeaveDrawerTarget(item);
+  };
+
+  const openTimesheetInspectorDrawer = (item: ApprovalQueueItem): void => {
+    setTimesheetDrawerTarget(item);
   };
 
   const advanceToNextPendingLeave = useCallback((currentId: string): void => {
@@ -132,6 +139,13 @@ export function TimeManagementPage(): JSX.Element {
       (q) => q.type === 'leave' && (q.status === 'SUBMITTED' || q.status === 'PENDING') && q.id !== currentId,
     );
     setLeaveDrawerTarget(next ?? null);
+  }, [queue]);
+
+  const advanceToNextPendingTimesheet = useCallback((currentId: string): void => {
+    const next = queue.find(
+      (q) => q.type === 'timesheet' && (q.status === 'SUBMITTED' || q.status === 'PENDING') && q.id !== currentId,
+    );
+    setTimesheetDrawerTarget(next ?? null);
   }, [queue]);
 
   const ms = monthStr(year, month);
@@ -338,10 +352,11 @@ export function TimeManagementPage(): JSX.Element {
                           </div>
                         );
                       }
+                      // Timesheet items open the inspector drawer (KPI triple +
+                      // anomalies + reject-with-reason). Same Law 3 auto-advance.
                       return (
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <Button type="button" variant="primary" size="sm" onClick={() => handleApprove(item)} style={{ fontSize: 10 }}>Approve</Button>
-                          <Button type="button" variant="secondary" size="sm" onClick={() => handleReject(item)} style={{ fontSize: 10 }}>Reject</Button>
+                          <Button type="button" variant="primary" size="sm" onClick={() => openTimesheetInspectorDrawer(item)} style={{ fontSize: 10 }}>Review…</Button>
                         </div>
                       );
                     } },
@@ -478,6 +493,20 @@ export function TimeManagementPage(): JSX.Element {
         }}
         onError={(msg) => toast.error(msg)}
       />
+
+      <TimesheetInspectorDrawer
+        open={timesheetDrawerTarget !== null}
+        target={timesheetDrawerTarget ? toTimesheetTarget(timesheetDrawerTarget) : null}
+        onClose={() => setTimesheetDrawerTarget(null)}
+        onDecided={(decision) => {
+          toast.success(`${decision === 'approved' ? 'Approved' : 'Rejected'} ${timesheetDrawerTarget?.personName ?? ''}`);
+          setTick((t) => t + 1);
+        }}
+        onAdvance={() => {
+          if (timesheetDrawerTarget) advanceToNextPendingTimesheet(timesheetDrawerTarget.id);
+        }}
+        onError={(msg) => toast.error(msg)}
+      />
     </PageContainer>
   );
 }
@@ -492,6 +521,19 @@ function toDecisionTarget(item: ApprovalQueueItem): LeaveDecisionTarget {
     leaveEndDate: item.leaveEndDate,
     leaveDays: item.leaveDays,
     notes: item.notes,
+    submittedAt: item.submittedAt,
+  };
+}
+
+function toTimesheetTarget(item: ApprovalQueueItem): TimesheetInspectorTarget {
+  return {
+    id: item.id,
+    personId: item.personId,
+    personName: item.personName,
+    weekStart: item.weekStart ?? '',
+    totalHours: item.totalHours,
+    overtimeHours: item.overtimeHours,
+    status: item.status,
     submittedAt: item.submittedAt,
   };
 }
