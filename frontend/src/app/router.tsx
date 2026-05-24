@@ -104,6 +104,7 @@ import { NotFoundPage } from '@/routes/NotFoundPage';
 import { LoadingState } from '@/components/common/LoadingState';
 
 // Code-split heavy chart/dashboard pages (Phase 16-02)
+const ApprovalsPage = lazy(() => import('@/routes/approvals/ApprovalsPage').then(m => ({ default: m.ApprovalsPage })));
 const DeliveryManagerDashboardPage = lazy(() => import('@/routes/dashboard/DeliveryManagerDashboardPage').then(m => ({ default: m.DeliveryManagerDashboardPage })));
 const DirectorDashboardPage = lazy(() => import('@/routes/dashboard/DirectorDashboardPage').then(m => ({ default: m.DirectorDashboardPage })));
 const EmployeeDashboardPage = lazy(() => import('@/routes/dashboard/EmployeeDashboardPage').then(m => ({ default: m.EmployeeDashboardPage })));
@@ -180,6 +181,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/director',
+  },
+  {
+    element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
+    path: 'approvals',
   },
   {
     element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><PortfolioRadiatorPage /></RoleGuard>,
