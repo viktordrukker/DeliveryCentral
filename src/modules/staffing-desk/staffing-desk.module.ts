@@ -12,11 +12,13 @@ import { SupplyProfileService } from './application/supply-profile.service';
 import { TeamBuilderService } from './application/team-builder.service';
 import { PlannerScenarioService } from './application/planner-scenario.service';
 import { WorkforcePlannerService } from './application/workforce-planner.service';
+import { JqlService } from './application/jql/jql.service';
+import { JqlController } from './presentation/jql.controller';
 import { StaffingDeskController } from './presentation/staffing-desk.controller';
 
 @Module({
   imports: [PlatformSettingsModule],
-  controllers: [StaffingDeskController],
+  controllers: [StaffingDeskController, JqlController],
   providers: [
     {
       provide: StaffingDeskService,
@@ -57,6 +59,11 @@ import { StaffingDeskController } from './presentation/staffing-desk.controller'
     {
       provide: PlannerScenarioService,
       useFactory: (prisma: PrismaService) => new PlannerScenarioService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: JqlService,
+      useFactory: (prisma: PrismaService) => new JqlService(prisma),
       inject: [PrismaService],
     },
   ],
