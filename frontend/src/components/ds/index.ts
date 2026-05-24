@@ -88,6 +88,8 @@ export { VarianceBar } from './VarianceBar';
 export type { VarianceBarTone, VarianceBarProps } from './VarianceBar';
 export { Donut } from './Donut';
 export type { DonutTone, DonutProps } from './Donut';
+export { GanttRow } from './GanttRow';
+export type { GanttRowTone, GanttRowProps } from './GanttRow';
 
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
