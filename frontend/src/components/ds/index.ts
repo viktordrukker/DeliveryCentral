@@ -71,6 +71,16 @@ export type {
   BalanceMeterBreakdownEntry,
   BalanceMeterProps,
 } from './BalanceMeter';
+
+// Phase A0 — DS canvas atoms (DS/chrome.jsx). Lightweight building blocks
+// consumed by the redesigned pages and the new app frame.
+export { Avatar, initials, nameHue } from './Avatar';
+export type { AvatarSize, AvatarProps } from './Avatar';
+export { Money } from './Money';
+export type { MoneyProps } from './Money';
+export { Pct } from './Pct';
+export type { PctProps } from './Pct';
+
 export { CheckboxGroup } from './CheckboxGroup';
 export { RadioGroup } from './RadioGroup';
 export { Combobox } from './Combobox';
