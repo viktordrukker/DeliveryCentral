@@ -2,7 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-import { ProjectPulseSnapshotDto } from './contracts/project-pulse-snapshot.dto';
+import {
+  ProjectPulseActivityEventDto,
+  ProjectPulseDecisionDto,
+  ProjectPulseExternalLinkDto,
+  ProjectPulseExternalLinkKind,
+  ProjectPulseMilestonesAggDto,
+  ProjectPulsePositionSummaryDto,
+  ProjectPulseSnapshotDto,
+  ProjectPulseStaffingSummaryDto,
+} from './contracts/project-pulse-snapshot.dto';
 import { RadiatorScoringService } from './radiator-scoring.service';
 
 /**
@@ -47,31 +56,65 @@ export class ProjectPulseQueryService {
       throw new NotFoundException(`Project ${projectId} not found.`);
     }
 
-    const [radiator, positions, budget, nextMilestone, topRisks, nextDecision] =
-      await Promise.all([
-        this.radiator.computeRadiator(projectId),
-        this.aggregatePositions(projectId),
-        this.aggregateBudget(projectId),
-        this.findNextMilestone(projectId),
-        this.findTopRisks(projectId),
-        this.findNextDecision(projectId),
-      ]);
+    const [
+      radiator,
+      positions,
+      budget,
+      nextMilestone,
+      topRisks,
+      decisions,
+      positionsList,
+      milestonesAgg,
+      staffingSummary,
+      externalLinks,
+      recentActivity,
+    ] = await Promise.all([
+      this.radiator.computeRadiator(projectId),
+      this.aggregatePositions(projectId),
+      this.aggregateBudget(projectId),
+      this.findNextMilestone(projectId),
+      this.findTopRisks(projectId),
+      this.findPendingDecisions(projectId),
+      this.listOpenAndProposedPositions(projectId),
+      this.aggregateMilestones(projectId),
+      this.aggregateStaffing(projectId),
+      this.listExternalLinks(projectId),
+      this.listRecentActivity(projectId),
+    ]);
+
+    const quadrants = radiator.quadrants.map((q) => ({
+      key: q.key,
+      score: q.score,
+      band: q.band,
+    }));
+
+    const nextDecision = decisions.length > 0 ? decisions[0]! : null;
 
     return {
       projectId,
       generatedAt: new Date().toISOString(),
+      // Original S3-1 shape (preserved).
       overallScore: radiator.overallScore,
       overallBand: radiator.overallBand,
-      quadrants: radiator.quadrants.map((q) => ({
-        key: q.key,
-        score: q.score,
-        band: q.band,
-      })),
+      quadrants,
       positions,
       budget,
       nextMilestone,
       topRisks,
       nextDecision,
+      // FE-#259 additive shape.
+      rag: {
+        score: radiator.overallScore,
+        band: radiator.overallBand,
+        quadrants,
+      },
+      positionsList,
+      risks: topRisks,
+      decisions,
+      milestones: milestonesAgg,
+      recentActivity,
+      staffingSummary,
+      externalLinks,
     };
   }
 
@@ -205,60 +248,226 @@ export class ProjectPulseQueryService {
     return scored;
   }
 
-  private async findNextDecision(
+  private async findPendingDecisions(
     projectId: string,
-  ): Promise<ProjectPulseSnapshotDto['nextDecision']> {
-    const candidates: ProjectPulseSnapshotDto['nextDecision'][] = [];
+  ): Promise<ProjectPulseDecisionDto[]> {
+    const candidates: ProjectPulseDecisionDto[] = [];
 
-    const pendingActivation = await this.prisma.projectActivationApproval.findFirst({
-      where: { projectId, decision: null },
-      orderBy: { requestedAt: 'desc' },
-      select: { id: true, requestedAt: true },
-    });
-    if (pendingActivation) {
+    const [pendingActivation, pendingBudgets, proposedChanges] = await Promise.all([
+      this.prisma.projectActivationApproval.findMany({
+        where: { projectId, decision: null },
+        orderBy: { requestedAt: 'desc' },
+        select: { id: true, requestedAt: true },
+        take: 5,
+      }),
+      this.prisma.budgetApproval.findMany({
+        where: { projectBudget: { projectId }, status: 'PENDING' },
+        orderBy: { requestedAt: 'desc' },
+        select: { id: true, requestedAt: true },
+        take: 5,
+      }),
+      this.prisma.projectChangeRequest.findMany({
+        where: { projectId, status: 'PROPOSED' },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, createdAt: true },
+        take: 5,
+      }),
+    ]);
+
+    const now = Date.now();
+    const ageDanger = 7 * 24 * 60 * 60 * 1000;
+    const ageWarn = 2 * 24 * 60 * 60 * 1000;
+    const severityFromAge = (at: Date): ProjectPulseDecisionDto['severity'] => {
+      const age = now - at.getTime();
+      if (age >= ageDanger) return 'danger';
+      if (age >= ageWarn) return 'warning';
+      return 'info';
+    };
+
+    for (const a of pendingActivation) {
       candidates.push({
         kind: 'activation_approval',
-        id: pendingActivation.id,
+        id: a.id,
         summary: 'Project activation awaiting decision',
-        pendingSince: pendingActivation.requestedAt.toISOString(),
+        pendingSince: a.requestedAt.toISOString(),
+        severity: severityFromAge(a.requestedAt),
       });
     }
-
-    const pendingBudget = await this.prisma.budgetApproval.findFirst({
-      where: { projectBudget: { projectId }, status: 'PENDING' },
-      orderBy: { requestedAt: 'desc' },
-      select: { id: true, requestedAt: true },
-    });
-    if (pendingBudget) {
+    for (const b of pendingBudgets) {
       candidates.push({
         kind: 'budget_approval',
-        id: pendingBudget.id,
+        id: b.id,
         summary: 'Budget change awaiting decision',
-        pendingSince: pendingBudget.requestedAt.toISOString(),
+        pendingSince: b.requestedAt.toISOString(),
+        severity: severityFromAge(b.requestedAt),
       });
     }
-
-    const proposedChange = await this.prisma.projectChangeRequest.findFirst({
-      where: { projectId, status: 'PROPOSED' },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, title: true, createdAt: true },
-    });
-    if (proposedChange) {
+    for (const c of proposedChanges) {
       candidates.push({
         kind: 'change_request',
-        id: proposedChange.id,
-        summary: `Change request: ${proposedChange.title}`,
-        pendingSince: proposedChange.createdAt.toISOString(),
+        id: c.id,
+        summary: `Change request: ${c.title}`,
+        pendingSince: c.createdAt.toISOString(),
+        severity: severityFromAge(c.createdAt),
       });
     }
 
-    if (candidates.length === 0) return null;
-    // Most-recent first by `pendingSince`.
-    candidates.sort((a, b) => {
-      const ta = a ? new Date(a.pendingSince).getTime() : 0;
-      const tb = b ? new Date(b.pendingSince).getTime() : 0;
-      return tb - ta;
-    });
-    return candidates[0] ?? null;
+    candidates.sort(
+      (a, b) => new Date(b.pendingSince).getTime() - new Date(a.pendingSince).getTime(),
+    );
+    return candidates;
   }
+
+  private async listOpenAndProposedPositions(
+    projectId: string,
+  ): Promise<ProjectPulsePositionSummaryDto[]> {
+    const rows = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId,
+        fillStatus: {
+          in: ['DRAFT', 'OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'],
+        },
+      },
+      select: {
+        id: true,
+        role: true,
+        fillStatus: true,
+        activePersonId: true,
+        activeAllocationPercent: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: { startDate: 'asc' },
+      take: 200,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      role: r.role,
+      fillStatus: r.fillStatus,
+      activePersonId: r.activePersonId,
+      allocationPercent:
+        r.activeAllocationPercent === null ? null : Number(r.activeAllocationPercent),
+      startDate: r.startDate.toISOString().slice(0, 10),
+      endDate: r.endDate.toISOString().slice(0, 10),
+    }));
+  }
+
+  private async aggregateMilestones(projectId: string): Promise<ProjectPulseMilestonesAggDto> {
+    const rows = await this.prisma.projectMilestone.findMany({
+      where: { projectId },
+      select: { status: true, plannedDate: true },
+    });
+    const total = rows.length;
+    const completed = rows.filter((r) => r.status === 'HIT').length;
+    const ratio = total > 0 ? Math.round((completed / total) * 10_000) / 10_000 : 0;
+    const upcoming = rows
+      .filter((r) => r.status !== 'HIT')
+      .sort((a, b) => a.plannedDate.getTime() - b.plannedDate.getTime());
+    const nextGateDate = upcoming[0]
+      ? upcoming[0].plannedDate.toISOString().slice(0, 10)
+      : null;
+    return { total, completed, ratio, nextGateDate };
+  }
+
+  private async aggregateStaffing(
+    projectId: string,
+  ): Promise<ProjectPulseStaffingSummaryDto> {
+    const [activeFills, openOrProposed, recentReleased] = await Promise.all([
+      this.prisma.projectPosition.findMany({
+        where: {
+          projectId,
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED'] },
+        },
+        select: { activePersonId: true, activeAllocationPercent: true },
+      }),
+      this.prisma.projectPosition.count({
+        where: { projectId, fillStatus: { in: ['OPEN', 'PROPOSED'] } },
+      }),
+      this.prisma.projectPositionFillHistory.count({
+        where: {
+          position: { projectId },
+          changeType: 'RELEASED',
+          occurredAt: { gte: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+    ]);
+
+    const totalActiveAllocationPercent = activeFills.reduce(
+      (sum, f) => sum + (f.activeAllocationPercent === null ? 0 : Number(f.activeAllocationPercent)),
+      0,
+    );
+    const distinctActivePersons = new Set(
+      activeFills.map((f) => f.activePersonId).filter((p): p is string => p !== null),
+    ).size;
+
+    return {
+      totalActiveAllocationPercent,
+      distinctActivePersons,
+      openOrProposed,
+      releasedLast28d: recentReleased,
+    };
+  }
+
+  private async listExternalLinks(
+    projectId: string,
+  ): Promise<ProjectPulseExternalLinkDto[]> {
+    const rows = await this.prisma.projectExternalLink.findMany({
+      where: { projectId, archivedAt: null },
+      select: {
+        id: true,
+        provider: true,
+        externalProjectKey: true,
+        externalProjectName: true,
+        externalUrl: true,
+      },
+      take: 20,
+    });
+    return rows.map((r) => ({
+      kind: providerToKind(r.provider),
+      title: r.externalProjectName ?? r.externalProjectKey,
+      href: r.externalUrl ?? '',
+      meta: {
+        provider: r.provider,
+        externalProjectKey: r.externalProjectKey,
+      },
+    }));
+  }
+
+  private async listRecentActivity(
+    projectId: string,
+  ): Promise<ProjectPulseActivityEventDto[]> {
+    // AuditLog is hash-chained and tracks aggregateType/aggregateId/eventName.
+    // Direct project mutations land as aggregateType='Project'; we pull the
+    // most recent 20 to surface in the activity rail.
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        aggregateType: 'Project',
+        aggregateId: projectId,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdAt: true,
+        actorId: true,
+        eventName: true,
+      },
+      take: 20,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      at: r.createdAt.toISOString(),
+      actorPersonId: r.actorId,
+      kind: r.eventName,
+      summary: r.eventName,
+    }));
+  }
+}
+
+function providerToKind(provider: string): ProjectPulseExternalLinkKind {
+  const p = provider.toLowerCase();
+  if (p.includes('jira')) return 'jira';
+  if (p.includes('confluence')) return 'confluence';
+  if (p.includes('teams')) return 'teams';
+  if (p.includes('gantt')) return 'gantt';
+  return 'other';
 }

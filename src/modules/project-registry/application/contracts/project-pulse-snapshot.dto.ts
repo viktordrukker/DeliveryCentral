@@ -1,12 +1,23 @@
 /**
- * Sprint 3 / S3-1 — Project Pulse (lean PM Decision Dashboard) snapshot.
+ * Sprint 3 / S3-1 + FE-#259 — Project Pulse aggregator snapshot.
  *
  * Distinct from the legacy `PulseSummaryDto` (mood surveys + activity stream).
- * This DTO is the single-screen "what is the state of this project right now"
- * read for any role. UI lands when DS regen completes; this PR is BE only.
+ * Single-screen "what is the state of this project right now" payload that
+ * powers the redesigned Project Pulse tab.
+ *
+ * Backward-compat: original S3-1 fields (overallScore / overallBand /
+ * quadrants[] / positions{} aggregate / nextMilestone singleton /
+ * topRisks[] / nextDecision singleton) are preserved AND the FE-requested
+ * FE-#259 shape (rag / risks / decisions / milestones aggregate /
+ * recentActivity / staffingSummary / externalLinks / positionsList) is
+ * served in parallel from the same endpoint. No consumers of the original
+ * shape exist outside tests; both shapes co-render so the FE migration is
+ * a drop-in without a flag flip.
  */
 
 import type { RadiatorBand } from './radiator.dto';
+
+// ─── Original S3-1 shape (kept stable) ──────────────────────────────────────
 
 export type ProjectPulseDecisionKind =
   | 'budget_approval'
@@ -21,13 +32,9 @@ export interface ProjectPulseQuadrantDto {
 }
 
 export interface ProjectPulsePositionsDto {
-  /** Lean staffing aggregate count of OPEN positions on the project. */
   open: number;
-  /** Lean staffing aggregate count of PROPOSED positions on the project. */
   proposed: number;
-  /** Active fills (BOOKED + ONBOARDING + ASSIGNED). */
   active: number;
-  /** All non-terminal positions on the project (everything except RELEASED). */
   totalNonReleased: number;
 }
 
@@ -38,7 +45,6 @@ export interface ProjectPulseBudgetDto {
   earnedValue: number | null;
   plannedToDate: number | null;
   eac: number | null;
-  /** (AC − PTD) / PTD, signed; null when PTD is missing or zero. */
   variancePct: number | null;
 }
 
@@ -63,17 +69,82 @@ export interface ProjectPulseRiskDto {
 
 export interface ProjectPulseNextDecisionDto {
   kind: ProjectPulseDecisionKind;
-  /** Source row id (UUID). Internal use; UI surfaces a publicId if it routes. */
   id: string;
-  /** Free-text summary of what needs deciding. */
   summary: string;
-  /** When the decision was first proposed/requested. ISO-8601. */
   pendingSince: string;
 }
+
+// ─── FE-#259 additive shape ─────────────────────────────────────────────────
+
+export interface ProjectPulseRagDto {
+  score: number;
+  band: RadiatorBand;
+  quadrants: ProjectPulseQuadrantDto[];
+}
+
+/** One row per non-terminal ProjectPosition on the project. */
+export interface ProjectPulsePositionSummaryDto {
+  id: string;
+  role: string;
+  fillStatus: string;
+  activePersonId: string | null;
+  allocationPercent: number | null;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ProjectPulseMilestonesAggDto {
+  total: number;
+  completed: number;
+  ratio: number;
+  nextGateDate: string | null;
+}
+
+export interface ProjectPulseDecisionDto extends ProjectPulseNextDecisionDto {
+  /** Severity hint for the UI's decision card. */
+  severity: 'info' | 'warning' | 'danger';
+}
+
+export interface ProjectPulseActivityEventDto {
+  id: string;
+  at: string;
+  actorPersonId: string | null;
+  kind: string;
+  summary: string;
+}
+
+export interface ProjectPulseStaffingSummaryDto {
+  /** Sum of allocationPercent across active fills on this project. */
+  totalActiveAllocationPercent: number;
+  /** Distinct count of people with active fills on this project. */
+  distinctActivePersons: number;
+  /** OPEN + PROPOSED positions. */
+  openOrProposed: number;
+  /** RELEASED in the last 28d. */
+  releasedLast28d: number;
+}
+
+export type ProjectPulseExternalLinkKind =
+  | 'jira'
+  | 'confluence'
+  | 'teams'
+  | 'gantt'
+  | 'other';
+
+export interface ProjectPulseExternalLinkDto {
+  kind: ProjectPulseExternalLinkKind;
+  title: string;
+  href: string;
+  meta: Record<string, unknown>;
+}
+
+// ─── Top-level payload ──────────────────────────────────────────────────────
 
 export interface ProjectPulseSnapshotDto {
   projectId: string;
   generatedAt: string;
+
+  // Original S3-1 fields (unchanged; tests rely on these).
   overallScore: number;
   overallBand: RadiatorBand;
   quadrants: ProjectPulseQuadrantDto[];
@@ -82,4 +153,14 @@ export interface ProjectPulseSnapshotDto {
   nextMilestone: ProjectPulseNextMilestoneDto | null;
   topRisks: ProjectPulseRiskDto[];
   nextDecision: ProjectPulseNextDecisionDto | null;
+
+  // FE-#259 additive fields.
+  rag: ProjectPulseRagDto;
+  positionsList: ProjectPulsePositionSummaryDto[];
+  risks: ProjectPulseRiskDto[];
+  decisions: ProjectPulseDecisionDto[];
+  milestones: ProjectPulseMilestonesAggDto;
+  recentActivity: ProjectPulseActivityEventDto[];
+  staffingSummary: ProjectPulseStaffingSummaryDto;
+  externalLinks: ProjectPulseExternalLinkDto[];
 }
