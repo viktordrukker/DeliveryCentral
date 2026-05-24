@@ -3508,27 +3508,32 @@ model ProjectRetrospective {
 }
 
 model ProjectMilestone {
-  id                    String          @id @default(uuid()) @db.Uuid
-  projectId             String          @db.Uuid
-  workstreamId          String?         @db.Uuid
+  id                    String             @id @default(uuid()) @db.Uuid
+  projectId             String             @db.Uuid
+  workstreamId          String?            @db.Uuid
   name                  String
   description           String?
-  plannedDate           DateTime        @db.Date
-  actualDate            DateTime?       @db.Date
-  status                MilestoneStatus @default(PLANNED)
-  progressPct           Int             @default(0)
-  dependsOnMilestoneIds String[]        @default([])
-  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  plannedDate           DateTime           @db.Date
+  actualDate            DateTime?          @db.Date
+  status                MilestoneStatus    @default(PLANNED)
+  progressPct           Int                @default(0)
+  dependsOnMilestoneIds String[]           @default([])
+  createdAt             DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime           @updatedAt @db.Timestamptz(3)
   // F-30 / D-103 + DM-5-5 round 5 — actor-audit columns.
-  createdByPersonId     String?         @db.Uuid
-  updatedByPersonId     String?         @db.Uuid
-  project               Project         @relation(fields: [projectId], references: [id])
-  createdByPerson       Person?         @relation("ProjectMilestoneCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson       Person?         @relation("ProjectMilestoneUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  createdByPersonId     String?            @db.Uuid
+  updatedByPersonId     String?            @db.Uuid
+  project               Project            @relation(fields: [projectId], references: [id])
+  // FE-#260 — typed FK to workstream (column existed since v2-0 stub but
+  // ran without a constraint; the Pulse Gantt swimlanes need this to
+  // group milestones by workstream).
+  workstream            ProjectWorkstream? @relation(fields: [workstreamId], references: [id], onDelete: SetNull)
+  createdByPerson       Person?            @relation("ProjectMilestoneCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson       Person?            @relation("ProjectMilestoneUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@index([projectId, plannedDate])
   @@index([projectId, status])
+  @@index([workstreamId])
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
   @@map("project_milestones")
@@ -3769,6 +3774,8 @@ model ProjectWorkstream {
   createdByPerson    Person?   @relation("ProjectWorkstreamCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
   updatedByPerson    Person?   @relation("ProjectWorkstreamUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   project            Project   @relation(fields: [projectId], references: [id])
+  // FE-#260 — inverse of ProjectMilestone.workstream.
+  milestones         ProjectMilestone[]
 
   @@index([projectId])
   @@index([createdByPersonId])

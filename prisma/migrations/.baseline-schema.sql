@@ -136,6 +136,13 @@ CREATE TYPE public."ContactKind" AS ENUM (
 );
 --
 --
+CREATE TYPE public."DigestSchedule" AS ENUM (
+    'IMMEDIATE',
+    'DAILY_9AM',
+    'WEEKLY_MON_9AM'
+);
+--
+--
 CREATE TYPE public."EmploymentEventKind" AS ENUM (
     'HIRE',
     'TERMINATE',
@@ -2345,6 +2352,19 @@ CREATE TABLE public.person_cost_rates (
 );
 --
 --
+CREATE TABLE public.person_notification_digest (
+    "personId" uuid NOT NULL,
+    "digestSchedule" public."DigestSchedule" DEFAULT 'IMMEDIATE'::public."DigestSchedule" NOT NULL,
+    "quietHoursStart" text,
+    "quietHoursEnd" text,
+    "quietHoursEmailOnly" boolean DEFAULT true NOT NULL,
+    "updatedAt" timestamp(3) with time zone NOT NULL,
+    CONSTRAINT person_notification_digest_quiet_hours_end_format_check CHECK ((("quietHoursEnd" IS NULL) OR ("quietHoursEnd" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text))),
+    CONSTRAINT person_notification_digest_quiet_hours_pairing_check CHECK (((("quietHoursStart" IS NULL) AND ("quietHoursEnd" IS NULL)) OR (("quietHoursStart" IS NOT NULL) AND ("quietHoursEnd" IS NOT NULL)))),
+    CONSTRAINT person_notification_digest_quiet_hours_start_format_check CHECK ((("quietHoursStart" IS NULL) OR ("quietHoursStart" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'::text)))
+);
+--
+--
 CREATE TABLE public.person_notification_preferences (
     id uuid NOT NULL,
     "personId" uuid NOT NULL,
@@ -3312,6 +3332,10 @@ ALTER TABLE ONLY public.period_locks
 --
 ALTER TABLE ONLY public.person_cost_rates
     ADD CONSTRAINT person_cost_rates_pkey PRIMARY KEY (id);
+--
+--
+ALTER TABLE ONLY public.person_notification_digest
+    ADD CONSTRAINT person_notification_digest_pkey PRIMARY KEY ("personId");
 --
 --
 ALTER TABLE ONLY public.person_notification_preferences
@@ -4710,6 +4734,9 @@ CREATE INDEX "project_milestones_projectId_status_idx" ON public.project_milesto
 CREATE INDEX "project_milestones_updatedByPersonId_idx" ON public.project_milestones USING btree ("updatedByPersonId");
 --
 --
+CREATE INDEX "project_milestones_workstreamId_idx" ON public.project_milestones USING btree ("workstreamId");
+--
+--
 CREATE INDEX "project_radiator_overrides_overriddenByPersonId_idx" ON public.project_radiator_overrides USING btree ("overriddenByPersonId");
 --
 --
@@ -6050,6 +6077,10 @@ ALTER TABLE ONLY public.person_cost_rates
     ADD CONSTRAINT "person_cost_rates_currencyCode_fkey" FOREIGN KEY ("currencyCode") REFERENCES public."Currency"(code) ON UPDATE CASCADE ON DELETE RESTRICT;
 --
 --
+ALTER TABLE ONLY public.person_notification_digest
+    ADD CONSTRAINT "person_notification_digest_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+--
+--
 ALTER TABLE ONLY public.person_notification_preferences
     ADD CONSTRAINT "person_notification_preferences_personId_fkey" FOREIGN KEY ("personId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE CASCADE;
 --
@@ -6176,6 +6207,10 @@ ALTER TABLE ONLY public.project_milestones
 --
 ALTER TABLE ONLY public.project_milestones
     ADD CONSTRAINT "project_milestones_updatedByPersonId_fkey" FOREIGN KEY ("updatedByPersonId") REFERENCES public."Person"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+--
+--
+ALTER TABLE ONLY public.project_milestones
+    ADD CONSTRAINT "project_milestones_workstreamId_fkey" FOREIGN KEY ("workstreamId") REFERENCES public.project_workstreams(id) ON UPDATE CASCADE ON DELETE SET NULL;
 --
 --
 ALTER TABLE ONLY public.project_radiator_overrides
