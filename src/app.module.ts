@@ -32,6 +32,7 @@ import { PlatformSettingsModule } from './modules/platform-settings/platform-set
 import { PulseModule } from './modules/pulse/pulse.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SearchModule } from './modules/search/search.module';
 import { SetupModule } from './modules/setup/setup.module';
 import { RequireSetupCompleteGuard } from './modules/setup/application/require-setup-complete.guard';
 import { ProjectPositionsModule } from './modules/project-positions/project-positions.module';
@@ -101,6 +102,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     LeaveRequestsModule,
     OvertimeModule,
     ReportsModule,
+    SearchModule,
     SetupModule,
   ],
   providers: [
