@@ -47,8 +47,19 @@ const sampleRows: BenchEnrichedRowDto[] = [
   },
 ];
 
-describe('BenchEnrichedPanel', () => {
-  it('renders one row per person with role/grade/office line', async () => {
+describe('BenchEnrichedPanel — D4 fidelity', () => {
+  it('renders the 4-tile KPI strip', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-kpi-strip')).toBeInTheDocument());
+    const strip = screen.getByTestId('bench-kpi-strip');
+    expect(strip.textContent).toContain('On bench');
+    expect(strip.textContent).toContain('Idle > 14 days');
+    expect(strip.textContent).toContain('Availability · 14d');
+    expect(strip.textContent).toContain('Suggested fills');
+  });
+
+  it('renders one row per person with role/grade/office cell', async () => {
     fetchEnrichedBench.mockResolvedValue(sampleRows);
     renderRoute(<BenchEnrichedPanel />);
     await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
@@ -56,26 +67,27 @@ describe('BenchEnrichedPanel', () => {
     expect(screen.getByText(/Senior Engineer · L5 · London/)).toBeInTheDocument();
   });
 
-  it('shows summary chip with on-bench count + total availability + avg days', async () => {
+  it('sorts by daysOnBench DESC (longest idle first)', async () => {
     fetchEnrichedBench.mockResolvedValue(sampleRows);
-    renderRoute(<BenchEnrichedPanel />);
-    await waitFor(() => expect(screen.getByText(/2 on bench/)).toBeInTheDocument());
-    expect(screen.getByText(/180h available/)).toBeInTheDocument();
-    expect(screen.getByText(/avg 43d/)).toBeInTheDocument();
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('Grace Hopper'); // 72d
+    expect(rows[1].textContent).toContain('Ada Lovelace'); // 14d
   });
 
   it('shows danger tone for >60 days on bench', async () => {
     fetchEnrichedBench.mockResolvedValue([sampleRows[1]]);
-    const { container } = renderRoute(<BenchEnrichedPanel />);
+    renderRoute(<BenchEnrichedPanel />);
     await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument());
     const daysCell = screen.getByText('72d');
     expect(daysCell.style.color).toContain('status-danger');
   });
 
-  it('shows match-count when suggested projects exist', async () => {
+  it('renders match-count badge when suggested projects exist', async () => {
     fetchEnrichedBench.mockResolvedValue(sampleRows);
     renderRoute(<BenchEnrichedPanel />);
-    await waitFor(() => expect(screen.getByText('2 matches')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/2 matches/)).toBeInTheDocument());
   });
 
   it('shows em-dash when no suggested projects', async () => {
@@ -85,10 +97,18 @@ describe('BenchEnrichedPanel', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders an empty-bench message when the endpoint returns []', async () => {
+  it('shows status badge per row (On bench / Engaged)', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(screen.getAllByText('On bench').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Engaged')).toBeInTheDocument();
+  });
+
+  it('renders empty-bench card when the endpoint returns []', async () => {
     fetchEnrichedBench.mockResolvedValue([]);
     renderRoute(<BenchEnrichedPanel />);
-    await waitFor(() => expect(screen.getByText('No one on bench')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('bench-empty')).toBeInTheDocument());
   });
 
   it('shows error state on fetch failure', async () => {
