@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
+import { isFeatureEnabled } from '@/lib/feature-flags';
+import { PersonProfilePanel } from '@/components/people/PersonProfilePanel';
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
 import { AuthTokenField } from '@/components/common/AuthTokenField';
@@ -37,6 +39,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal } = useAuth();
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const canManageLifecycle = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   const canView360 = hasAnyRole(principal?.roles, THREESIXTY_REVIEW_ROLES);
   const canEditSkills = hasAnyRole(principal?.roles, SKILL_EDIT_ROLES);
@@ -212,6 +215,14 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             ]}
           />
         </SectionCard>
+      </PageContainer>
+    );
+  }
+
+  if (dsRefreshEnabled && id) {
+    return (
+      <PageContainer testId="employee-details-page">
+        <PersonProfilePanel personId={id} />
       </PageContainer>
     );
   }
