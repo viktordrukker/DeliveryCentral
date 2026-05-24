@@ -25,14 +25,22 @@ import { ResourceManagerDashboardQueryService } from './application/resource-man
 import { RoleDashboardQueryService } from './application/role-dashboard-query.service';
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
+import { HrActionCardsService } from './application/hr-action-cards.service';
 import { PortfolioDashboardController } from './presentation/portfolio-dashboard.controller';
 import { RoleDashboardController } from './presentation/role-dashboard.controller';
 import { WorkloadDashboardController } from './presentation/workload-dashboard.controller';
+import { HrActionCardsController } from './presentation/hr-action-cards.controller';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
   imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
-  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController],
+  controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController],
   providers: [
+    {
+      provide: HrActionCardsService,
+      useFactory: (prisma: PrismaService) => new HrActionCardsService(prisma),
+      inject: [PrismaService],
+    },
     PortfolioDashboardService,
     DeliveryManagerDashboardQueryService,
     DirectorDashboardQueryService,
@@ -80,6 +88,7 @@ import { WorkloadDashboardController } from './presentation/workload-dashboard.c
     RoleDashboardQueryService,
     PendingActionsQueryService,
     DirectorSlaSummaryQueryService,
+    HrActionCardsService,
   ],
 })
 export class DashboardModule {}
