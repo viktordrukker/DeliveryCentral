@@ -47,28 +47,40 @@ describe('DirectorAnomalyRail', () => {
     expect(screen.getByText('Atlas — phase 2 slipped')).toBeInTheDocument();
   });
 
-  it('shows a deep-link "Go →" per card', async () => {
+  it('shows a kind-specific deep-link button per card', async () => {
     fetchDirectorAnomalies.mockResolvedValue(sampleItems);
     renderRoute(<DirectorAnomalyRail />);
     await waitFor(() => expect(screen.getByTestId('director-anomaly-rail')).toBeInTheDocument());
-    const links = screen.getAllByRole('link', { name: /Go/ });
-    expect(links).toHaveLength(2);
-    expect(links[0].getAttribute('href')).toBe('/projects/apollo?tab=budget');
+    expect(screen.getByRole('link', { name: /Open budget/ }).getAttribute('href')).toBe(
+      '/projects/apollo?tab=budget',
+    );
+    expect(screen.getByRole('link', { name: /Open Gantt/ }).getAttribute('href')).toBe(
+      '/projects/atlas?tab=milestones',
+    );
   });
 
-  it('shows kind labels via StatusBadge chips', async () => {
+  it('shows kind labels (Budget · over, Milestone · slip, …)', async () => {
     fetchDirectorAnomalies.mockResolvedValue(sampleItems);
     renderRoute(<DirectorAnomalyRail />);
-    await waitFor(() => expect(screen.getByText('Budget')).toBeInTheDocument());
-    expect(screen.getByText('Milestone')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Budget · over')).toBeInTheDocument());
+    expect(screen.getByText('Milestone · slip')).toBeInTheDocument();
   });
 
-  it('renders a quiet-state message when there are no anomalies', async () => {
+  it('uses canvas tone-dots (one per row)', async () => {
+    fetchDirectorAnomalies.mockResolvedValue(sampleItems);
+    const { container } = renderRoute(<DirectorAnomalyRail />);
+    await waitFor(() => expect(screen.getByTestId('director-anomaly-rail')).toBeInTheDocument());
+    expect(container.querySelectorAll('.tone-dot').length).toBe(sampleItems.length);
+  });
+
+  it('renders a quiet-state card with "All clear" when there are no anomalies', async () => {
     fetchDirectorAnomalies.mockResolvedValue([]);
     renderRoute(<DirectorAnomalyRail />);
     await waitFor(() =>
-      expect(screen.getByText(/No anomalies detected/i)).toBeInTheDocument(),
+      expect(screen.getByTestId('director-anomaly-rail-empty')).toBeInTheDocument(),
     );
+    expect(screen.getByText('All clear')).toBeInTheDocument();
+    expect(screen.getByText(/No anomalies detected/i)).toBeInTheDocument();
   });
 
   it('renders an error state when the endpoint fails', async () => {
