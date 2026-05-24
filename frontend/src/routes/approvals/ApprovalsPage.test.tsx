@@ -58,9 +58,10 @@ describe('ApprovalsPage', () => {
     fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
     renderRoute(<ApprovalsPage />);
     await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Position proposals' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Budget' })).toBeInTheDocument();
+    const filters = screen.getByTestId('approvals-filters');
+    expect(filters.textContent).toContain('All');
+    expect(filters.textContent).toContain('Position proposals');
+    expect(filters.textContent).toContain('Budget');
   });
 
   it('clicking a filter chip refetches with the source param', async () => {
@@ -69,16 +70,16 @@ describe('ApprovalsPage', () => {
     renderRoute(<ApprovalsPage />);
     await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
     fetchUnifiedApprovals.mockClear();
-    await user.click(screen.getByRole('button', { name: 'Budget' }));
+    await user.click(screen.getByRole('button', { name: /Budget · 1/ }));
     await waitFor(() =>
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['budget'], pageSize: 100 }),
     );
   });
 
-  it('shows breached SLA badge on rows past the deadline', async () => {
+  it('shows the Breached SLA badge on rows past the deadline', async () => {
     fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
     renderRoute(<ApprovalsPage />);
-    await waitFor(() => expect(screen.getByText('breached')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Breached')).toBeInTheDocument());
   });
 
   it('shows empty-state when the queue is empty', async () => {

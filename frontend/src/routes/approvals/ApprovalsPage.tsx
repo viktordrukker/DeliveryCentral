@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
 import {
   type ApprovalQueueItemDto,
@@ -25,6 +23,17 @@ const SOURCES: { id: ApprovalQueueSource | 'all'; label: string }[] = [
   { id: 'skill-review', label: 'Skill reviews' },
 ];
 
+type SourceTone = 'info' | 'warning' | 'danger' | 'critical' | 'active';
+
+const SOURCE_TONE: Record<ApprovalQueueSource, SourceTone> = {
+  'position-proposal': 'warning',
+  budget: 'danger',
+  activation: 'info',
+  leave: 'info',
+  case: 'warning',
+  'skill-review': 'info',
+};
+
 const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
   'position-proposal': 'Position',
   budget: 'Budget',
@@ -40,30 +49,39 @@ const SLA_TONE: Record<SlaStage, 'active' | 'warning' | 'danger'> = {
   breached: 'danger',
 };
 
+const SLA_LABEL: Record<SlaStage, string> = {
+  'on-track': 'On track',
+  'due-soon': 'Due soon',
+  breached: 'Breached',
+};
+
 function isValidSource(s: string | null): s is ApprovalQueueSource | 'all' {
   return !!s && SOURCES.some((src) => src.id === s);
 }
 
 function ageLabel(hours: number): string {
   if (hours < 1) return '<1h';
-  if (hours < 24) return `${Math.floor(hours)}h`;
-  return `${Math.floor(hours / 24)}d`;
+  if (hours < 24) return `${Math.floor(hours)}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 /**
- * Phase B3 — unified approvals queue page.
+ * Phase D5 — Approvals queue full canvas fidelity.
  *
- * Backed by `GET /api/approvals/unified` (issue 264, BE shipped). Renders
- * the merged approvals across six sources (position-proposal / budget /
- * activation / leave / case / skill-review) with source filter + SLA
- * badges + deep-link per row.
+ * Backed by `GET /api/approvals/unified` (issue 264). Renders the merged
+ * approvals across six sources using the .ds-refresh class set (D0):
+ *   - Source filter chips (.chip / .chip-active)
+ *   - Card-wrapped list with per-row tone-dot + source label + title +
+ *     project + submitter + when + SLA badge + Open deep-link
  *
- * Reference: DS/page-approvals.jsx.
+ * Reference: DS/page-approvals.jsx queue list.
  */
 export function ApprovalsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const sourceParam = searchParams.get('source');
-  const activeFilter: ApprovalQueueSource | 'all' = isValidSource(sourceParam) ? sourceParam : 'all';
+  const activeFilter: ApprovalQueueSource | 'all' = isValidSource(sourceParam)
+    ? sourceParam
+    : 'all';
   const [items, setItems] = useState<ApprovalQueueItemDto[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +93,8 @@ export function ApprovalsPage(): JSX.Element {
     setError(null);
     void (async () => {
       try {
-        const sources = activeFilter === 'all' ? undefined : [activeFilter as ApprovalQueueSource];
+        const sources =
+          activeFilter === 'all' ? undefined : [activeFilter as ApprovalQueueSource];
         const response = await fetchUnifiedApprovals({ sources, pageSize: 100 });
         if (active) {
           setItems(response.items);
@@ -103,6 +122,17 @@ export function ApprovalsPage(): JSX.Element {
     });
   }
 
+  // Aggregate counts for the filter chips
+  const counts = items
+    ? items.reduce<Record<string, number>>(
+        (acc, item) => {
+          acc[item.source] = (acc[item.source] ?? 0) + 1;
+          return acc;
+        },
+        { all: items.length },
+      )
+    : {};
+
   return (
     <PageContainer testId="approvals-page">
       <PageHeader
@@ -111,35 +141,41 @@ export function ApprovalsPage(): JSX.Element {
         subtitle="Unified queue across position proposals, budgets, activations, leave, cases, and skill reviews."
       />
 
+      {/* Source filter chips */}
       <div
         className="approvals-filters"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-          marginBottom: 12,
-          padding: '4px 0',
-        }}
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0 12px' }}
+        data-testid="approvals-filters"
       >
         {SOURCES.map((src) => {
-          const active = src.id === activeFilter;
+          const isActive = src.id === activeFilter;
+          const count = counts[src.id] ?? 0;
           return (
             <button
               key={src.id}
               type="button"
               onClick={() => setFilter(src.id)}
-              className={active ? 'chip chip--active' : 'chip'}
+              className={`badge ${isActive ? 'badge-active' : 'badge-outline'}`}
               style={{
-                background: active ? 'var(--color-accent)' : 'var(--color-surface-alt)',
-                color: active ? 'var(--color-text-inverse)' : 'var(--color-text)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 999,
                 cursor: 'pointer',
+                fontFamily: 'inherit',
                 fontSize: 12,
-                padding: '4px 12px',
+                fontWeight: isActive ? 600 : 500,
+                padding: '4px 10px',
               }}
             >
               {src.label}
+              {count > 0 ? (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontVariantNumeric: 'tabular-nums',
+                    opacity: 0.85,
+                  }}
+                >
+                  · {count}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -150,85 +186,103 @@ export function ApprovalsPage(): JSX.Element {
 
       {!loading && !error && items != null ? (
         items.length === 0 ? (
-          <EmptyState
-            title="Inbox zero"
-            description={
-              activeFilter === 'all'
-                ? 'There are no approvals waiting in the unified queue.'
-                : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`
-            }
-          />
+          <div className="card" data-testid="approvals-empty">
+            <div className="card-header">
+              <h3>Inbox zero</h3>
+            </div>
+            <div className="card-body">
+              <p className="compact muted" style={{ margin: 0 }}>
+                {activeFilter === 'all'
+                  ? 'There are no approvals waiting in the unified queue.'
+                  : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`}
+              </p>
+            </div>
+          </div>
         ) : (
-          <>
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 8px 4px' }}>
-              {total} item{total === 1 ? '' : 's'}
-            </p>
-            <ul
-              data-testid="approvals-list"
-              style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
-            >
-              {items.map((item) => (
-                <li
-                  key={`${item.source}-${item.id}`}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '88px 28px 1fr 120px 80px 60px',
-                    gap: 10,
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 6,
-                    borderLeft:
-                      item.slaStage && item.slaStage !== 'on-track'
-                        ? `3px solid var(--color-status-${SLA_TONE[item.slaStage]})`
-                        : '3px solid var(--color-border)',
-                  }}
-                >
-                  <StatusBadge tone="info" variant="chip" label={SOURCE_LABEL[item.source]} />
-                  {item.submittedBy ? (
-                    <Avatar name={item.submittedBy.displayName} size="xs" />
-                  ) : (
-                    <span />
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: 'var(--color-text)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.title}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                      {item.submittedBy?.displayName ?? 'unknown'} ·{' '}
-                      {new Date(item.submittedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-subtle)' }}>
-                    {item.slaDueAt ? `Due ${new Date(item.slaDueAt).toLocaleDateString()}` : '—'}
-                  </span>
-                  {item.slaStage ? (
-                    <StatusBadge tone={SLA_TONE[item.slaStage]} variant="chip" label={item.slaStage} />
-                  ) : (
-                    <span style={{ fontSize: 11, color: 'var(--color-text-subtle)', textAlign: 'right' }}>
-                      {ageLabel(item.ageHours)}
-                    </span>
-                  )}
-                  <Link
-                    to={item.href}
-                    style={{ fontSize: 12, color: 'var(--color-accent)', textDecoration: 'none', textAlign: 'right' }}
+          <div className="card" data-testid="approvals-list-card">
+            <div className="card-header">
+              <h3>
+                {activeFilter === 'all'
+                  ? 'All approvals'
+                  : SOURCES.find((s) => s.id === activeFilter)?.label}
+              </h3>
+              <span className="compact muted">
+                {total} item{total === 1 ? '' : 's'} · sorted by SLA × age
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }} data-testid="approvals-list">
+              {items.map((item, i) => {
+                const tone = SOURCE_TONE[item.source];
+                return (
+                  <div
+                    key={`${item.source}-${item.id}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      padding: '12px 20px',
+                      borderTop:
+                        i === 0 ? 0 : '1px solid var(--color-border-subtle)',
+                    }}
                   >
-                    Open →
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
+                    <span
+                      className={`tone-dot tone-${tone}`}
+                      style={{ flexShrink: 0 }}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="compact muted"
+                      style={{ minWidth: 80, fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {SOURCE_LABEL[item.source]}
+                    </span>
+                    {item.submittedBy ? (
+                      <Avatar name={item.submittedBy.displayName} size="xs" />
+                    ) : (
+                      <span style={{ width: 20 }} />
+                    )}
+                    <div className="body-sm" style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: 'var(--color-text)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.title}
+                      </div>
+                      <div className="compact muted" style={{ marginTop: 2 }}>
+                        {item.submittedBy?.displayName ?? 'unknown submitter'} ·{' '}
+                        {ageLabel(item.ageHours)}
+                      </div>
+                    </div>
+                    {item.slaStage ? (
+                      <span
+                        className={`badge badge-${SLA_TONE[item.slaStage]}`}
+                        style={{ whiteSpace: 'nowrap' }}
+                      >
+                        <span className="dot" />
+                        {SLA_LABEL[item.slaStage]}
+                      </span>
+                    ) : (
+                      <span className="compact muted" style={{ whiteSpace: 'nowrap' }}>
+                        no SLA
+                      </span>
+                    )}
+                    <Link
+                      to={item.href}
+                      className="btn btn-tertiary btn-sm"
+                      style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+                    >
+                      Open →
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )
       ) : null}
     </PageContainer>
