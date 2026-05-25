@@ -3184,7 +3184,7 @@ Specific bugs surfaced by the audit. Most are quick fixes.
 
 - [x] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref); shipped 2026-05-25. — FE
 - [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
-- [ ] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). Add `@deprecated` JSDoc to the legacy one; codemod imports. — FE
+- [x] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). _shipped 2026-05-25: `@deprecated` JSDoc + migration recipe added to the legacy file pointing at `SparklineDs`. Per-site sweep tracked separately as V2-B.4 (6 remaining imports)._ — FE
 - [ ] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). Fix as part of V2-E. — FE
 - [ ] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref). — FE
 
