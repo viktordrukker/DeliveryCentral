@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { Pct } from '@/components/ds';
 import { checkAllocationConflict } from '@/lib/api/staffing-requests';
 
 interface Props {
@@ -70,10 +71,10 @@ export function UtilisationPeek({ personId, startDate, endDate, allocationPercen
     <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span>
-          Utilisation preview: existing {existing}% + new {allocationPercent}%
+          Utilisation preview: existing <Pct value={existing} fractionDigits={0} /> + new <Pct value={allocationPercent} fractionDigits={0} />
         </span>
         <span style={{ fontWeight: 600, color: isOver ? 'var(--color-status-danger)' : 'var(--color-text)' }}>
-          {isLoading ? '…' : `${total ?? 0}%`}
+          {isLoading ? '…' : <Pct value={total ?? 0} fractionDigits={0} />}
         </span>
       </div>
       <div style={{ position: 'relative', background: 'var(--color-border)', borderRadius: 3, height: 8, overflow: 'hidden' }}>
@@ -82,7 +83,7 @@ export function UtilisationPeek({ personId, startDate, endDate, allocationPercen
       </div>
       {isOver ? (
         <div style={{ marginTop: 4, color: 'var(--color-status-danger)', fontWeight: 600 }}>
-          Over-allocated by {overflowWidth}% {'\u2014'} review or reduce this assignment.
+          Over-allocated by <Pct value={overflowWidth} fractionDigits={0} /> {'\u2014'} review or reduce this assignment.
         </div>
       ) : null}
     </div>

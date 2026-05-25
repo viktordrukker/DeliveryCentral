@@ -9,7 +9,7 @@ import {
   generateRequestsFromPlan,
   upsertRolePlan,
 } from '@/lib/api/project-role-plan';
-import { Button, Input, Select, Table, type Column } from '@/components/ds';
+import { Button, Input, Pct, Select, Table, type Column } from '@/components/ds';
 
 interface RolePlanBuilderProps {
   projectId: string;
@@ -92,7 +92,7 @@ export function RolePlanBuilder({ projectId, entries, onUpdate }: RolePlanBuilde
     { key: 'role', title: 'Role', getValue: (e) => e.roleName, render: (e) => <span style={{ fontWeight: 500 }}>{e.roleName}</span> },
     { key: 'seniority', title: 'Seniority', getValue: (e) => e.seniorityLevel ?? '', render: (e) => e.seniorityLevel || '—' },
     { key: 'hc', title: 'HC', align: 'right', width: 50, getValue: (e) => e.headcount, render: (e) => <span style={NUM}>{e.headcount}</span> },
-    { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (e) => e.allocationPercent ?? 0, render: (e) => <span style={NUM}>{e.allocationPercent ?? '—'}%</span> },
+    { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (e) => e.allocationPercent ?? 0, render: (e) => e.allocationPercent !== null && e.allocationPercent !== undefined ? <Pct value={e.allocationPercent} fractionDigits={0} /> : <span style={NUM}>—</span> },
     { key: 'source', title: 'Source', width: 80, getValue: (e) => e.source, render: (e) => <StatusBadge status={e.source.toLowerCase()} variant="chip" /> },
     { key: 'actions', title: '', width: 60, render: (e) => (
       <Button variant="danger" size="sm" onClick={() => void handleDelete(e.id)} type="button">Remove</Button>

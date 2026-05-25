@@ -10,7 +10,7 @@ import { useTitleBarActions } from '@/app/title-bar-context';
 import { ANOMALY_TYPE_LABELS, humanizeEnum } from '@/lib/labels';
 import { CreateAssignmentModal, type AssignmentModalPreFill } from '@/components/assignments/CreateAssignmentModal';
 import { BatchAssignmentConfirmModal } from '@/components/assignments/BatchAssignmentConfirmModal';
-import { DataView, type BulkAction, type RowAction } from '@/components/ds';
+import { DataView, Pct, type BulkAction, type RowAction } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -283,7 +283,7 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.project.projectCode}</span> {item.project.name}</>, title: 'Project' },
     { key: 'role', render: (item) => item.staffingRole, title: 'Role', width: 100 },
-    { key: 'alloc', align: 'right', render: (item) => `${item.allocationPercent}%`, title: 'Alloc', width: 55 },
+    { key: 'alloc', align: 'right', render: (item) => <Pct value={item.allocationPercent} fractionDigits={0} />, title: 'Alloc', width: 55 },
     { key: 'hours', align: 'right', render: (item) => `${item.effortHours}h`, title: 'Logged', width: 55 },
     { key: 'variance', render: (item) => { const d = item.effortHours - (item.allocationPercent * (standardHoursPerWeek / 100)); return <StatusBadge label={`${d > 0 ? '+' : ''}${d.toFixed(1)}h`} size="small" tone={d > 2 ? 'danger' : d < -2 ? 'warning' : 'active'} />; }, title: 'Var', width: 75 },
   ], [standardHoursPerWeek]);
@@ -292,7 +292,7 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'person', render: (item) => item.person.displayName, title: 'Person' },
     { key: 'project', render: (item) => <><span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{item.project.projectCode}</span> {item.project.name}</>, title: 'Project' },
     { key: 'role', render: (item) => item.staffingRole, title: 'Role', width: 100 },
-    { key: 'alloc', align: 'right', render: (item) => `${item.allocationPercent}%`, title: 'Alloc', width: 55 },
+    { key: 'alloc', align: 'right', render: (item) => <Pct value={item.allocationPercent} fractionDigits={0} />, title: 'Alloc', width: 55 },
     { key: 'status', render: () => <StatusBadge label="No Actual Time" size="small" tone="warning" />, title: 'Status', width: 110 },
   ], []);
 

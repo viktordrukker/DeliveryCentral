@@ -20,7 +20,7 @@ import { formatDate, formatDateTime } from '@/lib/format-date';
 import { useAssignmentDetails } from '@/features/assignments/useAssignmentDetails';
 import { useAuth } from '@/app/auth-context';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
-import { Button, DatePicker, Table, WorkflowStages, type Column } from '@/components/ds';
+import { Button, DatePicker, Pct, Table, WorkflowStages, type Column } from '@/components/ds';
 import { OnboardingScheduleModal } from '@/components/assignments/OnboardingScheduleModal';
 import {
   directorApproveAssignment,
@@ -396,7 +396,7 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
               </div>
               <div>
                 <dt>Allocation</dt>
-                <dd>{state.data.allocationPercent}%</dd>
+                <dd><Pct value={state.data.allocationPercent} fractionDigits={0} /></dd>
               </div>
               <div>
                 <dt>Date range</dt>

@@ -1,7 +1,7 @@
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { HeadcountTrendLine } from '@/components/charts/HeadcountTrendLine';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -62,7 +62,7 @@ export function HrHeadcountTab({
           columns={[
             { key: 'label', title: 'Metric', getValue: (r) => r.label, render: (r) => <span style={{ fontWeight: 500 }}>{r.label}</span> },
             { key: 'value', title: 'Count', align: 'right', getValue: (r) => r.value, render: (r) => <span style={{ ...NUM, fontWeight: 600 }}>{r.value}</span> },
-            { key: 'pct', title: '% of Total', align: 'right', getValue: (r) => totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0, render: (r) => <span style={NUM}>{totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0}%</span> },
+            { key: 'pct', title: '% of Total', align: 'right', getValue: (r) => totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0, render: (r) => <Pct value={totalHeadcount > 0 ? Math.round((r.value / totalHeadcount) * 100) : 0} fractionDigits={0} /> },
             { key: 'bar', title: 'Bar', width: 120, render: (r) => (
               <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((r.value / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: r.color }} />

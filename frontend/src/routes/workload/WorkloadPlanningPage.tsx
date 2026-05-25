@@ -15,7 +15,7 @@ import { fetchTeams } from '@/lib/api/teams';
 import { fetchWorkloadPlanning, fetchCapacityForecast, WorkloadPlanningAssignment, WorkloadPlanningResponse, CapacityForecastWeek } from '@/lib/api/workload';
 import { httpPatch } from '@/lib/api/http-client';
 import { formatDateShort } from '@/lib/format-date';
-import { Button, DatePicker, IconButton, Table, type Column } from '@/components/ds';
+import { Button, DatePicker, IconButton, Pct, Table, type Column } from '@/components/ds';
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -125,7 +125,7 @@ function AssignmentBlock({
       title={`${assignment.projectName}: ${assignment.allocationPercent}% (${assignment.validFrom} \u2013 ${assignment.validTo ?? 'open-ended'})`}
     >
       <span className="assignment-block__abbr">{assignment.projectName.slice(0, 3).toUpperCase()}</span>
-      <span className="assignment-block__pct">{assignment.allocationPercent}%</span>
+      <span className="assignment-block__pct"><Pct value={assignment.allocationPercent} fractionDigits={0} /></span>
       <span style={{ display: 'inline-flex', gap: '1px', marginTop: '1px' }}>
         <IconButton
           aria-label="Shorten by 1 week"
@@ -205,7 +205,7 @@ function DraggableWhatIfBlock({
       title={`[What-if] ${assignment.projectName}: ${assignment.allocationPercent}%`}
     >
       <span className="assignment-block__abbr">{assignment.projectName.slice(0, 3).toUpperCase()}</span>
-      <span className="assignment-block__pct">{assignment.allocationPercent}%</span>
+      <span className="assignment-block__pct"><Pct value={assignment.allocationPercent} fractionDigits={0} /></span>
       <IconButton
         aria-label="Remove assignment"
         size="sm"
@@ -626,7 +626,7 @@ export function WorkloadPlanningPage(): JSX.Element {
                   <li key={a.id} style={{ marginBottom: '2px' }}>
                     {planning?.people.find((p) => p.id === a.personId)?.displayName ?? a.personId}
                     {' \u2014 '}
-                    {a.projectName} ({a.allocationPercent}%) {a.validFrom} \u2013 {a.validTo ?? 'open'}
+                    {a.projectName} (<Pct value={a.allocationPercent} fractionDigits={0} />) {a.validFrom} \u2013 {a.validTo ?? 'open'}
                     {' '}
                     <IconButton
                       aria-label="Remove what-if assignment"
@@ -878,7 +878,7 @@ export function WorkloadPlanningPage(): JSX.Element {
                     }}
                   >
                     <span className="assignment-block__abbr">{draggedWhatIf.projectName.slice(0, 3).toUpperCase()}</span>
-                    <span className="assignment-block__pct">{draggedWhatIf.allocationPercent}%</span>
+                    <span className="assignment-block__pct"><Pct value={draggedWhatIf.allocationPercent} fractionDigits={0} /></span>
                   </div>
                 ) : null}
               </DragOverlay>

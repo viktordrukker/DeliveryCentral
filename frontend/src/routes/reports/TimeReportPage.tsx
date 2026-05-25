@@ -23,7 +23,7 @@ import { TipBalloon } from '@/components/common/TipBalloon';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { exportToXlsx } from '@/lib/export';
 import { TimeReportData, fetchTimeReport } from '@/lib/api/timesheets';
-import { Button, DatePicker, Table, type Column } from '@/components/ds';
+import { Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -135,7 +135,7 @@ export function TimeReportPage(): JSX.Element {
             <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-chart-3)' }}>
               <span className="kpi-strip__value">{data.capexHours}h</span>
               <span className="kpi-strip__label">CAPEX</span>
-              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{data.totalHours > 0 ? Math.round((data.capexHours / data.totalHours) * 100) : 0}%</span>
+              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}><Pct value={data.totalHours > 0 ? Math.round((data.capexHours / data.totalHours) * 100) : 0} fractionDigits={0} /></span>
             </div>
             <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-chart-4)' }}>
               <span className="kpi-strip__value">{data.opexHours}h</span>

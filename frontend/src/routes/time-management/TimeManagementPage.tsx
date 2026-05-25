@@ -25,7 +25,7 @@ import {
   type ComplianceRow,
 } from '@/lib/api/time-management';
 import { useOvertimeSummary } from '@/features/dashboard/useOvertimeSummary';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -396,7 +396,7 @@ export function TimeManagementPage(): JSX.Element {
               className="kpi-strip__item"
               style={{ borderLeft: `3px solid ${complianceRate >= 80 ? 'var(--color-status-active)' : 'var(--color-status-danger)'}` }}
             >
-              <span className="kpi-strip__value">{complianceRate}%</span>
+              <span className="kpi-strip__value"><Pct value={complianceRate} fractionDigits={0} /></span>
               <span className="kpi-strip__label">Compliance</span>
             </div>
             <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-active)' }}>
