@@ -253,7 +253,7 @@ export function FeatureFlagsAdminPage(): JSX.Element {
                   columns={columns}
                   rows={items}
                   getRowKey={(flag) => flag.id}
-                  data-testid={`flag-table-${category}`}
+                  testId={`flag-table-${category}`}
                 />
               </SectionCard>
             );
