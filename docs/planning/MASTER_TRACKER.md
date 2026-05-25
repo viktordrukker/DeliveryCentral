@@ -3211,7 +3211,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 - [ ] **V2-E.11** `ProjectsTab.tsx:114` raw `<table>` → DS `<Table>` (requires column-config refactor). — FE
 - [ ] **V2-E.12** `BudgetTab.tsx:198` raw `<table>` → DS `<Table>`. — FE
 - [x] **V2-E.13** `MoneyPanel.tsx:264` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Top-cost-lines (by role) → `<Table variant="compact">` with 4-column config (role tone-dot, hours, cost via Money atom, share bar). Preserves the visual mini-share-bar via render._ — FE
-- [ ] **V2-E.14** `LeaveDecisionDrawer.tsx:294` raw `<table>` → DS `<Table>`. — FE
+- [x] **V2-E.14** `LeaveDecisionDrawer.tsx:294` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: conflict-assignments table → `<Table variant="compact">` with 4-column config (project / role / alloc % / status badge). 10/10 LeaveDecisionDrawer tests pass._ — FE
 - [ ] **V2-E.15** `BenchEnrichedPanel.tsx:129` raw `<table>` → DS `<Table>`. — FE
 - [ ] **V2-E.16** `TimesheetInspectorDrawer.tsx` raw `<table>` (if present in audit list) → DS `<Table>`. — FE
 
