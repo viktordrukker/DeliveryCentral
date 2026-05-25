@@ -3199,7 +3199,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 - [ ] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. — FE
 - [ ] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. — FE
 - [x] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: Cancel/Reject/Approve footer → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
-- [ ] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. — FE
+- [x] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: same drawer-footer pattern as V2-E.4 — Cancel/Reject/Approve → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [ ] **V2-E.6** `MilestonesTab.tsx:314` raw `<button>` → DS `<Button>`. — FE
 - [ ] **V2-E.7** `DigestAndQuietHoursCard.tsx:165` raw `<button>` + `:167` button-className → DS `<Button>`. — FE
 - [ ] **V2-E.8** Remaining `no-raw-button` long-tail — sweep until count = 0. — FE
