@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { Sparkline } from '@/components/charts/Sparkline';
+import { Pct } from '@/components/ds/Pct';
 
 interface WorkloadCardProps {
   alertSeverity?: 'warning' | 'danger';
@@ -22,20 +23,20 @@ function TrendIndicator({ change }: { change: number }): JSX.Element {
   if (change > 0) {
     return (
       <span style={{ color: 'var(--color-status-active)', fontSize: '11px', marginLeft: '4px' }} title={`+${change}% vs prior period`}>
-        ↑ +{change}%
+        ↑ <Pct value={change} sign />
       </span>
     );
   }
   if (change < 0) {
     return (
       <span style={{ color: 'var(--color-status-danger)', fontSize: '11px', marginLeft: '4px' }} title={`${change}% vs prior period`}>
-        ↓ {change}%
+        ↓ <Pct value={change} />
       </span>
     );
   }
   return (
     <span style={{ color: 'var(--color-text-muted)', fontSize: '11px', marginLeft: '4px' }} title="No change vs prior period">
-      → 0%
+      → <Pct value={0} />
     </span>
   );
 }

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { Sparkline } from '@/components/charts/Sparkline';
+import { Pct } from '@/components/ds/Pct';
 
 interface RmKpiStripProps {
   utilPct: number;
@@ -46,7 +47,7 @@ export function RmKpiStrip({
           tip="Ratio of assigned people to total headcount. Target is 80%. Green = healthy, amber = watch, red = low."
           arrow="left"
         />
-        <span className="kpi-strip__value">{utilPct}%</span>
+        <span className="kpi-strip__value"><Pct value={utilPct} /></span>
         <span className="kpi-strip__label">Utilization</span>
         <div className="kpi-strip__progress">
           <div
