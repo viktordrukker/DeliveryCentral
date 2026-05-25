@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button, Drawer, FormField, Textarea } from '@/components/ds';
+import { Button, Drawer, FormField, Pct, Textarea } from '@/components/ds';
 import { PersonSelect } from '@/components/common/PersonSelect';
 import {
   fetchStaffingSuggestions,
@@ -275,7 +275,7 @@ function Inner({
                       {s.displayName}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                      Available: {Math.round(s.availableCapacityPercent)}% · Allocated: {Math.round(s.currentAllocationPercent)}%
+                      Available: <Pct value={Math.round(s.availableCapacityPercent)} fractionDigits={0} /> · Allocated: <Pct value={Math.round(s.currentAllocationPercent)} fractionDigits={0} />
                     </div>
                   </div>
                   <MatchScoreBar score={s.score} />
@@ -431,8 +431,8 @@ function CandidateRow({ candidate, onChange, onRemove }: CandidateRowProps): JSX
         {candidate.availabilityPercent !== undefined ? (
           <div>
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Available</div>
-            <div style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-              {Math.round(candidate.availabilityPercent)}%
+            <div style={{ fontSize: 13 }}>
+              <Pct value={Math.round(candidate.availabilityPercent)} fractionDigits={0} />
             </div>
           </div>
         ) : null}

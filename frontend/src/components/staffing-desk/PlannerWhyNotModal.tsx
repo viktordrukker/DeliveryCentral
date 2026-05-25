@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { fetchWhyNot, type WhyNotResponse, type WhyNotDisqualifier } from '@/lib/api/staffing-desk';
-import { Button } from '@/components/ds';
+import { Button, Pct } from '@/components/ds';
 
 interface Props {
   demandId: string;
@@ -54,7 +54,7 @@ export function PlannerWhyNotModal({ demandId, onClose }: Props): JSX.Element {
           <div style={{ fontWeight: 600, fontSize: 14 }}>Why wasn't this filled?</div>
           {result && (
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-              {result.projectName} · {result.demandRole} · {result.demandAllocationPercent}%
+              {result.projectName} · {result.demandRole} · <Pct value={result.demandAllocationPercent} fractionDigits={0} />
               {result.demandSkills.length > 0 && <span> · needs {result.demandSkills.join(', ')}</span>}
             </div>
           )}
@@ -76,7 +76,7 @@ export function PlannerWhyNotModal({ demandId, onClose }: Props): JSX.Element {
                 <span style={{ fontWeight: 500 }}>{c.personName}</span>
                 {c.grade && <span style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>{c.grade}</span>}
                 <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
-                  · {Math.round(c.skillScore * 100)}% skill · {c.availablePercent}% free
+                  · <Pct value={Math.round(c.skillScore * 100)} fractionDigits={0} /> skill · <Pct value={c.availablePercent} fractionDigits={0} /> free
                 </span>
                 {c.disqualifiers.map((dq) => (
                   <StatusBadge key={dq} label={DQ_LABEL[dq]} tone={dq === 'inactive' ? 'danger' : 'warning'} variant="chip" size="small" />

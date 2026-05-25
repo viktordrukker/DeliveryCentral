@@ -336,8 +336,8 @@ export function MoneyPanel({ dashboard, projectId }: MoneyPanelProps): JSX.Eleme
                           }}
                         />
                       </div>
-                      <span className="mono compact" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {r._share}%
+                      <span className="mono compact">
+                        <Pct value={r._share} fractionDigits={0} />
                       </span>
                     </div>
                   ),

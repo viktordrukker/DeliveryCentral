@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { PriorityBadge } from '@/components/staffing/PriorityBadge';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import type { ResourceManagerDashboardResponse } from '@/lib/api/dashboard-resource-manager';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
@@ -59,8 +59,8 @@ export function RmActionItems({
       entity: item.displayName,
       detail: <span style={{ fontSize: 11 }}>{item.teamName}</span> as React.ReactNode,
       alloc: (
-        <span style={{ ...NUM, color: 'var(--color-status-danger)', fontWeight: 600 }}>
-          {item.totalAllocationPercent}%
+        <span style={{ color: 'var(--color-status-danger)', fontWeight: 600 }}>
+          <Pct value={item.totalAllocationPercent} fractionDigits={0} />
         </span>
       ) as React.ReactNode,
       action: 'Rebalance assignments',

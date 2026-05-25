@@ -19,7 +19,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { useSortableTable } from '@/hooks/useSortableTable';
 import { exportToXlsx } from '@/lib/export';
 import { UtilizationPersonRow, UtilizationReport, fetchUtilizationReport } from '@/lib/api/utilization';
-import { Button, DatePicker, Table, type Column } from '@/components/ds';
+import { Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
 
 type UtilizationColumn = 'personName' | 'availableHours' | 'assignedHours' | 'actualHours' | 'utilizationPercent';
 
@@ -62,7 +62,7 @@ function UtilizationBar({ pct }: { pct: number }): JSX.Element {
         />
       </div>
       <span style={{ color: utilizationColor(pct), fontSize: '0.875rem', fontWeight: 600 }}>
-        {pct}%
+        <Pct value={pct} fractionDigits={0} />
       </span>
     </div>
   );

@@ -6,7 +6,7 @@ import type { FlatOrgNode } from './InteractiveOrgChart';
 import { useAuth } from '@/app/auth-context';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { humanizeEnum, ORG_UNIT_TYPE_LABELS } from '@/lib/labels';
-import { Button } from '@/components/ds';
+import { Button, Pct } from '@/components/ds';
 const PAGE_SIZE = 15;
 
 interface DepartmentSidebarDrawerProps {
@@ -124,7 +124,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
         <div className="person-drawer__section-title">Metrics</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <MetricTile label="Members" value={String(totalMembers)} sublabel={`${activeMembers} active`} />
-          <MetricTile label="Avg. Allocation" value={`${avgAllocation}%`} color={avgAllocation > 100 ? '#ef4444' : avgAllocation > 80 ? '#f59e0b' : '#22c55e'} />
+          <MetricTile label="Avg. Allocation" value={<Pct value={avgAllocation} fractionDigits={0} />} color={avgAllocation > 100 ? '#ef4444' : avgAllocation > 80 ? '#f59e0b' : '#22c55e'} />
           <MetricTile label="Overallocated" value={String(overallocated)} color={overallocated > 0 ? '#ef4444' : '#22c55e'} />
           <MetricTile label="On Bench" value={String(onBench)} color={onBench > 0 ? '#f59e0b' : '#22c55e'} />
         </div>
@@ -177,7 +177,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
                 fontSize: 11,
                 color: member.totalAllocation > 100 ? '#ef4444' : member.totalAllocation > 80 ? '#f59e0b' : member.totalAllocation === 0 ? '#94a3b8' : '#22c55e',
               }}>
-                {member.totalAllocation}%
+                <Pct value={member.totalAllocation} fractionDigits={0} />
               </span>
             </Link>
           ))}
@@ -204,7 +204,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
 
 function MetricTile({ label, value, sublabel, color }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   sublabel?: string;
   color?: string;
 }): JSX.Element {

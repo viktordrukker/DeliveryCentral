@@ -377,7 +377,7 @@ export function PlannedVsActualPage(): JSX.Element {
           <div className="kpi-strip" aria-label="Key metrics" data-testid="kpi-strip">
             <a className="kpi-strip__item" href="#detail-explorer" onClick={(e) => { e.preventDefault(); setDetailTab('matched'); }} style={{ borderLeft: `3px solid ${tc(kpis.alignmentRate, 70, 50, false)}` }}>
               <TipBalloon tip="Percentage of time records that align to an approved assignment." arrow="left" />
-              <span className="kpi-strip__value">{kpis.alignmentRate}%</span>
+              <span className="kpi-strip__value"><Pct value={kpis.alignmentRate} fractionDigits={0} /></span>
               <span className="kpi-strip__label">Alignment Rate</span>
               <div className="kpi-strip__progress"><div className="kpi-strip__progress-fill" style={{ width: `${Math.min(kpis.alignmentRate, 100)}%`, background: tc(kpis.alignmentRate, 70, 50, false) }} /></div>
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{kpis.matchedCount} of {kpis.totalRecords} aligned</span>
@@ -410,7 +410,7 @@ export function PlannedVsActualPage(): JSX.Element {
               <TipBalloon tip="Total overtime hours logged across all people in the period." arrow="left" />
               <span className="kpi-strip__value">{otData?.totalOvertimeHours ?? 0}h</span>
               <span className="kpi-strip__label">Overtime</span>
-              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{otData?.peopleWithOvertime ?? 0} people · {otData?.overtimeRate ?? 0}% rate</span>
+              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{otData?.peopleWithOvertime ?? 0} people · <Pct value={otData?.overtimeRate ?? 0} fractionDigits={0} /> rate</span>
             </a>
             <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${tc(kpis.riskProjectCount, 2, 5)}`, cursor: 'default' }}>
               <TipBalloon tip="Projects with time variance exceeding 10%." arrow="left" />

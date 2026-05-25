@@ -7,7 +7,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { formatDate } from '@/lib/format-date';
 
@@ -135,7 +135,7 @@ function MembershipsTable({ rows, muted }: MembershipsTableProps): JSX.Element {
       title: 'Alloc',
       align: 'right',
       getValue: (r) => r.allocationPercent,
-      render: (r) => <span style={NUM}>{r.allocationPercent}%</span>,
+      render: (r) => <Pct value={r.allocationPercent} fractionDigits={0} />,
     },
     {
       key: 'start',
