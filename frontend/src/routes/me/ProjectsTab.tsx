@@ -7,10 +7,11 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { Table, type Column } from '@/components/ds';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { formatDate } from '@/lib/format-date';
 
-const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
+const NUM = { fontVariantNumeric: 'tabular-nums' as const };
 
 /**
  * /me?tab=projects — My Memberships table.
@@ -109,85 +110,55 @@ interface MembershipsTableProps {
 }
 
 function MembershipsTable({ rows, muted }: MembershipsTableProps): JSX.Element {
+  const columns: Column<AssignmentDirectoryItem>[] = [
+    {
+      key: 'project',
+      title: 'Project',
+      getValue: (r) => r.project.displayName ?? 'Project',
+      render: (r) => (
+        <Link
+          to={`/projects/${r.project.id}`}
+          style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 500 }}
+        >
+          {r.project.displayName ?? 'Project'}
+        </Link>
+      ),
+    },
+    {
+      key: 'role',
+      title: 'Role',
+      getValue: (r) => r.staffingRole,
+      render: (r) => r.staffingRole,
+    },
+    {
+      key: 'alloc',
+      title: 'Alloc',
+      align: 'right',
+      getValue: (r) => r.allocationPercent,
+      render: (r) => <span style={NUM}>{r.allocationPercent}%</span>,
+    },
+    {
+      key: 'start',
+      title: 'Start',
+      getValue: (r) => r.startDate,
+      render: (r) => formatDate(r.startDate),
+    },
+    {
+      key: 'end',
+      title: 'End',
+      getValue: (r) => r.endDate ?? '',
+      render: (r) => (r.endDate ? formatDate(r.endDate) : '—'),
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      getValue: (r) => r.approvalState,
+      render: (r) => <StatusBadge status={r.approvalState} variant="chip" />,
+    },
+  ];
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table
-        className="dash-compact-table"
-        style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-body-sm, 13px)' }}
-      >
-        <thead>
-          <tr>
-            <Th>Project</Th>
-            <Th>Role</Th>
-            <Th align="right">Alloc</Th>
-            <Th>Start</Th>
-            <Th>End</Th>
-            <Th>Status</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr
-              key={r.id}
-              data-href={`/projects/${r.project.id}`}
-              style={{ opacity: muted ? 0.75 : 1, cursor: 'pointer' }}
-              onClick={() => (window.location.href = `/projects/${r.project.id}`)}
-            >
-              <Td>
-                <Link
-                  to={`/projects/${r.project.id}`}
-                  style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 500 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {r.project.displayName ?? 'Project'}
-                </Link>
-              </Td>
-              <Td>{r.staffingRole}</Td>
-              <Td style={NUM}>{r.allocationPercent}%</Td>
-              <Td>{formatDate(r.startDate)}</Td>
-              <Td>{r.endDate ? formatDate(r.endDate) : '—'}</Td>
-              <Td>
-                <StatusBadge status={r.approvalState} variant="chip" />
-              </Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ overflowX: 'auto', opacity: muted ? 0.75 : 1 }}>
+      <Table variant="compact" columns={columns} rows={rows} getRowKey={(r) => r.id} />
     </div>
-  );
-}
-
-function Th({ children, align }: { children: React.ReactNode; align?: 'left' | 'right' }): JSX.Element {
-  return (
-    <th
-      style={{
-        textAlign: align ?? 'left',
-        fontSize: 11,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        color: 'var(--color-text-subtle)',
-        padding: '8px 10px',
-        borderBottom: '1px solid var(--color-border)',
-        background: 'var(--color-surface-alt)',
-        fontWeight: 500,
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }): JSX.Element {
-  return (
-    <td
-      style={{
-        padding: '10px',
-        borderBottom: '1px solid var(--color-border-subtle, var(--color-border))',
-        color: 'var(--color-text)',
-        ...style,
-      }}
-    >
-      {children}
-    </td>
   );
 }
