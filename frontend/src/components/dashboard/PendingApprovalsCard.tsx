@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon } from '@/components/common/TipBalloon';
+import { Table, type Column } from '@/components/ds';
 import {
   type PendingActionItem,
   type PendingActionsResponse,
@@ -116,38 +117,67 @@ export function PendingApprovalsCard({ personId }: PendingApprovalsCardProps): J
             description="No items waiting on you. Browse the approval queue surfaces if you want to review history."
             title="All clear"
           />
-        ) : (
-          <table className="dash-compact-table">
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', width: 80 }}>Severity</th>
-                <th style={{ textAlign: 'left', width: 100 }}>Kind</th>
-                <th style={{ textAlign: 'left' }}>Item</th>
-                <th style={{ textAlign: 'left' }}>Context</th>
-                <th style={NUM as object}>Age</th>
-                <th style={{ textAlign: 'right', width: 60 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => (
-                <tr key={`${it.kind}:${it.id}`}>
-                  <td>
-                    <StatusBadge tone={severityTone(it.severity)} label={it.severity} variant="dot" />
-                  </td>
-                  <td style={{ color: 'var(--color-text-muted)' }}>{kindLabel(it.kind)}</td>
-                  <td style={{ fontWeight: 500 }}>{it.title}</td>
-                  <td style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{it.contextLabel ?? '—'}</td>
-                  <td style={{ ...NUM, fontSize: 12, color: 'var(--color-text-muted)' }}>{formatAge(it.ageHours)}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <Link to={it.ctaUrl} style={{ color: 'var(--color-accent)', fontSize: 12 }}>
-                      Open →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        ) : (() => {
+          const columns: Column<PendingActionItem>[] = [
+            {
+              key: 'severity',
+              title: 'Severity',
+              width: 80,
+              getValue: (it) => it.severity,
+              render: (it) => <StatusBadge tone={severityTone(it.severity)} label={it.severity} variant="dot" />,
+            },
+            {
+              key: 'kind',
+              title: 'Kind',
+              width: 100,
+              getValue: (it) => kindLabel(it.kind),
+              render: (it) => <span style={{ color: 'var(--color-text-muted)' }}>{kindLabel(it.kind)}</span>,
+            },
+            {
+              key: 'title',
+              title: 'Item',
+              getValue: (it) => it.title,
+              render: (it) => <span style={{ fontWeight: 500 }}>{it.title}</span>,
+            },
+            {
+              key: 'context',
+              title: 'Context',
+              getValue: (it) => it.contextLabel ?? '',
+              render: (it) => (
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{it.contextLabel ?? '—'}</span>
+              ),
+            },
+            {
+              key: 'age',
+              title: 'Age',
+              align: 'right',
+              getValue: (it) => it.ageHours,
+              render: (it) => (
+                <span style={{ ...NUM, fontSize: 12, color: 'var(--color-text-muted)' }}>{formatAge(it.ageHours)}</span>
+              ),
+            },
+            {
+              key: 'action',
+              title: 'Action',
+              width: 60,
+              align: 'right',
+              getValue: () => '',
+              render: (it) => (
+                <Link to={it.ctaUrl} style={{ color: 'var(--color-accent)', fontSize: 12 }}>
+                  Open →
+                </Link>
+              ),
+            },
+          ];
+          return (
+            <Table
+              variant="compact"
+              columns={columns}
+              rows={items}
+              getRowKey={(it) => `${it.kind}:${it.id}`}
+            />
+          );
+        })()}
       </SectionCard>
     </>
   );
