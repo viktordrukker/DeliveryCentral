@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Avatar } from '@/components/ds/Avatar';
+import { Button } from '@/components/ds';
 import {
   type ApprovalQueueItemDto,
   type ApprovalQueueSource,
@@ -151,18 +152,12 @@ export function ApprovalsPage(): JSX.Element {
           const isActive = src.id === activeFilter;
           const count = counts[src.id] ?? 0;
           return (
-            <button
+            <Button
               key={src.id}
-              type="button"
+              size="sm"
+              variant={isActive ? 'primary' : 'secondary'}
               onClick={() => setFilter(src.id)}
-              className={`badge ${isActive ? 'badge-active' : 'badge-outline'}`}
-              style={{
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 12,
-                fontWeight: isActive ? 600 : 500,
-                padding: '4px 10px',
-              }}
+              aria-pressed={isActive}
             >
               {src.label}
               {count > 0 ? (
@@ -176,7 +171,7 @@ export function ApprovalsPage(): JSX.Element {
                   · {count}
                 </span>
               ) : null}
-            </button>
+            </Button>
           );
         })}
       </div>

@@ -3194,7 +3194,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 
 #### Raw `<button>` migrations (22 remaining)
 
-- [ ] **V2-E.1** `ApprovalsPage.tsx:154` raw `<button>` → DS `<Button>`. — FE
+- [x] **V2-E.1** `ApprovalsPage.tsx:154` raw `<button>` → DS `<Button>`. _shipped 2026-05-25: filter-chip migrated to `<Button size="sm" variant={isActive ? 'primary' : 'secondary'} aria-pressed={isActive}>`. 8/8 ApprovalsPage tests pass._ — FE
 - [ ] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. — FE
 - [ ] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. — FE
 - [ ] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. — FE
