@@ -222,8 +222,78 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   }
 
   if (dsRefreshEnabled && id) {
+    // V2-A.10 — PersonProfilePanel is the page surface. The legacy chrome
+    // (lifecycle actions, audit timeline, 4-tab strip) is preserved as a
+    // minimal action header so HR/admin can still deactivate or terminate
+    // employees without leaving the canvas profile.
     return (
       <PageContainer testId="employee-details-page">
+        <ConfirmDialog
+          confirmLabel="Deactivate"
+          message="Deactivate this employee? They will lose access to the system but their history is preserved."
+          onCancel={() => setConfirmDeactivateOpen(false)}
+          onConfirm={() => {
+            setConfirmDeactivateOpen(false);
+            void handleDeactivate();
+          }}
+          open={confirmDeactivateOpen}
+          title="Deactivate Employee"
+        />
+        <ConfirmDialog
+          confirmLabel="Terminate"
+          message="Terminate this employee? This action is permanent and cannot be reversed."
+          onCancel={() => setConfirmTerminateOpen(false)}
+          onConfirm={() => {
+            setConfirmTerminateOpen(false);
+            void handleTerminate();
+          }}
+          open={confirmTerminateOpen}
+          title="Terminate Employee"
+        />
+
+        <PageHeader
+          eyebrow="People"
+          title={state.data?.displayName ?? 'Employee Details'}
+          subtitle={
+            lifecycleStatus
+              ? `Employment status: ${humanizeEnum(lifecycleStatus, EMPLOYMENT_STATUS_LABELS)}`
+              : undefined
+          }
+          actions={
+            canManageLifecycle ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={isDeactivating || lifecycleStatus === 'INACTIVE' || lifecycleStatus === 'TERMINATED'}
+                  onClick={() => setConfirmDeactivateOpen(true)}
+                  type="button"
+                >
+                  {isDeactivating
+                    ? 'Deactivating…'
+                    : lifecycleStatus === 'INACTIVE'
+                      ? 'Already inactive'
+                      : 'Deactivate'}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={isTerminating || lifecycleStatus === 'TERMINATED'}
+                  onClick={() => setConfirmTerminateOpen(true)}
+                  type="button"
+                >
+                  {lifecycleStatus === 'TERMINATED' ? 'Terminated' : 'Terminate'}
+                </Button>
+              </div>
+            ) : null
+          }
+        />
+
+        {deactivateError ? <ErrorState description={deactivateError} /> : null}
+        {deactivateSuccess ? <div className="success-banner" role="status">{deactivateSuccess}</div> : null}
+        {terminateError ? <ErrorState description={terminateError} /> : null}
+        {terminateSuccess ? <div className="success-banner" role="status">{terminateSuccess}</div> : null}
+
         <PersonProfilePanel personId={id} />
       </PageContainer>
     );
