@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 
 import { SectionCard } from '@/components/common/SectionCard';
+import { Button } from '@/components/ds';
 import {
   type DigestScheduleApi,
   type NotificationDigest,
@@ -162,14 +163,9 @@ export function DigestAndQuietHoursCard(): JSX.Element {
       </SectionCard>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        <button
-          type="submit"
-          className="button button--primary"
-          disabled={saving}
-          style={{ padding: '8px 16px' }}
-        >
+        <Button type="submit" variant="primary" disabled={saving} loading={saving}>
           {saving ? 'Saving…' : 'Save digest settings'}
-        </button>
+        </Button>
         {saved && <span style={{ color: 'var(--color-status-active)', fontSize: 13 }}>Saved.</span>}
         {error && <span role="alert" style={{ color: 'var(--color-status-danger)', fontSize: 13 }}>{error}</span>}
       </div>
