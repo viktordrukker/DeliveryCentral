@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { DataQualityRadar } from '@/components/charts/DataQualityRadar';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import type { HrPersonAttentionItem } from '@/lib/api/dashboard-hr-manager';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
@@ -60,7 +60,7 @@ export function HrDataQualityTab({
 
   const scoreColumns: Column<ScoreRow>[] = [
     { key: 'dimension', title: 'Dimension', getValue: (r) => r.label, render: (r) => r.label },
-    { key: 'score', title: 'Score', align: 'right', getValue: (r) => r.pct, render: (r) => <span style={{ ...NUM, fontWeight: 600, color: scoreColor(r.pct) }}>{r.pct}%</span> },
+    { key: 'score', title: 'Score', align: 'right', getValue: (r) => r.pct, render: (r) => <span style={{ fontWeight: 600, color: scoreColor(r.pct) }}><Pct value={r.pct} fractionDigits={0} /></span> },
     { key: 'bar', title: 'Bar', width: 120, render: (r) => (
       <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${r.pct}%`, borderRadius: 2, background: scoreColor(r.pct) }} />

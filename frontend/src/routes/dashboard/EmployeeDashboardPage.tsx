@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 
 import { useAuth } from '@/app/auth-context';
@@ -147,7 +147,7 @@ export function EmployeeDashboardPage(): JSX.Element {
             <Link className="kpi-strip__item" to="#workload-gauge"
               style={{ borderLeft: `3px solid ${isOverallocated ? 'var(--color-status-danger)' : allocPct >= 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}>
               <TipBalloon tip="Your combined allocation across all active assignments. Over 100% means you are overbooked." arrow="left" />
-              <span className="kpi-strip__value">{allocPct}%</span>
+              <span className="kpi-strip__value"><Pct value={allocPct} fractionDigits={0} /></span>
               <span className="kpi-strip__label">Allocation</span>
               <div className="kpi-strip__progress">
                 <div className="kpi-strip__progress-fill" style={{ width: `${Math.min(allocPct, 100)}%`, background: isOverallocated ? 'var(--color-status-danger)' : allocPct >= 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }} />

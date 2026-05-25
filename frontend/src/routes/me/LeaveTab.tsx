@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
-import { BalanceMeter, Button, Calendar, type CalendarEvent } from '@/components/ds';
+import { BalanceMeter, Button, Calendar, Pct, type CalendarEvent } from '@/components/ds';
 import { fetchEmployeeDashboard, type EmployeeDashboardResponse } from '@/lib/api/dashboard-employee';
 import { fetchPublicHolidays, type PublicHoliday } from '@/lib/api/my-time';
 import {
@@ -350,7 +350,7 @@ export function LeaveTab(): JSX.Element {
                     <ul style={{ margin: 0, paddingLeft: 16 }}>
                       {preview.conflicts.slice(0, 4).map((c) => (
                         <li key={c.id} style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                          {c.project.displayName ?? 'Project'} · {c.staffingRole} · {c.allocationPercent}%
+                          {c.project.displayName ?? 'Project'} · {c.staffingRole} · <Pct value={c.allocationPercent} fractionDigits={0} />
                         </li>
                       ))}
                     </ul>

@@ -14,7 +14,7 @@ import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchWorkloadMatrix, WorkloadMatrixResponse } from '@/lib/api/workload';
 import { exportToXlsx } from '@/lib/export';
-import { Button, IconButton, Table, type Column } from '@/components/ds';
+import { Button, IconButton, Pct, Table, type Column } from '@/components/ds';
 import type { WorkloadPerson } from '@/lib/api/workload';
 
 /* ── Allocation helpers (private) ──────────────────────────────────────────── */
@@ -478,7 +478,7 @@ export function WorkloadMatrixPage(): JSX.Element {
                     </IconButton>
                   </div>
                   <div className="alloc-panel__stat">
-                    <span className="alloc-panel__stat-value" style={{ color: allocColor(panel.allocationPercent) }}>{panel.allocationPercent}%</span>
+                    <span className="alloc-panel__stat-value" style={{ color: allocColor(panel.allocationPercent) }}><Pct value={panel.allocationPercent} fractionDigits={0} /></span>
                     <span className="alloc-panel__stat-label">Allocation</span>
                   </div>
                   <div className="alloc-panel__stat">

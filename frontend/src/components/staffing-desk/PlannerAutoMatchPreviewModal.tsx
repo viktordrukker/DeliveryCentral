@@ -74,7 +74,7 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
         <div style={S_SUMMARY}>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Assigned</span><span style={S_METRIC_VALUE}>{summary.assignedCount}<span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}> / {summary.totalDemand}</span></span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Coverage</span><span style={S_METRIC_VALUE}><Pct value={summary.coverageLiftPercent} /></span></div>
-          <div style={S_METRIC}><span style={S_METRIC_LABEL}>Avg match</span><span style={S_METRIC_VALUE}>{Math.round(summary.avgMatchScore * 100)}%</span></div>
+          <div style={S_METRIC}><span style={S_METRIC_LABEL}>Avg match</span><span style={S_METRIC_VALUE}><Pct value={Math.round(summary.avgMatchScore * 100)} fractionDigits={0} /></span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Strong</span><span style={{ ...S_METRIC_VALUE, color: 'var(--color-status-active)' }}>{summary.strongCount}</span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Medium</span><span style={{ ...S_METRIC_VALUE, color: 'var(--color-status-warning)' }}>{summary.mediumCount}</span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Mismatch</span><span style={{ ...S_METRIC_VALUE, color: 'var(--color-status-danger)' }}>{summary.mismatchCount}</span></div>
@@ -145,10 +145,10 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
                   <StatusBadge label={s.cellClass} tone={CLASS_TONE[s.cellClass]} variant="chip" size="small" />
                 ) },
                 { key: 'match', title: 'Match', align: 'right', width: 70, getValue: (s) => s.matchScore, render: (s) => (
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(s.matchScore * 100)}%</span>
+                  <Pct value={Math.round(s.matchScore * 100)} fractionDigits={0} />
                 ) },
                 { key: 'alloc', title: 'Alloc', align: 'right', width: 60, getValue: (s) => s.allocationPercent, render: (s) => (
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.allocationPercent}%</span>
+                  <Pct value={s.allocationPercent} fractionDigits={0} />
                 ) },
                 { key: 'rationale', title: 'Rationale', getValue: (s) => s.rationale, render: (s) => (
                   <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>

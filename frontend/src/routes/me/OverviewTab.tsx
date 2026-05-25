@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
-import { Timeline, type TimelineSegment } from '@/components/ds';
+import { Pct, Timeline, type TimelineSegment } from '@/components/ds';
 import {
   fetchEmployeeDashboard,
   type EmployeeDashboardResponse,
@@ -103,7 +103,7 @@ export function OverviewTab(): JSX.Element {
           to="/me?tab=time"
           tone={summary.isOverallocated ? 'warning' : 'active'}
           label="Total allocation"
-          value={`${summary.totalAllocationPercent.toFixed(0)}%`}
+          value={<Pct value={summary.totalAllocationPercent} fractionDigits={0} />}
           foot={summary.isOverallocated ? 'Overallocated' : 'On capacity'}
         />
         <KpiCard
@@ -203,7 +203,7 @@ interface KpiCardProps {
   to: string;
   tone: 'active' | 'warning' | 'danger' | 'info' | 'neutral';
   label: string;
-  value: string;
+  value: ReactNode;
   foot?: string;
 }
 

@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { BalanceMeter, Button, Drawer, Table, type Column } from '@/components/ds';
+import { BalanceMeter, Button, Drawer, Pct, Table, type Column } from '@/components/ds';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import {
   approveLeaveRequest,
@@ -281,7 +281,7 @@ export function LeaveDecisionDrawer({
             const conflictColumns: Column<AssignmentDirectoryItem>[] = [
               { key: 'project', title: 'Project', getValue: (c) => c.project.displayName ?? 'Project', render: (c) => c.project.displayName ?? 'Project' },
               { key: 'role', title: 'Role', getValue: (c) => c.staffingRole, render: (c) => <span style={{ color: 'var(--color-text-muted)' }}>{c.staffingRole}</span> },
-              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (c) => c.allocationPercent, render: (c) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{c.allocationPercent}%</span> },
+              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (c) => c.allocationPercent, render: (c) => <Pct value={c.allocationPercent} fractionDigits={0} /> },
               { key: 'status', title: 'Status', getValue: (c) => c.approvalState, render: (c) => <StatusBadge status={c.approvalState} variant="chip" /> },
             ];
             return (
