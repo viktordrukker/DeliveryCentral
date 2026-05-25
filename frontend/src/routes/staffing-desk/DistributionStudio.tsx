@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -55,6 +56,10 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
   const [busy, setBusy] = useState(false);
   const [strategy, setStrategy] = useState<SolverStrategy>('BALANCED');
   const [solverOutput, setSolverOutput] = useState<{ score: number; explanation: string } | null>(null);
+  // S1-5 DS-conformance — replaced two browser confirm() calls with ConfirmDialog.
+  // Pending state tracks which destructive action is awaiting confirmation.
+  const [deleteCandidate, setDeleteCandidate] = useState<PlannerScenarioDto | null>(null);
+  const [applyPending, setApplyPending] = useState<PlannerScenarioDto | null>(null);
 
   async function reload(): Promise<void> {
     setLoading(true);
@@ -96,12 +101,12 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
     }
   }
 
-  async function handleDelete(id: string): Promise<void> {
-    if (!window.confirm('Archive this scenario?')) return;
+  async function confirmDelete(scenario: PlannerScenarioDto): Promise<void> {
+    setDeleteCandidate(null);
     setBusy(true);
     try {
-      await deleteScenario(id);
-      if (activeId === id) setActiveId(null);
+      await deleteScenario(scenario.id);
+      if (activeId === scenario.id) setActiveId(null);
       toast.success('Scenario archived');
       await reload();
     } catch (err) {
@@ -126,12 +131,11 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
     }
   }
 
-  async function handleApply(): Promise<void> {
-    if (!active) return;
-    if (!window.confirm(`Apply scenario "${active.name}" to real assignments? This is transactional.`)) return;
+  async function confirmApply(scenario: PlannerScenarioDto): Promise<void> {
+    setApplyPending(null);
     setBusy(true);
     try {
-      const result = await applyScenario(active.id);
+      const result = await applyScenario(scenario.id);
       toast.success(
         `Applied: +${result.assignmentsCreated} · ~${result.assignmentsUpdated} · −${result.assignmentsReleased}`,
       );
@@ -223,7 +227,7 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
                     variant="secondary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      void handleDelete(s.id);
+                      setDeleteCandidate(s);
                     }}
                     disabled={busy}
                   >
@@ -269,8 +273,8 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
               <Button onClick={handleRunSolver} disabled={busy}>
                 Run solver ({strategy})
               </Button>
-              {canEdit ? (
-                <Button variant="primary" onClick={handleApply} disabled={busy}>
+              {canEdit && active ? (
+                <Button variant="primary" onClick={() => setApplyPending(active)} disabled={busy}>
                   Apply scenario to live
                 </Button>
               ) : null}
@@ -297,6 +301,38 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
           </div>
         </SectionCard>
       ) : null}
+
+      <ConfirmDialog
+        open={deleteCandidate !== null}
+        title="Archive this scenario?"
+        message={
+          deleteCandidate
+            ? `Archive "${deleteCandidate.name}"? You can recreate it later but the current scenario state is lost.`
+            : ''
+        }
+        confirmLabel="Archive"
+        tone="danger"
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={() => {
+          if (deleteCandidate) void confirmDelete(deleteCandidate);
+        }}
+      />
+
+      <ConfirmDialog
+        open={applyPending !== null}
+        title="Apply scenario to live assignments?"
+        message={
+          applyPending
+            ? `Apply "${applyPending.name}" to real assignments? This is transactional — all proposed changes commit together or none do.`
+            : ''
+        }
+        confirmLabel="Apply scenario"
+        tone="danger"
+        onCancel={() => setApplyPending(null)}
+        onConfirm={() => {
+          if (applyPending) void confirmApply(applyPending);
+        }}
+      />
     </div>
   );
 }
