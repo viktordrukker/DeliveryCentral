@@ -94,6 +94,7 @@
 | Sprint F-6 | Stability + Perf Ratchets | — | ✅ Complete (2026-05-15, PRs #57–#63). D-110 (16 FK indexes), D-144 unbounded findMany caps, D-145 PvA per-id loop → batch, D-146 workforce-planner, D-142 flag.outboxEnabled ON + producer contract test, D-143 env-driven DB pool, ratchet check-in #1. |
 | Sprint F-7 | Locale-Agnostic Finalization | — | ✅ Complete (2026-05-15, PRs #64–#70). D-161 getWeekStart, D-163 multi-region PublicHoliday, D-165 Intl + date-fns-tz, D-164 FxRate flag-gated, D-160b FiscalCalendar flag-gated, locale-flip US↔GB test + operator runbook, ratchet check-in #2. 55 new tests. |
 | Sprint F-8 | Cat-1 Residuals | — | ✅ Complete (2026-05-15, PRs #71–#73). NEW C1-INT-FRAMEWORK `/admin/integrations/registry`, D-156 M365 auto-provision gate on `sso.autoProvisionUsers`, current-state.md doc sweep. Plan's original Cat-1 stack (F-3..F-8) now fully shipped. |
+| Phase V2 | DS Redesign Operational Cutover | V2-A..V2-H + V2-X | 🔄 In Progress (2026-05-25): screen-level audit found ~15-20% canvas fidelity (not BE-counted ~45%). Frame/sidebar/leave-bug done; 31 ds-conformance errors remain; Money/Pct adoption 2 sites each; Distribution Studio killer feature unbuilt. ~115 atomic items tracked. See Phase V2 section at end of doc. |
 
 ---
 
@@ -3104,3 +3105,212 @@ _Phase 11 contributed the master plan + xlsx; Phase 12 gate passed; 0 new D-ids 
   **Note on prior work:** The Sprint F-0.10 comment at `StaffingRequestDetailPage.tsx:89-95` ("single source of truth: derivedStatus") was the right intent but the deriver itself wasn't updated to honor the raw status column. This is the finishing patch on D-11. Cross-ref D-95 (Phase 2 — Functional Duplication) which proposes deriving `headcountFulfilled` similarly — same family of cached-vs-derived drift.
 
   — BOTH
+
+---
+
+## Phase V2 — DS Redesign Operational Cutover (2026-05-25)
+
+**Source:** BA validation 2026-05-25 (3rd-pass deep audit) + spine plan `docs/planning/claude-design/lean-simplification-initiative.md` + V2 status doc `docs/planning/claude-design/v2-implementation-status-and-defer-list.md`.
+
+**Brutal verdict from the audit:** screen-level canvas fidelity is ~15-20%, NOT the BE-counted ~45%. Phase D was cosmetic-deep, flow-shallow. Only 3 pages are genuinely canvas-faithful: `MoneyPanel.tsx`, `LeaveTab.tsx`, `PulseTab.tsx` (and the last only when `dsRefresh` is ON, which is OFF in prod).
+
+The tracker sections below enumerate every gap surfaced by the audit, broken into atomic checkable items so nothing is missed.
+
+### Phase V2-A — Screen-level fidelity gaps
+
+Per-page audit comparing canvas mock (`DS/page-*.jsx`) against shipped surfaces. One row = one canvas-divergence to close.
+
+- [ ] **V2-A.1** Pulse / Project Detail — collapse 7 legacy tabs → canvas's 3 (Pulse/Plan/Money) in `frontend/src/routes/projects/ProjectDetailPage.tsx:31-39`. — FE
+- [ ] **V2-A.2** Pulse — remove duplicate KPI strip: legacy strip at `ProjectDetailPage.tsx:116-156` stacks above `PulseTab.tsx:135-156` when `dsRefresh` is ON. Delete the legacy one. — FE
+- [ ] **V2-A.3** Plan tab — build workstream swimlane Gantt with positions-in-workstreams + milestone overlay per `DS/page-plan-money.jsx:78-330`. Currently `MilestonesTab.tsx` is the legacy view. — FE
+- [ ] **V2-A.4** Money tab — promote `MoneyPanel.tsx` from inside `BudgetTab.tsx` to a top-level tab in the new 3-tab grammar. Already canvas-faithful internally; just needs routing. — FE
+- [ ] **V2-A.5** Approvals — build `BudgetApprovalInspector` per `DS/page-approvals.jsx:39-138`: 4-tile context strip + VarianceBar breakdown + Sparkline forecast + comment field + 3-button footer (Escalate / Reject / Approve). Closes UX Law 7. — FE
+- [ ] **V2-A.6** Approvals — replace per-source `href` navigation in queue rows with right-pane inspector mount (selected-row state pattern). — FE
+- [ ] **V2-A.7** Bench — build master-detail inspector at `/people/bench` per `DS/page-bench.jsx`. Current `BenchEnrichedPanel.tsx` is a flat directory filter. Needs: list + suggested-fills panel + bulk-action bar ("N selected · idle > 14 days · Propose to position…"). — FE
+- [ ] **V2-A.8** HR Directory — collapse Directory + Bench + HR Queue into a single 3-tab shell per `DS/page-directory-hr.jsx:35-39`. Currently split across `EmployeeDirectoryPage`, `BenchPage`, and `/cases`. — FE
+- [ ] **V2-A.9** Staffing Desk — build the canvas's killer feature: editable swimlane planner where positions drag across people. `DistributionStudio.tsx:50-302` currently ships a scenarios list with strategy chips (admitted by the file's own comment at `:44-49`). See V2-C for sub-tasks. — FE + BE
+- [ ] **V2-A.10** Profile — refactor `EmployeeDetailsPlaceholderPage.tsx` (543 LOC) so `PersonProfilePanel.tsx` becomes the page surface, not just a mounted panel. Remove the legacy lifecycle UI wrapping. — FE
+- [ ] **V2-A.11** Profile — remove MUI dependency: `EmployeeDetailsPlaceholderPage.tsx:35` imports `LockOutlinedIcon from '@mui/icons-material'`. Replace with DS icon set. — FE
+- [ ] **V2-A.12** Director Dashboard — replace recharts `BarChart`/`PieChart` (`DirectorDashboardPage.tsx:12`) with canvas's hand-rolled SVG `BurnChart` style per `DS/page-director.jsx:99`. — FE
+- [ ] **V2-A.13** Director Dashboard — replace legacy `Sparkline` import (`DirectorDashboardPage.tsx:32`) with DS `SparklineDs`. — FE
+- [ ] **V2-A.14** Workspace `/me` — replace raw tab-strip `<button>` elements (`WorkspaceShellPage.tsx:131-159`) with a proper DS Tabs atom (needs to be built; see V2-B.10). — FE
+- [ ] **V2-A.15** Create Project Wizard — replace `basics → engagement → review` step shape with canvas's `Identity → Positions+Milestones → Activation` per `DS/page-extras.jsx`. Currently `CreateProjectPage.tsx:64`. — FE
+- [ ] **V2-A.16** Time Management — migrate `LeaveDecisionDrawer.tsx` lines 215/224/238/294 from raw `<button>`/`<table>` to DS atoms (also covered in V2-E.4). — FE
+- [ ] **V2-A.17** Time Management — surface `LeaveDecisionDrawer` as `/approvals?source=timesheet|leave` filtered view per reconciliation §5 decision (folds time-management into Approvals). — FE
+- [ ] **V2-A.18** Admin — verify `AdminPanelPage.tsx:187` 5-tab grammar is reachable without `dsRefresh` flag (or accept it stays gated until cutover). — FE
+
+### Phase V2-B — DS atom adoption sweep
+
+Each DS atom shipped at `frontend/src/components/ds/` should be the canonical implementation. Per the audit, adoption is critically low. Each row tracks one atom's adoption progress with current / target counts.
+
+- [ ] **V2-B.1** `Money` adoption — currently **2 callsites** (`MoneyPanel.tsx` + `PersonProfilePanel.tsx`); target ≥50. Migrate 11 `formatCurrency(` calls + 47 `${…}.toFixed` currency template literals. — FE
+- [ ] **V2-B.2** `Pct` adoption — currently **2 callsites**; target ≥100. Migrate 123 inline `${value}%` / `toFixed(…)%` sites. — FE
+- [ ] **V2-B.3** `Donut` (DS) adoption — currently **0 callsites**; target ≥6. Replace 7 recharts `PieChart` imports. — FE
+- [ ] **V2-B.4** `SparklineDs` adoption — currently **4 callsites**; target ≥10. Replace legacy `@/components/charts/Sparkline` imports in `RmKpiStrip`, `WorkloadCard`, `DirectorKpiStrip`, `DashboardPage`, `DirectorDashboardPage`, `PulseTrendCard`. — FE
+- [ ] **V2-B.5** `MiniBars` adoption — currently **2 callsites**; target ≥10. Replace 20 recharts `BarChart` imports where ad-hoc bar charts are used. — FE
+- [ ] **V2-B.6** `VarianceBar` adoption — currently **2 callsites**. Add to `BudgetTab` inline variance UI + future `BudgetApprovalInspector` (V2-A.5). — FE
+- [ ] **V2-B.7** `GanttRow` adoption — currently **3 callsites** (only `StaffingSwimLaneGantt.tsx` + DS itself). Add to Plan tab (V2-A.3) + StaffingDeskTimeline. — FE
+- [ ] **V2-B.8** `Calendar` (DS) adoption — currently **1 callsite** (`LeaveTab.tsx` only). Add to `LeaveDecisionDrawer` + public-holiday admin. — FE
+- [ ] **V2-B.9** `BalanceMeter` adoption — currently **4 callsites**. Verify coverage on manager dashboards + capacity rollups. — FE
+- [ ] **V2-B.10** `Avatar` adoption — currently **6 callsites**. Add to `StaffingDeskTable` person column + verify other person-rendering surfaces. — FE
+- [ ] **V2-B.11** `Timeline` (DS) adoption — currently **4 callsites**. Add to `StaffingDeskTable` row timelines + Pulse activity + Profile activity (some may overlap with V2-C). — FE
+- [ ] **V2-B.12** Build DS `Tabs` atom — does not exist; needed for V2-A.14 (Workspace tab strip) and other tab-shaped surfaces (Reports umbrella, HR Directory 3-tab shell, Project Detail 3-tab shell). Should support W3C ARIA `role="tabpanel"` pattern. — FE
+- [ ] **V2-B.13** Build DS `Icon` set or wrapper — replaces MUI icon imports (V2-A.11 dependency). — FE
+- [ ] **V2-B.14** Add positive-adoption metric to `scripts/check-ds-conformance.cjs` (per-atom callsite-count ratchet). Currently the script catches legacy patterns but not low adoption. — FE
+
+### Phase V2-C — Distribution Studio (killer feature build)
+
+The Staffing Desk's editable swimlane planner is the canvas's killer feature; it doesn't exist yet. Sub-tasks for V2-A.9.
+
+- [ ] **V2-C.1** `Timeline` editable mode — add `editable?`, `editMode?`, `snapTo?`, `minSegmentDays?`, `onSegmentChange?`, `onSegmentChangeCommit?` props per staffing-desk amendment §1.1. All existing 4 callsites must stay green. — FE
+- [ ] **V2-C.2** `Timeline` swimlane `groupBy` — add `groupBy?: (s) => string` + `renderGroupHeader?: (groupKey) => ReactNode` + `collapsible?` + `showGroupAggregate?` props per amendment §1.1. — FE
+- [ ] **V2-C.3** `Timeline` heatBand overlay — add `heatBand?: 'none' | 'group' | 'global'` + `heatBandThreshold?` + `heatBandPalette?` props. — FE
+- [ ] **V2-C.4** JQL field registry — typed schema of filterable fields per amendment §1.4. — FE + BE
+- [ ] **V2-C.5** JQL parser + tokenizer — promote existing prototype at `frontend/src/features/staffing-desk/jql-tokenizer.ts` + `jql-parser.ts` to first-class with inline error highlighting. — FE
+- [ ] **V2-C.6** JQL execution endpoint `POST /api/staffing/jql/execute` — server-side translation to Prisma; RBAC-scoped. — BE
+- [ ] **V2-C.7** JQL parse-only endpoint `POST /api/staffing/jql/parse` — for autocomplete + validation. — BE
+- [ ] **V2-C.8** `StaffingDeskTab` Prisma model — `id`, `ownerId`, `name`, `query`, `visibility (public/private)`, `position` (sort), `createdAt`, `updatedAt`. — BE
+- [ ] **V2-C.9** `StaffingDeskTab` CRUD endpoints — `GET /api/staffing/tabs`, `POST /api/staffing/tabs`, `PATCH /api/staffing/tabs/:id`, `DELETE /api/staffing/tabs/:id`. RBAC. — BE
+- [ ] **V2-C.10** Saved-tab strip UI — render 6 tabs (mine + public examples) above the JQL bar with `Public`/`Mine` scope chips per `DS/page-staffing-desk.jsx:5-44`. — FE
+- [ ] **V2-C.11** Distribution Studio swimlane view — replace current scenarios-list with editable Timeline + swimlanes by person + position dragging. — FE
+- [ ] **V2-C.12** Distribution Studio heatmap toggle — coverage / cost / match / risk layers per amendment. — FE
+- [ ] **V2-C.13** Distribution Studio bench sidebar — show idle people inline alongside the planner. — FE
+- [ ] **V2-C.14** Replace `window.prompt('Scenario name?')` at `DistributionStudio.tsx:88` with DS Modal + Input. — FE
+- [ ] **V2-C.15** Server-side RBAC test for JQL `Public` tabs — assert wrapped where-clause prevents information-leak across roles. Critical (staffing-desk amendment §5.4). — BE
+
+### Phase V2-D — Visible bugs in shipped canvas surfaces
+
+Specific bugs surfaced by the audit. Most are quick fixes.
+
+- [ ] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref). — FE
+- [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
+- [ ] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). Add `@deprecated` JSDoc to the legacy one; codemod imports. — FE
+- [ ] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). Fix as part of V2-E. — FE
+- [ ] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref). — FE
+
+### Phase V2-E — ds-conformance ratchet closeout
+
+Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Until count = 0, the script can't be wired into CI/Husky as a gate.
+
+#### Raw `<button>` migrations (22 remaining)
+
+- [ ] **V2-E.1** `ApprovalsPage.tsx:154` raw `<button>` → DS `<Button>`. — FE
+- [ ] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. — FE
+- [ ] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. — FE
+- [ ] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. — FE
+- [ ] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. — FE
+- [ ] **V2-E.6** `MilestonesTab.tsx:314` raw `<button>` → DS `<Button>`. — FE
+- [ ] **V2-E.7** `DigestAndQuietHoursCard.tsx:165` raw `<button>` + `:167` button-className → DS `<Button>`. — FE
+- [ ] **V2-E.8** Remaining `no-raw-button` long-tail — sweep until count = 0. — FE
+
+#### Raw `<table>` migrations (8 remaining)
+
+- [ ] **V2-E.9** `FeatureFlagsAdminPage.tsx:160` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.10** `IntegrationsRegistryPage.tsx:81` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.11** `ProjectsTab.tsx:114` raw `<table>` → DS `<Table>` (requires column-config refactor). — FE
+- [ ] **V2-E.12** `BudgetTab.tsx:198` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.13** `MoneyPanel.tsx:264` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.14** `LeaveDecisionDrawer.tsx:294` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.15** `BenchEnrichedPanel.tsx:129` raw `<table>` → DS `<Table>`. — FE
+- [ ] **V2-E.16** `TimesheetInspectorDrawer.tsx` raw `<table>` (if present in audit list) → DS `<Table>`. — FE
+
+#### Remaining
+
+- [ ] **V2-E.17** 1 remaining `no-link-button-className` violation — locate via `npm run ds:check --report` and migrate. — FE
+- [ ] **V2-E.18** Wire `node scripts/check-ds-conformance.cjs` into `.husky/pre-commit` once error count = 0. — FE
+- [ ] **V2-E.19** Wire `npm run ds:check` (add to `package.json` scripts) into CI workflow as a fail-gate. — FE
+
+### Phase V2-F — Design token cleanup (335 baselined raw-hex violations across 78 files)
+
+Each row = one file's hex-color migration to design tokens. Target = baseline reaches 0 then promote the rule to `error`-tier.
+
+- [ ] **V2-F.1** `components/org/OrgChartNode.tsx` — 50 raw hex → status / chart tokens. **Largest concentration.** — FE
+- [ ] **V2-F.2** `routes/workload/WorkloadPlanningPage.tsx` — 33 raw hex (incl. inline `AVATAR_COLORS` palette). Define palette via `--color-chart-*` tokens. — FE
+- [ ] **V2-F.3** `components/staffing-desk/WorkforcePlanner.tsx` — 17 raw hex. — FE
+- [ ] **V2-F.4** `components/org/DepartmentSidebarDrawer.tsx` — 12 raw hex. — FE
+- [ ] **V2-F.5** `components/org/PersonSidebarDrawer.tsx` — 12 raw hex. — FE
+- [ ] **V2-F.6** Recharts `fill="#hex"` props in `routes/reports/CapitalisationPage.tsx`, `routes/dashboard/DeliveryManagerDashboardPage.tsx`, `routes/reports/UtilizationPage.tsx` — replace with token reads. — FE
+- [ ] **V2-F.7** Long-tail (~211 violations across remaining ~73 files) — sweep file-by-file, ratcheting baseline downward. — FE
+- [ ] **V2-F.8** Promote `no-raw-hex` rule from `warning` to `error` tier in `scripts/check-design-tokens.cjs` once baseline = 0. — FE
+
+### Phase V2-G — Production cutover prerequisites
+
+Per the spine plan's C0 + C1 phases, executed only after V2-A through V2-F are substantially complete.
+
+- [ ] **V2-G.1** Build Playwright visual regression suite — ≥30 representative routes × 5 roles. Run on PRs touching `frontend/src/styles/` or `frontend/src/components/ds/`. (Per spine plan risk register.) — FE
+- [ ] **V2-G.2** Manual click-through script per role — director / PM / RM / HR / employee. Walk every v2 sidebar item; confirm no console errors / broken images / layout breaks. Record in `docs/testing/phase-c0-acceptance.md`. — manual
+- [ ] **V2-G.3** Soak window on v2-staging (`deliverit-test-v2.agentic.uz`) ≥1 sprint without incident. Acceptance: zero new bugs filed against v2-staging for 5 consecutive working days. — manual
+- [ ] **V2-G.4** Flip `dsRefresh` default to `true` in prod — single 10-LOC PR touching `src/shared/config/platform-flags.service.ts` + `frontend/src/lib/feature-flags.ts`. Update `maturityLevel: 'ga'`. — BOTH
+- [ ] **V2-G.5** Verify dsRefresh flip via 30-second cache TTL rollback test — flip back to `false` via PlatformSetting; confirm UI reverts. — manual
+- [ ] **V2-G.6** C1 cleanup — delete legacy `frontend/src/components/layout/SidebarNav.tsx` (replaced by SidebarNavV2). — FE
+- [ ] **V2-G.7** C1 cleanup — delete legacy `frontend/src/components/layout/TopHeader.tsx` (replaced by TopHeaderV2). — FE
+- [ ] **V2-G.8** C1 cleanup — delete `<V2Redirect>` wrappers + the legacy children they guard. — FE
+- [ ] **V2-G.9** C1 cleanup — delete `HomeRedirect.tsx`'s `else` branch (legacy `DashboardPage`). — FE
+- [ ] **V2-G.10** C1 cleanup — delete legacy per-role dashboards per §3.1 D-markers: `EmployeeDashboardPage.tsx`, `ManagerDashboardPage.tsx`, `ExecDashboardPage.tsx`, `ProjectManagerDashboardPage.tsx`, `ResourceManagerDashboardPage.tsx`, `HrDashboardPage.tsx`, `DeliveryManagerDashboardPage.tsx`, `PortfolioRadiatorPage.tsx`, `DashboardPage.tsx` (legacy `/` Workload Overview). — FE
+- [ ] **V2-G.11** C1 cleanup — delete deferred admin routes per §3.2 D-markers: `/admin/notifications`, `/admin/radiator-thresholds`, `/admin/responsibility-matrix`, `/admin/hris`, `/admin/help`. — FE
+- [ ] **V2-G.12** C1 cleanup — delete deferred reports per §3.3 D-markers: `/reports/utilization`, `/reports/builder`, `/exceptions`, `/work-evidence`. — FE
+- [ ] **V2-G.13** C1 cleanup — delete deferred workforce per §3.4 D-markers: `/workload`, `/workload/planning`. — FE
+- [ ] **V2-G.14** C1 cleanup — delete deferred staffing per §3.5 D-markers: `/assignments`, `/assignments/queue`, `/resource-pools`, `/staffing-requests`, `/staffing-requests/new`, `/staffing-board`, `/my-time` standalone, `/leave` standalone, `/timesheets` standalone, `/timesheets/approval`. (Most die in S5-7 contract phase anyway.) — FE
+- [ ] **V2-G.15** Recharts removal — wired into 44 files. Long-tail cleanup after Donut/Sparkline/MiniBars adoption complete. Largest blast radius — schedule separately. — FE
+- [ ] **V2-G.16** Keep `dsRefresh` flag in registry as `maturityLevel: 'ga'` ≥1 quarter post-flip for emergency rollback. — BOTH
+
+### Phase V2-H — Spine plan finishing (per BA recommendations)
+
+Items the BA validation 2026-05-25 flagged as missing or under-scoped in the spine plan itself.
+
+- [ ] **V2-H.1** Amend S4-6 acceptance criteria — require inspector drawer with inline approve/reject for each of the 5 approval sources, NOT a deep-link list. Edit `lean-simplification-initiative.md` §3.5 Sprint 4 row S4-6. — docs
+- [ ] **V2-H.2** Add story `S5-3a` to spine — `SkillReviewPrompt` + `OnboardingTask` models + producers. Without these, `PeopleHrQueuePage` aggregates nothing for skills/onboarding tabs. — BE
+- [ ] **V2-H.3** Add tiny story to S4-3 — base-currency admin tab in `/admin/settings` before flag flip. Without it, `FxRateService.consolidate()` runtime errors or silent no-ops. — FE + BE
+- [ ] **V2-H.4** Defer Risk #3 (PM "assign a team" / JTBD #4) explicitly with tracker entry — `POST /api/people/bulk/assign-to-project` is the proposed shape. — BE
+- [ ] **V2-H.5** EW closeout — leave notifications (gap 20b-10): emit `leave.approved` / `leave.rejected` / `leave.cancelled` outbox events + register translators + seed notification templates per EW amendment S5-E6. — BE
+- [ ] **V2-H.6** EW closeout — full atomicity (gap 20c-05 follow-up): wrap leave-request approve/reject/cancel in `prisma.$transaction` per EW amendment S5-E5. Hot-patch PR #332 closed the silent-zero bug but writes are still sequential. — BE
+- [ ] **V2-H.7** EW closeout — `LeavePolicy` model + `LeaveCalculatorService` + `LeavePolicyService` + working-day vs calendar-day vs half-day policy per EW amendment S5-E1..E4. — BE
+- [ ] **V2-H.8** EW closeout — `CapacityProfileBuilder` reserves capacity when leave is approved so planner sees the booking per EW amendment S5-E8. Includes outbox subscription for cache invalidation (the planner ↔ leave race risk G-L). — BE
+- [ ] **V2-H.9** EW closeout — `LeaveCalculatorService` working-day policy (currently calendar-day per hot-patch). — BE
+- [ ] **V2-H.10** S2 finishing — backfill script `prisma/scripts/backfill-project-positions.ts` (idempotent against `it-company` seed). — BE
+- [ ] **V2-H.11** S2 finishing — `/projects/:id/positions` skeleton page reading new endpoints. — FE
+- [ ] **V2-H.12** S2 finishing — `/people/bench` skeleton page reading new endpoints (some overlap with V2-A.7). — FE
+- [ ] **V2-H.13** S5 contract phase — migrate 21 callsites of `ProjectAssignment` to `ProjectPosition.activeFill` view. — BE
+- [ ] **V2-H.14** S5 contract phase — `20260720_lean_staffing_contract` Prisma migration dropping `StaffingRequest`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`, `ProjectAssignment`, `AssignmentApproval`, `AssignmentHistory`, `AssignmentProposalSlate`, `AssignmentProposalCandidate`. Forward-only after backfill verified. — BE
+- [ ] **V2-H.15** S5 contract phase — `scripts/check-deprecated-assignment-import.cjs` ratchet to 0. — FE + BE
+- [ ] **V2-H.16** S5 contract phase — delete `frontend/src/components/ds-legacy/` (if exists) + legacy CSS classes from `global.css`. — FE
+- [ ] **V2-H.17** S4 wiring — `EvmComputationService` to nightly cron. Service exists at `src/modules/financial-governance/application/evm-computation.service.ts:84` but isn't scheduled. — BE
+- [ ] **V2-H.18** S4 wiring — `EvmComputationService` output into `ProjectBudget` rollup + `ProjectRadiator` Budget quadrant. — BE
+- [ ] **V2-H.19** S4 wiring — flip `flag.feature.financial.multiCurrency.enabled = true` after V2-H.3 admin UI ships. Wire `FxRateService.consolidate()` into all rollup endpoints. — BE
+- [ ] **V2-H.20** S4 wiring — flip `flag.feature.financial.fiscalCalendar.entity.enabled = true`. Wire `FiscalPeriodResolverService` into Money tab + monthly rollup APIs. — BE
+- [ ] **V2-H.21** S4 wiring — install `BudgetApproval` auto-trigger listener on `ProjectBudget` mutations > X% variance (configurable per project via PlatformSetting). Service exists but isn't wired. — BE
+- [ ] **V2-H.22** S4 wiring — operator runbook `docs/runbooks/budget-eom-close.md`. — docs
+- [ ] **V2-H.23** S3 finishing — `ProjectPulseQueryService` endpoint `GET /api/projects/:id/pulse`. (Some shipping under D1.) Verify aggregation matches canvas. — BE
+- [ ] **V2-H.24** S3 finishing — Activation approval queue row visible in unified `/admin/approvals`. — BE + FE
+- [ ] **V2-H.25** S3 finishing — `ProjectExternalLink` setter UI per Project Settings (PM JTBD: Jira key + Confluence space + Teams webhook + Jira board). — FE
+- [ ] **V2-H.26** S5 finishing — bulk endpoints `POST /api/people/bulk/skill-update`, `/leave-balance-refresh`, `/org-membership-move`. — BE
+- [ ] **V2-H.27** S5 finishing — `PeopleHrQueuePage` aggregator: leave + onboarding tasks + offboarding tasks + skill reviews. — FE
+- [ ] **V2-H.28** Org-unit effective-dated move history (RM JTBD #3). Verify `OrgUnitMembership` already carries `validFrom`/`validTo`; if not, add as schema delta. — BE
+- [ ] **V2-H.29** ITSM outbound webhook producer (master plan §3.2) — currently doc-only. — BE
+
+### Phase V2 — Cross-cutting tasks
+
+- [ ] **V2-X.1** Add positive-adoption test for DS atoms — fail CI if any DS atom's callsite count drops below baseline. — FE
+- [ ] **V2-X.2** Update memory `project-phase-e-shipping-state.md` after V2-A.1 + V2-A.4 land (3-tab consolidation = canvas surface complete). — docs
+- [ ] **V2-X.3** Update `docs/planning/current-state.md` after each V2-A item ships. — docs
+- [ ] **V2-X.4** Update v2-implementation-status-and-defer-list.md percentages after Phase V2-A is ≥50% done (recompute screen-fidelity %). — docs
+- [ ] **V2-X.5** Add `@deprecated` JSDoc to `frontend/src/components/charts/Sparkline.tsx` + grep for `JustifyCalendar` other legacy aliases needing the same. — FE
+- [ ] **V2-X.6** Audit `dsRefresh` flag-gated surfaces — list every `isFeatureEnabled('dsRefresh')` callsite (currently 7+ places) so V2-G.4 cutover doesn't miss any. — FE
+- [ ] **V2-X.7** Hidden-risk telemetry — confirm pre-flip whether dsRefresh is currently OFF in prod. If ON: 45% canvas is live. If OFF (likely): zero canvas visible to real users. — manual
+
+### Phase V2 — Acceptance criteria
+
+- [ ] All V2-A items checked (or explicitly `[-]` deferred with reason)
+- [ ] All V2-B items checked (atom adoption reaches per-atom target)
+- [ ] All V2-C items checked (Distribution Studio editable swimlane lives)
+- [ ] All V2-D items checked (visible bugs cleared)
+- [ ] All V2-E items checked (ds-conformance = 0 error-tier + wired to CI)
+- [ ] All V2-F items checked (raw-hex baseline = 0 + rule promoted to error)
+- [ ] V2-G.1 + V2-G.2 + V2-G.3 acceptance gates passed (regression suite + manual + soak)
+- [ ] V2-G.4 flag flip merged + V2-G.5 rollback test passes
+- [ ] All V2-H items checked (spine plan amendments + EW closeout + S2/S3/S4/S5 finishing)
+- [ ] V2-X.7 telemetry confirmed dsRefresh ON in prod
+- [ ] `docs/planning/current-state.md` updated to mark V2 as production baseline
+
+**Total items in Phase V2: ~115. Each is atomic and checkable.**
+
