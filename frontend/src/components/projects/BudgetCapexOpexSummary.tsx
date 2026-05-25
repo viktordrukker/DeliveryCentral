@@ -1,4 +1,5 @@
 import { Money } from '@/components/ds/Money';
+import { Pct } from '@/components/ds/Pct';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
 interface BudgetCapexOpexSummaryProps {
@@ -32,7 +33,7 @@ function BarRow({ label, sublabel, spent, budget }: BarRowProps): JSX.Element {
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>{sublabel}</span>
         </div>
         <div style={{ ...NUM, fontSize: 12, color: 'var(--color-text)' }}>
-          <Money value={spent} compact /> / <Money value={budget} compact /> ({pct}%)
+          <Money value={spent} compact /> / <Money value={budget} compact /> (<Pct value={pct} fractionDigits={0} />)
         </div>
       </div>
       <div style={{
