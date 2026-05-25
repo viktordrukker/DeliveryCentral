@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { Avatar } from '@/components/ds/Avatar';
+import { Table, type Column } from '@/components/ds';
 import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-bench';
 
 type Tone = 'active' | 'info' | 'warning' | 'danger';
@@ -126,91 +127,123 @@ export function BenchEnrichedPanel(): JSX.Element {
           </span>
         </div>
         <div style={{ overflow: 'auto' }}>
-          <table className="table table-compact" data-testid="bench-enriched-list">
-            <thead>
-              <tr>
-                <th>Person</th>
-                <th>Role / Grade / Office</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Days idle</th>
-                <th style={{ textAlign: 'right' }}>Avail · 14d</th>
-                <th style={{ textAlign: 'right' }}>Suggested</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map((row) => {
-                const tone = daysOnBenchTone(row.daysOnBench);
-                return (
-                  <tr key={row.personId}>
-                    <td>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar name={row.name} size="xs" />
-                        <span style={{ fontWeight: 500 }}>{row.name}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="compact muted">
-                        {row.role}
-                        {row.grade ? ` · ${row.grade}` : ''}
-                        {row.office ? ` · ${row.office}` : ''}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge badge-${row.isOnBench ? tone : 'active'}`}>
-                        <span className="dot" />
-                        {row.isOnBench ? 'On bench' : 'Engaged'}
-                      </span>
-                    </td>
-                    <td
-                      className="mono"
-                      style={{
-                        textAlign: 'right',
-                        fontVariantNumeric: 'tabular-nums',
-                        color:
-                          row.daysOnBench > 60
-                            ? 'var(--color-status-danger)'
-                            : row.daysOnBench > 14
-                              ? 'var(--color-status-warning)'
-                              : 'var(--color-text)',
-                      }}
-                    >
-                      {row.daysOnBench}d
-                    </td>
-                    <td
-                      className="mono"
-                      style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {row.availabilityHours14d}h
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      {row.suggestedProjectIds.length > 0 ? (
-                        <span className="badge badge-info">
-                          {row.suggestedProjectIds.length} match
-                          {row.suggestedProjectIds.length === 1 ? '' : 'es'}
-                        </span>
-                      ) : (
-                        <span className="compact muted">—</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <Link
-                        to={`/people/${row.personId}`}
-                        className="compact"
-                        style={{
-                          color: 'var(--color-accent)',
-                          textDecoration: 'none',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Open →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {(() => {
+            const columns: Column<BenchEnrichedRowDto>[] = [
+              {
+                key: 'person',
+                title: 'Person',
+                getValue: (r) => r.name,
+                render: (r) => (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <Avatar name={r.name} size="xs" />
+                    <span style={{ fontWeight: 500 }}>{r.name}</span>
+                  </span>
+                ),
+              },
+              {
+                key: 'role',
+                title: 'Role / Grade / Office',
+                getValue: (r) => `${r.role}${r.grade ? ` ${r.grade}` : ''}${r.office ? ` ${r.office}` : ''}`,
+                render: (r) => (
+                  <span className="compact muted">
+                    {r.role}
+                    {r.grade ? ` · ${r.grade}` : ''}
+                    {r.office ? ` · ${r.office}` : ''}
+                  </span>
+                ),
+              },
+              {
+                key: 'status',
+                title: 'Status',
+                getValue: (r) => (r.isOnBench ? 'On bench' : 'Engaged'),
+                render: (r) => {
+                  const tone = daysOnBenchTone(r.daysOnBench);
+                  return (
+                    <span className={`badge badge-${r.isOnBench ? tone : 'active'}`}>
+                      <span className="dot" />
+                      {r.isOnBench ? 'On bench' : 'Engaged'}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: 'daysIdle',
+                title: 'Days idle',
+                align: 'right',
+                getValue: (r) => r.daysOnBench,
+                render: (r) => (
+                  <span
+                    className="mono"
+                    style={{
+                      fontVariantNumeric: 'tabular-nums',
+                      color:
+                        r.daysOnBench > 60
+                          ? 'var(--color-status-danger)'
+                          : r.daysOnBench > 14
+                            ? 'var(--color-status-warning)'
+                            : 'var(--color-text)',
+                    }}
+                  >
+                    {r.daysOnBench}d
+                  </span>
+                ),
+              },
+              {
+                key: 'avail',
+                title: 'Avail · 14d',
+                align: 'right',
+                getValue: (r) => r.availabilityHours14d,
+                render: (r) => (
+                  <span className="mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {r.availabilityHours14d}h
+                  </span>
+                ),
+              },
+              {
+                key: 'suggested',
+                title: 'Suggested',
+                align: 'right',
+                getValue: (r) => r.suggestedProjectIds.length,
+                render: (r) =>
+                  r.suggestedProjectIds.length > 0 ? (
+                    <span className="badge badge-info">
+                      {r.suggestedProjectIds.length} match
+                      {r.suggestedProjectIds.length === 1 ? '' : 'es'}
+                    </span>
+                  ) : (
+                    <span className="compact muted">—</span>
+                  ),
+              },
+              {
+                key: 'open',
+                title: '',
+                align: 'right',
+                getValue: () => '',
+                render: (r) => (
+                  <Link
+                    to={`/people/${r.personId}`}
+                    className="compact"
+                    style={{
+                      color: 'var(--color-accent)',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Open →
+                  </Link>
+                ),
+              },
+            ];
+            return (
+              <Table
+                variant="compact"
+                columns={columns}
+                rows={sortedRows}
+                getRowKey={(r) => r.personId}
+                testId="bench-enriched-list"
+              />
+            );
+          })()}
         </div>
       </div>
     </div>
