@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { BalanceMeter, Button, Drawer } from '@/components/ds';
+import { BalanceMeter, Button, Drawer, Table, type Column } from '@/components/ds';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import {
   approveLeaveRequest,
@@ -277,36 +277,22 @@ export function LeaveDecisionDrawer({
             <p style={{ margin: 0, color: 'var(--color-status-active)', fontSize: 13 }}>
               No active assignments overlap this range.
             </p>
-          ) : preload ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', color: 'var(--color-text-subtle)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border)' }}>Project</th>
-                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border)' }}>Role</th>
-                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Alloc</th>
-                  <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border)' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preload.conflicts.map((c) => (
-                  <tr key={c.id}>
-                    <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border-subtle, var(--color-border))', color: 'var(--color-text)' }}>
-                      {c.project.displayName ?? 'Project'}
-                    </td>
-                    <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border-subtle, var(--color-border))', color: 'var(--color-text-muted)' }}>
-                      {c.staffingRole}
-                    </td>
-                    <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border-subtle, var(--color-border))', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {c.allocationPercent}%
-                    </td>
-                    <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border-subtle, var(--color-border))' }}>
-                      <StatusBadge status={c.approvalState} variant="chip" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : null}
+          ) : preload ? (() => {
+            const conflictColumns: Column<AssignmentDirectoryItem>[] = [
+              { key: 'project', title: 'Project', getValue: (c) => c.project.displayName ?? 'Project', render: (c) => c.project.displayName ?? 'Project' },
+              { key: 'role', title: 'Role', getValue: (c) => c.staffingRole, render: (c) => <span style={{ color: 'var(--color-text-muted)' }}>{c.staffingRole}</span> },
+              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (c) => c.allocationPercent, render: (c) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{c.allocationPercent}%</span> },
+              { key: 'status', title: 'Status', getValue: (c) => c.approvalState, render: (c) => <StatusBadge status={c.approvalState} variant="chip" /> },
+            ];
+            return (
+              <Table
+                variant="compact"
+                columns={conflictColumns}
+                rows={preload.conflicts}
+                getRowKey={(c) => c.id}
+              />
+            );
+          })() : null}
         </section>
 
         {/* Requester notes */}
