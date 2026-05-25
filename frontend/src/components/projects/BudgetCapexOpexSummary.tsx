@@ -1,3 +1,4 @@
+import { Money } from '@/components/ds/Money';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
 interface BudgetCapexOpexSummaryProps {
@@ -10,12 +11,6 @@ function thresholdColor(pct: number): string {
   if (pct >= 90) return 'var(--color-status-danger)';
   if (pct >= 70) return 'var(--color-status-warning)';
   return 'var(--color-status-active)';
-}
-
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toLocaleString('en-US')}`;
 }
 
 interface BarRowProps {
@@ -37,7 +32,7 @@ function BarRow({ label, sublabel, spent, budget }: BarRowProps): JSX.Element {
           <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>{sublabel}</span>
         </div>
         <div style={{ ...NUM, fontSize: 12, color: 'var(--color-text)' }}>
-          {formatCurrency(spent)} / {formatCurrency(budget)} ({pct}%)
+          <Money value={spent} compact /> / <Money value={budget} compact /> ({pct}%)
         </div>
       </div>
       <div style={{
@@ -102,7 +97,7 @@ export function BudgetCapexOpexSummary({ dashboard }: BudgetCapexOpexSummaryProp
       }}>
         <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Total Budget</span>
         <span style={{ ...NUM, color: 'var(--color-text)' }}>
-          {formatCurrency(totalSpent)} / {formatCurrency(budget.total)}
+          <Money value={totalSpent} compact /> / <Money value={budget.total} compact />
         </span>
       </div>
 

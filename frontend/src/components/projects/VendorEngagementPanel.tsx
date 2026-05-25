@@ -1,14 +1,10 @@
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { EmptyState } from '@/components/common/EmptyState';
+import { Money } from '@/components/ds/Money';
 import type { ProjectVendorEngagementDto } from '@/lib/api/vendors';
 
 interface VendorEngagementPanelProps {
   engagements: ProjectVendorEngagementDto[];
-}
-
-function formatCurrency(value: number | null): string {
-  if (value == null) return '\u2014';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 }
 
 function formatDate(d: string | null): string {
@@ -76,13 +72,13 @@ export function VendorEngagementPanel({ engagements }: VendorEngagementPanelProp
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--color-text-muted)' }}>Monthly rate</span>
               <span style={{ fontWeight: 600, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
-                {formatCurrency(eng.monthlyRate)}
+                {eng.monthlyRate == null ? '—' : <Money value={eng.monthlyRate} />}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--color-text-muted)' }}>Blended day rate</span>
               <span style={{ fontWeight: 600, color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
-                {formatCurrency(eng.blendedDayRate)}
+                {eng.blendedDayRate == null ? '—' : <Money value={eng.blendedDayRate} />}
               </span>
             </div>
           </div>

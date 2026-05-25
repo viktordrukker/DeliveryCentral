@@ -6,7 +6,7 @@ import type { ProjectRiskDto } from '@/lib/api/project-risks';
 import type { ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDate } from '@/lib/format-date';
-import { Button, DescriptionList, type DescriptionListItem, Table, type Column } from '@/components/ds';
+import { Button, DescriptionList, type DescriptionListItem, Money, Table, type Column } from '@/components/ds';
 
 interface ProjectStatusReportViewProps {
   project: ProjectDetails;
@@ -27,12 +27,6 @@ const RAG_COLORS: Record<string, string> = {
 };
 
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
-
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toLocaleString('en-US')}`;
-}
 
 const DIMENSION_LABELS: Record<string, string> = {
   scope: 'Scope',
@@ -109,10 +103,10 @@ export function ProjectStatusReportView({
   ] : [];
 
   const budgetItems: DescriptionListItem[] = budgetDashboard?.budget ? [
-    { label: 'CAPEX (Capitalization)', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.capex)}</span> },
-    { label: 'OPEX (Operational)', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.opex)}</span> },
-    { label: 'Total', value: <span style={NUM}>{formatCurrency(budgetDashboard.budget.total)}</span> },
-    { label: 'Forecast Remaining', value: <span style={NUM}>{formatCurrency(budgetDashboard.forecast.remainingBudget)}</span> },
+    { label: 'CAPEX (Capitalization)', value: <span style={NUM}><Money value={budgetDashboard.budget.capex} compact /></span> },
+    { label: 'OPEX (Operational)', value: <span style={NUM}><Money value={budgetDashboard.budget.opex} compact /></span> },
+    { label: 'Total', value: <span style={NUM}><Money value={budgetDashboard.budget.total} compact /></span> },
+    { label: 'Forecast Remaining', value: <span style={NUM}><Money value={budgetDashboard.forecast.remainingBudget} compact /></span> },
     { label: 'On Track', value: budgetDashboard.forecast.onTrack ? 'Yes' : 'No' },
   ] : [];
 
