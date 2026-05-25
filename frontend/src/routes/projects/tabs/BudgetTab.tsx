@@ -22,7 +22,7 @@ import {
   upsertProjectBudget,
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
-import { Button } from '@/components/ds';
+import { Button, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { MoneyPanel } from './MoneyPanel';
 
@@ -195,37 +195,52 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
         ) : (
           <>
             {decideError ? <ErrorState description={decideError} variant="inline" /> : null}
-            <table className="dash-compact-table" style={{ marginTop: 'var(--space-2)' }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left' }}>Requested</th>
-                  <th style={{ textAlign: 'left' }}>Requested by</th>
-                  <th style={{ textAlign: 'right' }}>New CAPEX</th>
-                  <th style={{ textAlign: 'right' }}>New OPEX</th>
-                  <th style={{ textAlign: 'left' }}>Reason</th>
-                  {canDecideBudgetChange ? <th style={{ textAlign: 'right' }}>Action</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {approvals.map((a) => {
-                  const isSubmitter = principal?.personId === a.requestedByPersonId;
-                  const change = a.requestedChange;
-                  return (
-                    <tr key={a.id}>
-                      <td>{new Date(a.requestedAt).toLocaleString()}</td>
-                      <td>{a.requestedByPersonId}</td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {change ? `$${Math.round(change.capexBudget).toLocaleString()}` : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {change ? `$${Math.round(change.opexBudget).toLocaleString()}` : '—'}
-                      </td>
-                      <td>{a.decisionReason ?? '—'}</td>
-                      {canDecideBudgetChange ? (
-                        <td style={{ textAlign: 'right' }}>
-                          {isSubmitter ? (
-                            <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>Self-approval blocked</span>
-                          ) : (
+            {(() => {
+              type Approval = (typeof approvals)[number];
+              const NUM = { fontVariantNumeric: 'tabular-nums' as const };
+              const approvalColumns: Column<Approval>[] = [
+                { key: 'requested', title: 'Requested', getValue: (a) => a.requestedAt, render: (a) => new Date(a.requestedAt).toLocaleString() },
+                { key: 'requestedBy', title: 'Requested by', getValue: (a) => a.requestedByPersonId, render: (a) => a.requestedByPersonId },
+                {
+                  key: 'capex',
+                  title: 'New CAPEX',
+                  align: 'right',
+                  getValue: (a) => a.requestedChange?.capexBudget ?? 0,
+                  render: (a) => (
+                    <span style={NUM}>
+                      {a.requestedChange ? `$${Math.round(a.requestedChange.capexBudget).toLocaleString()}` : '—'}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'opex',
+                  title: 'New OPEX',
+                  align: 'right',
+                  getValue: (a) => a.requestedChange?.opexBudget ?? 0,
+                  render: (a) => (
+                    <span style={NUM}>
+                      {a.requestedChange ? `$${Math.round(a.requestedChange.opexBudget).toLocaleString()}` : '—'}
+                    </span>
+                  ),
+                },
+                { key: 'reason', title: 'Reason', getValue: (a) => a.decisionReason ?? '', render: (a) => a.decisionReason ?? '—' },
+                ...(canDecideBudgetChange
+                  ? [
+                      {
+                        key: 'action',
+                        title: 'Action',
+                        align: 'right' as const,
+                        getValue: () => '',
+                        render: (a: Approval) => {
+                          const isSubmitter = principal?.personId === a.requestedByPersonId;
+                          if (isSubmitter) {
+                            return (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                                Self-approval blocked
+                              </span>
+                            );
+                          }
+                          return (
                             <div style={{ display: 'inline-flex', gap: 8 }}>
                               <Button
                                 disabled={decidingId === a.id}
@@ -238,7 +253,10 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                               </Button>
                               <Button
                                 disabled={decidingId === a.id}
-                                onClick={() => { setRejectFormId(a.id); setRejectReason(''); }}
+                                onClick={() => {
+                                  setRejectFormId(a.id);
+                                  setRejectReason('');
+                                }}
                                 size="sm"
                                 type="button"
                                 variant="secondary"
@@ -246,14 +264,21 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                                 Reject
                               </Button>
                             </div>
-                          )}
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          );
+                        },
+                      },
+                    ]
+                  : []),
+              ];
+              return (
+                <Table
+                  variant="compact"
+                  columns={approvalColumns}
+                  rows={approvals}
+                  getRowKey={(a) => a.id}
+                />
+              );
+            })()}
             {rejectFormId ? (
               <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
                 <label className="field">
