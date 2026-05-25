@@ -7,6 +7,20 @@ interface SparklineProps {
   width?: number;
 }
 
+/**
+ * @deprecated V2-D.3 (2026-05-25) — recharts-based legacy.
+ * Use `SparklineDs` from `@/components/ds` instead — pure inline-SVG, no
+ * recharts dependency, matches the DS canvas visual contract.
+ *
+ * Migration: `<Sparkline data={…} color={…} />` → `<SparklineDs data={…} stroke={…} />`.
+ * `color` prop maps to `stroke`; accepts CSS tokens (`var(--color-chart-1)`).
+ *
+ * The component still renders so existing callsites stay green. The
+ * MASTER_TRACKER V2-B.4 row tracks the per-site migration (6 remaining:
+ * `RmKpiStrip`, `WorkloadCard`, `DirectorKpiStrip`, `DashboardPage`,
+ * `DirectorDashboardPage`, `PulseTrendCard`). When the sweep finishes,
+ * delete this file.
+ */
 export function Sparkline({
   color = '#6366f1',
   data,
