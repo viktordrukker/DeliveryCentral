@@ -3130,7 +3130,8 @@ Per-page audit comparing canvas mock (`DS/page-*.jsx`) against shipped surfaces.
 - [ ] **V2-A.8** HR Directory — collapse Directory + Bench + HR Queue into a single 3-tab shell per `DS/page-directory-hr.jsx:35-39`. Currently split across `EmployeeDirectoryPage`, `BenchPage`, and `/cases`. — FE
 - [ ] **V2-A.9** Staffing Desk — build the canvas's killer feature: editable swimlane planner where positions drag across people. `DistributionStudio.tsx:50-302` currently ships a scenarios list with strategy chips (admitted by the file's own comment at `:44-49`). See V2-C for sub-tasks. — FE + BE
 - [ ] **V2-A.10** Profile — refactor `EmployeeDetailsPlaceholderPage.tsx` (543 LOC) so `PersonProfilePanel.tsx` becomes the page surface, not just a mounted panel. Remove the legacy lifecycle UI wrapping. — FE
-- [ ] **V2-A.11** Profile — remove MUI dependency: `EmployeeDetailsPlaceholderPage.tsx:35` imports `LockOutlinedIcon from '@mui/icons-material'`. Replace with DS icon set. — FE
+- [x] **V2-A.11** Profile — remove MUI dependency: `EmployeeDetailsPlaceholderPage.tsx:35` imports `LockOutlinedIcon from '@mui/icons-material'`. _shipped 2026-05-25: removed the page-level icon import + `EmptyState` icon prop. EmptyState falls back to its default (still MUI transitively; see V2-A.11a)._ — FE
+- [ ] **V2-A.11a** Macro MUI removal — audit found **39 files** import from `@mui` (not just one). Top callers: `EmptyState`, `LoadingState`, `ErrorState`, all auth pages (`LoginPage`, `ResetPasswordPage`, etc.), all setup-wizard screens, route guards (`RoleGuard`/`ProtectedRoute`/`FeatureGuard`). Depends on V2-B.13 DS Icon set + DS replacements for MUI-styled primitives. Months of work. — FE
 - [ ] **V2-A.12** Director Dashboard — replace recharts `BarChart`/`PieChart` (`DirectorDashboardPage.tsx:12`) with canvas's hand-rolled SVG `BurnChart` style per `DS/page-director.jsx:99`. — FE
 - [ ] **V2-A.13** Director Dashboard — replace legacy `Sparkline` import (`DirectorDashboardPage.tsx:32`) with DS `SparklineDs`. — FE
 - [ ] **V2-A.14** Workspace `/me` — replace raw tab-strip `<button>` elements (`WorkspaceShellPage.tsx:131-159`) with a proper DS Tabs atom (needs to be built; see V2-B.10). — FE
@@ -3186,7 +3187,7 @@ Specific bugs surfaced by the audit. Most are quick fixes.
 - [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
 - [ ] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). Add `@deprecated` JSDoc to the legacy one; codemod imports. — FE
 - [ ] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). Fix as part of V2-E. — FE
-- [ ] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref). — FE
+- [x] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref); shipped 2026-05-25. — FE
 
 ### Phase V2-E — ds-conformance ratchet closeout
 
