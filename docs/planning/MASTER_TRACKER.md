@@ -3201,7 +3201,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 - [x] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: Cancel/Reject/Approve footer → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [x] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: same drawer-footer pattern as V2-E.4 — Cancel/Reject/Approve → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [x] **V2-E.6** `MilestonesTab.tsx:314` raw `<button>` → DS `<Button>`. _shipped 2026-05-25: sortable-column header → `<Button variant="ghost" size="xs">` with style overrides preserving the in-header text appearance. Full DS Table sortable-column refactor tracked as V2-A.3 / V2-E.11. 4/4 MilestonesTab tests pass._ — FE
-- [ ] **V2-E.7** `DigestAndQuietHoursCard.tsx:165` raw `<button>` + `:167` button-className → DS `<Button>`. — FE
+- [x] **V2-E.7** `DigestAndQuietHoursCard.tsx:165` raw `<button>` + `:167` button-className → DS `<Button>`. _shipped 2026-05-25: simple submit button → `<Button type="submit" variant="primary" loading={saving}>` with the existing `saving` state wired to the DS spinner._ — FE
 - [ ] **V2-E.8** Remaining `no-raw-button` long-tail — sweep until count = 0. — FE
 
 #### Raw `<table>` migrations (8 remaining)
