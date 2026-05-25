@@ -3197,12 +3197,12 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 
 - [x] **V2-E.1** `ApprovalsPage.tsx:154` raw `<button>` → DS `<Button>`. _shipped 2026-05-25: filter-chip migrated to `<Button size="sm" variant={isActive ? 'primary' : 'secondary'} aria-pressed={isActive}>`. 8/8 ApprovalsPage tests pass._ — FE
 - [ ] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. — FE
-- [ ] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. — FE
+- [x] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. _shipped 2026-05-25: 5 strategy chips → `<Button size="xs" variant={isActive ? 'primary' : 'secondary'} aria-pressed={isActive} style={{ borderRadius: 999 }}>`. Pill shape preserved via style override._ — FE
 - [x] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: Cancel/Reject/Approve footer → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [x] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: same drawer-footer pattern as V2-E.4 — Cancel/Reject/Approve → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [x] **V2-E.6** `MilestonesTab.tsx:314` raw `<button>` → DS `<Button>`. _shipped 2026-05-25: sortable-column header → `<Button variant="ghost" size="xs">` with style overrides preserving the in-header text appearance. Full DS Table sortable-column refactor tracked as V2-A.3 / V2-E.11. 4/4 MilestonesTab tests pass._ — FE
 - [x] **V2-E.7** `DigestAndQuietHoursCard.tsx:165` raw `<button>` + `:167` button-className → DS `<Button>`. _shipped 2026-05-25: simple submit button → `<Button type="submit" variant="primary" loading={saving}>` with the existing `saving` state wired to the DS spinner._ — FE
-- [ ] **V2-E.8** Remaining `no-raw-button` long-tail — sweep until count = 0. — FE
+- [-] **V2-E.8** Remaining `no-raw-button` long-tail — sweep until count = 0. _2026-05-25: 22 → 1 remaining (`WorkspaceShellPage.tsx:134` blocked on V2-B.12 DS Tabs atom). MarkdownBody false-positive cleared by escaping the `&lt;button&gt;` mention in the security-doc comment block._ — FE
 
 #### Raw `<table>` migrations (8 remaining)
 
