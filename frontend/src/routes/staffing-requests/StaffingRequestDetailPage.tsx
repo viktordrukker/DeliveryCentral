@@ -35,6 +35,7 @@ import {
 } from '@/lib/api/staffing-requests';
 import {
   Button,
+  Pct,
   WorkflowStages,
   type WorkflowStage,
   type WorkflowStageStatus,
@@ -444,7 +445,7 @@ export function StaffingRequestDetailPage(): JSX.Element {
             )}
           </ContextField>
           <ContextField label="Role">{request.role}</ContextField>
-          <ContextField label="Allocation">{request.allocationPercent}%</ContextField>
+          <ContextField label="Allocation"><Pct value={request.allocationPercent} fractionDigits={0} /></ContextField>
           <ContextField label="Date range">
             {request.startDate} → {request.endDate}
           </ContextField>

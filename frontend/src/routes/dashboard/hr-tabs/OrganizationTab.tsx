@@ -3,7 +3,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { OrgDistributionTreemap } from '@/components/charts/OrgDistributionTreemap';
 import type { HrDistributionItem } from '@/lib/api/dashboard-hr-manager';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -47,7 +47,7 @@ export function HrOrganizationTab({ orgDistribution, totalHeadcount }: Props): J
             columns={[
               { key: 'label', title: 'Org Unit', getValue: (i) => i.label, render: (i) => <span style={{ fontWeight: 500 }}>{i.label}</span> },
               { key: 'count', title: 'Employees', align: 'right', getValue: (i) => i.count, render: (i) => <span style={NUM}>{i.count}</span> },
-              { key: 'pct', title: '% of Total', align: 'right', getValue: (i) => totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0, render: (i) => <span style={NUM}>{totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0}%</span> },
+              { key: 'pct', title: '% of Total', align: 'right', getValue: (i) => totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0, render: (i) => <Pct value={totalHeadcount > 0 ? Math.round((i.count / totalHeadcount) * 100) : 0} fractionDigits={0} /> },
               { key: 'bar', title: 'Bar', width: 120, render: (i) => (
                 <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: totalHeadcount > 0 ? `${Math.round((i.count / totalHeadcount) * 100)}%` : '0%', borderRadius: 2, background: 'var(--color-chart-5)' }} />

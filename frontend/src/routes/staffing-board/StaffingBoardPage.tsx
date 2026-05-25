@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { LoadingState } from '@/components/common/LoadingState';
 import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { checkAllocationConflict } from '@/lib/api/staffing-requests';
-import { Table } from '@/components/ds';
+import { Pct, Table } from '@/components/ds';
 
 // Generate 12 weeks starting from the current Monday
 function getMondayStr(d: Date): string {
@@ -74,7 +74,7 @@ function AssignmentBar({ assignment, week, conflict }: {
       }}
       title={`${assignment.project.displayName} — ${assignment.allocationPercent}%`}
     >
-      {assignment.project.displayName} ({assignment.allocationPercent}%)
+      {assignment.project.displayName} (<Pct value={assignment.allocationPercent} fractionDigits={0} />)
     </div>
   );
 }

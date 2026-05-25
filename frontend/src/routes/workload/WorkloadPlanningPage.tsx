@@ -811,7 +811,7 @@ export function WorkloadPlanningPage(): JSX.Element {
                         <>
                           {total > 0 ? (
                             <div style={{ fontSize: '0.75rem', fontWeight: 700, textAlign: 'center', color: textColor, marginBottom: '2px' }}>
-                              {total}%
+                              <Pct value={total} fractionDigits={0} />
                               {total > 100 ? (
                                 <span
                                   style={{ marginLeft: '2px', fontSize: '0.65rem', background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: '3px', padding: '0 3px' }}

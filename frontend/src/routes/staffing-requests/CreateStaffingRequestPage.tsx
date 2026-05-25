@@ -8,7 +8,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { StaffingRequestForm } from '@/components/staffing-requests/StaffingRequestForm';
 import { type StaffingRequestFormValues } from '@/components/staffing-requests/staffing-request-form.validation';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
-import { Button } from '@/components/ds';
+import { Button, Pct } from '@/components/ds';
 import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
 
 const CLOSED_PROJECT_STATUSES = new Set(['CLOSED', 'ARCHIVED', 'CANCELLED', 'COMPLETED']);
@@ -240,7 +240,7 @@ function PreviewBody({ values, project }: PreviewBodyProps): JSX.Element {
         label="Allocation"
         value={
           values.allocationPercent !== null && !Number.isNaN(values.allocationPercent)
-            ? `${values.allocationPercent}%`
+            ? <Pct value={values.allocationPercent} fractionDigits={0} />
             : '—'
         }
       />

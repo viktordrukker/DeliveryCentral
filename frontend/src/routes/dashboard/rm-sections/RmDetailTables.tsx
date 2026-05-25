@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 
 import { SectionCard } from '@/components/common/SectionCard';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 import { formatDate } from '@/lib/format-date';
 import type { ResourceManagerDashboardResponse } from '@/lib/api/dashboard-resource-manager';
 
@@ -71,8 +71,8 @@ export function RmAllocationIndicatorsTable({
               align: 'right',
               getValue: (i) => i.totalAllocationPercent,
               render: (i) => (
-                <span style={{ ...NUM, fontWeight: 600, color: indicatorColor(i.indicator) }}>
-                  {i.totalAllocationPercent}%
+                <span style={{ fontWeight: 600, color: indicatorColor(i.indicator) }}>
+                  <Pct value={i.totalAllocationPercent} fractionDigits={0} />
                 </span>
               ),
             },
@@ -243,7 +243,7 @@ export function RmIdleResourcesTable({
               title: 'Alloc %',
               align: 'right',
               getValue: (p) => p.totalAllocationPercent,
-              render: (p) => <span style={NUM}>{p.totalAllocationPercent}%</span>,
+              render: (p) => <Pct value={p.totalAllocationPercent} fractionDigits={0} />,
             },
             {
               key: 'action',
