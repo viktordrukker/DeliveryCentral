@@ -20,7 +20,7 @@ import {
   fetchStaffingRequests,
 } from '@/lib/api/staffing-requests';
 import { getAgingDays, getAgingTone, getAgingTooltip } from '@/features/staffing-desk/aging';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 
 const DERIVED_STATUSES: DerivedStaffingRequestStatus[] = [
   'Open',
@@ -127,7 +127,7 @@ export function StaffingRequestsPage(): JSX.Element {
                   { key: 'project', title: 'Project', getValue: (r) => r.projectName ?? r.projectId, render: (r) => <span style={{ fontWeight: 500 }}>{r.projectName ?? r.projectId}</span> },
                   { key: 'role', title: 'Role', getValue: (r) => r.role, render: (r) => r.role },
                   { key: 'priority', title: 'Priority', width: 70, getValue: (r) => r.priority, render: (r) => <span style={{ fontSize: 11, fontWeight: 600 }}>{PRIORITY_LABELS[r.priority] ?? r.priority}</span> },
-                  { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (r) => r.allocationPercent, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.allocationPercent}%</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', width: 60, getValue: (r) => r.allocationPercent, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}><Pct value={r.allocationPercent} /></span> },
                   { key: 'dates', title: 'Dates', width: 140, getValue: (r) => `${r.startDate}-${r.endDate}`, render: (r) => (
                     <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>
                       {formatDateShort(r.startDate)} {'\u2192'} {formatDateShort(r.endDate)}

@@ -22,7 +22,7 @@ import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type Rol
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { fetchProjectDashboard, type ProjectDashboardResponse } from '@/lib/api/project-dashboard';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 
@@ -160,7 +160,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
               columns={[
                 { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => <Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link> },
                 { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
-                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}>{a.allocationPercent}%</span> },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}><Pct value={a.allocationPercent} /></span> },
                 { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
                 { key: 'to', title: 'To', getValue: (a) => a.endDate ?? '', render: (a) => a.endDate ? formatDateShort(a.endDate) : '\u2014' },
                 { key: 'status', title: 'Status', getValue: (a) => a.approvalState, render: (a) => a.approvalState },
@@ -190,7 +190,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
               variant="compact"
               columns={[
                 { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span> },
-                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.allocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600 }}>{i.allocationPercent}%</span> },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.allocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600 }}><Pct value={i.allocationPercent} /></span> },
                 { key: 'bar', title: 'Bar', width: 120, render: (i) => (
                   <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${Math.min(i.allocationPercent, 100)}%`, borderRadius: 2, background: i.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />

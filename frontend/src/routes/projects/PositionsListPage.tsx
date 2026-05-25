@@ -7,7 +7,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import {
   type ProjectPosition,
   type PositionFillStatus,
@@ -47,7 +47,7 @@ const positionsColumns: Array<Column<ProjectPosition>> = [
     key: 'required',
     title: 'Required %',
     align: 'right',
-    render: (p) => <span style={NUM}>{p.requiredAllocationPercent}%</span>,
+    render: (p) => <span style={NUM}><Pct value={p.requiredAllocationPercent} /></span>,
   },
   {
     key: 'active-person',

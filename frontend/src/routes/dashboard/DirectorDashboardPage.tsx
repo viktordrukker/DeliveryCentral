@@ -37,7 +37,7 @@ import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type Avai
 import { type DirectorSlaSummary, fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealthBatch, type ProjectHealthDto } from '@/lib/api/project-health';
-import { Button, DataView, Table, type Column } from '@/components/ds';
+import { Button, DataView, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -225,7 +225,7 @@ export function DirectorDashboardPage(): JSX.Element {
                   variant="compact"
                   columns={[
                     { key: 'unit', title: 'Org Unit', getValue: (item) => item.orgUnitName, render: (item) => <span style={{ fontWeight: 500 }}>{item.orgUnitName}</span> },
-                    { key: 'util', title: 'Util %', align: 'right', getValue: (item) => item.utilisation, render: (item) => <span style={{ ...NUM, fontWeight: 600, color: tc(item.utilisation, 60, 40, false) }}>{item.utilisation}%</span> },
+                    { key: 'util', title: 'Util %', align: 'right', getValue: (item) => item.utilisation, render: (item) => <span style={{ ...NUM, fontWeight: 600, color: tc(item.utilisation, 60, 40, false) }}><Pct value={item.utilisation} /></span> },
                   ] as Column<typeof d.unitUtilisation[number]>[]}
                   rows={d.unitUtilisation}
                   getRowKey={(item) => item.orgUnitId}
@@ -252,7 +252,7 @@ export function DirectorDashboardPage(): JSX.Element {
                     columns={[
                       { key: 'status', title: 'Status', getValue: (r) => r.label, render: (r) => <StatusBadge status={r.tone} label={r.label} variant="dot" /> },
                       { key: 'count', title: 'Count', align: 'right', getValue: (r) => r.count, render: (r) => <span style={NUM}>{r.count}</span> },
-                      { key: 'pct', title: '%', align: 'right', getValue: (r) => r.pct, render: (r) => <span style={NUM}>{r.pct}%</span> },
+                      { key: 'pct', title: '%', align: 'right', getValue: (r) => r.pct, render: (r) => <span style={NUM}><Pct value={r.pct} /></span> },
                     ] as Column<{ tone: string; label: string; count: number; pct: number }>[]}
                     rows={[
                       { tone: 'active', label: 'Green', count: ps.byRag.green, pct: ps.totalProjects > 0 ? Math.round(ps.byRag.green / ps.totalProjects * 100) : 0 },
@@ -286,7 +286,7 @@ export function DirectorDashboardPage(): JSX.Element {
                     variant="compact"
                     columns={[
                       { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
-                      { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.currentAllocation, render: (p) => <span style={{ ...NUM, color: p.currentAllocation === 0 ? 'var(--color-status-active)' : 'var(--color-text-muted)' }}>{p.currentAllocation}%</span> },
+                      { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (p) => p.currentAllocation, render: (p) => <span style={{ ...NUM, color: p.currentAllocation === 0 ? 'var(--color-status-active)' : 'var(--color-text-muted)' }}><Pct value={p.currentAllocation} /></span> },
                       { key: 'avail', title: 'Available', getValue: (p) => p.availableFrom ?? 'Now', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.availableFrom ?? 'Now'}</span> },
                     ] as Column<typeof availablePool[number]>[]}
                     rows={availablePool.slice(0, 10)}

@@ -6,7 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import { fetchPersonDirectory, type PersonDirectoryItem } from '@/lib/api/person-directory';
 import { checkBench, type BenchPerson } from '@/lib/api/project-positions';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -51,7 +51,7 @@ const benchColumns: Array<Column<BenchRow>> = [
     key: 'alloc',
     title: 'Total allocation %',
     align: 'right',
-    render: (row) => <span style={NUM}>{row.bench.totalActiveAllocationPercent}%</span>,
+    render: (row) => <span style={NUM}><Pct value={row.bench.totalActiveAllocationPercent} /></span>,
   },
 ];
 
