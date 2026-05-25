@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { CellClass } from '@/lib/api/staffing-desk';
 import { suggestionKey, type PlannerSimulation } from '@/features/staffing-desk/usePlannerSimulation';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 import type { AutoMatchSuggestion } from '@/lib/api/staffing-desk';
 
 interface Props {
@@ -73,7 +73,7 @@ export function PlannerAutoMatchPreviewModal({ simulation }: Props): JSX.Element
 
         <div style={S_SUMMARY}>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Assigned</span><span style={S_METRIC_VALUE}>{summary.assignedCount}<span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}> / {summary.totalDemand}</span></span></div>
-          <div style={S_METRIC}><span style={S_METRIC_LABEL}>Coverage</span><span style={S_METRIC_VALUE}>{summary.coverageLiftPercent.toFixed(1)}%</span></div>
+          <div style={S_METRIC}><span style={S_METRIC_LABEL}>Coverage</span><span style={S_METRIC_VALUE}><Pct value={summary.coverageLiftPercent} /></span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Avg match</span><span style={S_METRIC_VALUE}>{Math.round(summary.avgMatchScore * 100)}%</span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Strong</span><span style={{ ...S_METRIC_VALUE, color: 'var(--color-status-active)' }}>{summary.strongCount}</span></div>
           <div style={S_METRIC}><span style={S_METRIC_LABEL}>Medium</span><span style={{ ...S_METRIC_VALUE, color: 'var(--color-status-warning)' }}>{summary.mediumCount}</span></div>

@@ -31,7 +31,7 @@ import {
   fetchCapitalisationReport,
   fetchPeriodLocks,
 } from '@/lib/api/capitalisation';
-import { Button, DatePicker, Table, type Column } from '@/components/ds';
+import { Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
 
 type SortKey = 'projectName' | 'capexHours' | 'opexHours' | 'totalHours' | 'capexPercent';
 
@@ -301,7 +301,7 @@ export function CapitalisationPage(): JSX.Element {
                   { key: 'capexHours', title: sortHeader('capexHours', 'CAPEX Hours'), getValue: (r) => r.capexHours, render: (r) => r.capexHours.toFixed(1) },
                   { key: 'opexHours', title: sortHeader('opexHours', 'OPEX Hours'), getValue: (r) => r.opexHours, render: (r) => r.opexHours.toFixed(1) },
                   { key: 'totalHours', title: sortHeader('totalHours', 'Total Hours'), getValue: (r) => r.totalHours, render: (r) => r.totalHours.toFixed(1) },
-                  { key: 'capexPercent', title: sortHeader('capexPercent', 'CAPEX %'), getValue: (r) => r.capexPercent, render: (r) => `${r.capexPercent.toFixed(1)}%` },
+                  { key: 'capexPercent', title: sortHeader('capexPercent', 'CAPEX %'), getValue: (r) => r.capexPercent, render: (r) => <Pct value={r.capexPercent} /> },
                   { key: 'alert', title: 'Alert', render: (r) => (
                     r.alert ? (
                       <span
@@ -329,7 +329,7 @@ export function CapitalisationPage(): JSX.Element {
                   <span>{report.totals.capexHours.toFixed(1)}</span>
                   <span>{report.totals.opexHours.toFixed(1)}</span>
                   <span>{report.totals.totalHours.toFixed(1)}</span>
-                  <span>{report.totals.capexPercent.toFixed(1)}%</span>
+                  <span><Pct value={report.totals.capexPercent} /></span>
                   <span />
                 </div>
               }

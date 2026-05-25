@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
 import { TipBalloon } from '@/components/common/TipBalloon';
-import { Sparkline } from '@/components/charts/Sparkline';
 import { Pct } from '@/components/ds/Pct';
+import { SparklineDs, type SparklineTone } from '@/components/ds';
 
 interface RmKpiStripProps {
   utilPct: number;
@@ -18,6 +18,12 @@ function utilTone(pct: number): string {
   if (pct >= 85) return 'var(--color-status-active)';
   if (pct >= 65) return 'var(--color-status-warning)';
   return 'var(--color-status-danger)';
+}
+
+function utilSparkTone(pct: number): SparklineTone {
+  if (pct >= 85) return 'active';
+  if (pct >= 65) return 'warning';
+  return 'danger';
 }
 
 function idleTone(idle: number): string {
@@ -57,7 +63,7 @@ export function RmKpiStrip({
         </div>
         {utilSpark.length > 3 && (
           <div className="kpi-strip__sparkline">
-            <Sparkline data={utilSpark} height={24} width={72} />
+            <SparklineDs data={utilSpark} height={24} width={72} tone={utilSparkTone(utilPct)} />
           </div>
         )}
       </Link>

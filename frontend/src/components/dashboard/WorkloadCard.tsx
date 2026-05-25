@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { Sparkline } from '@/components/charts/Sparkline';
 import { Pct } from '@/components/ds/Pct';
+import { SparklineDs } from '@/components/ds';
 
 interface WorkloadCardProps {
   alertSeverity?: 'warning' | 'danger';
@@ -120,7 +120,7 @@ export function WorkloadCard({
           {trendChange !== undefined ? <TrendIndicator change={trendChange} /> : null}
         </div>
         {trendData && trendData.length > 1 ? (
-          <Sparkline data={trendData} height={32} width={64} />
+          <SparklineDs data={trendData} height={32} width={64} />
         ) : null}
       </div>
       {supportingText ? <p className="monitoring-card__summary">{supportingText}</p> : null}

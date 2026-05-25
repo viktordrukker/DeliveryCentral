@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { Sparkline } from '@/components/charts/Sparkline';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { Pct } from '@/components/ds/Pct';
+import { SparklineDs, type SparklineTone } from '@/components/ds';
 import type { PortfolioSummaryResponse } from '@/lib/api/portfolio-dashboard';
 
 function tc(val: number, warn: number, danger: number, higherIsBad = true): string {
@@ -14,6 +14,17 @@ function tc(val: number, warn: number, danger: number, higherIsBad = true): stri
   if (val <= danger) return 'var(--color-status-danger)';
   if (val <= warn) return 'var(--color-status-warning)';
   return 'var(--color-status-active)';
+}
+
+function tone(val: number, warn: number, danger: number, higherIsBad = true): SparklineTone {
+  if (higherIsBad) {
+    if (val >= danger) return 'danger';
+    if (val >= warn) return 'warning';
+    return 'active';
+  }
+  if (val <= danger) return 'danger';
+  if (val <= warn) return 'warning';
+  return 'active';
 }
 
 interface DirectorSummary {
@@ -82,11 +93,11 @@ export function DirectorKpiStrip({
         />
         <span className="kpi-strip__value"><Pct value={Math.round(summary.staffingUtilisationRate)} /></span>
         <span className="kpi-strip__label">Utilisation</span>
-        <Sparkline
+        <SparklineDs
           data={weeklyTrend.map((w) => w.staffingUtilisationRate)}
           height={20}
           width={60}
-          color={tc(Math.round(summary.staffingUtilisationRate), 60, 40, false)}
+          tone={tone(Math.round(summary.staffingUtilisationRate), 60, 40, false)}
         />
       </Link>
 
@@ -187,11 +198,11 @@ export function DirectorKpiStrip({
             </span>
             <span className="kpi-strip__label">Time to Fill (4w)</span>
             {slaSummary.timeToFillSeries.some((v) => v > 0) ? (
-              <Sparkline
+              <SparklineDs
                 data={slaSummary.timeToFillSeries}
                 height={20}
                 width={60}
-                color="var(--color-chart-2)"
+                tone="info"
               />
             ) : null}
           </Link>
