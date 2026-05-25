@@ -21,6 +21,7 @@ import { Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
+import { CasesPanel } from '@/components/cases/CasesPanel';
 
 const defaultPageSize = 25;
 
@@ -84,9 +85,13 @@ export function EmployeeDirectoryPage(): JSX.Element {
     return () => setActions(null);
   }, [setActions, canManagePeople, state.data, state.visibleItems, state.isLoading, navigate]);
 
+  // V2-A.8 — canvas 3-tab shell: Directory / Bench / HR Queue. Each pane
+  // mounts its own data-fetching panel; the parent owns the tab selection
+  // state via the `view` URL filter param so deep-links survive reloads.
   const peopleTabs = [
     { id: 'directory', label: 'Directory' },
     { id: 'bench', label: 'Bench' },
+    { id: 'cases', label: 'HR Queue' },
   ];
   const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
 
@@ -100,6 +105,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
         />
       ) : null}
       {dsRefreshEnabled && activeView === 'bench' ? <BenchEnrichedPanel /> : null}
+      {dsRefreshEnabled && activeView === 'cases' ? <CasesPanel /> : null}
       {dsRefreshEnabled && activeView !== 'directory' ? null : (
       <>
       <FilterBar>
