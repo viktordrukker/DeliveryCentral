@@ -3207,7 +3207,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 #### Raw `<table>` migrations (8 remaining)
 
 - [x] **V2-E.9** `FeatureFlagsAdminPage.tsx:160` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: migrated to `<Table>` with 6-column config (flag id+key, description, maturity badge, owner, ON/OFF state, toggle action). Preserved `data-testid={flag-table-${category}}` for existing test scaffolding._ — FE
-- [ ] **V2-E.10** `IntegrationsRegistryPage.tsx:81` raw `<table>` → DS `<Table>`. — FE
+- [x] **V2-E.10** `IntegrationsRegistryPage.tsx:81` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: migrated to `<Table variant="compact">` with 10-column config covering provider/description/status/configured/reachable/latency/last sync metadata/manual-sync hint._ — FE
 - [ ] **V2-E.11** `ProjectsTab.tsx:114` raw `<table>` → DS `<Table>` (requires column-config refactor). — FE
 - [ ] **V2-E.12** `BudgetTab.tsx:198` raw `<table>` → DS `<Table>`. — FE
 - [x] **V2-E.13** `MoneyPanel.tsx:264` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Top-cost-lines (by role) → `<Table variant="compact">` with 4-column config (role tone-dot, hours, cost via Money atom, share bar). Preserves the visual mini-share-bar via render._ — FE
