@@ -13,7 +13,7 @@ import { humanizeEnum } from '@/lib/labels';
 import { formatDateShort } from '@/lib/format-date';
 import { fetchPersonDirectoryById, type PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchPersonSkills, type PersonSkill } from '@/lib/api/skills';
-import { Button, Drawer } from '@/components/ds';
+import { Button, Drawer, Pct } from '@/components/ds';
 
 interface Props {
   actions: StaffingDeskActions;
@@ -142,7 +142,7 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
       <div style={SECTION}>Details</div>
       <dl style={DL}>
         <dt style={DT}>Role</dt><dd>{row.role || '—'}</dd>
-        <dt style={DT}>Allocation</dt><dd style={{ fontVariantNumeric: 'tabular-nums' }}>{row.allocationPercent}%</dd>
+        <dt style={DT}>Allocation</dt><dd><Pct value={row.allocationPercent} fractionDigits={0} /></dd>
         <dt style={DT}>Start Date</dt><dd>{formatDateShort(row.startDate)}</dd>
         <dt style={DT}>End Date</dt><dd>{row.endDate ? formatDateShort(row.endDate) : 'Open-ended'}</dd>
         {row.assignmentCode && (<><dt style={DT}>Code</dt><dd>{row.assignmentCode}</dd></>)}

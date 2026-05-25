@@ -22,7 +22,7 @@ import {
   upsertProjectBudget,
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
-import { Button, Money, Table, type Column } from '@/components/ds';
+import { Button, Money, Pct, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { MoneyPanel } from './MoneyPanel';
 
@@ -411,7 +411,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
               </div>
               <div style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>
                 {spc.bac !== null
-                  ? `${Math.round(((spc.totalSpcCost + spc.vendorAccrualToDate) / spc.bac) * 100)}% consumed`
+                  ? <><Pct value={Math.round(((spc.totalSpcCost + spc.vendorAccrualToDate) / spc.bac) * 100)} fractionDigits={0} /> consumed</>
                   : 'set a budget above'}
               </div>
             </div>

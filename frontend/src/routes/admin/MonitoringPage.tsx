@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { MonitoringAdminData, useMonitoringAdmin } from '@/features/admin/useMonitoringAdmin';
 import { formatDateTime } from '@/lib/format-date';
-import { Button } from '@/components/ds';
+import { Button, Pct } from '@/components/ds';
 
 function computeHealthChecks(d: MonitoringAdminData): { label: string; ok: boolean }[] {
   return [
@@ -90,7 +90,7 @@ export function MonitoringPage(): JSX.Element {
                         left: 0, lineHeight: 1, pointerEvents: 'none',
                         position: 'absolute', right: 0, top: 0,
                       }}>
-                        {pct}%
+                        <Pct value={pct} fractionDigits={0} />
                       </div>
                     </div>
                     <div>

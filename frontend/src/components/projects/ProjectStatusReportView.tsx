@@ -6,7 +6,7 @@ import type { ProjectRiskDto } from '@/lib/api/project-risks';
 import type { ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDate } from '@/lib/format-date';
-import { Button, DescriptionList, type DescriptionListItem, Money, Table, type Column } from '@/components/ds';
+import { Button, DescriptionList, type DescriptionListItem, Money, Pct, Table, type Column } from '@/components/ds';
 
 interface ProjectStatusReportViewProps {
   project: ProjectDetails;
@@ -98,7 +98,7 @@ export function ProjectStatusReportView({
     { label: 'Planned Headcount', value: <span style={NUM}>{staffingSummary.totalPlanned}</span> },
     { label: 'Internal Filled', value: <span style={NUM}>{staffingSummary.totalInternalFilled}</span> },
     { label: 'Vendor Filled', value: <span style={NUM}>{staffingSummary.totalVendorFilled}</span> },
-    { label: 'Fill Rate', value: <span style={NUM}>{staffingSummary.fillRate}%</span> },
+    { label: 'Fill Rate', value: <Pct value={staffingSummary.fillRate} fractionDigits={0} /> },
     { label: 'Gap', value: <span style={NUM}>{staffingSummary.totalGap}</span> },
   ] : [];
 
