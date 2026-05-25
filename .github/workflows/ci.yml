@@ -221,6 +221,12 @@ jobs:
       - name: Design token guardrail
         run: npm run tokens:check
 
+      - name: DS conformance ratchet
+        # V2-E.18 (2026-05-25) — all 6 rule families error-tier at baseline 0.
+        # Any new raw-button / raw-table / window.confirm / button-className
+        # / link-button-className / window.alert fails the build.
+        run: npm run ds:check
+
       - name: Audit dependencies
         run: npm audit --audit-level=moderate || true
 

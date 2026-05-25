@@ -5,7 +5,7 @@ import { useAuth } from '@/app/auth-context';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
-import { Button } from '@/components/ds';
+import { Button, Tabs } from '@/components/ds';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
@@ -115,49 +115,15 @@ export function WorkspaceShellPage(): JSX.Element {
           ) : undefined
         }
       />
-      <nav
+      <Tabs
+        tabs={TABS}
+        value={activeTab}
+        onValueChange={(id) => selectTab(id as WorkspaceTab)}
+        ariaLabel="Workspace tabs"
+        idPrefix="me-tab"
         className="me-tab-strip"
-        role="tablist"
-        aria-label="Workspace tabs"
-        style={{
-          display: 'flex',
-          gap: 4,
-          padding: '0 var(--space-3)',
-          borderBottom: '1px solid var(--color-border)',
-          marginBottom: 'var(--space-4)',
-          flexWrap: 'wrap',
-        }}
-      >
-        {TABS.map((t) => {
-          const selected = t.id === activeTab;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`me-tab-${t.id}`}
-              aria-controls={`me-tabpanel-${t.id}`}
-              aria-selected={selected}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => selectTab(t.id)}
-              data-tab={t.id}
-              data-active={selected || undefined}
-              style={{
-                background: 'transparent',
-                border: 0,
-                padding: '10px 14px',
-                cursor: 'pointer',
-                color: selected ? 'var(--color-text)' : 'var(--color-text-muted)',
-                fontWeight: selected ? 600 : 400,
-                borderBottom: selected ? '2px solid var(--color-accent)' : '2px solid transparent',
-                marginBottom: -1,
-              }}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
+        style={{ padding: '0 var(--space-3)', marginBottom: 'var(--space-4)' }}
+      />
 
       <div
         role="tabpanel"
