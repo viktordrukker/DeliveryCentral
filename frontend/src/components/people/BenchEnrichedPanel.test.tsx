@@ -121,7 +121,9 @@ describe('BenchEnrichedPanel — D4 fidelity', () => {
     fetchEnrichedBench.mockResolvedValue([sampleRows[0]]);
     renderRoute(<BenchEnrichedPanel />);
     await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
-    const link = screen.getByRole('link', { name: /Open/ });
+    // V2-A.7 — Table rows became role="link" (interactive) when onRowClick wired
+    // for master-detail. Filter to the actual `<a>` element for this assertion.
+    const link = screen.getByRole('link', { name: /^Open/ });
     expect(link.getAttribute('href')).toBe('/people/p1');
   });
 });

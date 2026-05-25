@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { Avatar } from '@/components/ds/Avatar';
 import { Table, type Column } from '@/components/ds';
 import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-bench';
+import { BenchInspector } from './BenchInspector';
 
 type Tone = 'active' | 'info' | 'warning' | 'danger';
 
@@ -34,6 +35,8 @@ export function BenchEnrichedPanel(): JSX.Element {
   const [rows, setRows] = useState<BenchEnrichedRowDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // V2-A.7 — list-detail layout: clicking a row opens the inspector pane.
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +94,7 @@ export function BenchEnrichedPanel(): JSX.Element {
 
   // Sort by daysOnBench DESC (longest idle first) per canvas
   const sortedRows = [...rows].sort((a, b) => b.daysOnBench - a.daysOnBench);
+  const selectedRow = selectedPersonId ? rows.find((r) => r.personId === selectedPersonId) ?? null : null;
 
   return (
     <div data-testid="bench-enriched" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -118,6 +122,15 @@ export function BenchEnrichedPanel(): JSX.Element {
         </div>
       </div>
 
+      {/* V2-A.7 — master-detail layout: list on the left, inspector on the right when a row is selected. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: selectedRow ? 'minmax(0, 1fr) minmax(280px, 360px)' : 'minmax(0, 1fr)',
+          gap: 16,
+          alignItems: 'start',
+        }}
+      >
       {/* Bench list — compact canvas table */}
       <div className="card">
         <div className="card-header">
@@ -240,11 +253,17 @@ export function BenchEnrichedPanel(): JSX.Element {
                 columns={columns}
                 rows={sortedRows}
                 getRowKey={(r) => r.personId}
+                onRowClick={(r) => setSelectedPersonId(r.personId === selectedPersonId ? null : r.personId)}
                 testId="bench-enriched-list"
               />
             );
           })()}
         </div>
+      </div>
+
+      {selectedRow ? (
+        <BenchInspector row={selectedRow} onClose={() => setSelectedPersonId(null)} />
+      ) : null}
       </div>
     </div>
   );
