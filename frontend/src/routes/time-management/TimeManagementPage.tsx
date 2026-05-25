@@ -25,7 +25,7 @@ import {
   type ComplianceRow,
 } from '@/lib/api/time-management';
 import { useOvertimeSummary } from '@/features/dashboard/useOvertimeSummary';
-import { Button, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -441,7 +441,12 @@ export function TimeManagementPage(): JSX.Element {
                       return <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} disabled={!isPending} />;
                     } },
                     { key: 'type', title: 'Type', render: (item) => <StatusBadge label={item.type === 'timesheet' ? 'Time' : item.leaveType ?? 'Leave'} size="small" tone={item.type === 'timesheet' ? 'info' : 'neutral'} /> },
-                    { key: 'person', title: 'Person', getValue: (item) => item.personName, render: (item) => <span style={{ fontWeight: 500, cursor: 'pointer' }} onClick={() => nav(`/people/${item.personId}`)}>{item.personName}</span> },
+                    { key: 'person', title: 'Person', getValue: (item) => item.personName, render: (item) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: 'pointer' }} onClick={() => nav(`/people/${item.personId}`)}>
+                        <Avatar name={item.personName} size="xs" />
+                        <span>{item.personName}</span>
+                      </span>
+                    ) },
                     { key: 'period', title: 'Period', render: (item) => item.type === 'timesheet' ? `Week of ${item.weekStart}` : `${item.leaveStartDate} – ${item.leaveEndDate}` },
                     { key: 'hours', title: 'Hours/Days', align: 'right', render: (item) => <span style={NUM}>{item.type === 'timesheet' ? `${item.totalHours}h` : `${item.leaveDays}d`}{item.overtimeHours && item.overtimeHours > 0 ? <span style={{ color: 'var(--color-status-warning)', fontSize: 10 }}> +{item.overtimeHours}h OT</span> : null}</span> },
                     { key: 'status', title: 'Status', render: (item) => <StatusBadge label={item.status} size="small" tone={item.status === 'APPROVED' ? 'active' : item.status === 'SUBMITTED' || item.status === 'PENDING' ? 'warning' : 'danger'} /> },
@@ -529,7 +534,12 @@ export function TimeManagementPage(): JSX.Element {
                 <Table
                   variant="compact"
                   columns={[
-                    { key: 'person', title: 'Person', getValue: (c) => c.displayName, render: (c) => <span style={{ fontWeight: 500 }}>{c.displayName}</span> },
+                    { key: 'person', title: 'Person', getValue: (c) => c.displayName, render: (c) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                        <Avatar name={c.displayName} size="xs" />
+                        <span>{c.displayName}</span>
+                      </span>
+                    ) },
                     { key: 'reported', title: 'Reported', align: 'right', getValue: (c) => c.reportedHours, render: (c) => <span style={NUM}>{c.reportedHours}h</span> },
                     { key: 'expected', title: 'Expected', align: 'right', getValue: (c) => c.expectedHours, render: (c) => <span style={NUM}>{c.expectedHours}h</span> },
                     { key: 'gaps', title: 'Gaps', align: 'right', getValue: (c) => c.gapDays, render: (c) => <span style={{ ...NUM, color: c.gapDays > 0 ? 'var(--color-status-danger)' : 'var(--color-text-muted)', fontWeight: c.gapDays > 0 ? 600 : 400 }}>{c.gapDays}d</span> },

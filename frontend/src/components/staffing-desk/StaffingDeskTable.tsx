@@ -24,7 +24,7 @@ import {
   applyInlineFilters,
   computeUniqueValues,
 } from '@/components/staffing-desk/table-shared';
-import { Button, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Table, type Column } from '@/components/ds';
 
 type Tab = 'supply' | 'demand';
 
@@ -41,7 +41,15 @@ interface Props {
 }
 
 const SUPPLY_ALL_COLUMNS: ColDef[] = [
-  { key: 'person', label: 'Person', category: 'Core', width: 120, filterType: 'text', getValue: (r) => r.personName, render: (r, onClick) => <span style={{ fontWeight: 500, cursor: r.personId ? 'pointer' : undefined, color: r.personId ? 'var(--color-accent)' : 'var(--color-text-muted)' }} onClick={(e) => { if (r.personId && onClick) { e.stopPropagation(); onClick(r.personId, r.personName ?? ''); } }}>{r.personName ?? 'Unknown'}</span> },
+  { key: 'person', label: 'Person', category: 'Core', width: 140, filterType: 'text', getValue: (r) => r.personName, render: (r, onClick) => (
+    <span
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500, cursor: r.personId ? 'pointer' : undefined, color: r.personId ? 'var(--color-accent)' : 'var(--color-text-muted)' }}
+      onClick={(e) => { if (r.personId && onClick) { e.stopPropagation(); onClick(r.personId, r.personName ?? ''); } }}
+    >
+      {r.personName ? <Avatar name={r.personName} size="xs" /> : null}
+      <span>{r.personName ?? 'Unknown'}</span>
+    </span>
+  ) },
   { key: 'timeline', label: 'Timeline', category: 'Core', width: 180, isTimeline: true, filterType: 'none', getValue: () => null, render: (r) => r.personId ? <WorkloadTimeline personId={r.personId} compact preloadedAssignments={r.personAssignments} /> : null },
   { key: 'project', label: 'Project', category: 'Core', width: 110, filterType: 'multiselect', getValue: (r) => r.projectName, render: (r) => r.projectName },
   { key: 'role', label: 'Role', category: 'Core', width: 90, filterType: 'multiselect', getValue: (r) => r.role, render: (r) => r.role },

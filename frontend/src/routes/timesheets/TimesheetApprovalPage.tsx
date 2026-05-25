@@ -17,7 +17,7 @@ import {
   fetchApprovalQueue,
   rejectTimesheet,
 } from '@/lib/api/timesheets';
-import { Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -295,7 +295,15 @@ export function TimesheetApprovalPage(): JSX.Element {
                   onClick={(e) => e.stopPropagation()}
                 />
               ) },
-              { key: 'person', title: 'Person', getValue: (w) => personNames[w.personId] ?? w.personId, render: (w) => personNames[w.personId] ?? w.personId },
+              { key: 'person', title: 'Person', getValue: (w) => personNames[w.personId] ?? w.personId, render: (w) => {
+                const name = personNames[w.personId] ?? w.personId;
+                return (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar name={name} size="xs" />
+                    <span>{name}</span>
+                  </span>
+                );
+              } },
               { key: 'weekStart', title: 'Week Start', getValue: (w) => w.weekStart, render: (w) => w.weekStart },
               { key: 'status', title: 'Status', getValue: (w) => w.status, render: (w) => (
                 <span className={`badge ${getStatusBadgeClass(w.status)}`}>{w.status}</span>

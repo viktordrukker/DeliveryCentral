@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 
 import { SectionCard } from '@/components/common/SectionCard';
-import { Button, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Pct, Table, type Column } from '@/components/ds';
 import { formatDate } from '@/lib/format-date';
 import type { ResourceManagerDashboardResponse } from '@/lib/api/dashboard-resource-manager';
 
@@ -44,7 +44,12 @@ export function RmAllocationIndicatorsTable({
               key: 'person',
               title: 'Person',
               getValue: (i) => i.displayName,
-              render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span>,
+              render: (i) => (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                  <Avatar name={i.displayName} size="xs" />
+                  <span>{i.displayName}</span>
+                </span>
+              ),
             },
             {
               key: 'team',
@@ -228,7 +233,12 @@ export function RmIdleResourcesTable({
               key: 'person',
               title: 'Person',
               getValue: (p) => p.displayName,
-              render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span>,
+              render: (p) => (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                  <Avatar name={p.displayName} size="xs" />
+                  <span>{p.displayName}</span>
+                </span>
+              ),
             },
             {
               key: 'team',
