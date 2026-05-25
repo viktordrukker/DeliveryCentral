@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button } from '@/components/ds';
+import { ApprovalInspector } from '@/components/approvals/ApprovalInspector';
 import {
   type ApprovalQueueItemDto,
   type ApprovalQueueSource,
@@ -87,6 +88,8 @@ export function ApprovalsPage(): JSX.Element {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // V2-A.5 — selected row drives the right-pane one-screen-approval inspector.
+  const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -193,92 +196,130 @@ export function ApprovalsPage(): JSX.Element {
               </p>
             </div>
           </div>
-        ) : (
-          <div className="card" data-testid="approvals-list-card">
-            <div className="card-header">
-              <h3>
-                {activeFilter === 'all'
-                  ? 'All approvals'
-                  : SOURCES.find((s) => s.id === activeFilter)?.label}
-              </h3>
-              <span className="compact muted">
-                {total} item{total === 1 ? '' : 's'} · sorted by SLA × age
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }} data-testid="approvals-list">
-              {items.map((item, i) => {
-                const tone = SOURCE_TONE[item.source];
-                return (
-                  <div
-                    key={`${item.source}-${item.id}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      padding: '12px 20px',
-                      borderTop:
-                        i === 0 ? 0 : '1px solid var(--color-border-subtle)',
-                    }}
-                  >
-                    <span
-                      className={`tone-dot tone-${tone}`}
-                      style={{ flexShrink: 0 }}
-                      aria-hidden="true"
-                    />
-                    <span
-                      className="compact muted"
-                      style={{ minWidth: 80, fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {SOURCE_LABEL[item.source]}
-                    </span>
-                    {item.submittedBy ? (
-                      <Avatar name={item.submittedBy.displayName} size="xs" />
-                    ) : (
-                      <span style={{ width: 20 }} />
-                    )}
-                    <div className="body-sm" style={{ flex: 1, minWidth: 0 }}>
+        ) : (() => {
+          const selectedItem = selectedItemKey
+            ? items.find((it) => `${it.source}-${it.id}` === selectedItemKey) ?? null
+            : null;
+          return (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: selectedItem
+                  ? 'minmax(0, 1fr) minmax(320px, 380px)'
+                  : 'minmax(0, 1fr)',
+                gap: 16,
+                alignItems: 'start',
+              }}
+            >
+              <div className="card" data-testid="approvals-list-card">
+                <div className="card-header">
+                  <h3>
+                    {activeFilter === 'all'
+                      ? 'All approvals'
+                      : SOURCES.find((s) => s.id === activeFilter)?.label}
+                  </h3>
+                  <span className="compact muted">
+                    {total} item{total === 1 ? '' : 's'} · sorted by SLA × age
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }} data-testid="approvals-list">
+                  {items.map((item, i) => {
+                    const tone = SOURCE_TONE[item.source];
+                    const key = `${item.source}-${item.id}`;
+                    const isActive = key === selectedItemKey;
+                    return (
                       <div
-                        style={{
-                          fontWeight: 600,
-                          color: 'var(--color-text)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                        key={key}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedItemKey(isActive ? null : key)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedItemKey(isActive ? null : key);
+                          }
                         }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 14,
+                          padding: '12px 20px',
+                          borderTop:
+                            i === 0 ? 0 : '1px solid var(--color-border-subtle)',
+                          background: isActive ? 'var(--color-surface-alt)' : 'transparent',
+                          cursor: 'pointer',
+                        }}
+                        aria-pressed={isActive}
                       >
-                        {item.title}
+                        <span
+                          className={`tone-dot tone-${tone}`}
+                          style={{ flexShrink: 0 }}
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="compact muted"
+                          style={{ minWidth: 80, fontVariantNumeric: 'tabular-nums' }}
+                        >
+                          {SOURCE_LABEL[item.source]}
+                        </span>
+                        {item.submittedBy ? (
+                          <Avatar name={item.submittedBy.displayName} size="xs" />
+                        ) : (
+                          <span style={{ width: 20 }} />
+                        )}
+                        <div className="body-sm" style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              color: 'var(--color-text)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {item.title}
+                          </div>
+                          <div className="compact muted" style={{ marginTop: 2 }}>
+                            {item.submittedBy?.displayName ?? 'unknown submitter'} ·{' '}
+                            {ageLabel(item.ageHours)}
+                          </div>
+                        </div>
+                        {item.slaStage ? (
+                          <span
+                            className={`badge badge-${SLA_TONE[item.slaStage]}`}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            <span className="dot" />
+                            {SLA_LABEL[item.slaStage]}
+                          </span>
+                        ) : (
+                          <span className="compact muted" style={{ whiteSpace: 'nowrap' }}>
+                            no SLA
+                          </span>
+                        )}
+                        <Link
+                          to={item.href}
+                          onClick={(e) => e.stopPropagation()}
+                          className="btn btn-tertiary btn-sm"
+                          style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+                        >
+                          Open →
+                        </Link>
                       </div>
-                      <div className="compact muted" style={{ marginTop: 2 }}>
-                        {item.submittedBy?.displayName ?? 'unknown submitter'} ·{' '}
-                        {ageLabel(item.ageHours)}
-                      </div>
-                    </div>
-                    {item.slaStage ? (
-                      <span
-                        className={`badge badge-${SLA_TONE[item.slaStage]}`}
-                        style={{ whiteSpace: 'nowrap' }}
-                      >
-                        <span className="dot" />
-                        {SLA_LABEL[item.slaStage]}
-                      </span>
-                    ) : (
-                      <span className="compact muted" style={{ whiteSpace: 'nowrap' }}>
-                        no SLA
-                      </span>
-                    )}
-                    <Link
-                      to={item.href}
-                      className="btn btn-tertiary btn-sm"
-                      style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
-                    >
-                      Open →
-                    </Link>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {selectedItem ? (
+                <ApprovalInspector
+                  item={selectedItem}
+                  onClose={() => setSelectedItemKey(null)}
+                />
+              ) : null}
             </div>
-          </div>
-        )
+          );
+        })()
       ) : null}
     </PageContainer>
   );
