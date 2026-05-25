@@ -8,7 +8,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
-import { Table, type Column } from '@/components/ds';
+import { Button, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { httpGet } from '@/lib/api/http-client';
 
@@ -65,13 +65,15 @@ export function AccessPoliciesPage(): JSX.Element {
         actions={
           isFeatureEnabled('adminRolePermissionUI')
             ? [
-                <Link
+                <Button
                   key="edit-presets"
-                  className="button button--secondary button--sm"
+                  as={Link}
                   to="/admin/access-policies/edit"
+                  size="sm"
+                  variant="secondary"
                 >
                   Edit role presets
-                </Link>,
+                </Button>,
               ]
             : undefined
         }

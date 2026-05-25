@@ -150,21 +150,21 @@ export function RolePermissionAdminPage(): JSX.Element {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                      <button
-                        className="button button--secondary button--sm"
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => openEditor(row)}
-                        type="button"
                       >
                         Edit
-                      </button>
+                      </Button>
                       {row.overridden ? (
-                        <button
-                          className="button button--ghost button--sm"
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => setConfirmReset(row)}
-                          type="button"
                         >
                           Reset to default
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
                   </div>
