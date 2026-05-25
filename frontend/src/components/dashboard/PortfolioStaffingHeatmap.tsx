@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 import type { PortfolioHeatmapResponse, PortfolioHeatmapRow } from '@/lib/api/portfolio-dashboard';
 
 interface PortfolioStaffingHeatmapProps {
@@ -116,7 +116,7 @@ export function PortfolioStaffingHeatmap({ data }: PortfolioStaffingHeatmapProps
       <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-3)', fontSize: 12, flexWrap: 'wrap' }}>
         <span>{data.summary.totalProjects} projects</span>
         <span>HC: <strong>{data.summary.totalFilledHC}</strong>/{data.summary.totalPlannedHC}</span>
-        <span>Fill: <strong>{data.summary.overallFillRate}%</strong></span>
+        <span>Fill: <strong><Pct value={data.summary.overallFillRate} /></strong></span>
         <span style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-status-active)' }} /> {data.summary.greenCount}
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-status-warning)', marginLeft: 6 }} /> {data.summary.amberCount}
@@ -173,7 +173,7 @@ export function PortfolioStaffingHeatmap({ data }: PortfolioStaffingHeatmapProps
             align: 'right',
             width: 50,
             getValue: (r) => r.currentFillRate,
-            render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: RAG_BG[r.currentRag] }}>{r.currentFillRate}%</span>,
+            render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: RAG_BG[r.currentRag] }}><Pct value={r.currentFillRate} /></span>,
           },
           {
             key: 'timeline',
