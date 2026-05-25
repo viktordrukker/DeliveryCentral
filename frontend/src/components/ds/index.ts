@@ -39,6 +39,9 @@ export type { DrawerSide, DrawerWidth } from './Drawer';
 
 export { Sheet } from './Sheet';
 
+export { Tabs, tabIds } from './Tabs';
+export type { TabItem } from './Tabs';
+
 export { Popover } from './Popover';
 export type { PopoverPlacement } from './Popover';
 

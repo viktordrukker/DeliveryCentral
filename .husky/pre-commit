@@ -42,3 +42,12 @@ npm run --silent roles:check
 # 7. FK-index guardrail (F-6.1 / D-110) — block unindexed FK columns.
 echo "🔎 husky: npm run fk-indexes:check"
 npm run --silent fk-indexes:check
+
+# 8. DS conformance ratchet (V2-E.18) — blocks new raw-button / raw-table /
+#    window.confirm / window.alert / button-className / link-button-className.
+#    All 6 rule families promoted to error-tier at baseline 0 as of 2026-05-25
+#    (PRs #334..#359); any new violation fails the commit. The DS Tabs atom
+#    (V2-B.12) lives at frontend/src/components/ds/Tabs.tsx so canvas-style
+#    tab strips don't need raw <button role="tab">.
+echo "🔎 husky: npm run ds:check"
+npm run --silent ds:check
