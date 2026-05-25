@@ -13,7 +13,7 @@ import {
   type BenchRollOff,
 } from '@/lib/api/staffing-desk';
 import { formatDateShort } from '@/lib/format-date';
-import { Button, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Pct, Table, type Column } from '@/components/ds';
 
 interface Props {
   poolId?: string;
@@ -176,7 +176,12 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
         <Table
           variant="compact"
           columns={[
-            { key: 'name', title: 'Name', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500, color: 'var(--color-accent)' }}>{p.displayName}</span> },
+            { key: 'name', title: 'Name', getValue: (p) => p.displayName, render: (p) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500, color: 'var(--color-accent)' }}>
+                <Avatar name={p.displayName} size="xs" />
+                <span>{p.displayName}</span>
+              </span>
+            ) },
             { key: 'grade', title: 'Grade', getValue: (p) => p.grade ?? '', render: (p) => p.grade ?? '—' },
             { key: 'skills', title: 'Skills', getValue: (p) => p.skills.map((s) => s.name).join(', '), render: (p) => (
               <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
