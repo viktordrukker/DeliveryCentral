@@ -3121,7 +3121,7 @@ The tracker sections below enumerate every gap surfaced by the audit, broken int
 Per-page audit comparing canvas mock (`DS/page-*.jsx`) against shipped surfaces. One row = one canvas-divergence to close.
 
 - [ ] **V2-A.1** Pulse / Project Detail — collapse 7 legacy tabs → canvas's 3 (Pulse/Plan/Money) in `frontend/src/routes/projects/ProjectDetailPage.tsx:31-39`. — FE
-- [ ] **V2-A.2** Pulse — remove duplicate KPI strip: legacy strip at `ProjectDetailPage.tsx:116-156` stacks above `PulseTab.tsx:135-156` when `dsRefresh` is ON. Delete the legacy one. — FE
+- [x] **V2-A.2** Pulse — remove duplicate KPI strip: legacy strip at `ProjectDetailPage.tsx:116-156` stacks above `PulseTab.tsx:135-156` when `dsRefresh` is ON. _shipped 2026-05-25 (PR pending): tactical hide via `kpiStrip={activeTab === 'pulse' ? undefined : kpiStrip}`; legacy strip will fully retire when V2-A.1 3-tab consolidation lands._ — FE
 - [ ] **V2-A.3** Plan tab — build workstream swimlane Gantt with positions-in-workstreams + milestone overlay per `DS/page-plan-money.jsx:78-330`. Currently `MilestonesTab.tsx` is the legacy view. — FE
 - [ ] **V2-A.4** Money tab — promote `MoneyPanel.tsx` from inside `BudgetTab.tsx` to a top-level tab in the new 3-tab grammar. Already canvas-faithful internally; just needs routing. — FE
 - [ ] **V2-A.5** Approvals — build `BudgetApprovalInspector` per `DS/page-approvals.jsx:39-138`: 4-tile context strip + VarianceBar breakdown + Sparkline forecast + comment field + 3-button footer (Escalate / Reject / Approve). Closes UX Law 7. — FE
@@ -3182,7 +3182,7 @@ The Staffing Desk's editable swimlane planner is the canvas's killer feature; it
 
 Specific bugs surfaced by the audit. Most are quick fixes.
 
-- [ ] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref). — FE
+- [x] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref); shipped 2026-05-25. — FE
 - [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
 - [ ] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). Add `@deprecated` JSDoc to the legacy one; codemod imports. — FE
 - [ ] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). Fix as part of V2-E. — FE
