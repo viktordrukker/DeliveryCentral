@@ -94,7 +94,7 @@
 | Sprint F-6 | Stability + Perf Ratchets | — | ✅ Complete (2026-05-15, PRs #57–#63). D-110 (16 FK indexes), D-144 unbounded findMany caps, D-145 PvA per-id loop → batch, D-146 workforce-planner, D-142 flag.outboxEnabled ON + producer contract test, D-143 env-driven DB pool, ratchet check-in #1. |
 | Sprint F-7 | Locale-Agnostic Finalization | — | ✅ Complete (2026-05-15, PRs #64–#70). D-161 getWeekStart, D-163 multi-region PublicHoliday, D-165 Intl + date-fns-tz, D-164 FxRate flag-gated, D-160b FiscalCalendar flag-gated, locale-flip US↔GB test + operator runbook, ratchet check-in #2. 55 new tests. |
 | Sprint F-8 | Cat-1 Residuals | — | ✅ Complete (2026-05-15, PRs #71–#73). NEW C1-INT-FRAMEWORK `/admin/integrations/registry`, D-156 M365 auto-provision gate on `sso.autoProvisionUsers`, current-state.md doc sweep. Plan's original Cat-1 stack (F-3..F-8) now fully shipped. |
-| Phase V2 | DS Redesign Operational Cutover | V2-A..V2-H + V2-X | 🔄 In Progress (2026-05-25): screen-level audit found ~15-20% canvas fidelity (not BE-counted ~45%). Frame/sidebar/leave-bug done; 31 ds-conformance errors remain; Money/Pct adoption 2 sites each; Distribution Studio killer feature unbuilt. ~115 atomic items tracked. See Phase V2 section at end of doc. |
+| Phase V2 | DS Redesign Operational Cutover | V2-A..V2-H + V2-X | 🔄 In Progress (2026-05-26): **ds-conformance 39→0** (100% reduction in one session) + ratchet wired (Husky + CI) + DS Tabs atom shipped. **~24/132 items done (~18%)**. PRs #342–#362 merged or in flight (20+). Frame/sidebar/leave-bug done; conformance ratchet locked. Money atom adoption: 2→5; Pct: 2→5+. Next: continue Money/Pct sweep, then V2-A surface work (Bench inspector, Approvals one-screen-approval, Plan tab, 3-tab consolidation). |
 
 ---
 
@@ -3155,7 +3155,7 @@ Each DS atom shipped at `frontend/src/components/ds/` should be the canonical im
 - [ ] **V2-B.9** `BalanceMeter` adoption — currently **4 callsites**. Verify coverage on manager dashboards + capacity rollups. — FE
 - [ ] **V2-B.10** `Avatar` adoption — currently **6 callsites**. Add to `StaffingDeskTable` person column + verify other person-rendering surfaces. — FE
 - [ ] **V2-B.11** `Timeline` (DS) adoption — currently **4 callsites**. Add to `StaffingDeskTable` row timelines + Pulse activity + Profile activity (some may overlap with V2-C). — FE
-- [ ] **V2-B.12** Build DS `Tabs` atom — does not exist; needed for V2-A.14 (Workspace tab strip) and other tab-shaped surfaces (Reports umbrella, HR Directory 3-tab shell, Project Detail 3-tab shell). Should support W3C ARIA `role="tabpanel"` pattern. — FE
+- [x] **V2-B.12** Build DS `Tabs` atom. _shipped 2026-05-26 (PR #360): `frontend/src/components/ds/Tabs.tsx` + `Tabs.test.tsx` (10/10 pass). W3C WAI-ARIA Tabs pattern with roving tabindex, ←/→/↑/↓/Home/End keyboard nav, skips disabled, "Automatic activation" per W3C. `tabIds(prefix, id)` helper produces stable tab+panel id pairs. Consumed by WorkspaceShellPage in same PR (closes V2-E.2)._ — FE
 - [ ] **V2-B.13** Build DS `Icon` set or wrapper — replaces MUI icon imports (V2-A.11 dependency). — FE
 - [ ] **V2-B.14** Add positive-adoption metric to `scripts/check-ds-conformance.cjs` (per-atom callsite-count ratchet). Currently the script catches legacy patterns but not low adoption. — FE
 
@@ -3186,7 +3186,7 @@ Specific bugs surfaced by the audit. Most are quick fixes.
 - [x] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref); shipped 2026-05-25. — FE
 - [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
 - [x] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). _shipped 2026-05-25: `@deprecated` JSDoc + migration recipe added to the legacy file pointing at `SparklineDs`. Per-site sweep tracked separately as V2-B.4 (6 remaining imports)._ — FE
-- [ ] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). Fix as part of V2-E. — FE
+- [x] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). _shipped 2026-05-25 via V2-E.13 (PR #353)._ — FE
 - [x] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref); shipped 2026-05-25. — FE
 
 ### Phase V2-E — ds-conformance ratchet closeout
@@ -3196,7 +3196,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 #### Raw `<button>` migrations (22 remaining)
 
 - [x] **V2-E.1** `ApprovalsPage.tsx:154` raw `<button>` → DS `<Button>`. _shipped 2026-05-25: filter-chip migrated to `<Button size="sm" variant={isActive ? 'primary' : 'secondary'} aria-pressed={isActive}>`. 8/8 ApprovalsPage tests pass._ — FE
-- [ ] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. — FE
+- [x] **V2-E.2** `WorkspaceShellPage.tsx:133` raw `<button>` (tab strip) — blocked on V2-B.12 DS Tabs atom. _shipped 2026-05-26 (PR #360): 27-line hand-rolled tab strip → 7-line `<Tabs>` usage. Identical ARIA + visual output. Last `no-raw-button` violation cleared._ — FE
 - [x] **V2-E.3** `DistributionStudio.tsx:252` raw `<button>` (strategy chips) → DS chip pattern or `<Button variant="ghost">`. _shipped 2026-05-25: 5 strategy chips → `<Button size="xs" variant={isActive ? 'primary' : 'secondary'} aria-pressed={isActive} style={{ borderRadius: 999 }}>`. Pill shape preserved via style override._ — FE
 - [x] **V2-E.4** `LeaveDecisionDrawer.tsx:215`, `:224`, `:238` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: Cancel/Reject/Approve footer → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
 - [x] **V2-E.5** `TimesheetInspectorDrawer.tsx` (3 raw buttons) → DS `<Button>`. _shipped 2026-05-25: same drawer-footer pattern as V2-E.4 — Cancel/Reject/Approve → `<Button variant="secondary|danger|primary">` with `loading={submitting}` on Approve. Clears 3 raw-button + 3 button-className. 10/10 tests pass._ — FE
@@ -3213,13 +3213,13 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 - [x] **V2-E.13** `MoneyPanel.tsx:264` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Top-cost-lines (by role) → `<Table variant="compact">` with 4-column config (role tone-dot, hours, cost via Money atom, share bar). Preserves the visual mini-share-bar via render._ — FE
 - [x] **V2-E.14** `LeaveDecisionDrawer.tsx:294` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: conflict-assignments table → `<Table variant="compact">` with 4-column config (project / role / alloc % / status badge). 10/10 LeaveDecisionDrawer tests pass._ — FE
 - [x] **V2-E.15** `BenchEnrichedPanel.tsx:129` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Bench list → `<Table variant="compact">` with 7-column config (Person+Avatar, role/grade/office, status badge, days idle with danger/warning tone color, avail 14d, suggested matches badge, Open link). testId preserved._ — FE
-- [ ] **V2-E.16** `TimesheetInspectorDrawer.tsx` raw `<table>` (if present in audit list) → DS `<Table>`. — FE
+- [-] **V2-E.16** `TimesheetInspectorDrawer.tsx` raw `<table>` (if present in audit list) → DS `<Table>`. _2026-05-26: marked N/A — `node scripts/check-ds-conformance.cjs --report` confirms zero raw-table violations in TimesheetInspectorDrawer. The audit list was over-conservative._ — FE
 
 #### Remaining
 
-- [ ] **V2-E.17** 1 remaining `no-link-button-className` violation — locate via `npm run ds:check --report` and migrate. — FE
-- [ ] **V2-E.18** Wire `node scripts/check-ds-conformance.cjs` into `.husky/pre-commit` once error count = 0. — FE
-- [ ] **V2-E.19** Wire `npm run ds:check` (add to `package.json` scripts) into CI workflow as a fail-gate. — FE
+- [x] **V2-E.17** 1 remaining `no-link-button-className` violation. _shipped 2026-05-25: cleared via PR #336 (AccessPoliciesPage Link className → `<Button as={Link}>`)._ — FE
+- [x] **V2-E.18** Wire `node scripts/check-ds-conformance.cjs` into `.husky/pre-commit` once error count = 0. _shipped 2026-05-26 (PR #360): step 8 added to `.husky/pre-commit` after fk-indexes:check._ — FE
+- [x] **V2-E.19** Wire `npm run ds:check` (add to `package.json` scripts) into CI workflow as a fail-gate. _shipped 2026-05-26 (PR #360): added to `.github/workflows/ci.yml` Backend Fast job after the existing `tokens:check` step._ — FE
 
 ### Phase V2-F — Design token cleanup (335 baselined raw-hex violations across 78 files)
 
