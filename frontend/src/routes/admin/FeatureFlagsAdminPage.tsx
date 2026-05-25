@@ -7,7 +7,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button } from '@/components/ds';
+import { Button, Table, type Column } from '@/components/ds';
 import {
   type FeatureFlagAdminEntry,
   fetchFeatureFlags,
@@ -155,76 +155,109 @@ export function FeatureFlagsAdminPage(): JSX.Element {
             </div>
           </SectionCard>
 
-          {byCategory.map(([category, items]) => (
-            <SectionCard key={category} title={`${category} (${items.length})`}>
-              <table className="dash-compact-table" data-testid={`flag-table-${category}`}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '20%' }}>Flag</th>
-                    <th style={{ width: '38%' }}>Description</th>
-                    <th style={{ width: '10%' }}>Maturity</th>
-                    <th style={{ width: '12%' }}>Owner</th>
-                    <th style={{ width: '10%' }}>State</th>
-                    <th style={{ width: '10%' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((flag) => {
-                    const busy = busyIds.has(flag.id);
-                    return (
-                      <tr key={flag.id}>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>{flag.id}</div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: 'var(--color-text-muted)',
-                              fontFamily: 'var(--font-mono, monospace)',
-                            }}
-                          >
-                            {flag.key}
-                          </div>
-                        </td>
-                        <td style={{ fontSize: 12 }}>{flag.description}</td>
-                        <td>
-                          <StatusBadge
-                            label={flag.maturityLevel}
-                            tone={maturityTone(flag.maturityLevel)}
-                            variant="chip"
-                          />
-                          {flag.expectedGaSprint ? (
-                            <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                              GA: {flag.expectedGaSprint}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td style={{ fontSize: 12 }}>{flag.owner}</td>
-                        <td>
-                          <StatusBadge
-                            label={flag.currentValue ? 'ON' : 'OFF'}
-                            tone={flag.currentValue ? 'active' : 'neutral'}
-                            variant="chip"
-                          />
-                        </td>
-                        <td>
-                          <Button
-                            data-testid={`toggle-${flag.id}`}
-                            disabled={busy}
-                            onClick={() => void handleToggle(flag, !flag.currentValue)}
-                            size="sm"
-                            type="button"
-                            variant={flag.currentValue ? 'secondary' : 'primary'}
-                          >
-                            {busy ? '…' : flag.currentValue ? 'Disable' : 'Enable'}
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </SectionCard>
-          ))}
+          {byCategory.map(([category, items]) => {
+            const columns: Column<FeatureFlagAdminEntry>[] = [
+              {
+                key: 'flag',
+                title: 'Flag',
+                width: '20%',
+                getValue: (flag) => flag.id,
+                render: (flag) => (
+                  <>
+                    <div style={{ fontWeight: 500 }}>{flag.id}</div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--color-text-muted)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                      }}
+                    >
+                      {flag.key}
+                    </div>
+                  </>
+                ),
+              },
+              {
+                key: 'description',
+                title: 'Description',
+                width: '38%',
+                getValue: (flag) => flag.description,
+                render: (flag) => <span style={{ fontSize: 12 }}>{flag.description}</span>,
+              },
+              {
+                key: 'maturity',
+                title: 'Maturity',
+                width: '10%',
+                getValue: (flag) => flag.maturityLevel,
+                render: (flag) => (
+                  <>
+                    <StatusBadge
+                      label={flag.maturityLevel}
+                      tone={maturityTone(flag.maturityLevel)}
+                      variant="chip"
+                    />
+                    {flag.expectedGaSprint ? (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                        GA: {flag.expectedGaSprint}
+                      </div>
+                    ) : null}
+                  </>
+                ),
+              },
+              {
+                key: 'owner',
+                title: 'Owner',
+                width: '12%',
+                getValue: (flag) => flag.owner,
+                render: (flag) => <span style={{ fontSize: 12 }}>{flag.owner}</span>,
+              },
+              {
+                key: 'state',
+                title: 'State',
+                width: '10%',
+                getValue: (flag) => (flag.currentValue ? 'ON' : 'OFF'),
+                render: (flag) => (
+                  <StatusBadge
+                    label={flag.currentValue ? 'ON' : 'OFF'}
+                    tone={flag.currentValue ? 'active' : 'neutral'}
+                    variant="chip"
+                  />
+                ),
+              },
+              {
+                key: 'action',
+                title: 'Action',
+                width: '10%',
+                getValue: () => '',
+                render: (flag) => {
+                  const busy = busyIds.has(flag.id);
+                  return (
+                    <Button
+                      data-testid={`toggle-${flag.id}`}
+                      disabled={busy}
+                      onClick={() => void handleToggle(flag, !flag.currentValue)}
+                      size="sm"
+                      type="button"
+                      variant={flag.currentValue ? 'secondary' : 'primary'}
+                    >
+                      {busy ? '…' : flag.currentValue ? 'Disable' : 'Enable'}
+                    </Button>
+                  );
+                },
+              },
+            ];
+            return (
+              <SectionCard key={category} title={`${category} (${items.length})`}>
+                <Table
+                  variant="compact"
+                  columns={columns}
+                  rows={items}
+                  getRowKey={(flag) => flag.id}
+                  data-testid={`flag-table-${category}`}
+                />
+              </SectionCard>
+            );
+          })}
         </>
       )}
     </PageContainer>
