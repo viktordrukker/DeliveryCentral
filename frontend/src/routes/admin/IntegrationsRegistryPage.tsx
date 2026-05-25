@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { Button } from '@/components/ds';
+import { Button, Table, type Column } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -76,46 +76,25 @@ export function IntegrationsRegistryPage(): JSX.Element {
               title="No adapters registered"
             />
           </SectionCard>
-        ) : (
-          <SectionCard title="Adapters">
-            <table className="dash-compact-table">
-              <thead>
-                <tr>
-                  <th>Provider</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Configured</th>
-                  <th>Reachable</th>
-                  <th style={NUM}>Latency (ms)</th>
-                  <th>Last sync</th>
-                  <th>Last outcome</th>
-                  <th>Summary</th>
-                  <th>Manual sync</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.provider}>
-                    <td><strong>{row.displayName}</strong></td>
-                    <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{row.description}</td>
-                    <td>
-                      <StatusBadge status={row.status} tone={statusTone(row.status)} variant="chip" />
-                    </td>
-                    <td>{row.configured ? 'Yes' : 'No'}</td>
-                    <td>{row.reachable === null ? '—' : row.reachable ? 'Yes' : 'No'}</td>
-                    <td style={NUM}>{row.latencyMs ?? '—'}</td>
-                    <td>{row.lastSyncAt ? formatDateTime(row.lastSyncAt) : '—'}</td>
-                    <td>{row.lastSyncOutcome ?? '—'}</td>
-                    <td style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                      {row.lastSyncSummary ?? '—'}
-                    </td>
-                    <td>{row.supportsManualSync ? 'Available on /admin/integrations' : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </SectionCard>
-        )
+        ) : (() => {
+          const columns: Column<IntegrationRegistryEntry>[] = [
+            { key: 'provider', title: 'Provider', getValue: (r) => r.displayName, render: (r) => <strong>{r.displayName}</strong> },
+            { key: 'description', title: 'Description', getValue: (r) => r.description, render: (r) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{r.description}</span> },
+            { key: 'status', title: 'Status', getValue: (r) => r.status, render: (r) => <StatusBadge status={r.status} tone={statusTone(r.status)} variant="chip" /> },
+            { key: 'configured', title: 'Configured', getValue: (r) => (r.configured ? 'Yes' : 'No'), render: (r) => (r.configured ? 'Yes' : 'No') },
+            { key: 'reachable', title: 'Reachable', getValue: (r) => (r.reachable === null ? '—' : r.reachable ? 'Yes' : 'No'), render: (r) => (r.reachable === null ? '—' : r.reachable ? 'Yes' : 'No') },
+            { key: 'latency', title: 'Latency (ms)', align: 'right', getValue: (r) => r.latencyMs ?? 0, render: (r) => <span style={NUM}>{r.latencyMs ?? '—'}</span> },
+            { key: 'lastSync', title: 'Last sync', getValue: (r) => r.lastSyncAt ?? '', render: (r) => (r.lastSyncAt ? formatDateTime(r.lastSyncAt) : '—') },
+            { key: 'lastOutcome', title: 'Last outcome', getValue: (r) => r.lastSyncOutcome ?? '', render: (r) => r.lastSyncOutcome ?? '—' },
+            { key: 'summary', title: 'Summary', getValue: (r) => r.lastSyncSummary ?? '', render: (r) => <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{r.lastSyncSummary ?? '—'}</span> },
+            { key: 'manualSync', title: 'Manual sync', getValue: (r) => (r.supportsManualSync ? 'yes' : 'no'), render: (r) => (r.supportsManualSync ? 'Available on /admin/integrations' : '—') },
+          ];
+          return (
+            <SectionCard title="Adapters">
+              <Table variant="compact" columns={columns} rows={rows} getRowKey={(r) => r.provider} />
+            </SectionCard>
+          );
+        })()
       ) : null}
     </PageContainer>
   );
