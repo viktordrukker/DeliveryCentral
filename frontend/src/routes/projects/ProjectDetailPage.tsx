@@ -173,7 +173,12 @@ export function ProjectDetailPage(): JSX.Element {
         ) : null
       }
       banners={banners}
-      kpiStrip={kpiStrip}
+      // V2-D.1 / V2-A.2 — suppress the legacy kpiStrip on the Pulse tab;
+      // PulseTab renders its own canvas-style `kpi tone-*` strip (see
+      // PulseTab.tsx:135-156). Two strips stacking is a visible bug
+      // surfaced in the 2026-05-25 BA validation. Other tabs keep the
+      // legacy strip until the full 3-tab consolidation (V2-A.1) lands.
+      kpiStrip={activeTab === 'pulse' ? undefined : kpiStrip}
       tabs={project ? TABS : undefined}
       activeTab={project ? activeTab : undefined}
       onTabChange={project ? setTab : undefined}
