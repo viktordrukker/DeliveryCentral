@@ -240,7 +240,7 @@ export function BenchEnrichedPanel(): JSX.Element {
                 columns={columns}
                 rows={sortedRows}
                 getRowKey={(r) => r.personId}
-                data-testid="bench-enriched-list"
+                testId="bench-enriched-list"
               />
             );
           })()}
