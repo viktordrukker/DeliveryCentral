@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { BalanceMeter, Drawer } from '@/components/ds';
+import { BalanceMeter, Button, Drawer } from '@/components/ds';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import {
   approveLeaveRequest,
@@ -212,39 +212,26 @@ export function LeaveDecisionDrawer({
       }
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={onClose}
-            disabled={submitting}
-            style={{ padding: '8px 14px' }}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className="button button--secondary"
+          </Button>
+          <Button
+            variant="danger"
             onClick={onRejectClick}
             disabled={submitting}
-            style={{
-              padding: '8px 14px',
-              color: 'var(--color-status-danger)',
-              borderColor: 'var(--color-status-danger)',
-            }}
             data-action="reject"
           >
             {showRejectReason ? 'Confirm reject' : 'Reject…'}
-          </button>
-          <button
-            type="button"
-            className="button button--primary"
+          </Button>
+          <Button
+            variant="primary"
             onClick={() => void handleApprove()}
             disabled={submitting}
-            style={{ padding: '8px 14px' }}
+            loading={submitting}
             data-action="approve"
           >
             {submitting ? 'Saving…' : 'Approve'}
-          </button>
+          </Button>
         </div>
       }
     >
