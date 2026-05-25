@@ -11,7 +11,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
-import { Sparkline } from '@/components/charts/Sparkline';
+import { SparklineDs } from '@/components/ds';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -296,7 +296,7 @@ export function DashboardPage(): JSX.Element {
                 <div className="kpi-strip__progress-fill" style={{ width: `${Math.min(utilizationPct, 100)}%`, background: tc(utilizationPct, 90, 100) }} />
               </div>
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>target 80%</span>
-              {utilSpark.length > 3 && <div className="kpi-strip__sparkline"><Sparkline data={utilSpark} height={24} width={72} /></div>}
+              {utilSpark.length > 3 && <div className="kpi-strip__sparkline"><SparklineDs data={utilSpark} height={24} width={72} /></div>}
             </Link>
 
             <Link className="kpi-strip__item" to="/projects" style={{ borderLeft: '3px solid var(--color-accent)' }}>
@@ -310,7 +310,7 @@ export function DashboardPage(): JSX.Element {
               <TipBalloon tip="People currently assigned to projects. The sparkline shows the 12-week trend." arrow="left" />
               <span className="kpi-strip__value">{activeAssignments}</span>
               <span className="kpi-strip__label">Active Assignments</span>
-              {assignmentSpark.length > 3 && <div className="kpi-strip__sparkline"><Sparkline data={assignmentSpark} height={24} width={72} color="var(--color-chart-5, #8b5cf6)" /></div>}
+              {assignmentSpark.length > 3 && <div className="kpi-strip__sparkline"><SparklineDs data={assignmentSpark} height={24} width={72} tone="accent" /></div>}
             </Link>
 
             <Link className="kpi-strip__item" to="/people" style={{ borderLeft: `3px solid ${tc(unassigned, 3, 1, false)}` }}>

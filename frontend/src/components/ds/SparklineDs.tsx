@@ -33,11 +33,6 @@ const TONE_COLOR: Record<SparklineTone, string> = {
  * Inline-SVG sparkline. Standalone (no recharts) — keeps bundle lean and
  * renders identically across themes via CSS vars.
  *
- * Coexists with `Sparkline` at `frontend/src/components/charts/Sparkline.tsx`
- * which uses recharts and is consumed by existing dashboards. Named
- * `SparklineDs` to avoid clashing imports during the migration window;
- * once redesigned pages adopt it the recharts version can be retired.
- *
  * Reference: DS/chrome.jsx:176-200.
  */
 export function SparklineDs({

@@ -46,7 +46,6 @@ vi.mock('d3-org-chart', () => {
 import { StaffingStatusDonut } from './StaffingStatusDonut';
 import { HeadcountTrendChart } from './HeadcountTrendChart';
 import { WorkloadGauge } from './WorkloadGauge';
-import { Sparkline } from './Sparkline';
 import { PlannedVsActualBars } from './PlannedVsActualBars';
 
 describe('Chart smoke tests', () => {
@@ -79,12 +78,6 @@ describe('Chart smoke tests', () => {
   it('WorkloadGauge renders allocation percentage', () => {
     render(<WorkloadGauge allocationPercent={75} />);
     expect(screen.getByText('Allocation: 75%')).toBeInTheDocument();
-  });
-
-  it('Sparkline renders without crash', () => {
-    render(<Sparkline data={[1, 2, 3, 2, 4]} />);
-    // Sparkline renders an SVG-based component; just check it doesn't throw
-    expect(document.querySelector('svg, [data-testid]')).toBeDefined();
   });
 
   it('PlannedVsActualBars renders without crash', () => {

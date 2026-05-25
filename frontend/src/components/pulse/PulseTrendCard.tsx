@@ -1,5 +1,5 @@
 import { SectionCard } from '@/components/common/SectionCard';
-import { Sparkline } from '@/components/charts/Sparkline';
+import { SparklineDs, type SparklineTone } from '@/components/ds';
 import { usePulseTeamTrend } from '@/features/pulse/usePulseTeamTrend';
 
 interface PulseTrendCardProps {
@@ -49,11 +49,17 @@ export function PulseTrendCard({ weeks = 4 }: PulseTrendCardProps): JSX.Element 
 
   // Threshold colour: ≥4 green, ≥3 amber, <3 red. Tuned to align with
   // the existing dashboard tone language. Null = neutral.
-  const tone = (() => {
+  const borderColor = (() => {
     if (latestAvg === null || latestAvg === undefined) return 'var(--color-status-neutral)';
     if (latestAvg >= 4) return 'var(--color-status-active)';
     if (latestAvg >= 3) return 'var(--color-status-warning)';
     return 'var(--color-status-danger)';
+  })();
+  const sparkTone: SparklineTone = (() => {
+    if (latestAvg === null || latestAvg === undefined) return 'muted';
+    if (latestAvg >= 4) return 'active';
+    if (latestAvg >= 3) return 'warning';
+    return 'danger';
   })();
 
   return (
@@ -68,7 +74,7 @@ export function PulseTrendCard({ weeks = 4 }: PulseTrendCardProps): JSX.Element 
       >
         <div
           style={{
-            borderLeft: `3px solid ${tone}`,
+            borderLeft: `3px solid ${borderColor}`,
             paddingLeft: 12,
             minWidth: 110,
           }}
@@ -90,8 +96,8 @@ export function PulseTrendCard({ weeks = 4 }: PulseTrendCardProps): JSX.Element 
 
         {moodSeries.length >= 2 && (
           <div>
-            <Sparkline
-              color="var(--color-chart-1)"
+            <SparklineDs
+              tone={sparkTone}
               data={moodSeries}
               height={36}
               width={120}

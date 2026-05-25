@@ -22,7 +22,7 @@ import {
   upsertProjectBudget,
 } from '@/lib/api/project-budget';
 import { type SpcBurndownDto, fetchSpcBurndown } from '@/lib/api/project-spc';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Money, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { MoneyPanel } from './MoneyPanel';
 
@@ -208,7 +208,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                   getValue: (a) => a.requestedChange?.capexBudget ?? 0,
                   render: (a) => (
                     <span style={NUM}>
-                      {a.requestedChange ? `$${Math.round(a.requestedChange.capexBudget).toLocaleString()}` : '—'}
+                      {a.requestedChange ? <Money value={a.requestedChange.capexBudget} /> : '—'}
                     </span>
                   ),
                 },
@@ -219,7 +219,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                   getValue: (a) => a.requestedChange?.opexBudget ?? 0,
                   render: (a) => (
                     <span style={NUM}>
-                      {a.requestedChange ? `$${Math.round(a.requestedChange.opexBudget).toLocaleString()}` : '—'}
+                      {a.requestedChange ? <Money value={a.requestedChange.opexBudget} /> : '—'}
                     </span>
                   ),
                 },
@@ -385,11 +385,11 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                 SPC cost
               </div>
               <div style={{ fontSize: 24, fontWeight: 600, marginTop: 4 }}>
-                ${Math.round(spc.totalSpcCost).toLocaleString()}
+                <Money value={spc.totalSpcCost} />
               </div>
               <div style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>
                 {spc.appliedHourlyRate !== null
-                  ? `@ $${spc.appliedHourlyRate.toFixed(2)}/hr · ${spc.rateSource}`
+                  ? <>@ <Money value={spc.appliedHourlyRate} maxFractionDigits={2} />/hr · {spc.rateSource}</>
                   : 'No rate configured'}
               </div>
             </div>
@@ -398,7 +398,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                 Vendor accrual
               </div>
               <div style={{ fontSize: 24, fontWeight: 600, marginTop: 4 }}>
-                ${Math.round(spc.vendorAccrualToDate).toLocaleString()}
+                <Money value={spc.vendorAccrualToDate} />
               </div>
               <div style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>engagement to date</div>
             </div>
@@ -407,7 +407,7 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
                 Budget at Completion
               </div>
               <div style={{ fontSize: 24, fontWeight: 600, marginTop: 4 }}>
-                {spc.bac !== null ? `$${Math.round(spc.bac).toLocaleString()}` : '—'}
+                {spc.bac !== null ? <Money value={spc.bac} /> : '—'}
               </div>
               <div style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>
                 {spc.bac !== null

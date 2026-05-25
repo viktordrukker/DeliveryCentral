@@ -29,7 +29,6 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Sparkline } from '@/components/charts/Sparkline';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { useDirectorDashboard } from '@/features/dashboard/useDirectorDashboard';
 import { exportToXlsx } from '@/lib/export';
