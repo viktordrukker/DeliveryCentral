@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
-import { BalanceMeter, Calendar, type CalendarEvent } from '@/components/ds';
+import { BalanceMeter, Button, Calendar, type CalendarEvent } from '@/components/ds';
 import { fetchEmployeeDashboard, type EmployeeDashboardResponse } from '@/lib/api/dashboard-employee';
 import { fetchPublicHolidays, type PublicHoliday } from '@/lib/api/my-time';
 import {
@@ -365,14 +365,15 @@ export function LeaveTab(): JSX.Element {
             {submitSuccess && (
               <div role="status" style={{ color: 'var(--color-status-active)', fontSize: 13 }}>{submitSuccess}</div>
             )}
-            <button
+            <Button
               type="submit"
+              variant="primary"
               disabled={submitting || !startDate || !endDate || (preview != null && 'error' in preview)}
-              className="button button--primary"
-              style={{ padding: '10px 14px', alignSelf: 'flex-start' }}
+              loading={submitting}
+              style={{ alignSelf: 'flex-start' }}
             >
               {submitting ? 'Submitting…' : 'Request leave'}
-            </button>
+            </Button>
           </form>
         </SectionCard>
       </div>

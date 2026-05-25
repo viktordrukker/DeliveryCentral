@@ -5,6 +5,7 @@ import { useAuth } from '@/app/auth-context';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { Button } from '@/components/ds';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
@@ -104,13 +105,13 @@ export function WorkspaceShellPage(): JSX.Element {
         subtitle={roleLabels}
         actions={
           principal.personId ? (
-            <button
-              type="button"
-              className="button button--secondary button--sm"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => navigate(`/people/${principal.personId}`)}
             >
               View profile
-            </button>
+            </Button>
           ) : undefined
         }
       />
