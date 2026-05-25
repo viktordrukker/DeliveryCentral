@@ -28,6 +28,7 @@ import { BudgetTab } from './tabs/BudgetTab';
 import { LifecycleTab } from './tabs/LifecycleTab';
 import { PulseTab } from './tabs/PulseTab';
 import { PlanTab } from './tabs/PlanTab';
+import { MoneyTab } from './tabs/MoneyTab';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -218,7 +219,7 @@ export function ProjectDetailPage(): JSX.Element {
           {dsRefreshEnabled && activeTab === 'plan' ? (
             <PlanTab project={project} projectId={id!} shape={state.data?.shape} reload={state.reload} />
           ) : null}
-          {dsRefreshEnabled && activeTab === 'money' ? <BudgetTab projectId={id!} /> : null}
+          {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} /> : null}
 
           {/* Legacy 7-tab grammar when dsRefresh is off */}
           {!dsRefreshEnabled && activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
