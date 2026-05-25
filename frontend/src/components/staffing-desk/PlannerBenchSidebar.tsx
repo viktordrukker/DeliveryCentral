@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import type { AutoMatchStrategy, PlannerBenchPerson, UnmatchedDemand } from '@/lib/api/staffing-desk';
 import type { PlannerSimulation } from '@/features/staffing-desk/usePlannerSimulation';
-import { Button, IconButton } from '@/components/ds';
+import { Button, IconButton, Pct } from '@/components/ds';
 
 interface Props {
   benchPeople: PlannerBenchPerson[];
@@ -87,7 +87,7 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
         <label style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 9 }}>
           <span style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             <span>Min skill match</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{minMatch}%</span>
+            <Pct value={minMatch} fractionDigits={0} />
           </span>
           <input
             type="range"
@@ -140,7 +140,7 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
               {p.skills.length > 4 && <span style={{ fontSize: 8, color: 'var(--color-text-subtle)' }}>+{p.skills.length - 4}</span>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-              <span style={{ fontSize: 9, color: 'var(--color-text-muted)' }}>{p.availablePercent}% free · {p.daysOnBench}d</span>
+              <span style={{ fontSize: 9, color: 'var(--color-text-muted)' }}><Pct value={p.availablePercent} fractionDigits={0} /> free · {p.daysOnBench}d</span>
               {simulating && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}>
                   <input
@@ -209,11 +209,11 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
           Attrition:
           <input type="range" min={0} max={20} value={attrition} onChange={(e) => setAttrition(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--color-accent)' }} />
-          <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 24, textAlign: 'right' }}>{attrition}%</span>
+          <span style={{ minWidth: 24, textAlign: 'right' }}><Pct value={attrition} fractionDigits={0} /></span>
         </label>
         <div style={{ fontSize: 10, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
           <div>Gap (base): <strong style={{ color: currentGap > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }}>{currentGap > 0 ? `-${currentGap}` : `+${Math.abs(currentGap)}`}</strong></div>
-          <div>Gap (+{attrition}% attrition): <strong style={{ color: 'var(--color-status-danger)' }}>-{gapWithAttrition}</strong></div>
+          <div>Gap (+<Pct value={attrition} fractionDigits={0} /> attrition): <strong style={{ color: 'var(--color-status-danger)' }}>-{gapWithAttrition}</strong></div>
         </div>
       </div>
     </div>

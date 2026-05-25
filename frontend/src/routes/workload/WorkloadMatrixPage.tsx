@@ -405,7 +405,7 @@ export function WorkloadMatrixPage(): JSX.Element {
                           onClick={() => handleCellClick(p, project, pct)}
                           role="gridcell"
                         >
-                          {pct === 0 ? '—' : `${pct}%`}
+                          {pct === 0 ? '—' : <Pct value={pct} fractionDigits={0} />}
                         </div>
                       );
                     },
@@ -425,7 +425,7 @@ export function WorkloadMatrixPage(): JSX.Element {
                       const total = p.allocations.reduce((sum, a) => sum + a.allocationPercent, 0);
                       return (
                         <div className={allocClass(total)}>
-                          {total === 0 ? '—' : total > 100 ? `⚠ ${total}%` : `${total}%`}
+                          {total === 0 ? '—' : total > 100 ? <>⚠ <Pct value={total} fractionDigits={0} /></> : <Pct value={total} fractionDigits={0} />}
                         </div>
                       );
                     },

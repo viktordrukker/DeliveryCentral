@@ -59,9 +59,9 @@ const positionsColumns: Array<Column<ProjectPosition>> = [
     title: 'Active %',
     align: 'right',
     render: (p) => (
-      <span style={NUM}>
-        {p.activeAllocationPercent !== undefined ? `${p.activeAllocationPercent}%` : '—'}
-      </span>
+      p.activeAllocationPercent !== undefined
+        ? <Pct value={p.activeAllocationPercent} fractionDigits={0} />
+        : <span style={NUM}>—</span>
     ),
   },
 ];

@@ -13,7 +13,7 @@ import {
   type BenchRollOff,
 } from '@/lib/api/staffing-desk';
 import { formatDateShort } from '@/lib/format-date';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 
 interface Props {
   poolId?: string;
@@ -65,7 +65,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
         <div className="kpi-strip__item" style={{ borderLeft: `3px solid ${kpis.benchCount > 5 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}>
           <span className="kpi-strip__value">{kpis.benchCount}</span>
           <span className="kpi-strip__label">On Bench</span>
-          <span className="kpi-strip__context">{kpis.benchRate}% of {kpis.totalPeople}</span>
+          <span className="kpi-strip__context"><Pct value={kpis.benchRate} fractionDigits={0} /> of {kpis.totalPeople}</span>
         </div>
         <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-info)' }}>
           <span className="kpi-strip__value">{kpis.avgDaysOnBench}d</span>
@@ -115,7 +115,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
                   </span>
                   <span style={{ flex: 1 }}>{r.displayName}</span>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: 10 }}>{r.projectName}</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 10 }}>{r.allocationPercent}%</span>
+                  <span style={{ fontSize: 10 }}><Pct value={r.allocationPercent} fractionDigits={0} /></span>
                   {r.hasFollowOn && <StatusBadge label="Follow-on" tone="active" variant="dot" size="small" />}
                   {!r.hasFollowOn && <StatusBadge label="No next" tone="danger" variant="dot" size="small" />}
                 </div>
@@ -257,7 +257,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
                   <div style={{ padding: '8px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12 }}>
                     <div style={{ fontWeight: 500 }}>{selectedPerson.bestMatchRole}</div>
                     <div style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>
-                      Match score: {Math.round(selectedPerson.bestMatchScore * 100)}%
+                      Match score: <Pct value={Math.round(selectedPerson.bestMatchScore * 100)} fractionDigits={0} />
                     </div>
                     <Button variant="primary" size="sm" style={{ marginTop: 'var(--space-1)', fontSize: 10 }} onClick={() => propose(selectedPerson.personId, selectedPerson.displayName, selectedPerson.bestMatchRequestId)} type="button">
                       Propose Assignment

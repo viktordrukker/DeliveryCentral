@@ -1,4 +1,4 @@
-import { DataView } from '@/components/ds';
+import { DataView, Pct } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { AssignmentDirectoryItem } from '@/lib/api/assignments';
 
@@ -23,7 +23,7 @@ export function AssignmentTable({ items }: AssignmentTableProps): JSX.Element {
         },
         {
           key: 'allocation',
-          render: (item) => `${item.allocationPercent}%`,
+          render: (item) => <Pct value={item.allocationPercent} fractionDigits={0} />,
           title: 'Allocation',
         },
         {
