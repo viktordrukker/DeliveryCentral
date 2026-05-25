@@ -16,7 +16,7 @@ import { formatDateShort } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
@@ -180,7 +180,7 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
               columns={[
                 { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => <Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link> },
                 { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
-                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{a.allocationPercent}%</span> },
+                { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums' }}><Pct value={a.allocationPercent} /></span> },
                 { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
                 { key: 'to', title: 'To', getValue: (a) => a.endDate ?? '', render: (a) => a.endDate ? formatDateShort(a.endDate) : '\u2014' },
                 { key: 'status', title: 'Status', getValue: (a) => a.approvalState, render: (a) => a.approvalState },

@@ -20,7 +20,7 @@ import { useProjectDashboard } from '@/features/projects/useProjectDashboard';
 import { formatDate } from '@/lib/format-date';
 import { type ComputedRag, type RagSnapshotDto, type StaffingAlert, fetchComputedRag, fetchRagHistory, fetchStaffingAlerts } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
-import { Button, DescriptionList, Table, type Column } from '@/components/ds';
+import { Button, DescriptionList, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -106,7 +106,7 @@ export function ProjectDashboardPage(): JSX.Element {
             {staffingSummary && staffingSummary.totalPlanned > 0 ? (
               <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
                 style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-                <span className="kpi-strip__value">{staffingSummary.fillRate}%</span>
+                <span className="kpi-strip__value"><Pct value={staffingSummary.fillRate} /></span>
                 <span className="kpi-strip__label">Fill Rate</span>
               </Link>
             ) : null}
@@ -166,7 +166,7 @@ export function ProjectDashboardPage(): JSX.Element {
                 columns={[
                   { key: 'person', title: 'Person', getValue: (a) => a.personDisplayName, render: (a) => <span style={{ fontWeight: 500 }}>{a.personDisplayName}</span> },
                   { key: 'role', title: 'Role', width: 120, getValue: (a) => a.staffingRole, render: (a) => <span style={{ fontSize: 11 }}>{a.staffingRole}</span> },
-                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}>{a.allocationPercent}%</span> },
+                  { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}><Pct value={a.allocationPercent} /></span> },
                   { key: 'status', title: 'Status', width: 70, getValue: (a) => a.status, render: (a) => <span style={{ fontSize: 11, fontWeight: 600 }}>{a.status}</span> },
                   { key: 'from', title: 'From', width: 90, getValue: (a) => a.validFrom, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(a.validFrom)}</span> },
                   { key: 'to', title: 'To', width: 90, getValue: (a) => a.validTo, render: (a) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{a.validTo ? formatDate(a.validTo) : 'open'}</span> },
@@ -218,7 +218,7 @@ export function ProjectDashboardPage(): JSX.Element {
                   variant="compact"
                   columns={[
                     { key: 'person', title: 'Person', getValue: (item) => item.displayName, render: (item) => <span style={{ fontWeight: 500 }}>{item.displayName}</span> },
-                    { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (item) => item.allocationPercent, render: (item) => <span style={{ ...NUM, fontWeight: 600 }}>{item.allocationPercent}%</span> },
+                    { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (item) => item.allocationPercent, render: (item) => <span style={{ ...NUM, fontWeight: 600 }}><Pct value={item.allocationPercent} /></span> },
                     { key: 'bar', title: 'Bar', width: 120, render: (item) => (
                       <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.min(item.allocationPercent, 100)}%`, borderRadius: 2, background: item.allocationPercent > 100 ? 'var(--color-status-danger)' : 'var(--color-status-active)' }} />

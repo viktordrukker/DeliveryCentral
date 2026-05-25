@@ -17,7 +17,7 @@ import { type ComputedRag, fetchComputedRag } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { Button } from '@/components/ds';
+import { Button, Pct } from '@/components/ds';
 
 import { RadiatorTab } from './tabs/RadiatorTab';
 import { MilestonesTab } from './tabs/MilestonesTab';
@@ -131,7 +131,7 @@ export function ProjectDetailPage(): JSX.Element {
       {staffingSummary && staffingSummary.totalPlanned > 0 ? (
         <Link className="kpi-strip__item" to={`/projects/${id ?? ''}?tab=team`}
           style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
-          <span className="kpi-strip__value">{staffingSummary.fillRate}%</span>
+          <span className="kpi-strip__value"><Pct value={staffingSummary.fillRate} /></span>
           <span className="kpi-strip__label">Fill Rate</span>
         </Link>
       ) : null}
