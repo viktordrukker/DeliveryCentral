@@ -9,7 +9,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+// V2-A.12 — BarChart/Bar/XAxis/YAxis/CartesianGrid imports removed; the two
+// horizontal-bar charts now use the inline `HorizontalBars` component below.
+// PieChart/Pie/Cell/Legend retained for the Health Distribution donut until
+// the DS multi-segment Donut atom lands (V2-A.12-followup).
+import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
 
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { PortfolioStaffingHeatmap } from '@/components/dashboard/PortfolioStaffingHeatmap';
@@ -20,6 +24,7 @@ import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 // inside the page render). Same KPIs, same `data-jtbd` attrs, same threshold
 // colors.
 import { DirectorKpiStrip } from '@/components/dashboard/director/DirectorKpiStrip';
+import { HorizontalBars } from '@/components/dashboard/director/HorizontalBars';
 import { DirectorAnomalyRail } from '@/components/dashboard/DirectorAnomalyRail';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { ViewToggle } from '@/components/common/ViewToggle';
@@ -206,19 +211,19 @@ export function DirectorDashboardPage(): JSX.Element {
               {d.unitUtilisation.length === 0 ? (
                 <EmptyState description="No org unit data." title="No data" />
               ) : utilView === 'chart' ? (
-                <div style={{ height: Math.max(180, d.unitUtilisation.length * 32) }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={d.unitUtilisation} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                      <YAxis type="category" dataKey="orgUnitName" tick={{ fontSize: 10 }} width={100} />
-                      <Tooltip formatter={(v) => `${v}%`} />
-                      <Bar dataKey="utilisation" radius={[0, 3, 3, 0]}>
-                        {d.unitUtilisation.map((item, i) => <Cell key={i} fill={tc(item.utilisation, 60, 40, false)} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                // V2-A.12 — replaced recharts `BarChart layout="vertical"` with
+                // inline DS HorizontalBars (no recharts dep, deterministic via
+                // CSS tokens, ARIA-labelled per row).
+                <HorizontalBars
+                  testId="director-unit-utilisation-bars"
+                  ariaLabel="Org unit utilisation"
+                  rows={d.unitUtilisation.map((item) => ({
+                    id: item.orgUnitId,
+                    label: item.orgUnitName,
+                    value: item.utilisation,
+                    color: tc(item.utilisation, 60, 40, false),
+                  }))}
+                />
               ) : (
                 <Table
                   variant="compact"
@@ -268,17 +273,18 @@ export function DirectorDashboardPage(): JSX.Element {
               {availablePool.length === 0 ? (
                 <EmptyState description="No people currently available." title="Pool empty" />
               ) : poolView === 'chart' ? (
-                <div style={{ height: Math.max(180, Math.min(availablePool.length, 10) * 28) }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={availablePool.slice(0, 10)} layout="vertical" margin={{ left: 10, right: 20, top: 5, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} />
-                      <YAxis type="category" dataKey="displayName" tick={{ fontSize: 10 }} width={100} />
-                      <Tooltip formatter={(v) => `${v}% allocated`} />
-                      <Bar dataKey="currentAllocation" radius={[0, 3, 3, 0]} fill="var(--color-chart-2)" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                // V2-A.12 — replaced recharts BarChart with DS HorizontalBars.
+                <HorizontalBars
+                  testId="director-available-pool-bars"
+                  ariaLabel="Available pool allocation"
+                  rows={availablePool.slice(0, 10).map((item) => ({
+                    id: item.id,
+                    label: item.displayName,
+                    value: item.currentAllocation,
+                    color: 'var(--color-status-info)',
+                  }))}
+                  formatValue={(v) => `${Math.round(v)}% alloc`}
+                />
               ) : (
                 <>
                   <Table
