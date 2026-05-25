@@ -3212,7 +3212,7 @@ Currently 31 error-tier violations (was 39 before today's 3 PRs cleared 8). Unti
 - [x] **V2-E.12** `BudgetTab.tsx:198` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Pending Budget Change Requests table → `<Table variant="compact">` with 5-6 column config (Requested / Requested by / CAPEX / OPEX / Reason / [Action only when canDecideBudgetChange]). Approve/Reject buttons preserved in the Action column render._ — FE
 - [x] **V2-E.13** `MoneyPanel.tsx:264` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Top-cost-lines (by role) → `<Table variant="compact">` with 4-column config (role tone-dot, hours, cost via Money atom, share bar). Preserves the visual mini-share-bar via render._ — FE
 - [x] **V2-E.14** `LeaveDecisionDrawer.tsx:294` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: conflict-assignments table → `<Table variant="compact">` with 4-column config (project / role / alloc % / status badge). 10/10 LeaveDecisionDrawer tests pass._ — FE
-- [ ] **V2-E.15** `BenchEnrichedPanel.tsx:129` raw `<table>` → DS `<Table>`. — FE
+- [x] **V2-E.15** `BenchEnrichedPanel.tsx:129` raw `<table>` → DS `<Table>`. _shipped 2026-05-25: Bench list → `<Table variant="compact">` with 7-column config (Person+Avatar, role/grade/office, status badge, days idle with danger/warning tone color, avail 14d, suggested matches badge, Open link). testId preserved._ — FE
 - [ ] **V2-E.16** `TimesheetInspectorDrawer.tsx` raw `<table>` (if present in audit list) → DS `<Table>`. — FE
 
 #### Remaining
