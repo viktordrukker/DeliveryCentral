@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { Sparkline } from '@/components/charts/Sparkline';
 import { TipBalloon } from '@/components/common/TipBalloon';
+import { Pct } from '@/components/ds/Pct';
 import type { PortfolioSummaryResponse } from '@/lib/api/portfolio-dashboard';
 
 function tc(val: number, warn: number, danger: number, higherIsBad = true): string {
@@ -79,7 +80,7 @@ export function DirectorKpiStrip({
           tip="Percentage of active people currently assigned to at least one project."
           arrow="left"
         />
-        <span className="kpi-strip__value">{Math.round(summary.staffingUtilisationRate)}%</span>
+        <span className="kpi-strip__value"><Pct value={Math.round(summary.staffingUtilisationRate)} /></span>
         <span className="kpi-strip__label">Utilisation</span>
         <Sparkline
           data={weeklyTrend.map((w) => w.staffingUtilisationRate)}
@@ -125,7 +126,7 @@ export function DirectorKpiStrip({
               tip="Organization-wide staffing fill rate across all projects with role plans. Click to view all active projects."
               arrow="left"
             />
-            <span className="kpi-strip__value">{portfolioSummary.overallFillRate}%</span>
+            <span className="kpi-strip__value"><Pct value={portfolioSummary.overallFillRate} /></span>
             <span className="kpi-strip__label">Fill Rate</span>
           </Link>
 
