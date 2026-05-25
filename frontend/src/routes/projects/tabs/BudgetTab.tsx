@@ -28,9 +28,16 @@ import { MoneyPanel } from './MoneyPanel';
 
 interface BudgetTabProps {
   projectId: string;
+  /**
+   * V2-A.4 — when true, the parent (e.g. `MoneyTab`) is already rendering
+   * the canvas-faithful `MoneyPanel`, so suppress this tab's duplicate
+   * render. The administration UI (set-budget form, change requests,
+   * SPC details) stays.
+   */
+  canvasMode?: boolean;
 }
 
-export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
+export function BudgetTab({ projectId, canvasMode = false }: BudgetTabProps): JSX.Element {
   const { principal } = useAuth();
   const canManageBudget = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const canDecideBudgetChange = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
@@ -145,8 +152,9 @@ export function BudgetTab({ projectId }: BudgetTabProps): JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      {/* Phase B1.4 — DS-redesign Money panel (atom-driven KPI) */}
-      {dsRefreshEnabled && dashboard ? <MoneyPanel dashboard={dashboard} projectId={projectId} /> : null}
+      {/* Phase B1.4 — DS-redesign Money panel (atom-driven KPI). Suppressed
+          when a parent surface (V2-A.4 `MoneyTab`) is already rendering it. */}
+      {!canvasMode && dsRefreshEnabled && dashboard ? <MoneyPanel dashboard={dashboard} projectId={projectId} /> : null}
 
       {/* Hero: CAPEX/OPEX Visual Summary */}
       {dashboard ? (

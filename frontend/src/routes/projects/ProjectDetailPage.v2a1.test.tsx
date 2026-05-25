@@ -37,8 +37,8 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/dsRefreshEnabled && activeTab === 'plan' \?[\s\S]*?<PlanTab/);
   });
 
-  it('renders BudgetTab for activeTab=money when dsRefresh is on', () => {
-    expect(src).toMatch(/dsRefreshEnabled && activeTab === 'money' \? <BudgetTab/);
+  it('renders MoneyTab for activeTab=money when dsRefresh is on (V2-A.4 promoted)', () => {
+    expect(src).toMatch(/dsRefreshEnabled && activeTab === 'money' \? <MoneyTab/);
   });
 
   it('keeps the legacy 7-tab grammar reachable when dsRefresh is off', () => {
