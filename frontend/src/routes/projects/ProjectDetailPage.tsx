@@ -27,6 +27,7 @@ import { TeamVendorsTab } from './tabs/TeamVendorsTab';
 import { BudgetTab } from './tabs/BudgetTab';
 import { LifecycleTab } from './tabs/LifecycleTab';
 import { PulseTab } from './tabs/PulseTab';
+import { PlanTab } from './tabs/PlanTab';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -38,19 +39,46 @@ const BASE_TABS = [
   { id: 'lifecycle', label: 'Lifecycle' },
 ];
 
+// V2-A.1 — 3-tab canvas grammar (Pulse / Plan / Money). The Plan tab stacks
+// milestones + risks + change requests + team as sequential sections; the
+// Money tab keeps the BudgetTab content (already canvas-faithful internally).
+const V2_TABS = [
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'plan', label: 'Plan' },
+  { id: 'money', label: 'Money' },
+];
+
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
   status: 'radiator',
   report: 'radiator',
+};
+
+// V2-A.1 — legacy ?tab=… URLs continue to deep-link; they map onto the new
+// 3-tab grammar when `dsRefresh` is on so old bookmarks survive the swap.
+const LEGACY_TAB_REDIRECTS_V2: Record<string, string> = {
+  radiator: 'pulse',
+  milestones: 'plan',
+  risks: 'plan',
+  'change-requests': 'plan',
+  team: 'plan',
+  budget: 'money',
+  lifecycle: 'plan',
+  status: 'pulse',
+  report: 'pulse',
 };
 
 export function ProjectDetailPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
-  const TABS = dsRefreshEnabled ? [{ id: 'pulse', label: 'Pulse' }, ...BASE_TABS] : BASE_TABS;
+  const TABS = dsRefreshEnabled ? V2_TABS : BASE_TABS;
   const defaultTab = dsRefreshEnabled ? 'pulse' : 'radiator';
   const rawTab = searchParams.get('tab') ?? defaultTab;
-  const activeTab = LEGACY_TAB_REDIRECTS[rawTab] ?? rawTab;
+  // V2-A.1 — when dsRefresh is on, the legacy 7-tab IDs collapse onto the
+  // 3-tab grammar (Pulse / Plan / Money). When off, only the original
+  // status/report aliases apply.
+  const redirectMap = dsRefreshEnabled ? LEGACY_TAB_REDIRECTS_V2 : LEGACY_TAB_REDIRECTS;
+  const activeTab = redirectMap[rawTab] ?? rawTab;
   const { principal } = useAuth();
   const canManage = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const state = useProjectDetails(id);
@@ -185,14 +213,21 @@ export function ProjectDetailPage(): JSX.Element {
     >
       {project ? (
         <>
-          {activeTab === 'pulse' && dsRefreshEnabled ? <PulseTab projectId={id!} /> : null}
-          {activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
-          {activeTab === 'milestones' ? <MilestonesTab projectId={id!} shape={state.data?.shape} /> : null}
-          {activeTab === 'change-requests' ? <ChangeRequestsTab projectId={id!} /> : null}
-          {activeTab === 'risks' ? <RisksIssuesTab projectId={id!} /> : null}
-          {activeTab === 'team' ? <TeamVendorsTab project={project} projectId={id!} reload={state.reload} /> : null}
-          {activeTab === 'budget' ? <BudgetTab projectId={id!} /> : null}
-          {activeTab === 'lifecycle' ? (
+          {/* V2-A.1 — 3-tab grammar when dsRefresh is on */}
+          {dsRefreshEnabled && activeTab === 'pulse' ? <PulseTab projectId={id!} /> : null}
+          {dsRefreshEnabled && activeTab === 'plan' ? (
+            <PlanTab project={project} projectId={id!} shape={state.data?.shape} reload={state.reload} />
+          ) : null}
+          {dsRefreshEnabled && activeTab === 'money' ? <BudgetTab projectId={id!} /> : null}
+
+          {/* Legacy 7-tab grammar when dsRefresh is off */}
+          {!dsRefreshEnabled && activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
+          {!dsRefreshEnabled && activeTab === 'milestones' ? <MilestonesTab projectId={id!} shape={state.data?.shape} /> : null}
+          {!dsRefreshEnabled && activeTab === 'change-requests' ? <ChangeRequestsTab projectId={id!} /> : null}
+          {!dsRefreshEnabled && activeTab === 'risks' ? <RisksIssuesTab projectId={id!} /> : null}
+          {!dsRefreshEnabled && activeTab === 'team' ? <TeamVendorsTab project={project} projectId={id!} reload={state.reload} /> : null}
+          {!dsRefreshEnabled && activeTab === 'budget' ? <BudgetTab projectId={id!} /> : null}
+          {!dsRefreshEnabled && activeTab === 'lifecycle' ? (
             <LifecycleTab
               canManageProject={canManage}
               onReload={state.reload}
