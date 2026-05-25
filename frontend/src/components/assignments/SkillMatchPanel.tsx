@@ -9,7 +9,7 @@ import {
   fetchSkills,
   type Skill,
 } from '@/lib/api/skills';
-import { Button, IconButton, Table, type Column } from '@/components/ds';
+import { Button, IconButton, Pct, Table, type Column } from '@/components/ds';
 
 interface SkillMatchPanelProps {
   projectId: string;
@@ -179,7 +179,7 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
                     <span style={{
                       color: c.currentAllocation < 50 ? 'var(--color-status-active)' : c.currentAllocation < 80 ? 'var(--color-status-warning)' : 'var(--color-status-danger)',
                       fontWeight: 600,
-                    }}>{c.currentAllocation}%</span>
+                    }}><Pct value={c.currentAllocation} fractionDigits={0} /></span>
                   ) },
                 ] as Column<SkillMatchCandidate>[]}
                 rows={candidates}

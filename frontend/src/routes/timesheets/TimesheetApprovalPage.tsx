@@ -17,7 +17,7 @@ import {
   fetchApprovalQueue,
   rejectTimesheet,
 } from '@/lib/api/timesheets';
-import { Button, DatePicker, Table, type Column } from '@/components/ds';
+import { Button, DatePicker, Pct, Table, type Column } from '@/components/ds';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -249,7 +249,7 @@ export function TimesheetApprovalPage(): JSX.Element {
             max={100}
             value={progressPct}
           />
-          <span>{progressPct}%</span>
+          <span><Pct value={progressPct} fractionDigits={0} /></span>
         </div>
       </SectionCard>
 
