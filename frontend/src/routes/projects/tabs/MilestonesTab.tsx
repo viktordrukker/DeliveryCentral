@@ -311,23 +311,28 @@ export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Ele
           />
         ) : (() => {
           const sortableHeader = (label: string, key: MilestoneSortKey): JSX.Element => (
-            <button
-              type="button"
+            // V2-E.6 — DS Button variant="ghost" with style overrides preserves
+            // the in-table-header appearance (transparent, inherit font/color)
+            // while satisfying the no-raw-button conformance rule. Full DS
+            // Table sortable-column migration tracked separately (V2-A.3 / V2-E.11).
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => toggleSort(key)}
               data-sort-key={key}
+              aria-label={`Sort by ${label}`}
               style={{
-                background: 'none',
-                border: 'none',
                 padding: 0,
                 color: 'inherit',
                 font: 'inherit',
-                cursor: 'pointer',
                 fontWeight: 'inherit',
+                minHeight: 0,
+                background: 'transparent',
+                border: 'none',
               }}
-              aria-label={`Sort by ${label}`}
             >
               {label}{sortArrow(key)}
-            </button>
+            </Button>
           );
           const baseColumns: Column<ProjectMilestoneDto>[] = [
             { key: 'name', title: sortableHeader('Name', 'name'), getValue: (m) => m.name, render: (m) => (
