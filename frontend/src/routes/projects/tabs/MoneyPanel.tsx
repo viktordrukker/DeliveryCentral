@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
+import { Table, type Column } from '@/components/ds';
 import { SectionCard } from '@/components/common/SectionCard';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
@@ -260,85 +261,90 @@ export function MoneyPanel({ dashboard, projectId }: MoneyPanelProps): JSX.Eleme
               >
                 No cost data recorded yet.
               </p>
-            ) : (
-              <table className="table table-compact">
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th style={{ textAlign: 'right' }}>Hours</th>
-                    <th style={{ textAlign: 'right' }}>Cost</th>
-                    <th style={{ textAlign: 'right' }}>Share</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboard.byRole.slice(0, 6).map((r, i) => {
-                    const totalCost =
-                      dashboard.byRole.reduce((s, x) => s + x.cost, 0) || 1;
-                    const share = Math.round((r.cost / totalCost) * 100);
-                    return (
-                      <tr key={r.role}>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            <span
-                              className={`tone-dot tone-${
-                                ['info', 'active', 'warning', 'danger', 'critical'][i % 5]
-                              }`}
-                            />
-                            {r.role}
-                          </span>
-                        </td>
-                        <td
-                          className="mono"
-                          style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                        >
-                          {r.hours}
-                        </td>
-                        <td
-                          className="mono"
-                          style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                        >
-                          <Money value={r.cost} compact />
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              justifyContent: 'flex-end',
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 60,
-                                height: 4,
-                                background: 'var(--color-surface-alt)',
-                                borderRadius: 2,
-                                overflow: 'hidden',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${share}%`,
-                                  height: '100%',
-                                  background: 'var(--color-accent)',
-                                }}
-                              />
-                            </div>
-                            <span
-                              className="mono compact"
-                              style={{ fontVariantNumeric: 'tabular-nums' }}
-                            >
-                              {share}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+            ) : (() => {
+              const topRoles = dashboard.byRole.slice(0, 6);
+              const totalCost = dashboard.byRole.reduce((s, x) => s + x.cost, 0) || 1;
+              const TONES = ['info', 'active', 'warning', 'danger', 'critical'] as const;
+              type RoleRow = (typeof topRoles)[number] & { _idx: number; _share: number };
+              const rows: RoleRow[] = topRoles.map((r, i) => ({
+                ...r,
+                _idx: i,
+                _share: Math.round((r.cost / totalCost) * 100),
+              }));
+              const columns: Column<RoleRow>[] = [
+                {
+                  key: 'role',
+                  title: 'Role',
+                  getValue: (r) => r.role,
+                  render: (r) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span className={`tone-dot tone-${TONES[r._idx % TONES.length]}`} />
+                      {r.role}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'hours',
+                  title: 'Hours',
+                  align: 'right',
+                  getValue: (r) => r.hours,
+                  render: (r) => (
+                    <span className="mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {r.hours}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'cost',
+                  title: 'Cost',
+                  align: 'right',
+                  getValue: (r) => r.cost,
+                  render: (r) => (
+                    <span className="mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <Money value={r.cost} compact />
+                    </span>
+                  ),
+                },
+                {
+                  key: 'share',
+                  title: 'Share',
+                  align: 'right',
+                  getValue: (r) => r._share,
+                  render: (r) => (
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 60,
+                          height: 4,
+                          background: 'var(--color-surface-alt)',
+                          borderRadius: 2,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${r._share}%`,
+                            height: '100%',
+                            background: 'var(--color-accent)',
+                          }}
+                        />
+                      </div>
+                      <span className="mono compact" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {r._share}%
+                      </span>
+                    </div>
+                  ),
+                },
+              ];
+              return <Table variant="compact" columns={columns} rows={rows} getRowKey={(r) => r.role} />;
+            })()}
           </div>
         </div>
       </div>
