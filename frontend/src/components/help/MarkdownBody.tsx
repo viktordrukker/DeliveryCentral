@@ -11,8 +11,8 @@ import ReactMarkdown from 'react-markdown';
 //      anything other than `http:`, `https:`, `mailto:`, or relative.
 //      This blocks `javascript:`, `data:`, and `vbscript:` URI XSS.
 //   2. `allowedElements` — a strict whitelist of Markdown element
-//      names. Anything outside this set (raw `<script>`, `<iframe>`,
-//      `<form>`, `<input>`, `<button>`, etc.) is dropped silently.
+//      names. Anything outside this set (raw script, iframe, form,
+//      input, button, etc. tags) is dropped silently.
 //
 // These layers are belt-and-braces: react-markdown 10.x already
 // blocks raw HTML, but the explicit guards survive misconfigurations

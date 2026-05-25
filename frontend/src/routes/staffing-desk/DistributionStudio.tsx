@@ -249,23 +249,17 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
               {STRATEGIES.map((s) => {
                 const isActive = s.id === strategy;
                 return (
-                  <button
+                  <Button
                     key={s.id}
-                    type="button"
+                    size="xs"
+                    variant={isActive ? 'primary' : 'secondary'}
                     onClick={() => setStrategy(s.id)}
                     title={s.hint}
-                    style={{
-                      background: isActive ? 'var(--color-accent)' : 'var(--color-surface-alt)',
-                      color: isActive ? 'var(--color-text-inverse)' : 'var(--color-text)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 999,
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      padding: '4px 12px',
-                    }}
+                    aria-pressed={isActive}
+                    style={{ borderRadius: 999 }}
                   >
                     {s.label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
