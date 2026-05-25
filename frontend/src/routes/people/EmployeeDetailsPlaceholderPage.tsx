@@ -32,7 +32,10 @@ import { PersonActivityFeed } from '@/components/people/PersonActivityFeed';
 import { Person360Tab } from '@/components/people/Person360Tab';
 import { HR_DIRECTOR_ADMIN_ROLES, THREESIXTY_REVIEW_ROLES, SKILL_EDIT_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { getDashboardPath } from '@/app/role-routing';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+// V2-A.11 (2026-05-25) — removed `import LockOutlinedIcon from '@mui/icons-material/LockOutlined'`.
+// EmptyState's default icon now renders for the forbidden-profile case.
+// EmptyState/LoadingState/ErrorState themselves still depend on MUI (transitively);
+// removing that is a macro task tracked separately (39-file footprint).
 import { Button, DatePicker } from '@/components/ds';
 
 export function EmployeeDetailsPlaceholderPage(): JSX.Element {
@@ -206,7 +209,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         />
         <SectionCard>
           <EmptyState
-            icon={LockOutlinedIcon}
             title="Restricted profile"
             description="Head back to your dashboard or jump to the org chart for the directory view."
             actions={[
