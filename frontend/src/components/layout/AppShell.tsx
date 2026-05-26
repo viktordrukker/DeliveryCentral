@@ -192,7 +192,7 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
             </table>
             <button
               onClick={() => { void navigate('/login'); setDemoPanelOpen(false); }}
-              style={{ width: '100%', padding: '8px 0', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+              style={{ width: '100%', padding: '8px 0', background: 'var(--color-accent)', color: 'var(--color-surface)', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
               type="button"
             >
               Go to Login
