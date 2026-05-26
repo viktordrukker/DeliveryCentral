@@ -22,7 +22,7 @@ import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type Rol
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
 import { fetchProjectDashboard, type ProjectDashboardResponse } from '@/lib/api/project-dashboard';
-import { Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Pct, Table, type Column } from '@/components/ds';
 
 const NUM: React.CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 
@@ -158,7 +158,12 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
             <Table
               variant="compact"
               columns={[
-                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => <Link to={`/people/${a.person.id}`}>{a.person.displayName}</Link> },
+                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => (
+                  <Link to={`/people/${a.person.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar name={a.person.displayName} size="xs" />
+                    <span>{a.person.displayName}</span>
+                  </Link>
+                ) },
                 { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
                 { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}><Pct value={a.allocationPercent} /></span> },
                 { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
@@ -189,7 +194,12 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
             <Table
               variant="compact"
               columns={[
-                { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => <span style={{ fontWeight: 500 }}>{i.displayName}</span> },
+                { key: 'person', title: 'Person', getValue: (i) => i.displayName, render: (i) => (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                    <Avatar name={i.displayName} size="xs" />
+                    <span>{i.displayName}</span>
+                  </span>
+                ) },
                 { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (i) => i.allocationPercent, render: (i) => <span style={{ ...NUM, fontWeight: 600 }}><Pct value={i.allocationPercent} /></span> },
                 { key: 'bar', title: 'Bar', width: 120, render: (i) => (
                   <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>

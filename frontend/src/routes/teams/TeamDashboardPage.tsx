@@ -158,7 +158,12 @@ export function TeamDashboardPage(): JSX.Element {
               <Table
                 variant="compact"
                 columns={[
-                  { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                  { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                      <Avatar name={p.displayName} size="xs" />
+                      <span>{p.displayName}</span>
+                    </span>
+                  ) },
                   { key: 'orgUnit', title: 'Org Unit', getValue: (p) => p.currentOrgUnitName ?? '\u2014', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.currentOrgUnitName ?? '\u2014'}</span> },
                   { key: 'email', title: 'Email', getValue: (p) => p.primaryEmail ?? '\u2014', render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.primaryEmail ?? '\u2014'}</span> },
                   { key: 'go', title: '', width: 40, render: (p) => <Link to={`/people/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },

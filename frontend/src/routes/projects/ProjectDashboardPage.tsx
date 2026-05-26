@@ -20,7 +20,7 @@ import { useProjectDashboard } from '@/features/projects/useProjectDashboard';
 import { formatDate } from '@/lib/format-date';
 import { type ComputedRag, type RagSnapshotDto, type StaffingAlert, fetchComputedRag, fetchRagHistory, fetchStaffingAlerts } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
-import { Button, DescriptionList, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, DescriptionList, Pct, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -217,7 +217,12 @@ export function ProjectDashboardPage(): JSX.Element {
                 <Table
                   variant="compact"
                   columns={[
-                    { key: 'person', title: 'Person', getValue: (item) => item.displayName, render: (item) => <span style={{ fontWeight: 500 }}>{item.displayName}</span> },
+                    { key: 'person', title: 'Person', getValue: (item) => item.displayName, render: (item) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                        <Avatar name={item.displayName} size="xs" />
+                        <span>{item.displayName}</span>
+                      </span>
+                    ) },
                     { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (item) => item.allocationPercent, render: (item) => <span style={{ ...NUM, fontWeight: 600 }}><Pct value={item.allocationPercent} /></span> },
                     { key: 'bar', title: 'Bar', width: 120, render: (item) => (
                       <div style={{ background: 'var(--color-border)', borderRadius: 2, height: 6, width: '100%', overflow: 'hidden' }}>
