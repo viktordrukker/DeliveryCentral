@@ -19,7 +19,7 @@ import {
 } from '@/lib/api/resource-pools';
 import { PersonDirectoryItem, fetchPersonDirectory } from '@/lib/api/person-directory';
 import { RM_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
-import { Button, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Table, type Column } from '@/components/ds';
 import type { ResourcePoolMember } from '@/lib/api/resource-pools';
 
 export function ResourcePoolDetailPage(): JSX.Element {
@@ -206,7 +206,12 @@ export function ResourcePoolDetailPage(): JSX.Element {
               <Table
                 variant="compact"
                 columns={[
-                  { key: 'name', title: 'Name', getValue: (m) => m.displayName, render: (m) => <span style={{ fontWeight: 500 }}>{m.displayName}</span> },
+                  { key: 'name', title: 'Name', getValue: (m) => m.displayName, render: (m) => (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                      <Avatar name={m.displayName} size="xs" />
+                      <span>{m.displayName}</span>
+                    </span>
+                  ) },
                   { key: 'since', title: 'Member Since', getValue: (m) => m.validFrom, render: (m) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDate(m.validFrom)}</span> },
                   { key: 'actions', title: 'Actions', align: 'right', render: (m) => (
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

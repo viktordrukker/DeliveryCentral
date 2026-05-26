@@ -6,7 +6,7 @@ import {
 } from '@/features/assignments/useBulkAssignmentPage';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
-import { Button, DatePicker } from '@/components/ds';
+import { Avatar, Button, DatePicker } from '@/components/ds';
 
 interface BulkAssignmentFormProps {
   errors: BulkAssignmentFormErrors;
@@ -128,6 +128,7 @@ export function BulkAssignmentForm({
                   onChange={() => onPersonToggle(person.id)}
                   type="checkbox"
                 />
+                <Avatar name={person.displayName} size="xs" />
                 <div className="bulk-selector__content">
                   <span className="dictionary-list__title">{person.displayName}</span>
                   <span className="dictionary-list__meta">

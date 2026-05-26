@@ -1,4 +1,5 @@
 import { ComparisonSection } from '@/components/dashboard/ComparisonSection';
+import { Avatar } from '@/components/ds';
 import { ComparisonAnomalyItem } from '@/lib/api/planned-vs-actual';
 import { ANOMALY_TYPE_LABELS, humanizeEnum } from '@/lib/labels';
 
@@ -23,8 +24,9 @@ export function AnomalyPanel({ items }: AnomalyPanelProps): JSX.Element {
         renderItem={(item) => (
           <>
             <div className="comparison-card__title">{humanizeEnum(item.type, ANOMALY_TYPE_LABELS)}</div>
-            <div className="comparison-card__meta">
-              {item.person.displayName} · {item.project.name}
+            <div className="comparison-card__meta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Avatar name={item.person.displayName} size="xs" />
+              <span>{item.person.displayName} · {item.project.name}</span>
             </div>
             <p className="placeholder-block__copy">{item.message}</p>
           </>
