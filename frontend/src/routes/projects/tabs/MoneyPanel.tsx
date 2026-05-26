@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
-import { Table, type Column } from '@/components/ds';
+import { Table, VarianceBar, type Column } from '@/components/ds';
 import { SectionCard } from '@/components/common/SectionCard';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
@@ -177,15 +177,18 @@ export function MoneyPanel({ dashboard, projectId }: MoneyPanelProps): JSX.Eleme
                   }}
                 >
                   <span className="body-sm">Budget variance</span>
-                  <div className="varbar">
-                    <i
-                      className={variance < 0 ? '' : 'neg'}
-                      style={{
-                        left: variance < 0 ? '50%' : `${50 - (Math.abs(variance) / driverMax) * 50}%`,
-                        width: `${(Math.abs(variance) / driverMax) * 50}%`,
-                      }}
-                    />
-                  </div>
+                  {/* V2-B.6 — DS VarianceBar replaces the inline .varbar+<i>
+                      hand-rolled bar. Signed value flows from `variance` so
+                      positive (over budget) renders right of center in danger
+                      tone, negative (under budget) renders left in active tone. */}
+                  <VarianceBar
+                    value={-variance}
+                    max={driverMax}
+                    tone="auto"
+                    width={160}
+                    height={10}
+                    ariaLabel={`Budget variance ${variance > 0 ? 'over' : 'under'} by ${Math.abs(variance)}`}
+                  />
                   <span
                     className="mono"
                     style={{
