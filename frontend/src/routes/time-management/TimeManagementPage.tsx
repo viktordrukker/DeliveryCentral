@@ -566,7 +566,12 @@ export function TimeManagementPage(): JSX.Element {
                 <Table
                   variant="compact"
                   columns={[
-                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                        <Avatar name={p.displayName} size="xs" />
+                        <span>{p.displayName}</span>
+                      </span>
+                    ) },
                     { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.totalHours, render: (p) => <span style={NUM}>{p.totalHours}h</span> },
                     { key: 'std', title: 'Standard', align: 'right', getValue: (p) => p.standardHours, render: (p) => <span style={NUM}>{p.standardHours}h</span> },
                     { key: 'ot', title: 'Overtime', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</span> },
