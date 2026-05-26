@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
+import { Timeline, type TimelineSegment } from '@/components/ds';
 import {
   type PersonProfileDto,
   fetchPersonProfile,
@@ -154,9 +155,28 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
             No assignments on record.
           </p>
         ) : (
+          <>
+            {/* V2-B.11 — DS Timeline above the assignments list. Visualizes
+                the temporal overlap of all assignments at a glance; the
+                existing list below stays for detailed metadata (role, alloc,
+                status). Segments are clickable via href into the project. */}
+            <Timeline
+              segments={assignments.map<TimelineSegment>((a) => ({
+                id: a.id,
+                startDate: a.validFrom,
+                endDate: a.validTo ?? null,
+                label: a.projectName,
+                tone: a.status === 'ACTIVE' ? 'active' : 'neutral',
+                allocationPercent: a.allocationPercent,
+                href: `/projects/${a.projectId}`,
+              }))}
+              showToday
+              showMonthLabels
+              size="sm"
+            />
           <ul
             data-testid="person-profile-assignments"
-            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}
+            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}
           >
             {assignments.map((a) => (
               <li
@@ -192,6 +212,7 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
               </li>
             ))}
           </ul>
+          </>
         )}
       </SectionCard>
 
