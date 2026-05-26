@@ -25,7 +25,7 @@ import {
   fetchWorkloadTrend,
 } from '@/lib/api/workload-dashboard';
 import { QueryState } from '@/lib/api/query-state';
-import { Button, DataView, type Column } from '@/components/ds';
+import { Button, DataView, Pct, type Column } from '@/components/ds';
 
 /* ── Threshold color helper ──────────────────────────────────────── */
 const tc = (val: number, warn: number, danger: number, higherIsBad = true): string => {
@@ -220,7 +220,7 @@ export function DashboardPage(): JSX.Element {
             fontWeight: 600,
           }}
         >
-          {item.portfolioPercent}%
+          <Pct value={item.portfolioPercent} fractionDigits={0} />
         </span>
       ),
       title: 'Portfolio %',
@@ -290,7 +290,7 @@ export function DashboardPage(): JSX.Element {
             <Link className="kpi-strip__item" to="/workload"
               style={{ borderLeft: `3px solid ${utilizationPct < 60 ? 'var(--color-status-warning)' : tc(utilizationPct, 90, 100)}` }}>
               <TipBalloon tip="Ratio of assigned people to total headcount. Target is 80%. Green = healthy, amber = watch, red = over-capacity." arrow="left" />
-              <span className="kpi-strip__value">{utilizationPct}%</span>
+              <span className="kpi-strip__value"><Pct value={utilizationPct} fractionDigits={0} /></span>
               <span className="kpi-strip__label">Utilization</span>
               <div className="kpi-strip__progress">
                 <div className="kpi-strip__progress-fill" style={{ width: `${Math.min(utilizationPct, 100)}%`, background: tc(utilizationPct, 90, 100) }} />
@@ -376,7 +376,7 @@ export function DashboardPage(): JSX.Element {
               <div className="dash-action-section__summary">
                 <span>{actionItems.length} total items</span>
                 <span>
-                  {activeProjects > 0 ? Math.round((noStaffCount / activeProjects) * 100) : 0}% affected
+                  <Pct value={activeProjects > 0 ? Math.round((noStaffCount / activeProjects) * 100) : 0} fractionDigits={0} /> affected
                 </span>
               </div>
             </div>

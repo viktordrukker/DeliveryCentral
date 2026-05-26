@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
-import { Table, type Column } from '@/components/ds';
+import { Pct, Table, type Column } from '@/components/ds';
 
 interface TeamCapacityHeatmapPerson {
   allocationByWeek: number[];
@@ -50,7 +50,7 @@ export function TeamCapacityHeatmap({ people, weeks }: TeamCapacityHeatmapProps)
               ? `${p.name} — ${w}: ${pct}% — click to view assignments`
               : `${p.name} — ${w}: ${pct}%`}
           >
-            {pct > 0 ? `${pct}%` : '—'}
+            {pct > 0 ? <Pct value={pct} fractionDigits={0} /> : '—'}
           </span>
         );
       },
