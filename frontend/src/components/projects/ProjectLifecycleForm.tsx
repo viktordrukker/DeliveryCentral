@@ -65,9 +65,13 @@ export function ProjectLifecycleForm({
 }: ProjectLifecycleFormProps): JSX.Element {
   return (
     <form className="entity-form" noValidate onSubmit={onSubmit}>
-      {/* Step indicator */}
+      {/* Step indicator — V2-A.15 canvas labels (Identity / Setup / Activation).
+          The underlying fields stay grouped as before; this PR just renames
+          the steps to match DS/page-extras.jsx and the canvas grammar. Adding
+          a true Positions+Milestones step is V2-A.15-followup (needs BE
+          transaction to create project + positions + milestones in one go). */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-        {['Basics', 'Engagement', 'Confirm'].map((label, i) => (
+        {['Identity', 'Setup', 'Activation'].map((label, i) => (
           <Button
             key={label}
             size="sm"
