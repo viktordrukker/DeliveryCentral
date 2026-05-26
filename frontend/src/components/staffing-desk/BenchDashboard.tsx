@@ -113,7 +113,10 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
                   <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: 30, color: r.daysUntilRollOff <= 14 ? 'var(--color-status-danger)' : 'var(--color-text-muted)' }}>
                     {r.daysUntilRollOff}d
                   </span>
-                  <span style={{ flex: 1 }}>{r.displayName}</span>
+                  <span style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar name={r.displayName} size="xs" />
+                    <span>{r.displayName}</span>
+                  </span>
                   <span style={{ color: 'var(--color-text-muted)', fontSize: 10 }}>{r.projectName}</span>
                   <span style={{ fontSize: 10 }}><Pct value={r.allocationPercent} fractionDigits={0} /></span>
                   {r.hasFollowOn && <StatusBadge label="Follow-on" tone="active" variant="dot" size="small" />}

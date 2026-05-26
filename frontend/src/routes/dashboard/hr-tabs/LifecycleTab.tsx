@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { formatDate } from '@/lib/format-date';
-import { Table, type Column } from '@/components/ds';
+import { Avatar, Table, type Column } from '@/components/ds';
 import type {
   HrAtRiskEmployee,
   HrLifecycleActivityItem,
@@ -37,7 +37,12 @@ export function HrLifecycleTab({
 
   const atRiskColumns: Column<HrAtRiskEmployee & { _index: number }>[] = [
     { key: 'index', title: '#', width: 28, getValue: (e) => e._index, render: (e) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{e._index}</span> },
-    { key: 'name', title: 'Name', getValue: (e) => e.displayName, render: (e) => <span style={{ fontWeight: 500 }}>{e.displayName}</span> },
+    { key: 'name', title: 'Name', getValue: (e) => e.displayName, render: (e) => (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+        <Avatar name={e.displayName} size="xs" />
+        <span>{e.displayName}</span>
+      </span>
+    ) },
     { key: 'email', title: 'Email', getValue: (e) => e.primaryEmail ?? '', render: (e) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{e.primaryEmail ?? '—'}</span> },
     { key: 'risk', title: 'Risk Factors', render: (e) => (
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -57,7 +62,12 @@ export function HrLifecycleTab({
         {r.kind === 'joined' ? 'Joined' : 'Deactivated'}
       </span>
     ) },
-    { key: 'name', title: 'Name', getValue: (r) => r.displayName, render: (r) => <span style={{ fontWeight: 500 }}>{r.displayName}</span> },
+    { key: 'name', title: 'Name', getValue: (r) => r.displayName, render: (r) => (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+        <Avatar name={r.displayName} size="xs" />
+        <span>{r.displayName}</span>
+      </span>
+    ) },
     { key: 'date', title: 'Date', width: 100, getValue: (r) => r.occurredAt, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{formatDate(r.occurredAt)}</span> },
     { key: 'go', title: '', width: 40, render: (r) => (
       <Link to={`/people/${r.personId}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>View</Link>
