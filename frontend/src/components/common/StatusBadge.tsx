@@ -131,7 +131,7 @@ export function StatusBadge({
           />
           <text
             dominantBaseline="central"
-            fill="#fff"
+            fill="var(--color-surface)"
             fontSize={fontSize}
             fontWeight="bold"
             textAnchor="middle"
