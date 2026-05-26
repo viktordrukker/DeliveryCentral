@@ -55,7 +55,7 @@ import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-r
 import { useOvertimeSummary } from '@/features/dashboard/useOvertimeSummary';
 import type { OvertimePersonSummary, OvertimeProjectSummary } from '@/lib/api/overtime';
 import { formatDateShort } from '@/lib/format-date';
-import { Button, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -653,7 +653,12 @@ export function PlannedVsActualPage(): JSX.Element {
                     <Table
                       variant="compact"
                       columns={[
-                        { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                        { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                            <Avatar name={p.displayName} size="xs" />
+                            <span>{p.displayName}</span>
+                          </span>
+                        ) },
                         { key: 'total', title: 'Total', align: 'right', getValue: (p) => p.totalHours, render: (p) => <span style={NUM}>{p.totalHours}h</span> },
                         { key: 'std', title: 'Std', align: 'right', getValue: (p) => p.standardHours, render: (p) => <span style={NUM}>{p.standardHours}h</span> },
                         { key: 'ot', title: 'OT', align: 'right', getValue: (p) => p.overtimeHours, render: (p) => <span style={{ ...NUM, fontWeight: 600, color: 'var(--color-status-warning)' }}>{p.overtimeHours}h</span> },

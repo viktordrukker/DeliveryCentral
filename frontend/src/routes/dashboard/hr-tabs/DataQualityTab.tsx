@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { DataQualityRadar } from '@/components/charts/DataQualityRadar';
-import { Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Pct, Table, type Column } from '@/components/ds';
 import type { HrPersonAttentionItem } from '@/lib/api/dashboard-hr-manager';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
@@ -75,7 +75,12 @@ export function HrDataQualityTab({
 
   const issueColumns: Column<IssueRow>[] = [
     { key: 'index', title: '#', width: 28, getValue: (r) => r.index, render: (r) => <span style={{ color: 'var(--color-text-subtle)', fontSize: 11 }}>{r.index}</span> },
-    { key: 'employee', title: 'Employee', getValue: (r) => r.displayName, render: (r) => <span style={{ fontWeight: 500 }}>{r.displayName}</span> },
+    { key: 'employee', title: 'Employee', getValue: (r) => r.displayName, render: (r) => (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+        <Avatar name={r.displayName} size="xs" />
+        <span>{r.displayName}</span>
+      </span>
+    ) },
     { key: 'email', title: 'Email', getValue: (r) => r.primaryEmail ?? '', render: (r) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{r.primaryEmail ?? '—'}</span> },
     { key: 'issue', title: 'Issue', width: 140, getValue: (r) => r.issue, render: (r) => <span style={{ color: 'var(--color-status-warning)', fontWeight: 600, fontSize: 11 }}>{r.issue}</span> },
     { key: 'go', title: '', width: 40, render: (r) => (
