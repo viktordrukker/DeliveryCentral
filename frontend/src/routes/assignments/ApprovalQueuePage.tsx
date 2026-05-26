@@ -9,7 +9,7 @@ import { ExportButton, type ExportColumn } from '@/components/common/ExportButto
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button, Pct, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Pct, Table, type Column } from '@/components/ds';
 import { useApprovalQueue, type ApprovalQueueScope } from '@/features/assignments/useApprovalQueue';
 import { ASSIGNMENT_STATUS_LABELS } from '@/lib/labels';
 import { type AssignmentDirectoryItem } from '@/lib/api/assignments';
@@ -111,7 +111,12 @@ export function ApprovalQueuePage(): JSX.Element {
   const columns: Column<AssignmentDirectoryItem>[] = useMemo(
     () => [
       { key: 'project', title: 'Project', render: (row) => row.project.displayName },
-      { key: 'person', title: 'Person', render: (row) => row.person.displayName },
+      { key: 'person', title: 'Person', render: (row) => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Avatar name={row.person.displayName} size="xs" />
+          <span>{row.person.displayName}</span>
+        </span>
+      ) },
       { key: 'role', title: 'Role', render: (row) => row.staffingRole },
       {
         key: 'status',

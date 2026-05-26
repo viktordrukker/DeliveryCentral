@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { useTeamDashboard } from '@/features/teams/useTeamDashboard';
-import { Button, DescriptionList, Table, type Column } from '@/components/ds';
+import { Avatar, Button, DescriptionList, Table, type Column } from '@/components/ds';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
 
@@ -133,7 +133,12 @@ export function TeamDashboardPage(): JSX.Element {
                 <Table
                   variant="compact"
                   columns={[
-                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => <span style={{ fontWeight: 500 }}>{p.displayName}</span> },
+                    { key: 'person', title: 'Person', getValue: (p) => p.displayName, render: (p) => (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+                        <Avatar name={p.displayName} size="xs" />
+                        <span>{p.displayName}</span>
+                      </span>
+                    ) },
                     { key: 'projects', title: 'Projects', align: 'right', getValue: (p) => p.activeProjectCount, render: (p) => <span style={NUM}>{p.activeProjectCount}</span> },
                     { key: 'go', title: '', width: 40, render: (p) => <Link to={`/people/${p.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>Go</Link> },
                   ] as Column<typeof d.crossProjectSpread.membersOnMultipleProjects[number]>[]}
