@@ -61,7 +61,7 @@ export function CreateProjectPage(): JSX.Element {
       testId="project-lifecycle-admin-page"
       eyebrow="Projects"
       title="Create Project"
-      subtitle="Create a new project through the 3-step wizard: basics, engagement model, and review."
+      subtitle="Create a new project through the 3-step wizard: Identity → Setup → Activation. Add positions and milestones on the project page after creation."
       actions={
         <Button as={Link} variant="secondary" to="/projects">
           Back to projects
@@ -70,7 +70,7 @@ export function CreateProjectPage(): JSX.Element {
       banners={banners}
     >
       {!state.isLoading && !state.error ? (
-        <SectionCard title={`Step ${state.step + 1} of 3`}>
+        <SectionCard title={`Step ${state.step + 1} of 3 — ${['Identity', 'Setup', 'Activation'][state.step] ?? ''}`}>
           <ProjectLifecycleForm
             clientOptions={state.clientOptions}
             errors={state.errors}
@@ -101,8 +101,27 @@ export function CreateProjectPage(): JSX.Element {
               <dd>{state.createdProject.status}</dd>
             </div>
           </dl>
+          {/* V2-A.15 — canvas's wizard ends with "Activation" but Positions
+              and Milestones aren't yet creatable inline at wizard-time.
+              Direct the operator into the project's Plan tab to add them
+              right after creation, preserving the canvas intent. */}
+          <div
+            style={{
+              marginTop: 'var(--space-3)',
+              padding: 'var(--space-2) var(--space-3)',
+              background: 'var(--color-surface-alt)',
+              borderRadius: 4,
+              fontSize: 12,
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            Next: add positions and milestones inside the project's Plan tab to begin staffing.
+          </div>
           <div style={{ marginTop: 'var(--space-3)', display: 'flex', gap: 'var(--space-2)' }}>
-            <Button variant="primary" onClick={() => navigate(`/projects/${state.createdProject!.id}`)} type="button">
+            <Button variant="primary" onClick={() => navigate(`/projects/${state.createdProject!.id}?tab=plan`)} type="button">
+              Open Plan tab
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/projects/${state.createdProject!.id}`)} type="button">
               Open Project
             </Button>
             <Button variant="secondary" onClick={() => window.location.reload()} type="button">
