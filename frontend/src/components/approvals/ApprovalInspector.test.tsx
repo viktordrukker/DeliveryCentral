@@ -118,4 +118,56 @@ describe('ApprovalInspector', () => {
     renderInspector({ submittedBy: null });
     expect(screen.getByText(/unknown submitter/i)).toBeInTheDocument();
   });
+
+  describe('V2-A.17 — leave-source detail block', () => {
+    it('renders leave detail tiles when source=leave and meta carries leave fields', () => {
+      renderInspector({
+        source: 'leave',
+        title: '5 days annual leave',
+        meta: {
+          leaveType: 'ANNUAL',
+          leaveStartDate: '2026-06-01',
+          leaveEndDate: '2026-06-05',
+          businessDays: 5,
+          balanceRemaining: 12,
+        },
+      });
+      expect(screen.getByTestId('approval-inspector-leave-detail')).toBeInTheDocument();
+      expect(screen.getByText('Leave detail')).toBeInTheDocument();
+      expect(screen.getByText('ANNUAL')).toBeInTheDocument();
+      expect(screen.getByText('2026-06-01 → 2026-06-05')).toBeInTheDocument();
+      expect(screen.getByText('Business days')).toBeInTheDocument();
+      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(screen.getByText('Balance after')).toBeInTheDocument();
+      expect(screen.getByText('12')).toBeInTheDocument();
+    });
+
+    it('omits the leave detail block when source is not leave', () => {
+      renderInspector({
+        source: 'budget',
+        meta: {
+          leaveType: 'ANNUAL',
+          leaveStartDate: '2026-06-01',
+        },
+      });
+      expect(screen.queryByTestId('approval-inspector-leave-detail')).not.toBeInTheDocument();
+    });
+
+    it('omits the leave detail block when source=leave but meta is empty', () => {
+      renderInspector({
+        source: 'leave',
+        meta: {},
+      });
+      expect(screen.queryByTestId('approval-inspector-leave-detail')).not.toBeInTheDocument();
+    });
+
+    it('flags negative leave balance in danger color', () => {
+      renderInspector({
+        source: 'leave',
+        meta: { balanceRemaining: -2 },
+      });
+      const balanceCell = screen.getByText('-2');
+      expect(balanceCell.style.color).toContain('status-danger');
+    });
+  });
 });

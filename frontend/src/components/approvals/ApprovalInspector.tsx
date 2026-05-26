@@ -157,6 +157,20 @@ export function ApprovalInspector({ item, onClose }: ApprovalInspectorProps): JS
   const projectName = readString(item.meta, 'projectName');
   const reason = readString(item.meta, 'reason') ?? readString(item.meta, 'justification');
 
+  // V2-A.17 — leave-source specific meta. When the row is a leave request,
+  // surface leave type / date range / business-day count / balance remaining
+  // so the user can decide without leaving the approvals surface (folds the
+  // time-management LeaveDecisionDrawer view into Approvals per reconciliation
+  // §5). All keys are best-effort — backends are encouraged to populate them
+  // for leave items but the inspector tolerates absence.
+  const isLeave = item.source === 'leave';
+  const leaveType = isLeave ? readString(item.meta, 'leaveType') : null;
+  const leaveStart = isLeave ? readString(item.meta, 'leaveStartDate') ?? readString(item.meta, 'startDate') : null;
+  const leaveEnd = isLeave ? readString(item.meta, 'leaveEndDate') ?? readString(item.meta, 'endDate') : null;
+  const leaveBusinessDays = isLeave ? readNumber(item.meta, 'businessDays') ?? readNumber(item.meta, 'totalDays') : null;
+  const leaveBalanceRemaining = isLeave ? readNumber(item.meta, 'balanceRemaining') ?? readNumber(item.meta, 'remainingDays') : null;
+  const hasLeaveDetail = leaveType || leaveStart || leaveEnd || leaveBusinessDays != null || leaveBalanceRemaining != null;
+
   const showVariance = currentAmount != null && requestedAmount != null && currentAmount > 0;
   const computedVariancePct = showVariance
     ? Math.round(((requestedAmount - currentAmount) / currentAmount) * 100)
@@ -254,6 +268,51 @@ export function ApprovalInspector({ item, onClose }: ApprovalInspectorProps): JS
             height={14}
             ariaLabel={`Variance ${effectiveVariancePct}%`}
           />
+        </div>
+      ) : null}
+
+      {/* V2-A.17 — leave-specific detail block. Surfaces the LeaveDecisionDrawer
+          context (type, date range, business-day count, balance impact)
+          inline so the manager can decide on a leave request without the
+          separate /time-management trip. */}
+      {hasLeaveDetail ? (
+        <div data-testid="approval-inspector-leave-detail">
+          <div style={S_SECTION_LABEL}>Leave detail</div>
+          <div style={S_CTX_GRID}>
+            {leaveType ? (
+              <div>
+                <div style={S_CTX_LABEL}>Type</div>
+                <div style={S_CTX_VALUE}>{leaveType}</div>
+              </div>
+            ) : null}
+            {leaveStart || leaveEnd ? (
+              <div>
+                <div style={S_CTX_LABEL}>Dates</div>
+                <div style={S_CTX_VALUE}>
+                  {leaveStart ?? '—'}{leaveEnd && leaveEnd !== leaveStart ? ` → ${leaveEnd}` : ''}
+                </div>
+              </div>
+            ) : null}
+            {leaveBusinessDays != null ? (
+              <div>
+                <div style={S_CTX_LABEL}>Business days</div>
+                <div style={S_CTX_VALUE}>{leaveBusinessDays}</div>
+              </div>
+            ) : null}
+            {leaveBalanceRemaining != null ? (
+              <div>
+                <div style={S_CTX_LABEL}>Balance after</div>
+                <div
+                  style={{
+                    ...S_CTX_VALUE,
+                    color: leaveBalanceRemaining < 0 ? 'var(--color-status-danger)' : 'var(--color-text)',
+                  }}
+                >
+                  {leaveBalanceRemaining}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
