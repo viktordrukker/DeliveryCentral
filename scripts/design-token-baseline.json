@@ -1,7 +1,4 @@
 [
-  "frontend/src/app/App.tsx|#1d4ed8|background: '#1d4ed8',",
-  "frontend/src/app/App.tsx|#fff|color: '#fff',",
-  "frontend/src/app/setup-gate.tsx|#666|<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#666' }}>",
   "frontend/src/components/assignments/SkillMatchPanel.tsx|#7c3aed|color: '#7c3aed',",
   "frontend/src/components/assignments/SkillMatchPanel.tsx|#ede9fe|background: '#ede9fe',",
   "frontend/src/components/charts/BudgetBurnDownChart.tsx|#6366f1|stroke=\"#6366f1\"",

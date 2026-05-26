@@ -49,7 +49,7 @@ export function SetupGate({ children }: { children: React.ReactNode }): JSX.Elem
 
   if (status === null) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#666' }}>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: 'var(--color-text-muted)' }}>
         Loading…
       </div>
     );
