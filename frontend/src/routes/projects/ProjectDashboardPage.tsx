@@ -87,7 +87,7 @@ export function ProjectDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Status</span>
             </Link>
 
-            <Link className="kpi-strip__item" to={`/assignments?project=${id ?? ''}`} style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" to={`/assignments?project=${id ?? ''}`} style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to this project." arrow="left" />
               <span className="kpi-strip__value">{d.dashboard.staffingSummary.activeAssignmentCount}</span>
               <span className="kpi-strip__label">Active Staff</span>

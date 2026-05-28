@@ -30,13 +30,13 @@ import { Button, DataView, Pct, type Column } from '@/components/ds';
 /* ── Threshold color helper ──────────────────────────────────────── */
 const tc = (val: number, warn: number, danger: number, higherIsBad = true): string => {
   if (higherIsBad) {
-    if (val >= danger) return 'var(--color-status-danger, #ef4444)';
-    if (val >= warn) return 'var(--color-status-warning, #f59e0b)';
-    return 'var(--color-status-active, #22c55e)';
+    if (val >= danger) return 'var(--color-status-danger)';
+    if (val >= warn) return 'var(--color-status-warning)';
+    return 'var(--color-status-active)';
   }
-  if (val <= danger) return 'var(--color-status-danger, #ef4444)';
-  if (val <= warn) return 'var(--color-status-warning, #f59e0b)';
-  return 'var(--color-status-active, #22c55e)';
+  if (val <= danger) return 'var(--color-status-danger)';
+  if (val <= warn) return 'var(--color-status-warning)';
+  return 'var(--color-status-active)';
 };
 
 interface DashboardActionItem {
@@ -306,7 +306,7 @@ export function DashboardPage(): JSX.Element {
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>across all teams</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to projects. The sparkline shows the 12-week trend." arrow="left" />
               <span className="kpi-strip__value">{activeAssignments}</span>
               <span className="kpi-strip__label">Active Assignments</span>

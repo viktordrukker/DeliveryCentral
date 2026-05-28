@@ -156,7 +156,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
                 justifyContent: 'space-between',
                 padding: '6px 8px',
                 borderRadius: 4,
-                background: 'var(--color-surface-alt, #f8f9fa)',
+                background: 'var(--color-surface-alt)',
                 textDecoration: 'none',
                 color: 'inherit',
                 fontSize: 12,
@@ -212,7 +212,7 @@ function MetricTile({ label, value, sublabel, color }: {
     <div style={{
       padding: '8px',
       borderRadius: 6,
-      background: 'var(--color-surface-alt, #f8f9fa)',
+      background: 'var(--color-surface-alt)',
       textAlign: 'center',
     }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: color ?? 'var(--color-text-primary)' }}>
