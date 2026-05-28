@@ -46,6 +46,12 @@ const sharedTokens: TokenMap = {
   '--touch-target-min': '44px',
   // Phase DS — focus ring width (color is theme-specific, see colorModeTokens)
   '--focus-ring-width': '2px',
+  // V2-F — impersonation banner: theme-INVARIANT safety overlay. Stays bright
+  // orange with white text in every mode (light/dark/ds) so the "viewing as"
+  // warning is never visually muted. Lives in sharedTokens so colorModeTokens
+  // never overrides it.
+  '--color-impersonation-bg': '#ea580c',
+  '--color-impersonation-fg': '#ffffff',
 };
 
 /**

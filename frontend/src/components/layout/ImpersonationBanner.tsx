@@ -11,8 +11,8 @@ export function ImpersonationBanner(): JSX.Element | null {
       role="status"
       style={{
         alignItems: 'center',
-        background: '#ea580c',
-        color: '#fff',
+        background: 'var(--color-impersonation-bg)',
+        color: 'var(--color-impersonation-fg)',
         display: 'flex',
         fontSize: '13px',
         fontWeight: 600,
@@ -28,10 +28,10 @@ export function ImpersonationBanner(): JSX.Element | null {
       <button
         onClick={exitImpersonation}
         style={{
-          background: 'rgba(255,255,255,0.2)',
-          border: '1px solid rgba(255,255,255,0.4)',
+          background: 'color-mix(in srgb, var(--color-impersonation-fg) 20%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-impersonation-fg) 40%, transparent)',
           borderRadius: '4px',
-          color: '#fff',
+          color: 'var(--color-impersonation-fg)',
           cursor: 'pointer',
           fontSize: '12px',
           padding: '2px 10px',
