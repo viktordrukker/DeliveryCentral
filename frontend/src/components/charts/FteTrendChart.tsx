@@ -31,7 +31,7 @@ export function FteTrendChart({ data }: FteTrendChartProps): JSX.Element {
           dataKey="fte"
           dot={{ r: 3 }}
           name="FTE (staffed people)"
-          stroke="#6366f1"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />
