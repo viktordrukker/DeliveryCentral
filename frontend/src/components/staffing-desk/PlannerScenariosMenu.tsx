@@ -12,7 +12,7 @@ import {
   type PlannerScenarioSummary,
 } from '@/lib/api/staffing-desk';
 import type { PlannerSimulation, SerializedSimState } from '@/features/staffing-desk/usePlannerSimulation';
-import { Button } from '@/components/ds';
+import { Button, FormField, FormModal, Input } from '@/components/ds';
 
 type PendingConfirm =
   | { kind: 'load'; id: string; name: string }
@@ -46,6 +46,9 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
   const [scenarios, setScenarios] = useState<PlannerScenarioSummary[]>([]);
   const [saving, setSaving] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
+  // V2-C.14 follow-up — name entry via DS FormModal instead of a browser prompt.
+  const [nameDialog, setNameDialog] = useState<{ mode: 'save' } | { mode: 'fork'; id: string; sourceName: string } | null>(null);
+  const [nameValue, setNameValue] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -72,37 +75,10 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
     return () => { window.clearTimeout(t); document.removeEventListener('click', onClick); };
   }, [open]);
 
-  const handleSave = useCallback(async () => {
-    const name = window.prompt('Scenario name');
-    if (!name || !name.trim()) return;
-    if (!principal?.personId) { toast.error('Not authenticated'); return; }
-
-    setSaving(true);
-    try {
-      const state = simulation.serialize();
-      const summary = {
-        summaryAssignments: simulation.moves.length + simulation.suggestions.filter((s) => s.accepted).length,
-        summaryHires: simulation.hireIntents.reduce((s, h) => s + h.count, 0),
-        summaryReleases: simulation.releases.length,
-        summaryExtensions: simulation.extensions.length,
-        summaryAnomalies: simulation.getAnomalies().length,
-      };
-      await createPlannerScenario({
-        actorId: principal.personId,
-        name: name.trim(),
-        state,
-        ...summary,
-        horizonFrom,
-        horizonWeeks,
-      });
-      toast.success(`Scenario "${name.trim()}" saved`);
-      await refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Save failed');
-    } finally {
-      setSaving(false);
-    }
-  }, [principal, simulation, horizonFrom, horizonWeeks, refresh]);
+  const openSave = useCallback(() => {
+    setNameValue('');
+    setNameDialog({ mode: 'save' });
+  }, []);
 
   const performLoad = useCallback(async (id: string, name: string) => {
     try {
@@ -124,32 +100,66 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
     void performLoad(id, name);
   }, [simulation.hasChanges, performLoad]);
 
-  const handleFork = useCallback(async (id: string, sourceName: string) => {
-    const name = window.prompt('New scenario name', `${sourceName} (copy)`);
-    if (!name || !name.trim()) return;
+  const openFork = useCallback((id: string, sourceName: string) => {
+    setNameValue(`${sourceName} (copy)`);
+    setNameDialog({ mode: 'fork', id, sourceName });
+  }, []);
+
+  // Single submit handler for both save + fork; FormModal tracks the pending
+  // state and keeps the modal open if this throws.
+  const submitName = useCallback(async () => {
+    const name = nameValue.trim();
+    if (!name || !nameDialog) return;
     if (!principal?.personId) { toast.error('Not authenticated'); return; }
 
-    try {
-      const source = await getPlannerScenario(id);
-      await createPlannerScenario({
-        actorId: principal.personId,
-        name: name.trim(),
-        description: `Forked from ${sourceName}`,
-        state: source.state,
-        summaryAssignments: source.summaryAssignments,
-        summaryHires: source.summaryHires,
-        summaryReleases: source.summaryReleases,
-        summaryExtensions: source.summaryExtensions,
-        summaryAnomalies: source.summaryAnomalies,
-        horizonFrom: source.horizonFrom ?? undefined,
-        horizonWeeks: source.horizonWeeks ?? undefined,
-      });
-      toast.success(`Forked as "${name.trim()}"`);
-      await refresh();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Fork failed');
+    if (nameDialog.mode === 'save') {
+      setSaving(true);
+      try {
+        const state = simulation.serialize();
+        await createPlannerScenario({
+          actorId: principal.personId,
+          name,
+          state,
+          summaryAssignments: simulation.moves.length + simulation.suggestions.filter((s) => s.accepted).length,
+          summaryHires: simulation.hireIntents.reduce((s, h) => s + h.count, 0),
+          summaryReleases: simulation.releases.length,
+          summaryExtensions: simulation.extensions.length,
+          summaryAnomalies: simulation.getAnomalies().length,
+          horizonFrom,
+          horizonWeeks,
+        });
+        toast.success(`Scenario "${name}" saved`);
+        setNameDialog(null);
+        await refresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : 'Save failed');
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      try {
+        const source = await getPlannerScenario(nameDialog.id);
+        await createPlannerScenario({
+          actorId: principal.personId,
+          name,
+          description: `Forked from ${nameDialog.sourceName}`,
+          state: source.state,
+          summaryAssignments: source.summaryAssignments,
+          summaryHires: source.summaryHires,
+          summaryReleases: source.summaryReleases,
+          summaryExtensions: source.summaryExtensions,
+          summaryAnomalies: source.summaryAnomalies,
+          horizonFrom: source.horizonFrom ?? undefined,
+          horizonWeeks: source.horizonWeeks ?? undefined,
+        });
+        toast.success(`Forked as "${name}"`);
+        setNameDialog(null);
+        await refresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : 'Fork failed');
+      }
     }
-  }, [principal, refresh]);
+  }, [nameValue, nameDialog, principal, simulation, horizonFrom, horizonWeeks, refresh]);
 
   const performArchive = useCallback(async (id: string, name: string) => {
     try {
@@ -186,7 +196,7 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
           <div style={S_HEADER}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Scenarios</span>
-              <Button type="button" variant="primary" size="sm" onClick={() => void handleSave()} disabled={saving || !simulation.hasChanges} style={{ fontSize: 9 }} title={simulation.hasChanges ? 'Save current simulation' : 'No changes to save'}>
+              <Button type="button" variant="primary" size="sm" onClick={openSave} disabled={saving || !simulation.hasChanges} style={{ fontSize: 9 }} title={simulation.hasChanges ? 'Save current simulation' : 'No changes to save'}>
                 {saving ? 'Saving…' : 'Save current'}
               </Button>
             </div>
@@ -216,7 +226,7 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
                 <Button type="button" variant="primary" size="sm" onClick={() => handleLoad(s.id, s.name)} style={{ fontSize: 9 }} title="Replace current sim with this scenario">
                   Load
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => void handleFork(s.id, s.name)} style={{ fontSize: 9 }} title="Duplicate this scenario">
+                <Button type="button" variant="secondary" size="sm" onClick={() => openFork(s.id, s.name)} style={{ fontSize: 9 }} title="Duplicate this scenario">
                   Fork
                 </Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => handleDelete(s.id, s.name)} style={{ fontSize: 9, color: 'var(--color-status-danger)' }} title="Archive scenario">
@@ -242,6 +252,25 @@ export function PlannerScenariosMenu({ simulation, horizonFrom, horizonWeeks, on
         onCancel={() => setPendingConfirm(null)}
         onConfirm={handleConfirmPending}
       />
+
+      <FormModal
+        open={nameDialog != null}
+        onCancel={() => setNameDialog(null)}
+        onSubmit={submitName}
+        title={nameDialog?.mode === 'fork' ? 'Fork scenario' : 'Save scenario'}
+        submitLabel={nameDialog?.mode === 'fork' ? 'Fork' : 'Save'}
+        submitDisabled={!nameValue.trim()}
+        testId="scenario-name"
+      >
+        <FormField label="Scenario name">
+          <Input
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value)}
+            placeholder="Scenario name"
+            autoFocus
+          />
+        </FormField>
+      </FormModal>
     </div>
   );
 }
