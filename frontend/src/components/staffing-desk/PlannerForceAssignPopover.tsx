@@ -79,7 +79,7 @@ export function PlannerForceAssignPopover({ pending, onCancel, onConfirm }: Prop
       }
     >
       {pending.blockedReason && (
-        <div style={{ fontSize: 11, color: 'var(--color-status-danger)', background: 'rgba(220,38,38,0.08)', padding: '6px 8px', borderRadius: 4 }}>
+        <div style={{ fontSize: 11, color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 8%, transparent)', padding: '6px 8px', borderRadius: 4 }}>
           {pending.blockedReason}
         </div>
       )}
@@ -88,7 +88,7 @@ export function PlannerForceAssignPopover({ pending, onCancel, onConfirm }: Prop
           <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Required but missing:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {pending.mismatchedSkills.map((sk) => (
-              <span key={sk} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: 'rgba(220,38,38,0.12)', color: 'var(--color-status-danger)' }}>{sk}</span>
+              <span key={sk} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)', color: 'var(--color-status-danger)' }}>{sk}</span>
             ))}
           </div>
         </div>
@@ -98,7 +98,7 @@ export function PlannerForceAssignPopover({ pending, onCancel, onConfirm }: Prop
           <div style={{ color: 'var(--color-text-muted)', marginBottom: 2 }}>Has:</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {pending.matchedSkills.map((sk) => (
-              <span key={sk} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: 'rgba(16,185,129,0.12)', color: 'var(--color-status-active)' }}>{sk}</span>
+              <span key={sk} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: 'color-mix(in srgb, var(--color-status-active) 12%, transparent)', color: 'var(--color-status-active)' }}>{sk}</span>
             ))}
           </div>
         </div>

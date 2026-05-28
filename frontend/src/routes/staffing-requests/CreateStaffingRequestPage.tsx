@@ -272,8 +272,8 @@ function PreviewBody({ values, project }: PreviewBodyProps): JSX.Element {
                   style={{
                     padding: '1px 6px',
                     borderRadius: 10,
-                    background: '#ede9fe',
-                    color: '#5b21b6',
+                    background: 'color-mix(in srgb, var(--color-chart-5) 14%, var(--color-surface))',
+                    color: 'var(--color-chart-5)',
                     fontSize: 11,
                   }}
                 >
@@ -382,9 +382,9 @@ function StatusPill({
 }): JSX.Element {
   const colors: Record<string, { bg: string; fg: string }> = {
     neutral: { bg: 'var(--color-surface-alt)', fg: 'var(--color-text)' },
-    info: { bg: 'rgba(59, 130, 246, 0.12)', fg: '#1d4ed8' },
-    warning: { bg: 'rgba(245, 158, 11, 0.12)', fg: '#92400e' },
-    danger: { bg: 'rgba(239, 68, 68, 0.12)', fg: '#991b1b' },
+    info: { bg: 'color-mix(in srgb, var(--color-status-info) 12%, transparent)', fg: 'var(--color-status-info)' },
+    warning: { bg: 'color-mix(in srgb, var(--color-status-warning) 12%, transparent)', fg: 'var(--color-status-warning)' },
+    danger: { bg: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)', fg: 'var(--color-status-danger)' },
   };
   const c = colors[tone];
   return (

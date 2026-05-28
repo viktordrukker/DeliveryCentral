@@ -15,10 +15,10 @@ import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { Button, Select, Table, type Column } from '@/components/ds';
 
 const PROFICIENCY_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: 'Beginner', color: '#6b7280' },
-  2: { label: 'Intermediate', color: '#2563eb' },
-  3: { label: 'Advanced', color: '#16a34a' },
-  4: { label: 'Expert', color: '#7c3aed' },
+  1: { label: 'Beginner', color: 'var(--color-status-neutral)' },
+  2: { label: 'Intermediate', color: 'var(--color-status-info)' },
+  3: { label: 'Advanced', color: 'var(--color-status-active)' },
+  4: { label: 'Expert', color: 'var(--color-chart-5)' },
 };
 
 interface PersonSkillsTabProps {
