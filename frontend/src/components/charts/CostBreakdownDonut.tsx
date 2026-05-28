@@ -7,14 +7,14 @@ interface Props {
 }
 
 const COLORS = [
-  '#6366f1',
-  '#22c55e',
-  '#f59e0b',
-  '#ec4899',
-  '#3b82f6',
-  '#8b5cf6',
-  '#14b8a6',
-  '#f97316',
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
+  'var(--color-chart-8)',
 ];
 
 export function CostBreakdownDonut({ data }: Props): JSX.Element {
