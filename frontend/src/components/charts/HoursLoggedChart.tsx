@@ -32,7 +32,7 @@ export function HoursLoggedChart({ data }: HoursLoggedChartProps): JSX.Element {
         <XAxis dataKey="week" tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${v}h`} />
         <Tooltip formatter={(v) => `${v}h`} />
-        <Bar dataKey="hours" fill="#8b5cf6" name="Hours" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="hours" fill="var(--color-chart-6)" name="Hours" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
     </div>

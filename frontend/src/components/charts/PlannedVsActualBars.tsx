@@ -20,8 +20,8 @@ export function PlannedVsActualBars({ data }: PlannedVsActualBarsProps): JSX.Ele
         <YAxis dataKey="person" type="category" width={140} />
         <Tooltip formatter={(v) => [`${String(v)}h`, '']} />
         <Legend />
-        <Bar dataKey="planned" fill="#6366f1" name="Planned Hours" />
-        <Bar dataKey="actual" fill="#22c55e" name="Actual Hours" />
+        <Bar dataKey="planned" fill="var(--color-chart-1)" name="Planned Hours" />
+        <Bar dataKey="actual" fill="var(--color-chart-2)" name="Actual Hours" />
       </BarChart>
     </ResponsiveContainer>
   );

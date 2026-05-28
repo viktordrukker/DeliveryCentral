@@ -18,7 +18,7 @@ export function ManagerSpanDistributionBar({ data }: ManagerSpanDistributionBarP
         <XAxis allowDecimals={false} type="number" />
         <YAxis dataKey="managerName" type="category" width={130} />
         <Tooltip formatter={(v) => [`${String(v)} reports`, 'Direct Reports']} />
-        <Bar dataKey="reportCount" fill="#6366f1" name="Direct Reports" />
+        <Bar dataKey="reportCount" fill="var(--color-chart-1)" name="Direct Reports" />
       </BarChart>
     </ResponsiveContainer>
   );
