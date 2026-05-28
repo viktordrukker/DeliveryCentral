@@ -642,7 +642,7 @@ function CalendarCell({
   }
   if (selected || isRangeAnchor) {
     bg = 'var(--color-accent)';
-    color = 'var(--color-text-inverse, #fff)';
+    color = 'var(--color-text-inverse)';
     border = '1px solid var(--color-accent)';
   }
   if (isToday && !selected && !isRangeAnchor) {
