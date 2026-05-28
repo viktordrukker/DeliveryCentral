@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { MoodHeatmapResponse } from '@/lib/api/pulse';
 
 const MOOD_COLORS: Record<number, string> = {
-  1: '#ef4444',
-  2: '#f97316',
-  3: '#eab308',
-  4: '#84cc16',
-  5: '#22c55e',
+  1: 'var(--color-status-danger)',
+  2: 'color-mix(in srgb, var(--color-status-danger), var(--color-status-warning))',
+  3: 'var(--color-status-warning)',
+  4: 'color-mix(in srgb, var(--color-status-warning), var(--color-status-active))',
+  5: 'var(--color-status-active)',
 };
-const EMPTY_COLOR = '#e5e7eb';
+const EMPTY_COLOR = 'var(--color-border)';
 
 function getMoodColor(mood: number | null): string {
   if (mood === null) return EMPTY_COLOR;
@@ -93,7 +93,7 @@ export function TeamMoodHeatmap({ data }: TeamMoodHeatmapProps): JSX.Element {
                   alignItems: 'center',
                   background: getMoodColor(wm.mood),
                   borderRadius: '3px',
-                  color: wm.mood !== null ? '#fff' : '#aaa',
+                  color: wm.mood !== null ? 'var(--color-text-inverse)' : 'var(--color-text-subtle)',
                   cursor: 'pointer',
                   display: 'flex',
                   fontSize: '12px',
@@ -126,7 +126,7 @@ export function TeamMoodHeatmap({ data }: TeamMoodHeatmapProps): JSX.Element {
               alignItems: 'center',
               background: getMoodColor(ta.average !== null ? Math.round(ta.average) : null),
               borderRadius: '3px',
-              color: ta.average !== null ? '#fff' : '#aaa',
+              color: ta.average !== null ? 'var(--color-text-inverse)' : 'var(--color-text-subtle)',
               display: 'flex',
               fontSize: '12px',
               fontWeight: 700,

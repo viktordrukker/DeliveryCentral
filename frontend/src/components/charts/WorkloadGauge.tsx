@@ -5,9 +5,9 @@ interface WorkloadGaugeProps {
 }
 
 function getColor(pct: number): string {
-  if (pct > 100) return '#ef4444';
-  if (pct >= 80) return '#f59e0b';
-  return '#22c55e';
+  if (pct > 100) return 'var(--color-status-danger)';
+  if (pct >= 80) return 'var(--color-status-warning)';
+  return 'var(--color-status-active)';
 }
 
 export function WorkloadGauge({ allocationPercent }: WorkloadGaugeProps): JSX.Element {

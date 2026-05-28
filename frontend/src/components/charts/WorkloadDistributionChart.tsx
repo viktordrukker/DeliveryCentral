@@ -16,13 +16,13 @@ interface WorkloadDistributionChartProps {
 }
 
 const ROLE_COLORS = [
-  '#6366f1',
-  '#22c55e',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#ec4899',
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
 ];
 
 function formatLabel(label: string): string {
