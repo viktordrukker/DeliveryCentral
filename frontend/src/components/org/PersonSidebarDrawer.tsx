@@ -6,7 +6,15 @@ import { useAuth } from '@/app/auth-context';
 import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Button } from '@/components/ds';
 
-const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#00838f', '#558b2f'];
+const AVATAR_COLORS = [
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
+];
 function avatarBg(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
@@ -36,10 +44,10 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
   }
 
   const allocColor = person.totalAllocation > 100
-    ? 'var(--color-error, #d32f2f)'
+    ? 'var(--color-status-danger)'
     : person.totalAllocation > 80
-      ? 'var(--color-warning, #f57c00)'
-      : 'var(--color-success, #2e7d32)';
+      ? 'var(--color-status-warning)'
+      : 'var(--color-status-active)';
 
   return (
     <div className="org-chart-drawer">
@@ -57,7 +65,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
         <div>
           <div className="person-drawer__name">{person.displayName}</div>
           {(person.role || person.grade) && (
-            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 1 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 1 }}>
               {person.role && <span>{person.role}</span>}
               {person.role && person.grade && <span> {'\u00B7'} </span>}
               {person.grade && <span>{person.grade}</span>}
@@ -97,8 +105,8 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
                   borderRadius: 4,
                   fontSize: 12,
                   fontWeight: 600,
-                  background: alert.level === 'red' ? 'rgba(239,68,68,.1)' : alert.level === 'orange' ? 'rgba(245,124,0,.1)' : 'rgba(245,158,11,.1)',
-                  color: alert.level === 'red' ? '#991b1b' : alert.level === 'orange' ? '#9a3412' : '#92400e',
+                  background: alert.level === 'red' ? 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)' : alert.level === 'orange' ? 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)' : 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)',
+                  color: alert.level === 'red' ? 'var(--color-status-danger)' : alert.level === 'orange' ? 'var(--color-status-warning)' : 'var(--color-status-warning)',
                 }}
               >
                 <span style={{ fontSize: 14 }}>{alert.level === 'red' ? '\u26A0' : '\u26A0'}</span>
@@ -143,7 +151,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
                   </Link>
                   <span className="person-drawer__assignment-pct">{a.allocationPercent}%</span>
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--color-text-tertiary, #999)' }}>
+                <div style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>
                   {a.staffingRole}
                   {a.endDate && <span> {'\u00B7'} ends {new Date(a.endDate).toLocaleDateString()}</span>}
                 </div>
@@ -171,8 +179,8 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
         <div className="person-drawer__section-title">Reporting Line</div>
         {person.lineManagerName ? (
           <div style={{ fontSize: 13 }}>
-            <span style={{ color: 'var(--color-text-secondary)' }}>Reports to: </span>
-            <Link to={`/people/${person.lineManagerId}`} style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>Reports to: </span>
+            <Link to={`/people/${person.lineManagerId}`} style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
               {person.lineManagerName}
             </Link>
           </div>
@@ -202,7 +210,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
           <div className="person-drawer__tags">
             {sidebar.skills.slice(0, 8).map((skill) => (
               <span key={skill.id} className="person-drawer__tag" style={{
-                background: skill.certified ? 'rgba(34,197,94,.1)' : undefined,
+                background: skill.certified ? 'color-mix(in srgb, var(--color-status-active) 10%, transparent)' : undefined,
                 borderLeft: `3px solid ${proficiencyColor(skill.proficiency)}`,
               }}>
                 {skill.skillName}
@@ -237,8 +245,8 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
 }
 
 function proficiencyColor(level: number): string {
-  if (level >= 4) return '#22c55e';
-  if (level >= 3) return '#3b82f6';
-  if (level >= 2) return '#f59e0b';
-  return '#94a3b8';
+  if (level >= 4) return 'var(--color-status-active)';
+  if (level >= 3) return 'var(--color-status-info)';
+  if (level >= 2) return 'var(--color-status-warning)';
+  return 'var(--color-status-neutral)';
 }

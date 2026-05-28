@@ -309,7 +309,7 @@ export function InteractiveOrgChart({
           .compact(false) as any)
           .initialExpandLevel(expandLevel)
           .connectionsUpdate(function (this: SVGPathElement) {
-            this.setAttribute('stroke', '#be185d');
+            this.style.stroke = 'var(--color-chart-8)';
             this.setAttribute('stroke-dasharray', '8 5');
             this.setAttribute('stroke-width', '2.5');
             this.setAttribute('stroke-linecap', 'round');
@@ -355,7 +355,7 @@ export function InteractiveOrgChart({
           .compact(false) as any)
           .initialExpandLevel(expandLevel)
           .connectionsUpdate(function (this: SVGPathElement) {
-            this.setAttribute('stroke', '#be185d');
+            this.style.stroke = 'var(--color-chart-8)';
             this.setAttribute('stroke-dasharray', '8 5');
             this.setAttribute('stroke-width', '2.5');
             this.setAttribute('stroke-linecap', 'round');
@@ -437,9 +437,9 @@ export function InteractiveOrgChart({
 
         {/* Level controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginRight: 4, fontWeight: 500 }}>Depth:</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginRight: 4, fontWeight: 500 }}>Depth:</span>
           {levelButtons.map((level) => (
-            <Button key={level} variant="primary" size="sm" onClick={() => handleLevelChange(level)} title={`Expand to level ${level}`} type="button" style={{ minWidth: 26, padding: '2px 6px', fontSize: 11, fontWeight: expandLevel === level ? 700 : 400, background: expandLevel === level ? 'var(--color-primary, #114b7a)' : 'transparent', color: expandLevel === level ? '#fff' : 'var(--color-text-secondary)', border: expandLevel === level ? 'none' : '1px solid var(--color-border)', borderRadius: 4, cursor: 'pointer', }}>
+            <Button key={level} variant="primary" size="sm" onClick={() => handleLevelChange(level)} title={`Expand to level ${level}`} type="button" style={{ minWidth: 26, padding: '2px 6px', fontSize: 11, fontWeight: expandLevel === level ? 700 : 400, background: expandLevel === level ? 'var(--color-accent)' : 'transparent', color: expandLevel === level ? 'var(--color-text-inverse)' : 'var(--color-text-muted)', border: expandLevel === level ? 'none' : '1px solid var(--color-border)', borderRadius: 4, cursor: 'pointer', }}>
               {level}
             </Button>
           ))}
