@@ -56,7 +56,7 @@ export function TeamDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Members</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <span className="kpi-strip__value">{d.activeAssignmentsCount}</span>
               <span className="kpi-strip__label">Active Assignments</span>
             </Link>

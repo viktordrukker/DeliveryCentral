@@ -309,7 +309,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip formatter={(v: unknown) => [`${String(v)}%`, '']} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line dataKey="staffingPct" dot={false} name="Staffing" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
+                <Line dataKey="staffingPct" dot={false} name="Staffing" stroke="var(--color-chart-5)" strokeWidth={2} type="monotone" />
                 <Line dataKey="timePct" dot={false} name="Time" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
                 <Line dataKey="timelinePct" dot={false} name="Timeline" stroke="var(--color-status-warning)" strokeWidth={2} type="monotone" />
               </LineChart>
@@ -366,7 +366,7 @@ function BurnRateTrendChart({ data }: { data: BurnRateTrendPoint[] }): JSX.Eleme
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Line dataKey="approvedEntryCount" dot={false} name="Time entries" stroke="var(--color-chart-5, #6366f1)" strokeWidth={2} type="monotone" />
+          <Line dataKey="approvedEntryCount" dot={false} name="Time entries" stroke="var(--color-chart-5)" strokeWidth={2} type="monotone" />
           <Line dataKey="projectCount" dot={false} name="Active projects" stroke="var(--color-status-active)" strokeWidth={2} type="monotone" />
         </LineChart>
       </ResponsiveContainer>

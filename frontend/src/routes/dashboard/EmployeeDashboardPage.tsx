@@ -138,7 +138,7 @@ export function EmployeeDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Current Assignments</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="#future-assignments" style={{ borderLeft: '3px solid var(--color-chart-5, #8b5cf6)' }}>
+            <Link className="kpi-strip__item" to="#future-assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="Upcoming assignments that have not started yet." arrow="left" />
               <span className="kpi-strip__value">{d.futureAssignments.length}</span>
               <span className="kpi-strip__label">Future Assignments</span>
