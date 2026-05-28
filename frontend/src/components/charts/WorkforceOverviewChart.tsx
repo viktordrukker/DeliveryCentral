@@ -374,7 +374,7 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
         <div style={{ flex: 1, minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }} onClick={handleChartClick} style={{ cursor: 'pointer' }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #e2e8f0)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <ReferenceArea yAxisId="pct" y1={0} y2={65} fill="var(--color-status-danger, #ef4444)" fillOpacity={0.04} />
               <ReferenceArea yAxisId="pct" y1={65} y2={90} fill="var(--color-status-active, #22c55e)" fillOpacity={0.04} />
               <ReferenceArea yAxisId="pct" y1={90} y2={100} fill="var(--color-status-warning, #f59e0b)" fillOpacity={0.04} />

@@ -34,7 +34,7 @@ export function BudgetBurnDownChart({ data }: Props): JSX.Element {
           dataKey="cumCost"
           dot={false}
           name="Actual Cost"
-          stroke="#6366f1"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />
@@ -42,7 +42,7 @@ export function BudgetBurnDownChart({ data }: Props): JSX.Element {
           dataKey="budgetLine"
           dot={false}
           name="Budget Line"
-          stroke="#e2e8f0"
+          stroke="var(--color-border)"
           strokeDasharray="4 4"
           strokeWidth={2}
           type="monotone"
