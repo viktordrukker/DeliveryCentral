@@ -24,7 +24,7 @@ export function HeadcountTrendLine({ data }: HeadcountTrendLineProps): JSX.Eleme
           dataKey="count"
           dot={{ r: 3 }}
           name="Active Employees"
-          stroke="#6366f1"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />

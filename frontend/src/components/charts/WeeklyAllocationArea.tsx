@@ -60,7 +60,7 @@ export function WeeklyAllocationArea({ assignments, weeks }: WeeklyAllocationAre
             fillOpacity={0.6}
             key={project}
             stackId="a"
-            stroke="#ffffff"
+            stroke="var(--color-surface)"
             strokeWidth={1}
             type="monotone"
           />

@@ -26,8 +26,8 @@ export function HeadcountTrendChart({ data }: HeadcountTrendChartProps): JSX.Ele
       <AreaChart data={data} style={{ cursor: 'pointer' }}>
         <defs>
           <linearGradient id="headcountGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+            <stop offset="5%" stopColor="var(--color-chart-1)" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="var(--color-chart-1)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <XAxis dataKey="week" tick={{ fontSize: 11 }} />
@@ -37,7 +37,7 @@ export function HeadcountTrendChart({ data }: HeadcountTrendChartProps): JSX.Ele
           dataKey="count"
           fill="url(#headcountGradient)"
           name="Active Assignments"
-          stroke="#6366f1"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />
