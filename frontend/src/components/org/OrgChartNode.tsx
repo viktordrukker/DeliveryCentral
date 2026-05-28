@@ -12,7 +12,15 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#00838f', '#558b2f'];
+const AVATAR_COLORS = [
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
+];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
@@ -23,48 +31,48 @@ function avatarColor(name: string): string {
 function statusDot(status: string): { color: string; label: string } {
   switch (status.toUpperCase()) {
     case 'ACTIVE':
-      return { color: '#22c55e', label: 'Active' };
+      return { color: 'var(--color-status-active)', label: 'Active' };
     case 'ON_LEAVE':
     case 'ONLEAVE':
-      return { color: '#f59e0b', label: 'On Leave' };
+      return { color: 'var(--color-status-warning)', label: 'On Leave' };
     case 'OFFBOARDED':
     case 'TERMINATED':
-      return { color: '#ef4444', label: 'Offboarded' };
+      return { color: 'var(--color-status-danger)', label: 'Offboarded' };
     case 'ONBOARDING':
-      return { color: '#3b82f6', label: 'Onboarding' };
+      return { color: 'var(--color-status-info)', label: 'Onboarding' };
     default:
-      return { color: '#94a3b8', label: status };
+      return { color: 'var(--color-status-neutral)', label: status };
   }
 }
 
 function allocRingColor(totalPct: number): string {
-  if (totalPct === 0) return '#94a3b8';
-  if (totalPct > 100) return '#ef4444';
-  if (totalPct > 80) return '#f59e0b';
-  return '#22c55e';
+  if (totalPct === 0) return 'var(--color-status-neutral)';
+  if (totalPct > 100) return 'var(--color-status-danger)';
+  if (totalPct > 80) return 'var(--color-status-warning)';
+  return 'var(--color-status-active)';
 }
 
 function allocBarColor(pct: number): string {
-  if (pct >= 100) return 'rgba(211,47,47,.20)';
-  if (pct >= 80) return 'rgba(245,124,0,.20)';
-  if (pct >= 50) return 'rgba(46,125,50,.26)';
-  return 'rgba(46,125,50,.14)';
+  if (pct >= 100) return 'color-mix(in srgb, var(--color-status-danger) 20%, transparent)';
+  if (pct >= 80) return 'color-mix(in srgb, var(--color-status-warning) 20%, transparent)';
+  if (pct >= 50) return 'color-mix(in srgb, var(--color-status-active) 26%, transparent)';
+  return 'color-mix(in srgb, var(--color-status-active) 14%, transparent)';
 }
 
 function allocTextColor(pct: number): string {
-  if (pct >= 100) return '#b71c1c';
-  if (pct >= 80) return '#e65100';
-  if (pct >= 50) return '#1b5e20';
-  return '#2e7d32';
+  if (pct >= 100) return 'var(--color-status-danger)';
+  if (pct >= 80) return 'var(--color-status-warning)';
+  if (pct >= 50) return 'var(--color-status-active)';
+  return 'var(--color-status-active)';
 }
 
 /* ── Person health colors (mirrors department health) ─────────────────────── */
 
 const PERSON_HEALTH: Record<string, { border: string; bg: string }> = {
-  green: { border: '#22c55e', bg: '#f0fdf4' },
-  yellow: { border: '#eab308', bg: '#fefce8' },
-  red: { border: '#ef4444', bg: '#fef2f2' },
-  neutral: { border: '#94a3b8', bg: '#f8fafc' },
+  green: { border: 'var(--color-status-active)', bg: 'var(--color-status-active-bg)' },
+  yellow: { border: 'var(--color-status-warning)', bg: 'var(--color-status-warning-bg)' },
+  red: { border: 'var(--color-status-danger)', bg: 'var(--color-status-danger-bg)' },
+  neutral: { border: 'var(--color-status-neutral)', bg: 'var(--color-surface-alt)' },
 };
 
 function personHealth(node: FlatPersonNode): { border: string; bg: string } {
@@ -87,11 +95,11 @@ export function renderPersonNodeContent(
     return `
       <div style="
         width: ${width}px; height: 48px;
-        border: 2px solid #6366f1; border-radius: 10px;
-        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+        border: 2px solid var(--color-accent); border-radius: 10px;
+        background: var(--color-accent-soft);
         display: flex; align-items: center; justify-content: center;
         font-family: inherit; font-size: 13px; font-weight: 700;
-        color: #4338ca; cursor: default; box-sizing: border-box;
+        color: var(--color-accent-text); cursor: default; box-sizing: border-box;
       ">Organization</div>`;
   }
 
@@ -100,8 +108,8 @@ export function renderPersonNodeContent(
   const initial = escapeHtml(node.displayName.charAt(0).toUpperCase());
   const status = statusDot(node.lifecycleStatus);
   const isMatch = searchTerm.length > 0 && node.displayName.toLowerCase().includes(searchTerm.toLowerCase());
-  const borderColor = isMatch ? '#f59e0b' : colors.border;
-  const bgColor = isMatch ? '#fef9c3' : colors.bg;
+  const borderColor = isMatch ? 'var(--color-status-warning)' : colors.border;
+  const bgColor = isMatch ? 'var(--color-status-warning-bg)' : colors.bg;
 
   // Build assignment bars HTML (top 3)
   let assignmentsHtml = '';
@@ -122,12 +130,12 @@ export function renderPersonNodeContent(
       )
       .join('');
   } else {
-    assignmentsHtml = '<div style="font-size: 10px; color: #94a3b8; font-style: italic;">No assignments</div>';
+    assignmentsHtml = '<div style="font-size: 10px; color: var(--color-text-subtle); font-style: italic;">No assignments</div>';
   }
 
   // Allocation bar
   const utilWidth = Math.min(node.totalAllocation, 100);
-  const utilColor = node.totalAllocation > 100 ? '#ef4444' : node.totalAllocation > 80 ? '#f59e0b' : '#22c55e';
+  const utilColor = node.totalAllocation > 100 ? 'var(--color-status-danger)' : node.totalAllocation > 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)';
 
   return `
     <div class="person-node" style="
@@ -144,24 +152,24 @@ export function renderPersonNodeContent(
       box-sizing: border-box;
       cursor: pointer;
       transition: box-shadow 0.15s;
-    " onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
+    " onmouseover="this.style.boxShadow='var(--shadow-card-hover)'" onmouseout="this.style.boxShadow='none'">
 
       <!-- Header: Avatar + Name + Status -->
       <div style="display: flex; align-items: center; gap: 6px;">
         <div style="
           width: 28px; height: 28px;
           border-radius: 50%;
-          background: ${colors.border}33;
+          background: color-mix(in srgb, ${colors.border} 20%, transparent);
           border: 1px solid ${colors.border};
           display: flex; align-items: center; justify-content: center;
           font-size: 11px; font-weight: 700; color: ${colors.border};
           flex-shrink: 0;
         ">${initial}</div>
         <div style="overflow: hidden; flex: 1; min-width: 0;">
-          <div style="font-size: 12px; font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             ${escapeHtml(node.displayName)}
           </div>
-          <div style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          <div style="font-size: 10px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             ${escapeHtml(node.orgUnitName ?? 'No team')}
           </div>
         </div>
@@ -178,11 +186,11 @@ export function renderPersonNodeContent(
 
       <!-- Allocation bar -->
       <div style="margin-top: auto;">
-        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-bottom: 2px;">
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--color-text-muted); margin-bottom: 2px;">
           <span>${node.assignmentCount} assignment${node.assignmentCount !== 1 ? 's' : ''}</span>
           <span style="font-weight: 700; color: ${utilColor};">${node.totalAllocation}%</span>
         </div>
-        <div style="height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+        <div style="height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden;">
           <div style="height: 100%; width: ${utilWidth}%; background: ${utilColor}; border-radius: 2px; transition: width 0.3s;"></div>
         </div>
       </div>
@@ -193,9 +201,9 @@ export function renderPersonNodeContent(
 /* ── Department node (220 × 120) — legacy ──────────────────────────────────── */
 
 const HEALTH_COLORS: Record<string, { border: string; bg: string }> = {
-  green: { border: '#22c55e', bg: '#f0fdf4' },
-  yellow: { border: '#eab308', bg: '#fefce8' },
-  red: { border: '#ef4444', bg: '#fef2f2' },
+  green: { border: 'var(--color-status-active)', bg: 'var(--color-status-active-bg)' },
+  yellow: { border: 'var(--color-status-warning)', bg: 'var(--color-status-warning-bg)' },
+  red: { border: 'var(--color-status-danger)', bg: 'var(--color-status-danger-bg)' },
 };
 
 export function renderDeptNodeContent(
@@ -206,19 +214,19 @@ export function renderDeptNodeContent(
 ): string {
   const colors = HEALTH_COLORS[node.healthStatus] ?? HEALTH_COLORS.green;
   const isMatch = searchTerm.length > 0 && node.name.toLowerCase().includes(searchTerm.toLowerCase());
-  const borderColor = isMatch ? '#f59e0b' : colors.border;
-  const bgColor = isMatch ? '#fef9c3' : colors.bg;
+  const borderColor = isMatch ? 'var(--color-status-warning)' : colors.border;
+  const bgColor = isMatch ? 'var(--color-status-warning-bg)' : colors.bg;
 
   const utilBar = Math.min(100, Math.max(0, node.utilization));
-  const utilColor = utilBar > 100 ? '#ef4444' : utilBar > 80 ? '#eab308' : '#22c55e';
+  const utilColor = utilBar > 100 ? 'var(--color-status-danger)' : utilBar > 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)';
 
   // Build compact alert badges
   let alertsHtml = '';
   if (node.overallocated > 0) {
-    alertsHtml += `<span style="font-size: 9px; padding: 1px 5px; border-radius: 3px; background: rgba(239,68,68,.12); color: #991b1b; font-weight: 600;">\u26A0 ${node.overallocated} over</span>`;
+    alertsHtml += `<span style="font-size: 9px; padding: 1px 5px; border-radius: 3px; background: color-mix(in srgb, var(--color-status-danger) 12%, transparent); color: var(--color-status-danger); font-weight: 600;">\u26A0 ${node.overallocated} over</span>`;
   }
   if (node.onBench > 0) {
-    alertsHtml += `<span style="font-size: 9px; padding: 1px 5px; border-radius: 3px; background: rgba(245,158,11,.12); color: #92400e; font-weight: 600;">${node.onBench} bench</span>`;
+    alertsHtml += `<span style="font-size: 9px; padding: 1px 5px; border-radius: 3px; background: color-mix(in srgb, var(--color-status-warning) 12%, transparent); color: var(--color-status-warning); font-weight: 600;">${node.onBench} bench</span>`;
   }
 
   return `
@@ -236,21 +244,21 @@ export function renderDeptNodeContent(
       box-sizing: border-box;
       cursor: pointer;
       transition: box-shadow 0.15s;
-    " onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
+    " onmouseover="this.style.boxShadow='var(--shadow-card-hover)'" onmouseout="this.style.boxShadow='none'">
       <!-- Avatar + Name -->
       <div style="display: flex; align-items: center; gap: 6px;">
         <div style="
           width: 28px; height: 28px;
           border-radius: 50%;
-          background: ${colors.border}33;
+          background: color-mix(in srgb, ${colors.border} 20%, transparent);
           border: 1px solid ${colors.border};
           display: flex; align-items: center; justify-content: center;
           font-size: 11px; font-weight: 700; color: ${colors.border};
           flex-shrink: 0;
         ">${node.name.charAt(0)}</div>
         <div style="overflow: hidden;">
-          <div style="font-size: 12px; font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(node.name)}</div>
-          <div style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(node.manager?.displayName ?? 'No manager')}</div>
+          <div style="font-size: 12px; font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(node.name)}</div>
+          <div style="font-size: 10px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(node.manager?.displayName ?? 'No manager')}</div>
         </div>
       </div>
 
@@ -258,10 +266,10 @@ export function renderDeptNodeContent(
       <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
         <span style="
           font-size: 9px; padding: 1px 6px; border-radius: 4px;
-          background: #dbeafe; color: #1d4ed8; font-weight: 500;
+          background: var(--color-accent-soft); color: var(--color-accent-text); font-weight: 500;
         ">${node.kind ? escapeHtml(humanizeEnum(node.kind, ORG_UNIT_TYPE_LABELS)) : 'Unit'}</span>
-        <span style="font-size: 10px; color: #64748b;">${node.memberCount} members</span>
-        <span style="font-size: 10px; color: #94a3b8;">\u00B7 ${node.activeAssignments} assignments</span>
+        <span style="font-size: 10px; color: var(--color-text-muted);">${node.memberCount} members</span>
+        <span style="font-size: 10px; color: var(--color-text-subtle);">\u00B7 ${node.activeAssignments} assignments</span>
       </div>
 
       <!-- Alert badges -->
@@ -269,11 +277,11 @@ export function renderDeptNodeContent(
 
       <!-- Avg Allocation bar -->
       <div style="margin-top: auto;">
-        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #64748b; margin-bottom: 2px;">
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: var(--color-text-muted); margin-bottom: 2px;">
           <span>Avg. Allocation</span>
           <span style="font-weight: 700; color: ${utilColor};">${utilBar}%</span>
         </div>
-        <div style="height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
+        <div style="height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden;">
           <div style="height: 100%; width: ${utilBar}%; background: ${utilColor}; border-radius: 2px; transition: width 0.3s;"></div>
         </div>
       </div>
