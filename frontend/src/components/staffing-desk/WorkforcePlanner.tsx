@@ -110,16 +110,16 @@ function costHeatColor(weeklyCost: number, maxWeeklyCost: number): string {
   if (maxWeeklyCost <= 0 || weeklyCost <= 0) return 'transparent';
   const ratio = Math.min(1, weeklyCost / maxWeeklyCost);
   // green (low) → amber (mid) → red (high)
-  if (ratio < 0.33) return `rgba(34,197,94,${0.05 + ratio * 0.15})`;
-  if (ratio < 0.66) return `rgba(245,158,11,${0.05 + (ratio - 0.33) * 0.18})`;
-  return `rgba(239,68,68,${0.08 + (ratio - 0.66) * 0.22})`;
+  if (ratio < 0.33) return `color-mix(in srgb, var(--color-status-active) ${(0.05 + ratio * 0.15) * 100}%, transparent)`;
+  if (ratio < 0.66) return `color-mix(in srgb, var(--color-status-warning) ${(0.05 + (ratio - 0.33) * 0.18) * 100}%, transparent)`;
+  return `color-mix(in srgb, var(--color-status-danger) ${(0.08 + (ratio - 0.66) * 0.22) * 100}%, transparent)`;
 }
 
 function matchHeatColor(avgScore: number): string {
   if (avgScore <= 0) return 'transparent';
-  if (avgScore >= 0.7) return 'rgba(34,197,94,0.12)';
-  if (avgScore >= 0.4) return 'rgba(245,158,11,0.12)';
-  return 'rgba(239,68,68,0.14)';
+  if (avgScore >= 0.7) return 'color-mix(in srgb, var(--color-status-active) 12%, transparent)';
+  if (avgScore >= 0.4) return 'color-mix(in srgb, var(--color-status-warning) 12%, transparent)';
+  return 'color-mix(in srgb, var(--color-status-danger) 14%, transparent)';
 }
 
 /* ── Styles ── */
@@ -135,20 +135,20 @@ const S_CELL: React.CSSProperties = { padding: '2px 2px', verticalAlign: 'top', 
 //   DRAFT assignment → blue fill
 //   MISSING assignment (unfilled demand)              → yellow dashed border, no fill
 //   PROPOSED by simulation (auto-match / drag / extend) → yellow fill
-const S_EXISTING: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-status-active)', color: '#fff' };
-const S_DRAFT: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-accent)', color: '#fff' };
+const S_EXISTING: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-status-active)', color: 'var(--color-text-inverse)' };
+const S_DRAFT: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-accent)', color: 'var(--color-text-inverse)' };
 const S_MISSING: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px dashed var(--color-status-warning)', color: 'var(--color-status-warning)', background: 'transparent', fontStyle: 'italic' };
-const S_PROPOSED: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-status-warning)', color: '#fff', cursor: 'pointer' };
+const S_PROPOSED: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--color-status-warning)', color: 'var(--color-text-inverse)', cursor: 'pointer' };
 const S_PROPOSED_DASHED: React.CSSProperties = { ...S_PROPOSED, background: 'transparent', border: '1px dashed var(--color-status-warning)', color: 'var(--color-status-warning)' };
 // Kept: hire-intent phantom (purple, distinct from legend — different concept: new role slot)
-const S_PHANTOM: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, border: '1px dotted rgb(168,85,247)', color: 'rgb(168,85,247)', background: 'rgba(168,85,247,0.08)' };
+const S_PHANTOM: React.CSSProperties = { borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1, border: '1px dotted var(--color-chart-5)', color: 'var(--color-chart-5)', background: 'color-mix(in srgb, var(--color-chart-5) 8%, transparent)' };
 const S_REMOVED: React.CSSProperties = { ...S_EXISTING, opacity: 0.3, textDecoration: 'line-through' };
 const S_SUMMARY: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-1) var(--space-2)', borderTop: '2px solid var(--color-border)', background: 'var(--color-surface-alt)', fontSize: 10, fontWeight: 600, color: 'var(--color-text-muted)' };
 
 function cellBg(supply: number, demand: number): string {
-  if (demand > 0 && supply === 0) return 'rgba(239,68,68,0.10)';
-  if (demand > 0 && supply < demand) return 'rgba(245,158,11,0.08)';
-  if (supply > 0) return 'rgba(34,197,94,0.06)';
+  if (demand > 0 && supply === 0) return 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)';
+  if (demand > 0 && supply < demand) return 'color-mix(in srgb, var(--color-status-warning) 8%, transparent)';
+  if (supply > 0) return 'color-mix(in srgb, var(--color-status-active) 6%, transparent)';
   return 'transparent';
 }
 
@@ -497,8 +497,8 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
         const hasOverride = moves.some((m) => m.cellClass === 'MISMATCH' || m.cellClass === 'BLOCKED');
         const overrunsEnd = projectRow.endsOn && weekStart > projectRow.endsOn.slice(0, 10);
         const zeroSupplyWithDemand = wd.totalSupplyPercent === 0 && wd.totalDemandPercent > 0;
-        if (hasOverride || overrunsEnd || zeroSupplyWithDemand) return 'rgba(239,68,68,0.18)';
-        if (wd.totalSupplyPercent > 0 && wd.totalDemandPercent > wd.totalSupplyPercent) return 'rgba(245,158,11,0.10)';
+        if (hasOverride || overrunsEnd || zeroSupplyWithDemand) return 'color-mix(in srgb, var(--color-status-danger) 18%, transparent)';
+        if (wd.totalSupplyPercent > 0 && wd.totalDemandPercent > wd.totalSupplyPercent) return 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)';
         return 'transparent';
       }
       case 'coverage':
@@ -796,7 +796,7 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                               fontSize: 8, fontWeight: 700, textAlign: 'center',
                               color: 'var(--color-accent)', cursor: 'pointer',
                               padding: '1px 3px', marginBottom: 1,
-                              background: 'rgba(59,130,246,0.10)', borderRadius: 2,
+                              background: 'color-mix(in srgb, var(--color-status-info) 10%, transparent)', borderRadius: 2,
                             }}
                             title={`${wd.assignments.length - 6} more: ${wd.assignments.slice(6).map((a) => a.personName).join(', ')}`}
                           >
@@ -829,7 +829,7 @@ export function WorkforcePlanner({ poolId, orgUnitId }: Props): JSX.Element {
                               fontSize: 8, fontWeight: 700, textAlign: 'center',
                               color: 'var(--color-status-warning)', cursor: 'pointer',
                               padding: '1px 3px', marginBottom: 1,
-                              background: 'rgba(245,158,11,0.10)', borderRadius: 2,
+                              background: 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)', borderRadius: 2,
                             }}
                             title={`${wd.demands.length - 4} more unmet demands`}
                           >
