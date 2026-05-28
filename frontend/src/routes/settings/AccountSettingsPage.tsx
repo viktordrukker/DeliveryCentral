@@ -332,7 +332,7 @@ export function AccountSettingsPage(): JSX.Element {
           />
           <span>Dark mode</span>
         </label>
-        <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '6px' }}>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginTop: '6px' }}>
           Override follows your system preference when not set. Persisted in browser storage.
         </p>
       </SectionCard>

@@ -78,7 +78,7 @@ function EventCard({ event }: EventCardProps): JSX.Element {
           </span>
         </div>
         {event.changeSummary ? (
-          <div className="audit-timeline__summary" style={{ fontSize: '13px', color: '#374151', marginTop: '4px' }}>
+          <div className="audit-timeline__summary" style={{ fontSize: '13px', color: 'var(--color-text)', marginTop: '4px' }}>
             {event.changeSummary}
           </div>
         ) : null}
