@@ -20,7 +20,7 @@ export function ContextMenu({ items, onClose, position }: ContextMenuProps): JSX
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: '6px',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        boxShadow: 'var(--shadow-dropdown)',
         left: adjustedX,
         minWidth: '160px',
         padding: '4px 0',

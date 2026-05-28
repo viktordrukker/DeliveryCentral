@@ -212,7 +212,7 @@ export function StaffingDeskPage(): JSX.Element {
       {/* Person timeline popup */}
       {timelinePopup && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} onClick={() => setTimelinePopup(null)} />
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)' }} onClick={() => setTimelinePopup(null)} />
           <div style={{
             position: 'relative', width: 600, maxWidth: '95vw',
             background: 'var(--color-surface)', border: '1px solid var(--color-border)',

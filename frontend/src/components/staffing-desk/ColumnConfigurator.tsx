@@ -25,7 +25,7 @@ interface Props {
 }
 
 const OVERLAY: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 110, display: 'flex', justifyContent: 'flex-end' };
-const BACKDROP: React.CSSProperties = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)' };
+const BACKDROP: React.CSSProperties = { position: 'absolute', inset: 0, background: 'var(--color-overlay)' };
 const PANEL: React.CSSProperties = {
   position: 'relative', width: 320, maxWidth: '90vw', height: '100%',
   background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)',

@@ -11,7 +11,7 @@ interface Props {
 }
 
 const S_BACKDROP: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 90,
+  position: 'fixed', inset: 0, background: 'var(--color-overlay)', zIndex: 90,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
 const S_PANEL: React.CSSProperties = {

@@ -216,7 +216,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
       {/* Person detail drawer */}
       {selectedPerson && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 110, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} onClick={() => setSelectedPerson(null)} />
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--color-overlay)' }} onClick={() => setSelectedPerson(null)} />
           <div style={{ position: 'relative', width: 460, maxWidth: '90vw', height: '100%', background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', boxShadow: 'var(--shadow-modal)', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
               <div>

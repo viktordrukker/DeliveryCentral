@@ -75,7 +75,7 @@ export function useColumnVisibility<T extends ColumnDef>(
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            boxShadow: 'var(--shadow-dropdown)',
             minWidth: '160px',
             padding: '8px 0',
             position: 'absolute',
