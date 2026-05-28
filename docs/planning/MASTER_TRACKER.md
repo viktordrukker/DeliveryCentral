@@ -3176,7 +3176,7 @@ The Staffing Desk's editable swimlane planner is the canvas's killer feature; it
 - [ ] **V2-C.11** Distribution Studio swimlane view — replace current scenarios-list with editable Timeline + swimlanes by person + position dragging. — FE
 - [ ] **V2-C.12** Distribution Studio heatmap toggle — coverage / cost / match / risk layers per amendment. — FE
 - [ ] **V2-C.13** Distribution Studio bench sidebar — show idle people inline alongside the planner. — FE
-- [ ] **V2-C.14** Replace `window.prompt('Scenario name?')` at `DistributionStudio.tsx:88` with DS Modal + Input. — FE
+- [x] **V2-C.14** Replace `window.prompt('Scenario name?')` at `DistributionStudio.tsx:88` with DS Modal + Input. _shipped 2026-05-28 (PR #428): create-scenario flow now uses `<FormModal testId="create-scenario">` + `<FormField>`/`<Input>`. Added a create-flow test (10/10 pass) that also asserts `window.prompt` is never called — it caught a real bug: `FormModal`'s footer submit button only associates with the form when `testId` is set (`form={testId-form}`), so the Create button is inert without it._ — FE
 - [ ] **V2-C.15** Server-side RBAC test for JQL `Public` tabs — assert wrapped where-clause prevents information-leak across roles. Critical (staffing-desk amendment §5.4). — BE
 
 ### Phase V2-D — Visible bugs in shipped canvas surfaces
@@ -3184,7 +3184,7 @@ The Staffing Desk's editable swimlane planner is the canvas's killer feature; it
 Specific bugs surfaced by the audit. Most are quick fixes.
 
 - [x] **V2-D.1** Duplicate KPI strip on Project Detail — already listed as V2-A.2 (cross-ref); shipped 2026-05-25. — FE
-- [ ] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — already V2-C.14 (cross-ref). — FE
+- [x] **V2-D.2** `DistributionStudio.tsx:88` `window.prompt` — done via V2-C.14 (PR #428). — FE
 - [x] **V2-D.3** Two competing Sparklines coexist — `frontend/src/components/charts/Sparkline.tsx` (legacy recharts) + `frontend/src/components/ds/SparklineDs.tsx` (DS). _shipped 2026-05-25: `@deprecated` JSDoc + migration recipe added to the legacy file pointing at `SparklineDs`. Per-site sweep tracked separately as V2-B.4 (6 remaining imports)._ — FE
 - [x] **V2-D.4** Two-table risk on Money tab — `MoneyPanel.tsx:264` still raw `<table>` (ds-conformance error). _shipped 2026-05-25 via V2-E.13 (PR #353)._ — FE
 - [x] **V2-D.5** `EmployeeDetailsPlaceholderPage.tsx:35` MUI import — already V2-A.11 (cross-ref); shipped 2026-05-25. — FE

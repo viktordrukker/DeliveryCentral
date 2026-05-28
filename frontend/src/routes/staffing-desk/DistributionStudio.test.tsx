@@ -126,4 +126,26 @@ describe('DistributionStudio', () => {
     renderRoute(<DistributionStudio />);
     await waitFor(() => expect(screen.getByText(/Boom/)).toBeInTheDocument());
   });
+
+  it('"+ New scenario" opens a DS modal (not window.prompt) and creates with the typed name', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    createScenario.mockResolvedValue({ ...sampleScenarios[0], id: 's3', name: 'My plan' });
+    const promptSpy = vi.spyOn(window, 'prompt');
+    const user = userEvent.setup();
+    renderRoute(<DistributionStudio />);
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /New scenario/ }));
+    // Modal opens pre-filled with the next default name (2 existing → "Scenario 3").
+    const input = await screen.findByDisplayValue('Scenario 3');
+    await user.clear(input);
+    await user.type(input, 'My plan');
+    await user.click(screen.getByRole('button', { name: /^Create$/ }));
+
+    await waitFor(() =>
+      expect(createScenario).toHaveBeenCalledWith({ name: 'My plan', state: { proposedAssignments: [] } }),
+    );
+    expect(promptSpy).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
 });
