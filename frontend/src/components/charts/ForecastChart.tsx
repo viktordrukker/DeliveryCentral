@@ -13,7 +13,7 @@ export function ForecastChart({ forecast, totalBudget }: Props): JSX.Element {
     { name: 'Budget', value: totalBudget },
   ];
 
-  const color = forecast.onTrack ? '#22c55e' : '#ef4444';
+  const color = forecast.onTrack ? 'var(--color-status-active)' : 'var(--color-status-danger)';
 
   return (
     <div>
@@ -29,7 +29,7 @@ export function ForecastChart({ forecast, totalBudget }: Props): JSX.Element {
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={index === 0 ? color : '#6366f1'}
+                fill={index === 0 ? color : 'var(--color-chart-1)'}
               />
             ))}
           </Bar>
