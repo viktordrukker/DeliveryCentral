@@ -20,10 +20,10 @@ interface ProjectTimelineGanttProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: '#22c55e',
-  CANCELLED: '#94a3b8',
-  CLOSED: '#6366f1',
-  DRAFT: '#f59e0b',
+  ACTIVE: 'var(--color-status-active)',
+  CANCELLED: 'var(--color-status-neutral)',
+  CLOSED: 'var(--color-chart-1)',
+  DRAFT: 'var(--color-status-warning)',
 };
 
 export function ProjectTimelineGantt({ projects }: ProjectTimelineGanttProps): JSX.Element {
@@ -50,7 +50,7 @@ export function ProjectTimelineGantt({ projects }: ProjectTimelineGanttProps): J
         <Bar dataKey="duration" name="Duration">
           {data.map((entry) => (
             <Cell
-              fill={STATUS_COLORS[entry.status] ?? '#6366f1'}
+              fill={STATUS_COLORS[entry.status] ?? 'var(--color-chart-1)'}
               key={entry.name}
             />
           ))}
