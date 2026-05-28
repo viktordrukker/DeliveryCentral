@@ -46,7 +46,7 @@ function UtilizationBar({ pct }: { pct: number }): JSX.Element {
     <div style={{ alignItems: 'center', display: 'flex', gap: '0.5rem' }}>
       <div
         style={{
-          background: '#e2e8f0',
+          background: 'var(--color-border)',
           borderRadius: '4px',
           height: '8px',
           width: '80px',
