@@ -191,7 +191,7 @@ export function PlannerBenchSidebar({ benchPeople, unmatchedDemand, simulation, 
               );
             })}
             {simulation.hireIntents.map((h) => (
-              <div key={h.id} style={{ padding: '4px 10px', fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', background: 'rgba(168,85,247,0.08)' }}>
+              <div key={h.id} style={{ padding: '4px 10px', fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', background: 'color-mix(in srgb, var(--color-chart-5) 8%, transparent)' }}>
                 <div>
                   <div style={{ fontWeight: 500, color: 'var(--color-accent)' }}>{h.role} ×{h.count}</div>
                   <div style={{ fontSize: 8, color: 'var(--color-text-subtle)' }}>Hire intent</div>

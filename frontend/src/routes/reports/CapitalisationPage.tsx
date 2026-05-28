@@ -364,7 +364,7 @@ export function CapitalisationPage(): JSX.Element {
                     dataKey="capexPercent"
                     dot
                     name="CAPEX %"
-                    stroke="#6366f1"
+                    stroke="var(--color-chart-1)"
                     strokeWidth={2}
                     type="monotone"
                   />

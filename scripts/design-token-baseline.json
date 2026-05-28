@@ -1,27 +1,7 @@
 [
-  "frontend/src/components/assignments/SkillMatchPanel.tsx|#7c3aed|color: '#7c3aed',",
-  "frontend/src/components/assignments/SkillMatchPanel.tsx|#ede9fe|background: '#ede9fe',",
-  "frontend/src/components/dashboard/AnomalyStrip.tsx|rgba(239, 68, 68, 0.12)|? 'rgba(239, 68, 68, 0.12)'",
-  "frontend/src/components/dashboard/AnomalyStrip.tsx|rgba(245, 158, 11, 0.12)|: 'rgba(245, 158, 11, 0.12)',",
-  "frontend/src/components/dashboard/DraggableKpiGrid.tsx|#6366f1|outline: isOver ? '2px dashed #6366f1' : undefined,",
   "frontend/src/components/layout/ImpersonationBanner.tsx|#ea580c|background: '#ea580c',",
   "frontend/src/components/layout/ImpersonationBanner.tsx|#fff|color: '#fff',",
   "frontend/src/components/layout/ImpersonationBanner.tsx|#fff|color: '#fff',",
   "frontend/src/components/layout/ImpersonationBanner.tsx|rgba(255,255,255,0.2)|background: 'rgba(255,255,255,0.2)',",
-  "frontend/src/components/layout/ImpersonationBanner.tsx|rgba(255,255,255,0.4)|border: '1px solid rgba(255,255,255,0.4)',",
-  "frontend/src/components/layout/NotificationBell.tsx|#fff|color: '#fff',",
-  "frontend/src/components/people/Person360Tab.tsx|#9888|&#9888; Low mood alert (2+ weeks)",
-  "frontend/src/components/staffing-desk/BenchDashboard.tsx|#991b1b|const AGING_COLORS = ['var(--color-status-active)', 'var(--color-status-info)', 'var(--color-status-warning)', 'var(--color-status-danger)', '#991b1b'];",
-  "frontend/src/components/staffing-desk/PlannerApplyDrawer.tsx|rgb(168,85,247)|<div style={{ fontSize: 11, fontWeight: 700, color: 'rgb(168,85,247)', marginBottom: 'var(--space-1)' }}>",
-  "frontend/src/components/staffing-desk/PlannerApplyDrawer.tsx|rgb(168,85,247)|<input type=\"checkbox\" checked={checkedHires.has(h.id)} onChange={() => toggleCheck(checkedHires, setCheckedHires, h.id)} style={{ accentColor: 'rgb(168,85,247)' }} />",
-  "frontend/src/components/staffing-desk/PlannerBenchSidebar.tsx|rgba(168,85,247,0.08)|<div key={h.id} style={{ padding: '4px 10px', fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', background: 'rgba(168,85,247,0.08)' }}>",
-  "frontend/src/components/staffing-requests/SkillMatchHeatmap.tsx|#fff|color: 'var(--color-on-status, #fff)',",
-  "frontend/src/routes/assignments/ApprovalQueuePage.tsx|rgba(239, 68, 68, 0.06)|if (tone === 'danger') return { background: 'rgba(239, 68, 68, 0.06)' };",
-  "frontend/src/routes/assignments/ApprovalQueuePage.tsx|rgba(245, 158, 11, 0.06)|if (tone === 'warning') return { background: 'rgba(245, 158, 11, 0.06)' };",
-  "frontend/src/routes/dashboard/DeliveryManagerDashboardPage.tsx|#fff|<span style={{ background: color, borderRadius: 3, color: '#fff', display: 'inline-block', fontSize: 11, fontWeight: 600, minWidth: 28, padding: '1px 6px', textAlign: 'center' }}>",
-  "frontend/src/routes/reports/CapitalisationPage.tsx|#6366f1|stroke=\"#6366f1\"",
-  "frontend/src/routes/reports/ExportCentrePage.tsx|#e5e7eb|border: '1px solid #e5e7eb',",
-  "frontend/src/routes/reports/ExportCentrePage.tsx|#fff|background: '#fff',",
-  "frontend/src/routes/setup/components/DiagnosticBundleButton.tsx|#c62828|<span style={{ marginLeft: 8, color: '#c62828', fontSize: 12 }}>{error}</span>",
-  "frontend/src/routes/time-management/TimeManagementPage.tsx|#fff|<Button type=\"button\" variant=\"primary\" size=\"sm\" style={{ background: 'var(--color-status-danger)', color: '#fff', border: 'none' }} disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())} onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}>"
+  "frontend/src/components/layout/ImpersonationBanner.tsx|rgba(255,255,255,0.4)|border: '1px solid rgba(255,255,255,0.4)',"
 ]

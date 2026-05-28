@@ -26,7 +26,7 @@ const S_KPI_LABEL: React.CSSProperties = { fontSize: 10, color: 'var(--color-tex
 const S_SECTION: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-subtle)', margin: 'var(--space-3) 0 var(--space-1)' };
 const S_BAR: React.CSSProperties = { height: 16, borderRadius: 3, minWidth: 2, transition: 'width 200ms' };
 
-const AGING_COLORS = ['var(--color-status-active)', 'var(--color-status-info)', 'var(--color-status-warning)', 'var(--color-status-danger)', '#991b1b'];
+const AGING_COLORS = ['var(--color-status-active)', 'var(--color-status-info)', 'var(--color-status-warning)', 'var(--color-status-danger)', 'var(--color-status-critical)'];
 
 export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
   const [data, setData] = useState<BenchDashboardResponse | null>(null);

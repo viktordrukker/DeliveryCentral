@@ -175,7 +175,7 @@ export function NotificationBell(): JSX.Element {
               top: 0,
               right: 0,
               background: 'var(--color-status-danger)',
-              color: '#fff',
+              color: 'var(--color-text-inverse)',
               borderRadius: '9999px',
               fontSize: '10px',
               fontWeight: 700,

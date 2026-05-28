@@ -229,7 +229,7 @@ interface ProjectHealthScorecardTableProps {
 function scoreIndicator(score: number): JSX.Element {
   const color = score >= 30 ? 'var(--color-status-active)' : score >= 15 ? 'var(--color-status-warning)' : 'var(--color-status-danger)';
   return (
-    <span style={{ background: color, borderRadius: 3, color: '#fff', display: 'inline-block', fontSize: 11, fontWeight: 600, minWidth: 28, padding: '1px 6px', textAlign: 'center' }}>
+    <span style={{ background: color, borderRadius: 3, color: 'var(--color-text-inverse)', display: 'inline-block', fontSize: 11, fontWeight: 600, minWidth: 28, padding: '1px 6px', textAlign: 'center' }}>
       {score}
     </span>
   );

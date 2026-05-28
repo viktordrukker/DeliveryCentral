@@ -33,7 +33,7 @@ function DraggableCard({ children, id }: DraggableCardProps): JSX.Element {
       ref={setRefs}
       style={{
         opacity: isDragging ? 0.4 : 1,
-        outline: isOver ? '2px dashed #6366f1' : undefined,
+        outline: isOver ? '2px dashed var(--color-accent)' : undefined,
         transition: 'opacity 150ms',
       }}
       {...attributes}
