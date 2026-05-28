@@ -167,7 +167,7 @@ export function ReportBuilderPage(): JSX.Element {
           </label>
 
           <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.25rem' }}>Columns</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', display: 'block', marginBottom: '0.25rem' }}>Columns</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               {columns.map((col) => (
                 <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -177,7 +177,7 @@ export function ReportBuilderPage(): JSX.Element {
                     type="checkbox"
                   />
                   {col.label}
-                  <span style={{ color: '#9ca3af', fontSize: '0.7rem' }}>({col.type})</span>
+                  <span style={{ color: 'var(--color-text-subtle)', fontSize: '0.7rem' }}>({col.type})</span>
                 </label>
               ))}
             </div>
@@ -185,7 +185,7 @@ export function ReportBuilderPage(): JSX.Element {
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>Filters</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>Filters</span>
               <Button
                 variant="secondary"
                 size="sm"
@@ -324,7 +324,7 @@ export function ReportBuilderPage(): JSX.Element {
                   >
                     <div>
                       <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{t.name}</span>
-                      <span style={{ color: '#6b7280', fontSize: '0.75rem', marginLeft: '6px' }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginLeft: '6px' }}>
                         {t.dataSource} · {t.selectedColumns.length || 'all'} columns
                         {t.isShared ? ' · shared' : ''}
                       </span>
