@@ -3,25 +3,25 @@
 import { startOfWeek, format } from 'date-fns';
 
 export function blockStyle(pct: number): { background: string; color: string } {
-  if (pct >= 100) return { background: 'rgba(211,47,47,.20)', color: '#b71c1c' };
-  if (pct >= 80) return { background: 'rgba(245,124,0,.20)', color: '#e65100' };
-  if (pct >= 50) return { background: 'rgba(46,125,50,.26)', color: '#1b5e20' };
-  return { background: 'rgba(46,125,50,.14)', color: '#2e7d32' };
+  if (pct >= 100) return { background: 'color-mix(in srgb, var(--color-status-danger) 20%, transparent)', color: 'var(--color-status-danger)' };
+  if (pct >= 80) return { background: 'color-mix(in srgb, var(--color-status-warning) 20%, transparent)', color: 'var(--color-status-warning)' };
+  if (pct >= 50) return { background: 'color-mix(in srgb, var(--color-status-active) 26%, transparent)', color: 'var(--color-status-active)' };
+  return { background: 'color-mix(in srgb, var(--color-status-active) 14%, transparent)', color: 'var(--color-status-active)' };
 }
 
 export function getCellBackground(total: number): string {
   if (total === 0) return 'var(--color-surface)';
-  if (total > 100) return '#fca5a5';
-  if (total >= 80) return '#86efac';
-  if (total >= 50) return '#93c5fd';
-  return '#bfdbfe';
+  if (total > 100) return 'color-mix(in srgb, var(--color-status-danger) 35%, var(--color-surface))';
+  if (total >= 80) return 'color-mix(in srgb, var(--color-status-active) 35%, var(--color-surface))';
+  if (total >= 50) return 'color-mix(in srgb, var(--color-status-info) 35%, var(--color-surface))';
+  return 'color-mix(in srgb, var(--color-status-info) 18%, var(--color-surface))';
 }
 
 export function getCellTextColor(total: number): string {
   if (total === 0) return 'var(--color-text-subtle)';
-  if (total > 100) return '#991b1b';
-  if (total >= 80) return '#14532d';
-  return '#1e40af';
+  if (total > 100) return 'var(--color-status-danger)';
+  if (total >= 80) return 'var(--color-status-active)';
+  return 'var(--color-status-info)';
 }
 
 export function addDays(dateStr: string, days: number): string {

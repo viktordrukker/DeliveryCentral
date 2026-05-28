@@ -70,32 +70,40 @@ function getTotalAllocationForWeek(
 
 /* ── Visual helpers ────────────────────────────────────────────────────────── */
 
-const AVATAR_COLORS = ['#1976d2', '#388e3c', '#f57c00', '#7b1fa2', '#c62828', '#00838f', '#558b2f'];
+const AVATAR_COLORS = [
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
+];
 
 function avatarColor(name: string): string {
   return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 }
 
 function blockStyle(pct: number): { background: string; color: string } {
-  if (pct >= 100) return { background: 'rgba(211,47,47,.20)', color: '#b71c1c' };
-  if (pct >= 80) return { background: 'rgba(245,124,0,.20)', color: '#e65100' };
-  if (pct >= 50) return { background: 'rgba(46,125,50,.26)', color: '#1b5e20' };
-  return { background: 'rgba(46,125,50,.14)', color: '#2e7d32' };
+  if (pct >= 100) return { background: 'color-mix(in srgb, var(--color-status-danger) 20%, transparent)', color: 'var(--color-status-danger)' };
+  if (pct >= 80) return { background: 'color-mix(in srgb, var(--color-status-warning) 20%, transparent)', color: 'var(--color-status-warning)' };
+  if (pct >= 50) return { background: 'color-mix(in srgb, var(--color-status-active) 26%, transparent)', color: 'var(--color-status-active)' };
+  return { background: 'color-mix(in srgb, var(--color-status-active) 14%, transparent)', color: 'var(--color-status-active)' };
 }
 
 function getCellBackground(total: number): string {
-  if (total === 0) return '#f9fafb';
-  if (total > 100) return '#fca5a5';
-  if (total >= 80) return '#86efac';
-  if (total >= 50) return '#93c5fd';
-  return '#bfdbfe';
+  if (total === 0) return 'var(--color-surface-alt)';
+  if (total > 100) return 'color-mix(in srgb, var(--color-status-danger) 35%, var(--color-surface))';
+  if (total >= 80) return 'color-mix(in srgb, var(--color-status-active) 35%, var(--color-surface))';
+  if (total >= 50) return 'color-mix(in srgb, var(--color-status-info) 35%, var(--color-surface))';
+  return 'color-mix(in srgb, var(--color-status-info) 18%, var(--color-surface))';
 }
 
 function getCellTextColor(total: number): string {
-  if (total === 0) return '#9ca3af';
-  if (total > 100) return '#991b1b';
-  if (total >= 80) return '#14532d';
-  return '#1e40af';
+  if (total === 0) return 'var(--color-text-subtle)';
+  if (total > 100) return 'var(--color-status-danger)';
+  if (total >= 80) return 'var(--color-status-active)';
+  return 'var(--color-status-info)';
 }
 
 /* ── Current week helper ───────────────────────────────────────────────────── */
@@ -197,7 +205,7 @@ function DraggableWhatIfBlock({
       style={{
         background,
         color,
-        border: '1px dashed var(--color-warning, #f59e0b)',
+        border: '1px dashed var(--color-status-warning)',
         opacity: isDragging ? 0.5 : 1,
         cursor: 'grab',
         ...style,
@@ -553,14 +561,14 @@ export function WorkloadPlanningPage(): JSX.Element {
       {whatIfMode ? (
         <div
           style={{
-            background: '#fffbeb',
-            border: '1px solid #fcd34d',
+            background: 'var(--color-status-warning-bg)',
+            border: '1px solid var(--color-status-warning)',
             borderRadius: '8px',
             padding: '1rem',
             marginBottom: '1rem',
           }}
         >
-          <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 700, color: '#92400e' }}>
+          <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-status-warning)' }}>
             What-If Mode {'\u2014'} Add Hypothetical Assignment
           </h3>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -649,7 +657,7 @@ export function WorkloadPlanningPage(): JSX.Element {
 
       {forecast.length > 0 ? (
         <div style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
             12-Week Capacity Forecast
           </h3>
           <div className="capacity-chart-wrapper">
@@ -671,20 +679,20 @@ export function WorkloadPlanningPage(): JSX.Element {
                 <Legend />
                 <Area
                   dataKey="bench"
-                  fill="#bfdbfe"
+                  fill="var(--color-chart-1)"
                   name="On Bench"
-                  stroke="#3b82f6"
+                  stroke="var(--color-chart-1)"
                   type="monotone"
                 />
                 <Area
                   dataKey="atRisk"
-                  fill="#fca5a5"
+                  fill="var(--color-status-danger)"
                   name="At Risk"
                   onClick={(data: unknown) => {
                     const d = data as { _raw?: CapacityForecastWeek } | undefined;
                     if (d?._raw) setAtRiskSelected(d._raw);
                   }}
-                  stroke="#ef4444"
+                  stroke="var(--color-status-danger)"
                   style={{ cursor: 'pointer' }}
                   type="monotone"
                 />
@@ -694,8 +702,8 @@ export function WorkloadPlanningPage(): JSX.Element {
           {atRiskSelected ? (
             <div
               style={{
-                background: '#fef2f2',
-                border: '1px solid #fca5a5',
+                background: 'var(--color-status-danger-bg)',
+                border: '1px solid var(--color-status-danger)',
                 borderRadius: '6px',
                 padding: '0.75rem',
                 marginTop: '0.5rem',
@@ -703,7 +711,7 @@ export function WorkloadPlanningPage(): JSX.Element {
             >
               <strong style={{ fontSize: '0.8rem' }}>At-risk people \u2014 week of {atRiskSelected.week}</strong>
               {atRiskSelected.atRiskPeople.length === 0 ? (
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#6b7280' }}>None</p>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>None</p>
               ) : (
                 <ul style={{ margin: '4px 0 0', padding: '0 0 0 1.2rem', fontSize: '0.8rem' }}>
                   {atRiskSelected.atRiskPeople.map((p) => (
@@ -873,8 +881,8 @@ export function WorkloadPlanningPage(): JSX.Element {
                     className="assignment-block"
                     style={{
                       ...blockStyle(draggedWhatIf.allocationPercent),
-                      border: '1px dashed var(--color-warning, #f59e0b)',
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                      border: '1px dashed var(--color-status-warning)',
+                      boxShadow: 'var(--shadow-card)',
                     }}
                   >
                     <span className="assignment-block__abbr">{draggedWhatIf.projectName.slice(0, 3).toUpperCase()}</span>
@@ -886,24 +894,24 @@ export function WorkloadPlanningPage(): JSX.Element {
 
             <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', fontSize: '0.75rem', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: 14, height: 14, background: '#bfdbfe', display: 'inline-block', borderRadius: 3 }} />
+                <span style={{ width: 14, height: 14, background: 'color-mix(in srgb, var(--color-status-info) 18%, var(--color-surface))', display: 'inline-block', borderRadius: 3 }} />
                 1\u201349% allocated
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: 14, height: 14, background: '#93c5fd', display: 'inline-block', borderRadius: 3 }} />
+                <span style={{ width: 14, height: 14, background: 'color-mix(in srgb, var(--color-status-info) 35%, var(--color-surface))', display: 'inline-block', borderRadius: 3 }} />
                 50\u201379%
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: 14, height: 14, background: '#86efac', display: 'inline-block', borderRadius: 3 }} />
+                <span style={{ width: 14, height: 14, background: 'color-mix(in srgb, var(--color-status-active) 35%, var(--color-surface))', display: 'inline-block', borderRadius: 3 }} />
                 80\u2013100%
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: 14, height: 14, background: '#fca5a5', display: 'inline-block', borderRadius: 3 }} />
+                <span style={{ width: 14, height: 14, background: 'color-mix(in srgb, var(--color-status-danger) 35%, var(--color-surface))', display: 'inline-block', borderRadius: 3 }} />
                 &gt;100% (conflict)
               </span>
               {whatIfMode ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: 14, height: 14, background: '#fef3c7', border: '1px dashed #f59e0b', display: 'inline-block', borderRadius: 3 }} />
+                  <span style={{ width: 14, height: 14, background: 'color-mix(in srgb, var(--color-status-warning) 18%, var(--color-surface))', border: '1px dashed var(--color-status-warning)', display: 'inline-block', borderRadius: 3 }} />
                   Hypothetical assignment
                 </span>
               ) : null}
