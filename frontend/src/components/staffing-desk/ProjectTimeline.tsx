@@ -65,9 +65,9 @@ const HORIZONS: { label: string; weeks: Horizon }[] = [
 ];
 
 function cellBg(supply: number, demand: number): string {
-  if (demand > 0 && supply === 0) return 'rgba(239,68,68,0.12)'; // red — no supply, has demand
-  if (demand > 0 && supply < demand) return 'rgba(245,158,11,0.10)'; // amber — understaffed
-  if (supply > 0 && demand === 0) return 'rgba(34,197,94,0.08)'; // green — fully staffed
+  if (demand > 0 && supply === 0) return 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)'; // red — no supply, has demand
+  if (demand > 0 && supply < demand) return 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)'; // amber — understaffed
+  if (supply > 0 && demand === 0) return 'color-mix(in srgb, var(--color-status-active) 8%, transparent)'; // green — fully staffed
   return 'transparent';
 }
 
@@ -320,7 +320,7 @@ function WeekCell({ data, isCurrent, simMode, simBlocks, removedPersonIds, proje
   const [dragOver, setDragOver] = useState(false);
 
   const bg = isCurrent ? 'var(--color-accent-bg)'
-    : dragOver ? 'rgba(59,130,246,0.15)'
+    : dragOver ? 'color-mix(in srgb, var(--color-status-info) 15%, transparent)'
     : data ? cellBg(data.totalSupplyPercent, data.totalDemandPercent)
     : undefined;
 
