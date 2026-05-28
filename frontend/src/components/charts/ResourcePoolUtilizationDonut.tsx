@@ -15,8 +15,8 @@ export function ResourcePoolUtilizationDonut({
   const navigate = useNavigate();
 
   const data = [
-    { color: '#6366f1', href: '/assignments?status=active', name: 'Allocated', value: allocated },
-    { color: '#94a3b8', href: '/org/people?filter=idle', name: 'Idle', value: idle },
+    { color: 'var(--color-chart-1)', href: '/assignments?status=active', name: 'Allocated', value: allocated },
+    { color: 'var(--color-text-subtle)', href: '/org/people?filter=idle', name: 'Idle', value: idle },
   ];
 
   function handleClick(entry: unknown): void {
