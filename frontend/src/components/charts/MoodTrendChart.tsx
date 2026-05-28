@@ -31,14 +31,14 @@ export function MoodTrendChart({ data }: MoodTrendChartProps): JSX.Element {
         <XAxis dataKey="week" tick={{ fontSize: 11 }} />
         <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11 }} />
         <Tooltip />
-        <ReferenceLine label="Alert" stroke="#ef4444" strokeDasharray="4 4" y={2} />
-        <ReferenceLine label="Neutral" stroke="#eab308" strokeDasharray="4 4" y={3} />
+        <ReferenceLine label="Alert" stroke="var(--color-status-danger)" strokeDasharray="4 4" y={2} />
+        <ReferenceLine label="Neutral" stroke="var(--color-status-warning)" strokeDasharray="4 4" y={3} />
         <Line
           connectNulls={false}
           dataKey="mood"
           dot={{ r: 4 }}
           name="Mood"
-          stroke="#6366f1"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />
