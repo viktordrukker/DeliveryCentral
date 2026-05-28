@@ -10,14 +10,14 @@ interface CostDistributionPieProps {
 }
 
 const COLORS = [
-  '#6366f1',
-  '#22c55e',
-  '#f59e0b',
-  '#ef4444',
-  '#14b8a6',
-  '#8b5cf6',
-  '#f97316',
-  '#06b6d4',
+  'var(--color-chart-1)',
+  'var(--color-chart-2)',
+  'var(--color-chart-3)',
+  'var(--color-chart-4)',
+  'var(--color-chart-5)',
+  'var(--color-chart-6)',
+  'var(--color-chart-7)',
+  'var(--color-chart-8)',
 ];
 
 export function CostDistributionPie({ data }: CostDistributionPieProps): JSX.Element {
