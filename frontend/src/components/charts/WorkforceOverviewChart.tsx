@@ -42,12 +42,12 @@ function OverviewTooltip(props: Record<string, unknown>): JSX.Element | null {
     <div className="chart-tooltip">
       <div className="chart-tooltip__header">Week of {d.week}</div>
       <div className="chart-tooltip__body">
-        <TRow color="var(--color-chart-5, #8b5cf6)" label="Allocated" value={`${d.allocated}`} />
-        <TRow color="var(--color-status-neutral, #94a3b8)" label="Idle" value={`${d.idle}`} />
+        <TRow color="var(--color-chart-5)" label="Allocated" value={`${d.allocated}`} />
+        <TRow color="var(--color-status-neutral)" label="Idle" value={`${d.idle}`} />
         <TRow color="var(--color-text, inherit)" label="Total" value={`${total}`} bold />
         <div className="chart-tooltip__divider" />
         <TRow
-          color={util >= 85 ? 'var(--color-status-active, #22c55e)' : util >= 65 ? 'var(--color-status-warning, #f59e0b)' : 'var(--color-status-danger, #ef4444)'}
+          color={util >= 85 ? 'var(--color-status-active)' : util >= 65 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}
           label="Utilization"
           value={`${util}%`}
           bold
@@ -375,16 +375,16 @@ export function WorkforceOverviewChart({ data, targetUtilization = 80 }: Workfor
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }} onClick={handleChartClick} style={{ cursor: 'pointer' }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <ReferenceArea yAxisId="pct" y1={0} y2={65} fill="var(--color-status-danger, #ef4444)" fillOpacity={0.04} />
-              <ReferenceArea yAxisId="pct" y1={65} y2={90} fill="var(--color-status-active, #22c55e)" fillOpacity={0.04} />
-              <ReferenceArea yAxisId="pct" y1={90} y2={100} fill="var(--color-status-warning, #f59e0b)" fillOpacity={0.04} />
+              <ReferenceArea yAxisId="pct" y1={0} y2={65} fill="var(--color-status-danger)" fillOpacity={0.04} />
+              <ReferenceArea yAxisId="pct" y1={65} y2={90} fill="var(--color-status-active)" fillOpacity={0.04} />
+              <ReferenceArea yAxisId="pct" y1={90} y2={100} fill="var(--color-status-warning)" fillOpacity={0.04} />
               <YAxis yAxisId="headcount" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
               <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${v}%`} axisLine={false} tickLine={false} width={40} />
               <XAxis dataKey="week" tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} axisLine={false} tickLine={false} />
-              <Bar yAxisId="headcount" dataKey="allocated" stackId="hc" fill="var(--color-chart-5, #8b5cf6)" name="Allocated" />
-              <Bar yAxisId="headcount" dataKey="idle" stackId="hc" fill="var(--color-status-neutral, #94a3b8)" name="Idle" radius={[2, 2, 0, 0]} />
-              <Line yAxisId="pct" dataKey="utilizationPct" stroke="var(--color-chart-3, #f59e0b)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--color-chart-3, #f59e0b)', strokeWidth: 0 }} activeDot={{ r: 5, stroke: 'var(--color-surface, #fff)', strokeWidth: 2 }} name="Utilization %" type="monotone" />
-              <ReferenceLine yAxisId="pct" y={targetUtilization} stroke="var(--color-status-danger, #ef4444)" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Target ${targetUtilization}%`, position: 'right', fontSize: 10, fill: 'var(--color-status-danger, #ef4444)' }} />
+              <Bar yAxisId="headcount" dataKey="allocated" stackId="hc" fill="var(--color-chart-5)" name="Allocated" />
+              <Bar yAxisId="headcount" dataKey="idle" stackId="hc" fill="var(--color-status-neutral)" name="Idle" radius={[2, 2, 0, 0]} />
+              <Line yAxisId="pct" dataKey="utilizationPct" stroke="var(--color-chart-3)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--color-chart-3)', strokeWidth: 0 }} activeDot={{ r: 5, stroke: 'var(--color-surface)', strokeWidth: 2 }} name="Utilization %" type="monotone" />
+              <ReferenceLine yAxisId="pct" y={targetUtilization} stroke="var(--color-status-danger)" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `Target ${targetUtilization}%`, position: 'right', fontSize: 10, fill: 'var(--color-status-danger)' }} />
               <Tooltip content={<OverviewTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconType="circle" iconSize={8} />
             </ComposedChart>
