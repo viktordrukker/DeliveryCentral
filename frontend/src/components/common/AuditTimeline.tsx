@@ -73,7 +73,7 @@ function EventCard({ event }: EventCardProps): JSX.Element {
               by {event.actorDisplayName ?? event.actorId}
             </span>
           ) : null}
-          <span className="audit-timeline__time" style={{ color: '#9ca3af', fontSize: '11px', marginLeft: 'auto' }}>
+          <span className="audit-timeline__time" style={{ color: 'var(--color-text-subtle)', fontSize: '11px', marginLeft: 'auto' }}>
             {relativeTime(event.occurredAt)}
           </span>
         </div>
@@ -130,7 +130,7 @@ export function AuditTimeline({ events }: AuditTimelineProps): JSX.Element {
   if (events.length === 0) {
     return (
       <div className="audit-timeline audit-timeline--empty" data-testid="audit-timeline-empty">
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>No audit events recorded yet.</p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>No audit events recorded yet.</p>
       </div>
     );
   }

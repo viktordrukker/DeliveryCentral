@@ -41,7 +41,7 @@ const S_CELL: React.CSSProperties = {
 const S_SUPPLY_BLOCK: React.CSSProperties = {
   borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1,
   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-  background: 'var(--color-status-active)', color: '#fff', opacity: 0.85,
+  background: 'var(--color-status-active)', color: 'var(--color-surface)', opacity: 0.85,
 };
 const S_DEMAND_BLOCK: React.CSSProperties = {
   borderRadius: 2, padding: '1px 3px', fontSize: 8, marginBottom: 1,

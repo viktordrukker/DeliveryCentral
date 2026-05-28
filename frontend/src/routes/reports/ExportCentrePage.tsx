@@ -58,7 +58,7 @@ function ReportCard({ description, hasDateRange, name, onGenerate }: ReportCardP
       }}
     >
       <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 4px' }}>{name}</h3>
-      <p style={{ color: '#6b7280', fontSize: '14px', margin: '0 0 16px' }}>{description}</p>
+      <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: '0 0 16px' }}>{description}</p>
 
       {hasDateRange ? (
         <div style={{ alignItems: 'flex-end', display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
