@@ -7,7 +7,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button } from '@/components/ds';
+import { Button, FormField, FormModal, Input } from '@/components/ds';
 import {
   type PlannerScenarioDto,
   type SolverStrategy,
@@ -56,6 +56,9 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
   const [busy, setBusy] = useState(false);
   const [strategy, setStrategy] = useState<SolverStrategy>('BALANCED');
   const [solverOutput, setSolverOutput] = useState<{ score: number; explanation: string } | null>(null);
+  // V2-C.14 DS-conformance — replaced the browser scenario-name prompt with a DS FormModal.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState('');
   // S1-5 DS-conformance — replaced two browser confirm() calls with ConfirmDialog.
   // Pending state tracks which destructive action is awaiting confirmation.
   const [deleteCandidate, setDeleteCandidate] = useState<PlannerScenarioDto | null>(null);
@@ -82,23 +85,22 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
 
   const active = scenarios?.find((s) => s.id === activeId) ?? null;
 
-  async function handleCreate(): Promise<void> {
-    setBusy(true);
-    try {
-      const name = window.prompt('Scenario name?', `Scenario ${(scenarios?.length ?? 0) + 1}`);
-      if (!name) return;
-      const created = await createScenario({
-        name,
-        state: { proposedAssignments: [] },
-      });
-      setActiveId(created.id);
-      toast.success(`Scenario "${created.name}" created`);
-      await reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create scenario');
-    } finally {
-      setBusy(false);
-    }
+  function openCreate(): void {
+    setNewName(`Scenario ${(scenarios?.length ?? 0) + 1}`);
+    setCreateOpen(true);
+  }
+
+  async function submitCreate(): Promise<void> {
+    const name = newName.trim();
+    if (!name) return;
+    const created = await createScenario({
+      name,
+      state: { proposedAssignments: [] },
+    });
+    setActiveId(created.id);
+    setCreateOpen(false);
+    toast.success(`Scenario "${created.name}" created`);
+    await reload();
   }
 
   async function confirmDelete(scenario: PlannerScenarioDto): Promise<void> {
@@ -156,7 +158,7 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
         title={
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <span>Scenarios ({scenarios?.length ?? 0})</span>
-            <Button size="sm" onClick={handleCreate} disabled={busy}>
+            <Button size="sm" onClick={openCreate} disabled={busy}>
               + New scenario
             </Button>
           </span>
@@ -327,6 +329,25 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
           if (applyPending) void confirmApply(applyPending);
         }}
       />
+
+      <FormModal
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onSubmit={submitCreate}
+        title="New scenario"
+        submitLabel="Create"
+        submitDisabled={!newName.trim()}
+        testId="create-scenario"
+      >
+        <FormField label="Scenario name">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Scenario name"
+            autoFocus
+          />
+        </FormField>
+      </FormModal>
     </div>
   );
 }
