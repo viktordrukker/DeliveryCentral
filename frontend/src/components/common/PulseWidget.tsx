@@ -11,11 +11,11 @@ const MOOD_OPTIONS: Array<{
   color: string;
   bg: string;
 }> = [
-  { value: 1, emoji: '😣', label: 'Struggling', color: '#ef4444', bg: '#fee2e2' },
-  { value: 2, emoji: '😟', label: 'Stressed', color: '#f97316', bg: '#ffedd5' },
-  { value: 3, emoji: '😐', label: 'Neutral', color: '#eab308', bg: '#fef9c3' },
-  { value: 4, emoji: '😊', label: 'Good', color: '#84cc16', bg: '#f0fdf4' },
-  { value: 5, emoji: '😄', label: 'Great', color: '#22c55e', bg: '#dcfce7' },
+  { value: 1, emoji: '😣', label: 'Struggling', color: 'var(--color-status-danger)', bg: 'var(--color-status-danger-bg)' },
+  { value: 2, emoji: '😟', label: 'Stressed', color: 'color-mix(in srgb, var(--color-status-danger), var(--color-status-warning))', bg: 'color-mix(in srgb, var(--color-status-danger-bg), var(--color-status-warning-bg))' },
+  { value: 3, emoji: '😐', label: 'Neutral', color: 'var(--color-status-warning)', bg: 'var(--color-status-warning-bg)' },
+  { value: 4, emoji: '😊', label: 'Good', color: 'color-mix(in srgb, var(--color-status-warning), var(--color-status-active))', bg: 'color-mix(in srgb, var(--color-status-warning-bg), var(--color-status-active-bg))' },
+  { value: 5, emoji: '😄', label: 'Great', color: 'var(--color-status-active)', bg: 'var(--color-status-active-bg)' },
 ];
 
 function getMoodOption(mood: number) {
@@ -198,7 +198,7 @@ export function PulseWidget({ className }: PulseWidgetProps): JSX.Element {
                         <div
                           className="pulse-widget__history-dot pulse-widget__history-dot--empty"
                           data-testid={`history-dot-${w}`}
-                          style={{ background: '#e5e7eb' }}
+                          style={{ background: 'var(--color-border)' }}
                         />
                       )}
                       <span className="pulse-widget__history-week">

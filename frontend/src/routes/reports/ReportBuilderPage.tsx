@@ -140,7 +140,7 @@ export function ReportBuilderPage(): JSX.Element {
       />
 
       {error ? (
-        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: '#991b1b', fontSize: '0.875rem' }}>
+        <div style={{ background: 'var(--color-status-danger-bg)', border: '1px solid var(--color-status-danger)', borderRadius: 6, padding: '0.75rem', marginBottom: '1rem', color: 'var(--color-status-danger)', fontSize: '0.875rem' }}>
           {error}
         </div>
       ) : null}
@@ -200,14 +200,14 @@ export function ReportBuilderPage(): JSX.Element {
               <div key={i} style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <select
                   onChange={(e) => updateFilter(i, { field: e.target.value })}
-                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 4, flex: '1 1 80px' }}
+                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid var(--color-border)', borderRadius: 4, flex: '1 1 80px' }}
                   value={f.field}
                 >
                   {columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
                 <select
                   onChange={(e) => updateFilter(i, { operator: e.target.value as ReportFilter['operator'] })}
-                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 4, flex: '0 0 80px' }}
+                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid var(--color-border)', borderRadius: 4, flex: '0 0 80px' }}
                   value={f.operator}
                 >
                   {OPERATORS.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
@@ -215,7 +215,7 @@ export function ReportBuilderPage(): JSX.Element {
                 <input
                   onChange={(e) => updateFilter(i, { value: e.target.value })}
                   placeholder="value"
-                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 4, flex: '1 1 60px' }}
+                  style={{ fontSize: '0.75rem', padding: '2px 4px', border: '1px solid var(--color-border)', borderRadius: 4, flex: '1 1 60px' }}
                   type="text"
                   value={f.value}
                 />
@@ -255,7 +255,7 @@ export function ReportBuilderPage(): JSX.Element {
             </div>
           </label>
 
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <label className="field">
               <span className="field__label">Template name</span>
               <input
@@ -317,8 +317,8 @@ export function ReportBuilderPage(): JSX.Element {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '6px 10px',
-                      background: '#f9fafb',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--color-surface-alt)',
+                      border: '1px solid var(--color-border)',
                       borderRadius: 6,
                     }}
                   >
