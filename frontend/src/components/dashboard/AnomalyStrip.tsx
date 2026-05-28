@@ -55,8 +55,8 @@ export function AnomalyStrip({ alerts, onDismiss }: AnomalyStripProps): JSX.Elem
             py: 1,
             borderRadius: 'var(--radius-control)',
             backgroundColor: alert.severity === 'critical'
-              ? 'rgba(239, 68, 68, 0.12)'
-              : 'rgba(245, 158, 11, 0.12)',
+              ? 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)'
+              : 'color-mix(in srgb, var(--color-status-warning) 12%, transparent)',
             borderLeft: `4px solid ${alert.severity === 'critical' ? 'var(--color-status-danger)' : 'var(--color-status-warning)'}`,
           }}
         >

@@ -205,8 +205,8 @@ export function ApprovalQueuePage(): JSX.Element {
           getRowKey={(row) => row.id}
           rowStyle={(row) => {
             const tone = rowTone(row);
-            if (tone === 'danger') return { background: 'rgba(239, 68, 68, 0.06)' };
-            if (tone === 'warning') return { background: 'rgba(245, 158, 11, 0.06)' };
+            if (tone === 'danger') return { background: 'color-mix(in srgb, var(--color-status-danger) 6%, transparent)' };
+            if (tone === 'warning') return { background: 'color-mix(in srgb, var(--color-status-warning) 6%, transparent)' };
             return undefined;
           }}
           onRowClick={(row) => navigate(`/assignments/${row.id}`)}

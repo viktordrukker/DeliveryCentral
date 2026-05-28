@@ -46,7 +46,7 @@ export function DiagnosticBundleButton({ token, runId }: Props): JSX.Element {
         Download diagnostic bundle
       </Button>
       {error && (
-        <span style={{ marginLeft: 8, color: '#c62828', fontSize: 12 }}>{error}</span>
+        <span style={{ marginLeft: 8, color: 'var(--color-status-danger)', fontSize: 12 }}>{error}</span>
       )}
     </>
   );

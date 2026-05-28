@@ -140,7 +140,7 @@ function RowFragment({
               background: colorFor(p),
               padding: 'var(--space-1)',
               textAlign: 'center',
-              color: 'var(--color-on-status, #fff)',
+              color: 'var(--color-text-inverse)',
               fontWeight: 600,
               minHeight: 22,
               display: 'flex',

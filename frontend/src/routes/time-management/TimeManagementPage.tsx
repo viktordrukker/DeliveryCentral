@@ -96,7 +96,7 @@ function RejectModal({ open, item, reasons, onConfirm, onCancel }: {
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button type="button" variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
-          <Button type="button" variant="primary" size="sm" style={{ background: 'var(--color-status-danger)', color: '#fff', border: 'none' }} disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())} onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}>
+          <Button type="button" variant="primary" size="sm" style={{ background: 'var(--color-status-danger)', color: 'var(--color-text-inverse)', border: 'none' }} disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())} onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}>
             Reject
           </Button>
         </div>

@@ -57,7 +57,7 @@ export function Person360Tab({ personId }: Person360TabProps): JSX.Element {
             padding: '10px 16px',
           }}
         >
-          &#9888; Low mood alert (2+ weeks)
+          {'\u26A0'} Low mood alert (2+ weeks)
         </div>
       )}
 

@@ -134,9 +134,9 @@ export function SkillMatchPanel({ projectId }: SkillMatchPanelProps): JSX.Elemen
                     key={id}
                     style={{
                       alignItems: 'center',
-                      background: '#ede9fe',
+                      background: 'color-mix(in srgb, var(--color-chart-5) 14%, var(--color-surface))',
                       borderRadius: '12px',
-                      color: '#7c3aed',
+                      color: 'var(--color-chart-5)',
                       display: 'flex',
                       fontSize: '12px',
                       gap: '4px',

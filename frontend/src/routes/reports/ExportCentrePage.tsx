@@ -50,8 +50,8 @@ function ReportCard({ description, hasDateRange, name, onGenerate }: ReportCardP
   return (
     <div
       style={{
-        background: '#fff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
         borderRadius: '8px',
         marginBottom: '16px',
         padding: '20px 24px',
