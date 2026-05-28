@@ -86,8 +86,8 @@ export function ProjectStaffingCoverageChart({ data, csvData }: ProjectStaffingC
             <YAxis dataKey="name" type="category" width={120} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="required" fill="url(#pattern-stripe)" name="Required FTE" stroke="#64748b" strokeWidth={1} />
-            <Bar dataKey="allocated" fill="url(#pattern-stripe-indigo)" name="Allocated FTE" stroke="#6366f1" strokeWidth={1} />
+            <Bar dataKey="required" fill="url(#pattern-stripe)" name="Required FTE" stroke="var(--color-status-neutral)" strokeWidth={1} />
+            <Bar dataKey="allocated" fill="url(#pattern-stripe-indigo)" name="Allocated FTE" stroke="var(--color-chart-1)" strokeWidth={1} />
           </BarChart>
         </ResponsiveContainer>
       </div>

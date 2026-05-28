@@ -33,12 +33,12 @@ export function WorkloadTrendChart({ data }: WorkloadTrendChartProps): JSX.Eleme
         <XAxis dataKey="week" tick={{ fontSize: 11 }} />
         <YAxis domain={[0, 150]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${v}%`} />
         <Tooltip formatter={(v) => `${v}%`} />
-        <ReferenceLine label="100%" stroke="#ef4444" strokeDasharray="4 4" y={100} />
+        <ReferenceLine label="100%" stroke="var(--color-status-danger)" strokeDasharray="4 4" y={100} />
         <Line
           dataKey="allocation"
           dot={{ r: 4 }}
           name="Allocation %"
-          stroke="#0ea5e9"
+          stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"
         />

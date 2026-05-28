@@ -25,7 +25,7 @@ export function OrgDistributionTreemap({ data }: OrgDistributionTreemapProps): J
         dataKey="size"
         nameKey="name"
         onClick={handleClick}
-        stroke="#fff"
+        stroke="var(--color-surface)"
         style={{ cursor: 'pointer' }}
       >
         <Tooltip formatter={(v) => [`${String(v)} employees`, 'Headcount']} />
