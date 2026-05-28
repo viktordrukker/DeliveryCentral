@@ -73,18 +73,18 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
             fontSize: 11,
             padding: '2px 8px',
             borderRadius: 4,
-            background: '#dbeafe',
-            color: '#1d4ed8',
+            background: 'var(--color-accent-soft)',
+            color: 'var(--color-accent-text)',
             fontWeight: 600,
           }}>
             {dept.kind ? humanizeEnum(dept.kind, ORG_UNIT_TYPE_LABELS) : 'Unit'}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{dept.code}</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{dept.code}</span>
         </div>
         {dept.manager && (
           <div style={{ fontSize: 13, marginTop: 4 }}>
-            <span style={{ color: 'var(--color-text-secondary)' }}>Led by: </span>
-            <Link to={`/people/${dept.manager.id}`} style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>Led by: </span>
+            <Link to={`/people/${dept.manager.id}`} style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 600 }}>
               {dept.manager.displayName}
             </Link>
           </div>
@@ -107,8 +107,8 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
                   borderRadius: 4,
                   fontSize: 12,
                   fontWeight: 600,
-                  background: alert.level === 'red' ? 'rgba(239,68,68,.1)' : alert.level === 'orange' ? 'rgba(245,124,0,.1)' : 'rgba(245,158,11,.1)',
-                  color: alert.level === 'red' ? '#991b1b' : alert.level === 'orange' ? '#9a3412' : '#92400e',
+                  background: alert.level === 'red' ? 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)' : alert.level === 'orange' ? 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)' : 'color-mix(in srgb, var(--color-status-warning) 10%, transparent)',
+                  color: alert.level === 'red' ? 'var(--color-status-danger)' : alert.level === 'orange' ? 'var(--color-status-warning)' : 'var(--color-status-warning)',
                 }}
               >
                 <span style={{ fontSize: 14 }}>{'\u26A0'}</span>
@@ -124,9 +124,9 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
         <div className="person-drawer__section-title">Metrics</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <MetricTile label="Members" value={String(totalMembers)} sublabel={`${activeMembers} active`} />
-          <MetricTile label="Avg. Allocation" value={<Pct value={avgAllocation} fractionDigits={0} />} color={avgAllocation > 100 ? '#ef4444' : avgAllocation > 80 ? '#f59e0b' : '#22c55e'} />
-          <MetricTile label="Overallocated" value={String(overallocated)} color={overallocated > 0 ? '#ef4444' : '#22c55e'} />
-          <MetricTile label="On Bench" value={String(onBench)} color={onBench > 0 ? '#f59e0b' : '#22c55e'} />
+          <MetricTile label="Avg. Allocation" value={<Pct value={avgAllocation} fractionDigits={0} />} color={avgAllocation > 100 ? 'var(--color-status-danger)' : avgAllocation > 80 ? 'var(--color-status-warning)' : 'var(--color-status-active)'} />
+          <MetricTile label="Overallocated" value={String(overallocated)} color={overallocated > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'} />
+          <MetricTile label="On Bench" value={String(onBench)} color={onBench > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'} />
         </div>
       </div>
 
@@ -165,7 +165,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 <div style={{
                   width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: member.lifecycleStatus.toUpperCase() === 'ACTIVE' ? '#22c55e' : '#94a3b8',
+                  background: member.lifecycleStatus.toUpperCase() === 'ACTIVE' ? 'var(--color-status-active)' : 'var(--color-status-neutral)',
                 }} />
                 <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {member.displayName}
@@ -175,7 +175,7 @@ export function DepartmentSidebarDrawer({ dept, people, onClose }: DepartmentSid
                 fontWeight: 700,
                 flexShrink: 0,
                 fontSize: 11,
-                color: member.totalAllocation > 100 ? '#ef4444' : member.totalAllocation > 80 ? '#f59e0b' : member.totalAllocation === 0 ? '#94a3b8' : '#22c55e',
+                color: member.totalAllocation > 100 ? 'var(--color-status-danger)' : member.totalAllocation > 80 ? 'var(--color-status-warning)' : member.totalAllocation === 0 ? 'var(--color-status-neutral)' : 'var(--color-status-active)',
               }}>
                 <Pct value={member.totalAllocation} fractionDigits={0} />
               </span>
@@ -215,14 +215,14 @@ function MetricTile({ label, value, sublabel, color }: {
       background: 'var(--color-surface-alt)',
       textAlign: 'center',
     }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: color ?? 'var(--color-text-primary)' }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: color ?? 'var(--color-text)' }}>
         {value}
       </div>
-      <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+      <div style={{ fontSize: 10, color: 'var(--color-text-muted)', fontWeight: 500 }}>
         {label}
       </div>
       {sublabel && (
-        <div style={{ fontSize: 9, color: 'var(--color-text-tertiary, #aaa)', marginTop: 1 }}>
+        <div style={{ fontSize: 9, color: 'var(--color-text-subtle)', marginTop: 1 }}>
           {sublabel}
         </div>
       )}
