@@ -79,24 +79,24 @@ const STATUS_PRIORITY: Record<WeekStatus, number> = {
 function getStatusIcon(status: WeekStatus): { icon: string; color: string } {
   switch (status) {
     case 'SUBMITTED':
-      return { icon: '\u23F3', color: 'var(--color-warning, #f57c00)' };
+      return { icon: '\u23F3', color: 'var(--color-status-warning)' };
     case 'APPROVED':
-      return { icon: '\u2713', color: 'var(--color-success, #2e7d32)' };
+      return { icon: '\u2713', color: 'var(--color-status-active)' };
     case 'REJECTED':
-      return { icon: '\u2717', color: 'var(--color-error, #d32f2f)' };
+      return { icon: '\u2717', color: 'var(--color-status-danger)' };
     default:
-      return { icon: '\u25CF', color: 'var(--color-text-tertiary, #aaa)' };
+      return { icon: '\u25CF', color: 'var(--color-text-subtle)' };
   }
 }
 
 function getStatusLabel(status: WeekStatus): { label: string; color: string } {
   switch (status) {
     case 'REJECTED':
-      return { label: 'Rejected', color: 'var(--color-error, #d32f2f)' };
+      return { label: 'Rejected', color: 'var(--color-status-danger)' };
     case 'SUBMITTED':
-      return { label: 'Awaiting approval', color: 'var(--color-warning, #f57c00)' };
+      return { label: 'Awaiting approval', color: 'var(--color-status-warning)' };
     case 'APPROVED':
-      return { label: 'Approved \u2713', color: 'var(--color-success, #2e7d32)' };
+      return { label: 'Approved \u2713', color: 'var(--color-status-active)' };
     default:
       return { label: 'Draft', color: 'var(--color-text-secondary)' };
   }
@@ -986,8 +986,8 @@ export function TimesheetPage(): JSX.Element {
       )}
 
       {addProjectOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div style={{ background: 'var(--color-surface)', borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', padding: '24px', minWidth: '320px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'var(--color-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: '8px', boxShadow: 'var(--shadow-modal)', padding: '24px', minWidth: '320px' }}>
             <h3 style={{ margin: '0 0 16px' }}>Add Project Row</h3>
             {availableProjects.length === 0 ? (
               <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>No additional assigned projects available.</p>
