@@ -36,17 +36,17 @@ const STATUS_TONE: Record<WorkflowStageStatus, { bg: string; ring: string; text:
   current: {
     bg: 'var(--color-accent)',
     ring: 'var(--color-accent)',
-    text: '#fff',
+    text: 'var(--color-surface)',
   },
   done: {
     bg: 'var(--color-status-active)',
     ring: 'var(--color-status-active)',
-    text: '#fff',
+    text: 'var(--color-surface)',
   },
   blocked: {
     bg: 'var(--color-status-danger)',
     ring: 'var(--color-status-danger)',
-    text: '#fff',
+    text: 'var(--color-surface)',
   },
   skipped: {
     bg: 'var(--color-surface-alt)',
