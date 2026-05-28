@@ -38,14 +38,5 @@
   "frontend/src/routes/staffing-board/StaffingBoardPage.tsx|rgba(0,0,0,0.1)|boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',",
   "frontend/src/routes/staffing-desk/StaffingDeskPage.tsx|rgba(0,0,0,0.25)|<div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} onClick={() => setTimelinePopup(null)} />",
   "frontend/src/routes/time-management/TimeManagementPage.tsx|#fff|<Button type=\"button\" variant=\"primary\" size=\"sm\" style={{ background: 'var(--color-status-danger)', color: '#fff', border: 'none' }} disabled={!selectedReason || (selectedReason === 'OTHER' && !customNote.trim())} onClick={() => { onConfirm(finalReason); setSelectedReason(''); setCustomNote(''); }}>",
-  "frontend/src/routes/time-management/TimeManagementPage.tsx|rgba(0,0,0,0.45)|<div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)' }} onClick={onCancel}>",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#2e7d32|return { icon: '\\u2713', color: 'var(--color-success, #2e7d32)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#2e7d32|return { label: 'Approved \\u2713', color: 'var(--color-success, #2e7d32)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#aaa|return { icon: '\\u25CF', color: 'var(--color-text-tertiary, #aaa)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#d32f2f|return { icon: '\\u2717', color: 'var(--color-error, #d32f2f)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#d32f2f|return { label: 'Rejected', color: 'var(--color-error, #d32f2f)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#f57c00|return { icon: '\\u23F3', color: 'var(--color-warning, #f57c00)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|#f57c00|return { label: 'Awaiting approval', color: 'var(--color-warning, #f57c00)' };",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|rgba(0,0,0,0.18)|<div style={{ background: 'var(--color-surface)', borderRadius: '8px', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', padding: '24px', minWidth: '320px' }}>",
-  "frontend/src/routes/timesheets/TimesheetPage.tsx|rgba(0,0,0,0.4)|<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>"
+  "frontend/src/routes/time-management/TimeManagementPage.tsx|rgba(0,0,0,0.45)|<div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)' }} onClick={onCancel}>"
 ]
