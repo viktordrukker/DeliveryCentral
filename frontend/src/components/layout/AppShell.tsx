@@ -163,9 +163,9 @@ export function AppShell({ routes }: AppShellProps): JSX.Element {
         <div
           aria-modal="true"
           role="dialog"
-          style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-overlay)' }}
         >
-          <div style={{ background: 'var(--color-surface)', borderRadius: 8, padding: '24px 28px', minWidth: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 8, padding: '24px 28px', minWidth: 380, boxShadow: 'var(--shadow-modal)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Demo Control Panel</span>
               <button onClick={() => setDemoPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, lineHeight: 1 }} type="button">✕</button>

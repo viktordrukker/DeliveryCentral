@@ -206,7 +206,7 @@ export function NotificationBell(): JSX.Element {
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            boxShadow: 'var(--shadow-dropdown)',
             zIndex: 1000,
           }}
         >
