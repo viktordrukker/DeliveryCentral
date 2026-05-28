@@ -345,8 +345,8 @@ export function CapitalisationPage(): JSX.Element {
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="capex" fill="#6366f1" name="CAPEX" stackId="a" />
-                <Bar dataKey="opex" fill="#e2e8f0" name="OPEX" stackId="a" />
+                <Bar dataKey="capex" fill="var(--color-chart-1)" name="CAPEX" stackId="a" />
+                <Bar dataKey="opex" fill="var(--color-border)" name="OPEX" stackId="a" />
               </BarChart>
             </ResponsiveContainer>
           </SectionCard>

@@ -20,7 +20,7 @@ export function EvidenceTimelineBar({ data }: EvidenceTimelineBarProps): JSX.Ele
         <XAxis dataKey="date" tick={{ fontSize: 10 }} />
         <YAxis />
         <Tooltip formatter={(v) => [`${String(v)}h`, 'Hours']} />
-        <Bar dataKey="hours" fill="#6366f1" name="Hours" />
+        <Bar dataKey="hours" fill="var(--color-chart-1)" name="Hours" />
       </BarChart>
     </ResponsiveContainer>
     </div>
