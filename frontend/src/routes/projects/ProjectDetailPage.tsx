@@ -92,6 +92,9 @@ export function ProjectDetailPage(): JSX.Element {
   // KPI strip data
   const [computedRag, setComputedRag] = useState<ComputedRag | null>(null);
   const [staffingSummary, setStaffingSummary] = useState<StaffingSummary | null>(null);
+  // V2-B.7 — header-driven add signals for the Plan sub-tabs (open their create forms).
+  const [milestoneAddSignal, setMilestoneAddSignal] = useState(0);
+  const [crAddSignal, setCrAddSignal] = useState(0);
 
   // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
   // overall band were computed from different signals and could disagree on
@@ -219,6 +222,17 @@ export function ProjectDetailPage(): JSX.Element {
       actions={
         id && canManage ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* V2-B.7 — tab-scoped header actions (dsRefresh, Plan tab only).
+                Add-milestone / Add-change-request open the matching sub-tab's
+                create form via a signal; Manage-positions links to the existing
+                positions list (no per-position create route exists). */}
+            {dsRefreshEnabled && activeTab === 'plan' ? (
+              <>
+                <Button variant="secondary" size="sm" type="button" onClick={() => setMilestoneAddSignal((n) => n + 1)}>Add milestone</Button>
+                <Button variant="secondary" size="sm" type="button" onClick={() => setCrAddSignal((n) => n + 1)}>Add change request</Button>
+                <Button as={Link} variant="secondary" size="sm" to={`/projects/${id}/positions`}>Manage positions</Button>
+              </>
+            ) : null}
             {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
                 "Quick assign" direct-create CTA removed; all staffing goes
                 through Create Staffing Request → Slate → Pick. */}
@@ -242,7 +256,14 @@ export function ProjectDetailPage(): JSX.Element {
           {/* V2-A.1 — 3-tab grammar when dsRefresh is on */}
           {dsRefreshEnabled && activeTab === 'pulse' ? <PulseTab projectId={id!} /> : null}
           {dsRefreshEnabled && activeTab === 'plan' ? (
-            <PlanTab project={project} projectId={id!} shape={state.data?.shape} reload={state.reload} />
+            <PlanTab
+              project={project}
+              projectId={id!}
+              shape={state.data?.shape}
+              reload={state.reload}
+              milestoneAddSignal={milestoneAddSignal}
+              changeRequestAddSignal={crAddSignal}
+            />
           ) : null}
           {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} /> : null}
 

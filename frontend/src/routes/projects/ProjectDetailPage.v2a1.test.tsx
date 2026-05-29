@@ -55,6 +55,19 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/<StatusBadge status={project\.status} variant="chip" \/>/);
     expect(src).toMatch(/badges={titleBadges}/);
   });
+
+  it('B7: gated per-tab Plan actions + signal threading; Manage-positions uses the list route', () => {
+    // Plan-tab-only, dsRefresh-gated header actions
+    expect(src).toMatch(/dsRefreshEnabled && activeTab === 'plan' \?/);
+    expect(src).toMatch(/setMilestoneAddSignal\(\(n\) => n \+ 1\)/);
+    expect(src).toMatch(/setCrAddSignal\(\(n\) => n \+ 1\)/);
+    // Manage positions → existing list route, NOT the non-existent /positions/new
+    expect(src).toMatch(/to={`\/projects\/\$\{id\}\/positions`}/);
+    expect(src).not.toMatch(/positions\/new/);
+    // signals passed into PlanTab
+    expect(src).toMatch(/milestoneAddSignal={milestoneAddSignal}/);
+    expect(src).toMatch(/changeRequestAddSignal={crAddSignal}/);
+  });
 });
 
 describe('V2-A.1 — PlanTab aggregator', () => {
@@ -81,5 +94,10 @@ describe('V2-A.1 — PlanTab aggregator', () => {
     expect(src).toMatch(/Roles planned/);
     expect(src).toMatch(/Open gap/);
     expect(src).toMatch(/Milestones hit/);
+  });
+
+  it('B7: forwards the header add-signals into the milestone + change-request sub-tabs', () => {
+    expect(src).toMatch(/<MilestonesTab[\s\S]*?openCreateSignal={milestoneAddSignal}/);
+    expect(src).toMatch(/<ChangeRequestsTab[\s\S]*?openCreateSignal={changeRequestAddSignal}/);
   });
 });

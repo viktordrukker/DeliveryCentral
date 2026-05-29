@@ -21,6 +21,8 @@ import { Button, Input, Select, Table, Textarea, type Column } from '@/component
 
 interface ChangeRequestsTabProps {
   projectId: string;
+  /** V2-B.7 — incrementing opens the create form (driven from the page header). */
+  openCreateSignal?: number;
 }
 
 const STATUS_OPTIONS: ChangeRequestStatus[] = ['PROPOSED', 'APPROVED', 'REJECTED', 'WITHDRAWN'];
@@ -48,7 +50,7 @@ function composeImpact(cr: ProjectChangeRequestDto): string {
   return parts.join(' · ');
 }
 
-export function ChangeRequestsTab({ projectId }: ChangeRequestsTabProps): JSX.Element {
+export function ChangeRequestsTab({ projectId, openCreateSignal }: ChangeRequestsTabProps): JSX.Element {
   const { principal } = useAuth();
   const canManage = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
 
@@ -61,6 +63,10 @@ export function ChangeRequestsTab({ projectId }: ChangeRequestsTabProps): JSX.El
 
   // Create form
   const [showCreate, setShowCreate] = useState(false);
+  // V2-B.7 — open create form when the page header's "Add change request" fires.
+  useEffect(() => {
+    if (openCreateSignal && canManage) setShowCreate(true);
+  }, [openCreateSignal, canManage]);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newSeverity, setNewSeverity] = useState<ChangeRequestSeverity>('MEDIUM');
