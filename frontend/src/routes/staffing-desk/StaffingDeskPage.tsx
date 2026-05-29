@@ -175,6 +175,7 @@ export function StaffingDeskPage(): JSX.Element {
           onColumnsClose={() => setColumnsOpen(false)}
           columnWidths={columnWidths}
           onColumnWidthChange={handleColumnWidthChange}
+          dsRefresh={dsRefreshEnabled}
         />
       )}
 
