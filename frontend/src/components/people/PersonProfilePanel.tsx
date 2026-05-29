@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ds/Avatar';
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
 import { Timeline, type TimelineSegment } from '@/components/ds';
+import { PersonActivityFeed } from './PersonActivityFeed';
 import {
   type PersonProfileDto,
   fetchPersonProfile,
@@ -315,6 +316,12 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
               ))}
             </ul>
           )}
+        </SectionCard>
+
+        {/* V2-A.13 — lifecycle activity feed (previously only on the legacy
+            History tab) surfaced inside the v2 profile panel. */}
+        <SectionCard title="Recent activity">
+          <PersonActivityFeed personId={personId} limit={10} />
         </SectionCard>
       </div>
     </div>

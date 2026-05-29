@@ -1,14 +1,19 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
 import { PersonProfilePanel } from './PersonProfilePanel';
 import type { PersonProfileDto } from '@/lib/api/person-profile';
 
 const fetchPersonProfile = vi.fn();
+const fetchEmployeeActivity = vi.fn();
 
 vi.mock('@/lib/api/person-profile', () => ({
   fetchPersonProfile: (id: string) => fetchPersonProfile(id),
+}));
+
+vi.mock('@/lib/api/employee-activity', () => ({
+  fetchEmployeeActivity: (id: string, limit?: number) => fetchEmployeeActivity(id, limit),
 }));
 
 const sampleProfile: PersonProfileDto = {
@@ -64,6 +69,11 @@ const sampleProfile: PersonProfileDto = {
 };
 
 describe('PersonProfilePanel', () => {
+  beforeEach(() => {
+    // PersonActivityFeed (V2-A.13) fetches its own data; default to none.
+    fetchEmployeeActivity.mockResolvedValue([]);
+  });
+
   it('renders identity card with role / grade / location', async () => {
     fetchPersonProfile.mockResolvedValue(sampleProfile);
     renderRoute(<PersonProfilePanel personId="p1" />);
@@ -76,6 +86,14 @@ describe('PersonProfilePanel', () => {
     fetchPersonProfile.mockResolvedValue({ ...sampleProfile, costRate: 95.5 });
     renderRoute(<PersonProfilePanel personId="p1" />);
     await waitFor(() => expect(screen.getByText('Cost rate')).toBeInTheDocument());
+  });
+
+  it('A13: surfaces the Recent activity feed (PersonActivityFeed)', async () => {
+    fetchPersonProfile.mockResolvedValue(sampleProfile);
+    renderRoute(<PersonProfilePanel personId="p1" />);
+    await waitFor(() => expect(screen.getByText('Recent activity')).toBeInTheDocument());
+    // feed fetched for this person
+    expect(fetchEmployeeActivity).toHaveBeenCalledWith('p1', 10);
   });
 
   it('omits cost-rate KPI when costRate is absent (redacted)', async () => {

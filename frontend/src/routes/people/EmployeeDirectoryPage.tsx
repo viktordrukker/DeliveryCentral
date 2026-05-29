@@ -8,6 +8,8 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { ViewportTable } from '@/components/layout/ViewportTable';
@@ -22,6 +24,7 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
+import { fetchEnrichedBench } from '@/lib/api/people-bench';
 
 const defaultPageSize = 25;
 
@@ -33,11 +36,28 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
+  // V2-A.12 — header count badge for people currently on the bench.
+  const [benchCount, setBenchCount] = useState<number | null>(null);
   const { setActions } = useTitleBarActions();
 
   useEffect(() => {
     void fetchResourcePools().then((r) => setResourcePools(r.items));
   }, []);
+
+  useEffect(() => {
+    if (!dsRefreshEnabled) return;
+    let active = true;
+    void fetchEnrichedBench()
+      .then((rows) => {
+        if (active) setBenchCount(rows.filter((r) => r.isOnBench).length);
+      })
+      .catch(() => {
+        if (active) setBenchCount(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dsRefreshEnabled]);
 
   const state = useEmployeeDirectory({
     departmentId: filters.departmentId || undefined,
@@ -97,6 +117,27 @@ export function EmployeeDirectoryPage(): JSX.Element {
 
   return (
     <PageContainer testId="employee-directory-page" viewport>
+      {dsRefreshEnabled ? (
+        <PageHeader
+          eyebrow="Workforce"
+          title="People"
+          subtitle="Directory, bench availability, and the HR action queue for your organization."
+          badges={
+            <>
+              {state.data ? (
+                <StatusBadge tone="info" label={`${state.data.total} people`} variant="chip" />
+              ) : null}
+              {benchCount !== null ? (
+                <StatusBadge
+                  tone={benchCount > 0 ? 'warning' : 'active'}
+                  label={`${benchCount} on bench`}
+                  variant="chip"
+                />
+              ) : null}
+            </>
+          }
+        />
+      ) : null}
       {dsRefreshEnabled ? (
         <TabBar
           tabs={peopleTabs}
