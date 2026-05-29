@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 import { AppRouteDefinition, canAccessRoute } from '@/app/navigation';
@@ -6,7 +7,16 @@ import { markSidebarNavigation } from '@/app/drilldown-context';
 import { useAuth } from '@/app/auth-context';
 import { NavIcon, getIconKey } from '@/components/common/NavIcon';
 import { Avatar } from '@/components/ds/Avatar';
+import { fetchSidebarCounts, type SidebarCounts } from '@/lib/api/sidebar-counts';
 import { SidebarSection } from './SidebarSection';
+
+// DS/chrome.jsx nav counts — map a route path to its sidebar-counts key.
+const COUNT_BY_PATH: Record<string, keyof SidebarCounts> = {
+  '/projects': 'projects',
+  '/approvals': 'approvals',
+  '/people/bench': 'bench',
+  '/cases': 'hrQueue',
+};
 
 interface SidebarNavV2Props {
   activePath: string;
@@ -48,6 +58,17 @@ export function SidebarNavV2({
   routes,
 }: SidebarNavV2Props): JSX.Element {
   const { principal } = useAuth();
+  const [counts, setCounts] = useState<SidebarCounts | null>(null);
+
+  // DS/chrome.jsx — pending-count badges on the nav items. Best-effort: a
+  // failed fetch simply renders no badges (the nav stays fully usable).
+  useEffect(() => {
+    let active = true;
+    fetchSidebarCounts()
+      .then((c) => { if (active) setCounts(c); })
+      .catch(() => { if (active) setCounts(null); });
+    return () => { active = false; };
+  }, []);
 
   // Phase E — exclude routes flagged `obsoleteInV2: true`. The route stays
   // reachable by URL (router still mounts it); only sidebar visibility is
@@ -76,6 +97,8 @@ export function SidebarNavV2({
     // Canonical `title` still used for tooltip + icon resolution.
     const label = route.titleV2 ?? route.title;
     const iconKey = getIconKey(route.path, route.title);
+    const countKey = COUNT_BY_PATH[route.path];
+    const count = countKey && counts ? counts[countKey] : 0;
     return (
       <NavLink
         aria-current={activePath === route.path ? 'page' : undefined}
@@ -95,6 +118,9 @@ export function SidebarNavV2({
       >
         <NavIcon name={iconKey} size={16} />
         <span className="sidebar-nav__item-title">{label}</span>
+        {count > 0 ? (
+          <span className="sidebar-nav__count" aria-label={`${count} pending`}>{count}</span>
+        ) : null}
       </NavLink>
     );
   }
