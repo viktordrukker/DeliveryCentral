@@ -70,4 +70,16 @@ describe('V2-A.1 — PlanTab aggregator', () => {
   it('exposes a plan-tab testId for downstream selectors', () => {
     expect(src).toMatch(/data-testid="plan-tab"/);
   });
+
+  it('B5: renders a Plan KPI strip from staffing-summary + milestones', () => {
+    expect(src).toMatch(/data-testid="plan-kpi-strip"/);
+    // sourced from the legacy role-plan staffing summary (lean positions shelved)
+    expect(src).toMatch(/fetchStaffingSummary\(projectId\)/);
+    expect(src).toMatch(/fetchMilestones\(projectId\)/);
+    // filled-rate donut + roles/gap/milestone tiles
+    expect(src).toMatch(/<Donut/);
+    expect(src).toMatch(/Roles planned/);
+    expect(src).toMatch(/Open gap/);
+    expect(src).toMatch(/Milestones hit/);
+  });
 });
