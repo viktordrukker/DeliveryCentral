@@ -179,11 +179,14 @@ export function StaffingDeskPage(): JSX.Element {
       )}
 
       {filters.view === 'planner' && (
-        dsRefreshEnabled ? (
-          <DistributionStudio canEdit />
-        ) : (
+        <>
+          {/* The full swimlane planner is the flagship Planner surface in both
+              flag states. dsRefresh ON additionally surfaces the saved-scenario
+              studio beneath it (additive — not a replacement, which previously
+              regressed the ON path to a scenario list only). */}
           <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
-        )
+          {dsRefreshEnabled ? <DistributionStudio canEdit /> : null}
+        </>
       )}
 
       {/* Pagination — includes "X of Y records" */}
