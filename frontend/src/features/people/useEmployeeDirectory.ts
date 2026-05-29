@@ -13,6 +13,8 @@ export interface EmployeeDirectoryFilters {
   page: number;
   pageSize: number;
   resourcePoolId?: string;
+  /** V2-B.18 — server-side role filter (PersonDirectoryQuery.role). */
+  role?: string;
   search: string;
 }
 
@@ -36,6 +38,7 @@ export function useEmployeeDirectory(
       page: filters.page,
       pageSize: filters.pageSize,
       resourcePoolId: filters.resourcePoolId,
+      role: filters.role || undefined,
     })
       .then((data) => {
         if (!active) {
@@ -61,7 +64,7 @@ export function useEmployeeDirectory(
     return () => {
       active = false;
     };
-  }, [filters.departmentId, filters.page, filters.pageSize, filters.resourcePoolId]);
+  }, [filters.departmentId, filters.page, filters.pageSize, filters.resourcePoolId, filters.role]);
 
   const visibleItems = useMemo(() => {
     let items = state.data?.items ?? [];
