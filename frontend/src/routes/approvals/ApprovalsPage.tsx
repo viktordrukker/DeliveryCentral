@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button } from '@/components/ds';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { ApprovalInspector } from '@/components/approvals/ApprovalInspector';
 import {
   type ApprovalQueueItemDto,
@@ -34,6 +35,17 @@ const SOURCE_TONE: Record<ApprovalQueueSource, SourceTone> = {
   leave: 'info',
   case: 'warning',
   'skill-review': 'info',
+};
+
+// B24 — per-source glyphs for the filter chips (and reusable elsewhere).
+const SOURCE_ICON: Record<ApprovalQueueSource | 'all', string> = {
+  all: '◆', // ◆
+  'position-proposal': '\u{1F9E9}', // 🧩
+  budget: '\u{1F4B0}', // 💰
+  activation: '\u{1F680}', // 🚀
+  leave: '\u{1F334}', // 🌴
+  case: '\u{1F4CB}', // 📋
+  'skill-review': '\u{1F393}', // 🎓
 };
 
 const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
@@ -90,6 +102,8 @@ export function ApprovalsPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   // V2-A.5 — selected row drives the right-pane one-screen-approval inspector.
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
+  // B24 — header Refresh re-triggers the load effect.
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -115,7 +129,10 @@ export function ApprovalsPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [activeFilter]);
+  }, [activeFilter, reloadTick]);
+
+  // B24 — SLA-breach count drives a header alert badge.
+  const breachedCount = items?.filter((it) => it.slaStage === 'breached').length ?? 0;
 
   function setFilter(id: ApprovalQueueSource | 'all'): void {
     setSearchParams((prev) => {
@@ -143,6 +160,29 @@ export function ApprovalsPage(): JSX.Element {
         eyebrow="Workspace"
         title="Approvals"
         subtitle="Unified queue across position proposals, budgets, activations, leave, cases, and skill reviews."
+        badges={
+          <>
+            <StatusBadge
+              tone={total > 0 ? 'warning' : 'active'}
+              label={`${total} awaiting`}
+              variant="chip"
+            />
+            {breachedCount > 0 ? (
+              <StatusBadge tone="danger" label={`${breachedCount} SLA breached`} variant="chip" />
+            ) : null}
+          </>
+        }
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() => setReloadTick((t) => t + 1)}
+            data-testid="approvals-refresh"
+          >
+            ↻ Refresh
+          </Button>
+        }
       />
 
       {/* Source filter chips */}
@@ -162,6 +202,7 @@ export function ApprovalsPage(): JSX.Element {
               onClick={() => setFilter(src.id)}
               aria-pressed={isActive}
             >
+              <span aria-hidden style={{ marginRight: 5 }}>{SOURCE_ICON[src.id]}</span>
               {src.label}
               {count > 0 ? (
                 <span
@@ -212,7 +253,17 @@ export function ApprovalsPage(): JSX.Element {
               }}
             >
               <div className="card" data-testid="approvals-list-card">
-                <div className="card-header">
+                {/* B24 — sticky header keeps the queue title/count + sort
+                    legend visible while scrolling a long list. */}
+                <div
+                  className="card-header"
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 2,
+                    background: 'var(--color-surface)',
+                  }}
+                >
                   <h3>
                     {activeFilter === 'all'
                       ? 'All approvals'
