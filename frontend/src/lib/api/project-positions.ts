@@ -127,3 +127,29 @@ export async function checkBench(
     { personIds, asOf },
   );
 }
+
+// NEW-LGL-7 — ranked suggested fills for a single open position (skill+role match).
+export interface PositionCandidate {
+  personId: string;
+  name: string;
+  role: string;
+  grade?: string | null;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  availabilityHours14d: number;
+}
+
+export interface PositionCandidatesResponse {
+  positionId: string;
+  requiredSkills: string[];
+  candidates: PositionCandidate[];
+}
+
+export async function getPositionCandidates(
+  id: string,
+  limit?: number,
+): Promise<PositionCandidatesResponse> {
+  const qs = limit ? `?limit=${limit}` : '';
+  return httpGet<PositionCandidatesResponse>(`/project-positions/${id}/candidates${qs}`);
+}
