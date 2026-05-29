@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
 import { PulseTab } from './PulseTab';
@@ -10,6 +10,8 @@ import type { ProjectRiskDto } from '@/lib/api/project-risks';
 const fetchProjectPulseSummary = vi.fn();
 const fetchComputedRag = vi.fn();
 const fetchRisks = vi.fn();
+const fetchProjectById = vi.fn();
+const fetchMilestones = vi.fn();
 
 vi.mock('@/lib/api/project-pulse', () => ({
   fetchProjectPulseSummary: (id: string) => fetchProjectPulseSummary(id),
@@ -23,30 +25,38 @@ vi.mock('@/lib/api/project-risks', () => ({
   fetchRisks: (id: string, query?: unknown) => fetchRisks(id, query),
 }));
 
+vi.mock('@/lib/api/project-registry', () => ({
+  fetchProjectById: (id: string) => fetchProjectById(id),
+}));
+
+vi.mock('@/lib/api/project-milestones', () => ({
+  fetchMilestones: (id: string) => fetchMilestones(id),
+}));
+
 const sampleSummary: PulseSummaryDto = {
   projectId: 'p1',
   asOf: '2026-05-24T10:00:00Z',
   signals: [
     {
-      key: 'open_positions',
-      label: 'Open positions',
-      value: 3,
+      key: 'cpi',
+      label: 'CPI',
+      value: 1.04,
       unit: null,
-      explanation: 'Positions not yet filled on this project.',
+      explanation: 'Cost performance index — ≥1 means on/under budget.',
     },
     {
-      key: 'budget_variance_pct',
-      label: 'Budget variance',
-      value: -2.1,
-      unit: '%',
-      explanation: 'Approved spend vs plan.',
+      key: 'avgMood',
+      label: 'Team mood',
+      value: 4.2,
+      unit: null,
+      explanation: 'Average pulse mood (1–5 scale).',
     },
     {
-      key: 'milestone_progress',
-      label: 'Milestone progress',
-      value: 64,
-      unit: '%',
-      explanation: 'Completed milestones over total.',
+      key: 'openRisks',
+      label: 'Open risks',
+      value: 2,
+      unit: null,
+      explanation: 'Identified, unresolved risks.',
     },
   ],
   activity: [
@@ -100,6 +110,12 @@ const sampleRisks: ProjectRiskDto[] = [
 ];
 
 describe('PulseTab — D1 fidelity', () => {
+  beforeEach(() => {
+    // PulseTab fetches the project for external-system links; default to none.
+    fetchProjectById.mockResolvedValue({ externalLinks: [] });
+    fetchMilestones.mockResolvedValue([]);
+  });
+
   it('shows a loading state while fetching', () => {
     fetchProjectPulseSummary.mockImplementation(() => new Promise(() => {}));
     fetchComputedRag.mockResolvedValue(null);
@@ -114,13 +130,84 @@ describe('PulseTab — D1 fidelity', () => {
     fetchRisks.mockResolvedValue([]);
     const { container } = renderRoute(<PulseTab projectId="p1" />);
     await waitFor(() => expect(screen.getByTestId('pulse-kpi-strip')).toBeInTheDocument());
-    expect(screen.getByText('Open positions')).toBeInTheDocument();
-    expect(screen.getByText('Budget variance')).toBeInTheDocument();
-    expect(screen.getByText('Milestone progress')).toBeInTheDocument();
+    expect(screen.getByText('CPI')).toBeInTheDocument();
+    expect(screen.getByText('Team mood')).toBeInTheDocument();
+    expect(screen.getByText('Open risks')).toBeInTheDocument();
     // tone classes applied per-tile (3 signals → 3 tiles, all have a tone)
     expect(container.querySelectorAll('.kpi').length).toBe(3);
     const tonedTiles = container.querySelectorAll('.kpi[class*="tone-"]');
     expect(tonedTiles.length).toBe(3);
+  });
+
+  it('maps real signal keys to correct tones (cpi≥1 + mood≥4 → active, openRisks<3 → info)', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    const { container } = renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-kpi-strip')).toBeInTheDocument());
+    // cpi 1.04 → active, avgMood 4.2 → active, openRisks 2 → info
+    expect(container.querySelectorAll('.kpi.tone-active').length).toBe(2);
+    expect(container.querySelectorAll('.kpi.tone-info').length).toBe(1);
+  });
+
+  it('renders the milestone-progress donut with hit/total counts', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    fetchMilestones.mockResolvedValue([
+      { id: 'm1', status: 'HIT' },
+      { id: 'm2', status: 'HIT' },
+      { id: 'm3', status: 'IN_PROGRESS' },
+      { id: 'm4', status: 'MISSED' },
+    ]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-milestones')).toBeInTheDocument());
+    // 2 of 4 hit → donut label 50%
+    expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(screen.getByText(/\/ 4 milestones hit/)).toBeInTheDocument();
+    expect(screen.getByText(/1 in progress · 1 missed/)).toBeInTheDocument();
+  });
+
+  it('shows the milestone empty state when no milestones are defined', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-milestones')).toBeInTheDocument());
+    expect(
+      screen.getByText('No milestones defined for this project yet.'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the external-systems card with links from the project', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    fetchProjectById.mockResolvedValue({
+      externalLinks: [
+        {
+          provider: 'JIRA',
+          externalProjectKey: 'COBOL',
+          externalProjectName: 'COBOL Migration',
+          url: 'https://jira.example/browse/COBOL',
+          archived: false,
+        },
+      ],
+    });
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-external-links')).toBeInTheDocument());
+    expect(screen.getByText('COBOL Migration')).toBeInTheDocument();
+  });
+
+  it('shows the external-systems empty state when the project has no links', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-external-links')).toBeInTheDocument());
+    expect(
+      screen.getByText('No external system links configured for this project.'),
+    ).toBeInTheDocument();
   });
 
   it('renders the 4-quadrant RAG grid when /rag-computed succeeds', async () => {

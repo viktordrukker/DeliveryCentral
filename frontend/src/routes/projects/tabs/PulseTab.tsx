@@ -10,6 +10,10 @@ import {
 } from '@/lib/api/project-pulse';
 import { fetchComputedRag, type ComputedRag, type RagRating } from '@/lib/api/project-rag';
 import { fetchRisks, type ProjectRiskDto } from '@/lib/api/project-risks';
+import { fetchProjectById, type ProjectExternalLink } from '@/lib/api/project-registry';
+import { fetchMilestones, type ProjectMilestoneDto } from '@/lib/api/project-milestones';
+import { ExternalLinksPanel } from '@/components/projects/ExternalLinksPanel';
+import { Donut, type DonutTone } from '@/components/ds';
 
 interface PulseTabProps {
   projectId: string;
@@ -35,24 +39,34 @@ const RAG_SCORE: Record<RagRating, number> = {
   RED: 38,
 };
 
+// Tone thresholds keyed to the signals the BE pulse-summary actually emits
+// (collectSignals: velocity / cpi / avgMood / openRisks / openCases / teamSize).
 function signalTone(signal: PulseSignalKpi): Tone {
   const v = signal.value ?? 0;
-  if (signal.key === 'milestone_progress') {
-    if (v >= 90) return 'active';
-    if (v >= 60) return 'info';
-    return 'warning';
+  switch (signal.key) {
+    case 'cpi': // Cost Performance Index — ≥1 means on/under budget
+      if (v >= 1) return 'active';
+      if (v >= 0.9) return 'warning';
+      return 'danger';
+    case 'avgMood': // 1–5 pulse scale
+      if (v >= 4) return 'active';
+      if (v >= 3) return 'info';
+      if (v >= 2.5) return 'warning';
+      return 'danger';
+    case 'openRisks':
+      if (v === 0) return 'active';
+      if (v < 3) return 'info';
+      if (v < 6) return 'warning';
+      return 'danger';
+    case 'openCases':
+      if (v === 0) return 'active';
+      if (v < 3) return 'info';
+      return 'warning';
+    case 'velocity': // hours logged over 28d — informational magnitude
+    case 'teamSize': // active headcount — informational
+    default:
+      return 'info';
   }
-  if (signal.key === 'budget_variance_pct') {
-    if (Math.abs(v) <= 5) return 'active';
-    if (Math.abs(v) <= 15) return 'warning';
-    return 'danger';
-  }
-  if (['open_positions', 'days_to_next_gate', 'burn_4w'].includes(signal.key)) {
-    if (v === 0) return 'active';
-    if (v < 5) return 'info';
-    return 'warning';
-  }
-  return 'info';
 }
 
 function formatValue(s: PulseSignalKpi): { value: string; unit: string | null } {
@@ -87,6 +101,8 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
   const [pulse, setPulse] = useState<PulseSummaryDto | null>(null);
   const [rag, setRag] = useState<ComputedRag | null>(null);
   const [risks, setRisks] = useState<ProjectRiskDto[]>([]);
+  const [links, setLinks] = useState<ProjectExternalLink[]>([]);
+  const [milestones, setMilestones] = useState<ProjectMilestoneDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,15 +114,21 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
 
     void (async () => {
       try {
-        const [pulseData, ragData, risksData] = await Promise.all([
+        const [pulseData, ragData, risksData, linksData, milestonesData] = await Promise.all([
           fetchProjectPulseSummary(projectId),
           fetchComputedRag(projectId).catch(() => null),
           fetchRisks(projectId, { status: 'IDENTIFIED' }).catch(() => [] as ProjectRiskDto[]),
+          fetchProjectById(projectId)
+            .then((p) => p.externalLinks)
+            .catch(() => [] as ProjectExternalLink[]),
+          fetchMilestones(projectId).catch(() => [] as ProjectMilestoneDto[]),
         ]);
         if (active) {
           setPulse(pulseData);
           setRag(ragData);
           setRisks(risksData);
+          setLinks(linksData);
+          setMilestones(milestonesData);
           setLoading(false);
         }
       } catch (err) {
@@ -128,6 +150,14 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
   if (!pulse) return <ErrorState description="No pulse data available." />;
 
   const topRisks = [...risks].sort((a, b) => b.riskScore - a.riskScore).slice(0, 3);
+
+  const msTotal = milestones.length;
+  const msHit = milestones.filter((m) => m.status === 'HIT').length;
+  const msInProgress = milestones.filter((m) => m.status === 'IN_PROGRESS').length;
+  const msMissed = milestones.filter((m) => m.status === 'MISSED').length;
+  const msPct = msTotal > 0 ? Math.round((msHit / msTotal) * 100) : 0;
+  const msTone: DonutTone =
+    msMissed > 0 ? 'warning' : msPct >= 90 ? 'active' : msPct >= 60 ? 'info' : msPct >= 30 ? 'warning' : 'danger';
 
   return (
     <div data-testid="pulse-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -153,6 +183,50 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
             </Link>
           );
         })}
+      </div>
+
+      {/* ---- Milestone progress ---- */}
+      <div className="card" data-testid="pulse-milestones">
+        <div className="card-header">
+          <h3>Milestone progress</h3>
+          <Link
+            to={`/projects/${projectId}?tab=milestones`}
+            className="compact"
+            style={{ color: 'var(--color-accent)', textDecoration: 'none' }}
+          >
+            View plan →
+          </Link>
+        </div>
+        <div
+          className="card-body"
+          style={{ display: 'flex', alignItems: 'center', gap: 24, padding: 'var(--space-4)' }}
+        >
+          {msTotal === 0 ? (
+            <p className="compact muted" style={{ margin: 0 }}>
+              No milestones defined for this project yet.
+            </p>
+          ) : (
+            <>
+              <Donut
+                value={msHit}
+                max={msTotal}
+                size={96}
+                thickness={10}
+                tone={msTone}
+                label={`${msPct}%`}
+                ariaLabel={`${msHit} of ${msTotal} milestones hit`}
+              />
+              <div style={{ display: 'grid', gap: 6 }}>
+                <div className="body-sm">
+                  <strong>{msHit}</strong> / {msTotal} milestones hit
+                </div>
+                <div className="compact-sm muted">
+                  {msInProgress} in progress · {msMissed} missed
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ---- 4-quadrant RAG ---- */}
@@ -296,6 +370,17 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
               })
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ---- External system links ---- */}
+      <div className="card" data-testid="pulse-external-links">
+        <div className="card-header">
+          <h3>External systems</h3>
+          <span className="compact-sm muted">Jira · Confluence · repos</span>
+        </div>
+        <div className="card-body" style={{ padding: 'var(--space-3)' }}>
+          <ExternalLinksPanel links={links} />
         </div>
       </div>
 
