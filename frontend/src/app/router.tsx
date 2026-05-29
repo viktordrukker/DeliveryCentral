@@ -84,6 +84,7 @@ import { ProjectDetailPage } from '@/routes/projects/ProjectDetailPage';
 import { ProjectsPage } from '@/routes/projects/ProjectsPage';
 import { CreateProjectPage } from '@/routes/projects/CreateProjectPage';
 import { PositionsListPage } from '@/routes/projects/PositionsListPage';
+import { ProjectPositionDetailPage } from '@/routes/projects/ProjectPositionDetailPage';
 import { PortfolioRadiatorPage } from '@/routes/dashboard/PortfolioRadiatorPage';
 import { OrganizationConfigPage } from '@/routes/admin/OrganizationConfigPage';
 import { RadiatorThresholdsPage } from '@/routes/admin/RadiatorThresholdsPage';
@@ -344,6 +345,7 @@ const dashboardChildren = [
   { element: <StaffingRequestsPage />, path: 'staffing-requests' },
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
   { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
   {
     element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -37,7 +37,15 @@ const STATUS_TONE: Record<PositionFillStatus, StatusTone> = {
 const NUM: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
 const positionsColumns: Array<Column<ProjectPosition>> = [
-  { key: 'role', title: 'Role', render: (p) => p.role },
+  {
+    key: 'role',
+    title: 'Role',
+    render: (p) => (
+      <Link to={`/projects/${p.projectId}/positions/${p.id}`} style={{ color: 'var(--color-accent)' }}>
+        {p.role}
+      </Link>
+    ),
+  },
   {
     key: 'status',
     title: 'Status',
