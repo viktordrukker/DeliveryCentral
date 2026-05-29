@@ -1,11 +1,15 @@
 import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { appRoutes, type AppRole } from '@/app/route-manifest';
 import { SidebarNavV2 } from '@/components/layout/SidebarNavV2';
+import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
 import { renderRoute } from '@test/render-route';
 
 let currentRoles: AppRole[] = ['admin'];
+
+vi.mock('@/lib/api/sidebar-counts', () => ({ fetchSidebarCounts: vi.fn() }));
+const mockedFetchCounts = vi.mocked(fetchSidebarCounts);
 
 vi.mock('@/app/auth-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/auth-context')>();
@@ -20,6 +24,10 @@ vi.mock('@/app/auth-context', async (importOriginal) => {
 });
 
 describe('SidebarNavV2', () => {
+  beforeEach(() => {
+    mockedFetchCounts.mockResolvedValue({ projects: 24, approvals: 7, bench: 12, hrQueue: 3 });
+  });
+
   it('renders the three V2 section labels for admin', () => {
     currentRoles = ['admin'];
     renderRoute(<SidebarNavV2 activePath="/" routes={appRoutes} />);
@@ -32,6 +40,14 @@ describe('SidebarNavV2', () => {
     currentRoles = ['admin'];
     renderRoute(<SidebarNavV2 activePath="/" routes={appRoutes} />);
     expect(screen.getByText('DeliverIT')).toBeInTheDocument();
+  });
+
+  it('renders pending-count badges from sidebar-counts (DS/chrome nav counts)', async () => {
+    currentRoles = ['admin'];
+    // activePath in the Workspace group keeps it open so the Approvals item renders.
+    renderRoute(<SidebarNavV2 activePath="/approvals" routes={appRoutes} />);
+    // Approvals count = 7 (from the mocked fetchSidebarCounts).
+    expect(await screen.findByLabelText('7 pending')).toBeInTheDocument();
   });
 
   it('does not surface admin-only routes for an employee', () => {

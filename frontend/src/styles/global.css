@@ -696,6 +696,29 @@ textarea {
   font-weight: 600;
 }
 
+/* DS/chrome.jsx — pending-count pill on a nav item (Approvals / Bench / HR / Projects). */
+.sidebar-nav__count {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-nav__item--active .sidebar-nav__count {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
 .sidebar-nav__item-copy {
   display: none; /* descriptions now shown via title attribute tooltip */
 }
