@@ -8,13 +8,19 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { ExportButton, type ExportColumn } from '@/components/common/ExportButton';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipTrigger } from '@/components/common/TipBalloon';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { approveTimesheet, rejectTimesheet } from '@/lib/api/timesheets';
 import { approveLeaveRequest, rejectLeaveRequest } from '@/lib/api/leaveRequests';
 import { LeaveDecisionDrawer, type LeaveDecisionTarget } from '@/components/time-management/LeaveDecisionDrawer';
-import { TimesheetInspectorDrawer, type TimesheetInspectorTarget } from '@/components/time-management/TimesheetInspectorDrawer';
+import {
+  TimesheetInspectorDrawer,
+  deriveAnomalies,
+  type TimesheetInspectorTarget,
+} from '@/components/time-management/TimesheetInspectorDrawer';
 import { httpGet } from '@/lib/api/http-client';
 import {
   fetchApprovalQueue,
@@ -310,8 +316,29 @@ export function TimeManagementPage(): JSX.Element {
   // Calendar grid
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
+  // V2-A.10 — page chrome is dsRefresh-gated so the legacy surface is unchanged.
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+
   return (
     <PageContainer testId="time-management-page">
+      {dsRefreshEnabled ? (
+        <PageHeader
+          eyebrow="Time"
+          title="Time Management"
+          subtitle="Approve timesheets and leave, watch compliance, and track overtime across your team."
+          breadcrumbs={[{ href: '/', label: 'Home' }, { label: 'Time Management' }]}
+          badges={
+            <>
+              <StatusBadge
+                tone={pendingCount > 0 ? 'warning' : 'active'}
+                label={`${pendingCount} awaiting you`}
+                variant="chip"
+              />
+              <StatusBadge tone="info" label="SLA · 24h" variant="chip" />
+            </>
+          }
+        />
+      ) : null}
       {loading ? <LoadingState label="Loading time management..." variant="skeleton" skeletonType="page" /> : null}
       {error ? <ErrorState description={error} /> : null}
 
@@ -449,6 +476,35 @@ export function TimeManagementPage(): JSX.Element {
                     ) },
                     { key: 'period', title: 'Period', render: (item) => item.type === 'timesheet' ? `Week of ${item.weekStart}` : `${item.leaveStartDate} – ${item.leaveEndDate}` },
                     { key: 'hours', title: 'Hours/Days', align: 'right', render: (item) => <span style={NUM}>{item.type === 'timesheet' ? `${item.totalHours}h` : `${item.leaveDays}d`}{item.overtimeHours && item.overtimeHours > 0 ? <span style={{ color: 'var(--color-status-warning)', fontSize: 10 }}> +{item.overtimeHours}h OT</span> : null}</span> },
+                    // V2-A.11 — inline anomaly flags (dsRefresh-gated), reusing the
+                    // inspector drawer's deriveAnomalies heuristic for timesheet rows.
+                    ...(dsRefreshEnabled
+                      ? [{
+                          key: 'anomaly',
+                          title: 'Flags',
+                          render: (item: ApprovalQueueItem) => {
+                            if (item.type !== 'timesheet') return <span className="muted">—</span>;
+                            const flags = deriveAnomalies({ totalHours: item.totalHours, overtimeHours: item.overtimeHours });
+                            if (flags.length === 0) {
+                              return <StatusBadge tone="active" label="Clean" size="small" variant="dot" />;
+                            }
+                            const worst = flags.some((f) => f.severity === 'danger')
+                              ? 'danger'
+                              : flags.some((f) => f.severity === 'warning')
+                                ? 'warning'
+                                : 'info';
+                            return (
+                              <StatusBadge
+                                tone={worst}
+                                label={`${flags.length} flag${flags.length === 1 ? '' : 's'}`}
+                                size="small"
+                                variant="dot"
+                                title={flags.map((f) => f.text).join(' · ')}
+                              />
+                            );
+                          },
+                        }]
+                      : []),
                     { key: 'status', title: 'Status', render: (item) => <StatusBadge label={item.status} size="small" tone={item.status === 'APPROVED' ? 'active' : item.status === 'SUBMITTED' || item.status === 'PENDING' ? 'warning' : 'danger'} /> },
                     { key: 'actions', title: 'Actions', width: 180, render: (item) => {
                       const isPending = item.status === 'SUBMITTED' || item.status === 'PENDING';

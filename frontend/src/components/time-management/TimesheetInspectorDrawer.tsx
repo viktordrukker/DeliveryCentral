@@ -26,12 +26,18 @@ interface TimesheetInspectorDrawerProps {
 
 const STANDARD_WEEK_HOURS = 40;
 
-interface Anomaly {
+export interface Anomaly {
   severity: 'info' | 'warning' | 'danger';
   text: string;
 }
 
-function deriveAnomalies(target: TimesheetInspectorTarget): Anomaly[] {
+/**
+ * Pure timesheet-hours anomaly heuristic. Exported so the time-management
+ * approval queue can render the same flags inline (V2-A.11) without
+ * duplicating the thresholds. Accepts a structural subset so both the
+ * inspector target and the lighter queue row satisfy it.
+ */
+export function deriveAnomalies(target: { totalHours?: number; overtimeHours?: number }): Anomaly[] {
   const out: Anomaly[] = [];
   const total = target.totalHours ?? 0;
   const ot = target.overtimeHours ?? 0;
