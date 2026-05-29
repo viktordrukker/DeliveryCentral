@@ -28,6 +28,14 @@ describe('V2-A.8 — EmployeeDirectoryPage 3-tab shell', () => {
   it('imports the shared CasesPanel', () => {
     expect(src).toMatch(/import { CasesPanel } from '@\/components\/cases\/CasesPanel'/);
   });
+
+  it('A12: renders a dsRefresh-gated PageHeader with people-total + bench count badges', () => {
+    expect(src).toMatch(/dsRefreshEnabled \? \(\s*<PageHeader/);
+    expect(src).toMatch(/label=\{`\$\{state\.data\.total\} people`\}/);
+    expect(src).toMatch(/label=\{`\$\{benchCount\} on bench`\}/);
+    // bench count sourced from the bench endpoint, fired only under dsRefresh
+    expect(src).toMatch(/fetchEnrichedBench\(\)/);
+  });
 });
 
 describe('V2-A.8 — CasesPanel extracted from CasesPage', () => {
