@@ -24,6 +24,17 @@ vi.mock('@/lib/api/resource-pools', () => ({
   fetchResourcePools: vi.fn(),
 }));
 
+// V2-B.18 — gated chrome. Default falsy keeps the existing tests on the legacy
+// (flag-off) path. The bench effect only fires under dsRefresh; stub it.
+const isFeatureEnabledMock = vi.fn();
+const fetchEnrichedBenchMock = vi.fn();
+vi.mock('@/lib/feature-flags', () => ({
+  isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
+}));
+vi.mock('@/lib/api/people-bench', () => ({
+  fetchEnrichedBench: (...args: unknown[]) => fetchEnrichedBenchMock(...args),
+}));
+
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchResourcePools = vi.mocked(fetchResourcePools);
 
@@ -32,6 +43,8 @@ describe('EmployeeDirectoryPage', () => {
     mockedFetchPersonDirectory.mockReset();
     mockedFetchResourcePools.mockReset();
     mockedFetchResourcePools.mockResolvedValue({ items: [] });
+    isFeatureEnabledMock.mockReturnValue(false);
+    fetchEnrichedBenchMock.mockResolvedValue([]);
   });
 
   it('shows loading state', () => {
@@ -99,6 +112,37 @@ describe('EmployeeDirectoryPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Employee Details')).toBeInTheDocument();
     });
+  });
+  it('B18: shows role/grade/group-by/layout controls when dsRefresh is on', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({
+        items: [
+          buildPersonDirectoryItem({ id: 'p1', displayName: 'Ada', role: 'Engineer', grade: 'L5' }),
+          buildPersonDirectoryItem({ id: 'p2', displayName: 'Grace', role: 'Architect', grade: 'L7' }),
+        ],
+        total: 2,
+      }),
+    );
+    renderWithRouter();
+    expect(await screen.findByTestId('directory-role-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('directory-grade-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('directory-groupby')).toBeInTheDocument();
+    expect(screen.getByTestId('directory-layout-toggle')).toBeInTheDocument();
+  });
+
+  it('B18: hides the new filter controls when dsRefresh is off (legacy unchanged)', async () => {
+    isFeatureEnabledMock.mockReturnValue(false);
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({
+        items: [buildPersonDirectoryItem({ id: 'p1', displayName: 'Ada', role: 'Engineer', grade: 'L5' })],
+        total: 1,
+      }),
+    );
+    renderWithRouter();
+    await waitFor(() => expect(screen.getByText('Ada')).toBeInTheDocument());
+    expect(screen.queryByTestId('directory-role-filter')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('directory-layout-toggle')).not.toBeInTheDocument();
   });
 });
 
