@@ -32,12 +32,14 @@ import {
   ListProjectPositionsResponseDto,
   ProjectPositionResponseDto,
 } from '../application/contracts/project-position-responses';
+import { PositionCandidatesResponseDto } from '../application/contracts/position-candidate.dto';
 import { BenchEnrichedRowDto } from '../application/contracts/bench-enriched.dto';
 import { CreateProjectPositionService } from '../application/create-project-position.service';
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
 import { ListEnrichedBenchService } from '../application/list-enriched-bench.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
+import { SuggestFillsService } from '../application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from '../application/transition-project-position-fill.service';
 
 interface RequestWithPrincipal extends Request {
@@ -65,6 +67,7 @@ export class ProjectPositionsController {
     private readonly transitionService: TransitionProjectPositionFillService,
     private readonly listService: ListProjectPositionsService,
     private readonly getService: GetProjectPositionByIdService,
+    private readonly suggestFillsService: SuggestFillsService,
   ) {}
 
   @Get()
@@ -97,6 +100,22 @@ export class ProjectPositionsController {
   ): Promise<ProjectPositionResponseDto> {
     const position = await this.getService.execute(id);
     return ProjectPositionResponseDto.from(position);
+  }
+
+  @Get(':id/candidates')
+  @ApiOperation({
+    summary:
+      'NEW-LGL-7 — ranked suggested fills for an open position (skill+role match off bench).',
+  })
+  @ApiOkResponse({ type: PositionCandidatesResponseDto })
+  @RequireRoles(...STAFFING_ROLES)
+  public async candidates(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit') limit?: string,
+  ): Promise<PositionCandidatesResponseDto> {
+    const parsed = limit ? Number.parseInt(limit, 10) : undefined;
+    const take = parsed && Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 50) : undefined;
+    return this.suggestFillsService.suggestForPosition(id, take);
   }
 
   @Post()
