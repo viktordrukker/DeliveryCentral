@@ -26,6 +26,19 @@ import { fetchProjectDashboard } from '@/lib/api/project-dashboard';
 import { fetchRadiator, fetchRadiatorHistory, fetchRadiatorSnapshotByWeek, applyRadiatorOverride } from '@/lib/api/project-radiator';
 import { ProjectDetailPage } from './ProjectDetailPage';
 
+// This suite validates the legacy (dsRefresh-OFF) tab grammar (Overview /
+// radiator / Team & Vendors / Lifecycle Controls), retained for rollback. The
+// dsRefresh-ON default renders the 3-tab Pulse/Plan/Money layout, covered by
+// ProjectDetailPage.v2a1.test.tsx. Pin the redesign flags OFF here.
+vi.mock('@/lib/feature-flags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
+  return {
+    ...actual,
+    isFeatureEnabled: (id: string) =>
+      id === 'dsRefresh' || id === 'workspaceMe' ? false : actual.isFeatureEnabled(id as never),
+  };
+});
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'pm-1', roles: ['project_manager'] },

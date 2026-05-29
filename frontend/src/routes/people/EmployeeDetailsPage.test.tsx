@@ -15,6 +15,18 @@ import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import { fetchPersonSkills, fetchSkills } from '@/lib/api/skills';
 import { EmployeeDetailsPlaceholderPage } from './EmployeeDetailsPlaceholderPage';
 
+// This suite validates the legacy (dsRefresh-OFF) profile fallback, retained
+// for rollback. The dsRefresh-ON default renders PersonProfilePanel / Person-360
+// (covered separately). Pin the redesign flags OFF here.
+vi.mock('@/lib/feature-flags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
+  return {
+    ...actual,
+    isFeatureEnabled: (id: string) =>
+      id === 'dsRefresh' || id === 'workspaceMe' ? false : actual.isFeatureEnabled(id as never),
+  };
+});
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'hr-1', roles: ['hr_manager'] },

@@ -937,9 +937,9 @@ export const PLATFORM_FLAGS = {
   workspaceMe: {
     key: 'flag.workspaceMe.enabled',
     description:
-      'Master switch for the /me Employee Workspace shell (Overview/Time/Leave/Projects/Inbox/Settings tabs). OFF keeps the existing /my-time, /leave, /notifications, /settings/account, /timesheets routes as the canonical surfaces; ON activates the unified /me shell that hosts them. Lean-simplification employee-workspace amendment.',
-    default: false,
-    maturityLevel: 'developing',
+      'Master switch for the /me Employee Workspace shell (Overview/Time/Leave/Projects/Inbox/Settings tabs). OFF keeps the existing /my-time, /leave, /notifications, /settings/account, /timesheets routes as the canonical surfaces; ON activates the unified /me shell that hosts them. Lean-simplification employee-workspace amendment. Default ON 2026-05-29 (redesign cutover) — kept in registry for emergency rollback.',
+    default: true,
+    maturityLevel: 'ga',
     expectedGaSprint: 'v1.2',
     owner: 'frontend-eng',
     category: 'ui',
@@ -947,9 +947,9 @@ export const PLATFORM_FLAGS = {
   dsRefresh: {
     key: 'flag.dsRefresh.enabled',
     description:
-      'DS visual refresh (lifecycle Timeline colors, Calendar/BalanceMeter primitives, page chrome refresh per lean-simplification amendments). Additive primitives stay shipped; this flag gates the consumer-visible adoption sites until staging review signs off.',
-    default: false,
-    maturityLevel: 'developing',
+      'DS visual refresh (new SidebarNavV2/TopHeaderV2 frame, lifecycle Timeline colors, Calendar/BalanceMeter primitives, page chrome refresh per lean-simplification amendments). Additive primitives stay shipped; this flag gates the consumer-visible adoption sites. Default ON 2026-05-29 (redesign cutover) — kept in registry for emergency rollback.',
+    default: true,
+    maturityLevel: 'ga',
     expectedGaSprint: 'v1.2',
     owner: 'frontend-eng',
     category: 'ui',

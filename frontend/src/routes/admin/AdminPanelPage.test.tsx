@@ -12,6 +12,18 @@ import {
 import { ImpersonationProvider } from '@/app/impersonation-context';
 import { AdminPanelPage } from './AdminPanelPage';
 
+// This suite validates the legacy (dsRefresh-OFF) admin layout where sections
+// render as buttons. The dsRefresh-ON default renders them as a tab strip
+// (covered separately). Pin the redesign flag OFF here.
+vi.mock('@/lib/feature-flags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
+  return {
+    ...actual,
+    isFeatureEnabled: (id: string) =>
+      id === 'dsRefresh' || id === 'workspaceMe' ? false : actual.isFeatureEnabled(id as never),
+  };
+});
+
 vi.mock('@/lib/api/admin', () => ({
   fetchAdminConfig: vi.fn(),
   fetchAdminIntegrations: vi.fn(),
