@@ -24,7 +24,7 @@ import {
   applyInlineFilters,
   computeUniqueValues,
 } from '@/components/staffing-desk/table-shared';
-import { Avatar, Button, Table, type Column } from '@/components/ds';
+import { Avatar, Button, Table, VarianceBar, type Column } from '@/components/ds';
 
 type Tab = 'supply' | 'demand';
 
@@ -38,6 +38,8 @@ interface Props {
   onColumnsClose?: () => void;
   columnWidths?: Record<string, number>;
   onColumnWidthChange?: (columnKey: string, width: number) => void;
+  /** V2-B.10 — when true, the supply board appends the Σ-util / over-alloc column. */
+  dsRefresh?: boolean;
 }
 
 const SUPPLY_ALL_COLUMNS: ColDef[] = [
@@ -95,6 +97,46 @@ const DEMAND_ALL_COLUMNS: ColDef[] = [
   } },
 ];
 
+// V2-B.10 — Σ-utilisation-now / over-allocation cell. Always-on in the v2
+// (dsRefresh) SUPPLY board only; computed from each row's active assignments
+// (personAssignments[].allocationPercent). Not added to the column-visibility
+// seed — it is appended directly to the rendered column set in v2 so it cannot
+// affect the legacy flag-off board.
+const sumUtil = (r: StaffingDeskRow): number =>
+  r.personAssignments.reduce((acc, a) => acc + (a.allocationPercent || 0), 0);
+
+const SUPPLY_SUMUTIL_COLUMN: ColDef = {
+  key: 'sumutil',
+  label: 'Σ Util',
+  category: 'Core',
+  width: 92,
+  align: 'right',
+  filterType: 'none',
+  getValue: (r) => sumUtil(r),
+  render: (r) => {
+    const sum = sumUtil(r);
+    const over = sum > 100;
+    return (
+      <span
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}
+        title={`Total active allocation ${sum}%`}
+      >
+        <span style={{ ...NUM, color: over ? 'var(--color-status-danger)' : 'var(--color-text)' }}>
+          {sum}%
+        </span>
+        <VarianceBar
+          value={sum - 100}
+          max={50}
+          width={36}
+          height={10}
+          tone={over ? 'danger' : 'neutral'}
+          ariaLabel={`Total allocation ${sum}%, ${over ? 'over' : 'within'} 100%`}
+        />
+      </span>
+    );
+  },
+};
+
 
 /* ── Component ── */
 
@@ -123,7 +165,7 @@ const DEMAND_ALL_COLUMNS: ColDef[] = [
  *  - localStorage keys `sd-supply` / `sd-demand` preserved via
  *    `useColumnVisibility` (untouched)
  */
-export function StaffingDeskTable({ items, onRowClick, onPersonClick, activeTab, onTabChange, columnsOpen, onColumnsClose, columnWidths, onColumnWidthChange }: Props): JSX.Element {
+export function StaffingDeskTable({ items, onRowClick, onPersonClick, activeTab, onTabChange, columnsOpen, onColumnsClose, columnWidths, onColumnWidthChange, dsRefresh }: Props): JSX.Element {
   const [internalTab, setInternalTab] = useState<Tab>('supply');
   const tab = (activeTab === 'assignment' ? 'supply' : activeTab === 'request' ? 'demand' : undefined) ?? internalTab;
   const [supplyFilters, setSupplyFilters] = useState<InlineFilterState>({});
@@ -135,13 +177,30 @@ export function StaffingDeskTable({ items, onRowClick, onPersonClick, activeTab,
   const demandVis = useColumnVisibility('sd-demand', demandColKeys);
 
   const vis = tab === 'supply' ? supplyVis : demandVis;
-  const allCols = tab === 'supply' ? SUPPLY_ALL_COLUMNS : DEMAND_ALL_COLUMNS;
-  const colMap = useMemo(() => new Map(allCols.map((c) => [c.key, c])), [allCols]);
-  // Ordered + visible columns
-  const visibleCols = useMemo(
-    () => vis.columnOrder.map((key) => colMap.get(key)).filter((c): c is ColDef => !!c && vis.isVisible(c.key)),
-    [vis.columnOrder, colMap, vis],
+  const showSumUtil = !!dsRefresh && tab === 'supply';
+  // colMap includes the v2 Σ-util column so the filter row + key lookups stay
+  // aligned; the legacy flag-off board never sees it (showSumUtil is false).
+  const allCols = useMemo(
+    () =>
+      tab === 'supply'
+        ? showSumUtil
+          ? [...SUPPLY_ALL_COLUMNS, SUPPLY_SUMUTIL_COLUMN]
+          : SUPPLY_ALL_COLUMNS
+        : DEMAND_ALL_COLUMNS,
+    [tab, showSumUtil],
   );
+  const colMap = useMemo(() => new Map(allCols.map((c) => [c.key, c])), [allCols]);
+  // Ordered + visible columns. The Σ-util column is NOT in the visibility seed
+  // (sd-supply), so append it explicitly when on the v2 supply board.
+  const visibleCols = useMemo(() => {
+    const base = vis.columnOrder
+      .map((key) => colMap.get(key))
+      .filter((c): c is ColDef => !!c && vis.isVisible(c.key));
+    if (showSumUtil && !base.some((c) => c.key === 'sumutil')) {
+      base.push(SUPPLY_SUMUTIL_COLUMN);
+    }
+    return base;
+  }, [vis.columnOrder, colMap, vis, showSumUtil]);
   const inlineFilters = tab === 'supply' ? supplyFilters : demandFilters;
   const setInlineFilters = tab === 'supply' ? setSupplyFilters : setDemandFilters;
 
