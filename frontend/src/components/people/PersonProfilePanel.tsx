@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
-import { Timeline, type TimelineSegment } from '@/components/ds';
+import { Timeline, Table, type Column, type TimelineSegment } from '@/components/ds';
 import { PersonActivityFeed } from './PersonActivityFeed';
 import {
   type PersonProfileDto,
@@ -175,44 +175,67 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
               showMonthLabels
               size="sm"
             />
-          <ul
-            data-testid="person-profile-assignments"
-            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}
-          >
-            {assignments.map((a) => (
-              <li
-                key={a.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 140px 80px 110px 60px',
-                  gap: 8,
-                  padding: '6px 10px',
-                  borderBottom: '1px solid var(--color-border)',
-                  fontSize: 13,
-                  alignItems: 'center',
-                }}
-              >
-                <Link
-                  to={`/projects/${a.projectId}`}
-                  style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}
-                >
-                  {a.projectName}
-                </Link>
-                <span style={{ color: 'var(--color-text-muted)' }}>{a.staffingRole}</span>
-                <StatusBadge
-                  tone={a.status === 'ACTIVE' ? 'active' : 'neutral'}
-                  variant="chip"
-                  label={a.status}
-                />
-                <span style={{ color: 'var(--color-text-subtle)', fontVariantNumeric: 'tabular-nums' }}>
-                  <Pct value={a.allocationPercent} fractionDigits={0} />
-                </span>
-                <span style={{ color: 'var(--color-text-subtle)', fontSize: 11, textAlign: 'right' }}>
-                  {new Date(a.validFrom).toLocaleDateString()}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {/* V2-B.21 — assignment list as a DS Table (was a hand-rolled <ul> grid). */}
+          <div style={{ marginTop: 12 }}>
+            <Table
+              variant="compact"
+              testId="person-profile-assignments"
+              getRowKey={(a) => a.id}
+              rows={assignments}
+              columns={
+                [
+                  {
+                    key: 'project',
+                    title: 'Project',
+                    getValue: (a) => a.projectName,
+                    render: (a) => (
+                      <Link
+                        to={`/projects/${a.projectId}`}
+                        style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}
+                      >
+                        {a.projectName}
+                      </Link>
+                    ),
+                  },
+                  {
+                    key: 'role',
+                    title: 'Role',
+                    getValue: (a) => a.staffingRole,
+                    render: (a) => <span className="muted">{a.staffingRole}</span>,
+                  },
+                  {
+                    key: 'status',
+                    title: 'Status',
+                    render: (a) => (
+                      <StatusBadge
+                        tone={a.status === 'ACTIVE' ? 'active' : 'neutral'}
+                        variant="chip"
+                        label={a.status}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'alloc',
+                    title: 'Alloc',
+                    align: 'right',
+                    getValue: (a) => a.allocationPercent,
+                    render: (a) => <Pct value={a.allocationPercent} fractionDigits={0} />,
+                  },
+                  {
+                    key: 'since',
+                    title: 'Since',
+                    align: 'right',
+                    getValue: (a) => a.validFrom,
+                    render: (a) => (
+                      <span style={{ fontSize: 11, color: 'var(--color-text-subtle)' }}>
+                        {new Date(a.validFrom).toLocaleDateString()}
+                      </span>
+                    ),
+                  },
+                ] as Column<(typeof assignments)[number]>[]
+              }
+            />
+          </div>
           </>
         )}
       </SectionCard>
@@ -222,14 +245,44 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
           {skills.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No skills recorded.</p>
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <ul
+              data-testid="person-profile-skills"
+              style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
+            >
+              {/* V2-B.21 — proficiency rendered as 1–5 pip bars (was a chip with
+                  a raw number). Certified skills use the active tone. */}
               {skills.map((s) => (
-                <li key={s.skillId}>
-                  <StatusBadge
-                    tone={s.certified ? 'active' : 'info'}
-                    variant="chip"
-                    label={`${s.skillName} · ${s.proficiency}`}
-                  />
+                <li
+                  key={s.skillId}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    {s.skillName}
+                    {s.certified ? (
+                      <span style={{ color: 'var(--color-status-active)' }} title="Certified"> ✓</span>
+                    ) : null}
+                  </span>
+                  <span
+                    style={{ display: 'inline-flex', gap: 3, flexShrink: 0 }}
+                    aria-label={`Proficiency ${s.proficiency} of 5`}
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <span
+                        key={n}
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 2,
+                          background:
+                            n <= s.proficiency
+                              ? s.certified
+                                ? 'var(--color-status-active)'
+                                : 'var(--color-accent)'
+                              : 'var(--color-border)',
+                        }}
+                      />
+                    ))}
+                  </span>
                 </li>
               ))}
             </ul>

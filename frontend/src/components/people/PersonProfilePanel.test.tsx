@@ -121,11 +121,15 @@ describe('PersonProfilePanel', () => {
     expect(apolloLink.getAttribute('href')).toBe('/projects/proj-1');
   });
 
-  it('renders skills as chips with proficiency', async () => {
+  it('renders skills as pip bars with proficiency aria-labels (B21)', async () => {
     fetchPersonProfile.mockResolvedValue(sampleProfile);
     renderRoute(<PersonProfilePanel personId="p1" />);
-    await waitFor(() => expect(screen.getByText(/TypeScript · 5/)).toBeInTheDocument());
-    expect(screen.getByText(/Postgres · 4/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('person-profile-skills')).toBeInTheDocument());
+    expect(screen.getByText(/TypeScript/)).toBeInTheDocument();
+    expect(screen.getByText('Postgres')).toBeInTheDocument();
+    // proficiency now renders as a 1–5 pip bar with an aria-label, not "· N"
+    expect(screen.getByLabelText('Proficiency 5 of 5')).toBeInTheDocument();
+    expect(screen.getByLabelText('Proficiency 4 of 5')).toBeInTheDocument();
   });
 
   it('renders leave balance with negative-remaining tone', async () => {
