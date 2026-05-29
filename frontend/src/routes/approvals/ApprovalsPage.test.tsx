@@ -110,4 +110,23 @@ describe('ApprovalsPage', () => {
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['leave'], pageSize: 100 }),
     );
   });
+
+  it('B24: renders awaiting + SLA-breached header badges', async () => {
+    fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
+    expect(screen.getByText(/2 awaiting/)).toBeInTheDocument();
+    // one sample item is slaStage=breached
+    expect(screen.getByText(/1 SLA breached/)).toBeInTheDocument();
+  });
+
+  it('B24: header Refresh re-fetches the queue', async () => {
+    fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
+    const user = userEvent.setup();
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByTestId('approvals-refresh')).toBeInTheDocument());
+    fetchUnifiedApprovals.mockClear();
+    await user.click(screen.getByTestId('approvals-refresh'));
+    await waitFor(() => expect(fetchUnifiedApprovals).toHaveBeenCalled());
+  });
 });
