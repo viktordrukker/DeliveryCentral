@@ -7,6 +7,8 @@ import type { BenchEnrichedRowDto } from '@/lib/api/people-bench';
 interface BenchInspectorProps {
   row: BenchEnrichedRowDto;
   onClose: () => void;
+  /** V2-A.9 — prev/next stepper across the sorted bench list. */
+  position?: { index: number; total: number; onPrev?: () => void; onNext?: () => void };
 }
 
 function daysTone(days: number): 'active' | 'info' | 'warning' | 'danger' {
@@ -73,7 +75,7 @@ const S_SECTION_LABEL: React.CSSProperties = {
  * the project page), and a CTA row. Designed to mount inside the
  * Bench surface alongside the master list.
  */
-export function BenchInspector({ row, onClose }: BenchInspectorProps): JSX.Element {
+export function BenchInspector({ row, onClose, position }: BenchInspectorProps): JSX.Element {
   const tone = daysTone(row.daysOnBench);
   const toneColor: Record<'active' | 'info' | 'warning' | 'danger', string> = {
     active: 'var(--color-status-active)',
@@ -97,7 +99,42 @@ export function BenchInspector({ row, onClose }: BenchInspectorProps): JSX.Eleme
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose} type="button" aria-label="Close inspector">×</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {position ? (
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              data-testid="bench-inspector-stepper"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                disabled={!position.onPrev}
+                onClick={position.onPrev}
+                aria-label="Previous person"
+              >
+                ‹
+              </Button>
+              <span
+                className="compact muted"
+                style={{ fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'center' }}
+              >
+                {position.index + 1} / {position.total}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                disabled={!position.onNext}
+                onClick={position.onNext}
+                aria-label="Next person"
+              >
+                ›
+              </Button>
+            </span>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={onClose} type="button" aria-label="Close inspector">×</Button>
+        </div>
       </div>
 
       <div style={S_META_ROW}>

@@ -3,10 +3,37 @@ import { Link } from 'react-router-dom';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { PageHeader } from '@/components/common/PageHeader';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
-import { Table, type Column } from '@/components/ds';
+import { Button, Table, type Column } from '@/components/ds';
 import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-bench';
 import { BenchInspector } from './BenchInspector';
+
+const PAGE_SIZE = 12;
+
+function exportBenchCsv(rows: BenchEnrichedRowDto[]): void {
+  const header = ['Name', 'Role', 'Grade', 'Office', 'Days idle', 'Availability 14d (h)', 'Suggested fills'];
+  const body = rows.map((r) => [
+    r.name,
+    r.role,
+    r.grade ?? '',
+    r.office ?? '',
+    r.daysOnBench,
+    r.availabilityHours14d,
+    r.suggestedProjectIds.length,
+  ]);
+  const csv = [header, ...body]
+    .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bench.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 type Tone = 'active' | 'info' | 'warning' | 'danger';
 
@@ -37,6 +64,8 @@ export function BenchEnrichedPanel(): JSX.Element {
   const [loading, setLoading] = useState(true);
   // V2-A.7 — list-detail layout: clicking a row opens the inspector pane.
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  // V2-A.8 — client-side pagination (endpoint returns the full array).
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let active = true;
@@ -96,8 +125,50 @@ export function BenchEnrichedPanel(): JSX.Element {
   const sortedRows = [...rows].sort((a, b) => b.daysOnBench - a.daysOnBench);
   const selectedRow = selectedPersonId ? rows.find((r) => r.personId === selectedPersonId) ?? null : null;
 
+  // V2-A.8 — client-side pagination of the sorted list.
+  const total = sortedRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = sortedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // V2-A.9 — inspector stepper navigates the full sorted list and keeps the
+  // visible page in sync with the selected row.
+  const selectedIndex = selectedPersonId
+    ? sortedRows.findIndex((r) => r.personId === selectedPersonId)
+    : -1;
+  const stepTo = (delta: number): void => {
+    const next = selectedIndex + delta;
+    if (next < 0 || next >= total) return;
+    setSelectedPersonId(sortedRows[next].personId);
+    setPage(Math.floor(next / PAGE_SIZE) + 1);
+  };
+
   return (
     <div data-testid="bench-enriched" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* V2-A.7 — page chrome: breadcrumb + idle-total badges + Export */}
+      <PageHeader
+        eyebrow="People"
+        title="Bench"
+        breadcrumbs={[{ href: '/people', label: 'People' }, { label: 'Bench' }]}
+        badges={
+          <>
+            <StatusBadge
+              tone={summary.idleOver14 > 0 ? 'warning' : 'active'}
+              label={`${summary.onBench} on bench`}
+              variant="chip"
+            />
+            {summary.idleOver14 > 0 ? (
+              <StatusBadge tone="warning" label={`${summary.idleOver14} idle > 14d`} variant="chip" />
+            ) : null}
+          </>
+        }
+        actions={
+          <Button variant="secondary" size="sm" type="button" onClick={() => exportBenchCsv(sortedRows)}>
+            Export CSV
+          </Button>
+        }
+      />
+
       {/* 4-tile KPI strip */}
       <div className="kpi-strip" data-testid="bench-kpi-strip">
         <div className={`kpi tone-${summary.idleOver14 > 0 ? 'warning' : 'active'}`}>
@@ -251,7 +322,7 @@ export function BenchEnrichedPanel(): JSX.Element {
               <Table
                 variant="compact"
                 columns={columns}
-                rows={sortedRows}
+                rows={pageRows}
                 getRowKey={(r) => r.personId}
                 onRowClick={(r) => setSelectedPersonId(r.personId === selectedPersonId ? null : r.personId)}
                 testId="bench-enriched-list"
@@ -259,10 +330,61 @@ export function BenchEnrichedPanel(): JSX.Element {
             );
           })()}
         </div>
+        {/* V2-A.8 — pagination footer */}
+        <div
+          className="dash-action-section__summary"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '8px 12px',
+            borderTop: '1px solid var(--color-border)',
+          }}
+          data-testid="bench-pagination"
+        >
+          <span className="compact muted" style={{ flex: '1 1 0', textAlign: 'left' }}>
+            Showing {total === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–
+            {Math.min(safePage * PAGE_SIZE, total)} of {total}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage(safePage - 1)}
+              aria-label="Previous page"
+            >
+              ←
+            </Button>
+            <span className="compact" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              Page {safePage} of {totalPages}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage(safePage + 1)}
+              aria-label="Next page"
+            >
+              →
+            </Button>
+          </span>
+          <span style={{ flex: '1 1 0' }} />
+        </div>
       </div>
 
       {selectedRow ? (
-        <BenchInspector row={selectedRow} onClose={() => setSelectedPersonId(null)} />
+        <BenchInspector
+          row={selectedRow}
+          onClose={() => setSelectedPersonId(null)}
+          position={{
+            index: selectedIndex,
+            total,
+            onPrev: selectedIndex > 0 ? () => stepTo(-1) : undefined,
+            onNext: selectedIndex >= 0 && selectedIndex < total - 1 ? () => stepTo(1) : undefined,
+          }}
+        />
       ) : null}
       </div>
     </div>
