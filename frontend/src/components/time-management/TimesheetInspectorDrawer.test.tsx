@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   TimesheetInspectorDrawer,
+  deriveAnomalies,
   type TimesheetInspectorTarget,
 } from './TimesheetInspectorDrawer';
 
@@ -29,6 +30,29 @@ const TARGET: TimesheetInspectorTarget = {
 afterEach(() => {
   approveMock.mockReset();
   rejectMock.mockReset();
+});
+
+describe('deriveAnomalies (V2-A.11 inline-queue reuse)', () => {
+  it('flags zero hours as danger', () => {
+    const out = deriveAnomalies({ totalHours: 0, overtimeHours: 0 });
+    expect(out).toHaveLength(1);
+    expect(out[0].severity).toBe('danger');
+    expect(out[0].text).toMatch(/No hours logged/);
+  });
+
+  it('flags under-expected standard hours as warning', () => {
+    const out = deriveAnomalies({ totalHours: 32, overtimeHours: 0 });
+    expect(out.some((a) => a.severity === 'warning' && /Under expected/.test(a.text))).toBe(true);
+  });
+
+  it('flags heavy overtime (>=16h) as danger', () => {
+    const out = deriveAnomalies({ totalHours: 56, overtimeHours: 16 });
+    expect(out.some((a) => a.severity === 'danger' && /Heavy overtime/.test(a.text))).toBe(true);
+  });
+
+  it('returns no anomalies for a clean 40h week', () => {
+    expect(deriveAnomalies({ totalHours: 40, overtimeHours: 0 })).toHaveLength(0);
+  });
 });
 
 describe('TimesheetInspectorDrawer', () => {
