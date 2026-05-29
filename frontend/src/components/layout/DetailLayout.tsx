@@ -19,6 +19,8 @@ interface DetailLayoutProps {
   title: string;
   /** Optional one-line subtitle / description rendered as info-tooltip. */
   subtitle?: string;
+  /** Optional status pills rendered inline next to the title (RAG, code, etc.). */
+  badges?: ReactNode;
   /** Optional inline filter controls in the header row. */
   filterControls?: ReactNode;
   /** Optional action buttons in the header row (right-aligned). */
@@ -66,6 +68,7 @@ export function DetailLayout({
   eyebrow,
   title,
   subtitle,
+  badges,
   filterControls,
   actions,
   kpiStrip,
@@ -85,6 +88,7 @@ export function DetailLayout({
         eyebrow={eyebrow}
         title={title}
         subtitle={subtitle}
+        badges={badges}
         filterControls={filterControls}
         actions={actions}
       />

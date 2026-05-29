@@ -46,6 +46,15 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/!dsRefreshEnabled && activeTab === 'milestones'/);
     expect(src).toMatch(/!dsRefreshEnabled && activeTab === 'lifecycle'/);
   });
+
+  it('renders dsRefresh-gated title badges (code + RAG + status) and passes them to DetailLayout (V2-A.6)', () => {
+    // Gated so the legacy header stays pixel-identical when dsRefresh is off.
+    expect(src).toMatch(/const titleBadges\s*=\s*\n?\s*dsRefreshEnabled && project \?/);
+    expect(src).toMatch(/label={project\.projectCode}/);
+    expect(src).toMatch(/label={`RAG \${computedRag\.overallRag}`}/);
+    expect(src).toMatch(/<StatusBadge status={project\.status} variant="chip" \/>/);
+    expect(src).toMatch(/badges={titleBadges}/);
+  });
 });
 
 describe('V2-A.1 — PlanTab aggregator', () => {

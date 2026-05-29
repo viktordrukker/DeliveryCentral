@@ -185,12 +185,37 @@ export function ProjectDetailPage(): JSX.Element {
     </div>
   ) : null;
 
+  // V2-A.6 — Pulse title badges: project code + computed RAG + lifecycle
+  // status rendered inline beside the title (DS/page-pulse.jsx header).
+  // Gated on dsRefresh so the legacy header stays pixel-identical.
+  const titleBadges =
+    dsRefreshEnabled && project ? (
+      <>
+        <StatusBadge tone="neutral" label={project.projectCode} variant="text" />
+        {computedRag ? (
+          <StatusBadge
+            tone={
+              computedRag.overallRag === 'GREEN'
+                ? 'active'
+                : computedRag.overallRag === 'AMBER'
+                  ? 'warning'
+                  : 'danger'
+            }
+            label={`RAG ${computedRag.overallRag}`}
+            variant="chip"
+          />
+        ) : null}
+        <StatusBadge status={project.status} variant="chip" />
+      </>
+    ) : undefined;
+
   return (
     <DetailLayout
       testId="project-detail-page"
       eyebrow="Projects"
       title={project?.name ?? 'Project Details'}
       subtitle="Project status reporting, staffing, budget, and lifecycle management."
+      badges={titleBadges}
       actions={
         id && canManage ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
