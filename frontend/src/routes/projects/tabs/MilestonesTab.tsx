@@ -25,6 +25,8 @@ import { Button, DatePicker, Input, Select, Table, type Column } from '@/compone
 interface MilestonesTabProps {
   projectId: string;
   shape?: ProjectShape | null;
+  /** V2-B.7 — incrementing opens the create form (driven from the page header). */
+  openCreateSignal?: number;
 }
 
 const STATUS_OPTIONS: MilestoneStatus[] = ['PLANNED', 'IN_PROGRESS', 'HIT', 'MISSED'];
@@ -46,13 +48,18 @@ function toDateInput(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
-export function MilestonesTab({ projectId, shape }: MilestonesTabProps): JSX.Element {
+export function MilestonesTab({ projectId, shape, openCreateSignal }: MilestonesTabProps): JSX.Element {
   const { principal } = useAuth();
   const canManage = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
 
   const [milestones, setMilestones] = useState<ProjectMilestoneDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+
+  // V2-B.7 — open the create form when the page header's "Add milestone" fires.
+  useEffect(() => {
+    if (openCreateSignal && canManage) setShowCreate(true);
+  }, [openCreateSignal, canManage]);
   const [createName, setCreateName] = useState('');
   const [createDesc, setCreateDesc] = useState('');
   const [createPlannedDate, setCreatePlannedDate] = useState('');

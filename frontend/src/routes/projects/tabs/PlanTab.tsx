@@ -16,6 +16,9 @@ interface PlanTabProps {
   projectId: string;
   shape?: ProjectShape | null;
   reload: () => Promise<void>;
+  /** V2-B.7 — header-driven "Add milestone" / "Add change request" signals. */
+  milestoneAddSignal?: number;
+  changeRequestAddSignal?: number;
 }
 
 /**
@@ -33,7 +36,7 @@ interface PlanTabProps {
  * ProjectPosition model is still shelved) + milestone progress. Reference:
  * `DS/page-plan-money.jsx`. Workstream swimlane Gantt is a follow-up (B3).
  */
-export function PlanTab({ project, projectId, shape, reload }: PlanTabProps): JSX.Element {
+export function PlanTab({ project, projectId, shape, reload, milestoneAddSignal, changeRequestAddSignal }: PlanTabProps): JSX.Element {
   const [summary, setSummary] = useState<StaffingSummary | null>(null);
   const [milestones, setMilestones] = useState<ProjectMilestoneDto[]>([]);
 
@@ -119,9 +122,9 @@ export function PlanTab({ project, projectId, shape, reload }: PlanTabProps): JS
         </div>
       ) : null}
 
-      <MilestonesTab projectId={projectId} shape={shape} />
+      <MilestonesTab projectId={projectId} shape={shape} openCreateSignal={milestoneAddSignal} />
       <RisksIssuesTab projectId={projectId} />
-      <ChangeRequestsTab projectId={projectId} />
+      <ChangeRequestsTab projectId={projectId} openCreateSignal={changeRequestAddSignal} />
       <TeamVendorsTab project={project} projectId={projectId} reload={reload} />
     </div>
   );
