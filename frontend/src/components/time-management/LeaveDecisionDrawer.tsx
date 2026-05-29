@@ -1,7 +1,9 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { BalanceMeter, Button, Drawer, Pct, Table, type Column } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
 import {
   approveLeaveRequest,
@@ -260,6 +262,46 @@ export function LeaveDecisionDrawer({
             </p>
           )}
         </section>
+
+        {/* V2-B.23 — overlap-warning banner (dsRefresh-gated). Uses the
+            already-loaded conflict set; no extra fetch. */}
+        {isFeatureEnabled('dsRefresh') && preload && preload.conflicts.length > 0 ? (
+          <section
+            data-testid="leave-overlap-banner"
+            style={{
+              padding: 'var(--space-3)',
+              background: 'color-mix(in srgb, var(--color-status-warning) 12%, var(--color-surface))',
+              border: '1px solid var(--color-status-warning)',
+              borderRadius: 'var(--radius-control)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)' }}>
+              <span aria-hidden style={{ fontSize: 16, lineHeight: 1.2 }}>⚠</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-status-warning)' }}>
+                  {preload.conflicts.length} active{' '}
+                  {preload.conflicts.length === 1 ? 'assignment overlaps' : 'assignments overlap'}{' '}
+                  this leave period
+                </div>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Approving will overlap the assignments below. Coordinate with the resource manager
+                  or adjust the dates before approving.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <Button as={Link} variant="secondary" size="sm" to={`/people/${target.personId}`}>
+                View {target.personName}&apos;s profile
+              </Button>
+              <Button as={Link} variant="secondary" size="sm" to="/projects">
+                View projects
+              </Button>
+            </div>
+          </section>
+        ) : null}
 
         {/* Conflicts */}
         <section>

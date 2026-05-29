@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { LeaveDecisionDrawer, type LeaveDecisionTarget } from './LeaveDecisionDrawer';
@@ -8,6 +9,9 @@ const approveMock = vi.fn();
 const rejectMock = vi.fn();
 const fetchBalanceMock = vi.fn();
 const fetchAssignmentsMock = vi.fn();
+// Default (unset) → falsy, so the dsRefresh-gated B23 banner stays OFF for the
+// existing tests (no Router needed). The B23 tests set this explicitly.
+const isFeatureEnabledMock = vi.fn();
 
 vi.mock('@/lib/api/leaveRequests', () => ({
   approveLeaveRequest: (...args: unknown[]) => approveMock(...args),
@@ -17,6 +21,10 @@ vi.mock('@/lib/api/leaveRequests', () => ({
 
 vi.mock('@/lib/api/assignments', () => ({
   fetchAssignments: (...args: unknown[]) => fetchAssignmentsMock(...args),
+}));
+
+vi.mock('@/lib/feature-flags', () => ({
+  isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
 }));
 
 const TARGET: LeaveDecisionTarget = {
@@ -43,7 +51,18 @@ afterEach(() => {
   rejectMock.mockReset();
   fetchBalanceMock.mockReset();
   fetchAssignmentsMock.mockReset();
+  isFeatureEnabledMock.mockReset();
 });
+
+const CONFLICT = {
+  id: 'a1',
+  project: { displayName: 'Atlas' },
+  staffingRole: 'Engineer',
+  startDate: '2026-05-01',
+  endDate: '2026-12-31',
+  allocationPercent: 60,
+  approvalState: 'APPROVED',
+};
 
 describe('LeaveDecisionDrawer', () => {
   it('returns null when target is null (even if open)', () => {
@@ -228,5 +247,30 @@ describe('LeaveDecisionDrawer', () => {
     );
     await user.click(screen.getByRole('button', { name: /^Approve$/ }));
     await waitFor(() => expect(onAdvance).toHaveBeenCalled());
+  });
+
+  it('B23: shows a dsRefresh-gated overlap-warning banner when conflicts exist', async () => {
+    defaultMocks();
+    isFeatureEnabledMock.mockReturnValue(true);
+    fetchAssignmentsMock.mockResolvedValue({ items: [CONFLICT], totalCount: 1 });
+    render(
+      <MemoryRouter>
+        <LeaveDecisionDrawer open target={TARGET} onClose={() => undefined} onDecided={() => undefined} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('leave-overlap-banner')).toBeInTheDocument());
+    expect(screen.getByText(/1 active assignment overlaps this leave period/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /View projects/ })).toBeInTheDocument();
+  });
+
+  it('B23: hides the overlap banner when dsRefresh is off (legacy unchanged)', async () => {
+    defaultMocks();
+    isFeatureEnabledMock.mockReturnValue(false);
+    fetchAssignmentsMock.mockResolvedValue({ items: [CONFLICT], totalCount: 1 });
+    render(
+      <LeaveDecisionDrawer open target={TARGET} onClose={() => undefined} onDecided={() => undefined} />,
+    );
+    await waitFor(() => expect(screen.getByText('Conflicting assignments')).toBeInTheDocument());
+    expect(screen.queryByTestId('leave-overlap-banner')).not.toBeInTheDocument();
   });
 });
