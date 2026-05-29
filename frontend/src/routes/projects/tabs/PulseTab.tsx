@@ -13,7 +13,8 @@ import { fetchRisks, type ProjectRiskDto } from '@/lib/api/project-risks';
 import { fetchProjectById, type ProjectExternalLink } from '@/lib/api/project-registry';
 import { fetchMilestones, type ProjectMilestoneDto } from '@/lib/api/project-milestones';
 import { ExternalLinksPanel } from '@/components/projects/ExternalLinksPanel';
-import { Donut, type DonutTone } from '@/components/ds';
+import { Button, Donut, type DonutTone } from '@/components/ds';
+import { useAuth } from '@/app/auth-context';
 
 interface PulseTabProps {
   projectId: string;
@@ -105,6 +106,11 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
   const [milestones, setMilestones] = useState<ProjectMilestoneDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { principal } = useAuth();
+  // B9 — footer Refresh re-triggers the load effect.
+  const [reloadTick, setReloadTick] = useState(0);
+  // B8 — All / Mine activity scope toggle.
+  const [activityScope, setActivityScope] = useState<'all' | 'mine'>('all');
 
   useEffect(() => {
     if (!projectId) return;
@@ -141,7 +147,7 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [projectId, reloadTick]);
 
   if (loading) return <LoadingState />;
   if (error) {
@@ -150,6 +156,13 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
   if (!pulse) return <ErrorState description="No pulse data available." />;
 
   const topRisks = [...risks].sort((a, b) => b.riskScore - a.riskScore).slice(0, 3);
+
+  // B8 — filter the activity log to the current user when "Mine" is selected.
+  const myName = principal?.displayName ?? null;
+  const shownActivity =
+    activityScope === 'mine' && myName
+      ? pulse.activity.filter((e) => e.actorDisplayName === myName)
+      : pulse.activity;
 
   const msTotal = milestones.length;
   const msHit = milestones.filter((m) => m.status === 'HIT').length;
@@ -278,31 +291,65 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
         <div className="card">
           <div className="card-header">
             <h3>Recent activity</h3>
-            <span className="compact-sm muted">Last {pulse.activity.length} events</span>
+            {/* B8 — All / Mine scope toggle (Mine = events I am the actor of) */}
+            <div style={{ display: 'inline-flex', gap: 4 }} role="group" aria-label="Activity scope">
+              <Button
+                variant={activityScope === 'all' ? 'primary' : 'secondary'}
+                size="sm"
+                type="button"
+                onClick={() => setActivityScope('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant={activityScope === 'mine' ? 'primary' : 'secondary'}
+                size="sm"
+                type="button"
+                disabled={!principal?.displayName}
+                onClick={() => setActivityScope('mine')}
+              >
+                Mine
+              </Button>
+            </div>
           </div>
           <div className="card-body" style={{ padding: 0 }}>
-            {pulse.activity.length === 0 ? (
+            {shownActivity.length === 0 ? (
               <p className="compact muted" style={{ padding: '16px 20px', margin: 0 }}>
-                No recent activity recorded for this project.
+                {activityScope === 'mine'
+                  ? 'No recent activity attributed to you on this project.'
+                  : 'No recent activity recorded for this project.'}
               </p>
             ) : (
-              <div data-testid="pulse-activity">
-                {pulse.activity.map((evt, i) => (
+              <div data-testid="pulse-activity" style={{ position: 'relative', padding: '4px 0' }}>
+                {/* B8 — continuous timeline rail behind the event dots */}
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    left: 26,
+                    top: 16,
+                    bottom: 16,
+                    width: 1,
+                    background: 'var(--color-border-subtle)',
+                  }}
+                />
+                {shownActivity.map((evt) => (
                   <div
                     key={evt.id}
                     style={{
+                      position: 'relative',
+                      zIndex: 1,
                       display: 'grid',
                       gridTemplateColumns: '14px 1fr auto',
                       gap: 12,
                       alignItems: 'flex-start',
-                      padding: '10px 20px',
-                      borderBottom:
-                        i < pulse.activity.length - 1
-                          ? '1px solid var(--color-border-subtle)'
-                          : 0,
+                      padding: '8px 20px',
                     }}
                   >
-                    <span className="tone-dot tone-info" style={{ marginTop: 6 }} />
+                    <span
+                      className="tone-dot tone-info"
+                      style={{ marginTop: 6, boxShadow: '0 0 0 3px var(--color-surface)' }}
+                    />
                     <div className="body-sm" style={{ minWidth: 0 }}>
                       <span style={{ fontWeight: 500 }}>{evt.actorDisplayName ?? 'System'}</span>{' '}
                       <span className="muted">
@@ -404,6 +451,18 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
         </span>
         <span>·</span>
         <span>Source: production DB</span>
+        {/* B9 — re-fetch the pulse without a full page reload */}
+        <span style={{ marginLeft: 'auto' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() => setReloadTick((t) => t + 1)}
+            data-testid="pulse-refresh"
+          >
+            ↻ Refresh
+          </Button>
+        </span>
       </div>
     </div>
   );

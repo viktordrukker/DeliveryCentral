@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
@@ -32,6 +32,19 @@ vi.mock('@/lib/api/project-registry', () => ({
 vi.mock('@/lib/api/project-milestones', () => ({
   fetchMilestones: (id: string) => fetchMilestones(id),
 }));
+
+// PulseTab reads principal.displayName for the B8 All/Mine activity filter.
+vi.mock('@/app/auth-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/auth-context')>();
+  return {
+    ...actual,
+    useAuth: () => ({
+      isAuthenticated: true,
+      isLoading: false,
+      principal: { personId: 'p1', displayName: 'Ada Lovelace', roles: [] },
+    }),
+  };
+});
 
 const sampleSummary: PulseSummaryDto = {
   projectId: 'p1',
@@ -279,5 +292,40 @@ describe('PulseTab — D1 fidelity', () => {
     fetchRisks.mockResolvedValue([]);
     renderRoute(<PulseTab projectId="p1" />);
     await waitFor(() => expect(screen.getByText(/Data as of/)).toBeInTheDocument());
+  });
+
+  it('B8: All/Mine toggle filters activity to the current user', async () => {
+    const multiActor = {
+      ...sampleSummary,
+      activity: [
+        { ...sampleSummary.activity[0], id: 'evt-mine', actorDisplayName: 'Ada Lovelace', summary: 'My own change.' },
+        { ...sampleSummary.activity[0], id: 'evt-other', actorDisplayName: 'Grace Hopper', summary: 'Someone else change.' },
+      ],
+    };
+    fetchProjectPulseSummary.mockResolvedValue(multiActor);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-activity')).toBeInTheDocument());
+    // All: both events visible
+    expect(screen.getByText(/My own change/)).toBeInTheDocument();
+    expect(screen.getByText(/Someone else change/)).toBeInTheDocument();
+    // Mine: only the current user's (Ada Lovelace) event
+    fireEvent.click(screen.getByRole('button', { name: 'Mine' }));
+    await waitFor(() => expect(screen.queryByText(/Someone else change/)).not.toBeInTheDocument());
+    expect(screen.getByText(/My own change/)).toBeInTheDocument();
+  });
+
+  it('B9: footer Refresh re-fetches the pulse summary', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue(null);
+    fetchRisks.mockResolvedValue([]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-refresh')).toBeInTheDocument());
+    const before = fetchProjectPulseSummary.mock.calls.length;
+    fireEvent.click(screen.getByTestId('pulse-refresh'));
+    await waitFor(() =>
+      expect(fetchProjectPulseSummary.mock.calls.length).toBeGreaterThan(before),
+    );
   });
 });
