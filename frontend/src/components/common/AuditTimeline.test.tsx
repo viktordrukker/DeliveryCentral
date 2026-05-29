@@ -106,4 +106,44 @@ describe('AuditTimeline', () => {
     // CREATE = accent color (CSS variable)
     expect((icon as HTMLElement).style.backgroundColor).toBe('var(--color-accent)');
   });
+
+  it('B15: renders the compact decision-log grammar when directorDecisionMode is on', () => {
+    const events: BusinessAuditRecord[] = [
+      {
+        actionType: 'APPROVE',
+        actorId: 'actor-1',
+        actorDisplayName: 'Noah Bennett',
+        changeSummary: 'Activation · Orion Treasury',
+        correlationId: null,
+        metadata: {},
+        occurredAt: new Date().toISOString(),
+        targetEntityId: 'p-1',
+        targetEntityType: 'Project',
+      },
+    ];
+    render(<AuditTimeline events={events} directorDecisionMode />);
+    expect(screen.getByTestId('decision-log')).toBeInTheDocument();
+    // the full audit-card layout is NOT used in this mode
+    expect(screen.queryByTestId('audit-timeline')).not.toBeInTheDocument();
+    expect(screen.getByText('Noah Bennett')).toBeInTheDocument();
+    expect(screen.getByText(/Activation · Orion Treasury/)).toBeInTheDocument();
+  });
+
+  it('B15: default (directorDecisionMode off) keeps the audit-card layout', () => {
+    const events: BusinessAuditRecord[] = [
+      {
+        actionType: 'CREATE',
+        actorId: 'actor-1',
+        changeSummary: 'Created project Alpha',
+        correlationId: null,
+        metadata: {},
+        occurredAt: new Date().toISOString(),
+        targetEntityId: 'proj-1',
+        targetEntityType: 'Project',
+      },
+    ];
+    render(<AuditTimeline events={events} />);
+    expect(screen.getByTestId('audit-timeline')).toBeInTheDocument();
+    expect(screen.queryByTestId('decision-log')).not.toBeInTheDocument();
+  });
 });

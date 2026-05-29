@@ -3,6 +3,7 @@ import { AuditTimeline } from '@/components/common/AuditTimeline';
 import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useRecentActivity, type RecentActivityRole } from '@/features/dashboard/useRecentActivity';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 interface Props {
   role: RecentActivityRole;
@@ -22,7 +23,10 @@ export function RecentActivityRail({ role, title = 'Recent activity', limit = 5 
       ) : events.length === 0 ? (
         <EmptyState description="No recent activity found for this role." title="Nothing yet" />
       ) : (
-        <AuditTimeline events={events} />
+        <AuditTimeline
+          events={events}
+          directorDecisionMode={role === 'director' && isFeatureEnabled('dsRefresh')}
+        />
       )}
     </SectionCard>
   );

@@ -4553,3 +4553,42 @@ a.monitoring-card:hover {
 
 /* `.confirm-dialog__overlay` + `confirm-fade-in` removed 2026-04-27 (DS-Group
    E orphan cleanup). DS Modal owns its own enter animation now. */
+
+/* ── V2-B.15 decision-log timeline (director recent-decisions). Namespaced
+   container (`.decision-log`, not `.timeline`) to avoid any collision with the
+   DS Timeline primitive. Only rendered under AuditTimeline directorDecisionMode,
+   which is dsRefresh-gated — inert on the legacy path. ── */
+.decision-log {
+  display: flex;
+  flex-direction: column;
+}
+.tl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.tl-row:first-child {
+  border-top: 0;
+}
+.tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+.tl-body {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+}
+.tl-meta {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

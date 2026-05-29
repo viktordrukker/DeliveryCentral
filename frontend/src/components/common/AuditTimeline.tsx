@@ -6,6 +6,12 @@ import { Button, Table, type Column } from '@/components/ds';
 
 interface AuditTimelineProps {
   events: BusinessAuditRecord[];
+  /**
+   * V2-B.15 — render the compact decision-log (.tl-row) grammar instead of the
+   * full audit-event cards. Opt-in; default false keeps every existing consumer
+   * (LifecycleTab, assignment/person audit) pixel-identical.
+   */
+  directorDecisionMode?: boolean;
 }
 
 function humanizeAction(actionType: string): string {
@@ -126,11 +132,39 @@ function EventCard({ event }: EventCardProps): JSX.Element {
   );
 }
 
-export function AuditTimeline({ events }: AuditTimelineProps): JSX.Element {
+export function AuditTimeline({ events, directorDecisionMode = false }: AuditTimelineProps): JSX.Element {
   if (events.length === 0) {
     return (
       <div className="audit-timeline audit-timeline--empty" data-testid="audit-timeline-empty">
         <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>No audit events recorded yet.</p>
+      </div>
+    );
+  }
+
+  // V2-B.15 — compact decision-log grammar for the director dashboard.
+  if (directorDecisionMode) {
+    return (
+      <div className="decision-log" data-testid="decision-log">
+        {events.map((event, index) => (
+          <div className="tl-row" key={`${event.occurredAt}-${event.actionType}-${index}`}>
+            <span
+              className="tl-dot"
+              style={{ background: actionColor(event.actionType) }}
+              aria-hidden
+            />
+            <div className="tl-body">
+              <span style={{ fontWeight: 500 }}>
+                {event.actorDisplayName ?? event.actorId ?? 'System'}
+              </span>{' '}
+              <span style={{ color: 'var(--color-text-muted)' }}>
+                {humanizeAction(event.actionType).toLowerCase()}
+              </span>{' '}
+              {event.targetEntityType}
+              {event.changeSummary ? ` — ${event.changeSummary}` : ''}
+            </div>
+            <span className="tl-meta">{relativeTime(event.occurredAt)}</span>
+          </div>
+        ))}
       </div>
     );
   }
