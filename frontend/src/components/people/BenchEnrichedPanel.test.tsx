@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
@@ -125,5 +125,57 @@ describe('BenchEnrichedPanel — D4 fidelity', () => {
     // for master-detail. Filter to the actual `<a>` element for this assertion.
     const link = screen.getByRole('link', { name: /^Open/ });
     expect(link.getAttribute('href')).toBe('/people/p1');
+  });
+});
+
+describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
+  it('A7: renders page chrome — breadcrumb, idle-total badges, Export CSV', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
+    // 2 on bench (p1, p2); 1 idle > 14d (p2 = 72d)
+    expect(screen.getByText(/2 on bench/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 idle > 14d/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'People' })).toBeInTheDocument();
+  });
+
+  it('A8: paginates the list at 12/page with a Showing N of M footer', async () => {
+    const many: BenchEnrichedRowDto[] = Array.from({ length: 15 }, (_, i) => ({
+      personId: `m${i}`,
+      name: `Person ${String(i).padStart(2, '0')}`,
+      role: 'Engineer',
+      office: 'London',
+      grade: 'L4',
+      isOnBench: true,
+      daysOnBench: 50 - i, // DESC so the sort order is deterministic
+      availabilityHours14d: 40,
+      suggestedProjectIds: [],
+    }));
+    fetchEnrichedBench.mockResolvedValue(many);
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-pagination')).toBeInTheDocument());
+    expect(container.querySelectorAll('tbody tr').length).toBe(12);
+    expect(screen.getByTestId('bench-pagination').textContent).toContain('Showing 1–12 of 15');
+    fireEvent.click(screen.getByLabelText('Next page'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bench-pagination').textContent).toContain('Showing 13–15 of 15'),
+    );
+    expect(container.querySelectorAll('tbody tr').length).toBe(3);
+  });
+
+  it('A9: inspector opens with a prev/next stepper that walks the sorted list', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    // sorted DESC: Grace(72) idx0, Ada(14) idx1, Alan(0) idx2
+    fireEvent.click(screen.getByText('Ada Lovelace'));
+    await waitFor(() => expect(screen.getByTestId('bench-inspector')).toBeInTheDocument());
+    expect(screen.getByTestId('bench-inspector-stepper').textContent).toContain('2 / 3');
+    fireEvent.click(screen.getByLabelText('Next person'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bench-inspector-stepper').textContent).toContain('3 / 3'),
+    );
+    expect(screen.getByLabelText('Next person')).toBeDisabled();
   });
 });
