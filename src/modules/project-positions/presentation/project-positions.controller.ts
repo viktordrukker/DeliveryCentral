@@ -33,6 +33,7 @@ import {
   ProjectPositionResponseDto,
 } from '../application/contracts/project-position-responses';
 import { PositionCandidatesResponseDto } from '../application/contracts/position-candidate.dto';
+import { PersonSuggestedPositionsResponseDto } from '../application/contracts/person-suggested-position.dto';
 import { BenchEnrichedRowDto } from '../application/contracts/bench-enriched.dto';
 import { CreateProjectPositionService } from '../application/create-project-position.service';
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
@@ -177,6 +178,7 @@ export class PeopleBenchController {
   public constructor(
     private readonly benchService: ListBenchPeopleService,
     private readonly enrichedBenchService: ListEnrichedBenchService,
+    private readonly suggestFillsService: SuggestFillsService,
   ) {}
 
   @Post('bench/check')
@@ -203,5 +205,22 @@ export class PeopleBenchController {
   @RequireRoles(...STAFFING_ROLES)
   public async listEnrichedBench(): Promise<BenchEnrichedRowDto[]> {
     return this.enrichedBenchService.listBench();
+  }
+
+  @Get(':personId/suggested-positions')
+  @ApiOperation({
+    summary:
+      'Ranked OPEN positions matching a person (inverse of /project-positions/:id/candidates). ' +
+      'Same SuggestFillsService.score — skill + role + availability.',
+  })
+  @ApiOkResponse({ type: PersonSuggestedPositionsResponseDto })
+  @RequireRoles(...STAFFING_ROLES)
+  public async suggestedPositions(
+    @Param('personId', ParseUUIDPipe) personId: string,
+    @Query('limit') limit?: string,
+  ): Promise<PersonSuggestedPositionsResponseDto> {
+    const parsed = limit ? Number.parseInt(limit, 10) : undefined;
+    const take = parsed && Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 50) : undefined;
+    return this.suggestFillsService.suggestForPerson(personId, take);
   }
 }

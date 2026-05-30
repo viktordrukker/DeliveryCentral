@@ -153,3 +153,30 @@ export async function getPositionCandidates(
   const qs = limit ? `?limit=${limit}` : '';
   return httpGet<PositionCandidatesResponse>(`/project-positions/${id}/candidates${qs}`);
 }
+
+// BE-track / Bench suggested-fills — inverse of getPositionCandidates.
+// Given a person, returns ranked OPEN positions they match (same scoring).
+export interface PersonSuggestedPosition {
+  positionId: string;
+  projectId: string;
+  projectName: string;
+  role: string;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+}
+
+export interface PersonSuggestedPositionsResponse {
+  personId: string;
+  candidates: PersonSuggestedPosition[];
+}
+
+export async function fetchPersonSuggestedPositions(
+  personId: string,
+  limit?: number,
+): Promise<PersonSuggestedPositionsResponse> {
+  const qs = limit ? `?limit=${limit}` : '';
+  return httpGet<PersonSuggestedPositionsResponse>(
+    `/people/${personId}/suggested-positions${qs}`,
+  );
+}

@@ -3,6 +3,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { PositionCandidateDto, PositionCandidatesResponseDto } from './contracts/position-candidate.dto';
+import {
+  PersonSuggestedPositionDto,
+  PersonSuggestedPositionsResponseDto,
+} from './contracts/person-suggested-position.dto';
 
 const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
 const DEFAULT_LIMIT = 5;
@@ -112,6 +116,74 @@ export class SuggestFillsService {
     );
 
     return { positionId, requiredSkills, candidates: scored.slice(0, Math.max(1, limit)) };
+  }
+
+  /**
+   * Inverse of {@link suggestForPosition}: given a person, ranked OPEN positions
+   * they match. Reuses the static {@link score} (skill + role + availability) so
+   * a (person, position) pair scores identically from either direction. Backs
+   * the bench inspector's "Suggested fills" list.
+   */
+  public async suggestForPerson(
+    personId: string,
+    limit: number = DEFAULT_LIMIT,
+    _asOf: Date = new Date(),
+  ): Promise<PersonSuggestedPositionsResponseDto> {
+    const person = await this.prisma.person.findUnique({
+      where: { id: personId },
+      select: {
+        id: true,
+        role: true,
+        personSkills: {
+          select: { proficiency: true, skill: { select: { name: true } } },
+        },
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} not found`);
+    }
+
+    const personSkills = new Map<string, number>();
+    for (const ps of person.personSkills) {
+      const name = ps.skill?.name?.trim().toLowerCase();
+      if (!name) continue;
+      personSkills.set(name, Math.max(personSkills.get(name) ?? 0, ps.proficiency));
+    }
+
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: 'OPEN' },
+      select: {
+        id: true,
+        projectId: true,
+        role: true,
+        skills: true,
+        project: { select: { name: true } },
+      },
+      take: 1000,
+    });
+
+    const scored: PersonSuggestedPositionDto[] = positions.map((pos) => {
+      const required = pos.skills ?? [];
+      const s = SuggestFillsService.score(required, pos.role, personSkills, person.role);
+      return {
+        positionId: pos.id,
+        projectId: pos.projectId,
+        projectName: pos.project?.name ?? '',
+        role: pos.role,
+        matchScore: s.matchScore,
+        matchedSkills: s.matchedSkills,
+        missingSkills: s.missingSkills,
+      };
+    });
+
+    scored.sort(
+      (a, b) =>
+        b.matchScore - a.matchScore ||
+        b.matchedSkills.length - a.matchedSkills.length ||
+        a.role.localeCompare(b.role),
+    );
+
+    return { personId, candidates: scored.slice(0, Math.max(1, limit)) };
   }
 
   /**
