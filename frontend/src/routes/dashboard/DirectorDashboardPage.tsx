@@ -38,7 +38,7 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { useDirectorDashboard } from '@/features/dashboard/useDirectorDashboard';
 import { exportToXlsx } from '@/lib/export';
-import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool } from '@/lib/api/portfolio-dashboard';
+import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, type PortfolioFinanceSummary, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool, fetchPortfolioFinance } from '@/lib/api/portfolio-dashboard';
 import { type DirectorSlaSummary, fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealthBatch, type ProjectHealthDto } from '@/lib/api/project-health';
@@ -78,6 +78,23 @@ export function DirectorDashboardPage(): JSX.Element {
   const [utilView, setUtilView] = useState<'chart' | 'table'>('chart');
   const [poolView, setPoolView] = useState<'chart' | 'table'>('table');
   const [healthView, setHealthView] = useState<'chart' | 'table'>('chart');
+  // BE-track / Director finance band (dsRefresh-gated).
+  const [financeSummary, setFinanceSummary] = useState<PortfolioFinanceSummary | null>(null);
+
+  useEffect(() => {
+    if (!isFeatureEnabled('dsRefresh')) return;
+    let active = true;
+    void fetchPortfolioFinance()
+      .then((s) => {
+        if (active) setFinanceSummary(s);
+      })
+      .catch(() => {
+        if (active) setFinanceSummary(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Refetch heatmap when period changes
   useEffect(() => {
@@ -215,6 +232,88 @@ export function DirectorDashboardPage(): JSX.Element {
 
           {/* Phase B3 — "What needs you now" anomaly rail (DS/page-director.jsx). */}
           {isFeatureEnabled('dsRefresh') ? <DirectorAnomalyRail /> : null}
+
+          {/* BE-track — portfolio finance band (totalBudget / actualCost /
+              earnedValue + CPI + over-budget count). dsRefresh-gated. */}
+          {isFeatureEnabled('dsRefresh') && financeSummary ? (
+            <SectionCard title={`Portfolio finance · FY ${financeSummary.fiscalYear}`} collapsible>
+              <div
+                className="kpi-strip"
+                data-testid="director-finance-band"
+                style={{ marginTop: 'var(--space-2)' }}
+              >
+                <div
+                  className="kpi-strip__item"
+                  style={{ borderLeft: '3px solid var(--color-status-info)' }}
+                >
+                  <span className="kpi-strip__value">
+                    {financeSummary.totalBudget.toLocaleString()}
+                  </span>
+                  <span className="kpi-strip__label">
+                    Total budget · {financeSummary.projectCount} projects
+                  </span>
+                </div>
+                <div
+                  className="kpi-strip__item"
+                  style={{
+                    borderLeft: `3px solid ${
+                      financeSummary.totalActualCost > financeSummary.totalBudget
+                        ? 'var(--color-status-danger)'
+                        : 'var(--color-status-active)'
+                    }`,
+                  }}
+                >
+                  <span className="kpi-strip__value">
+                    {financeSummary.totalActualCost.toLocaleString()}
+                  </span>
+                  <span className="kpi-strip__label">Actual cost YTD</span>
+                </div>
+                <div
+                  className="kpi-strip__item"
+                  style={{ borderLeft: '3px solid var(--color-accent)' }}
+                >
+                  <span className="kpi-strip__value">
+                    {financeSummary.totalEarnedValue.toLocaleString()}
+                  </span>
+                  <span className="kpi-strip__label">Earned value</span>
+                </div>
+                <div
+                  className="kpi-strip__item"
+                  style={{
+                    borderLeft: `3px solid ${
+                      financeSummary.cpi >= 1
+                        ? 'var(--color-status-active)'
+                        : financeSummary.cpi >= 0.9
+                          ? 'var(--color-status-warning)'
+                          : 'var(--color-status-danger)'
+                    }`,
+                  }}
+                >
+                  <span className="kpi-strip__value">
+                    {financeSummary.cpi.toFixed(2)}
+                  </span>
+                  <span className="kpi-strip__label">
+                    CPI · {financeSummary.cpi >= 1 ? 'on/under' : 'over'} plan
+                  </span>
+                </div>
+                <div
+                  className="kpi-strip__item"
+                  style={{
+                    borderLeft: `3px solid ${
+                      financeSummary.overBudgetProjectCount === 0
+                        ? 'var(--color-status-active)'
+                        : 'var(--color-status-warning)'
+                    }`,
+                  }}
+                >
+                  <span className="kpi-strip__value">
+                    {financeSummary.overBudgetProjectCount}
+                  </span>
+                  <span className="kpi-strip__label">Over budget</span>
+                </div>
+              </div>
+            </SectionCard>
+          ) : null}
 
           <PendingApprovalsCard />
 
