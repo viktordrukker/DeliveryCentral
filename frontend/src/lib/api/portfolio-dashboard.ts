@@ -65,3 +65,19 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummaryResponse>
 export async function fetchAvailablePool(): Promise<AvailablePoolPerson[]> {
   return httpGet<AvailablePoolPerson[]>('/dashboard/portfolio/available-pool');
 }
+
+// BE-track / Director finance band — portfolio rollup over ProjectBudget rows.
+export interface PortfolioFinanceSummary {
+  fiscalYear: number;
+  projectCount: number;
+  totalBudget: number;
+  totalActualCost: number;
+  totalEarnedValue: number;
+  cpi: number;
+  overBudgetProjectCount: number;
+}
+
+export async function fetchPortfolioFinance(fiscalYear?: number): Promise<PortfolioFinanceSummary> {
+  const qs = fiscalYear ? `?fiscalYear=${fiscalYear}` : '';
+  return httpGet<PortfolioFinanceSummary>(`/dashboards/director/finance${qs}`);
+}

@@ -25,6 +25,7 @@ import { ResourceManagerDashboardQueryService } from './application/resource-man
 import { RoleDashboardQueryService } from './application/role-dashboard-query.service';
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
 import { DirectorAnomalyDetectionService } from './application/director-anomaly-detection.service';
+import { PortfolioFinanceSummaryService } from './application/portfolio-finance-summary.service';
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
@@ -64,6 +65,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     {
       provide: DirectorAnomalyDetectionService,
       useFactory: (prisma: PrismaService) => new DirectorAnomalyDetectionService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: PortfolioFinanceSummaryService,
+      useFactory: (prisma: PrismaService) => new PortfolioFinanceSummaryService(prisma),
       inject: [PrismaService],
     },
     MeHomeService,
