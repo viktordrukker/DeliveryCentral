@@ -14,7 +14,10 @@ describe('V2-A.8 — EmployeeDirectoryPage 3-tab shell', () => {
   it('declares Directory / Bench / HR Queue as the canvas 3-tab list', () => {
     expect(src).toMatch(/{ id: 'directory', label: 'Directory' }/);
     expect(src).toMatch(/{ id: 'bench', label: 'Bench' }/);
-    expect(src).toMatch(/{ id: 'cases', label: 'HR Queue' }/);
+    // V2-B.17 — `cases` label is now a ReactNode (optional count badge);
+    // the id is still 'cases' and the human label remains 'HR Queue'.
+    expect(src).toMatch(/id: 'cases'/);
+    expect(src).toMatch(/'HR Queue'/);
   });
 
   it('renders CasesPanel inline when activeView=cases (dsRefresh ON)', () => {
