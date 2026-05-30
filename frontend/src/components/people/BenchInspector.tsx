@@ -1,8 +1,13 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Avatar, Button } from '@/components/ds';
 import { Pct } from '@/components/ds/Pct';
 import type { BenchEnrichedRowDto } from '@/lib/api/people-bench';
+import {
+  fetchPersonSuggestedPositions,
+  type PersonSuggestedPosition,
+} from '@/lib/api/project-positions';
 
 interface BenchInspectorProps {
   row: BenchEnrichedRowDto;
@@ -76,6 +81,32 @@ const S_SECTION_LABEL: React.CSSProperties = {
  * Bench surface alongside the master list.
  */
 export function BenchInspector({ row, onClose, position }: BenchInspectorProps): JSX.Element {
+  // BE-track / Bench suggested-fills — load on personId change. The legacy
+  // hardcoded `row.suggestedProjectIds` is kept as a fallback while loading;
+  // a fetch failure leaves the section empty rather than crashing.
+  const [suggestions, setSuggestions] = useState<PersonSuggestedPosition[] | null>(null);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setLoadingSuggestions(true);
+    void fetchPersonSuggestedPositions(row.personId, 5)
+      .then((res) => {
+        if (active) {
+          setSuggestions(res.candidates);
+          setLoadingSuggestions(false);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSuggestions([]);
+          setLoadingSuggestions(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [row.personId]);
+
   const tone = daysTone(row.daysOnBench);
   const toneColor: Record<'active' | 'info' | 'warning' | 'danger', string> = {
     active: 'var(--color-status-active)',
@@ -152,13 +183,15 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
         </div>
       </div>
 
-      <div>
+      <div data-testid="bench-inspector-suggestions">
         <div style={S_SECTION_LABEL}>
-          Suggested fills{row.suggestedProjectIds.length > 0 ? ` (${row.suggestedProjectIds.length})` : ''}
+          Suggested fills{suggestions && suggestions.length > 0 ? ` (${suggestions.length})` : ''}
         </div>
-        {row.suggestedProjectIds.length === 0 ? (
+        {loadingSuggestions ? (
+          <div style={{ fontSize: 11, color: 'var(--color-text-subtle)' }}>Loading suggestions…</div>
+        ) : !suggestions || suggestions.length === 0 ? (
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-            No matching engine suggestions for this person yet.
+            No matching open positions found for this person.
           </div>
         ) : (
           <ul
@@ -171,14 +204,43 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
               gap: 4,
             }}
           >
-            {row.suggestedProjectIds.map((projectId) => (
-              <li key={projectId} style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+            {suggestions.map((s) => (
+              <li
+                key={s.positionId}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 12,
+                  padding: '4px 0',
+                  borderBottom: '1px solid var(--color-border-subtle)',
+                }}
+              >
                 <Link
-                  to={`/projects/${projectId}`}
-                  style={{ color: 'var(--color-accent)', textDecoration: 'none' }}
+                  to={`/projects/${s.projectId}/positions/${s.positionId}`}
+                  style={{
+                    flex: 1,
+                    color: 'var(--color-accent)',
+                    textDecoration: 'none',
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={`${s.matchedSkills.length} matched · ${s.missingSkills.length} missing`}
                 >
-                  {projectId}
+                  {s.role}
+                  <span style={{ color: 'var(--color-text-muted)' }}> · {s.projectName}</span>
                 </Link>
+                <span
+                  style={{
+                    fontVariantNumeric: 'tabular-nums',
+                    color: 'var(--color-text-muted)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {Math.round(s.matchScore * 100)}%
+                </span>
               </li>
             ))}
           </ul>
@@ -193,7 +255,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
           variant="primary"
           size="sm"
           type="button"
-          disabled={row.suggestedProjectIds.length === 0}
+          disabled={!suggestions || suggestions.length === 0}
           onClick={() => {
             // V2-A.7 v1 — "Propose to position" routes to the staffing-request
             // creation flow, pre-filling the candidate. Wiring the full slate

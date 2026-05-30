@@ -102,3 +102,97 @@ describe('SuggestFillsService.suggestForPosition', () => {
     expect(res.candidates).toEqual([]);
   });
 });
+
+interface FakePersonRow {
+  id: string;
+  role: string | null;
+  personSkills: FakePersonSkill[];
+}
+interface FakeOpenPosition {
+  id: string;
+  projectId: string;
+  role: string;
+  skills: string[];
+  project: { name: string };
+}
+
+function buildPersonStub(seed: {
+  person?: FakePersonRow | null;
+  openPositions?: FakeOpenPosition[];
+}): PrismaService {
+  const person = {
+    findUnique: async (_q: unknown): Promise<FakePersonRow | null> => seed.person ?? null,
+  };
+  const projectPosition = {
+    findMany: async (_q: unknown): Promise<FakeOpenPosition[]> => seed.openPositions ?? [],
+  };
+  return { person, projectPosition } as unknown as PrismaService;
+}
+
+describe('SuggestFillsService.suggestForPerson', () => {
+  const ada: FakePersonRow = {
+    id: 'ada',
+    role: 'Engineer',
+    personSkills: [skill('React', 5), skill('Node', 3)],
+  };
+
+  it('throws NotFound when the person does not exist', async () => {
+    const svc = new SuggestFillsService(buildPersonStub({ person: null }));
+    await expect(svc.suggestForPerson('missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('ranks open positions by score and respects the limit', async () => {
+    const svc = new SuggestFillsService(
+      buildPersonStub({
+        person: ada,
+        openPositions: [
+          // perfect role + 2/2 skills → highest score
+          { id: 'p-perfect', projectId: 'proj-a', role: 'Engineer', skills: ['React', 'Node'], project: { name: 'Apollo' } },
+          // role match + 1/2 skills → lower
+          { id: 'p-partial', projectId: 'proj-b', role: 'Engineer', skills: ['React', 'Go'], project: { name: 'Atlas' } },
+          // role mismatch → much lower
+          { id: 'p-wrongrole', projectId: 'proj-c', role: 'PM', skills: ['React'], project: { name: 'Orion' } },
+        ],
+      }),
+    );
+    const res = await svc.suggestForPerson('ada', 2);
+    expect(res.personId).toBe('ada');
+    expect(res.candidates).toHaveLength(2);
+    expect(res.candidates[0]!.positionId).toBe('p-perfect');
+    expect(res.candidates[0]!.projectName).toBe('Apollo');
+    expect(res.candidates[1]!.positionId).toBe('p-partial');
+    expect(res.candidates[0]!.matchScore).toBeGreaterThan(res.candidates[1]!.matchScore);
+  });
+
+  it('returns empty candidates when no open positions exist', async () => {
+    const svc = new SuggestFillsService(buildPersonStub({ person: ada, openPositions: [] }));
+    const res = await svc.suggestForPerson('ada');
+    expect(res.candidates).toEqual([]);
+  });
+
+  it('uses identical scoring to suggestForPosition for the same (person, position) pair', async () => {
+    // Same skills + roles on both sides; score must match exactly.
+    const personId = 'ada';
+    const positionId = 'pos-same';
+    const sharedSkills = ['React', 'Node'];
+
+    const fromPositionSide = await new SuggestFillsService(
+      buildStub({
+        position: { id: positionId, role: 'Engineer', skills: sharedSkills },
+        people: [{ id: personId, displayName: 'Ada', role: 'Engineer', grade: 'L5', personSkills: ada.personSkills }],
+        activeFills: [],
+      }),
+    ).suggestForPosition(positionId);
+
+    const fromPersonSide = await new SuggestFillsService(
+      buildPersonStub({
+        person: ada,
+        openPositions: [
+          { id: positionId, projectId: 'p1', role: 'Engineer', skills: sharedSkills, project: { name: 'Apollo' } },
+        ],
+      }),
+    ).suggestForPerson(personId);
+
+    expect(fromPositionSide.candidates[0]!.matchScore).toBe(fromPersonSide.candidates[0]!.matchScore);
+  });
+});
