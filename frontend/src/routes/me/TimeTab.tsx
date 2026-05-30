@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { SectionCard } from '@/components/common/SectionCard';
-import { Timeline, type TimelineSegment } from '@/components/ds';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { Button, Table, Timeline, type Column, type TimelineSegment } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { fetchMonthlyTimesheet, type MonthlyTimesheetResponse } from '@/lib/api/my-time';
 import { MyTimePage } from '@/routes/my-time/MyTimePage';
+
+type GridRow =
+  | { kind: 'project'; projectId: string; code: string; name: string; days: Map<string, number> }
+  | { kind: 'total'; days: number[] };
 
 /**
  * /me?tab=time — week-timeline strip above the existing monthly time-entry surface.
@@ -105,40 +111,228 @@ export function TimeTab(): JSX.Element {
   })();
   const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
 
+  // V2 weekly grid (dsRefresh ON): project × day matrix sourced from the same
+  // MonthlyTimesheetResponse the timeline strip already consumes. Read-only v1
+  // — editable cells + submit-week defer to a follow-up.
+  const dsRefresh = isFeatureEnabled('dsRefresh');
+  const sortedWeeks = useMemo(
+    () => (data ? [...data.weeks].sort((a, b) => a.weekStart.localeCompare(b.weekStart)) : []),
+    [data],
+  );
+  const defaultWeekIdx = useMemo(() => {
+    if (!sortedWeeks.length) return 0;
+    for (let i = 0; i < sortedWeeks.length; i++) {
+      const start = new Date(sortedWeeks[i].weekStart);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      if (today >= start && today <= end) return i;
+    }
+    return Math.max(0, sortedWeeks.length - 1);
+  }, [sortedWeeks, today]);
+  const [weekIdx, setWeekIdx] = useState(0);
+  useEffect(() => {
+    setWeekIdx(defaultWeekIdx);
+  }, [defaultWeekIdx]);
+  const selectedWeek = sortedWeeks[weekIdx];
+  const weekDays = useMemo(() => {
+    if (!selectedWeek) return [] as Date[];
+    const start = new Date(selectedWeek.weekStart);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [selectedWeek]);
+  const projectRows = useMemo(() => {
+    if (!data || !selectedWeek || weekDays.length === 0) {
+      return [] as Array<{ projectId: string; code: string; name: string; days: Map<string, number> }>;
+    }
+    const startKey = weekDays[0].toISOString().slice(0, 10);
+    const endKey = weekDays[6].toISOString().slice(0, 10);
+    const labels = new Map<string, { code: string; name: string }>();
+    for (const a of data.assignmentRows) {
+      labels.set(a.projectId, { code: a.projectCode, name: a.projectName });
+    }
+    const rows = new Map<string, Map<string, number>>();
+    for (const e of data.entries) {
+      const ek = e.date.slice(0, 10);
+      if (ek < startKey || ek > endKey) continue;
+      if (!labels.has(e.projectId)) {
+        labels.set(e.projectId, { code: e.projectCode, name: e.projectName });
+      }
+      const r = rows.get(e.projectId) ?? new Map<string, number>();
+      r.set(ek, (r.get(ek) ?? 0) + e.hours);
+      rows.set(e.projectId, r);
+    }
+    return Array.from(rows.entries())
+      .map(([projectId, days]) => {
+        const lbl = labels.get(projectId) ?? { code: '', name: projectId };
+        return { projectId, code: lbl.code, name: lbl.name, days };
+      })
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [data, selectedWeek, weekDays]);
+  const dailyTotals = useMemo(() => {
+    const totals = new Array(7).fill(0) as number[];
+    if (!projectRows.length || weekDays.length === 0) return totals;
+    for (let i = 0; i < 7; i++) {
+      const k = weekDays[i].toISOString().slice(0, 10);
+      for (const row of projectRows) {
+        totals[i] += row.days.get(k) ?? 0;
+      }
+    }
+    return totals;
+  }, [projectRows, weekDays]);
+  const weekStatus = selectedWeek?.status ?? 'DRAFT';
+  const weekStatusTone: 'active' | 'info' | 'neutral' | 'warning' =
+    weekStatus === 'APPROVED' ? 'active' : weekStatus === 'SUBMITTED' ? 'info' : weekStatus === 'REJECTED' ? 'warning' : 'neutral';
+
+  const gridColumns: Column<GridRow>[] = useMemo(() => {
+    const cols: Column<GridRow>[] = [
+      {
+        key: 'project',
+        title: 'Project',
+        align: 'left',
+        sortable: false,
+        filter: false,
+        render: (row) =>
+          row.kind === 'total' ? (
+            'Daily total'
+          ) : (
+            <span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{row.code}</span>{' '}
+              <span>{row.name}</span>
+            </span>
+          ),
+      },
+    ];
+    weekDays.forEach((d, idx) => {
+      const k = d.toISOString().slice(0, 10);
+      cols.push({
+        key: `day-${k}`,
+        title: (
+          <span>
+            {d.toLocaleDateString('en-US', { weekday: 'short' })}
+            <br />
+            <span style={{ fontSize: 11, color: 'var(--color-text-subtle)', fontWeight: 400 }}>{d.getDate()}</span>
+          </span>
+        ),
+        align: 'right',
+        width: 56,
+        sortable: false,
+        filter: false,
+        render: (row) => {
+          const h = row.kind === 'total' ? row.days[idx] : row.days.get(k) ?? 0;
+          return (
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: h > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)' }}>
+              {h > 0 ? h.toFixed(1) : '—'}
+            </span>
+          );
+        },
+      });
+    });
+    return cols;
+  }, [weekDays]);
+
+  const gridRows: GridRow[] = useMemo(() => {
+    if (projectRows.length === 0) return [];
+    const projects: GridRow[] = projectRows.map((r) => ({
+      kind: 'project',
+      projectId: r.projectId,
+      code: r.code,
+      name: r.name,
+      days: r.days,
+    }));
+    const total: GridRow = { kind: 'total', days: dailyTotals };
+    return [...projects, total];
+  }, [projectRows, dailyTotals]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      <SectionCard title={`This week · ${formatRange(monday, sunday)}`}>
-        {weekSegments.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
-            No hours logged this week yet. The full monthly grid is below — start logging there.
-          </p>
-        ) : (
-          <>
-            <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-3)', flexWrap: 'wrap', fontSize: 12 }}>
-              <KpiInline label="Reported" value={`${weeklyTotals.reported.toFixed(1)}h`} />
-              <KpiInline label="Expected" value={`${weeklyTotals.expected}h`} />
-              <KpiInline
-                label="Variance"
-                value={`${weeklyTotals.variance >= 0 ? '+' : ''}${weeklyTotals.variance.toFixed(1)}h`}
-                tone={weeklyTotals.variance < 0 ? 'warning' : weeklyTotals.variance > 4 ? 'info' : 'active'}
-              />
-            </div>
-            <div style={{ height: 140 }}>
-              <Timeline
-                segments={weekSegments}
-                colorMode="lifecycle"
-                variant="stacked"
-                size="md"
-                rangeStart={monday.toISOString().slice(0, 10)}
-                rangeEnd={sunday.toISOString().slice(0, 10)}
-                showToday
-                ariaLabel="This week's logged hours by project"
-                onSegmentClick={(seg) => seg.href && (window.location.href = seg.href)}
-              />
-            </div>
-          </>
-        )}
-      </SectionCard>
+      {dsRefresh && weekDays.length === 7 ? (
+        <SectionCard
+          title={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <span>Weekly grid · {formatRange(weekDays[0], weekDays[6])}</span>
+              <StatusBadge tone={weekStatusTone} label={weekStatus} variant="chip" size="small" />
+            </span>
+          }
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              disabled={weekIdx <= 0}
+              onClick={() => setWeekIdx((v) => Math.max(0, v - 1))}
+            >
+              ← Prev week
+            </Button>
+            <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+              Week {weekIdx + 1} of {sortedWeeks.length}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              disabled={weekIdx >= sortedWeeks.length - 1}
+              onClick={() => setWeekIdx((v) => Math.min(sortedWeeks.length - 1, v + 1))}
+            >
+              Next week →
+            </Button>
+          </div>
+          <div data-testid="me-time-weekly-grid">
+            <Table<GridRow>
+              variant="compact"
+              columns={gridColumns}
+              rows={gridRows}
+              getRowKey={(row) => (row.kind === 'project' ? row.projectId : 'total')}
+              rowStyle={(row) =>
+                row.kind === 'total'
+                  ? { background: 'var(--color-surface-alt)', fontWeight: 600 }
+                  : undefined
+              }
+              emptyState={
+                <span style={{ color: 'var(--color-text-muted)' }}>
+                  No hours logged for this week. Use the grid below to start logging.
+                </span>
+              }
+            />
+          </div>
+        </SectionCard>
+      ) : (
+        <SectionCard title={`This week · ${formatRange(monday, sunday)}`}>
+          {weekSegments.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
+              No hours logged this week yet. The full monthly grid is below — start logging there.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-3)', flexWrap: 'wrap', fontSize: 12 }}>
+                <KpiInline label="Reported" value={`${weeklyTotals.reported.toFixed(1)}h`} />
+                <KpiInline label="Expected" value={`${weeklyTotals.expected}h`} />
+                <KpiInline
+                  label="Variance"
+                  value={`${weeklyTotals.variance >= 0 ? '+' : ''}${weeklyTotals.variance.toFixed(1)}h`}
+                  tone={weeklyTotals.variance < 0 ? 'warning' : weeklyTotals.variance > 4 ? 'info' : 'active'}
+                />
+              </div>
+              <div style={{ height: 140 }}>
+                <Timeline
+                  segments={weekSegments}
+                  colorMode="lifecycle"
+                  variant="stacked"
+                  size="md"
+                  rangeStart={monday.toISOString().slice(0, 10)}
+                  rangeEnd={sunday.toISOString().slice(0, 10)}
+                  showToday
+                  ariaLabel="This week's logged hours by project"
+                  onSegmentClick={(seg) => seg.href && (window.location.href = seg.href)}
+                />
+              </div>
+            </>
+          )}
+        </SectionCard>
+      )}
 
       <MyTimePage />
     </div>
