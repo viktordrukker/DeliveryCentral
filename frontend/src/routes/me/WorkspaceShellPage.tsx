@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
@@ -6,6 +6,9 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { Button, Tabs } from '@/components/ds';
+import { fetchInbox } from '@/lib/api/inbox';
+import { fetchMyLeaveRequests } from '@/lib/api/leaveRequests';
+import { fetchAssignments } from '@/lib/api/assignments';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
@@ -83,6 +86,36 @@ export function WorkspaceShellPage(): JSX.Element {
     setParams(next, { replace: false });
   };
 
+  // V2-B.2 — per-tab live counts: unread Inbox / pending Leave / active
+  // Projects. Counts come from the same endpoints the sub-tabs already use;
+  // the duplicate fetch is one-time on shell mount and gated by a personId.
+  const [inboxCount, setInboxCount] = useState<number | null>(null);
+  const [leaveCount, setLeaveCount] = useState<number | null>(null);
+  const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!principal?.personId) return;
+    const personId = principal.personId;
+    let active = true;
+    Promise.all([
+      fetchInbox({ limit: 100 }).catch(() => null),
+      fetchMyLeaveRequests().catch(() => null),
+      fetchAssignments({ personId, pageSize: 200 }).catch(() => null),
+    ]).then(([inbox, leave, assignments]) => {
+      if (!active) return;
+      if (inbox) setInboxCount(inbox.filter((n) => !n.readAt).length);
+      if (leave) setLeaveCount(leave.filter((l) => l.status === 'PENDING').length);
+      if (assignments) {
+        const now = Date.now();
+        setProjectsCount(
+          assignments.items.filter((a) => !a.endDate || new Date(a.endDate).getTime() >= now).length,
+        );
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [principal?.personId]);
+
   if (!principal) {
     return (
       <PageContainer testId="me-workspace-loading">
@@ -96,6 +129,25 @@ export function WorkspaceShellPage(): JSX.Element {
     .map((r) => r.replace(/_/g, ' '))
     .map((r) => r.charAt(0).toUpperCase() + r.slice(1))
     .join(' · ');
+
+  // V2-B.2 — tab labels with live counts where the data is genuinely useful.
+  const countBadge = (n: number): ReactNode => (
+    <span style={{ marginLeft: 6, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>
+      ({n})
+    </span>
+  );
+  const labeledTabs: { id: WorkspaceTab; label: ReactNode }[] = TABS.map((t) => {
+    if (t.id === 'inbox' && inboxCount != null && inboxCount > 0) {
+      return { id: t.id, label: <>Inbox {countBadge(inboxCount)}</> };
+    }
+    if (t.id === 'leave' && leaveCount != null && leaveCount > 0) {
+      return { id: t.id, label: <>Leave {countBadge(leaveCount)}</> };
+    }
+    if (t.id === 'projects' && projectsCount != null && projectsCount > 0) {
+      return { id: t.id, label: <>Projects {countBadge(projectsCount)}</> };
+    }
+    return t;
+  });
 
   return (
     <PageContainer testId="me-workspace">
@@ -116,7 +168,7 @@ export function WorkspaceShellPage(): JSX.Element {
         }
       />
       <Tabs
-        tabs={TABS}
+        tabs={labeledTabs}
         value={activeTab}
         onValueChange={(id) => selectTab(id as WorkspaceTab)}
         ariaLabel="Workspace tabs"

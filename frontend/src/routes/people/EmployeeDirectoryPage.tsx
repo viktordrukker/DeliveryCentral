@@ -25,6 +25,7 @@ import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
 import { fetchEnrichedBench } from '@/lib/api/people-bench';
+import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
 
 const defaultPageSize = 25;
 
@@ -40,6 +41,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
   // V2-A.12 — header count badge for people currently on the bench.
   const [benchCount, setBenchCount] = useState<number | null>(null);
+  // V2-B.17 — HR-Queue tab count (the directory header already shows bench; do
+  // not duplicate the bench number on the tab to avoid double-counting).
+  const [hrQueueCount, setHrQueueCount] = useState<number | null>(null);
   const { setActions } = useTitleBarActions();
 
   useEffect(() => {
@@ -55,6 +59,22 @@ export function EmployeeDirectoryPage(): JSX.Element {
       })
       .catch(() => {
         if (active) setBenchCount(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dsRefreshEnabled]);
+
+  // V2-B.17 — HR-Queue tab count via sidebar-counts.
+  useEffect(() => {
+    if (!dsRefreshEnabled) return;
+    let active = true;
+    void fetchSidebarCounts()
+      .then((c) => {
+        if (active) setHrQueueCount(c.hrQueue);
+      })
+      .catch(() => {
+        if (active) setHrQueueCount(null);
       });
     return () => {
       active = false;
@@ -111,10 +131,26 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2-A.8 — canvas 3-tab shell: Directory / Bench / HR Queue. Each pane
   // mounts its own data-fetching panel; the parent owns the tab selection
   // state via the `view` URL filter param so deep-links survive reloads.
-  const peopleTabs = [
+  // V2-B.17 — HR-Queue tab carries a live count badge from sidebar-counts.
+  // Bench tab count is intentionally omitted: the header already shows
+  // "N on bench" (A12) and duplicating it on the tab would double-count.
+  const peopleTabs: { id: string; label: import('react').ReactNode }[] = [
     { id: 'directory', label: 'Directory' },
     { id: 'bench', label: 'Bench' },
-    { id: 'cases', label: 'HR Queue' },
+    {
+      id: 'cases',
+      label:
+        hrQueueCount != null && hrQueueCount > 0 ? (
+          <>
+            HR Queue{' '}
+            <span style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>
+              ({hrQueueCount})
+            </span>
+          </>
+        ) : (
+          'HR Queue'
+        ),
+    },
   ];
   const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
 
