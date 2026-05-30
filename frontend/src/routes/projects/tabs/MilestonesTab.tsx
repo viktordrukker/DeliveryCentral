@@ -12,6 +12,7 @@ import { InteractiveGantt } from '@/components/projects/InteractiveGantt';
 import { MilestoneGanttSimple } from '@/components/projects/MilestoneGanttSimple';
 import { ganttEnabledFor, type ProjectShape } from '@/features/project-pulse/shape-defaults';
 import { formatDate } from '@/lib/format-date';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import {
   type MilestoneStatus,
   type ProjectMilestoneDto,
@@ -223,6 +224,70 @@ export function MilestonesTab({ projectId, shape, openCreateSignal }: Milestones
         open={deleteTarget !== null}
         title="Delete Milestone"
       />
+
+      {/* V2-B.6 — Plan gates segmented strip (dsRefresh-gated; shared with the
+          legacy milestones tab, which stays pixel-identical when flag is off). */}
+      {isFeatureEnabled('dsRefresh') && milestones.length > 0 ? (
+        <div
+          data-testid="plan-gates-strip"
+          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: 'var(--color-text-muted)',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Plan gates
+            </h3>
+            <span className="compact muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {milestones.filter((m) => m.status === 'HIT').length} / {milestones.length} hit
+            </span>
+          </div>
+          <div
+            role="img"
+            aria-label={`Plan gates: ${milestones.filter((m) => m.status === 'HIT').length} of ${milestones.length} hit`}
+            style={{
+              display: 'flex',
+              height: 16,
+              borderRadius: 8,
+              overflow: 'hidden',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface-alt)',
+            }}
+          >
+            {[...milestones]
+              .sort((a, b) => (a.plannedDate ?? '').localeCompare(b.plannedDate ?? ''))
+              .map((m) => {
+                const tone = statusTone(m.status);
+                const bg =
+                  tone === 'active'
+                    ? 'var(--color-status-active)'
+                    : tone === 'warning'
+                      ? 'var(--color-status-warning)'
+                      : tone === 'danger'
+                        ? 'var(--color-status-danger)'
+                        : 'var(--color-border-strong)';
+                return (
+                  <span
+                    key={m.id}
+                    title={`${m.name} — ${m.status.replace('_', ' ').toLowerCase()} (planned ${m.plannedDate ?? '—'})`}
+                    style={{
+                      flex: 1,
+                      background: bg,
+                      borderRight: '1px solid var(--color-surface)',
+                    }}
+                  />
+                );
+              })}
+          </div>
+        </div>
+      ) : null}
 
       <SectionCard collapsible={milestones.length === 0} defaultCollapsed={milestones.length === 0} title="Timeline">
         {ganttEnabledFor(shape) ? (
