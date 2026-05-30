@@ -3,14 +3,14 @@ import { Prisma } from '@prisma/client';
 import { PortfolioFinanceSummaryService } from '@src/modules/dashboard/application/portfolio-finance-summary.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-type FakeBudget = {
+interface FakeBudget {
   projectId: string;
   capexBudget: Prisma.Decimal | number;
   opexBudget: Prisma.Decimal | number;
   vendorBudget?: Prisma.Decimal | number | null;
   actualCost?: Prisma.Decimal | number | null;
   earnedValue?: Prisma.Decimal | number | null;
-};
+}
 
 function buildStub(rows: FakeBudget[]): PrismaService {
   const projectBudget = { findMany: async (_q: unknown) => rows };
