@@ -28,11 +28,15 @@ vi.mock('@/lib/api/resource-pools', () => ({
 // (flag-off) path. The bench effect only fires under dsRefresh; stub it.
 const isFeatureEnabledMock = vi.fn();
 const fetchEnrichedBenchMock = vi.fn();
+const fetchSidebarCountsMock = vi.fn();
 vi.mock('@/lib/feature-flags', () => ({
   isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
 }));
 vi.mock('@/lib/api/people-bench', () => ({
   fetchEnrichedBench: (...args: unknown[]) => fetchEnrichedBenchMock(...args),
+}));
+vi.mock('@/lib/api/sidebar-counts', () => ({
+  fetchSidebarCounts: (...args: unknown[]) => fetchSidebarCountsMock(...args),
 }));
 
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
@@ -45,6 +49,7 @@ describe('EmployeeDirectoryPage', () => {
     mockedFetchResourcePools.mockResolvedValue({ items: [] });
     isFeatureEnabledMock.mockReturnValue(false);
     fetchEnrichedBenchMock.mockResolvedValue([]);
+    fetchSidebarCountsMock.mockResolvedValue({ projects: 0, approvals: 0, bench: 0, hrQueue: 0 });
   });
 
   it('shows loading state', () => {
@@ -129,6 +134,18 @@ describe('EmployeeDirectoryPage', () => {
     expect(screen.getByTestId('directory-grade-filter')).toBeInTheDocument();
     expect(screen.getByTestId('directory-groupby')).toBeInTheDocument();
     expect(screen.getByTestId('directory-layout-toggle')).toBeInTheDocument();
+  });
+
+  it('B17: HR-Queue tab carries a live count badge from sidebar-counts (no bench-tab duplicate)', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    fetchSidebarCountsMock.mockResolvedValue({ projects: 0, approvals: 0, bench: 0, hrQueue: 5 });
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({ items: [], total: 0 }),
+    );
+    renderWithRouter();
+    // HR Queue tab gets a "(5)" count; the bench tab does NOT (header carries it).
+    await waitFor(() => expect(screen.getByTestId('tab-cases').textContent).toMatch(/HR Queue.*\(5\)/));
+    expect(screen.getByTestId('tab-bench').textContent).not.toMatch(/\(\d+\)/);
   });
 
   it('B18: hides the new filter controls when dsRefresh is off (legacy unchanged)', async () => {
