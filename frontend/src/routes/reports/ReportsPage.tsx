@@ -4,6 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { Tabs } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
 import { WorkEvidencePage } from '@/routes/work-evidence/WorkEvidencePage';
@@ -78,6 +80,12 @@ export function ReportsPage(): JSX.Element {
   const activeTab: ReportsSection = isValidSection(sectionParam) ? sectionParam : 'exceptions';
   const activeMeta = TABS.find((t) => t.id === activeTab) ?? TABS[0];
 
+  // V2 Scope §4 item 15 — when dsRefresh is on, the umbrella shell renders
+  // the DS Tabs atom above the embedded sub-page instead of using the
+  // PageHeader's built-in TabBar. Both paths drive the same ?section= URL
+  // param so deep links + bookmarks remain stable.
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+
   const onTabChange = useCallback(
     (id: string) => {
       setSearchParams(
@@ -94,14 +102,34 @@ export function ReportsPage(): JSX.Element {
 
   return (
     <PageContainer testId="reports-page">
-      <PageHeader
-        eyebrow="Workspace"
-        title="Reports"
-        subtitle={activeMeta.description}
-        tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-      />
+      {dsRefreshEnabled ? (
+        <PageHeader
+          eyebrow="Workspace"
+          title="Reports"
+          subtitle={activeMeta.description}
+        />
+      ) : (
+        <PageHeader
+          eyebrow="Workspace"
+          title="Reports"
+          subtitle={activeMeta.description}
+          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+        />
+      )}
+
+      {dsRefreshEnabled ? (
+        <Tabs
+          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          value={activeTab}
+          onValueChange={onTabChange}
+          ariaLabel="Reports sections"
+          idPrefix="reports-tab"
+          testId="reports-ds-tabs"
+          style={{ marginBottom: 'var(--space-3)' }}
+        />
+      ) : null}
 
       <div data-testid={`reports-tab-${activeTab}`} style={{ marginTop: 12 }}>
         <Suspense fallback={<LoadingState variant="skeleton" skeletonType="page" />}>
