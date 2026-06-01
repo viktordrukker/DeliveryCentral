@@ -168,7 +168,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Managed Projects</span>
             </Link>
 
-            <Link className="kpi-strip__item" data-jtbd="How many people are working on my projects right now?" to="/assignments?status=active" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+            <Link className="kpi-strip__item" data-jtbd="How many people are working on my projects right now?" to="/staffing-desk?view=board&status=active" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to your projects with active status." arrow="left" />
               <span className="kpi-strip__value">{d.staffingSummary.activeAssignmentCount}</span>
               <span className="kpi-strip__label">Active Assignments</span>
@@ -206,7 +206,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               className="kpi-strip__item"
               data-jtbd="Which submitted timesheets need my approval?"
               data-testid="pm-kpi-timesheet-approvals"
-              to="/timesheets/approval"
+              to="/approvals?source=timesheet"
               style={{ borderLeft: `3px solid ${pendingTimesheetCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
             >
               <TipBalloon tip="Submitted timesheets from your team awaiting your approval." arrow="left" />
