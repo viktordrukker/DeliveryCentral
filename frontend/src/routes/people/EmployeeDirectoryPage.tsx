@@ -24,6 +24,7 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
+import { LeaveApprovalsPanel } from '@/components/people/LeaveApprovalsPanel';
 import { PersonDirectoryInspector } from '@/components/people/PersonDirectoryInspector';
 import { fetchEnrichedBench } from '@/lib/api/people-bench';
 import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
@@ -156,6 +157,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
           'HR Queue'
         ),
     },
+    { id: 'leave-approvals', label: 'Leave Approvals' },
   ];
   const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
 
@@ -226,6 +228,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
       ) : null}
       {dsRefreshEnabled && activeView === 'bench' ? <BenchEnrichedPanel /> : null}
       {dsRefreshEnabled && activeView === 'cases' ? <CasesPanel /> : null}
+      {dsRefreshEnabled && activeView === 'leave-approvals' ? <LeaveApprovalsPanel /> : null}
       {dsRefreshEnabled && activeView !== 'directory' ? null : (
       <>
       <FilterBar>
