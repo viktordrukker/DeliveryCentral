@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApprovalInspector } from './ApprovalInspector';
 import type { ApprovalQueueItemDto } from '@/lib/api/approvals-unified';
@@ -10,8 +10,23 @@ vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
+
+vi.mock('@/lib/api/approvals-unified', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/approvals-unified')>();
+  return {
+    ...actual,
+    decideApproval: vi.fn(async () => ({
+      approvalId: 'a-1',
+      source: 'budget' as const,
+      decision: 'APPROVED' as const,
+      decidedAt: '2026-06-01T10:00:00Z',
+      decidedByPersonId: 'actor-1',
+    })),
+  };
+});
 
 const baseItem: ApprovalQueueItemDto = {
   id: 'a-1',
@@ -37,7 +52,8 @@ const baseItem: ApprovalQueueItemDto = {
 function renderInspector(
   itemOverrides: Partial<ApprovalQueueItemDto> = {},
   onClose = vi.fn(),
-): { onClose: ReturnType<typeof vi.fn> } {
+  onDecided = vi.fn(),
+): { onClose: ReturnType<typeof vi.fn>; onDecided: ReturnType<typeof vi.fn> } {
   // Meta is replaced wholesale when an override provides it; otherwise the
   // baseItem.meta is reused so callers don't have to repeat the full payload.
   const meta = itemOverrides.meta !== undefined ? itemOverrides.meta : baseItem.meta;
@@ -46,11 +62,24 @@ function renderInspector(
       <ApprovalInspector
         item={{ ...baseItem, ...itemOverrides, meta }}
         onClose={onClose}
+        onDecided={onDecided}
       />
     </MemoryRouter>,
   );
-  return { onClose };
+  return { onClose, onDecided };
 }
+
+beforeEach(async () => {
+  const mod = await import('@/lib/api/approvals-unified');
+  vi.mocked(mod.decideApproval).mockClear();
+  vi.mocked(mod.decideApproval).mockResolvedValue({
+    approvalId: 'a-1',
+    source: 'budget',
+    decision: 'APPROVED',
+    decidedAt: '2026-06-01T10:00:00Z',
+    decidedByPersonId: 'actor-1',
+  });
+});
 
 describe('ApprovalInspector', () => {
   it('renders source label, title, and submitter', () => {
@@ -87,12 +116,27 @@ describe('ApprovalInspector', () => {
   });
 
   it('disables sibling buttons while one is submitting', async () => {
+    // V2 §4 PR-1: decideApproval is now async — hold the promise open so we
+    // can observe the in-flight state before it resolves.
+    const mod = await import('@/lib/api/approvals-unified');
+    let resolveFn: ((v: unknown) => void) | undefined;
+    vi.mocked(mod.decideApproval).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFn = resolve as (v: unknown) => void;
+      }) as ReturnType<typeof mod.decideApproval>,
+    );
     const user = userEvent.setup();
     renderInspector();
     await user.click(screen.getByRole('button', { name: 'Approve' }));
-    // Synchronous re-render: other actions disabled while submitting.
     expect(screen.getByRole('button', { name: 'Escalate' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeDisabled();
+    resolveFn?.({
+      approvalId: 'a-1',
+      source: 'budget',
+      decision: 'APPROVED',
+      decidedAt: '2026-06-01T10:00:00Z',
+      decidedByPersonId: 'actor-1',
+    });
   });
 
   it('fires onClose when the × button is clicked', async () => {
@@ -117,6 +161,65 @@ describe('ApprovalInspector', () => {
   it('handles a missing submitter without crashing', () => {
     renderInspector({ submittedBy: null });
     expect(screen.getByText(/unknown submitter/i)).toBeInTheDocument();
+  });
+
+  describe('V2 §4 PR-1 — decide-approval wiring', () => {
+    it('calls decideApproval with (id, source, APPROVE, { comment }) on Approve click', async () => {
+      const mod = await import('@/lib/api/approvals-unified');
+      const user = userEvent.setup();
+      const { onClose, onDecided } = renderInspector();
+      await user.type(
+        screen.getByPlaceholderText(/Add context for the submitter/i),
+        'Approved with note',
+      );
+      await user.click(screen.getByRole('button', { name: 'Approve' }));
+      await waitFor(() => {
+        expect(mod.decideApproval).toHaveBeenCalledTimes(1);
+      });
+      expect(mod.decideApproval).toHaveBeenCalledWith('a-1', 'budget', 'APPROVE', {
+        comment: 'Approved with note',
+        reason: undefined,
+      });
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(onDecided).toHaveBeenCalledWith('APPROVED');
+    });
+
+    it('passes comment as reason on Reject so budget/activation/case BE checks accept', async () => {
+      const mod = await import('@/lib/api/approvals-unified');
+      vi.mocked(mod.decideApproval).mockResolvedValueOnce({
+        approvalId: 'a-1',
+        source: 'budget',
+        decision: 'REJECTED',
+        decidedAt: '2026-06-01T10:00:00Z',
+        decidedByPersonId: 'actor-1',
+      });
+      const user = userEvent.setup();
+      renderInspector();
+      await user.type(
+        screen.getByPlaceholderText(/Add context for the submitter/i),
+        'Over budget',
+      );
+      await user.click(screen.getByRole('button', { name: 'Reject' }));
+      await waitFor(() => {
+        expect(mod.decideApproval).toHaveBeenCalledWith('a-1', 'budget', 'REJECT', {
+          comment: 'Over budget',
+          reason: 'Over budget',
+        });
+      });
+    });
+
+    it('toasts an error and stays open when decideApproval throws', async () => {
+      const mod = await import('@/lib/api/approvals-unified');
+      vi.mocked(mod.decideApproval).mockRejectedValueOnce(new Error('Boom'));
+      const { toast } = await import('sonner');
+      const user = userEvent.setup();
+      const { onClose } = renderInspector();
+      await user.click(screen.getByRole('button', { name: 'Approve' }));
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalled();
+      });
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 
   describe('V2-A.17 — leave-source detail block', () => {

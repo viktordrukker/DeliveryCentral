@@ -1,11 +1,18 @@
 import { Module } from '@nestjs/common';
 import { AssignmentsModule } from '@src/modules/assignments/assignments.module';
 import { CaseManagementModule } from '@src/modules/case-management/case-management.module';
+import { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
+import { FinancialGovernanceModule } from '@src/modules/financial-governance/financial-governance.module';
+import { DecideBudgetChangeService } from '@src/modules/financial-governance/application/decide-budget-change.service';
+import { LeaveRequestsModule } from '@src/modules/leave-requests/leave-requests.module';
+import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
 import { OrganizationModule } from '@src/modules/organization/organization.module';
 import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
 import { ProjectRegistryModule } from '@src/modules/project-registry/project-registry.module';
+import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
 import { StaffingRequestsModule } from '@src/modules/staffing-requests/staffing-requests.module';
 import { TimesheetsModule } from '@src/modules/timesheets/timesheets.module';
+import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
 import { WorkEvidenceModule } from '@src/modules/work-evidence/work-evidence.module';
 import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
@@ -44,7 +51,7 @@ import { MeHomeController } from './presentation/me-home.controller';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
-  imports: [AssignmentsModule, CaseManagementModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
+  imports: [AssignmentsModule, CaseManagementModule, FinancialGovernanceModule, LeaveRequestsModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
   controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController, MeHomeController, SidebarCountsController],
   providers: [
     {
@@ -54,8 +61,30 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     },
     {
       provide: UnifiedApprovalQueueService,
-      useFactory: (prisma: PrismaService) => new UnifiedApprovalQueueService(prisma),
-      inject: [PrismaService],
+      useFactory: (
+        prisma: PrismaService,
+        leaveRequestsService: LeaveRequestsService,
+        decideBudgetChangeService: DecideBudgetChangeService,
+        decideProjectActivationService: DecideProjectActivationService,
+        approveCaseService: ApproveCaseService,
+        timesheetsService: TimesheetsService,
+      ) =>
+        new UnifiedApprovalQueueService(
+          prisma,
+          leaveRequestsService,
+          decideBudgetChangeService,
+          decideProjectActivationService,
+          approveCaseService,
+          timesheetsService,
+        ),
+      inject: [
+        PrismaService,
+        LeaveRequestsService,
+        DecideBudgetChangeService,
+        DecideProjectActivationService,
+        ApproveCaseService,
+        TimesheetsService,
+      ],
     },
     {
       provide: PersonProfileService,

@@ -1,5 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
+import { DecideBudgetChangeService } from '@src/modules/financial-governance/application/decide-budget-change.service';
+import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
+import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
+import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import {
@@ -8,11 +13,25 @@ import {
   ApprovalQueueSource,
   SlaStage,
 } from './contracts/approval-queue-item.dto';
+import {
+  UnifiedApprovalDecisionResponseDto,
+  UnifiedApprovalDecisionSource,
+} from './contracts/unified-approval-decision.dto';
 
 interface ListArgs {
   sources?: ApprovalQueueSource[];
   page?: number;
   pageSize?: number;
+}
+
+interface DecideArgs {
+  approvalId: string;
+  source: UnifiedApprovalDecisionSource;
+  decision: 'APPROVE' | 'REJECT';
+  actorId: string;
+  actorRoles: string[];
+  comment?: string;
+  reason?: string;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -39,7 +58,135 @@ const HOUR_MS = 60 * 60 * 1000;
  */
 @Injectable()
 export class UnifiedApprovalQueueService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly leaveRequestsService: LeaveRequestsService,
+    private readonly decideBudgetChangeService: DecideBudgetChangeService,
+    private readonly decideProjectActivationService: DecideProjectActivationService,
+    private readonly approveCaseService: ApproveCaseService,
+    private readonly timesheetsService: TimesheetsService,
+  ) {}
+
+  /**
+   * V2 Scope §4 — unified decision dispatcher. Routes by `source` to the
+   * existing per-source approval services. Each downstream service owns its
+   * own validation, audit-logging, and actor-threading; this service only
+   * normalises the response shape.
+   *
+   * `reason` is required for REJECT on budget / activation / case sources
+   * because the downstream services demand it; the check is hoisted here so
+   * the FE gets a single, consistent 400 instead of three different errors.
+   */
+  public async decide(args: DecideArgs): Promise<UnifiedApprovalDecisionResponseDto> {
+    if (args.source === 'position-proposal' || args.source === 'skill-review') {
+      throw new BadRequestException(
+        `Decisions for ${args.source} are not yet supported via the unified endpoint.`,
+      );
+    }
+    if (
+      args.decision === 'REJECT' &&
+      !args.reason?.trim() &&
+      (args.source === 'budget' || args.source === 'activation' || args.source === 'case')
+    ) {
+      throw new BadRequestException(
+        `A reason is required when rejecting a ${args.source} approval.`,
+      );
+    }
+
+    const decidedAtIso = (date: Date | string | null | undefined): string =>
+      typeof date === 'string'
+        ? date
+        : date instanceof Date
+          ? date.toISOString()
+          : new Date().toISOString();
+
+    if (args.source === 'leave') {
+      const row =
+        args.decision === 'APPROVE'
+          ? await this.leaveRequestsService.approve(args.approvalId, args.actorId, args.comment)
+          : await this.leaveRequestsService.reject(args.approvalId, args.actorId, args.comment);
+      return {
+        approvalId: row.id,
+        source: 'leave',
+        decision: args.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        decidedAt: decidedAtIso(row.reviewedAt),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
+    if (args.source === 'budget') {
+      const result = await this.decideBudgetChangeService.execute({
+        actorId: args.actorId,
+        approvalId: args.approvalId,
+        decision: args.decision,
+        reason: args.reason,
+      });
+      return {
+        approvalId: result.approvalId,
+        source: 'budget',
+        decision: result.decision,
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
+    if (args.source === 'activation') {
+      const result = await this.decideProjectActivationService.execute({
+        actorId: args.actorId,
+        projectId: args.approvalId,
+        decision: args.decision,
+        reason: args.reason,
+      });
+      return {
+        approvalId: result.approvalId,
+        source: 'activation',
+        decision: args.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
+    if (args.source === 'case') {
+      const caseRecord =
+        args.decision === 'APPROVE'
+          ? await this.approveCaseService.approve({
+              caseId: args.approvalId,
+              actorId: args.actorId,
+            })
+          : await this.approveCaseService.reject({
+              caseId: args.approvalId,
+              actorId: args.actorId,
+              reason: args.reason as string,
+            });
+      return {
+        approvalId: caseRecord.id,
+        source: 'case',
+        decision: args.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
+    if (args.source === 'timesheet') {
+      const row =
+        args.decision === 'APPROVE'
+          ? await this.timesheetsService.approveWeek(args.approvalId, args.actorId, args.actorRoles)
+          : await this.timesheetsService.rejectWeek(
+              args.approvalId,
+              { reason: args.reason ?? '' },
+              args.actorId,
+            );
+      return {
+        approvalId: row.id,
+        source: args.source,
+        decision: args.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
+    throw new BadRequestException(`Unsupported approval source: ${args.source}`);
+  }
 
   public async list(args: ListArgs): Promise<ApprovalQueueResponseDto> {
     const page = Math.max(1, args.page ?? 1);
