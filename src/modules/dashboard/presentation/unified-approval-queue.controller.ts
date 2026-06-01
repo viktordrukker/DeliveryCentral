@@ -1,13 +1,21 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   DefaultValuePipe,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
   ParseArrayPipe,
   ParseIntPipe,
+  Post,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 
@@ -16,6 +24,10 @@ import {
   ApprovalQueueResponseDto,
   ApprovalQueueSource,
 } from '../application/contracts/approval-queue-item.dto';
+import {
+  UnifiedApprovalDecisionDto,
+  UnifiedApprovalDecisionResponseDto,
+} from '../application/contracts/unified-approval-decision.dto';
 
 @ApiTags('approvals')
 @Controller('approvals')
@@ -44,6 +56,35 @@ export class UnifiedApprovalQueueController {
       sources: sources as ApprovalQueueSource[],
       page,
       pageSize,
+    });
+  }
+
+  @Post(':id/decision')
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles(...STAFFING_ROLES)
+  @ApiOperation({
+    summary:
+      'V2 Scope §4 — unified approve/reject endpoint. Routes by `source` to the ' +
+      'per-source decision service so the FE has a single integration point.',
+  })
+  @ApiOkResponse({ type: UnifiedApprovalDecisionResponseDto })
+  public async decide(
+    @Param('id') id: string,
+    @Body() body: UnifiedApprovalDecisionDto,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<UnifiedApprovalDecisionResponseDto> {
+    const actorId = req.principal?.personId ?? req.principal?.userId;
+    if (!actorId) {
+      throw new BadRequestException('Could not determine actor identity from request.');
+    }
+    return this.service.decide({
+      approvalId: id,
+      source: body.source,
+      decision: body.decision,
+      actorId,
+      actorRoles: req.principal?.roles ?? [],
+      comment: body.comment,
+      reason: body.reason,
     });
   }
 }

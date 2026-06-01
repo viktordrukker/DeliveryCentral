@@ -1,4 +1,4 @@
-import { httpGet } from './http-client';
+import { httpGet, httpPost } from './http-client';
 
 /** Issue 264 — unified approval queue. */
 export type ApprovalQueueSource =
@@ -46,4 +46,42 @@ export async function fetchUnifiedApprovals(
   if (params.pageSize != null) qs.set('pageSize', String(params.pageSize));
   const suffix = qs.toString();
   return httpGet<ApprovalQueueResponseDto>(`/approvals/unified${suffix ? `?${suffix}` : ''}`);
+}
+
+/**
+ * Unified decision endpoint accepts a superset of approval sources — adds
+ * `timesheet` because the unified POST routes timesheet weekly approvals
+ * even though they are not surfaced in the queue today.
+ */
+export type ApprovalDecisionSource = ApprovalQueueSource | 'timesheet';
+
+export interface ApprovalDecisionRequestBody {
+  source: ApprovalDecisionSource;
+  decision: 'APPROVE' | 'REJECT';
+  comment?: string;
+  reason?: string;
+}
+
+export interface ApprovalDecisionResponseDto {
+  approvalId: string;
+  source: ApprovalDecisionSource;
+  decision: 'APPROVED' | 'REJECTED';
+  decidedAt: string;
+  decidedByPersonId: string;
+}
+
+/**
+ * V2 Scope §4 — single FE entry point for approve/reject on any approval in
+ * the unified queue. Routes server-side by `source` to the per-source service.
+ */
+export async function decideApproval(
+  approvalId: string,
+  source: ApprovalDecisionSource,
+  decision: 'APPROVE' | 'REJECT',
+  opts: { comment?: string; reason?: string } = {},
+): Promise<ApprovalDecisionResponseDto> {
+  return httpPost<ApprovalDecisionResponseDto, ApprovalDecisionRequestBody>(
+    `/approvals/${approvalId}/decision`,
+    { source, decision, ...opts },
+  );
 }

@@ -6,15 +6,18 @@ import { Avatar, Button, Textarea } from '@/components/ds';
 import { Money } from '@/components/ds';
 import { Pct } from '@/components/ds/Pct';
 import { VarianceBar } from '@/components/ds';
-import type {
-  ApprovalQueueItemDto,
-  ApprovalQueueSource,
-  SlaStage,
+import {
+  decideApproval,
+  type ApprovalQueueItemDto,
+  type ApprovalQueueSource,
+  type SlaStage,
 } from '@/lib/api/approvals-unified';
 
 interface ApprovalInspectorProps {
   item: ApprovalQueueItemDto;
   onClose: () => void;
+  /** Optional — invoked after a successful approve/reject so the parent can refetch. */
+  onDecided?: (decision: 'APPROVED' | 'REJECTED') => void;
 }
 
 const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
@@ -144,7 +147,7 @@ function readString(meta: Record<string, unknown>, key: string): string | null {
  * to deep-link into the source page for the canonical action. Wiring the
  * source-specific action endpoints is V2-A.5-followup.
  */
-export function ApprovalInspector({ item, onClose }: ApprovalInspectorProps): JSX.Element {
+export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspectorProps): JSX.Element {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState<'approve' | 'reject' | 'escalate' | null>(null);
 
@@ -177,17 +180,41 @@ export function ApprovalInspector({ item, onClose }: ApprovalInspectorProps): JS
     : null;
   const effectiveVariancePct = variancePercent ?? computedVariancePct;
 
-  function handleAction(kind: 'approve' | 'reject' | 'escalate'): void {
+  async function handleAction(kind: 'approve' | 'reject' | 'escalate'): Promise<void> {
     setSubmitting(kind);
-    // V2-A.5 v1 — UI-only stub; canonical action endpoints are per-source.
-    // Direct the operator to the deep-link to complete the action.
-    setTimeout(() => {
-      toast.success(
-        `${kind === 'approve' ? 'Approve' : kind === 'reject' ? 'Reject' : 'Escalate'} flow opens on the source page.`,
-        { description: `Open ${SOURCE_LABEL[item.source]} to complete the action.` },
-      );
+    if (kind === 'escalate') {
+      // TODO V2-§4-PR2 — escalate routes through a dedicated endpoint (out of
+      // scope for the decision PR). Keep the action discoverable so the
+      // operator knows it exists.
+      toast.info('Escalation is not yet wired — open the source page to escalate manually.', {
+        description: `Open ${SOURCE_LABEL[item.source]} to escalate.`,
+      });
       setSubmitting(null);
-    }, 200);
+      return;
+    }
+    const decision = kind === 'approve' ? 'APPROVE' : 'REJECT';
+    const trimmedComment = comment.trim() === '' ? undefined : comment.trim();
+    try {
+      const result = await decideApproval(item.id, item.source, decision, {
+        comment: trimmedComment,
+        // For sources that demand a reason on reject (budget / activation /
+        // case) the BE returns 400 if missing — we pass the decision note
+        // through as the reason so the operator can supply it inline.
+        reason: decision === 'REJECT' ? trimmedComment : undefined,
+      });
+      toast.success(
+        decision === 'APPROVE'
+          ? `${SOURCE_LABEL[item.source]} approved.`
+          : `${SOURCE_LABEL[item.source]} rejected.`,
+      );
+      onDecided?.(result.decision);
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Could not ${kind} approval`, { description: message });
+    } finally {
+      setSubmitting(null);
+    }
   }
 
   return (
