@@ -6,6 +6,7 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { useImpersonation } from '@/app/impersonation-context';
 
 import { AdminConfigViewer } from '@/components/admin/AdminConfigViewer';
+import { SystemFlagsSettingsList } from '@/components/admin/SystemFlagsSettingsList';
 import { AdminList, AdminListItem } from '@/components/admin/AdminList';
 import { AdminSectionCard } from '@/components/admin/AdminSectionCard';
 import { AssignmentWorkflowSettings } from '@/components/admin/AssignmentWorkflowSettings';
@@ -610,14 +611,18 @@ function renderSection(
                 Browse business audit
               </Button>
             </div>
-            <AdminConfigViewer
-              emptyMessage="No system settings were returned."
-              entries={data.settings.systemFlags.map((item) => ({
-                label: formatFeatureFlag(item.key),
-                supportingText: `${item.description} Source: ${item.source}`,
-                value: item.enabled ? 'Enabled' : 'Disabled',
-              }))}
-            />
+            {isFeatureEnabled('dsRefresh') ? (
+              <SystemFlagsSettingsList />
+            ) : (
+              <AdminConfigViewer
+                emptyMessage="No system settings were returned."
+                entries={data.settings.systemFlags.map((item) => ({
+                  label: formatFeatureFlag(item.key),
+                  supportingText: `${item.description} Source: ${item.source}`,
+                  value: item.enabled ? 'Enabled' : 'Disabled',
+                }))}
+              />
+            )}
           </AdminSectionCard>
         </div>
       );
