@@ -28,6 +28,7 @@ import {
 } from '@/lib/api/admin';
 import { formatFeatureFlag } from '@/lib/labels';
 import { Button, Table, type Column } from '@/components/ds';
+import { DictionariesAdminContent } from './DictionariesPage';
 
 type AdminSectionKey =
   | 'accounts'
@@ -174,7 +175,7 @@ export function AdminPanelPage(): JSX.Element {
             onCreateAccount={handleCreateAccount}
           />
         : state.data
-          ? renderSection(selectedSection, state.data)
+          ? renderSection(selectedSection, state.data, dsRefreshEnabled)
           : null}
     </>
   );
@@ -447,9 +448,20 @@ function AdminAccountsSection({
 function renderSection(
   section: AdminSectionKey,
   data: NonNullable<ReturnType<typeof useAdminPanel>['data']>,
+  dsRefreshEnabled: boolean,
 ): JSX.Element {
   switch (section) {
     case 'dictionaries':
+      // V2 Scope §4 item 10 — under dsRefresh, mount the Dictionaries admin
+      // content inline instead of deep-linking to /admin/dictionaries. The
+      // dsRefresh=OFF path keeps the legacy summary + deep-link UI unchanged.
+      if (dsRefreshEnabled) {
+        return (
+          <div className="admin-panel__cards" data-testid="admin-inline-dictionaries">
+            <DictionariesAdminContent />
+          </div>
+        );
+      }
       return (
         <div className="admin-panel__cards">
           <AdminSectionCard
