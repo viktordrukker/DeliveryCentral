@@ -14,6 +14,7 @@ import { AnomalyStrip } from '@/components/dashboard/AnomalyStrip';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useProjectManagerDashboard } from '@/features/dashboard/useProjectManagerDashboard';
+import { fetchPendingActions } from '@/lib/api/dashboard-pending-actions';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
 
 import { PmOverviewTab } from './pm-tabs/OverviewTab';
@@ -111,6 +112,25 @@ export function ProjectManagerDashboardPage(): JSX.Element {
       .catch(() => undefined);
   }, []);
 
+  // BV-B.2 — surface pending timesheet approvals so PM reaches /timesheets/approval
+  // in one click from the dashboard (Law 1: 3-click rule). Same /dashboard/pending-actions
+  // payload as PendingApprovalsCard; count TIMESHEET-kind items for the visible scope.
+  const [pendingTimesheetCount, setPendingTimesheetCount] = useState(0);
+  useEffect(() => {
+    let active = true;
+    void fetchPendingActions(effectivePersonId ?? undefined)
+      .then((res) => {
+        if (!active) return;
+        setPendingTimesheetCount(res.items.filter((i) => i.kind === 'TIMESHEET').length);
+      })
+      .catch(() => {
+        if (active) setPendingTimesheetCount(0);
+      });
+    return () => {
+      active = false;
+    };
+  }, [effectivePersonId]);
+
   const d = state.data;
   const managedProjects = d?.managedProjects ?? [];
   const staffingGaps = d?.staffingSummary.projectsWithStaffingGapsCount ?? 0;
@@ -180,6 +200,24 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               <TipBalloon tip="Active projects whose planned end date is within the next 30 days." arrow="left" />
               <span className="kpi-strip__value">{attentionProjects.length}</span>
               <span className="kpi-strip__label">Closing in 30d</span>
+            </Link>
+
+            <Link
+              className="kpi-strip__item"
+              data-jtbd="Which submitted timesheets need my approval?"
+              data-testid="pm-kpi-timesheet-approvals"
+              to="/timesheets/approval"
+              style={{ borderLeft: `3px solid ${pendingTimesheetCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            >
+              <TipBalloon tip="Submitted timesheets from your team awaiting your approval." arrow="left" />
+              <span className="kpi-strip__value">{pendingTimesheetCount}</span>
+              <span className="kpi-strip__label">Timesheet Approvals</span>
+              <span
+                className="kpi-strip__context"
+                style={{ color: pendingTimesheetCount > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)' }}
+              >
+                {pendingTimesheetCount === 0 ? 'All caught up' : 'pending review'}
+              </span>
             </Link>
           </div>
 
