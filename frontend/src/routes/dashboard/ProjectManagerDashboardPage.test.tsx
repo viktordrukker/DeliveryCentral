@@ -166,9 +166,10 @@ describe('ProjectManagerDashboardPage', () => {
     expect(screen.getAllByText('Atlas ERP Rollout').length).toBeGreaterThan(0);
   });
 
-  // BV-B.2 — Timesheet-tile drilldown checkpoint. PM must reach /timesheets/approval
-  // in one click from /dashboard/project-manager (Law 1: 3-click rule).
-  it('renders the Timesheet Approvals KPI tile pointing at /timesheets/approval with the pending count', async () => {
+  // V2 Scope §4 item 9 — Timesheet-tile drilldown now targets the v2 unified
+  // approvals queue (/approvals?source=timesheet) instead of the obsoleteInV2
+  // legacy /timesheets/approval route. Law 1 (3-click rule) preserved.
+  it('renders the Timesheet Approvals KPI tile pointing at /approvals?source=timesheet with the pending count', async () => {
     mockedFetchPersonDirectory.mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0 });
     mockedFetchProjectManagerDashboard.mockResolvedValue({
       asOf: '2026-05-31T00:00:00.000Z',
@@ -200,7 +201,7 @@ describe('ProjectManagerDashboardPage', () => {
     renderWithRouter();
 
     const tile = await screen.findByTestId('pm-kpi-timesheet-approvals');
-    expect(tile).toHaveAttribute('href', '/timesheets/approval');
+    expect(tile).toHaveAttribute('href', '/approvals?source=timesheet');
     // The pending count derives from TIMESHEET-kind items only (2 of 3).
     expect(tile).toHaveTextContent('2');
     expect(tile).toHaveTextContent('Timesheet Approvals');
