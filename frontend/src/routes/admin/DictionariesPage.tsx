@@ -16,7 +16,13 @@ import {
 import { DictionaryEntryFormValues } from '@/components/admin/DictionaryEntryForm';
 import { Button } from '@/components/ds';
 
-export function DictionariesPage(): JSX.Element {
+/**
+ * Inline-mountable Dictionaries admin content. Renders the dictionary list +
+ * editor without PageContainer/PageHeader chrome so it can be mounted inside
+ * AdminPanelPage's tabbed shell under dsRefresh. Standalone DictionariesPage
+ * still wraps this with its own chrome.
+ */
+export function DictionariesAdminContent(): JSX.Element {
   const [values, setValues] = useState<DictionaryEntryFormValues>(
     initialDictionaryEntryFormValues,
   );
@@ -39,18 +45,7 @@ export function DictionariesPage(): JSX.Element {
   }
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        actions={
-          <Button as={Link} variant="secondary" to="/admin">
-            Back to admin panel
-          </Button>
-        }
-        eyebrow="Administration"
-        subtitle="Manage metadata-backed person dictionaries through the existing metadata APIs. The page renders whatever dictionaries the API exposes and posts new entries using the selected dictionary key."
-        title="Dictionaries"
-      />
-
+    <>
       {state.isLoading ? <LoadingState label="Loading dictionaries..." variant="skeleton" skeletonType="table" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? (
@@ -88,6 +83,25 @@ export function DictionariesPage(): JSX.Element {
           </div>
         )
       ) : null}
+    </>
+  );
+}
+
+export function DictionariesPage(): JSX.Element {
+  return (
+    <PageContainer viewport>
+      <PageHeader
+        actions={
+          <Button as={Link} variant="secondary" to="/admin">
+            Back to admin panel
+          </Button>
+        }
+        eyebrow="Administration"
+        subtitle="Manage metadata-backed person dictionaries through the existing metadata APIs. The page renders whatever dictionaries the API exposes and posts new entries using the selected dictionary key."
+        title="Dictionaries"
+      />
+
+      <DictionariesAdminContent />
     </PageContainer>
   );
 }
