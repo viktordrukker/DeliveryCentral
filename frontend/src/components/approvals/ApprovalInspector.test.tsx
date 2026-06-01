@@ -131,7 +131,7 @@ describe('ApprovalInspector', () => {
     expect(screen.getByRole('button', { name: 'Escalate' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeDisabled();
     resolveFn?.({
-      id: 'a-1',
+      approvalId: 'a-1',
       source: 'budget',
       decision: 'APPROVED',
       decidedAt: '2026-06-01T10:00:00Z',
@@ -187,7 +187,7 @@ describe('ApprovalInspector', () => {
     it('passes comment as reason on Reject so budget/activation/case BE checks accept', async () => {
       const mod = await import('@/lib/api/approvals-unified');
       vi.mocked(mod.decideApproval).mockResolvedValueOnce({
-        id: 'a-1',
+        approvalId: 'a-1',
         source: 'budget',
         decision: 'REJECTED',
         decidedAt: '2026-06-01T10:00:00Z',
