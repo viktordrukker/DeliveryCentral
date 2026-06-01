@@ -3,28 +3,36 @@ import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchProjectManagerDashboard } from '@/lib/api/dashboard-project-manager';
+import { fetchPendingActions } from '@/lib/api/dashboard-pending-actions';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
+import { fetchStaffingRequests } from '@/lib/api/staffing-requests';
+import { fetchWorkloadMatrix } from '@/lib/api/workload';
 import { renderRoute } from '@test/render-route';
 import { ProjectManagerDashboardPage } from './ProjectManagerDashboardPage';
 
+// `vi.restoreAllMocks()` in src/test/setup.ts wipes inline `mockResolvedValue`
+// between tests, so declare the fn refs outside the factory and set defaults
+// in beforeEach (see memory `feedback-...` — same pattern as EmployeeDirectory).
+const fetchProjectManagerDashboardMock = vi.fn();
+const fetchPersonDirectoryMock = vi.fn();
+const fetchStaffingRequestsMock = vi.fn();
+const fetchWorkloadMatrixMock = vi.fn();
+const fetchPendingActionsMock = vi.fn();
+
 vi.mock('@/lib/api/dashboard-project-manager', () => ({
-  fetchProjectManagerDashboard: vi.fn(),
+  fetchProjectManagerDashboard: (...args: unknown[]) => fetchProjectManagerDashboardMock(...args),
 }));
-
 vi.mock('@/lib/api/person-directory', () => ({
-  fetchPersonDirectory: vi.fn(),
+  fetchPersonDirectory: (...args: unknown[]) => fetchPersonDirectoryMock(...args),
 }));
-
 vi.mock('@/lib/api/staffing-requests', () => ({
-  fetchStaffingRequests: vi.fn().mockResolvedValue([]),
+  fetchStaffingRequests: (...args: unknown[]) => fetchStaffingRequestsMock(...args),
 }));
-
 vi.mock('@/lib/api/workload', () => ({
-  fetchWorkloadMatrix: vi.fn().mockResolvedValue({ people: [] }),
+  fetchWorkloadMatrix: (...args: unknown[]) => fetchWorkloadMatrixMock(...args),
 }));
-
 vi.mock('@/lib/api/dashboard-pending-actions', () => ({
-  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
+  fetchPendingActions: (...args: unknown[]) => fetchPendingActionsMock(...args),
 }));
 
 vi.mock('@/app/auth-context', () => ({
@@ -35,13 +43,28 @@ vi.mock('@/app/auth-context', () => ({
   }),
 }));
 
-const mockedFetchProjectManagerDashboard = vi.mocked(fetchProjectManagerDashboard);
-const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
+// Backwards-compatible aliases so existing test body keeps working.
+const mockedFetchProjectManagerDashboard = fetchProjectManagerDashboardMock;
+const mockedFetchPersonDirectory = fetchPersonDirectoryMock;
+const mockedFetchPendingActions = fetchPendingActionsMock;
+// Silence unused-var lints for re-exported names (tests don't reference them
+// directly — the factory funnels through to the mock refs above).
+void fetchProjectManagerDashboard;
+void fetchPersonDirectory;
+void fetchPendingActions;
+void fetchStaffingRequests;
+void fetchWorkloadMatrix;
 
 describe('ProjectManagerDashboardPage', () => {
   beforeEach(() => {
-    mockedFetchProjectManagerDashboard.mockReset();
-    mockedFetchPersonDirectory.mockReset();
+    fetchProjectManagerDashboardMock.mockReset();
+    fetchPersonDirectoryMock.mockReset();
+    fetchStaffingRequestsMock.mockReset();
+    fetchWorkloadMatrixMock.mockReset();
+    fetchPendingActionsMock.mockReset();
+    fetchStaffingRequestsMock.mockResolvedValue([]);
+    fetchWorkloadMatrixMock.mockResolvedValue({ people: [] });
+    fetchPendingActionsMock.mockResolvedValue({ items: [], totalCount: 0 });
   });
 
   it('renders project manager dashboard data', async () => {
@@ -141,6 +164,47 @@ describe('ProjectManagerDashboardPage', () => {
       await screen.findByRole('heading', { name: 'Sophia Kim' }),
     ).toBeInTheDocument();
     expect(screen.getAllByText('Atlas ERP Rollout').length).toBeGreaterThan(0);
+  });
+
+  // BV-B.2 — Timesheet-tile drilldown checkpoint. PM must reach /timesheets/approval
+  // in one click from /dashboard/project-manager (Law 1: 3-click rule).
+  it('renders the Timesheet Approvals KPI tile pointing at /timesheets/approval with the pending count', async () => {
+    mockedFetchPersonDirectory.mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0 });
+    mockedFetchProjectManagerDashboard.mockResolvedValue({
+      asOf: '2026-05-31T00:00:00.000Z',
+      attentionProjects: [],
+      dataSources: ['projects'],
+      managedProjects: [],
+      person: { displayName: 'Sophia Kim', id: 'pm-person-1', primaryEmail: 'sophia@example.com' },
+      projectsWithTimeVariance: [],
+      projectsWithStaffingGaps: [],
+      recentlyChangedAssignments: [],
+      staffingSummary: {
+        activeAssignmentCount: 0,
+        managedProjectCount: 0,
+        projectsWithTimeVarianceCount: 0,
+        projectsWithStaffingGapsCount: 0,
+      },
+      openRequestCount: 0,
+      openRequests: [],
+    });
+    mockedFetchPendingActions.mockResolvedValue({
+      items: [
+        { kind: 'TIMESHEET', id: 'ts-1', publicId: null, title: 'Week 22', contextLabel: null, ageHours: 3, severity: 'MEDIUM', ctaUrl: '/timesheets/approval' },
+        { kind: 'TIMESHEET', id: 'ts-2', publicId: null, title: 'Week 22', contextLabel: null, ageHours: 5, severity: 'LOW', ctaUrl: '/timesheets/approval' },
+        { kind: 'STAFFING_REQUEST', id: 'sr-1', publicId: null, title: 'PRJ', contextLabel: null, ageHours: 1, severity: 'LOW', ctaUrl: '/staffing-requests' },
+      ],
+      totalCount: 3,
+    });
+
+    renderWithRouter();
+
+    const tile = await screen.findByTestId('pm-kpi-timesheet-approvals');
+    expect(tile).toHaveAttribute('href', '/timesheets/approval');
+    // The pending count derives from TIMESHEET-kind items only (2 of 3).
+    expect(tile).toHaveTextContent('2');
+    expect(tile).toHaveTextContent('Timesheet Approvals');
+    expect(tile).toHaveTextContent('pending review');
   });
 });
 
