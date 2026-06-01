@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Avatar, Button } from '@/components/ds';
 import { Pct } from '@/components/ds/Pct';
@@ -81,6 +81,7 @@ const S_SECTION_LABEL: React.CSSProperties = {
  * Bench surface alongside the master list.
  */
 export function BenchInspector({ row, onClose, position }: BenchInspectorProps): JSX.Element {
+  const navigate = useNavigate();
   // BE-track / Bench suggested-fills — load on personId change. The legacy
   // hardcoded `row.suggestedProjectIds` is kept as a fallback while loading;
   // a fetch failure leaves the section empty rather than crashing.
@@ -257,10 +258,15 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
           type="button"
           disabled={!suggestions || suggestions.length === 0}
           onClick={() => {
-            // V2-A.7 v1 — "Propose to position" routes to the staffing-request
-            // creation flow, pre-filling the candidate. Wiring the full slate
-            // pre-fill to the matching engine is V2-A.7-followup.
-            window.location.href = `/staffing-requests/new?candidatePersonId=${row.personId}`;
+            // Use useNavigate so the SPA preserves bench scroll position
+            // and the inspector unmounts cleanly. Hard nav (window.location.href)
+            // would reload the whole bundle and drop the inspector + scroll state.
+            try {
+              sessionStorage.setItem('bench:returnTo', window.location.pathname + window.location.search);
+            } catch {
+              // sessionStorage may throw in private-browsing contexts; ignore.
+            }
+            navigate(`/staffing-requests/new?candidatePersonId=${row.personId}`);
           }}
         >
           Propose to position
