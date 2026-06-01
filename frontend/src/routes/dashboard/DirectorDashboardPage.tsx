@@ -242,8 +242,9 @@ export function DirectorDashboardPage(): JSX.Element {
                 data-testid="director-finance-band"
                 style={{ marginTop: 'var(--space-2)' }}
               >
-                <div
+                <Link
                   className="kpi-strip__item"
+                  to="/projects?view=finance"
                   style={{ borderLeft: '3px solid var(--color-status-info)' }}
                 >
                   <span className="kpi-strip__value">
@@ -252,9 +253,10 @@ export function DirectorDashboardPage(): JSX.Element {
                   <span className="kpi-strip__label">
                     Total budget · {financeSummary.projectCount} projects
                   </span>
-                </div>
-                <div
+                </Link>
+                <Link
                   className="kpi-strip__item"
+                  to="/projects?view=finance"
                   style={{
                     borderLeft: `3px solid ${
                       financeSummary.totalActualCost > financeSummary.totalBudget
@@ -267,18 +269,20 @@ export function DirectorDashboardPage(): JSX.Element {
                     {financeSummary.totalActualCost.toLocaleString()}
                   </span>
                   <span className="kpi-strip__label">Actual cost YTD</span>
-                </div>
-                <div
+                </Link>
+                <Link
                   className="kpi-strip__item"
+                  to="/projects?view=finance"
                   style={{ borderLeft: '3px solid var(--color-accent)' }}
                 >
                   <span className="kpi-strip__value">
                     {financeSummary.totalEarnedValue.toLocaleString()}
                   </span>
                   <span className="kpi-strip__label">Earned value</span>
-                </div>
-                <div
+                </Link>
+                <Link
                   className="kpi-strip__item"
+                  to="/projects?cpiBelow=0.9"
                   style={{
                     borderLeft: `3px solid ${
                       financeSummary.cpi >= 1
@@ -295,9 +299,10 @@ export function DirectorDashboardPage(): JSX.Element {
                   <span className="kpi-strip__label">
                     CPI · {financeSummary.cpi >= 1 ? 'on/under' : 'over'} plan
                   </span>
-                </div>
-                <div
+                </Link>
+                <Link
                   className="kpi-strip__item"
+                  to="/projects?budgetStatus=over"
                   style={{
                     borderLeft: `3px solid ${
                       financeSummary.overBudgetProjectCount === 0
@@ -310,7 +315,7 @@ export function DirectorDashboardPage(): JSX.Element {
                     {financeSummary.overBudgetProjectCount}
                   </span>
                   <span className="kpi-strip__label">Over budget</span>
-                </div>
+                </Link>
               </div>
             </SectionCard>
           ) : null}

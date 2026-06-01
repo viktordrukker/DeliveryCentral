@@ -117,10 +117,10 @@ export function DirectorKpiStrip({
           <Link
             className="kpi-strip__item"
             data-jtbd="How many roles still need filling?"
-            to="/projects"
+            to="/projects?hasOpenGaps=true"
             style={{ borderLeft: `3px solid ${tc(portfolioSummary.totalOpenGaps, 3, 8)}` }}
           >
-            <TipBalloon tip="Total unfilled positions across all project role plans." arrow="left" />
+            <TipBalloon tip="Total unfilled positions across all project role plans. Click to filter projects with open gaps." arrow="left" />
             <span className="kpi-strip__value">{portfolioSummary.totalOpenGaps}</span>
             <span className="kpi-strip__label">Open Gaps</span>
           </Link>
@@ -144,11 +144,11 @@ export function DirectorKpiStrip({
           <Link
             className="kpi-strip__item"
             data-jtbd="What's the green / amber / red split across the portfolio?"
-            to="/dashboards/portfolio-radiator"
+            to="/projects?status=ACTIVE"
             style={{ borderLeft: '3px solid var(--color-chart-5)' }}
           >
             <TipBalloon
-              tip="Portfolio health split. Click to open the Project Radiator for full RAG drilldown."
+              tip="Portfolio health split. Click to view all active projects with RAG signals."
               arrow="left"
             />
             <span className="kpi-strip__value">
