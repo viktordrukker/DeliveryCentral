@@ -41,6 +41,14 @@ export function CreateAssignmentPage(): JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { principal } = useAuth();
+  // V2 Scope §4 item 13 — when the caller passes a `returnTo` query param,
+  // post-create routes back there instead of the assignment detail page,
+  // preserving the originating working context (Law 3: no context loss).
+  // Restricted to in-app paths (starts with `/`) to avoid open-redirect.
+  const rawReturnTo = searchParams.get('returnTo');
+  const returnTo = rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//')
+    ? rawReturnTo
+    : null;
   const [values, setValues] = useState<CreateAssignmentFormValues>(() => ({
     ...initialValues,
     projectId: searchParams.get('projectId') ?? '',
@@ -97,7 +105,7 @@ export function CreateAssignmentPage(): JSX.Element {
     });
 
     if (created) {
-      navigate(`/assignments/${created.id}`);
+      navigate(returnTo ?? `/assignments/${created.id}`);
     } else if (state.overrideCandidate) {
       setOverrideReason('');
       setOverrideReasonError(null);
@@ -111,7 +119,7 @@ export function CreateAssignmentPage(): JSX.Element {
     });
 
     if (created) {
-      navigate(`/assignments/${created.id}`);
+      navigate(returnTo ?? `/assignments/${created.id}`);
     }
   }
 
@@ -133,7 +141,7 @@ export function CreateAssignmentPage(): JSX.Element {
     const created = await state.submitOverride(trimmedReason);
 
     if (created) {
-      navigate(`/assignments/${created.id}`);
+      navigate(returnTo ?? `/assignments/${created.id}`);
     }
   }
 

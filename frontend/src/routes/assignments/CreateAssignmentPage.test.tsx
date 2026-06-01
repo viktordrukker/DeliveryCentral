@@ -159,6 +159,42 @@ describe('CreateAssignmentPage', () => {
     expect(await screen.findByText('Assignment Detail')).toBeInTheDocument();
   });
 
+  it('routes to returnTo on success when an in-app returnTo is provided (Law 3)', async () => {
+    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ allocationPercent: 100 }));
+
+    const { user } = renderWithRouter({
+      initialEntries: ['/assignments/new?returnTo=/people/bench'],
+    });
+
+    await screen.findByText('Assignment Details');
+    await user.selectOptions(screen.getByLabelText('Person'), 'person-1');
+    await user.selectOptions(screen.getByLabelText('Project'), 'project-1');
+    await user.selectOptions(screen.getByLabelText('Staffing Role'), 'Lead Engineer');
+    await user.type(screen.getByLabelText('Start Date'), '2025-04-01');
+    await user.click(screen.getByRole('button', { name: 'Create & Request' }));
+
+    // Lands back on /people/bench, NOT the assignment detail page.
+    expect(await screen.findByText('Bench Page')).toBeInTheDocument();
+  });
+
+  it('ignores returnTo when value is not an in-app path (open-redirect guard)', async () => {
+    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ allocationPercent: 100 }));
+
+    const { user } = renderWithRouter({
+      initialEntries: ['/assignments/new?returnTo=//evil.example.com/phish'],
+    });
+
+    await screen.findByText('Assignment Details');
+    await user.selectOptions(screen.getByLabelText('Person'), 'person-1');
+    await user.selectOptions(screen.getByLabelText('Project'), 'project-1');
+    await user.selectOptions(screen.getByLabelText('Staffing Role'), 'Lead Engineer');
+    await user.type(screen.getByLabelText('Start Date'), '2025-04-01');
+    await user.click(screen.getByRole('button', { name: 'Create & Request' }));
+
+    // Falls back to default assignment-detail destination.
+    expect(await screen.findByText('Assignment Detail')).toBeInTheDocument();
+  });
+
   it('renders server error handling', async () => {
     mockedCreateAssignment.mockRejectedValue(new Error('Project does not exist.'));
 
@@ -303,15 +339,16 @@ describe('CreateAssignmentPage', () => {
   });
 });
 
-function renderWithRouter() {
+function renderWithRouter(opts: { initialEntries?: string[] } = {}) {
   return renderRoute(
     <Routes>
       <Route element={<CreateAssignmentPage />} path="/assignments/new" />
       <Route element={<div>Assignment Detail</div>} path="/assignments/:id" />
+      <Route element={<div>Bench Page</div>} path="/people/bench" />
       <Route element={<div>HR Case</div>} path="/cases/new" />
     </Routes>,
     {
-      initialEntries: ['/assignments/new'],
+      initialEntries: opts.initialEntries ?? ['/assignments/new'],
     },
   );
 }
