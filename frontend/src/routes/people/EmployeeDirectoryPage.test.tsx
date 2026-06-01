@@ -161,6 +161,54 @@ describe('EmployeeDirectoryPage', () => {
     expect(screen.queryByTestId('directory-role-filter')).not.toBeInTheDocument();
     expect(screen.queryByTestId('directory-layout-toggle')).not.toBeInTheDocument();
   });
+
+  it('V2 issue 179: opens the inspector drawer on row click under dsRefresh (flat+list)', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({
+        items: [
+          buildPersonDirectoryItem({ id: 'p1', displayName: 'Ada Lovelace', role: 'Engineer', grade: 'L5' }),
+          buildPersonDirectoryItem({ id: 'p2', displayName: 'Grace Hopper', role: 'Architect', grade: 'L7' }),
+        ],
+        total: 2,
+      }),
+    );
+    const { user } = renderWithRouter();
+
+    // List-detail container only mounts under dsRefresh + flat groupBy + list layout.
+    await screen.findByTestId('directory-list-detail');
+    // Inspector starts closed.
+    expect(screen.queryByTestId('person-directory-inspector')).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Ada Lovelace'));
+
+    // Row click opens the inspector pane instead of navigating away.
+    expect(await screen.findByTestId('person-directory-inspector')).toBeInTheDocument();
+    expect(screen.queryByText('Employee Details')).not.toBeInTheDocument();
+    // Stepper shows position 1 of 2.
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+  });
+
+  it('V2 issue 179: inspector close button hides the drawer and keeps the user on the directory', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({
+        items: [buildPersonDirectoryItem({ id: 'p1', displayName: 'Ada Lovelace', role: 'Engineer' })],
+        total: 1,
+      }),
+    );
+    const { user } = renderWithRouter();
+
+    await user.click(await screen.findByText('Ada Lovelace'));
+    expect(await screen.findByTestId('person-directory-inspector')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /close inspector/i }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('person-directory-inspector')).not.toBeInTheDocument(),
+    );
+    // Still on the directory page — not the details route.
+    expect(screen.queryByText('Employee Details')).not.toBeInTheDocument();
+  });
 });
 
 function renderWithRouter() {
