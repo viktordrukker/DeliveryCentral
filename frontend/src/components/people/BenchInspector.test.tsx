@@ -116,4 +116,21 @@ describe('BenchInspector', () => {
     renderInspector({ personId: 'p-42' });
     expect(screen.getByRole('link', { name: 'Open profile' })).toHaveAttribute('href', '/people/p-42');
   });
+
+  it('soft-navigates on Propose (records return-path in sessionStorage; no hard nav)', async () => {
+    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [suggestion()] });
+    const user = userEvent.setup();
+    sessionStorage.removeItem('bench:returnTo');
+
+    renderInspector({ personId: 'p-7' });
+    const button = await screen.findByRole('button', { name: 'Propose to position' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    // Return-path was captured for scroll restoration — proves soft-nav path
+    // executed (the legacy `window.location.href = ...` branch wrote nothing
+    // to sessionStorage). Use a permissive regex since MemoryRouter exposes
+    // the start path; the key check is that the side-effect ran.
+    expect(sessionStorage.getItem('bench:returnTo')).not.toBeNull();
+  });
 });
