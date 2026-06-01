@@ -20,6 +20,27 @@ interface ActionRow {
   alloc: React.ReactNode;
   action: string;
   linkTo: string;
+  /** Hours since the item entered the queue. `null` when the source row
+   *  carries no submitted-at / requested-at timestamp (overalloc indicators
+   *  are point-in-time signals; staffing requests don't yet ship a
+   *  createdAt on the FE DTO). */
+  ageHours: number | null;
+}
+
+function hoursSince(isoTimestamp: string | null | undefined): number | null {
+  if (!isoTimestamp) return null;
+  const ts = Date.parse(isoTimestamp);
+  if (Number.isNaN(ts)) return null;
+  const diffMs = Date.now() - ts;
+  return Math.max(0, Math.round(diffMs / 3_600_000));
+}
+
+function formatAge(hours: number | null): string {
+  if (hours === null) return '—';
+  if (hours < 1) return '<1h';
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
 }
 
 interface RmActionItemsProps {
@@ -48,6 +69,17 @@ export function RmActionItems({
     );
   }
 
+  // Pending approvals: oldest-first so the most-aged item is at the top of
+  // its group. Items without a usable timestamp sink to the bottom.
+  const pendingSorted = [...pendingApprovals].sort((a, b) => {
+    const ta = Date.parse(a.requestedAt);
+    const tb = Date.parse(b.requestedAt);
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+    if (Number.isNaN(ta)) return 1;
+    if (Number.isNaN(tb)) return -1;
+    return ta - tb; // oldest first
+  });
+
   const rows: ActionRow[] = [
     ...overallocated.map((item, i) => ({
       rowKey: `over-${item.personId}`,
@@ -65,8 +97,9 @@ export function RmActionItems({
       ) as React.ReactNode,
       action: 'Rebalance assignments',
       linkTo: `/people/${item.personId}`,
+      ageHours: null, // overalloc indicators are point-in-time signals
     })),
-    ...pendingApprovals.map((item, i) => ({
+    ...pendingSorted.map((item, i) => ({
       rowKey: `pend-${item.assignmentId}`,
       kind: 'pending' as const,
       index: overallocated.length + i + 1,
@@ -78,6 +111,7 @@ export function RmActionItems({
       alloc: <span style={NUM}>{'—'}</span> as React.ReactNode,
       action: 'Review & approve',
       linkTo: `/assignments/${item.assignmentId}`,
+      ageHours: hoursSince(item.requestedAt),
     })),
     ...incomingRequests.map((req, i) => ({
       rowKey: `req-${req.id}`,
@@ -99,6 +133,7 @@ export function RmActionItems({
       ) as React.ReactNode,
       action: 'Review & fill',
       linkTo: `/staffing-requests/${req.id}`,
+      ageHours: null, // DTO doesn't ship createdAt yet
     })),
   ];
 
@@ -152,6 +187,30 @@ export function RmActionItems({
             },
             { key: 'detail', title: 'Detail', width: 140, render: (r) => r.detail },
             { key: 'alloc', title: 'Alloc %', align: 'right', render: (r) => r.alloc },
+            {
+              key: 'age',
+              title: 'Age',
+              align: 'right',
+              width: 64,
+              render: (r) => {
+                const isStale = r.ageHours !== null && r.ageHours > 72;
+                return (
+                  <span
+                    style={{
+                      ...NUM,
+                      fontSize: 11,
+                      color: isStale ? 'var(--color-status-danger)' : 'var(--color-text-muted)',
+                      fontWeight: isStale ? 600 : 400,
+                    }}
+                    title={isStale ? 'In queue more than 3 days — escalate' : undefined}
+                    data-stale={isStale ? 'true' : undefined}
+                  >
+                    {formatAge(r.ageHours)}
+                    {isStale ? ' ⚑' : ''}
+                  </span>
+                );
+              },
+            },
             {
               key: 'action',
               title: 'Suggested Action',
