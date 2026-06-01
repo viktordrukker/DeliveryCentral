@@ -6,7 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Pct, Table, type Column } from '@/components/ds';
+import { Checkbox, Pct, Table, type Column } from '@/components/ds';
 import { fetchPersonDirectory, type PersonDirectoryItem } from '@/lib/api/person-directory';
 import { checkBench, type BenchPerson } from '@/lib/api/project-positions';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -107,14 +107,13 @@ export function BenchPage(): JSX.Element {
   return (
     <PageContainer testId="bench-page">
       <SectionCard title={`Bench (${visible.length})`}>
-        <label style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-          <input
-            type="checkbox"
+        <div style={{ marginBottom: 12 }}>
+          <Checkbox
             checked={showAll}
             onChange={(e) => setShowAll(e.target.checked)}
+            label="Show all (including engaged)"
           />
-          Show all (including engaged)
-        </label>
+        </div>
         {isLoading && <LoadingState />}
         {error && <ErrorState description={error} />}
         {!isLoading && !error && visible.length === 0 && (
