@@ -24,6 +24,7 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
+import { PersonDirectoryInspector } from '@/components/people/PersonDirectoryInspector';
 import { fetchEnrichedBench } from '@/lib/api/people-bench';
 import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
 
@@ -44,6 +45,10 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2-B.17 — HR-Queue tab count (the directory header already shows bench; do
   // not duplicate the bench number on the tab to avoid double-counting).
   const [hrQueueCount, setHrQueueCount] = useState<number | null>(null);
+  // V2 §4 item 6 — list-detail inspector pane. Only used in the flat+list
+  // layout under dsRefresh; other layouts (grid, grouped list) retain the
+  // legacy navigate-on-click behavior to keep this change scoped.
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const { setActions } = useTitleBarActions();
 
   useEffect(() => {
@@ -418,10 +423,55 @@ export function EmployeeDirectoryPage(): JSX.Element {
                 ))}
               </div>
             ) : filters.groupBy === 'flat' ? (
-              <EmployeeDirectoryTable
-                items={gradeFilteredItems}
-                onRowClick={(item) => navigate(`/people/${item.id}`)}
-              />
+              /* V2 §4 item 6 — list-detail layout: DataView on the left,
+                 inspector drawer on the right when a row is selected. */
+              (() => {
+                const selectedRow =
+                  selectedPersonId
+                    ? gradeFilteredItems.find((p) => p.id === selectedPersonId) ?? null
+                    : null;
+                const selectedIndex = selectedPersonId
+                  ? gradeFilteredItems.findIndex((p) => p.id === selectedPersonId)
+                  : -1;
+                const stepTo = (delta: number): void => {
+                  const next = selectedIndex + delta;
+                  if (next < 0 || next >= gradeFilteredItems.length) return;
+                  setSelectedPersonId(gradeFilteredItems[next].id);
+                };
+                return (
+                  <div
+                    data-testid="directory-list-detail"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: selectedRow
+                        ? 'minmax(0, 1fr) minmax(280px, 360px)'
+                        : 'minmax(0, 1fr)',
+                      gap: 16,
+                      alignItems: 'start',
+                    }}
+                  >
+                    <EmployeeDirectoryTable
+                      items={gradeFilteredItems}
+                      onRowClick={(item) => setSelectedPersonId(item.id)}
+                    />
+                    {selectedRow ? (
+                      <PersonDirectoryInspector
+                        row={selectedRow}
+                        onClose={() => setSelectedPersonId(null)}
+                        position={{
+                          index: selectedIndex,
+                          total: gradeFilteredItems.length,
+                          onPrev: selectedIndex > 0 ? () => stepTo(-1) : undefined,
+                          onNext:
+                            selectedIndex < gradeFilteredItems.length - 1
+                              ? () => stepTo(1)
+                              : undefined,
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })()
             ) : (
               /* V2-B.18 — grouped list with section headers */
               <div data-testid="directory-grouped">
