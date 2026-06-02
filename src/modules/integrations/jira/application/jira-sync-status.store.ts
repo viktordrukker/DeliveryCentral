@@ -26,4 +26,8 @@ export class JiraSyncStatusStore {
       lastProjectSyncSummary: summary,
     };
   }
+
+  public reset(): void {
+    this.snapshot = {};
+  }
 }

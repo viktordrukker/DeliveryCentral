@@ -17,7 +17,13 @@ import {
   triggerAdminM365Sync,
   triggerAdminRadiusSync,
 } from '@/lib/api/integrations-admin';
-import { JiraIntegrationStatus } from '@/lib/api/jira-integrations';
+import {
+  JiraIntegrationStatus,
+  JiraTestConnectionResponse,
+  resetJiraSync,
+  retryJiraSync,
+  testJiraConnection,
+} from '@/lib/api/jira-integrations';
 
 export type IntegrationProviderKey = 'jira' | 'm365' | 'radius';
 
@@ -62,7 +68,11 @@ interface IntegrationAdminState {
   ) => void;
   statusByProvider: Partial<Record<IntegrationProviderKey, IntegrationStatusRecord>>;
   successMessage: string | null;
+  testConnectionResult: JiraTestConnectionResponse | null;
   triggerSync: (provider: IntegrationProviderKey) => Promise<void>;
+  triggerRetrySync: (provider: IntegrationProviderKey) => Promise<void>;
+  triggerResetSync: (provider: IntegrationProviderKey) => Promise<void>;
+  triggerTestConnection: (provider: IntegrationProviderKey) => Promise<void>;
 }
 
 export function useIntegrationAdmin(): IntegrationAdminState {
@@ -97,6 +107,8 @@ export function useIntegrationAdmin(): IntegrationAdminState {
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [testConnectionResult, setTestConnectionResult] =
+    useState<JiraTestConnectionResponse | null>(null);
 
   const selectedIntegration = useMemo(
     () =>
@@ -265,6 +277,66 @@ export function useIntegrationAdmin(): IntegrationAdminState {
     }
   }
 
+  async function triggerRetrySync(provider: IntegrationProviderKey): Promise<void> {
+    if (provider !== 'jira') {
+      setError('Retry sync is only available for Jira in this release.');
+      return;
+    }
+    setIsSyncing(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const result = await retryJiraSync();
+      setSuccessMessage(
+        `Jira retry sync completed. Created ${result.projectsCreated}, updated ${result.projectsUpdated}.`,
+      );
+      await load();
+      await loadIntegrationSyncHistory(provider);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Failed to retry integration sync.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  async function triggerResetSync(provider: IntegrationProviderKey): Promise<void> {
+    if (provider !== 'jira') {
+      setError('Reset sync is only available for Jira in this release.');
+      return;
+    }
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await resetJiraSync();
+      setSuccessMessage('Jira sync state has been reset.');
+      await load();
+      await loadIntegrationSyncHistory(provider);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Failed to reset integration sync.');
+    }
+  }
+
+  async function triggerTestConnection(provider: IntegrationProviderKey): Promise<void> {
+    if (provider !== 'jira') {
+      setError('Test connection is only available for Jira in this release.');
+      return;
+    }
+    setError(null);
+    setSuccessMessage(null);
+    setTestConnectionResult(null);
+    try {
+      const result = await testJiraConnection();
+      setTestConnectionResult(result);
+      if (result.reachable) {
+        setSuccessMessage(`Jira reachable in ${result.latencyMs} ms.`);
+      } else {
+        setError(`Jira unreachable: ${result.errorMessage ?? 'unknown error'}.`);
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Failed to probe integration connection.');
+    }
+  }
+
   return {
     error,
     integrations,
@@ -293,6 +365,10 @@ export function useIntegrationAdmin(): IntegrationAdminState {
       })),
     statusByProvider,
     successMessage,
+    testConnectionResult,
     triggerSync,
+    triggerRetrySync,
+    triggerResetSync,
+    triggerTestConnection,
   };
 }
