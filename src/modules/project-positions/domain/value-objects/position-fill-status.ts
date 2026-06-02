@@ -167,6 +167,39 @@ export function requiresReason(from: PositionFillStatusValue, to: PositionFillSt
 }
 
 /**
+ * Maps a lean `PositionFillStatusValue` value back to its closest legacy
+ * `AssignmentStatus` representation. Used by the LEAN-P0-4 inverted mirror
+ * (legacy follower) to keep paired `ProjectAssignment` rows readable for the
+ * remaining legacy callsites until the Phase 3 contract migration drops them.
+ *
+ * `RELEASED` is the lossy direction — the lean model collapsed
+ * REJECTED/COMPLETED/CANCELLED into a single terminal state with reason text
+ * disambiguation. The follower maps `RELEASED` → `CANCELLED` because that is
+ * the broadest legacy terminal status and any legacy reader that consumes the
+ * underlying reason column still sees the right semantics.
+ */
+export function mapPositionFillStatusToLegacy(value: PositionFillStatusValue): string {
+  switch (value) {
+    case 'DRAFT':
+      return 'DRAFT';
+    case 'OPEN':
+      return 'CREATED';
+    case 'PROPOSED':
+      return 'PROPOSED';
+    case 'BOOKED':
+      return 'BOOKED';
+    case 'ONBOARDING':
+      return 'ONBOARDING';
+    case 'ASSIGNED':
+      return 'ASSIGNED';
+    case 'ON_HOLD':
+      return 'ON_HOLD';
+    case 'RELEASED':
+      return 'CANCELLED';
+  }
+}
+
+/**
  * Maps a legacy `AssignmentStatus` value to its lean `PositionFillStatusValue` equivalent.
  * Used by the S2-5 backfill script to translate existing rows.
  */
