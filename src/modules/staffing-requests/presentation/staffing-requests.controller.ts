@@ -123,39 +123,52 @@ export class StaffingRequestsController {
     };
   }
 
+  // LEAN-P1-4 — empty assignment-summary shape, preserved so the response
+  // DTO is byte-identical to the pre-lean payload while we transition reads
+  // to the ProjectPosition aggregate (which has no per-assignment counts).
+  private static readonly EMPTY_ASSIGNMENT_SUMMARY: DerivedStaffingRequestResult['summary'] = {
+    assigned: 0,
+    booked: 0,
+    cancelled: 0,
+    completed: 0,
+    created: 0,
+    onHold: 0,
+    onboarding: 0,
+    proposed: 0,
+    rejected: 0,
+    totalAssignments: 0,
+  };
+
   private async enrich(request: StaffingRequest): Promise<StaffingRequestWithDerived> {
-    const derived = await this.deriveStatusService.deriveForRequest(
+    // LEAN-P1-4 — derivedStatus now comes from ProjectPosition.fillStatus.
+    // assignmentSummary is preserved as a zero-shape stub for DTO stability;
+    // it is removed entirely in the Phase 5 contract cleanup.
+    const derived = await this.deriveStatusService.deriveProjectPositionFill(
       request.id,
       request.headcountRequired ?? 1,
     );
     return {
       ...request,
-      assignmentSummary: derived.summary,
+      assignmentSummary: { ...StaffingRequestsController.EMPTY_ASSIGNMENT_SUMMARY },
       derivedStatus: derived.derivedStatus,
     };
   }
 
   private async enrichMany(requests: StaffingRequest[]): Promise<StaffingRequestWithDerived[]> {
     if (requests.length === 0) return [];
-    const ids = requests.map((request) => request.id);
-    const derivedByRequest = await this.deriveStatusService.deriveForRequests(ids);
+    // LEAN-P1-4 — single batch query against ProjectPosition keyed by
+    // legacyStaffingRequestId. Each row maps fillStatus → DerivedStaffingRequestStatus.
+    const derivedByRequest = await this.deriveStatusService.deriveProjectPositionFills(
+      requests.map((r) => ({
+        legacyStaffingRequestId: r.id,
+        headcountRequired: r.headcountRequired ?? 1,
+      })),
+    );
     return requests.map((request) => {
       const derived = derivedByRequest.get(request.id);
       return {
         ...request,
-        assignmentSummary:
-          derived?.summary ?? {
-            assigned: 0,
-            booked: 0,
-            cancelled: 0,
-            completed: 0,
-            created: 0,
-            onHold: 0,
-            onboarding: 0,
-            proposed: 0,
-            rejected: 0,
-            totalAssignments: 0,
-          },
+        assignmentSummary: { ...StaffingRequestsController.EMPTY_ASSIGNMENT_SUMMARY },
         derivedStatus: derived?.derivedStatus ?? 'Open',
       };
     });
