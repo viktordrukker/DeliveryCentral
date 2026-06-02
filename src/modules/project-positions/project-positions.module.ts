@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { AuditObservabilityModule } from '@src/modules/audit-observability/audit-observability.module';
 import { DomainEventService } from '@src/modules/audit-observability/application/domain-event.service';
+import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PrismaModule } from '@src/shared/persistence/prisma.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -28,7 +30,7 @@ import {
  * modules continue to run alongside until the Sprint 5 contract phase.
  */
 @Module({
-  imports: [PrismaModule, AuditObservabilityModule],
+  imports: [PrismaModule, AuditObservabilityModule, NotificationsModule],
   controllers: [ProjectPositionsController, PeopleBenchController],
   providers: [
     {
@@ -44,10 +46,30 @@ import {
         new CreateProjectPositionService(repo),
     },
     {
+      // LEAN-P1-5 — bridge the `ProjectPositionFillChangedEvent` from the
+      // transition service to the notification translator. The translator's
+      // `positionFillChanged()` does dual-dispatch (outbox vs sync) so the
+      // emitter contract here is "fire-and-forget"; failures inside the
+      // translator are swallowed by `dispatchQuietly`.
       provide: TransitionProjectPositionFillService,
-      inject: [PROJECT_POSITION_REPOSITORY],
-      useFactory: (repo: PrismaProjectPositionRepository) =>
-        new TransitionProjectPositionFillService(repo),
+      inject: [PROJECT_POSITION_REPOSITORY, NotificationEventTranslatorService],
+      useFactory: (
+        repo: PrismaProjectPositionRepository,
+        translator: NotificationEventTranslatorService,
+      ) =>
+        new TransitionProjectPositionFillService(repo, {
+          emit: (event) =>
+            translator.positionFillChanged({
+              positionId: event.positionId,
+              projectId: event.projectId,
+              fromStatus: event.fromStatus,
+              toStatus: event.toStatus,
+              actorPersonId: event.actorPersonId,
+              activePersonId: event.activePersonId,
+              reason: event.reason,
+              occurredAt: event.occurredAt,
+            }),
+        }),
     },
     {
       provide: ListProjectPositionsService,
