@@ -5,6 +5,7 @@ import { EffectiveBillRateResolverService } from '@src/modules/financial-governa
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { UndoService } from '@src/modules/undo/application/undo.service';
+import { mapAssignmentStatusToFillStatus } from '@src/shared/lean-migration/enum-mappings';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AssignmentHistory } from '../domain/entities/assignment-history.entity';
@@ -88,13 +89,21 @@ export class TransitionProjectAssignmentService {
   ) {}
 
   /**
-   * D-95 — recompute the parent SR's cached `headcountFulfilled` from the
-   * live ProjectAssignment count after a transition. Inlined here (rather
-   * than calling DeriveStaffingRequestStatusService) to avoid a circular
-   * dependency between AssignmentsModule ↔ StaffingRequestsModule. The
-   * authoritative path for UI remains `DeriveStaffingRequestStatusService`
-   * which computes derivedStatus from the same query; the cached column
-   * is kept in sync as convenience for legacy consumers.
+   * D-95 — recompute the parent SR's cached `headcountFulfilled` after a
+   * transition. Inlined here (rather than calling
+   * DeriveStaffingRequestStatusService) to avoid a circular dependency between
+   * AssignmentsModule ↔ StaffingRequestsModule. The authoritative path for UI
+   * remains `DeriveStaffingRequestStatusService` which computes derivedStatus
+   * from the same query; the cached column is kept in sync as convenience for
+   * legacy consumers.
+   *
+   * LEAN-P1-7: derive-on-read from `ProjectPosition`. The count looks at
+   * paired positions (matched via `legacyStaffingRequestId`) whose
+   * `fillStatus` is in the lean active set
+   * `{BOOKED, ONBOARDING, ASSIGNED, ON_HOLD}`. RELEASED (which subsumes the
+   * legacy COMPLETED/CANCELLED/REJECTED) is excluded — matches the
+   * legacy active-status set after the lean enum collapse documented in
+   * `docs/planning/lean-enum-mapping.md`.
    */
   private async syncParentSrHeadcount(staffingRequestId: string): Promise<void> {
     if (!this.prisma) return;
@@ -103,10 +112,10 @@ export class TransitionProjectAssignmentService {
       select: { headcountRequired: true },
     });
     if (!sr) return;
-    const filledCount = await this.prisma.projectAssignment.count({
+    const filledCount = await this.prisma.projectPosition.count({
       where: {
-        staffingRequestId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'COMPLETED'] },
+        legacyStaffingRequestId: staffingRequestId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
       },
     });
     const cap = sr.headcountRequired > 0 ? sr.headcountRequired : 1;
@@ -114,6 +123,84 @@ export class TransitionProjectAssignmentService {
     await this.prisma.staffingRequest.update({
       where: { id: staffingRequestId },
       data: { headcountFulfilled },
+    });
+  }
+
+  /**
+   * LEAN-P1-7 — re-point the canonical fill-status onto `ProjectPosition`
+   * after a legacy transition lands. The paired position is located via
+   * `legacyAssignmentId` (populated by the Sprint-2 backfill). The lean
+   * enum is derived from the legacy status via the canonical helper in
+   * `enum-mappings.ts` so REJECTED/COMPLETED/CANCELLED all collapse onto
+   * `RELEASED` while their reason text is preserved on the dedicated
+   * columns.
+   *
+   * Active-window fields (activePersonId / activeAllocationPercent /
+   * activeValidFrom / activeValidTo / onboardingDate) are refreshed when
+   * the new lean status is active (BOOKED/ONBOARDING/ASSIGNED/ON_HOLD)
+   * and cleared on RELEASED so downstream queries do not see a person
+   * still booked to a released position. D-103 actor-audit threads
+   * `updatedByPersonId` on every write.
+   *
+   * Best-effort: any failure here must NEVER roll back the canonical
+   * legacy transition. The legacy follower (ProjectPositionMirrorService)
+   * runs against the paired row; positions without a Sprint-2 backfilled
+   * pair are skipped.
+   */
+  private async mirrorTransitionToProjectPosition(
+    assignment: ProjectAssignment,
+    actorId: string,
+  ): Promise<void> {
+    if (!this.prisma) return;
+
+    const assignmentId = assignment.assignmentId.value;
+    const position = await this.prisma.projectPosition.findFirst({
+      where: { legacyAssignmentId: assignmentId },
+      select: { id: true },
+    });
+    if (!position) {
+      // No paired position — either the row is pre-backfill or a brand-new
+      // post-Phase-1 row not yet linked. Nothing to mirror.
+      return;
+    }
+
+    const legacyStatus = assignment.status.value;
+    const fillStatus = mapAssignmentStatusToFillStatus(legacyStatus);
+    const isActive = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(fillStatus);
+    const allocationDecimal = assignment.allocationPercent
+      ? assignment.allocationPercent.value.toString()
+      : null;
+
+    const data: Record<string, unknown> = {
+      fillStatus,
+      onHoldReason: assignment.onHoldReason ?? null,
+      onHoldCaseId: assignment.onHoldCaseId ?? null,
+      rejectionReason: assignment.rejectionReason ?? null,
+      rejectionReasonCode: assignment.rejectionReasonCode ?? null,
+      cancellationReason: assignment.cancellationReason ?? null,
+      releaseReason: assignment.cancellationReason ?? assignment.rejectionReason ?? null,
+      updatedByPersonId: actorId,
+    };
+
+    if (isActive) {
+      data.activePersonId = assignment.personId;
+      data.activeAllocationPercent = allocationDecimal;
+      data.activeValidFrom = assignment.validFrom;
+      data.activeValidTo = assignment.validTo ?? null;
+      data.onboardingDate = assignment.onboardingDate ?? null;
+    } else if (fillStatus === 'RELEASED') {
+      // Vacate the active window so bench / planner reads do not see a
+      // person still booked on a released position.
+      data.activePersonId = null;
+      data.activeAllocationPercent = null;
+      data.activeValidFrom = null;
+      data.activeValidTo = null;
+      data.onboardingDate = null;
+    }
+
+    await this.prisma.projectPosition.update({
+      where: { id: position.id },
+      data,
     });
   }
 
@@ -164,9 +251,19 @@ export class TransitionProjectAssignmentService {
     await this.projectAssignmentRepository.save(assignment);
     await this.projectAssignmentRepository.appendHistory(history);
 
-    // LEAN-P0-4: the Sprint-2 forward mirror (legacy → ProjectPosition) was
-    // removed. The mirror is now the legacy follower (ProjectPosition → legacy)
-    // and is invoked from the lean canonical writer, not from here.
+    // LEAN-P1-7: re-point the canonical fill-status onto `ProjectPosition`.
+    // The legacy assignment write above remains the legacy source of truth
+    // for non-migrated consumers; the lean follower (the inverted
+    // ProjectPositionMirrorService) handles the opposite direction when
+    // lean-only writers run. Best-effort — mirror failure must not block.
+    try {
+      await this.mirrorTransitionToProjectPosition(assignment, command.actorId);
+    } catch (err) {
+      this.logger.warn(
+        `ProjectPosition mirror failed for assignment ${assignment.assignmentId.value}: ` +
+          `${(err as Error).message}`,
+      );
+    }
 
     // D-95 — keep the parent SR's `headcountFulfilled` cached column in sync
     // with the live assignment count. The cached counter previously only
