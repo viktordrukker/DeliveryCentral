@@ -11,6 +11,7 @@ const createScenario = vi.fn();
 const deleteScenario = vi.fn();
 const runSolver = vi.fn();
 const applyScenario = vi.fn();
+const updateScenario = vi.fn();
 
 vi.mock('@/lib/api/planner-scenarios', () => ({
   listScenarios: (...args: unknown[]) => listScenarios(...args),
@@ -18,6 +19,7 @@ vi.mock('@/lib/api/planner-scenarios', () => ({
   deleteScenario: (...args: unknown[]) => deleteScenario(...args),
   runSolver: (...args: unknown[]) => runSolver(...args),
   applyScenario: (...args: unknown[]) => applyScenario(...args),
+  updateScenario: (...args: unknown[]) => updateScenario(...args),
 }));
 
 vi.mock('sonner', () => ({
@@ -125,6 +127,31 @@ describe('DistributionStudio', () => {
     listScenarios.mockRejectedValue(new Error('Boom'));
     renderRoute(<DistributionStudio />);
     await waitFor(() => expect(screen.getByText(/Boom/)).toBeInTheDocument());
+  });
+
+  it('canEdit=true surfaces a Rename action that PATCHes the scenario name', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    updateScenario.mockResolvedValue({ ...sampleScenarios[0], name: 'Q3 ramp v2' });
+    const user = userEvent.setup();
+    renderRoute(<DistributionStudio canEdit />);
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+
+    const renameButtons = screen.getAllByRole('button', { name: /^Rename$/ });
+    await user.click(renameButtons[0]);
+
+    const input = await screen.findByDisplayValue('Q3 ramp');
+    await user.clear(input);
+    await user.type(input, 'Q3 ramp v2');
+    await user.click(screen.getByRole('button', { name: /^Save$/ }));
+
+    await waitFor(() => expect(updateScenario).toHaveBeenCalledWith('s1', { name: 'Q3 ramp v2' }));
+  });
+
+  it('canEdit=false hides the Rename button', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    renderRoute(<DistributionStudio />);
+    await waitFor(() => expect(screen.getByText('Q3 ramp')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /^Rename$/ })).not.toBeInTheDocument();
   });
 
   it('"+ New scenario" opens a DS modal (not window.prompt) and creates with the typed name', async () => {
