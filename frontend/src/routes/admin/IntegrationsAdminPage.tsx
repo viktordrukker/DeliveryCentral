@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { formatDateTime } from '@/lib/format-date';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import {
   IntegrationStatusRecord,
   useIntegrationAdmin,
@@ -24,6 +25,9 @@ export function IntegrationsAdminPage(): JSX.Element {
   const selectedStatus = state.selectedProvider
     ? state.statusByProvider[state.selectedProvider]
     : null;
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+  const showRemediationActions =
+    dsRefreshEnabled && state.selectedProvider === 'jira';
 
   return (
     <PageContainer viewport>
@@ -133,6 +137,61 @@ export function IntegrationsAdminPage(): JSX.Element {
                   />
                 )}
               </SectionCard>
+
+              {showRemediationActions ? (
+                <SectionCard title="Remediation Actions">
+                  <p className="placeholder-block__copy">
+                    Retry the last sync, reset the local last-run snapshot, or probe adapter
+                    reachability without mutating internal data. M365 + RADIUS remediation is
+                    follow-up work.
+                  </p>
+                  <div
+                    className="section-card__actions-row section-card__actions-row--start"
+                    data-testid="jira-remediation-actions"
+                  >
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => void state.triggerRetrySync('jira')}
+                      disabled={state.isSyncing}
+                    >
+                      Retry sync
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => void state.triggerResetSync('jira')}
+                    >
+                      Reset sync state
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => void state.triggerTestConnection('jira')}
+                    >
+                      Test connection
+                    </Button>
+                  </div>
+                  {state.testConnectionResult ? (
+                    <dl className="details-list" data-testid="jira-test-connection-result">
+                      <div>
+                        <dt>Reachable</dt>
+                        <dd>{state.testConnectionResult.reachable ? 'Yes' : 'No'}</dd>
+                      </div>
+                      <div>
+                        <dt>Latency</dt>
+                        <dd>{state.testConnectionResult.latencyMs} ms</dd>
+                      </div>
+                      {state.testConnectionResult.errorMessage ? (
+                        <div>
+                          <dt>Error</dt>
+                          <dd>{state.testConnectionResult.errorMessage}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  ) : null}
+                </SectionCard>
+              ) : null}
 
               <SectionCard title="Recent Sync Runs">
                 {state.selectedProvider ? (
