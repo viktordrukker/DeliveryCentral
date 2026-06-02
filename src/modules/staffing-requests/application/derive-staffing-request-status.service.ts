@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { StaffingRequestStatus } from '@prisma/client';
+import { ProjectPositionFillStatus, StaffingRequestStatus } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -77,6 +77,41 @@ export function classifyFromSummary(
   }
 
   return 'In progress';
+}
+
+/**
+ * LEAN-P1-4 — lean equivalent of classifyFromSummary that reads
+ * ProjectPosition.fillStatus directly. In the lean model the position row
+ * carries the authoritative lifecycle status as a column, so there is no
+ * need to count assignments to infer it.
+ *
+ * Mapping:
+ *   DRAFT, OPEN          → 'Open'
+ *   PROPOSED             → 'In progress'
+ *   BOOKED, ONBOARDING,
+ *   ASSIGNED, ON_HOLD    → 'Filled'
+ *   RELEASED             → 'Closed'
+ */
+export function classifyFromProjectPositionFillStatus(
+  fillStatus: ProjectPositionFillStatus,
+  _headcountRequired: number,
+): DerivedStaffingRequestStatus {
+  switch (fillStatus) {
+    case 'DRAFT':
+    case 'OPEN':
+      return 'Open';
+    case 'PROPOSED':
+      return 'In progress';
+    case 'BOOKED':
+    case 'ONBOARDING':
+    case 'ASSIGNED':
+    case 'ON_HOLD':
+      return 'Filled';
+    case 'RELEASED':
+      return 'Closed';
+    default:
+      return 'Open';
+  }
 }
 
 @Injectable()
@@ -166,6 +201,96 @@ export class DeriveStaffingRequestStatusService {
       derivedStatus: classifyFromSummary(headcountRequired, summary, request?.status ?? null),
       summary,
     };
+  }
+
+  /**
+   * LEAN-P1-4 — lean read path. Looks up the lean ProjectPosition row that
+   * mirrors a legacy StaffingRequest and maps its `fillStatus` column to a
+   * DerivedStaffingRequestStatus. No assignment-level summary is produced
+   * because the lean aggregate stores status as a single column.
+   *
+   * Falls back to 'Open' when no ProjectPosition row exists for the SR
+   * (open SRs that have not yet been backfilled by S2-6 mirror).
+   */
+  public async deriveProjectPositionFill(
+    legacyStaffingRequestId: string,
+    headcountRequired: number,
+  ): Promise<{ derivedStatus: DerivedStaffingRequestStatus }> {
+    const internalId = await this.resolveInternalUuid(legacyStaffingRequestId);
+    if (!internalId) return { derivedStatus: 'Open' };
+    const position = await this.prisma.projectPosition.findFirst({
+      where: { legacyStaffingRequestId: internalId },
+      select: { fillStatus: true },
+    });
+    if (!position) return { derivedStatus: 'Open' };
+    return {
+      derivedStatus: classifyFromProjectPositionFillStatus(position.fillStatus, headcountRequired),
+    };
+  }
+
+  /**
+   * LEAN-P1-4 — batch counterpart of deriveProjectPositionFill. Resolves
+   * each input id (publicId or uuid) to its internal uuid, then issues a
+   * single ProjectPosition.findMany keyed by legacyStaffingRequestId. The
+   * result Map is keyed by the caller's input id (matching deriveForRequests).
+   */
+  public async deriveProjectPositionFills(
+    requests: readonly { legacyStaffingRequestId: string; headcountRequired: number }[],
+  ): Promise<Map<string, { derivedStatus: DerivedStaffingRequestStatus }>> {
+    if (requests.length === 0) return new Map();
+
+    // Resolve publicIds → uuids while keeping the caller-supplied id as the result key.
+    const publicIds = requests
+      .map((r) => r.legacyStaffingRequestId)
+      .filter((id) => /^stf_[A-Za-z0-9]{10,}$/.test(id));
+    const uuidIds = requests
+      .map((r) => r.legacyStaffingRequestId)
+      .filter((id) => !/^stf_[A-Za-z0-9]{10,}$/.test(id));
+    const orFilters: Array<{ id?: { in: string[] }; publicId?: { in: string[] } }> = [];
+    if (uuidIds.length > 0) orFilters.push({ id: { in: uuidIds } });
+    if (publicIds.length > 0) orFilters.push({ publicId: { in: publicIds } });
+
+    const srRows = orFilters.length > 0
+      ? await this.prisma.staffingRequest.findMany({
+          where: { OR: orFilters },
+          select: { id: true, publicId: true },
+        })
+      : [];
+
+    // uuid → caller-supplied input id
+    const inputIdByUuid = new Map<string, string>();
+    for (const row of srRows) {
+      const original = publicIds.includes(row.publicId ?? '') ? row.publicId! : row.id;
+      inputIdByUuid.set(row.id, original);
+    }
+    // uuid → headcountRequired (carried through from caller)
+    const headcountByInputId = new Map(
+      requests.map((r) => [r.legacyStaffingRequestId, r.headcountRequired]),
+    );
+
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { legacyStaffingRequestId: { in: srRows.map((r) => r.id) } },
+      select: { legacyStaffingRequestId: true, fillStatus: true },
+    });
+
+    const result = new Map<string, { derivedStatus: DerivedStaffingRequestStatus }>();
+    for (const position of positions) {
+      if (!position.legacyStaffingRequestId) continue;
+      const inputId = inputIdByUuid.get(position.legacyStaffingRequestId);
+      if (!inputId) continue;
+      const headcountRequired = headcountByInputId.get(inputId) ?? 1;
+      result.set(inputId, {
+        derivedStatus: classifyFromProjectPositionFillStatus(position.fillStatus, headcountRequired),
+      });
+    }
+    // Default any caller-supplied id without a ProjectPosition row to 'Open'
+    // so the Map shape matches deriveForRequests (entry-per-input).
+    for (const req of requests) {
+      if (!result.has(req.legacyStaffingRequestId)) {
+        result.set(req.legacyStaffingRequestId, { derivedStatus: 'Open' });
+      }
+    }
+    return result;
   }
 
   /**
