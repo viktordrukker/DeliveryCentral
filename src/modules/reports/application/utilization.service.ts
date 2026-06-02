@@ -46,22 +46,30 @@ export class UtilizationService {
     const totalWorkdays = countWorkdays(fromDate, toDate);
     const availableHoursPerPerson = totalWorkdays * stdHoursPerDay;
 
-    // Find active assignments in the period
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN-P1-3: read active ProjectPosition rows in place of legacy
+    // ProjectAssignment. activePersonId is the analogue of personId on the
+    // fill side; aggregation logic is unchanged.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: toDate },
-        OR: [{ validTo: null }, { validTo: { gte: fromDate } }],
-        ...(params.personId ? { personId: params.personId } : {}),
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: toDate },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: fromDate } }],
+        ...(params.personId ? { activePersonId: params.personId } : {}),
       },
       select: {
-        personId: true,
-        allocationPercent: true,
+        activePersonId: true,
+        activeAllocationPercent: true,
       },
     });
 
-    // Find person names
-    const personIds = [...new Set(assignments.map((a) => a.personId))];
+    // Find person names (skipping any unfilled positions where activePersonId is null)
+    const personIds = [
+      ...new Set(
+        positions
+          .map((p) => p.activePersonId)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
     const people = await this.prisma.person.findMany({
       where: { id: { in: personIds } },
       select: { id: true, displayName: true },
@@ -86,11 +94,15 @@ export class UtilizationService {
       actualHoursMap.set(week.personId, current + weekTotal);
     }
 
-    // Aggregate by person
+    // Aggregate by person (skip unfilled positions with null activePersonId)
     const personMap = new Map<string, number>();
-    for (const assignment of assignments) {
-      const current = personMap.get(assignment.personId) ?? 0;
-      personMap.set(assignment.personId, current + Number(assignment.allocationPercent ?? 0));
+    for (const position of positions) {
+      if (!position.activePersonId) continue;
+      const current = personMap.get(position.activePersonId) ?? 0;
+      personMap.set(
+        position.activePersonId,
+        current + Number(position.activeAllocationPercent ?? 0),
+      );
     }
 
     const byPerson: UtilizationPersonRow[] = [...personMap.entries()].map(([personId, totalAllocation]) => {

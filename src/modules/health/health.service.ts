@@ -156,13 +156,24 @@ export class HealthService {
       ['Person', () => this.prisma.person.count()],
       ['OrgUnit', () => this.prisma.orgUnit.count()],
       ['Project', () => this.prisma.project.count()],
-      ['ProjectAssignment', () => this.prisma.projectAssignment.count()],
+      // LEAN-P1-3: ProjectAssignment + StaffingRequest aggregates collapse
+      // into the lean ProjectPosition aggregate. Count includes filled +
+      // unfilled rows (was: ProjectAssignment.count()). Open-demand parity
+      // for the prior StaffingRequest.count() is surfaced via the dedicated
+      // open-demand probe below.
+      ['ProjectPosition', () => this.prisma.projectPosition.count()],
+      [
+        'ProjectPosition.openDemand',
+        () =>
+          this.prisma.projectPosition.count({
+            where: { fillStatus: { in: ['OPEN', 'PROPOSED'] } },
+          }),
+      ],
       ['CaseRecord', () => this.prisma.caseRecord.count()],
       ['TimesheetWeek', () => this.prisma.timesheetWeek.count()],
       ['LocalAccount', () => this.prisma.localAccount.count()],
       ['NotificationRequest', () => this.prisma.notificationRequest.count()],
       ['InAppNotification', () => this.prisma.inAppNotification.count()],
-      ['StaffingRequest', () => this.prisma.staffingRequest.count()],
       ['Skill', () => this.prisma.skill.count()],
       ['ProjectBudget', () => this.prisma.projectBudget.count()],
     ];

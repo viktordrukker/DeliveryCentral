@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -15,19 +14,34 @@ export interface WorkloadPlanningFilters {
   poolId?: string;
 }
 
-export type MatrixAssignmentRow = Prisma.ProjectAssignmentGetPayload<{
-  include: {
-    person: { select: { id: true; displayName: true } };
-    project: { select: { id: true; name: true; projectCode: true } };
-  };
-}>;
+/**
+ * LEAN-P1-3: Workload reads now source from the lean ProjectPosition
+ * aggregate. Consumers (workload.service.ts) still expect the legacy
+ * field names (person / project / allocationPercent / validFrom /
+ * validTo / status), so the repository remaps the column names back to
+ * the legacy shape at the read boundary. This keeps response DTOs
+ * byte-identical for /workload/matrix, /workload/planning, and
+ * /workload/forecast.
+ */
+export interface MatrixAssignmentRow {
+  id: string;
+  allocationPercent: import('@prisma/client').Prisma.Decimal | null;
+  validFrom: Date;
+  validTo: Date | null;
+  status: import('@prisma/client').ProjectPositionFillStatus;
+  person: { id: string; displayName: string };
+  project: { id: string; name: string; projectCode: string };
+}
 
-export type PlanningAssignmentRow = Prisma.ProjectAssignmentGetPayload<{
-  include: {
-    person: { select: { id: true; displayName: true } };
-    project: { select: { id: true; name: true } };
-  };
-}>;
+export interface PlanningAssignmentRow {
+  id: string;
+  allocationPercent: import('@prisma/client').Prisma.Decimal | null;
+  validFrom: Date;
+  validTo: Date | null;
+  status: import('@prisma/client').ProjectPositionFillStatus;
+  person: { id: string; displayName: string };
+  project: { id: string; name: string };
+}
 
 @Injectable()
 export class WorkloadRepository {
@@ -38,19 +52,38 @@ export class WorkloadRepository {
 
     const personIdFilters: string[] | undefined = await this.resolvePersonIdFilters(filters);
 
-    return this.prisma.projectAssignment.findMany({
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
-        ...(personIdFilters !== undefined ? { personId: { in: personIdFilters } } : {}),
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
+        ...(personIdFilters !== undefined ? { activePersonId: { in: personIdFilters } } : {}),
       },
       include: {
-        person: { select: { id: true, displayName: true } },
+        activePerson: { select: { id: true, displayName: true } },
         project: { select: { id: true, name: true, projectCode: true } },
       },
-      orderBy: [{ person: { displayName: 'asc' } }, { project: { name: 'asc' } }],
+      orderBy: [{ activePerson: { displayName: 'asc' } }, { project: { name: 'asc' } }],
     });
+
+    return positions
+      .filter((p) => p.activePerson !== null && p.activeValidFrom !== null)
+      .map((p) => ({
+        id: p.id,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom as Date,
+        validTo: p.activeValidTo,
+        status: p.fillStatus,
+        person: {
+          id: p.activePerson!.id,
+          displayName: p.activePerson!.displayName,
+        },
+        project: {
+          id: p.project.id,
+          name: p.project.name,
+          projectCode: p.project.projectCode,
+        },
+      }));
   }
 
   public async getOverlappingAllocations(params: {
@@ -63,24 +96,29 @@ export class WorkloadRepository {
     const start = new Date(params.startDate);
     const end = new Date(params.endDate);
 
-    const overlapping = await this.prisma.projectAssignment.findMany({
+    // LEAN-P1-3: ProjectAssignment.CREATED has no analogue on ProjectPosition;
+    // the lean shape models that lifecycle as DRAFT. Other states map 1:1.
+    const overlapping = await this.prisma.projectPosition.findMany({
       where: {
-        personId: params.personId,
-        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: end },
-        OR: [{ validTo: null }, { validTo: { gte: start } }],
+        activePersonId: params.personId,
+        fillStatus: { in: ['DRAFT', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: end },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: start } }],
         ...(params.excludeAssignmentId ? { NOT: { id: params.excludeAssignmentId } } : {}),
       },
     });
 
-    const totalExisting = overlapping.reduce((sum, a) => sum + (Number(a.allocationPercent) || 0), 0);
+    const totalExisting = overlapping.reduce(
+      (sum, p) => sum + (Number(p.activeAllocationPercent) || 0),
+      0,
+    );
     const totalWithNew = totalExisting + params.allocationPercent;
 
     return {
-      conflictingAssignments: overlapping.map((a) => ({
-        allocationPercent: Number(a.allocationPercent) || 0,
-        id: a.id,
-        projectName: a.projectId,
+      conflictingAssignments: overlapping.map((p) => ({
+        allocationPercent: Number(p.activeAllocationPercent) || 0,
+        id: p.id,
+        projectName: p.projectId,
       })),
       hasConflict: totalWithNew > 100,
       totalAllocationPercent: totalWithNew,
@@ -109,19 +147,37 @@ export class WorkloadRepository {
       personIdFilter = { in: memberships.map((m) => m.personId) };
     }
 
-    return this.prisma.projectAssignment.findMany({
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: toDate },
-        OR: [{ validTo: null }, { validTo: { gte: fromDate } }],
-        ...(personIdFilter !== undefined ? { personId: personIdFilter } : {}),
+        fillStatus: { in: ['DRAFT', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: toDate },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: fromDate } }],
+        ...(personIdFilter !== undefined ? { activePersonId: personIdFilter } : {}),
       },
       include: {
-        person: { select: { id: true, displayName: true } },
+        activePerson: { select: { id: true, displayName: true } },
         project: { select: { id: true, name: true } },
       },
-      orderBy: [{ person: { displayName: 'asc' } }],
+      orderBy: [{ activePerson: { displayName: 'asc' } }],
     });
+
+    return positions
+      .filter((p) => p.activePerson !== null && p.activeValidFrom !== null)
+      .map((p) => ({
+        id: p.id,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom as Date,
+        validTo: p.activeValidTo,
+        status: p.fillStatus,
+        person: {
+          id: p.activePerson!.id,
+          displayName: p.activePerson!.displayName,
+        },
+        project: {
+          id: p.project.id,
+          name: p.project.name,
+        },
+      }));
   }
 
   public async getCapacityForecast(params: { poolId?: string; weeks?: number }) {
@@ -146,38 +202,52 @@ export class WorkloadRepository {
     const endOfForecast = new Date(weekStarts[numWeeks - 1]);
     endOfForecast.setUTCDate(endOfForecast.getUTCDate() + 6);
 
-    // Fetch all relevant active assignments in the forecast window
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN-P1-3: Fetch all relevant active ProjectPosition fills in the forecast window.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: endOfForecast },
-        OR: [{ validTo: null }, { validTo: { gte: monday } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: endOfForecast },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: monday } }],
       },
       select: {
-        personId: true,
-        validFrom: true,
-        validTo: true,
+        activePersonId: true,
+        activeValidFrom: true,
+        activeValidTo: true,
       },
     });
 
-    // Total active headcount (people with at least one active assignment now)
+    // Normalize to legacy shape (personId / validFrom / validTo) so the
+    // forecast aggregation logic below remains unchanged. Skip unfilled rows
+    // (activePersonId === null) which have no person to forecast against.
+    const fills = positions
+      .filter(
+        (p): p is typeof p & { activePersonId: string; activeValidFrom: Date } =>
+          p.activePersonId !== null && p.activeValidFrom !== null,
+      )
+      .map((p) => ({
+        personId: p.activePersonId,
+        validFrom: p.activeValidFrom,
+        validTo: p.activeValidTo,
+      }));
+
+    // Total active headcount (people with at least one active fill now)
     const activePersonIds = new Set(
-      assignments
+      fills
         .filter((a) => a.validFrom <= now && (!a.validTo || a.validTo >= now))
         .map((a) => a.personId),
     );
     const headcount = activePersonIds.size;
 
-    // Find at-risk people: single assignment ending within next 14 days, no follow-on
+    // Find at-risk people: single fill ending within next 14 days, no follow-on
     const twoWeeksOut = new Date(now);
     twoWeeksOut.setUTCDate(now.getUTCDate() + 14);
 
-    const endingSoon = assignments.filter(
+    const endingSoon = fills.filter(
       (a) => a.validTo && a.validTo >= now && a.validTo <= twoWeeksOut,
     );
     const atRiskPersonIds = new Set<string>();
     for (const a of endingSoon) {
-      const hasFollowOn = assignments.some(
+      const hasFollowOn = fills.some(
         (other) =>
           other.personId === a.personId &&
           other !== a &&
@@ -194,7 +264,7 @@ export class WorkloadRepository {
       weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
 
       const coveredPersonIds = new Set(
-        assignments
+        fills
           .filter((a) => a.validFrom <= weekEnd && (!a.validTo || a.validTo >= weekStart))
           .map((a) => a.personId),
       );

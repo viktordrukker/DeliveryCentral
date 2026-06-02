@@ -161,44 +161,54 @@ export class CmdkSearchService {
   }
 
   private async searchAssignments(q: string, limit: number): Promise<CmdkResultDto[]> {
-    // Assignments don't carry their own free-text — search by joined Person
-    // displayName + Project name. Two narrow queries are easier than a
-    // cross-join here.
+    // LEAN-P1-3: lookup the lean ProjectPosition aggregate instead of legacy
+    // ProjectAssignment. Filled positions carry the active person via
+    // activePerson; unfilled rows are excluded by the BOOKED/ONBOARDING/
+    // ASSIGNED/ON_HOLD fillStatus gate. DTO shape (kind/id/title/subtitle/
+    // href/rank) is unchanged.
     const [byPerson, byProject] = await Promise.all([
-      this.prisma.projectAssignment.findMany({
-        where: { person: { displayName: { contains: q, mode: 'insensitive' } } },
+      this.prisma.projectPosition.findMany({
+        where: {
+          activePerson: { displayName: { contains: q, mode: 'insensitive' } },
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        },
         select: {
           id: true,
-          person: { select: { displayName: true } },
+          activePerson: { select: { displayName: true } },
           project: { select: { name: true } },
-          status: true,
+          fillStatus: true,
         },
         take: limit,
       }),
-      this.prisma.projectAssignment.findMany({
-        where: { project: { name: { contains: q, mode: 'insensitive' } } },
+      this.prisma.projectPosition.findMany({
+        where: {
+          project: { name: { contains: q, mode: 'insensitive' } },
+          fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        },
         select: {
           id: true,
-          person: { select: { displayName: true } },
+          activePerson: { select: { displayName: true } },
           project: { select: { name: true } },
-          status: true,
+          fillStatus: true,
         },
         take: limit,
       }),
     ]);
     const merged = new Map<string, (typeof byPerson)[number]>();
     for (const r of [...byPerson, ...byProject]) merged.set(r.id, r);
-    return [...merged.values()].map((r) =>
-      buildResult({
-        kind: 'assignment',
-        id: r.id,
-        title: `${r.person.displayName} → ${r.project.name}`,
-        subtitle: r.status,
-        href: `/assignments/${r.id}`,
-        query: q,
-        archived: r.status === 'COMPLETED' || r.status === 'CANCELLED',
-      }),
-    );
+    return [...merged.values()]
+      .filter((r) => r.activePerson !== null)
+      .map((r) =>
+        buildResult({
+          kind: 'assignment',
+          id: r.id,
+          title: `${r.activePerson!.displayName} → ${r.project.name}`,
+          subtitle: r.fillStatus,
+          href: `/assignments/${r.id}`,
+          query: q,
+          archived: r.fillStatus === 'RELEASED',
+        }),
+      );
   }
 }
 

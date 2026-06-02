@@ -34,10 +34,33 @@ function buildPrisma(seed: {
       return (seed.projects ?? []).filter((p) => insens(p.name, q) || insens(p.projectCode, q));
     },
   };
+  // LEAN-P1-3: ProjectPosition.findMany now serves both the position-search
+  // path (OR[role|summary]) and the assignment-search path (activePerson +
+  // fillStatus / project + fillStatus). The mock branches by query shape.
   const projectPosition = {
-    findMany: async (qry: { where: { OR: Array<{ role?: { contains: string } }> } }): Promise<unknown[]> => {
-      const q = qry.where.OR[0]!.role!.contains;
-      return (seed.positions ?? []).filter((p) => insens(p.role, q));
+    findMany: async (qry: {
+      where:
+        | { OR: Array<{ role?: { contains: string } }> }
+        | { activePerson?: { displayName: { contains: string } }; project?: { name: { contains: string } }; fillStatus?: unknown };
+    }): Promise<unknown[]> => {
+      const w = qry.where as Record<string, unknown>;
+      if (Array.isArray(w.OR)) {
+        const q = (w.OR as Array<{ role?: { contains: string } }>)[0]!.role!.contains;
+        return (seed.positions ?? []).filter((p) => insens(p.role, q));
+      }
+      const aw = w as {
+        activePerson?: { displayName: { contains: string } };
+        project?: { name: { contains: string } };
+      };
+      const q = aw.activePerson?.displayName?.contains ?? aw.project?.name?.contains ?? '';
+      return (seed.assignments ?? [])
+        .filter((a) => (aw.activePerson ? insens(a.personName, q) : insens(a.projectName, q)))
+        .map((a) => ({
+          id: a.id,
+          activePerson: { displayName: a.personName },
+          project: { name: a.projectName },
+          fillStatus: a.status,
+        }));
     },
   };
   const caseRecord = {
@@ -46,24 +69,8 @@ function buildPrisma(seed: {
       return (seed.cases ?? []).filter((c) => insens(c.caseNumber, q) || (c.summary && insens(c.summary, q)));
     },
   };
-  const projectAssignment = {
-    findMany: async (qry: {
-      where: { person?: { displayName: { contains: string } }; project?: { name: { contains: string } } };
-    }): Promise<unknown[]> => {
-      const q =
-        qry.where.person?.displayName?.contains ?? qry.where.project?.name?.contains ?? '';
-      return (seed.assignments ?? [])
-        .filter((a) => (qry.where.person ? insens(a.personName, q) : insens(a.projectName, q)))
-        .map((a) => ({
-          id: a.id,
-          person: { displayName: a.personName },
-          project: { name: a.projectName },
-          status: a.status,
-        }));
-    },
-  };
   void emptyDelegate;
-  return { person, project, projectPosition, caseRecord, projectAssignment } as unknown as PrismaService;
+  return { person, project, projectPosition, caseRecord } as unknown as PrismaService;
 }
 
 describe('CmdkSearchService (FE-#270)', () => {

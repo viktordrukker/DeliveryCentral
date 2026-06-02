@@ -8,7 +8,10 @@ export class PrismaCaseReferenceRepository implements CaseReferenceRepositoryPor
   public constructor(private readonly prisma: PrismaService) {}
 
   public async assignmentExists(assignmentId: string): Promise<boolean> {
-    const count = await this.prisma.projectAssignment.count({ where: { id: assignmentId } });
+    // LEAN-P1-3: case references previously pointed at ProjectAssignment.id.
+    // In the lean shape, ProjectPosition.id is the analogue. The `id` arg
+    // name is preserved to keep the port + DTO byte-identical for callers.
+    const count = await this.prisma.projectPosition.count({ where: { id: assignmentId } });
     return count > 0;
   }
 
