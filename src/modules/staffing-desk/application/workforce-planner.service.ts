@@ -437,7 +437,7 @@ export class WorkforcePlannerService {
         endDate: true,
       },
     });
-    type RequestRow = {
+    interface RequestRow {
       id: string;
       projectId: string;
       role: string;
@@ -448,7 +448,7 @@ export class WorkforcePlannerService {
       priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
       startDate: Date;
       endDate: Date;
-    };
+    }
     const requestGroupMap = new Map<string, RequestRow>();
     for (const p of requestPositionRows) {
       const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
@@ -824,7 +824,7 @@ export class WorkforcePlannerService {
         endDate: true,
       },
     });
-    type AutoMatchRequestRow = {
+    interface AutoMatchRequestRow {
       id: string;
       projectId: string;
       role: string;
@@ -835,7 +835,7 @@ export class WorkforcePlannerService {
       priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
       startDate: Date;
       endDate: Date;
-    };
+    }
     const autoMatchRequestMap = new Map<string, AutoMatchRequestRow>();
     for (const p of autoMatchPositionRows) {
       const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
@@ -1333,14 +1333,14 @@ export class WorkforcePlannerService {
       }),
       this.prisma.person.count({ where: { employmentStatus: 'ACTIVE' } }),
     ]);
-    type DiagRequestRow = {
+    interface DiagRequestRow {
       projectId: string;
       priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
       headcountRequired: number;
       headcountFulfilled: number;
       startDate: Date;
       endDate: Date;
-    };
+    }
     const diagRequestMap = new Map<string, DiagRequestRow>();
     for (const p of diagPositionRows) {
       const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
