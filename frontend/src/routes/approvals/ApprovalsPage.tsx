@@ -24,6 +24,7 @@ const SOURCES: { id: ApprovalQueueSource | 'all'; label: string }[] = [
   { id: 'leave', label: 'Leave' },
   { id: 'case', label: 'Cases' },
   { id: 'skill-review', label: 'Skill reviews' },
+  { id: 'timesheet', label: 'Timesheets' },
 ];
 
 type SourceTone = 'info' | 'warning' | 'danger' | 'critical' | 'active';
@@ -35,6 +36,7 @@ const SOURCE_TONE: Record<ApprovalQueueSource, SourceTone> = {
   leave: 'info',
   case: 'warning',
   'skill-review': 'info',
+  timesheet: 'info',
 };
 
 // B24 — per-source glyphs for the filter chips (and reusable elsewhere).
@@ -46,6 +48,7 @@ const SOURCE_ICON: Record<ApprovalQueueSource | 'all', string> = {
   leave: '\u{1F334}', // 🌴
   case: '\u{1F4CB}', // 📋
   'skill-review': '\u{1F393}', // 🎓
+  timesheet: '⏱',
 };
 
 const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
@@ -55,6 +58,7 @@ const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
   leave: 'Leave',
   case: 'Case',
   'skill-review': 'Skill',
+  timesheet: 'Timesheets',
 };
 
 const SLA_TONE: Record<SlaStage, 'active' | 'warning' | 'danger'> = {

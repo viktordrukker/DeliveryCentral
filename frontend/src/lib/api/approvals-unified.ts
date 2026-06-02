@@ -7,7 +7,8 @@ export type ApprovalQueueSource =
   | 'activation'
   | 'leave'
   | 'case'
-  | 'skill-review';
+  | 'skill-review'
+  | 'timesheet';
 
 export type SlaStage = 'on-track' | 'due-soon' | 'breached';
 
