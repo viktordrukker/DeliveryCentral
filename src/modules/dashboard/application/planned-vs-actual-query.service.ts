@@ -42,30 +42,48 @@ export class PlannedVsActualQueryService {
     const settings = await this.platformSettingsService.getAll();
     const standardHoursPerWeek = settings.timesheets.standardHoursPerWeek;
 
-    // ── Fetch assignments ──
-    const assignmentWhere: Record<string, unknown> = {
-      status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-      validFrom: { lte: windowEnd },
-      OR: [{ validTo: null }, { validTo: { gte: windowStart } }],
+    // ── Fetch active fills (LEAN: ProjectPosition canonical, was: ProjectAssignment) ──
+    // fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD maps the legacy
+    // AssignmentStatus set 1:1 (see src/shared/lean-migration/enum-mappings.ts).
+    // activePersonId is the assigned person; activeValidFrom/To carry the dates.
+    const positionWhere: Record<string, unknown> = {
+      fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      activePersonId: { not: null },
+      activeValidFrom: { lte: windowEnd },
+      OR: [{ activeValidTo: null }, { activeValidTo: { gte: windowStart } }],
     };
-    if (query.projectId) assignmentWhere.projectId = query.projectId;
-    if (query.personId) assignmentWhere.personId = query.personId;
+    if (query.projectId) positionWhere.projectId = query.projectId;
+    if (query.personId) positionWhere.activePersonId = query.personId;
 
-    const dbAssignments = await this.prisma.projectAssignment.findMany({
-      where: assignmentWhere,
+    const dbPositions = await this.prisma.projectPosition.findMany({
+      where: positionWhere,
       select: {
         id: true,
-        personId: true,
+        activePersonId: true,
         projectId: true,
-        staffingRole: true,
-        status: true,
-        allocationPercent: true,
-        validFrom: true,
-        validTo: true,
-        person: { select: { id: true, displayName: true } },
+        role: true,
+        fillStatus: true,
+        activeAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
         project: { select: { id: true, name: true, projectCode: true } },
       },
     });
+
+    // Adapt to the legacy assignment shape so the downstream aggregation
+    // logic stays byte-identical with the pre-lean version. The person
+    // join is satisfied via `personMap` (batch-fetched below).
+    const dbAssignments = dbPositions.map((p) => ({
+      id: p.id,
+      personId: p.activePersonId as string,
+      projectId: p.projectId,
+      staffingRole: p.role,
+      status: p.fillStatus,
+      allocationPercent: p.activeAllocationPercent,
+      validFrom: p.activeValidFrom as Date,
+      validTo: p.activeValidTo,
+      project: p.project,
+    }));
 
     // ── Fetch ALL timesheet entries (not just APPROVED) ──
     const entryWhere: Record<string, unknown> = {
@@ -218,7 +236,7 @@ export class PlannedVsActualQueryService {
       .map((a) => ({
         allocationPercent: Number(a.allocationPercent ?? 0),
         assignmentId: a.id,
-        person: this.toPersonSummary(a.person, a.personId),
+        person: this.toPersonSummary(personMap.get(a.personId) ?? null, a.personId),
         project: this.toProjectSummary(a.project, a.projectId),
         staffingRole: a.staffingRole,
       }));
@@ -325,10 +343,13 @@ export class PlannedVsActualQueryService {
       projectAccMap.set(actual.projectId, acc);
     }
 
-    // ── Staffing requests ──
-    const staffingRequests = await this.prisma.staffingRequest.findMany({
+    // ── Unfilled positions (LEAN: was StaffingRequest; now ProjectPosition rows
+    //    that are still unfilled — fillStatus OPEN/PROPOSED). One position == one
+    //    headcount unit; legacy `headcountRequired - headcountFulfilled` arithmetic
+    //    collapses into "count of unfilled positions per project".
+    const unfilledPositions = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['OPEN', 'IN_REVIEW'] },
+        fillStatus: { in: ['OPEN', 'PROPOSED'] },
         startDate: { lte: windowEnd },
         endDate: { gte: windowStart },
         ...(query.projectId ? { projectId: query.projectId } : {}),
@@ -336,19 +357,17 @@ export class PlannedVsActualQueryService {
       select: {
         projectId: true,
         role: true,
-        headcountRequired: true,
-        headcountFulfilled: true,
       },
     });
 
     // Per-project staffing aggregation
     const staffingByProject = new Map<string, { openRequests: number; unfilledHeadcount: number; roles: string[] }>();
-    for (const sr of staffingRequests) {
-      const acc = staffingByProject.get(sr.projectId) ?? { openRequests: 0, unfilledHeadcount: 0, roles: [] };
+    for (const pos of unfilledPositions) {
+      const acc = staffingByProject.get(pos.projectId) ?? { openRequests: 0, unfilledHeadcount: 0, roles: [] };
       acc.openRequests++;
-      acc.unfilledHeadcount += Math.max(0, sr.headcountRequired - sr.headcountFulfilled);
-      if (!acc.roles.includes(sr.role)) acc.roles.push(sr.role);
-      staffingByProject.set(sr.projectId, acc);
+      acc.unfilledHeadcount += 1;
+      if (!acc.roles.includes(pos.role)) acc.roles.push(pos.role);
+      staffingByProject.set(pos.projectId, acc);
     }
 
     // Build project summaries
@@ -421,8 +440,8 @@ export class PlannedVsActualQueryService {
       projectsFullyStaffed: projectsWithAssignments.filter((p) => p.unfilledHeadcount === 0 && p.openStaffingRequests === 0).length,
       projectsPartiallyStaffed: projectsWithAssignments.filter((p) => p.unfilledHeadcount > 0).length,
       projectsWithOpenRequests: projectSummaries.filter((p) => p.openStaffingRequests > 0).length,
-      totalOpenRequests: staffingRequests.length,
-      totalUnfilledHeadcount: staffingRequests.reduce((sum, sr) => sum + Math.max(0, sr.headcountRequired - sr.headcountFulfilled), 0),
+      totalOpenRequests: unfilledPositions.length,
+      totalUnfilledHeadcount: unfilledPositions.length,
       unstaffedProjects,
     };
 

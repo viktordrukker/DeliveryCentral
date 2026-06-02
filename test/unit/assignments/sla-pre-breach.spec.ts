@@ -5,10 +5,10 @@ interface FakeRow {
   id: string;
   slaStage: string | null;
   slaDueAt: Date | null;
-  personId: string;
+  activePersonId: string | null;
   projectId: string;
   requestedByPersonId: string | null;
-  requestedAt: Date;
+  createdAt: Date;
   slaBreachedAt: Date | null;
   slaWarnedAt50pct: Date | null;
   slaWarnedAt75pct: Date | null;
@@ -30,7 +30,7 @@ function buildStack(rows: FakeRow[]): {
   const preBreachCalls: PreBreachCall[] = [];
   const breachedCalls: string[] = [];
 
-  const projectAssignment = {
+  const projectPosition = {
     findMany: async (args: {
       where: {
         slaDueAt?: { lt?: Date; gt?: Date };
@@ -63,7 +63,7 @@ function buildStack(rows: FakeRow[]): {
     },
   };
 
-  const prisma = { projectAssignment } as unknown as PrismaService;
+  const prisma = { projectPosition } as unknown as PrismaService;
 
   return { prisma, preBreachCalls, breachedCalls, rowsRef: rows };
 }
@@ -79,10 +79,10 @@ function buildTranslator(preBreachCalls: PreBreachCall[]) {
 
 const NOW = new Date('2026-05-04T12:00:00Z');
 
-function row(props: Partial<FakeRow> & { id: string; slaDueAt: Date; requestedAt: Date }): FakeRow {
+function row(props: Partial<FakeRow> & { id: string; slaDueAt: Date; createdAt: Date }): FakeRow {
   return {
     slaStage: 'PROPOSAL',
-    personId: 'p-1',
+    activePersonId: 'p-1',
     projectId: 'pr-1',
     requestedByPersonId: 'rm-1',
     slaBreachedAt: null,
@@ -97,7 +97,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     // 60% elapsed: requested 6 hours ago, due in 4 hours.
     const requestedAt = new Date(NOW.getTime() - 6 * 60 * 60 * 1000);
     const slaDueAt = new Date(NOW.getTime() + 4 * 60 * 60 * 1000);
-    const rows = [row({ id: 'a-50', requestedAt, slaDueAt })];
+    const rows = [row({ id: 'a-50', createdAt: requestedAt, slaDueAt })];
 
     const { prisma, preBreachCalls, rowsRef } = buildStack(rows);
     const translator = buildTranslator(preBreachCalls);
@@ -117,7 +117,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     // 80% elapsed: requested 8 hours ago, due in 2 hours.
     const requestedAt = new Date(NOW.getTime() - 8 * 60 * 60 * 1000);
     const slaDueAt = new Date(NOW.getTime() + 2 * 60 * 60 * 1000);
-    const rows = [row({ id: 'a-75', requestedAt, slaDueAt })];
+    const rows = [row({ id: 'a-75', createdAt: requestedAt, slaDueAt })];
 
     const { prisma, preBreachCalls, rowsRef } = buildStack(rows);
     const translator = buildTranslator(preBreachCalls);
@@ -141,7 +141,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     const rows = [
       row({
         id: 'a-already',
-        requestedAt,
+        createdAt: requestedAt,
         slaDueAt,
         slaWarnedAt50pct: new Date(NOW.getTime() - 30 * 60 * 1000),
       }),
@@ -161,7 +161,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
   it('progresses 50% → 75% across two sweeps', async () => {
     const requestedAt = new Date(NOW.getTime() - 6 * 60 * 60 * 1000);
     const slaDueAt = new Date(NOW.getTime() + 4 * 60 * 60 * 1000); // 60%
-    const rows = [row({ id: 'a-progress', requestedAt, slaDueAt })];
+    const rows = [row({ id: 'a-progress', createdAt: requestedAt, slaDueAt })];
 
     const { prisma, preBreachCalls } = buildStack(rows);
     const translator = buildTranslator(preBreachCalls);
@@ -175,8 +175,8 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     // Second sweep 4h later: 100% (would be a breach, but we adjust due time).
     // Move slaDueAt later so it's still in-progress at 80%.
     rows[0].slaDueAt = new Date(NOW.getTime() + 8 * 60 * 60 * 1000); // total 14h, elapsed 6h+2h=8h ⇒ ~57%
-    // Adjust requestedAt so we land at 80%.
-    rows[0].requestedAt = new Date(NOW.getTime() - 8 * 60 * 60 * 1000); // total 10h, elapsed at NOW+0: 80%
+    // Adjust createdAt so we land at 80%.
+    rows[0].createdAt = new Date(NOW.getTime() - 8 * 60 * 60 * 1000); // total 10h, elapsed at NOW+0: 80%
     rows[0].slaDueAt = new Date(NOW.getTime() + 2 * 60 * 60 * 1000);
 
     result = await svc.sweep(NOW);
@@ -192,7 +192,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     const rows = [
       row({
         id: 'a-breached',
-        requestedAt: new Date(NOW.getTime() - 10 * 60 * 60 * 1000),
+        createdAt: new Date(NOW.getTime() - 10 * 60 * 60 * 1000),
         slaDueAt: new Date(NOW.getTime() - 1 * 60 * 60 * 1000),
         slaBreachedAt: new Date(NOW.getTime() - 50 * 60 * 1000),
       }),
@@ -212,7 +212,7 @@ describe('AssignmentSlaSweepService — HD-10 pre-breach warnings', () => {
     // 30% elapsed: way below the 50% threshold.
     const requestedAt = new Date(NOW.getTime() - 3 * 60 * 60 * 1000);
     const slaDueAt = new Date(NOW.getTime() + 7 * 60 * 60 * 1000);
-    const rows = [row({ id: 'a-early', requestedAt, slaDueAt })];
+    const rows = [row({ id: 'a-early', createdAt: requestedAt, slaDueAt })];
 
     const { prisma, preBreachCalls } = buildStack(rows);
     const translator = buildTranslator(preBreachCalls);

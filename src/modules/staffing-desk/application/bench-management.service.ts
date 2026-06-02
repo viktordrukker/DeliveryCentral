@@ -111,36 +111,73 @@ export class BenchManagementService {
     });
     const totalPeople = allPeople.length;
 
-    // Current allocations
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
+    // Current allocations (LEAN: ProjectPosition canonical, was ProjectAssignment).
+    // fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD + activePersonId!=null
+    // replaces the legacy AssignmentStatus set 1:1.
+    const activeAssignments = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        ...(personScope ? { personId: { in: [...personScope] } } : {}),
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null, ...(personScope ? { in: [...personScope] } : {}) },
       },
-      select: { personId: true, projectId: true, allocationPercent: true, validFrom: true, validTo: true },
+      select: {
+        activePersonId: true,
+        projectId: true,
+        activeAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+      },
     });
     const allocByPerson = new Map<string, number>();
     for (const a of activeAssignments) {
-      allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+      if (!a.activePersonId) continue;
+      allocByPerson.set(
+        a.activePersonId,
+        (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
     // Bench people: allocation === 0
     const benchPersonIds = allPeople.filter((p) => (allocByPerson.get(p.id) ?? 0) === 0).map((p) => p.id);
 
-    // Bench start date: MAX(validTo) from ended assignments
-    const endedAssignments = await this.prisma.projectAssignment.findMany({
-      where: {
-        personId: { in: benchPersonIds },
-        status: { in: ['COMPLETED', 'CANCELLED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validTo: { not: null, lt: now },
-      },
-      select: { personId: true, validTo: true, projectId: true },
-      orderBy: { validTo: 'desc' },
-    });
+    // Bench start date: MAX(validTo) from ended assignments.
+    // LEAN: two sources contribute —
+    //   (a) ProjectPosition rows where activeValidTo is in the past but
+    //       the fill hasn't yet been moved to RELEASED (closeout lag),
+    //       still carrying the activePersonId.
+    //   (b) ProjectPositionFillHistory entries with changeType=RELEASED,
+    //       capturing the previousPersonId at the moment of release.
+    // We merge the two and keep the most-recent end-date per person.
+    const [closeoutLagPositions, releaseHistory] = await Promise.all([
+      this.prisma.projectPosition.findMany({
+        where: {
+          activePersonId: { in: benchPersonIds },
+          activeValidTo: { not: null, lt: now },
+        },
+        select: { activePersonId: true, activeValidTo: true, projectId: true },
+        orderBy: { activeValidTo: 'desc' },
+      }),
+      this.prisma.projectPositionFillHistory.findMany({
+        where: {
+          previousPersonId: { in: benchPersonIds },
+          changeType: 'RELEASED',
+        },
+        select: { previousPersonId: true, occurredAt: true, position: { select: { projectId: true } } },
+        orderBy: { occurredAt: 'desc' },
+      }),
+    ]);
     const lastAssignment = new Map<string, { validTo: Date; projectId: string }>();
-    for (const a of endedAssignments) {
-      if (!lastAssignment.has(a.personId) && a.validTo) {
-        lastAssignment.set(a.personId, { validTo: a.validTo, projectId: a.projectId });
+    for (const p of closeoutLagPositions) {
+      if (!p.activePersonId || !p.activeValidTo) continue;
+      const existing = lastAssignment.get(p.activePersonId);
+      if (!existing || p.activeValidTo > existing.validTo) {
+        lastAssignment.set(p.activePersonId, { validTo: p.activeValidTo, projectId: p.projectId });
+      }
+    }
+    for (const h of releaseHistory) {
+      if (!h.previousPersonId) continue;
+      const existing = lastAssignment.get(h.previousPersonId);
+      if (!existing || h.occurredAt > existing.validTo) {
+        lastAssignment.set(h.previousPersonId, { validTo: h.occurredAt, projectId: h.position.projectId });
       }
     }
 
@@ -179,10 +216,11 @@ export class BenchManagementService {
     for (const rl of reportingLines) { if (!managerByPerson.has(rl.subjectPersonId)) managerByPerson.set(rl.subjectPersonId, rl.manager.displayName); }
     const projectNameMap = new Map(projects.map((p) => [p.id, p.name]));
 
-    // Batch match: score bench people against open requests
-    const openRequests = await this.prisma.staffingRequest.findMany({
-      where: { status: { in: ['OPEN', 'IN_REVIEW'] } },
-      select: { id: true, role: true, skills: true, allocationPercent: true, priority: true },
+    // Batch match: score bench people against open positions
+    // (LEAN: ProjectPosition canonical, was StaffingRequest).
+    const openRequests = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: { in: ['OPEN', 'PROPOSED'] } },
+      select: { id: true, role: true, skills: true, requiredAllocationPercent: true, priority: true },
     });
 
     // PERF-02: index requests by skill once so each bench person only scores requests
@@ -267,42 +305,50 @@ export class BenchManagementService {
     // Roll-offs: assignments ending in next N weeks
     const rollOffDate = new Date(now);
     rollOffDate.setUTCDate(rollOffDate.getUTCDate() + weeksAhead * 7);
-    const rollingOff = await this.prisma.projectAssignment.findMany({
+    const rollingOff = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validTo: { gte: now, lte: rollOffDate },
-        ...(personScope ? { personId: { in: [...personScope] } } : {}),
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidTo: { gte: now, lte: rollOffDate },
+        activePersonId: { not: null, ...(personScope ? { in: [...personScope] } : {}) },
       },
-      select: { personId: true, projectId: true, allocationPercent: true, validTo: true },
-      orderBy: { validTo: 'asc' },
+      select: {
+        activePersonId: true,
+        projectId: true,
+        activeAllocationPercent: true,
+        activeValidTo: true,
+      },
+      orderBy: { activeValidTo: 'asc' },
     });
 
-    // Check if roll-off people have follow-on assignments
-    const rollOffPersonIds = [...new Set(rollingOff.map((a) => a.personId))];
-    const followOns = await this.prisma.projectAssignment.findMany({
+    // Check if roll-off people have follow-on positions
+    const rollOffPersonIds = [
+      ...new Set(rollingOff.map((a) => a.activePersonId).filter((id): id is string => id !== null)),
+    ];
+    const followOns = await this.prisma.projectPosition.findMany({
       where: {
-        personId: { in: rollOffPersonIds },
-        status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { gte: now },
+        activePersonId: { in: rollOffPersonIds },
+        fillStatus: { in: ['OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { gte: now },
       },
-      select: { personId: true, validFrom: true },
+      select: { activePersonId: true, activeValidFrom: true },
     });
-    const hasFollowOnSet = new Set(followOns.map((a) => a.personId));
+    const hasFollowOnSet = new Set(followOns.map((a) => a.activePersonId).filter((id): id is string => id !== null));
 
     const personById = new Map(allPeople.map((p) => [p.id, p]));
     const rollOffs: BenchRollOff[] = rollingOff.map((a) => {
-      const person = personById.get(a.personId);
-      const daysUntil = Math.max(0, Math.round(((a.validTo?.getTime() ?? 0) - now.getTime()) / 86400000));
+      const personId = a.activePersonId as string;
+      const person = personById.get(personId);
+      const daysUntil = Math.max(0, Math.round(((a.activeValidTo?.getTime() ?? 0) - now.getTime()) / 86400000));
       return {
-        personId: a.personId,
-        displayName: person?.displayName ?? a.personId,
+        personId,
+        displayName: person?.displayName ?? personId,
         grade: person?.grade ?? null,
-        skills: (skillsByPerson.get(a.personId) ?? []).map((s) => s.name),
-        assignmentEndDate: a.validTo?.toISOString() ?? '',
+        skills: (skillsByPerson.get(personId) ?? []).map((s) => s.name),
+        assignmentEndDate: a.activeValidTo?.toISOString() ?? '',
         projectName: projectNameMap.get(a.projectId) ?? a.projectId,
-        allocationPercent: a.allocationPercent?.toNumber() ?? 0,
+        allocationPercent: a.activeAllocationPercent?.toNumber() ?? 0,
         daysUntilRollOff: daysUntil,
-        hasFollowOn: hasFollowOnSet.has(a.personId),
+        hasFollowOn: hasFollowOnSet.has(personId),
       };
     });
     const atRiskCount = rollOffs.filter((r) => r.daysUntilRollOff <= 14 && !r.hasFollowOn).length;

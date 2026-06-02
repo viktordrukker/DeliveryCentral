@@ -9,7 +9,7 @@ interface BreachedRow {
   id: string;
   slaStage: string | null;
   slaDueAt: Date | null;
-  personId: string;
+  personId: string | null;
   projectId: string;
   requestedByPersonId: string | null;
 }
@@ -176,10 +176,11 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
   }
 
   private async findBreached(now: Date): Promise<BreachedRow[]> {
-    // F-49 / 20c-11 — Prisma already infers the row shape from the `select`
-    // clause; the local `BreachedRow` interface mirrors that shape so no
-    // coercion is needed. Dropped the `as unknown as BreachedRow[]` cast.
-    return this.prisma.projectAssignment.findMany({
+    // LEAN: ProjectPosition is canonical (was ProjectAssignment). SLA fields
+    // are identical on the lean model; `activePersonId` maps to `personId`
+    // for the internal BreachedRow shape (nullable because unfilled
+    // positions can still carry SLA stages).
+    const rows = await this.prisma.projectPosition.findMany({
       where: {
         slaDueAt: { lt: now },
         slaBreachedAt: null,
@@ -189,15 +190,23 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
         id: true,
         slaStage: true,
         slaDueAt: true,
-        personId: true,
+        activePersonId: true,
         projectId: true,
         requestedByPersonId: true,
       },
     });
+    return rows.map((r) => ({
+      id: r.id,
+      slaStage: r.slaStage,
+      slaDueAt: r.slaDueAt,
+      personId: r.activePersonId,
+      projectId: r.projectId,
+      requestedByPersonId: r.requestedByPersonId,
+    }));
   }
 
   private async markBreached(assignmentId: string, breachedAt: Date): Promise<void> {
-    await this.prisma.projectAssignment.update({
+    await this.prisma.projectPosition.update({
       where: { id: assignmentId },
       data: { slaBreachedAt: breachedAt },
     });
@@ -208,7 +217,9 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
   // crossed a warning threshold. We fetch a superset by date math
   // and filter precisely in `sweep()` so the SQL stays simple.
   private async findPreBreachCandidates(now: Date): Promise<PreBreachCandidateRow[]> {
-    return this.prisma.projectAssignment.findMany({
+    // LEAN: ProjectPosition is canonical. `createdAt` is the position-creation
+    // timestamp and maps to the legacy `requestedAt` for elapsed-fraction math.
+    const rows = await this.prisma.projectPosition.findMany({
       where: {
         slaDueAt: { gt: now },
         slaBreachedAt: null,
@@ -219,14 +230,25 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
         id: true,
         slaStage: true,
         slaDueAt: true,
-        personId: true,
+        activePersonId: true,
         projectId: true,
         requestedByPersonId: true,
-        requestedAt: true,
+        createdAt: true,
         slaWarnedAt50pct: true,
         slaWarnedAt75pct: true,
       },
     });
+    return rows.map((r) => ({
+      id: r.id,
+      slaStage: r.slaStage,
+      slaDueAt: r.slaDueAt,
+      personId: r.activePersonId,
+      projectId: r.projectId,
+      requestedByPersonId: r.requestedByPersonId,
+      requestedAt: r.createdAt,
+      slaWarnedAt50pct: r.slaWarnedAt50pct,
+      slaWarnedAt75pct: r.slaWarnedAt75pct,
+    }));
   }
 
   private elapsedFraction(now: Date, start: Date, due: Date): number {
@@ -251,7 +273,7 @@ export class AssignmentSlaSweepService implements OnModuleInit, OnModuleDestroy 
       // it so deduplication still holds.
       data.slaWarnedAt50pct = warnedAt;
     }
-    await this.prisma.projectAssignment.update({
+    await this.prisma.projectPosition.update({
       where: { id: assignmentId },
       data,
     });

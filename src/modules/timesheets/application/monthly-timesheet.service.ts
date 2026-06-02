@@ -128,21 +128,29 @@ export class MonthlyTimesheetService {
       : [];
     const projectMap = new Map(projects.map((p) => [p.id, p]));
 
-    // Fetch active assignments
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // Fetch active fills (LEAN: ProjectPosition canonical, was ProjectAssignment).
+    // fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD maps the legacy active
+    // AssignmentStatus set 1:1.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        personId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: monthEnd },
-        OR: [{ validTo: null }, { validTo: { gte: monthStart } }],
+        activePersonId: personId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: monthEnd },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: monthStart } }],
       },
       select: {
         id: true,
         projectId: true,
-        allocationPercent: true,
+        activeAllocationPercent: true,
         project: { select: { id: true, name: true, projectCode: true } },
       },
     });
+    const assignments = positions.map((p) => ({
+      id: p.id,
+      projectId: p.projectId,
+      allocationPercent: p.activeAllocationPercent,
+      project: p.project,
+    }));
 
     // Fetch leave for the month
     const leaveRequests = await this.prisma.leaveRequest.findMany({
@@ -311,16 +319,20 @@ export class MonthlyTimesheetService {
       }
     }
 
-    // Get assignments
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // Get active fills (LEAN: ProjectPosition canonical, was ProjectAssignment).
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        personId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: monthEnd },
-        OR: [{ validTo: null }, { validTo: { gte: monthStart } }],
+        activePersonId: personId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: monthEnd },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: monthStart } }],
       },
-      select: { projectId: true, allocationPercent: true },
+      select: { projectId: true, activeAllocationPercent: true },
     });
+    const assignments = positions.map((p) => ({
+      projectId: p.projectId,
+      allocationPercent: p.activeAllocationPercent,
+    }));
 
     if (assignments.length === 0) return { filledDays: 0, filledHours: 0 };
 
