@@ -147,26 +147,34 @@ export class SkillsService {
 
     if (matchingPersonIds.length === 0) return [];
 
-    // Get active assignments for these people to calculate allocation
+    // LEAN-P1-3: read active ProjectPosition rows in place of
+    // ProjectAssignment for the allocation sum. activePerson is the lean
+    // schema relation backing activePersonId.
     const today = new Date();
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
+    const activePositions = await this.prisma.projectPosition.findMany({
       where: {
-        personId: { in: matchingPersonIds },
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: today },
-        OR: [{ validTo: null }, { validTo: { gte: today } }],
+        activePersonId: { in: matchingPersonIds },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: today },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: today } }],
         ...(projectId ? { NOT: { projectId } } : {}),
       },
-      include: { person: { select: { displayName: true } } },
+      include: { activePerson: { select: { displayName: true } } },
     });
 
     // Sum allocation per person
     const allocationMap = new Map<string, number>();
     const displayNameMap = new Map<string, string>();
-    for (const a of activeAssignments) {
-      const current = allocationMap.get(a.personId) ?? 0;
-      allocationMap.set(a.personId, current + Number(a.allocationPercent ?? 0));
-      displayNameMap.set(a.personId, a.person.displayName);
+    for (const p of activePositions) {
+      if (!p.activePersonId) continue;
+      const current = allocationMap.get(p.activePersonId) ?? 0;
+      allocationMap.set(
+        p.activePersonId,
+        current + Number(p.activeAllocationPercent ?? 0),
+      );
+      if (p.activePerson) {
+        displayNameMap.set(p.activePersonId, p.activePerson.displayName);
+      }
     }
 
     // Also get display names for people with no assignments

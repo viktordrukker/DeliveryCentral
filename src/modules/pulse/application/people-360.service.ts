@@ -69,26 +69,33 @@ export class PeopleThreeSixtyService {
     }));
 
     // ── Workload trend ────────────────────────────────────────────────────────
-    // Use active assignments to derive allocation per week
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // LEAN-P1-3: read active ProjectPosition rows (fill metadata on the
+    // position) instead of legacy ProjectAssignment. DTO shape unchanged.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        personId,
-        validFrom: { lte: toDate },
-        OR: [{ validTo: null }, { validTo: { gte: fromDate } }],
+        activePersonId: personId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: toDate },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: fromDate } }],
       },
-      select: { validFrom: true, validTo: true, allocationPercent: true },
+      select: {
+        activeValidFrom: true,
+        activeValidTo: true,
+        activeAllocationPercent: true,
+      },
     });
 
     const workloadTrend = weekDates.map((d) => {
       const weekEnd = new Date(d);
       weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
       let total = 0;
-      for (const a of assignments) {
-        // DATE-02: open-ended assignments (validTo === null) are treated as
-        // overlapping any week from validFrom onwards. No 2099 sentinel.
-        const aStart = new Date(a.validFrom);
-        if (aStart <= weekEnd && (a.validTo === null || new Date(a.validTo) >= d)) {
-          total += Number(a.allocationPercent);
+      for (const p of positions) {
+        // DATE-02: open-ended fills (activeValidTo === null) are treated as
+        // overlapping any week from activeValidFrom onwards. No 2099 sentinel.
+        if (p.activeValidFrom === null) continue;
+        const pStart = new Date(p.activeValidFrom);
+        if (pStart <= weekEnd && (p.activeValidTo === null || new Date(p.activeValidTo) >= d)) {
+          total += Number(p.activeAllocationPercent ?? 0);
         }
       }
       return { weekStart: toDateStr(d), allocationPercent: total };
