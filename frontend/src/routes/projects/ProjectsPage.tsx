@@ -60,7 +60,7 @@ export function ProjectsPage(): JSX.Element {
   // closingInDays / view) so links from the Director finance band land on a
   // pre-filtered registry view. Backend-side ProjectDirectoryItem does not yet
   // carry cpi / budgetStatus / openGaps / plannedEndDate — those filters are
-  // wired through but no-op until the BE schema sweep (PR #459) lands the
+  // wired through but no-op until the BE schema sweep (PR issue 459) lands the
   // server-side fields. Status filter is fully effective today.
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
 
@@ -173,7 +173,7 @@ export function ProjectsPage(): JSX.Element {
       // finance band. `status` is fully effective today; `cpiBelow`,
       // `budgetStatus`, `hasOpenGaps`, `closingInDays` are wired through but
       // remain no-ops until ProjectDirectoryItem carries cpi / budgetStatus /
-      // openPositionsCount / plannedEndDate (BE PR #459 sweep).
+      // openPositionsCount / plannedEndDate (BE PR issue 459 sweep).
       if (filters.status && item.status !== filters.status) return false;
       const rec = item as ProjectDirectoryItem & {
         cpi?: number | null;
