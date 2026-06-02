@@ -42,6 +42,8 @@ export const WEBHOOK_EVENT_TYPES = [
   'assignment.proposal_submitted',
   'assignment.proposal_acknowledged',
   'assignment.proposal_director_approval_requested',
+  // Position (LEAN-P1-5 — lean-migration ProjectPosition lifecycle events)
+  'position.fill_changed',
   // Project
   'project.submitted_for_approval',
   'project.approved',
@@ -102,6 +104,7 @@ export const WEBHOOK_EVENT_DESCRIPTIONS: Record<WebhookEventType, string> = {
   'assignment.proposal_submitted': 'A staffing proposal slate was submitted for the assignment.',
   'assignment.proposal_acknowledged': 'A staffing proposal was acknowledged by the recipient.',
   'assignment.proposal_director_approval_requested': 'A staffing proposal requires director-level approval.',
+  'position.fill_changed': 'A ProjectPosition lifecycle changed (lean-migration canonical event — fillStatus or activeFill mutation).',
   'project.submitted_for_approval': 'A project was submitted for activation approval.',
   'project.approved': 'A project activation request was approved.',
   'project.rejected': 'A project activation request was rejected.',
@@ -145,7 +148,7 @@ export function isWebhookEventType(value: unknown): value is WebhookEventType {
 export interface WebhookEventTypeDescriptor {
   eventType: WebhookEventType;
   description: string;
-  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'person' | 'integration' | 'nudge';
+  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'person' | 'position' | 'integration' | 'nudge';
 }
 
 function domainOf(eventType: WebhookEventType): WebhookEventTypeDescriptor['domain'] {
