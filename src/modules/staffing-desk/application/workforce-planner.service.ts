@@ -356,18 +356,47 @@ export class WorkforcePlannerService {
       select: { id: true, name: true, projectCode: true, status: true, startsOn: true, endsOn: true },
     });
 
-    // All assignments overlapping horizon (includes DRAFT so tentative plans show up in grid)
-    const assignmentWhere: Record<string, unknown> = {
-      status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-      validFrom: { lte: endDate },
-      OR: [{ validTo: { gte: new Date(from) } }, { validTo: null }],
+    // LEAN-P1-1 — All active fills overlapping horizon, read from the lean
+    // `ProjectPosition` table. Adapted in-place to the legacy `ProjectAssignment`
+    // shape so the rest of `getPlan` continues to operate on the same field
+    // names (`id`, `personId`, `allocationPercent`, `validFrom`, `validTo`,
+    // `status`). `id` is preserved as the legacy assignment id so downstream
+    // `applyPlan` extension calls keep working until P1-6/P1-7.
+    const positionWhere: Record<string, unknown> = {
+      fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      activeValidFrom: { lte: endDate },
+      OR: [{ activeValidTo: { gte: new Date(from) } }, { activeValidTo: null }],
     };
-    if (personScope) assignmentWhere.personId = { in: [...personScope] };
+    if (personScope) positionWhere.activePersonId = { in: [...personScope] };
 
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: assignmentWhere,
-      select: { id: true, personId: true, projectId: true, staffingRole: true, allocationPercent: true, validFrom: true, validTo: true, status: true },
+    const positionRows = await this.prisma.projectPosition.findMany({
+      where: positionWhere,
+      select: {
+        id: true,
+        legacyAssignmentId: true,
+        activePersonId: true,
+        projectId: true,
+        role: true,
+        activeAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+        fillStatus: true,
+      },
     });
+    const assignments = positionRows
+      .filter((p): p is typeof p & { activePersonId: string; activeValidFrom: Date } =>
+        p.activePersonId !== null && p.activeValidFrom !== null,
+      )
+      .map((p) => ({
+        id: p.legacyAssignmentId ?? p.id,
+        personId: p.activePersonId,
+        projectId: p.projectId,
+        staffingRole: p.role,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom,
+        validTo: p.activeValidTo,
+        status: p.fillStatus as string,
+      }));
 
     // Role plans for these projects
     const projectIds = projects.map((p) => p.id);
@@ -376,20 +405,73 @@ export class WorkforcePlannerService {
       select: { id: true, projectId: true, roleName: true, headcount: true, allocationPercent: true, plannedStartDate: true, plannedEndDate: true, requiredSkillIds: true },
     });
 
-    // Staffing requests overlapping horizon (priority-filtered to match autoMatch scope)
+    // LEAN-P1-1 — Open demand overlapping horizon, read from `ProjectPosition`
+    // (fillStatus OPEN/PROPOSED) and grouped by `legacyStaffingRequestId` to
+    // reconstruct the legacy `StaffingRequest`-shaped rows used by the rest
+    // of the planner. headcountRequired counts sibling positions per group;
+    // headcountFulfilled counts those that already have an `activePersonId`.
+    // Positions with no `legacyStaffingRequestId` (RolePlan-derived or new
+    // post-cutover demand) are surfaced as singleton requests using the
+    // position `id` so they still appear in the grid.
     const planPriorityWhere = params.priorities && params.priorities.length > 0
       ? { priority: { in: params.priorities as Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'> } }
       : {};
-    const requests = await this.prisma.staffingRequest.findMany({
+    const requestPositionRows = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['OPEN', 'IN_REVIEW'] },
+        fillStatus: { in: ['OPEN', 'PROPOSED'] },
         projectId: { in: projectIds },
         startDate: { lte: endDate },
         endDate: { gte: new Date(from) },
         ...planPriorityWhere,
       },
-      select: { id: true, projectId: true, role: true, skills: true, allocationPercent: true, headcountRequired: true, headcountFulfilled: true, priority: true, startDate: true, endDate: true },
+      select: {
+        id: true,
+        legacyStaffingRequestId: true,
+        projectId: true,
+        role: true,
+        skills: true,
+        requiredAllocationPercent: true,
+        activePersonId: true,
+        priority: true,
+        startDate: true,
+        endDate: true,
+      },
     });
+    type RequestRow = {
+      id: string;
+      projectId: string;
+      role: string;
+      skills: string[];
+      allocationPercent: import('@prisma/client/runtime/library').Decimal;
+      headcountRequired: number;
+      headcountFulfilled: number;
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      startDate: Date;
+      endDate: Date;
+    };
+    const requestGroupMap = new Map<string, RequestRow>();
+    for (const p of requestPositionRows) {
+      const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
+      const existing = requestGroupMap.get(key);
+      if (existing) {
+        existing.headcountRequired += 1;
+        if (p.activePersonId !== null) existing.headcountFulfilled += 1;
+      } else {
+        requestGroupMap.set(key, {
+          id: p.legacyStaffingRequestId ?? p.id,
+          projectId: p.projectId,
+          role: p.role,
+          skills: p.skills,
+          allocationPercent: p.requiredAllocationPercent,
+          headcountRequired: 1,
+          headcountFulfilled: p.activePersonId !== null ? 1 : 0,
+          priority: p.priority,
+          startDate: p.startDate,
+          endDate: p.endDate,
+        });
+      }
+    }
+    const requests: RequestRow[] = [...requestGroupMap.values()];
 
     // Lookups
     const allPersonIds = [...new Set(assignments.map((a) => a.personId))];
@@ -540,6 +622,12 @@ export class WorkforcePlannerService {
     }
 
     // Bench: <20% allocation
+    // LEAN-P1-1 — last-ended-assignment lookup remains on the legacy
+    // `ProjectAssignment` table for now. The structurally correct lean source
+    // is `ProjectPositionFillHistory`, but no code populates that table yet
+    // (the inverted mirror nulls `activePersonId`/`activeValidTo` on release,
+    // so `ProjectPosition` itself can't answer "who was last on this position").
+    // Migration of this site is deferred until the fill-history writer ships.
     const endedAssignments = await this.prisma.projectAssignment.findMany({
       where: { status: { in: ['COMPLETED', 'CANCELLED'] }, validTo: { not: null, lt: now } },
       select: { personId: true, validTo: true },
@@ -573,11 +661,17 @@ export class WorkforcePlannerService {
       (['BOOKED','ONBOARDING','ASSIGNED','ON_HOLD'].includes(a.status)) && a.validTo && a.validTo >= now && a.validTo <= endDate,
     );
     const rollOffPersonIds = [...new Set(rollOffAssignments.map((a) => a.personId))];
-    const followOns = rollOffPersonIds.length > 0 ? await this.prisma.projectAssignment.findMany({
-      where: { personId: { in: rollOffPersonIds }, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] }, validFrom: { gte: now } },
-      select: { personId: true },
+    // LEAN-P1-1 — follow-on fills sourced from `ProjectPosition`. A person
+    // has a follow-on when any active fill for them starts on or after now.
+    const followOns = rollOffPersonIds.length > 0 ? await this.prisma.projectPosition.findMany({
+      where: {
+        activePersonId: { in: rollOffPersonIds },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { gte: now },
+      },
+      select: { activePersonId: true },
     }) : [];
-    const hasFollowOnSet = new Set(followOns.map((a) => a.personId));
+    const hasFollowOnSet = new Set(followOns.map((a) => a.activePersonId).filter((id): id is string => id !== null));
     const projectNameMap = new Map(projects.map((p) => [p.id, p.name]));
 
     const rollOffs: PlannerRollOff[] = rollOffAssignments.map((a) => ({
@@ -696,20 +790,75 @@ export class WorkforcePlannerService {
       ? new Date(horizonStart.getTime() + params.weeks * 7 * 86400000)
       : null;
 
-    const requestWhere: { status: { in: Array<'OPEN' | 'IN_REVIEW'> }; startDate?: { lte: Date }; endDate?: { gte: Date }; priority?: { in: Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'> } } = {
-      status: { in: ['OPEN', 'IN_REVIEW'] },
+    // LEAN-P1-1 — autoMatch's demand source is the same as getPlan's: open
+    // demand sourced from `ProjectPosition` (fillStatus OPEN/PROPOSED) and
+    // grouped by `legacyStaffingRequestId` to reconstruct the legacy
+    // `StaffingRequest`-shaped rows the rest of `autoMatch` consumes.
+    const positionRequestWhere: {
+      fillStatus: { in: Array<'OPEN' | 'PROPOSED'> };
+      startDate?: { lte: Date };
+      endDate?: { gte: Date };
+      priority?: { in: Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'> };
+    } = {
+      fillStatus: { in: ['OPEN', 'PROPOSED'] },
     };
     if (horizonStart && horizonEnd) {
-      requestWhere.startDate = { lte: horizonEnd };
-      requestWhere.endDate = { gte: horizonStart };
+      positionRequestWhere.startDate = { lte: horizonEnd };
+      positionRequestWhere.endDate = { gte: horizonStart };
     }
     if (priorityFilter) {
-      requestWhere.priority = { in: [...priorityFilter] as Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'> };
+      positionRequestWhere.priority = { in: [...priorityFilter] as Array<'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'> };
     }
-    const requests = await this.prisma.staffingRequest.findMany({
-      where: requestWhere,
-      select: { id: true, projectId: true, role: true, skills: true, allocationPercent: true, headcountRequired: true, headcountFulfilled: true, priority: true, startDate: true, endDate: true },
+    const autoMatchPositionRows = await this.prisma.projectPosition.findMany({
+      where: positionRequestWhere,
+      select: {
+        id: true,
+        legacyStaffingRequestId: true,
+        projectId: true,
+        role: true,
+        skills: true,
+        requiredAllocationPercent: true,
+        activePersonId: true,
+        priority: true,
+        startDate: true,
+        endDate: true,
+      },
     });
+    type AutoMatchRequestRow = {
+      id: string;
+      projectId: string;
+      role: string;
+      skills: string[];
+      allocationPercent: import('@prisma/client/runtime/library').Decimal;
+      headcountRequired: number;
+      headcountFulfilled: number;
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      startDate: Date;
+      endDate: Date;
+    };
+    const autoMatchRequestMap = new Map<string, AutoMatchRequestRow>();
+    for (const p of autoMatchPositionRows) {
+      const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
+      const existing = autoMatchRequestMap.get(key);
+      if (existing) {
+        existing.headcountRequired += 1;
+        if (p.activePersonId !== null) existing.headcountFulfilled += 1;
+      } else {
+        autoMatchRequestMap.set(key, {
+          id: p.legacyStaffingRequestId ?? p.id,
+          projectId: p.projectId,
+          role: p.role,
+          skills: p.skills,
+          allocationPercent: p.requiredAllocationPercent,
+          headcountRequired: 1,
+          headcountFulfilled: p.activePersonId !== null ? 1 : 0,
+          priority: p.priority,
+          startDate: p.startDate,
+          endDate: p.endDate,
+        });
+      }
+    }
+    const requests: AutoMatchRequestRow[] = [...autoMatchRequestMap.values()];
 
     const allRolePlans = await this.prisma.projectRolePlan.findMany({
       select: { id: true, projectId: true, roleName: true, requiredSkillIds: true, allocationPercent: true, headcount: true, plannedStartDate: true, plannedEndDate: true },
@@ -861,13 +1010,19 @@ export class WorkforcePlannerService {
     // rolled onto later demand). Priority + headcount break ties within the same startDate.
     filteredDemand.sort((a, b) => a.weekStart.localeCompare(b.weekStart) || a.priority - b.priority || b.headcountOpen - a.headcountOpen);
 
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-      select: { personId: true, allocationPercent: true },
+    // LEAN-P1-1 — sum active allocations per person from `ProjectPosition`
+    // (any active fillStatus implies a person currently holds the slot).
+    const activePositions = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
     const allocByPerson = new Map<string, number>();
-    for (const a of activeAssignments) {
-      allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+    for (const a of activePositions) {
+      if (a.activePersonId === null) continue;
+      allocByPerson.set(
+        a.activePersonId,
+        (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
     const allPeople = await this.prisma.person.findMany({
@@ -895,6 +1050,10 @@ export class WorkforcePlannerService {
     const costByPerson = new Map<string, number>();
     for (const r of costRates) costByPerson.set(r.personId, Math.round(r.hourlyRate.toNumber() * 160));
 
+    // LEAN-P1-1 — bench daysOnBench source unchanged: legacy `ProjectAssignment`
+    // still answers "who was last on a project and when did it end" until the
+    // `ProjectPositionFillHistory` writer ships (see comment on the matching
+    // query in `getPlan`).
     const endedAssignments = await this.prisma.projectAssignment.findMany({
       where: { status: { in: ['COMPLETED', 'CANCELLED'] }, validTo: { not: null, lt: now }, personId: { in: benchIds } },
       select: { personId: true, validTo: true },
@@ -1154,16 +1313,53 @@ export class WorkforcePlannerService {
     const coverageLiftPercent = totalDemandHc > 0 ? (suggestions.length / totalDemandHc) * 100 : 0;
 
     // Diagnostics — HC-based so the numbers reconcile against the grid's demand dashes.
-    const [rawRequests, rawRolePlans, totalActivePeople] = await Promise.all([
-      this.prisma.staffingRequest.findMany({
-        where: { status: { in: ['OPEN', 'IN_REVIEW'] } },
-        select: { projectId: true, priority: true, headcountRequired: true, headcountFulfilled: true, startDate: true, endDate: true },
+    // LEAN-P1-1 — diagnostics scan from `ProjectPosition` grouped by
+    // `legacyStaffingRequestId` so HC matches the rest of `autoMatch` exactly.
+    const [diagPositionRows, rawRolePlans, totalActivePeople] = await Promise.all([
+      this.prisma.projectPosition.findMany({
+        where: { fillStatus: { in: ['OPEN', 'PROPOSED'] } },
+        select: {
+          id: true,
+          legacyStaffingRequestId: true,
+          projectId: true,
+          priority: true,
+          activePersonId: true,
+          startDate: true,
+          endDate: true,
+        },
       }),
       this.prisma.projectRolePlan.findMany({
         select: { projectId: true, headcount: true, plannedStartDate: true, plannedEndDate: true },
       }),
       this.prisma.person.count({ where: { employmentStatus: 'ACTIVE' } }),
     ]);
+    type DiagRequestRow = {
+      projectId: string;
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      headcountRequired: number;
+      headcountFulfilled: number;
+      startDate: Date;
+      endDate: Date;
+    };
+    const diagRequestMap = new Map<string, DiagRequestRow>();
+    for (const p of diagPositionRows) {
+      const key = p.legacyStaffingRequestId ?? `pos:${p.id}`;
+      const existing = diagRequestMap.get(key);
+      if (existing) {
+        existing.headcountRequired += 1;
+        if (p.activePersonId !== null) existing.headcountFulfilled += 1;
+      } else {
+        diagRequestMap.set(key, {
+          projectId: p.projectId,
+          priority: p.priority,
+          headcountRequired: 1,
+          headcountFulfilled: p.activePersonId !== null ? 1 : 0,
+          startDate: p.startDate,
+          endDate: p.endDate,
+        });
+      }
+    }
+    const rawRequests: DiagRequestRow[] = [...diagRequestMap.values()];
 
     const rawRequestHc = rawRequests.reduce((s, r) => s + Math.max(0, r.headcountRequired - r.headcountFulfilled), 0);
     const rawRolePlanHc = rawRolePlans.reduce((s, rp) => s + rp.headcount, 0);
@@ -1333,6 +1529,10 @@ export class WorkforcePlannerService {
   /* ── Extension validation ── */
 
   public async validateExtension(request: ExtensionValidateRequestDto): Promise<ExtensionValidateResponseDto> {
+    // LEAN-P1-1 — `assignmentId` flows through `applyPlan` extensions and is
+    // still a legacy `ProjectAssignment.id` (write paths unchanged in P1).
+    // The lookup itself remains on the legacy table for matching ID flow; the
+    // over-allocation check below is the read that moved to `ProjectPosition`.
     const assignment = await this.prisma.projectAssignment.findUnique({
       where: { id: request.assignmentId },
       select: {
@@ -1404,18 +1604,26 @@ export class WorkforcePlannerService {
       // Anomaly (non-blocking): over-allocation on any day in the extension window
       const allocShare = assignment.allocationPercent?.toNumber() ?? 0;
       if (allocShare > 0) {
-        const others = await this.prisma.projectAssignment.findMany({
+        // LEAN-P1-1 — read overlap candidates from `ProjectPosition`. The
+        // current assignment is excluded via `legacyAssignmentId` since the
+        // mirrored position carries that provenance link.
+        const others = await this.prisma.projectPosition.findMany({
           where: {
-            personId: assignment.person.id,
-            id: { not: assignment.id },
-            status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-            validFrom: { lte: newValidToDate },
-            OR: [{ validTo: { gte: currentValidToDate } }, { validTo: null }],
+            activePersonId: assignment.person.id,
+            legacyAssignmentId: { not: assignment.id },
+            fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+            activeValidFrom: { lte: newValidToDate },
+            OR: [{ activeValidTo: { gte: currentValidToDate } }, { activeValidTo: null }],
           },
-          select: { allocationPercent: true, validFrom: true, validTo: true, project: { select: { name: true } } },
+          select: {
+            activeAllocationPercent: true,
+            activeValidFrom: true,
+            activeValidTo: true,
+            project: { select: { name: true } },
+          },
         });
         for (const o of others) {
-          const oAlloc = o.allocationPercent?.toNumber() ?? 0;
+          const oAlloc = o.activeAllocationPercent?.toNumber() ?? 0;
           if (oAlloc + allocShare > 100) {
             conflicts.push({
               kind: 'over-allocation',
@@ -1449,6 +1657,10 @@ export class WorkforcePlannerService {
     const topN = request.topN ?? 5;
 
     // Resolve demand from either StaffingRequest or ProjectRolePlan
+    // LEAN-P1-1 — `demandId` flowing in here is the legacy
+    // `StaffingRequest.id` returned by `getPlan` (preserved via
+    // `legacyStaffingRequestId` reconstruction), so the lookup itself stays
+    // on the legacy table until the API contract migrates in a later phase.
     const asRequest = await this.prisma.staffingRequest.findUnique({
       where: { id: request.demandId },
       select: {
@@ -1499,13 +1711,18 @@ export class WorkforcePlannerService {
     const demandProjectName = demandProject?.name ?? demandProjectId;
 
     // Load all people + current allocation + skills + leave
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-      select: { personId: true, allocationPercent: true },
+    // LEAN-P1-1 — current allocation sourced from `ProjectPosition` active fills.
+    const activeAssignments = await this.prisma.projectPosition.findMany({
+      where: { fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
     const allocByPerson = new Map<string, number>();
     for (const a of activeAssignments) {
-      allocByPerson.set(a.personId, (allocByPerson.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+      if (a.activePersonId === null) continue;
+      allocByPerson.set(
+        a.activePersonId,
+        (allocByPerson.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
     const people = await this.prisma.person.findMany({
