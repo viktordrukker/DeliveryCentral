@@ -16,6 +16,7 @@ import {
   deleteScenario,
   listScenarios,
   runSolver,
+  updateScenario,
 } from '@/lib/api/planner-scenarios';
 
 const STRATEGIES: { id: SolverStrategy; label: string; hint: string }[] = [
@@ -63,6 +64,9 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
   // Pending state tracks which destructive action is awaiting confirmation.
   const [deleteCandidate, setDeleteCandidate] = useState<PlannerScenarioDto | null>(null);
   const [applyPending, setApplyPending] = useState<PlannerScenarioDto | null>(null);
+  // V2 trunk-187 — scenario persistence: rename action wired to PATCH /staffing/scenarios/:id.
+  const [renameCandidate, setRenameCandidate] = useState<PlannerScenarioDto | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   async function reload(): Promise<void> {
     setLoading(true);
@@ -133,6 +137,24 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
     }
   }
 
+  function openRename(scenario: PlannerScenarioDto): void {
+    setRenameValue(scenario.name);
+    setRenameCandidate(scenario);
+  }
+
+  async function submitRename(): Promise<void> {
+    const name = renameValue.trim();
+    if (!name || !renameCandidate) return;
+    if (name === renameCandidate.name) {
+      setRenameCandidate(null);
+      return;
+    }
+    await updateScenario(renameCandidate.id, { name });
+    toast.success(`Renamed to "${name}"`);
+    setRenameCandidate(null);
+    await reload();
+  }
+
   async function confirmApply(scenario: PlannerScenarioDto): Promise<void> {
     setApplyPending(null);
     setBusy(true);
@@ -179,7 +201,9 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
                 key={s.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 80px 80px 80px 80px 70px',
+                  gridTemplateColumns: canEdit
+                    ? '1fr 80px 80px 80px 80px 160px'
+                    : '1fr 80px 80px 80px 80px 70px',
                   gap: 8,
                   padding: '6px 10px',
                   alignItems: 'center',
@@ -224,17 +248,30 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
                   <StatusBadge tone="active" variant="chip" label="clean" />
                 )}
                 {canEdit ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteCandidate(s);
-                    }}
-                    disabled={busy}
-                  >
-                    Archive
-                  </Button>
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openRename(s);
+                      }}
+                      disabled={busy}
+                    >
+                      Rename
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteCandidate(s);
+                      }}
+                      disabled={busy}
+                    >
+                      Archive
+                    </Button>
+                  </span>
                 ) : (
                   <span />
                 )}
@@ -343,6 +380,25 @@ export function DistributionStudio({ canEdit = false }: DistributionStudioProps)
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            placeholder="Scenario name"
+            autoFocus
+          />
+        </FormField>
+      </FormModal>
+
+      <FormModal
+        open={renameCandidate !== null}
+        onCancel={() => setRenameCandidate(null)}
+        onSubmit={submitRename}
+        title="Rename scenario"
+        submitLabel="Save"
+        submitDisabled={!renameValue.trim()}
+        testId="rename-scenario"
+      >
+        <FormField label="Scenario name">
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
             placeholder="Scenario name"
             autoFocus
           />
