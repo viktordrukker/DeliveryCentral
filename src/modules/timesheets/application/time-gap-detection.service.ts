@@ -79,19 +79,25 @@ export class TimeGapDetectionService {
       hoursByDate.set(key, (hoursByDate.get(key) ?? 0) + Number(e.hours));
     }
 
-    // Get active assignments for suggestions
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // Get active fills for suggestions (LEAN: ProjectPosition canonical, was
+    // ProjectAssignment). fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD maps
+    // the legacy active AssignmentStatus set 1:1.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
-        personId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: monthEnd },
-        OR: [{ validTo: null }, { validTo: { gte: monthStart } }],
+        activePersonId: personId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: monthEnd },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: monthStart } }],
       },
       select: {
-        allocationPercent: true,
+        activeAllocationPercent: true,
         project: { select: { id: true, projectCode: true, name: true } },
       },
     });
+    const assignments = positions.map((p) => ({
+      allocationPercent: p.activeAllocationPercent,
+      project: p.project,
+    }));
 
     // Detect gaps day by day
     const daysInMonth = monthEnd.getUTCDate();
