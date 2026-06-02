@@ -20,9 +20,27 @@ import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-hea
 import { useProjectRegistry } from '@/features/projects/useProjectRegistry';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
-const FILTER_DEFAULTS = { search: '', source: '', sort: '', engagement: '', priority: '' };
+
+// V2 Scope §4 item 4 — Law-9 drilldown params from /dashboards/director (finance band).
+// `status`, `cpiBelow`, `budgetStatus`, `hasOpenGaps`, `closingInDays`, `view` arrive
+// as URL search params; we parse them into filter state so back/forward + share-link
+// behave consistently with all other list pages.
+const FILTER_DEFAULTS = {
+  search: '',
+  source: '',
+  sort: '',
+  engagement: '',
+  priority: '',
+  status: '',
+  cpiBelow: '',
+  budgetStatus: '',
+  hasOpenGaps: '',
+  closingInDays: '',
+  view: '',
+};
 
 export function ProjectsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -35,6 +53,16 @@ export function ProjectsPage(): JSX.Element {
     search: filters.search,
     source: filters.source || undefined,
   });
+
+  // V2 Scope §4 item 4 — dsRefresh gate. OFF path keeps the legacy filter
+  // semantics (engagement + priority client-filter only). ON path also parses
+  // Law-9 drilldown params (status / cpiBelow / budgetStatus / hasOpenGaps /
+  // closingInDays / view) so links from the Director finance band land on a
+  // pre-filtered registry view. Backend-side ProjectDirectoryItem does not yet
+  // carry cpi / budgetStatus / openGaps / plannedEndDate — those filters are
+  // wired through but no-op until the BE schema sweep (PR issue 459) lands the
+  // server-side fields. Status filter is fully effective today.
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
 
   const canCreateProject = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
   const { setActions } = useTitleBarActions();
@@ -140,6 +168,38 @@ export function ProjectsPage(): JSX.Element {
   const filteredItems = state.visibleItems.filter((item) => {
     if (filters.engagement && item.engagementModel !== filters.engagement) return false;
     if (filters.priority && item.priority !== filters.priority) return false;
+    if (dsRefreshEnabled) {
+      // V2 Scope §4 item 4 — Law-9 drilldown filters from /dashboards/director
+      // finance band. `status` is fully effective today; `cpiBelow`,
+      // `budgetStatus`, `hasOpenGaps`, `closingInDays` are wired through but
+      // remain no-ops until ProjectDirectoryItem carries cpi / budgetStatus /
+      // openPositionsCount / plannedEndDate (BE PR issue 459 sweep).
+      if (filters.status && item.status !== filters.status) return false;
+      const rec = item as ProjectDirectoryItem & {
+        cpi?: number | null;
+        budgetStatus?: 'over' | 'under' | 'on' | null;
+        openPositionsCount?: number | null;
+        plannedEndDate?: string | null;
+      };
+      if (filters.cpiBelow) {
+        const threshold = Number(filters.cpiBelow);
+        if (Number.isFinite(threshold) && rec.cpi != null && rec.cpi >= threshold) return false;
+      }
+      if (filters.budgetStatus && rec.budgetStatus != null && rec.budgetStatus !== filters.budgetStatus) {
+        return false;
+      }
+      if (filters.hasOpenGaps === 'true' && rec.openPositionsCount != null && rec.openPositionsCount <= 0) {
+        return false;
+      }
+      if (filters.closingInDays) {
+        const days = Number(filters.closingInDays);
+        if (Number.isFinite(days) && rec.plannedEndDate) {
+          const end = new Date(rec.plannedEndDate).getTime();
+          const horizon = Date.now() + days * 24 * 60 * 60 * 1000;
+          if (Number.isFinite(end) && end > horizon) return false;
+        }
+      }
+    }
     return true;
   });
 
