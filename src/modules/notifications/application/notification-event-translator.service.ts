@@ -6,6 +6,7 @@ import { InAppNotificationService } from '@src/modules/in-app-notifications/appl
 import { AppConfig } from '@src/shared/config/app-config';
 import { PlatformFlagsService } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+import type { PositionFillStatusValue } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
 
 import { NotificationDispatchService } from './notification-dispatch.service';
 
@@ -129,6 +130,14 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     { eventName: 'nudge.timesheet_submission_overdue', dispatch: 'dispatchNudgeTimesheetSubmissionOverdue' },
     { eventName: 'nudge.staffing_request_approval_overdue', dispatch: 'dispatchNudgeStaffingRequestApprovalOverdue' },
     { eventName: 'nudge.assignment_approval_overdue', dispatch: 'dispatchNudgeAssignmentApprovalOverdue' },
+    // LEAN-P1-5 — lean staffing aggregate fill-status lifecycle. Replaces
+    // the legacy `assignment.*` + `staffing_request.*` events listed above.
+    // Each ProjectPosition fill-status transition fans out to the same
+    // recipient sets as the legacy events; mapping table lives in
+    // `dispatchPositionFillChanged()`. Once all callers are on the
+    // position-centric path (LEAN-P1-6 .. P1-11), the legacy handlers
+    // above can be retired in the LEAN Sprint 5 contract phase.
+    { eventName: 'position.fill_changed', dispatch: 'dispatchPositionFillChanged' },
   ] as const;
 
   /**
@@ -1545,6 +1554,153 @@ export class NotificationEventTranslatorService implements OnModuleInit {
         'Assignment escalated to a case',
         undefined,
         `/cases/${payload.caseId}`,
+      );
+    }
+  }
+
+  // ── LEAN-P1-5 — Position fill-status lifecycle ─────────────────────────
+  // Single entry point for `ProjectPositionFillChangedEvent` (S2-7). Routes
+  // transitions to the equivalent legacy email + in-app notification flows
+  // so user-facing notifications remain identical pre/post lean migration.
+  // Mapping table (fromStatus → toStatus → legacy event):
+  //   DRAFT → OPEN              : position.opened (search starts)
+  //   OPEN → PROPOSED           : assignment.created (candidate proposed)
+  //   PROPOSED → BOOKED         : assignment.approved
+  //   PROPOSED → OPEN           : assignment.rejected
+  //   BOOKED → ONBOARDING       : assignment.onboarding_scheduled
+  //   BOOKED → ASSIGNED         : assignment.status_changed (ASSIGNED)
+  //   ONBOARDING → ASSIGNED     : assignment.status_changed (ASSIGNED)
+  //   ASSIGNED → ON_HOLD        : assignment.status_changed (ON_HOLD)
+  //   ON_HOLD → ASSIGNED        : assignment.status_changed (ASSIGNED)
+  //   any → RELEASED (filled)   : assignment.ended
+  //   any → RELEASED (unfilled) : staffing_request.cancelled
+  public async positionFillChanged(payload: {
+    positionId: string;
+    projectId: string;
+    fromStatus: PositionFillStatusValue;
+    toStatus: PositionFillStatusValue;
+    actorPersonId: string;
+    activePersonId?: string;
+    reason?: string;
+    occurredAt: Date | string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'position.fill_changed',
+      aggregateType: 'ProjectPosition',
+      aggregateId: payload.positionId,
+      payload,
+      dispatch: () => this.dispatchPositionFillChanged(payload),
+    });
+  }
+
+  private async dispatchPositionFillChanged(payload: {
+    positionId: string;
+    projectId: string;
+    fromStatus: PositionFillStatusValue;
+    toStatus: PositionFillStatusValue;
+    actorPersonId: string;
+    activePersonId?: string;
+    reason?: string;
+    occurredAt: Date | string;
+  }): Promise<void> {
+    const { fromStatus, toStatus, positionId, activePersonId, reason } = payload;
+    const link = `/positions/${positionId}`;
+
+    // Terminal release path — differentiate filled vs unfilled.
+    if (toStatus === 'RELEASED') {
+      if (activePersonId) {
+        // Filled position released — mirrors legacy assignment.ended.
+        await this.sendEmail('position.fill_changed', 'assignment-ended-email', payload);
+        this.createInAppNotification(
+          activePersonId,
+          'assignment.ended',
+          'Your assignment has ended',
+          reason,
+          link,
+        );
+      } else {
+        // Unfilled position released — mirrors legacy staffing_request.cancelled.
+        await this.sendEmail('position.fill_changed', 'staffing-request-cancelled-email', payload);
+      }
+      return;
+    }
+
+    if (fromStatus === 'DRAFT' && toStatus === 'OPEN') {
+      await this.sendEmail('position.fill_changed', 'staffing-request-submitted-email', payload);
+      return;
+    }
+
+    if (fromStatus === 'OPEN' && toStatus === 'PROPOSED') {
+      await this.sendEmail('position.fill_changed', 'assignment-created-email', payload);
+      if (activePersonId) {
+        this.createInAppNotification(
+          activePersonId,
+          'assignment.created',
+          'You have a new assignment',
+          undefined,
+          link,
+        );
+      }
+      return;
+    }
+
+    if (fromStatus === 'PROPOSED' && toStatus === 'OPEN') {
+      await this.sendEmail('position.fill_changed', 'assignment-rejected-email', payload);
+      if (activePersonId) {
+        this.createInAppNotification(
+          activePersonId,
+          'assignment.rejected',
+          'Assignment rejected',
+          reason,
+          link,
+        );
+      }
+      return;
+    }
+
+    if (fromStatus === 'PROPOSED' && toStatus === 'BOOKED') {
+      await this.sendEmail('position.fill_changed', 'assignment-approved-email', payload);
+      if (activePersonId) {
+        this.createInAppNotification(
+          activePersonId,
+          'assignment.approved',
+          'Assignment approved',
+          undefined,
+          link,
+        );
+      }
+      return;
+    }
+
+    if (fromStatus === 'BOOKED' && toStatus === 'ONBOARDING') {
+      await this.sendEmail(
+        'position.fill_changed',
+        'assignment-onboarding-scheduled-email',
+        payload,
+      );
+      if (activePersonId) {
+        this.createInAppNotification(
+          activePersonId,
+          'assignment.onboarding_scheduled',
+          'Onboarding scheduled',
+          undefined,
+          link,
+        );
+      }
+      return;
+    }
+
+    // Status changes among active states fan out via the generic
+    // status-change template, matching legacy assignment.status_changed.
+    const eventType = `assignment.${toStatus.toLowerCase()}`;
+    await this.sendEmail('position.fill_changed', `assignment-${toStatus.toLowerCase()}-email`, payload);
+    if (activePersonId) {
+      this.createInAppNotification(
+        activePersonId,
+        eventType,
+        `Assignment ${toStatus.toLowerCase().replace('_', ' ')}`,
+        reason,
+        link,
       );
     }
   }
