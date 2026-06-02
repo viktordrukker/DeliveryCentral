@@ -120,6 +120,32 @@ describe('ApprovalsPage', () => {
     expect(screen.getByText(/1 SLA breached/)).toBeInTheDocument();
   });
 
+  it('renders the Timesheets filter chip and refetches with timesheet source', async () => {
+    const tsItem: ApprovalQueueItemDto = {
+      id: 'tw-1',
+      source: 'timesheet',
+      title: 'Timesheet week of 2026-05-25',
+      submittedBy: { personId: 'p3', displayName: 'Ethan Brooks' },
+      submittedAt: '2026-05-26T18:00:00Z',
+      slaDueAt: null,
+      slaBreachedAt: null,
+      slaStage: null,
+      ageHours: 12,
+      href: '/approvals/tw-1?source=timesheet',
+      meta: { weekStart: '2026-05-25', totalHours: 40 },
+    };
+    fetchUnifiedApprovals.mockResolvedValue(response([tsItem]));
+    const user = userEvent.setup();
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
+    expect(screen.getByText('Timesheet week of 2026-05-25')).toBeInTheDocument();
+    fetchUnifiedApprovals.mockClear();
+    await user.click(screen.getByRole('button', { name: /Timesheets · 1/ }));
+    await waitFor(() =>
+      expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['timesheet'], pageSize: 100 }),
+    );
+  });
+
   it('B24: header Refresh re-fetches the queue', async () => {
     fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
     const user = userEvent.setup();

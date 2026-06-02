@@ -27,6 +27,7 @@ const SOURCE_LABEL: Record<ApprovalQueueSource, string> = {
   leave: 'Leave request',
   case: 'Case',
   'skill-review': 'Skill review',
+  timesheet: 'Timesheet',
 };
 
 const SLA_TONE: Record<SlaStage, 'active' | 'warning' | 'danger'> = {

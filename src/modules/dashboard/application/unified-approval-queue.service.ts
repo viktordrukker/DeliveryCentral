@@ -39,13 +39,14 @@ const HOUR_MS = 60 * 60 * 1000;
 /**
  * FE-#264 — unified approval queue aggregator.
  *
- * Combines pending approvals across 5 source kinds into a single ranked
+ * Combines pending approvals across 6 source kinds into a single ranked
  * list. v1 fields:
  *   - position-proposal — ProjectPosition with fillStatus=PROPOSED
  *   - budget            — BudgetApproval status=PENDING
  *   - activation        — ProjectActivationApproval decision IS NULL
  *   - leave             — LeaveRequest status=PENDING
  *   - case              — CaseRecord status='OPEN' (any case awaiting action)
+ *   - timesheet         — TimesheetWeek status=SUBMITTED
  *
  * skill-review deferred — no canonical SkillReview model in main yet.
  *
@@ -194,18 +195,33 @@ export class UnifiedApprovalQueueService {
     const sources = new Set(
       args.sources && args.sources.length > 0
         ? args.sources
-        : (['position-proposal', 'budget', 'activation', 'leave', 'case'] as ApprovalQueueSource[]),
+        : ([
+            'position-proposal',
+            'budget',
+            'activation',
+            'leave',
+            'case',
+            'timesheet',
+          ] as ApprovalQueueSource[]),
     );
 
-    const [positions, budgets, activations, leaves, cases] = await Promise.all([
+    const [positions, budgets, activations, leaves, cases, timesheets] = await Promise.all([
       sources.has('position-proposal') ? this.loadPositionProposals() : [],
       sources.has('budget') ? this.loadBudgetApprovals() : [],
       sources.has('activation') ? this.loadActivations() : [],
       sources.has('leave') ? this.loadLeaveRequests() : [],
       sources.has('case') ? this.loadCases() : [],
+      sources.has('timesheet') ? this.loadTimesheets() : [],
     ]);
 
-    const items: ApprovalQueueItemDto[] = [...positions, ...budgets, ...activations, ...leaves, ...cases];
+    const items: ApprovalQueueItemDto[] = [
+      ...positions,
+      ...budgets,
+      ...activations,
+      ...leaves,
+      ...cases,
+      ...timesheets,
+    ];
     items.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     const total = items.length;
     const start = (page - 1) * pageSize;
@@ -308,6 +324,47 @@ export class UnifiedApprovalQueueService {
       href: `/leave-requests/${r.id}`,
       meta: { type: r.type },
     }));
+  }
+
+  private async loadTimesheets(): Promise<ApprovalQueueItemDto[]> {
+    const rows = await this.prisma.timesheetWeek.findMany({
+      where: { status: 'SUBMITTED' },
+      select: {
+        id: true,
+        personId: true,
+        weekStart: true,
+        submittedAt: true,
+        createdAt: true,
+        totalHours: true,
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 100,
+    });
+    const personIds = Array.from(new Set(rows.map((r) => r.personId)));
+    const persons = personIds.length
+      ? await this.prisma.person.findMany({
+          where: { id: { in: personIds } },
+          select: { id: true, displayName: true },
+        })
+      : [];
+    const personById = new Map(persons.map((p) => [p.id, p]));
+    return rows.map((r) => {
+      const person = personById.get(r.personId);
+      const submittedAt = r.submittedAt ?? r.createdAt;
+      return itemFor({
+        source: 'timesheet',
+        id: r.id,
+        title: `Timesheet week of ${isoDate(r.weekStart)}`,
+        submittedAt,
+        submittedBy: person ?? null,
+        href: `/approvals/${r.id}?source=timesheet`,
+        meta: {
+          personId: r.personId,
+          weekStart: isoDate(r.weekStart),
+          totalHours: r.totalHours != null ? Number(r.totalHours) : null,
+        },
+      });
+    });
   }
 
   private async loadCases(): Promise<ApprovalQueueItemDto[]> {
