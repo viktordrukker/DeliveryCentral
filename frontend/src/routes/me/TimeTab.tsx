@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button, Table, Timeline, type Column, type TimelineSegment } from '@/components/ds';
+import { Button, EditableCell, Table, Timeline, type Column, type TimelineSegment } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { fetchMonthlyTimesheet, type MonthlyTimesheetResponse } from '@/lib/api/my-time';
+import { submitTimesheetWeek, upsertTimesheetEntry } from '@/lib/api/timesheets';
 import { MyTimePage } from '@/routes/my-time/MyTimePage';
 
 type GridRow =
@@ -27,12 +29,20 @@ export function TimeTab(): JSX.Element {
   const today = useMemo(() => new Date(), []);
   const monthKey = useMemo(() => `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`, [today]);
   const [data, setData] = useState<MonthlyTimesheetResponse | null>(null);
+  // Optimistic overrides keyed by `${projectId}|${YYYY-MM-DD}` → hours.
+  // Pre-populated on successful upsert; cleared on refetch.
+  const [overrides, setOverrides] = useState<Map<string, number>>(() => new Map());
+  const [submitting, setSubmitting] = useState(false);
+  const [refetchTick, setRefetchTick] = useState(0);
 
   useEffect(() => {
     let active = true;
     fetchMonthlyTimesheet(monthKey)
       .then((res) => {
-        if (active) setData(res);
+        if (active) {
+          setData(res);
+          setOverrides(new Map());
+        }
       })
       .catch(() => {
         // strip is decorative; legacy MyTimePage below has its own loading + error states
@@ -40,7 +50,7 @@ export function TimeTab(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [monthKey]);
+  }, [monthKey, refetchTick]);
 
   const weekSegments: TimelineSegment[] = useMemo(() => {
     if (!data) return [];
@@ -164,13 +174,29 @@ export function TimeTab(): JSX.Element {
       r.set(ek, (r.get(ek) ?? 0) + e.hours);
       rows.set(e.projectId, r);
     }
+    // Apply optimistic overrides: replace cell totals with the latest committed
+    // value. Also ensure the (projectId × date) row exists even if no entries
+    // were in the original payload (e.g. first cell on an unstarted row).
+    for (const [k, hours] of overrides.entries()) {
+      const [pid, ek] = k.split('|');
+      if (!pid || !ek) continue;
+      if (ek < startKey || ek > endKey) continue;
+      const r = rows.get(pid) ?? new Map<string, number>();
+      r.set(ek, hours);
+      rows.set(pid, r);
+    }
+    // For assignmentRows that had no entries this week, still surface a row
+    // so the user has a target cell to edit.
+    for (const a of data.assignmentRows) {
+      if (!rows.has(a.projectId)) rows.set(a.projectId, new Map());
+    }
     return Array.from(rows.entries())
       .map(([projectId, days]) => {
         const lbl = labels.get(projectId) ?? { code: '', name: projectId };
         return { projectId, code: lbl.code, name: lbl.name, days };
       })
       .sort((a, b) => a.code.localeCompare(b.code));
-  }, [data, selectedWeek, weekDays]);
+  }, [data, selectedWeek, weekDays, overrides]);
   const dailyTotals = useMemo(() => {
     const totals = new Array(7).fill(0) as number[];
     if (!projectRows.length || weekDays.length === 0) return totals;
@@ -185,6 +211,55 @@ export function TimeTab(): JSX.Element {
   const weekStatus = selectedWeek?.status ?? 'DRAFT';
   const weekStatusTone: 'active' | 'info' | 'neutral' | 'warning' =
     weekStatus === 'APPROVED' ? 'active' : weekStatus === 'SUBMITTED' ? 'info' : weekStatus === 'REJECTED' ? 'warning' : 'neutral';
+  const isEditable = weekStatus === 'DRAFT' || weekStatus === 'REJECTED';
+
+  // Commits a single cell edit. Optimistically updates the local overrides map
+  // then calls the BE upsert. On error, revert the override entry so the cell
+  // snaps back to the server-truth value.
+  const commitHours = useCallback(
+    async (projectId: string, dateKey: string, weekStartKey: string, prevValue: number, next: number) => {
+      const overrideKey = `${projectId}|${dateKey}`;
+      // Optimistic.
+      setOverrides((m) => {
+        const copy = new Map(m);
+        copy.set(overrideKey, next);
+        return copy;
+      });
+      try {
+        await upsertTimesheetEntry({
+          weekStart: weekStartKey,
+          projectId,
+          date: dateKey,
+          hours: next,
+          capex: false,
+        });
+      } catch (err) {
+        // Revert.
+        setOverrides((m) => {
+          const copy = new Map(m);
+          copy.set(overrideKey, prevValue);
+          return copy;
+        });
+        toast.error(err instanceof Error ? err.message : 'Failed to save hours');
+        throw err;
+      }
+    },
+    [],
+  );
+
+  const handleSubmitWeek = useCallback(async () => {
+    if (!selectedWeek || submitting) return;
+    setSubmitting(true);
+    try {
+      await submitTimesheetWeek(selectedWeek.weekStart);
+      toast.success('Week submitted for approval');
+      setRefetchTick((t) => t + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to submit week');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedWeek, submitting]);
 
   const gridColumns: Column<GridRow>[] = useMemo(() => {
     const cols: Column<GridRow>[] = [
@@ -205,9 +280,10 @@ export function TimeTab(): JSX.Element {
           ),
       },
     ];
+    const weekStartKey = selectedWeek?.weekStart ?? '';
     weekDays.forEach((d, idx) => {
       const k = d.toISOString().slice(0, 10);
-      cols.push({
+      const dayColumn: Column<GridRow, number> = {
         key: `day-${k}`,
         title: (
           <span>
@@ -220,18 +296,52 @@ export function TimeTab(): JSX.Element {
         width: 56,
         sortable: false,
         filter: false,
+        getValue: (row) => (row.kind === 'total' ? row.days[idx] : row.days.get(k) ?? 0),
         render: (row) => {
           const h = row.kind === 'total' ? row.days[idx] : row.days.get(k) ?? 0;
-          return (
+          const display = (
             <span style={{ fontVariantNumeric: 'tabular-nums', color: h > 0 ? 'var(--color-text)' : 'var(--color-text-subtle)' }}>
               {h > 0 ? h.toFixed(1) : '—'}
             </span>
           );
+          // Total row: never editable.
+          if (row.kind === 'total') return display;
+          // Editable only when the week is DRAFT/REJECTED and we have a week-start key.
+          if (!isEditable || !weekStartKey) return display;
+          return (
+            <EditableCell<GridRow, number>
+              row={row}
+              rowIndex={idx}
+              column={dayColumn}
+              displayContent={display}
+            />
+          );
         },
-      });
+        edit: isEditable && weekStartKey
+          ? {
+              kind: 'number',
+              enabledFor: (row) => row.kind === 'project',
+              validate: (next) => {
+                const n = Number(next);
+                if (Number.isNaN(n)) return 'Must be a number';
+                if (n < 0) return 'Must be ≥ 0';
+                if (n > 24) return 'Max 24h per day';
+                return null;
+              },
+              commit: async (row, next) => {
+                if (row.kind !== 'project') return;
+                const prev = row.days.get(k) ?? 0;
+                const n = Number(next ?? 0);
+                if (n === prev) return;
+                await commitHours(row.projectId, k, weekStartKey, prev, n);
+              },
+            }
+          : undefined,
+      };
+      cols.push(dayColumn as Column<GridRow>);
     });
     return cols;
-  }, [weekDays]);
+  }, [weekDays, selectedWeek, isEditable, commitHours]);
 
   const gridRows: GridRow[] = useMemo(() => {
     if (projectRows.length === 0) return [];
@@ -297,6 +407,31 @@ export function TimeTab(): JSX.Element {
                 </span>
               }
             />
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: 'var(--space-3)',
+              gap: 'var(--space-2)',
+              alignItems: 'center',
+            }}
+          >
+            {weekStatus !== 'DRAFT' && weekStatus !== 'REJECTED' && (
+              <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                {weekStatus === 'SUBMITTED' ? 'Awaiting approval' : weekStatus === 'APPROVED' ? 'Approved' : weekStatus}
+              </span>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              type="button"
+              disabled={!isEditable || submitting || !selectedWeek}
+              onClick={handleSubmitWeek}
+              data-testid="me-time-submit-week"
+            >
+              {submitting ? 'Submitting…' : 'Submit week'}
+            </Button>
           </div>
         </SectionCard>
       ) : (
