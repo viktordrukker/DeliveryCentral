@@ -648,6 +648,8 @@ model Person {
   updatedWorkflowStateDefinitions          WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionUpdatedBy")
   createdTimesheetEntries                  TimesheetEntry[]                    @relation("TimesheetEntryCreatedBy")
   updatedTimesheetEntries                  TimesheetEntry[]                    @relation("TimesheetEntryUpdatedBy")
+  // LEAN-P0-5 — denormalised owner of a timesheet entry (mirrors timesheetWeek.personId).
+  ownedTimesheetEntries                    TimesheetEntry[]                    @relation("TimesheetEntryPerson")
   // F-64 / D-103 + DM-5-5 round 22
   createdPersonReleaseApprovals            PersonReleaseApproval[]             @relation("PersonReleaseApprovalCreatedBy")
   updatedPersonReleaseApprovals            PersonReleaseApproval[]             @relation("PersonReleaseApprovalUpdatedBy")
@@ -2049,6 +2051,13 @@ model TimesheetEntry {
   timesheetWeek     TimesheetWeek @relation(fields: [timesheetWeekId], references: [id], onDelete: Cascade)
   projectId         String
   assignmentId      String?
+  // LEAN-P0-5 — lean-aware lineage. `positionId` replaces `assignmentId`
+  // when Phase 3 drops `ProjectAssignment`; `personId` denormalises
+  // `timesheetWeek.personId` so reports can index without a join.
+  positionId        String?         @db.Uuid
+  personId          String?         @db.Uuid
+  position          ProjectPosition? @relation("TimesheetEntryPosition", fields: [positionId], references: [id], onDelete: SetNull)
+  person            Person?         @relation("TimesheetEntryPerson", fields: [personId], references: [id], onDelete: SetNull)
   date              DateTime      @db.Date
   hours             Decimal       @db.Decimal(5, 2)
   capex             Boolean       @default(false)
@@ -2069,6 +2078,8 @@ model TimesheetEntry {
   @@unique([timesheetWeekId, projectId, benchCategory, workLabel, date])
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
+  @@index([positionId, date])
+  @@index([personId, date])
   @@map("timesheet_entries")
 }
 
@@ -4008,6 +4019,8 @@ model ProjectPosition {
   updatedByPerson          Person?                      @relation("ProjectPositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   candidates               ProjectPositionCandidate[]
   fillHistory              ProjectPositionFillHistory[]
+  // LEAN-P0-5 — back-relation for TimesheetEntry.positionId.
+  timesheetEntries         TimesheetEntry[]             @relation("TimesheetEntryPosition")
 
   @@index([projectId, fillStatus])
   @@index([activePersonId, fillStatus, activeValidFrom, activeValidTo], map: "ProjectPosition_activePerson_window_idx")
@@ -4039,6 +4052,10 @@ model ProjectPositionCandidate {
   updatedAt           DateTime                          @updatedAt @db.Timestamptz(3)
   createdByPersonId   String?                           @db.Uuid
   updatedByPersonId   String?                           @db.Uuid
+  // LEAN-P0-5 — backfill provenance pointer at
+  // StaffingRequestProposalCandidate.id. No @relation because the source
+  // table drops in Phase 3; this is a soft pointer for forensic queries.
+  legacyCandidateId   String?                           @db.Uuid
   position            ProjectPosition                   @relation(fields: [positionId], references: [id], onDelete: Cascade)
   candidate           Person                            @relation("ProjectPositionCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
   createdByPerson     Person?                           @relation("ProjectPositionCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
@@ -4050,6 +4067,7 @@ model ProjectPositionCandidate {
   @@index([positionId, decision])
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
+  @@index([legacyCandidateId])
   @@map("ProjectPositionCandidate")
 }
 
