@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import { createAssignment, createAssignmentOverride, fetchAssignments } from '@/lib/api/assignments';
 import { ApiError } from '@/lib/api/http-client';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
@@ -13,7 +12,6 @@ import {
 } from '@/lib/api/project-positions';
 import {
   buildCreateAssignmentOptionsFixture,
-  buildCreateAssignmentResponse,
 } from '@test/fixtures/assignments';
 import { buildPersonDirectoryResponse } from '@test/fixtures/person-directory';
 import { buildProjectDirectoryResponse } from '@test/fixtures/project-registry';
@@ -36,19 +34,10 @@ vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: vi.fn(),
 }));
 
-vi.mock('@/lib/api/assignments', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api/assignments')>('@/lib/api/assignments');
-
-  return {
-    ...actual,
-    createAssignment: vi.fn(),
-    createAssignmentOverride: vi.fn(),
-    fetchAssignments: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
-  };
-});
-
-// LEAN-P2-2: create flow now runs createProjectPosition + transition. Mock
+// LEAN-P2-6: create flow now runs createProjectPosition + transition. Mock
 // both paths; the helper below builds a default ProjectPosition response.
+// Legacy createAssignment / createAssignmentOverride / fetchAssignments mocks
+// were retired here — the hook no longer touches them.
 vi.mock('@/lib/api/project-positions', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
     '@/lib/api/project-positions',
@@ -83,8 +72,6 @@ vi.mock('@/lib/api/skills', () => ({
 
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
-const mockedCreateAssignment = vi.mocked(createAssignment);
-const mockedCreateAssignmentOverride = vi.mocked(createAssignmentOverride);
 const mockedCreateProjectPosition = vi.mocked(createProjectPosition);
 const mockedTransitionProjectPositionFill = vi.mocked(transitionProjectPositionFill);
 
@@ -92,15 +79,12 @@ describe('CreateAssignmentPage', () => {
   beforeEach(() => {
     mockedFetchPersonDirectory.mockReset();
     mockedFetchProjectDirectory.mockReset();
-    mockedCreateAssignment.mockReset();
-    mockedCreateAssignmentOverride.mockReset();
     mockedCreateProjectPosition.mockReset();
     mockedTransitionProjectPositionFill.mockReset();
     // Default success behaviour — happy-path tests can rely on these
     // resolving without re-stating the mock.
     mockedCreateProjectPosition.mockResolvedValue(buildPosition());
     mockedTransitionProjectPositionFill.mockResolvedValue(buildPosition());
-    vi.mocked(fetchAssignments).mockResolvedValue({ items: [], totalCount: 0 } as never);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     window.localStorage.clear();
     window.sessionStorage.clear();
@@ -174,8 +158,6 @@ describe('CreateAssignmentPage', () => {
   it('submits successfully with default allocation', async () => {
     // LEAN-P2-2: create flow runs createProjectPosition then a transition
     // to BOOKED. Defaults from beforeEach already cover both paths.
-    void buildCreateAssignmentResponse({ allocationPercent: 100 });
-
     const { user } = renderWithRouter();
 
     await screen.findByText('Assignment Details');
@@ -210,8 +192,6 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('routes to returnTo on success when an in-app returnTo is provided (Law 3)', async () => {
-    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ allocationPercent: 100 }));
-
     const { user } = renderWithRouter({
       initialEntries: ['/assignments/new?returnTo=/people/bench'],
     });
@@ -228,8 +208,6 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('ignores returnTo when value is not an in-app path (open-redirect guard)', async () => {
-    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ allocationPercent: 100 }));
-
     const { user } = renderWithRouter({
       initialEntries: ['/assignments/new?returnTo=//evil.example.com/phish'],
     });
@@ -267,7 +245,6 @@ describe('CreateAssignmentPage', () => {
     mockedCreateProjectPosition.mockRejectedValueOnce(
       new ApiError('Overlapping assignment for the same person and project already exists.', 409),
     );
-    void buildCreateAssignmentResponse();
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['director']));
 
     const { user } = renderWithRouter();
@@ -324,7 +301,9 @@ describe('CreateAssignmentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create assignment with override' }));
 
     expect(screen.getByText('Override reason is required.')).toBeInTheDocument();
-    expect(mockedCreateAssignmentOverride).not.toHaveBeenCalled();
+    // Override flow stays on the form; the BOOKED transition (the lean
+    // override step) must not have fired without a reason being captured.
+    expect(mockedTransitionProjectPositionFill).not.toHaveBeenCalled();
   });
 
   it('keeps assignment override hidden for non-governance roles', async () => {
@@ -378,7 +357,6 @@ describe('CreateAssignmentPage', () => {
     // LEAN-P2-2: draft skips the BOOKED transition — only the
     // createProjectPosition call fires, and `openImmediately` is false.
     mockedCreateProjectPosition.mockResolvedValue(buildPosition({ fillStatus: 'DRAFT' }));
-    void buildCreateAssignmentResponse({ status: 'CREATED' });
 
     const { user } = renderWithRouter();
 
