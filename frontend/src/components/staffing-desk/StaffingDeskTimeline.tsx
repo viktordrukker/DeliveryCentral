@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { fetchWorkloadPlanning, type WorkloadPlanningPerson, type WorkloadPlanningResponse } from '@/lib/api/workload';
-import { fetchStaffingRequests, type StaffingRequest } from '@/lib/api/staffing-requests';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import {
   blockStyle,
   getCellBackground,
@@ -53,7 +53,10 @@ const S_REQUEST_BLOCK: React.CSSProperties = {
 
 export function StaffingDeskTimeline({ filters, onRowClick }: Props): JSX.Element {
   const [data, setData] = useState<WorkloadPlanningResponse | null>(null);
-  const [requests, setRequests] = useState<StaffingRequest[]>([]);
+  // LEAN-P2-3: open demand is now read from /project-positions filtered by
+  // fillStatus=OPEN; the legacy /staffing-requests endpoint was the wire
+  // path before the canonical aggregate flip.
+  const [openPositions, setOpenPositions] = useState<ProjectPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -70,12 +73,12 @@ export function StaffingDeskTimeline({ filters, onRowClick }: Props): JSX.Elemen
 
     Promise.all([
       fetchWorkloadPlanning({ from: startMonday, to: endDate, poolId: filters.poolId }),
-      fetchStaffingRequests({ status: 'OPEN' }),
+      listProjectPositions({ fillStatuses: ['OPEN'] }),
     ])
-      .then(([planningData, requestData]) => {
+      .then(([planningData, positionData]) => {
         if (active) {
           setData(planningData);
-          setRequests(requestData);
+          setOpenPositions(positionData.positions);
         }
       })
       .catch((err: unknown) => {
@@ -156,7 +159,10 @@ export function StaffingDeskTimeline({ filters, onRowClick }: Props): JSX.Elemen
                 return a.validFrom <= weekEnd && aEnd >= weekStart;
               });
               const weekTotal = weekAssignments.reduce((s, a) => s + a.allocationPercent, 0);
-              const weekRequests = requests.filter((r) => {
+              const weekRequests = openPositions.filter((r) => {
+                // Positions without a demand window are not anchored to the
+                // grid — skip them rather than synthesising a date range.
+                if (!r.startDate || !r.endDate) return false;
                 const rStart = r.startDate.slice(0, 10);
                 const rEnd = r.endDate.slice(0, 10);
                 return rStart <= weekEnd && rEnd >= weekStart;
@@ -181,8 +187,8 @@ export function StaffingDeskTimeline({ filters, onRowClick }: Props): JSX.Elemen
                     );
                   })}
                   {weekRequests.slice(0, 2).map((r) => (
-                    <div key={r.id} style={S_REQUEST_BLOCK} title={`Request: ${r.role} ${r.allocationPercent}%`}>
-                      {r.role.slice(0, 8)} {r.allocationPercent}%
+                    <div key={r.id} style={S_REQUEST_BLOCK} title={`Request: ${r.role} ${r.requiredAllocationPercent}%`}>
+                      {r.role.slice(0, 8)} {r.requiredAllocationPercent}%
                     </div>
                   ))}
                 </div>
