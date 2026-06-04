@@ -1,12 +1,18 @@
 import { httpGet, httpPost } from './http-client';
 
 /**
- * Sprint 2 / S2-8 — frontend client for the lean staffing aggregate endpoints
- * shipped in S2-4.
+ * LEAN-P2-1 — canonical frontend client for the lean staffing aggregate.
  *
- * The DS-7 visual language is the temporary host for these pages — Sprint 1
- * of the lean simplification initiative regenerates the DS via Claude Design.
- * These pages will get a visual refresh then; the data contracts here stay.
+ * Replaces `lib/api/assignments.ts` + `lib/api/staffing-requests.ts` as the
+ * source of truth for positions data. Legacy clients stay backward-compat
+ * through Phase 2; transitional type aliases are re-exported below so
+ * call sites can migrate incrementally.
+ *
+ * Field surface mirrors the Phase 1 backend DTO
+ * (`ProjectPositionResponseDto`). Some fields are declared optional to
+ * accommodate forward-compatible BE additions (e.g. `projectName`,
+ * `startDate`, `endDate`, legacy provenance pointers) without breaking
+ * the type contract today.
  */
 
 export type PositionFillStatus =
@@ -19,20 +25,41 @@ export type PositionFillStatus =
   | 'ON_HOLD'
   | 'RELEASED';
 
+// Canonical alias — matches Prisma enum name and the issue 205 spec.
+export type ProjectPositionFillStatus = PositionFillStatus;
+
+export type StaffingRequestPriorityValue = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
 export interface ProjectPosition {
   id: string;
   projectId: string;
+  // Optional projection fields — populated when the BE response enriches
+  // the row with the parent project's display data.
+  projectName?: string;
+  projectCode?: string;
   role: string;
   requiredAllocationPercent: number;
   fillStatus: PositionFillStatus;
   activePersonId?: string;
   activeAllocationPercent?: number;
+  activeValidFrom?: string;
+  activeValidTo?: string;
+  // Demand window (schema fields). Optional on the wire — present once the
+  // BE DTO exposes them.
+  startDate?: string;
+  endDate?: string;
+  priority?: StaffingRequestPriorityValue;
   onHoldReason?: string;
   onHoldCaseId?: string;
   releaseReason?: string;
   version: number;
   createdByPersonId?: string;
   updatedByPersonId?: string;
+  // Migration provenance — populated by the Sprint 2 backfill. Used by
+  // forensic queries during the legacy contract migration; never edited
+  // from the FE.
+  legacyAssignmentId?: string;
+  legacyStaffingRequestId?: string;
 }
 
 export interface ListProjectPositionsQuery {
@@ -82,6 +109,44 @@ export interface BenchCheckResponse {
   people: BenchPerson[];
 }
 
+// ProjectPositionCandidate — slate row returned by GET /:id/candidates and
+// inverse lookup endpoints. Field names match the Phase 1 BE DTOs.
+export interface ProjectPositionCandidate {
+  personId: string;
+  name: string;
+  role: string;
+  grade?: string | null;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  availabilityHours14d: number;
+}
+
+// ProjectPositionFillHistory — one row in the position's audit ledger.
+// Surfaced when the GET /:id endpoint returns embedded history.
+export type ProjectPositionFillChangeType =
+  | 'DRAFTED'
+  | 'OPENED'
+  | 'PROPOSED'
+  | 'BOOKED'
+  | 'ONBOARDED'
+  | 'ASSIGNED'
+  | 'HELD'
+  | 'RELEASED';
+
+export interface ProjectPositionFillHistory {
+  id: string;
+  positionId: string;
+  changeType: ProjectPositionFillChangeType;
+  changedByPersonId?: string;
+  changeReason?: string;
+  previousPersonId?: string;
+  newPersonId?: string;
+  previousStatus?: ProjectPositionFillStatus;
+  newStatus?: ProjectPositionFillStatus;
+  occurredAt: string;
+}
+
 function toQueryString(query: ListProjectPositionsQuery): string {
   const parts: string[] = [];
   if (query.projectId) parts.push(`projectId=${encodeURIComponent(query.projectId)}`);
@@ -101,9 +166,17 @@ export async function listProjectPositions(
   return httpGet<ListProjectPositionsResponse>(`/project-positions${toQueryString(query)}`);
 }
 
+// fetchProjectPositions — canonical alias matching the issue 205 spec.
+// Use this for new code; `listProjectPositions` stays as the pre-existing
+// name used by Sprint 2 callers (PositionsListPage etc.).
+export const fetchProjectPositions = listProjectPositions;
+
 export async function getProjectPositionById(id: string): Promise<ProjectPosition> {
   return httpGet<ProjectPosition>(`/project-positions/${id}`);
 }
+
+// fetchProjectPosition — canonical alias matching the issue 205 spec.
+export const fetchProjectPosition = getProjectPositionById;
 
 export async function createProjectPosition(
   request: CreateProjectPositionRequest,
@@ -117,6 +190,9 @@ export async function transitionProjectPositionFill(
 ): Promise<ProjectPosition> {
   return httpPost<ProjectPosition, typeof request>(`/project-positions/${id}/transition`, request);
 }
+
+// transitionProjectPosition — canonical alias matching the issue 205 spec.
+export const transitionProjectPosition = transitionProjectPositionFill;
 
 export async function checkBench(
   personIds: string[],
@@ -180,3 +256,11 @@ export async function fetchPersonSuggestedPositions(
     `/people/${personId}/suggested-positions${qs}`,
   );
 }
+
+// ─── Legacy aliases ────────────────────────────────────────────────────────
+// Phase 2 transitional surface. Consumers still importing the legacy assignment
+// types can switch their import path to '@/lib/api/project-positions' and pick
+// up the canonical shape without rewriting fixtures. Once all callers move to
+// `ProjectPosition` directly (LEAN-P2-2), these aliases are removed.
+
+export type LegacyAssignmentDirectoryItem = ProjectPosition;
