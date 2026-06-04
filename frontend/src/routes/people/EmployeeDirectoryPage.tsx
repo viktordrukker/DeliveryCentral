@@ -38,7 +38,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   // V2-B.18 — `role` is server-side; `grade`/`groupBy`/`layout` are client-side
   // refinements over the loaded page (same page-local model as `search`).
-  const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory', role: '', grade: '', layout: 'list', groupBy: 'flat' });
+  // SCOPED-MIN-3 — `selected` joins the URL-persisted filter set so the
+  // inspector drawer survives reload/back-nav (UX Law 5 + Law 10).
+  const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory', role: '', grade: '', layout: 'list', groupBy: 'flat', selected: '' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
   // V2-A.12 — header count badge for people currently on the bench.
@@ -49,7 +51,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2 §4 item 6 — list-detail inspector pane. Only used in the flat+list
   // layout under dsRefresh; other layouts (grid, grouped list) retain the
   // legacy navigate-on-click behavior to keep this change scoped.
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  // SCOPED-MIN-3 — sourced from URL via `filters.selected` to deep-link the drawer.
+  const selectedPersonId = filters.selected || null;
+  const setSelectedPersonId = (id: string | null): void => setFilters({ selected: id ?? '' });
   const { setActions } = useTitleBarActions();
 
   useEffect(() => {

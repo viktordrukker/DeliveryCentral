@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
@@ -187,6 +187,35 @@ describe('EmployeeDirectoryPage', () => {
     expect(screen.queryByText('Employee Details')).not.toBeInTheDocument();
     // Stepper shows position 1 of 2.
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
+  });
+
+  it('SCOPED-MIN-3: inspector selection persists via `?selected=` URL param (deep-link restores drawer)', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    mockedFetchPersonDirectory.mockResolvedValue(
+      buildPersonDirectoryResponse({
+        items: [
+          buildPersonDirectoryItem({ id: 'p1', displayName: 'Ada Lovelace', role: 'Engineer' }),
+          buildPersonDirectoryItem({ id: 'p2', displayName: 'Grace Hopper', role: 'Architect' }),
+        ],
+        total: 2,
+      }),
+    );
+    renderRoute(
+      <Routes>
+        <Route element={<EmployeeDirectoryPage />} path="/people" />
+        <Route element={<div>Employee Details</div>} path="/people/:id" />
+      </Routes>,
+      { initialEntries: ['/people?selected=p2'] },
+    );
+
+    // Deep-link with `?selected=p2` opens the inspector on Grace Hopper directly,
+    // without any user interaction. Validates UX Law 5 + Law 10 (URL persistence).
+    const inspector = await screen.findByTestId('person-directory-inspector');
+    expect(inspector).toBeInTheDocument();
+    // Inspector header shows the targeted person.
+    expect(within(inspector).getByText('Grace Hopper')).toBeInTheDocument();
+    // Stepper reports position 2 of 2 (Grace is the second row).
+    expect(within(inspector).getByText('2 / 2')).toBeInTheDocument();
   });
 
   it('V2 issue 179: inspector close button hides the drawer and keeps the user on the directory', async () => {
