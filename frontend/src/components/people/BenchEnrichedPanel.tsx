@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -11,6 +11,46 @@ import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-b
 import { BenchInspector } from './BenchInspector';
 
 const PAGE_SIZE = 12;
+
+/**
+ * SCOPED-MIN-6 — Bench KPI drill-down filter (UX Law 5 + Law 9).
+ *
+ * `?filter=onBench`           — only people currently on the bench
+ * `?filter=idleOver14`        — people idle > 14 days
+ * `?filter=available`         — people with non-zero 14d availability
+ * `?filter=hasSuggestions`    — people with at least one suggested fill
+ * Default (no param)          — show everyone (engaged + bench)
+ */
+type BenchFilter = 'onBench' | 'idleOver14' | 'available' | 'hasSuggestions' | 'all';
+
+function parseFilter(raw: string | null): BenchFilter {
+  switch (raw) {
+    case 'idleOver14':
+    case 'available':
+    case 'hasSuggestions':
+    case 'onBench':
+    case 'all':
+      return raw;
+    default:
+      return 'all';
+  }
+}
+
+function applyFilter(rows: BenchEnrichedRowDto[], filter: BenchFilter): BenchEnrichedRowDto[] {
+  switch (filter) {
+    case 'all':
+      return rows;
+    case 'idleOver14':
+      return rows.filter((r) => r.isOnBench && r.daysOnBench > 14);
+    case 'available':
+      return rows.filter((r) => r.availabilityHours14d > 0);
+    case 'hasSuggestions':
+      return rows.filter((r) => r.suggestedProjectIds.length > 0);
+    case 'onBench':
+    default:
+      return rows.filter((r) => r.isOnBench);
+  }
+}
 
 function exportBenchCsv(rows: BenchEnrichedRowDto[]): void {
   const header = ['Name', 'Role', 'Grade', 'Office', 'Days idle', 'Availability 14d (h)', 'Suggested fills'];
@@ -44,6 +84,14 @@ function daysOnBenchTone(days: number): Tone {
   return 'danger';
 }
 
+// SCOPED-MIN-6 — tc()-style color helper. Thresholds: warn at 14d, danger at 60d.
+function daysOnBenchColor(days: number): string {
+  if (days > 60) return 'var(--color-status-danger)';
+  if (days > 14) return 'var(--color-status-warning)';
+  if (days > 7) return 'var(--color-status-info)';
+  return 'var(--color-text)';
+}
+
 /**
  * Phase D4 — DS-canvas full-fidelity Bench panel.
  *
@@ -66,6 +114,9 @@ export function BenchEnrichedPanel(): JSX.Element {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   // V2-A.8 — client-side pagination (endpoint returns the full array).
   const [page, setPage] = useState(1);
+  // SCOPED-MIN-6 — KPI drill-down via URL filter (UX Law 5).
+  const [searchParams] = useSearchParams();
+  const filter = parseFilter(searchParams.get('filter'));
 
   useEffect(() => {
     let active = true;
@@ -121,8 +172,10 @@ export function BenchEnrichedPanel(): JSX.Element {
     );
   }
 
+  // SCOPED-MIN-6 — apply URL-driven filter before sorting (UX Law 5 + 9).
+  const filteredRows = applyFilter(rows, filter);
   // Sort by daysOnBench DESC (longest idle first) per canvas
-  const sortedRows = [...rows].sort((a, b) => b.daysOnBench - a.daysOnBench);
+  const sortedRows = [...filteredRows].sort((a, b) => b.daysOnBench - a.daysOnBench);
   const selectedRow = selectedPersonId ? rows.find((r) => r.personId === selectedPersonId) ?? null : null;
 
   // V2-A.8 — client-side pagination of the sorted list.
@@ -169,28 +222,48 @@ export function BenchEnrichedPanel(): JSX.Element {
         }
       />
 
-      {/* 4-tile KPI strip */}
+      {/* 4-tile KPI strip — each tile is a Link drill-down (UX Law 9). */}
       <div className="kpi-strip" data-testid="bench-kpi-strip">
-        <div className={`kpi tone-${summary.idleOver14 > 0 ? 'warning' : 'active'}`}>
+        <Link
+          to="/people/bench?filter=onBench"
+          className={`kpi tone-${summary.idleOver14 > 0 ? 'warning' : 'active'}`}
+          data-testid="bench-kpi-on-bench"
+          aria-current={filter === 'onBench' ? 'page' : undefined}
+        >
           <span className="kpi-label">On bench</span>
           <span className="kpi-value">{summary.onBench}</span>
           <span className="kpi-foot">avg {summary.avgDays}d idle</span>
-        </div>
-        <div className={`kpi tone-${summary.idleOver14 > 2 ? 'danger' : 'warning'}`}>
+        </Link>
+        <Link
+          to="/people/bench?filter=idleOver14"
+          className={`kpi tone-${summary.idleOver14 > 2 ? 'danger' : 'warning'}`}
+          data-testid="bench-kpi-idle-14"
+          aria-current={filter === 'idleOver14' ? 'page' : undefined}
+        >
           <span className="kpi-label">Idle &gt; 14 days</span>
           <span className="kpi-value">{summary.idleOver14}</span>
           <span className="kpi-foot">requires reassignment</span>
-        </div>
-        <div className="kpi">
+        </Link>
+        <Link
+          to="/people/bench?filter=available"
+          className="kpi"
+          data-testid="bench-kpi-availability"
+          aria-current={filter === 'available' ? 'page' : undefined}
+        >
           <span className="kpi-label">Availability · 14d</span>
           <span className="kpi-value">{summary.totalAvailability.toLocaleString()}h</span>
           <span className="kpi-foot">across {rows.length} people</span>
-        </div>
-        <div className={`kpi tone-${summary.suggestedFills > 0 ? 'active' : 'info'}`}>
+        </Link>
+        <Link
+          to="/people/bench?filter=hasSuggestions"
+          className={`kpi tone-${summary.suggestedFills > 0 ? 'active' : 'info'}`}
+          data-testid="bench-kpi-suggested"
+          aria-current={filter === 'hasSuggestions' ? 'page' : undefined}
+        >
           <span className="kpi-label">Suggested fills</span>
           <span className="kpi-value">{summary.suggestedFills}</span>
           <span className="kpi-foot">from matching engine</span>
-        </div>
+        </Link>
       </div>
 
       {/* V2-A.7 — master-detail layout: list on the left, inspector on the right when a row is selected. */}
@@ -258,14 +331,10 @@ export function BenchEnrichedPanel(): JSX.Element {
                 render: (r) => (
                   <span
                     className="mono"
+                    data-testid={`bench-days-cell-${r.personId}`}
                     style={{
                       fontVariantNumeric: 'tabular-nums',
-                      color:
-                        r.daysOnBench > 60
-                          ? 'var(--color-status-danger)'
-                          : r.daysOnBench > 14
-                            ? 'var(--color-status-warning)'
-                            : 'var(--color-text)',
+                      color: daysOnBenchColor(r.daysOnBench),
                     }}
                   >
                     {r.daysOnBench}d

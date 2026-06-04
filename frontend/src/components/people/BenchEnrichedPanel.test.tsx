@@ -128,6 +128,73 @@ describe('BenchEnrichedPanel — D4 fidelity', () => {
   });
 });
 
+describe('BenchEnrichedPanel — SCOPED-MIN-6 KPI drilldown + aging colors', () => {
+  it('renders KPI tiles as Links (UX Law 9 drill-down)', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-kpi-strip')).toBeInTheDocument());
+    const onBenchTile = screen.getByTestId('bench-kpi-on-bench');
+    expect(onBenchTile.tagName).toBe('A');
+    expect(onBenchTile.getAttribute('href')).toBe('/people/bench?filter=onBench');
+    expect(screen.getByTestId('bench-kpi-idle-14').getAttribute('href')).toBe(
+      '/people/bench?filter=idleOver14',
+    );
+    expect(screen.getByTestId('bench-kpi-availability').getAttribute('href')).toBe(
+      '/people/bench?filter=available',
+    );
+    expect(screen.getByTestId('bench-kpi-suggested').getAttribute('href')).toBe(
+      '/people/bench?filter=hasSuggestions',
+    );
+  });
+
+  it('filter=onBench from URL hides engaged people', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />, {
+      initialEntries: ['/people/bench?filter=onBench'],
+    });
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    // Alan Turing is engaged (isOnBench: false) — filter=onBench hides him.
+    expect(screen.queryByText('Alan Turing')).not.toBeInTheDocument();
+  });
+
+  it('filter=idleOver14 from URL keeps only people idle > 14 days', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />, {
+      initialEntries: ['/people/bench?filter=idleOver14'],
+    });
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    // Only Grace (72d) qualifies; Ada at exactly 14d does not (>14 strict).
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Alan Turing')).not.toBeInTheDocument();
+  });
+
+  it('filter=hasSuggestions from URL keeps only people with suggested fills', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />, {
+      initialEntries: ['/people/bench?filter=hasSuggestions'],
+    });
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    // Only Ada has suggestedProjectIds in the fixture.
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
+  });
+
+  it('aging color: <=7 days uses var(--color-text), >60 days uses status-danger', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    // Alan Turing — 0 days idle → neutral text color.
+    const fresh = screen.getByTestId('bench-days-cell-p3');
+    expect(fresh.style.color).toContain('--color-text');
+    // Grace Hopper — 72 days idle → danger.
+    const stale = screen.getByTestId('bench-days-cell-p2');
+    expect(stale.style.color).toContain('status-danger');
+  });
+});
+
 describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
   it('A7: renders page chrome — breadcrumb, idle-total badges, Export CSV', async () => {
     fetchEnrichedBench.mockResolvedValue(sampleRows);
