@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { EmptyState } from '@/components/common/EmptyState';
+import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { CaseRecord } from '@/lib/api/cases';
 import { formatDateShort } from '@/lib/format-date';
 import { Button, DataView, type Column } from '@/components/ds';
@@ -8,6 +9,27 @@ import { Button, DataView, type Column } from '@/components/ds';
 interface CaseListTableProps {
   items: CaseRecord[];
   onRowClick: (item: CaseRecord) => void;
+}
+
+const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
+
+function statusTone(status: string): StatusTone {
+  switch (status) {
+    case 'OPEN':
+      return 'pending';
+    case 'IN_PROGRESS':
+      return 'info';
+    case 'APPROVED':
+    case 'COMPLETED':
+      return 'active';
+    case 'REJECTED':
+    case 'CANCELLED':
+      return 'danger';
+    case 'ARCHIVED':
+      return 'neutral';
+    default:
+      return 'neutral';
+  }
 }
 
 /**
@@ -34,9 +56,7 @@ export function CaseListTable({ items, onRowClick }: CaseListTableProps): JSX.El
       title: 'Status',
       getValue: (item) => item.status,
       render: (item) => (
-        <span className={`status-indicator status-indicator--${item.status.toLowerCase()}`}>
-          {item.status}
-        </span>
+        <StatusBadge tone={statusTone(item.status)} label={item.status} variant="chip" size="small" />
       ),
     },
     {
@@ -56,7 +76,7 @@ export function CaseListTable({ items, onRowClick }: CaseListTableProps): JSX.El
       title: 'Participants',
       align: 'right',
       getValue: (item) => item.participants.length + 2,
-      render: (item) => <span>{item.participants.length + 2}</span>,
+      render: (item) => <span style={NUM}>{item.participants.length + 2}</span>,
     },
     {
       key: 'summary',
