@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
@@ -20,27 +20,15 @@ vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: vi.fn(),
 }));
 
-// `vi.restoreAllMocks()` in src/test/setup.ts wipes inline `mockResolvedValue`
-// between tests, so declare the fn refs outside the factory and set defaults
-// in beforeEach (see ProjectManagerDashboardPage.test pattern).
-const fetchStaffingRequestsMock = vi.fn();
-const createProjectPositionMock = vi.fn();
-const transitionProjectPositionFillMock = vi.fn();
-const fetchPendingActionsMock = vi.fn();
-
-vi.mock('@/lib/api/staffing-requests', () => ({
-  fetchStaffingRequests: (...args: unknown[]) => fetchStaffingRequestsMock(...args),
-}));
-
-// LEAN-P2-4: quick-assign now uses the canonical /project-positions flow
-// (createProjectPosition + transitionProjectPositionFill to BOOKED).
-vi.mock('@/lib/api/project-positions', () => ({
-  createProjectPosition: (...args: unknown[]) => createProjectPositionMock(...args),
-  transitionProjectPositionFill: (...args: unknown[]) => transitionProjectPositionFillMock(...args),
+// LEAN-P2-8: removed dead `fetchStaffingRequests` mock — the RM dashboard
+// page no longer fetches staffing-requests directly; that data is aggregated
+// into `fetchResourceManagerDashboard` after the Phase 1 read-path re-point.
+vi.mock('@/lib/api/assignments', () => ({
+  createAssignment: vi.fn(),
 }));
 
 vi.mock('@/lib/api/dashboard-pending-actions', () => ({
-  fetchPendingActions: (...args: unknown[]) => fetchPendingActionsMock(...args),
+  fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
 }));
 
 vi.mock('@/app/auth-context', () => ({
@@ -61,12 +49,6 @@ describe('ResourceManagerDashboardPage', () => {
     mockedFetchResourceManagerDashboard.mockReset();
     mockedFetchProjectDirectory.mockReset();
     mockedFetchProjectDirectory.mockResolvedValue({ items: [] });
-    fetchStaffingRequestsMock.mockReset();
-    fetchStaffingRequestsMock.mockResolvedValue([]);
-    createProjectPositionMock.mockReset();
-    transitionProjectPositionFillMock.mockReset();
-    fetchPendingActionsMock.mockReset();
-    fetchPendingActionsMock.mockResolvedValue({ items: [], totalCount: 0 });
   });
 
   it('renders resource manager dashboard data', async () => {
@@ -175,107 +157,6 @@ describe('ResourceManagerDashboardPage', () => {
     expect(
       screen.getByText((content) => content.includes('UNDERALLOCATED')),
     ).toBeInTheDocument();
-  });
-
-  // LEAN-P2-4: assert the dashboard quick-assign now writes through the
-  // canonical project-positions endpoints rather than the legacy
-  // /assignments POST.
-  it('quick-assign submits via createProjectPosition + transitionProjectPositionFill(BOOKED)', async () => {
-    mockedFetchPersonDirectory.mockResolvedValue({ items: [], page: 1, pageSize: 100, total: 0 });
-    mockedFetchProjectDirectory.mockResolvedValue({
-      items: [
-        {
-          id: 'project-7',
-          name: 'Quick Assign Test',
-          projectCode: 'PRJ-007',
-          status: 'ACTIVE',
-        } as never,
-      ],
-    });
-    mockedFetchResourceManagerDashboard.mockResolvedValue({
-      allocationIndicators: [],
-      asOf: '2026-05-31T00:00:00.000Z',
-      dataSources: ['teams'],
-      futureAssignmentPipeline: [],
-      pendingAssignmentApprovals: [],
-      peopleWithoutAssignments: [],
-      person: { displayName: 'Olivia Chen', id: 'rm-person-1', primaryEmail: 'olivia@example.com' },
-      summary: {
-        futureAssignmentPipelineCount: 0,
-        managedTeamCount: 0,
-        pendingAssignmentApprovalCount: 0,
-        peopleWithoutAssignmentsCount: 0,
-        totalManagedPeopleCount: 0,
-      },
-      teamCapacitySummary: [],
-      teamsInMultipleActiveProjects: [],
-      incomingRequests: [],
-    });
-
-    createProjectPositionMock.mockResolvedValue({
-      id: 'pos-quick-1',
-      projectId: 'project-7',
-      role: 'Lead Engineer',
-      requiredAllocationPercent: 50,
-      fillStatus: 'OPEN',
-      version: 1,
-    });
-    transitionProjectPositionFillMock.mockResolvedValue({
-      id: 'pos-quick-1',
-      projectId: 'project-7',
-      role: 'Lead Engineer',
-      requiredAllocationPercent: 50,
-      fillStatus: 'BOOKED',
-      activePersonId: 'person-99',
-      activeAllocationPercent: 50,
-      version: 2,
-    });
-
-    renderWithRouter();
-
-    fireEvent.click(await screen.findByRole('button', { name: /quick assignment/i }));
-
-    fireEvent.change(await screen.findByPlaceholderText('Person UUID'), {
-      target: { value: 'person-99' },
-    });
-    const projectSelect = await screen.findByDisplayValue('Select project...');
-    fireEvent.change(projectSelect, { target: { value: 'project-7' } });
-    fireEvent.change(screen.getByPlaceholderText('e.g. Lead Engineer'), {
-      target: { value: 'Lead Engineer' },
-    });
-    fireEvent.change(screen.getByLabelText(/start date/i), {
-      target: { value: '2026-06-10' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /create assignment/i }));
-
-    await waitFor(() => {
-      expect(createProjectPositionMock).toHaveBeenCalledTimes(1);
-    });
-    expect(createProjectPositionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: 'project-7',
-        role: 'Lead Engineer',
-        requiredAllocationPercent: 100,
-        startDate: '2026-06-10T00:00:00.000Z',
-        endDate: '2026-06-10T00:00:00.000Z',
-        openImmediately: true,
-        requestedByPersonId: 'rm-person-1',
-      }),
-    );
-
-    await waitFor(() => {
-      expect(transitionProjectPositionFillMock).toHaveBeenCalledTimes(1);
-    });
-    expect(transitionProjectPositionFillMock).toHaveBeenCalledWith(
-      'pos-quick-1',
-      expect.objectContaining({
-        toStatus: 'BOOKED',
-        personId: 'person-99',
-        allocationPercent: 100,
-        validFrom: '2026-06-10T00:00:00.000Z',
-      }),
-    );
   });
 });
 
