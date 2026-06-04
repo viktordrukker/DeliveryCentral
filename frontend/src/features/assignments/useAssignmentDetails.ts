@@ -7,16 +7,20 @@ import {
   AssignmentDetails,
   AssignmentDecisionRequest,
   AssignmentStatusValue,
+  EndAssignmentRequest,
   RevokeAssignmentRequest,
   TransitionAssignmentRequest,
   amendAssignment,
-  bookAssignment,
-  cancelAssignment,
-  completeAssignment,
-  EndAssignmentRequest,
-  fetchAssignmentById,
-  transitionAssignment,
 } from '@/lib/api/assignments';
+import {
+  getProjectPositionById,
+  transitionProjectPositionFill,
+  type PositionFillStatus,
+} from '@/lib/api/project-positions';
+import {
+  mapAssignmentStatusToFillStatus,
+  mapPositionToDetails,
+} from '@/features/lean-migration/position-to-assignment-mapper';
 import { showUndoToast } from '@/lib/undo-toast';
 
 interface AssignmentDetailsState {
@@ -54,8 +58,11 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setNotFound(false);
 
     try {
-      const response = await fetchAssignmentById(targetId);
-      setData(response);
+      // LEAN-P2-2: read from /project-positions and flatten back to
+      // AssignmentDetails shape. Detail-only fields default until LEAN-P2-1
+      // enriches the BE DTO (approvals + history arrays).
+      const position = await getProjectPositionById(targetId);
+      setData(mapPositionToDetails(position));
     } catch (loadError) {
       if (loadError instanceof ApiError && loadError.status === 404) {
         setNotFound(true);
@@ -93,19 +100,27 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
 
     try {
       if (decision === 'approve') {
-        await bookAssignment(id, { reason: request.comment ?? request.reason });
+        await transitionProjectPositionFill(id, {
+          toStatus: 'BOOKED',
+          reason: request.comment ?? request.reason,
+        });
         setSuccessMessage('Assignment approved successfully.');
         window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
         await loadAssignment(id);
       } else {
-        const result = await cancelAssignment(id, {
+        await transitionProjectPositionFill(id, {
+          toStatus: 'RELEASED',
           reason: request.reason ?? request.comment,
         });
         setSuccessMessage('Assignment rejected successfully.');
         window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
         await loadAssignment(id);
+        // LEAN-P2-2: undo is unsupported on the lean transition handler.
+        // showUndoToast is invoked with `undefined` so the toast falls back
+        // to a non-undoable success message — the operator can re-transition
+        // manually if needed.
         showUndoToast({
-          undoActionId: result.undoActionId,
+          undoActionId: undefined,
           successMessage: 'Assignment cancelled.',
           onUndone: async () => {
             window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
@@ -135,11 +150,11 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     try {
       // Legacy `endDate` body field (back-dated completion) is forwarded
       // into the canonical reason so the audit trail captures the operator's
-      // intent. The canonical handler treats validTo as "now".
+      // intent. The lean handler treats validTo as "now".
       const reason = request.endDate
         ? `${request.reason ?? 'completed'} (endDate=${request.endDate})`
         : request.reason;
-      await completeAssignment(id, { reason });
+      await transitionProjectPositionFill(id, { toStatus: 'RELEASED', reason });
       setSuccessMessage('Assignment ended successfully.');
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
@@ -190,13 +205,18 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      const result = await transitionAssignment(id, target, request);
+      const fillTarget: PositionFillStatus = mapAssignmentStatusToFillStatus(target);
+      await transitionProjectPositionFill(id, {
+        toStatus: fillTarget,
+        reason: request.reason,
+        caseId: request.caseId,
+      });
       setSuccessMessage(`Assignment moved to ${target.replace('_', ' ').toLowerCase()}.`);
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       if (target === 'CANCELLED') {
         showUndoToast({
-          undoActionId: result.undoActionId,
+          undoActionId: undefined,
           successMessage: 'Assignment cancelled.',
           onUndone: async () => {
             window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
@@ -224,12 +244,15 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      const result = await cancelAssignment(id, { reason: request.reason });
+      await transitionProjectPositionFill(id, {
+        toStatus: 'RELEASED',
+        reason: request.reason,
+      });
       setSuccessMessage('Assignment revoked.');
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);
       showUndoToast({
-        undoActionId: result.undoActionId,
+        undoActionId: undefined,
         successMessage: 'Assignment revoked.',
         onUndone: async () => {
           window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));

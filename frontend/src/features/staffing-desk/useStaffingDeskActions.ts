@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 
-import { bookAssignment, cancelAssignment, completeAssignment } from '@/lib/api/assignments';
+import { transitionProjectPositionFill } from '@/lib/api/project-positions';
 import { reviewStaffingRequest, fulfilStaffingRequest, cancelStaffingRequest, releaseStaffingRequest } from '@/lib/api/staffing-requests';
 import { showUndoToast } from '@/lib/undo-toast';
 
@@ -31,17 +31,24 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
   );
 
   return {
+    // LEAN-P2-2: assignment-side transitions read/write through the lean
+    // /project-positions transition handler. Staffing-request actions still
+    // hit the legacy /staffing-requests endpoints — that domain is a separate
+    // migration tracked under P2-3/P2-7.
     approveAssignment: useCallback(
-      (id: string, reason?: string) => wrap('Assignment approved', () => bookAssignment(id, { reason: reason ?? '' })),
+      (id: string, reason?: string) =>
+        wrap('Assignment approved', () =>
+          transitionProjectPositionFill(id, { toStatus: 'BOOKED', reason: reason ?? '' }),
+        ),
       [wrap],
     ),
     rejectAssignment: useCallback(
       (id: string, reason: string) =>
-        cancelAssignment(id, { reason })
-          .then((result) => {
+        transitionProjectPositionFill(id, { toStatus: 'RELEASED', reason })
+          .then(() => {
             refetch();
             showUndoToast({
-              undoActionId: result.undoActionId,
+              undoActionId: undefined,
               successMessage: 'Assignment rejected.',
               onUndone: () => refetch(),
             });
@@ -54,12 +61,14 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
     endAssignment: useCallback(
       (id: string, reason: string, endDate?: string) => {
         // Legacy `endDate` parameter: forward as suffix on reason so the
-        // canonical handler captures the operator's back-dated intent in
-        // the audit trail. See HD-1 cutover audit.
+        // lean handler captures the operator's back-dated intent in the
+        // audit trail.
         const merged = endDate
           ? `${reason || 'completed'} (endDate=${endDate})`
           : reason;
-        return wrap('Assignment ended', () => completeAssignment(id, { reason: merged }));
+        return wrap('Assignment ended', () =>
+          transitionProjectPositionFill(id, { toStatus: 'RELEASED', reason: merged }),
+        );
       },
       [wrap],
     ),

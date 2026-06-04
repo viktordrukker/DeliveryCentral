@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
-  BulkAssignmentRequest,
+  BulkAssignmentEntryRequest,
   BulkAssignmentResponse,
-  bulkCreateAssignments,
 } from '@/lib/api/assignments';
 import { PersonDirectoryItem, fetchPersonDirectory } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem, fetchProjectDirectory } from '@/lib/api/project-registry';
+import {
+  createProjectPosition,
+  transitionProjectPositionFill,
+} from '@/lib/api/project-positions';
+import { mapPositionToAssignmentResponse } from '@/features/lean-migration/position-to-assignment-mapper';
 
 export interface BulkAssignmentFormValues {
   actorId: string;
@@ -134,25 +138,89 @@ export function useBulkAssignmentPage(): BulkAssignmentPageState {
 
       setIsSubmitting(true);
 
+      // LEAN-P2-2: the lean API has no bulk endpoint; instead, each entry
+      // runs the two-step (createProjectPosition + transition to BOOKED)
+      // flow individually. Failures are aggregated into the legacy
+      // BulkAssignmentResponse envelope so consumers don't change.
+      const allocation = Number(values.allocationPercent);
+      const role = values.staffingRole.trim();
+      const entryTemplate: BulkAssignmentEntryRequest = {
+        allocationPercent: allocation,
+        ...(values.endDate ? { endDate: values.endDate } : {}),
+        ...(values.note.trim() ? { note: values.note.trim() } : {}),
+        personId: '',
+        projectId: values.projectId,
+        staffingRole: role,
+        startDate: values.startDate,
+      };
+      const entries: BulkAssignmentEntryRequest[] = values.personIds.map((personId) => ({
+        ...entryTemplate,
+        personId,
+      }));
+
       try {
-        const entryPayload = {
-          allocationPercent: Number(values.allocationPercent),
-          ...(values.endDate ? { endDate: values.endDate } : {}),
-          ...(values.note.trim() ? { note: values.note.trim() } : {}),
-          projectId: values.projectId,
-          staffingRole: values.staffingRole.trim(),
-          startDate: values.startDate,
-        };
+        const results = await Promise.all(
+          entries.map(async (entry, index) => {
+            try {
+              const position = await createProjectPosition({
+                projectId: entry.projectId,
+                role: entry.staffingRole,
+                requiredAllocationPercent: entry.allocationPercent,
+                startDate: entry.startDate,
+                endDate: entry.endDate || entry.startDate,
+                summary: entry.note,
+                requestedByPersonId: values.actorId || undefined,
+                openImmediately: true,
+              });
+              const filled = await transitionProjectPositionFill(position.id, {
+                toStatus: 'BOOKED',
+                personId: entry.personId,
+                allocationPercent: entry.allocationPercent,
+                validFrom: entry.startDate,
+                ...(entry.endDate ? { validTo: entry.endDate } : {}),
+              });
+              return {
+                kind: 'ok' as const,
+                index,
+                assignment: mapPositionToAssignmentResponse(filled),
+              };
+            } catch (err) {
+              return {
+                kind: 'err' as const,
+                index,
+                entry,
+                message: err instanceof Error ? err.message : 'Create failed.',
+              };
+            }
+          }),
+        );
 
-        const request: BulkAssignmentRequest = {
-          actorId: values.actorId,
-          entries: values.personIds.map((personId) => ({
-            ...entryPayload,
-            personId,
-          })),
-        };
+        const createdItems = results
+          .filter((r): r is Extract<typeof r, { kind: 'ok' }> => r.kind === 'ok')
+          .map((r) => ({ index: r.index, assignment: r.assignment }));
+        const failedItems = results
+          .filter((r): r is Extract<typeof r, { kind: 'err' }> => r.kind === 'err')
+          .map((r) => ({
+            code: 'CREATE_FAILED',
+            index: r.index,
+            message: r.message,
+            personId: r.entry.personId,
+            projectId: r.entry.projectId,
+            staffingRole: r.entry.staffingRole,
+          }));
 
-        const response = await bulkCreateAssignments(request);
+        const response: BulkAssignmentResponse = {
+          createdCount: createdItems.length,
+          createdItems,
+          failedCount: failedItems.length,
+          failedItems,
+          message:
+            failedItems.length === 0
+              ? `Created ${createdItems.length} assignment(s).`
+              : `Created ${createdItems.length} of ${entries.length} assignment(s); ${failedItems.length} failed.`,
+          strategy: 'PARTIAL_SUCCESS',
+          totalCount: entries.length,
+        };
         setErrors({});
         setResult(response);
         return true;
