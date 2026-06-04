@@ -40,12 +40,15 @@ describe('D-95 — derived headcountFulfilled (source-shape)', () => {
     expect(transitionSrc).toMatch(/syncParentSrHeadcount/);
     const section = transitionSrc.slice(
       transitionSrc.indexOf('private async syncParentSrHeadcount'),
-      transitionSrc.length,
+      transitionSrc.indexOf('private async mirrorTransitionToProjectPosition'),
     );
-    // The helper must count live assignments + persist the result.
-    expect(section).toMatch(/projectAssignment\.count/);
+    // LEAN-P1-7: derive-on-read from `ProjectPosition` against the paired
+    // SR via `legacyStaffingRequestId`. RELEASED replaces COMPLETED in the
+    // lean enum so the active filter drops COMPLETED.
+    expect(section).toMatch(/projectPosition\.count/);
+    expect(section).toMatch(/legacyStaffingRequestId/);
     expect(section).toMatch(
-      /status:\s*\{\s*in:\s*\[\s*'BOOKED',\s*'ONBOARDING',\s*'ASSIGNED',\s*'ON_HOLD',\s*'COMPLETED'\s*\]/,
+      /fillStatus:\s*\{\s*in:\s*\[\s*'BOOKED',\s*'ONBOARDING',\s*'ASSIGNED',\s*'ON_HOLD'\s*\]/,
     );
     expect(section).toMatch(/staffingRequest\.update/);
     expect(section).toMatch(/headcountFulfilled/);
