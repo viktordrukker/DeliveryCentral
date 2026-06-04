@@ -3,15 +3,18 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { Prisma, ProjectPositionFillChangeType } from '@prisma/client';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { CreateProjectAssignmentService } from '@src/modules/assignments/application/create-project-assignment.service';
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { mapCandidateDecisionLegacyToLean } from '@src/shared/lean-migration/enum-mappings';
 
 import { StaffingRequestProposalCandidate } from '../domain/entities/staffing-request-proposal-candidate.entity';
 import { StaffingRequestProposalSlate } from '../domain/entities/staffing-request-proposal-slate.entity';
@@ -79,6 +82,8 @@ const DEFAULT_SLATE_MAX = 5;
 
 @Injectable()
 export class StaffingProposalSlateService {
+  private readonly logger = new Logger(StaffingProposalSlateService.name);
+
   public constructor(
     @Inject(STAFFING_REQUEST_PROPOSAL_SLATE_REPOSITORY)
     private readonly slateRepository: StaffingRequestProposalSlateRepositoryPort,
@@ -207,6 +212,17 @@ export class StaffingProposalSlateService {
           },
         });
       }
+
+      // LEAN-P1-8 — dual-write the new slate's candidates onto the lean
+      // ProjectPositionCandidate child table so Phase 2 can swap reads
+      // without a stale-data window.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATES_ADDED,
+        input.actorId,
+      );
     });
 
     this.auditLogger?.record({
@@ -362,6 +378,17 @@ export class StaffingProposalSlateService {
           updatedByPersonId: input.actorId,
         },
       });
+
+      // LEAN-P1-8 — dual-write the pick decision (and the auto-declines
+      // applied to the losers) onto the lean ProjectPositionCandidate child
+      // table.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATE_PICKED,
+        input.actorId,
+      );
     });
 
     this.auditLogger?.record({
@@ -431,6 +458,16 @@ export class StaffingProposalSlateService {
           updatedByPersonId: input.actorId,
         },
       });
+
+      // LEAN-P1-8 — dual-write the bulk decline decisions onto the lean
+      // ProjectPositionCandidate child table.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATE_DECLINED,
+        input.actorId,
+      );
     });
 
     this.auditLogger?.record({
@@ -512,5 +549,97 @@ export class StaffingProposalSlateService {
       if (!Number.isNaN(n)) return n;
     }
     return fallback;
+  }
+
+  /**
+   * LEAN-P1-8 — dual-write the slate's candidates onto the lean
+   * ProjectPositionCandidate child table and record a single
+   * ProjectPositionFillHistory entry per affected ProjectPosition.
+   *
+   * Phase 1 strategy: legacy is canonical, reads still come from legacy. This
+   * mirror keeps the lean side current so Phase 2 can swap consumer reads
+   * without a stale-data window. Lookup is via
+   * `ProjectPosition.legacyStaffingRequestId`; if no position has been backfilled
+   * (or none has been created yet for a brand-new SR), the mirror is a no-op
+   * and the inverted mirror (P0-4) is the secondary safety net.
+   *
+   * Candidate identity uses `ProjectPositionCandidate.legacyCandidateId`
+   * (populated by the P0-5 backfill). New candidates created by `submit()`
+   * have no lean row yet, so the helper upserts by `(positionId,
+   * candidatePersonId)` and stamps `legacyCandidateId` on create.
+   *
+   * Runs inside the caller's `$transaction` so a mirror failure rolls back
+   * the matching legacy write — strong consistency in Phase 1.
+   */
+  private async mirrorSlateToProjectPositions(
+    tx: Prisma.TransactionClient,
+    slate: StaffingRequestProposalSlate,
+    legacyStaffingRequestId: string,
+    changeType: ProjectPositionFillChangeType,
+    actorId: string,
+  ): Promise<void> {
+    const positions = await tx.projectPosition.findMany({
+      where: { legacyStaffingRequestId },
+      select: { id: true, fillStatus: true },
+    });
+
+    if (positions.length === 0) {
+      // No lean shadow yet — this SR predates the backfill window or is a
+      // brand-new SR whose ProjectPosition writer hasn't landed yet. The
+      // legacy write is the authoritative side in Phase 1; no error.
+      this.logger.debug(
+        `No ProjectPosition rows mirror legacy SR ${legacyStaffingRequestId}; skipping lean candidate dual-write.`,
+      );
+      return;
+    }
+
+    for (const position of positions) {
+      for (const candidate of slate.candidates) {
+        const leanDecision = mapCandidateDecisionLegacyToLean(candidate.decision);
+        await tx.projectPositionCandidate.upsert({
+          where: {
+            positionId_candidatePersonId: {
+              positionId: position.id,
+              candidatePersonId: candidate.candidatePersonId,
+            },
+          },
+          create: {
+            positionId: position.id,
+            candidatePersonId: candidate.candidatePersonId,
+            rank: candidate.rank,
+            matchScore: candidate.matchScore,
+            availabilityPercent: candidate.availabilityPercent ?? null,
+            mismatchedSkills: [...candidate.mismatchedSkills],
+            rationale: candidate.rationale ?? null,
+            decision: leanDecision,
+            decidedAt: candidate.decidedAt ?? null,
+            legacyCandidateId: candidate.id,
+            createdByPersonId: actorId,
+            updatedByPersonId: actorId,
+          },
+          update: {
+            rank: candidate.rank,
+            matchScore: candidate.matchScore,
+            availabilityPercent: candidate.availabilityPercent ?? null,
+            mismatchedSkills: [...candidate.mismatchedSkills],
+            rationale: candidate.rationale ?? null,
+            decision: leanDecision,
+            decidedAt: candidate.decidedAt ?? null,
+            legacyCandidateId: candidate.id,
+            updatedByPersonId: actorId,
+          },
+        });
+      }
+
+      await tx.projectPositionFillHistory.create({
+        data: {
+          positionId: position.id,
+          changeType,
+          changedByPersonId: actorId,
+          previousStatus: position.fillStatus,
+          newStatus: position.fillStatus,
+        },
+      });
+    }
   }
 }

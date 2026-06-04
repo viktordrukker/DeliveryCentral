@@ -95,6 +95,20 @@ function buildPrismaStub(
         return { id: STAFFING_REQUEST_ID };
       },
     },
+    // LEAN-P1-8 — slate service now dual-writes onto ProjectPositionCandidate
+    // inside the same tx. No backfilled positions exist in this stub, so the
+    // findMany returns [] and the mirror is a no-op. The upsert + history.create
+    // stubs are required so missing-method errors don't mask real bugs if a
+    // future test adds positions to the fixture.
+    projectPosition: {
+      findMany: async () => [],
+    },
+    projectPositionCandidate: {
+      upsert: async () => ({}),
+    },
+    projectPositionFillHistory: {
+      create: async () => ({}),
+    },
   };
 
   const prisma = {
