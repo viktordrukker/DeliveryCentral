@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import {
-  fetchAssignments,
-  type AssignmentDirectoryItem,
-} from '@/lib/api/assignments';
+import { type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 
 export type ApprovalQueueScope = 'mine' | 'team' | 'breached' | 'all';
 
@@ -64,26 +63,25 @@ export function useApprovalQueue(
 
     void (async () => {
       try {
-        // Fetch each in-flight status with a separate call (the list endpoint
-        // currently only filters by single status). The BOOKED bucket is
-        // post-filtered to assignments that still need director sign-off —
-        // slate-picked work is born BOOKED but flagged when it trips the
-        // director-approval thresholds, and that flag is the only signal the
-        // director has to find it.
-        const [proposed, inReview, booked] = await Promise.all([
-          fetchAssignments({ status: 'PROPOSED', pageSize }),
-          fetchAssignments({ status: 'IN_REVIEW', pageSize }),
-          fetchAssignments({ status: 'BOOKED', pageSize }),
-        ]);
+        // LEAN-P2-2: single /project-positions call with the in-flight fill
+        // statuses. The lean enum collapses IN_REVIEW into PROPOSED, so one
+        // status bucket covers both legacy states. BOOKED rows are filtered
+        // post-fetch by `requiresDirectorApproval` — that flag is the only
+        // signal the director has to find them.
+        const response = await listProjectPositions({
+          fillStatuses: ['PROPOSED', 'BOOKED'],
+          take: pageSize,
+        });
         if (!active) return;
 
-        const bookedAwaitingDirector = booked.items.filter(
-          (row) => row.requiresDirectorApproval === true,
+        const mapped = mapListResponseToDirectory(response);
+        const proposedRows = mapped.items.filter((row) => row.approvalState === 'PROPOSED');
+        const bookedAwaitingDirector = mapped.items.filter(
+          (row) => row.approvalState === 'BOOKED' && row.requiresDirectorApproval === true,
         );
 
         let merged: AssignmentDirectoryItem[] = [
-          ...proposed.items,
-          ...inReview.items,
+          ...proposedRows,
           ...bookedAwaitingDirector,
         ];
 

@@ -7,6 +7,11 @@ import { ApiError } from '@/lib/api/http-client';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import {
+  createProjectPosition,
+  transitionProjectPositionFill,
+  type ProjectPosition,
+} from '@/lib/api/project-positions';
+import {
   buildCreateAssignmentOptionsFixture,
   buildCreateAssignmentResponse,
 } from '@test/fixtures/assignments';
@@ -42,6 +47,33 @@ vi.mock('@/lib/api/assignments', async () => {
   };
 });
 
+// LEAN-P2-2: create flow now runs createProjectPosition + transition. Mock
+// both paths; the helper below builds a default ProjectPosition response.
+vi.mock('@/lib/api/project-positions', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
+    '@/lib/api/project-positions',
+  );
+  return {
+    ...actual,
+    createProjectPosition: vi.fn(),
+    transitionProjectPositionFill: vi.fn(),
+  };
+});
+
+function buildPosition(overrides: Partial<ProjectPosition> = {}): ProjectPosition {
+  return {
+    id: 'pos-1',
+    projectId: 'project-1',
+    role: 'Lead Engineer',
+    requiredAllocationPercent: 100,
+    fillStatus: 'BOOKED',
+    activePersonId: 'person-1',
+    activeAllocationPercent: 100,
+    version: 1,
+    ...overrides,
+  };
+}
+
 vi.mock('@/lib/api/skills', () => ({
   fetchSkills: vi.fn().mockResolvedValue([]),
   fetchSkillMatch: vi.fn().mockResolvedValue([]),
@@ -53,6 +85,8 @@ const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
 const mockedCreateAssignment = vi.mocked(createAssignment);
 const mockedCreateAssignmentOverride = vi.mocked(createAssignmentOverride);
+const mockedCreateProjectPosition = vi.mocked(createProjectPosition);
+const mockedTransitionProjectPositionFill = vi.mocked(transitionProjectPositionFill);
 
 describe('CreateAssignmentPage', () => {
   beforeEach(() => {
@@ -60,6 +94,12 @@ describe('CreateAssignmentPage', () => {
     mockedFetchProjectDirectory.mockReset();
     mockedCreateAssignment.mockReset();
     mockedCreateAssignmentOverride.mockReset();
+    mockedCreateProjectPosition.mockReset();
+    mockedTransitionProjectPositionFill.mockReset();
+    // Default success behaviour — happy-path tests can rely on these
+    // resolving without re-stating the mock.
+    mockedCreateProjectPosition.mockResolvedValue(buildPosition());
+    mockedTransitionProjectPositionFill.mockResolvedValue(buildPosition());
     vi.mocked(fetchAssignments).mockResolvedValue({ items: [], totalCount: 0 } as never);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     window.localStorage.clear();
@@ -132,7 +172,9 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('submits successfully with default allocation', async () => {
-    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ allocationPercent: 100 }));
+    // LEAN-P2-2: create flow runs createProjectPosition then a transition
+    // to BOOKED. Defaults from beforeEach already cover both paths.
+    void buildCreateAssignmentResponse({ allocationPercent: 100 });
 
     const { user } = renderWithRouter();
 
@@ -145,16 +187,24 @@ describe('CreateAssignmentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create & Request' }));
 
     await waitFor(() => {
-      expect(mockedCreateAssignment).toHaveBeenCalledWith({
-        actorId: 'person-2',
-        allocationPercent: 100,
-        note: 'Primary engineering assignment.',
-        personId: 'person-1',
-        projectId: 'project-1',
-        staffingRole: 'Lead Engineer',
-        startDate: '2025-04-01',
-      });
+      expect(mockedCreateProjectPosition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'project-1',
+          role: 'Lead Engineer',
+          requiredAllocationPercent: 100,
+          startDate: '2025-04-01',
+          openImmediately: true,
+        }),
+      );
     });
+    expect(mockedTransitionProjectPositionFill).toHaveBeenCalledWith(
+      'pos-1',
+      expect.objectContaining({
+        toStatus: 'BOOKED',
+        personId: 'person-1',
+        allocationPercent: 100,
+      }),
+    );
 
     expect(await screen.findByText('Assignment Detail')).toBeInTheDocument();
   });
@@ -196,7 +246,7 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('renders server error handling', async () => {
-    mockedCreateAssignment.mockRejectedValue(new Error('Project does not exist.'));
+    mockedCreateProjectPosition.mockRejectedValue(new Error('Project does not exist.'));
 
     const { user } = renderWithRouter();
 
@@ -211,10 +261,13 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('renders assignment override flow for authorized users after overlap conflict', async () => {
-    mockedCreateAssignment.mockRejectedValue(
+    // First create call (via createProjectPosition or its follow-up
+    // transition) hits the overlap conflict. The override flow re-runs the
+    // create-then-transition with the reason text attached.
+    mockedCreateProjectPosition.mockRejectedValueOnce(
       new ApiError('Overlapping assignment for the same person and project already exists.', 409),
     );
-    mockedCreateAssignmentOverride.mockResolvedValue(buildCreateAssignmentResponse());
+    void buildCreateAssignmentResponse();
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['director']));
 
     const { user } = renderWithRouter();
@@ -236,22 +289,24 @@ describe('CreateAssignmentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply override' }));
 
     await waitFor(() => {
-      expect(mockedCreateAssignmentOverride).toHaveBeenCalledWith({
-        allocationPercent: 100,
-        note: 'Primary engineering assignment.',
-        personId: 'person-1',
-        projectId: 'project-1',
-        reason: 'Urgent controlled staffing overlap.',
-        staffingRole: 'Lead Engineer',
-        startDate: '2025-04-01',
-      });
+      // LEAN-P2-2: override re-runs the create-then-BOOK flow with the
+      // reason carried through the transition body.
+      expect(mockedTransitionProjectPositionFill).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          toStatus: 'BOOKED',
+          personId: 'person-1',
+          allocationPercent: 100,
+          reason: 'Urgent controlled staffing overlap.',
+        }),
+      );
     });
 
     expect(await screen.findByText('Assignment Detail')).toBeInTheDocument();
   });
 
   it('requires a reason before submitting assignment override', async () => {
-    mockedCreateAssignment.mockRejectedValue(
+    mockedCreateProjectPosition.mockRejectedValueOnce(
       new ApiError('Overlapping assignment for the same person and project already exists.', 409),
     );
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['admin']));
@@ -273,7 +328,7 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('keeps assignment override hidden for non-governance roles', async () => {
-    mockedCreateAssignment.mockRejectedValue(
+    mockedCreateProjectPosition.mockRejectedValueOnce(
       new ApiError('Overlapping assignment for the same person and project already exists.', 409),
     );
     window.localStorage.setItem('deliverycentral.authToken', buildToken(['resource_manager']));
@@ -320,7 +375,10 @@ describe('CreateAssignmentPage', () => {
   });
 
   it('submits as draft when Save Draft is clicked', async () => {
-    mockedCreateAssignment.mockResolvedValue(buildCreateAssignmentResponse({ status: 'CREATED' }));
+    // LEAN-P2-2: draft skips the BOOKED transition — only the
+    // createProjectPosition call fires, and `openImmediately` is false.
+    mockedCreateProjectPosition.mockResolvedValue(buildPosition({ fillStatus: 'DRAFT' }));
+    void buildCreateAssignmentResponse({ status: 'CREATED' });
 
     const { user } = renderWithRouter();
 
@@ -332,10 +390,11 @@ describe('CreateAssignmentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save Draft' }));
 
     await waitFor(() => {
-      expect(mockedCreateAssignment).toHaveBeenCalledWith(
-        expect.objectContaining({ draft: true }),
+      expect(mockedCreateProjectPosition).toHaveBeenCalledWith(
+        expect.objectContaining({ openImmediately: false }),
       );
     });
+    expect(mockedTransitionProjectPositionFill).not.toHaveBeenCalled();
   });
 });
 

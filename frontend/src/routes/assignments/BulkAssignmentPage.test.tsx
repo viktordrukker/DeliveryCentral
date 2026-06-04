@@ -5,6 +5,11 @@ import { vi } from 'vitest';
 import { bulkCreateAssignments } from '@/lib/api/assignments';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
+import {
+  createProjectPosition,
+  transitionProjectPositionFill,
+  type ProjectPosition,
+} from '@/lib/api/project-positions';
 import { renderRoute } from '@test/render-route';
 import { BulkAssignmentPage } from './BulkAssignmentPage';
 
@@ -29,15 +34,47 @@ vi.mock('@/lib/api/assignments', async () => {
   };
 });
 
+// LEAN-P2-2: bulk submit now fans out createProjectPosition +
+// transitionProjectPositionFill calls per row. Mock both paths and aggregate
+// in the test.
+vi.mock('@/lib/api/project-positions', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
+    '@/lib/api/project-positions',
+  );
+
+  return {
+    ...actual,
+    createProjectPosition: vi.fn(),
+    transitionProjectPositionFill: vi.fn(),
+  };
+});
+
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
 const mockedBulkCreateAssignments = vi.mocked(bulkCreateAssignments);
+const mockedCreateProjectPosition = vi.mocked(createProjectPosition);
+const mockedTransitionProjectPositionFill = vi.mocked(transitionProjectPositionFill);
+
+function buildPosition(id: string, personId: string): ProjectPosition {
+  return {
+    id,
+    projectId: 'project-1',
+    role: 'Lead Engineer',
+    requiredAllocationPercent: 50,
+    fillStatus: 'BOOKED',
+    activePersonId: personId,
+    activeAllocationPercent: 50,
+    version: 1,
+  };
+}
 
 describe('BulkAssignmentPage', () => {
   beforeEach(() => {
     mockedFetchPersonDirectory.mockReset();
     mockedFetchProjectDirectory.mockReset();
     mockedBulkCreateAssignments.mockReset();
+    mockedCreateProjectPosition.mockReset();
+    mockedTransitionProjectPositionFill.mockReset();
 
     mockedFetchPersonDirectory.mockResolvedValue({
       items: buildPeople(),
@@ -51,42 +88,16 @@ describe('BulkAssignmentPage', () => {
   });
 
   it('submits a bulk assignment batch successfully', async () => {
-    mockedBulkCreateAssignments.mockResolvedValue({
-      createdCount: 2,
-      createdItems: [
-        {
-          assignment: {
-            allocationPercent: 50,
-            id: 'asn-1',
-            personId: 'person-1',
-            projectId: 'project-1',
-            requestedAt: '2026-03-30T00:00:00.000Z',
-            staffingRole: 'Lead Engineer',
-            startDate: '2026-04-01',
-            status: 'PROPOSED',
-          },
-          index: 0,
-        },
-        {
-          assignment: {
-            allocationPercent: 50,
-            id: 'asn-2',
-            personId: 'person-2',
-            projectId: 'project-1',
-            requestedAt: '2026-03-30T00:00:00.000Z',
-            staffingRole: 'Lead Engineer',
-            startDate: '2026-04-01',
-            status: 'PROPOSED',
-          },
-          index: 1,
-        },
-      ],
-      failedCount: 0,
-      failedItems: [],
-      message: '2 assignments created. 0 failed.',
-      strategy: 'PARTIAL_SUCCESS',
-      totalCount: 2,
+    // LEAN-P2-2: bulk submit fans out createProjectPosition + transition per
+    // row. Each row creates a DRAFT position, transitions it to BOOKED.
+    let nextId = 0;
+    mockedCreateProjectPosition.mockImplementation(async () => {
+      nextId += 1;
+      return buildPosition(`pos-${nextId}`, '');
     });
+    mockedTransitionProjectPositionFill.mockImplementation(async (positionId, req) =>
+      buildPosition(positionId, req.personId ?? ''),
+    );
 
     const { user } = renderWithRouter();
 
@@ -102,64 +113,37 @@ describe('BulkAssignmentPage', () => {
     await user.click(screen.getByRole('button', { name: 'Submit bulk assignment' }));
 
     await waitFor(() => {
-      expect(mockedBulkCreateAssignments).toHaveBeenCalledWith({
-        actorId: 'person-3',
-        entries: [
-          {
-            allocationPercent: 50,
-            personId: 'person-1',
-            projectId: 'project-1',
-            staffingRole: 'Lead Engineer',
-            startDate: '2026-04-01',
-          },
-          {
-            allocationPercent: 50,
-            personId: 'person-2',
-            projectId: 'project-1',
-            staffingRole: 'Lead Engineer',
-            startDate: '2026-04-01',
-          },
-        ],
-      });
+      expect(mockedCreateProjectPosition).toHaveBeenCalledTimes(2);
     });
+    expect(mockedTransitionProjectPositionFill).toHaveBeenCalledTimes(2);
+    expect(mockedTransitionProjectPositionFill).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        toStatus: 'BOOKED',
+        personId: 'person-1',
+        allocationPercent: 50,
+      }),
+    );
 
     expect(await screen.findByText('Batch Result Summary')).toBeInTheDocument();
-    expect(screen.getByText('2 assignments created. 0 failed.')).toBeInTheDocument();
+    expect(screen.getByText('Created 2 assignment(s).')).toBeInTheDocument();
     expect(screen.getByText('No items failed in this batch.')).toBeInTheDocument();
   });
 
   it('shows per-item partial failures clearly', async () => {
-    mockedBulkCreateAssignments.mockResolvedValue({
-      createdCount: 1,
-      createdItems: [
-        {
-          assignment: {
-            allocationPercent: 50,
-            id: 'asn-1',
-            personId: 'person-1',
-            projectId: 'project-1',
-            requestedAt: '2026-03-30T00:00:00.000Z',
-            staffingRole: 'Lead Engineer',
-            startDate: '2026-04-01',
-            status: 'PROPOSED',
-          },
-          index: 0,
-        },
-      ],
-      failedCount: 1,
-      failedItems: [
-        {
-          code: 'PERSON_INACTIVE',
-          index: 1,
-          message: 'Person is inactive and cannot receive new assignments.',
-          personId: 'person-2',
-          projectId: 'project-1',
-          staffingRole: 'Lead Engineer',
-        },
-      ],
-      message: '1 assignment created. 1 failed.',
-      strategy: 'PARTIAL_SUCCESS',
-      totalCount: 2,
+    // LEAN-P2-2: fan-out creates one position per row. The second row's
+    // transition throws to simulate a partial failure; the aggregator
+    // emits a failedItem with the legacy code 'CREATE_FAILED'.
+    let nextId = 0;
+    mockedCreateProjectPosition.mockImplementation(async () => {
+      nextId += 1;
+      return buildPosition(`pos-${nextId}`, '');
+    });
+    mockedTransitionProjectPositionFill.mockImplementation(async (positionId, req) => {
+      if (req.personId === 'person-2') {
+        throw new Error('Person is inactive and cannot receive new assignments.');
+      }
+      return buildPosition(positionId, req.personId ?? '');
     });
 
     const { user } = renderWithRouter();
@@ -175,8 +159,10 @@ describe('BulkAssignmentPage', () => {
     await user.click(screen.getByLabelText('Mia Lopez'));
     await user.click(screen.getByRole('button', { name: 'Submit bulk assignment' }));
 
-    expect(await screen.findByText('1 assignment created. 1 failed.')).toBeInTheDocument();
-    expect(screen.getByText('PERSON_INACTIVE')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Created 1 of 2 assignment(s); 1 failed.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('CREATE_FAILED')).toBeInTheDocument();
     expect(screen.getByText('Person is inactive and cannot receive new assignments.')).toBeInTheDocument();
 
     const failedItemsSection = screen.getByRole('heading', { name: 'Failed Items' }).closest('section');

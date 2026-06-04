@@ -3,9 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AssignmentDirectoryItem,
   AssignmentDirectoryResponse,
-  fetchAssignments,
 } from '@/lib/api/assignments';
+import { listProjectPositions, type PositionFillStatus } from '@/lib/api/project-positions';
 import { QueryState } from '@/lib/api/query-state';
+import {
+  mapAssignmentStatusToFillStatus,
+  mapListResponseToDirectory,
+} from '@/features/lean-migration/position-to-assignment-mapper';
 
 export interface AssignmentFilters {
   from: string;
@@ -38,14 +42,23 @@ export function useAssignments(filters: AssignmentFilters): AssignmentsState {
     let active = true;
 
     setState({ isLoading: true });
-    void fetchAssignments({
-      from: filters.from || undefined,
-      personId: filters.personId || undefined,
-      status: filters.status || undefined,
-      to: filters.to || undefined,
-      page: filters.page,
-      pageSize: filters.pageSize,
+    // LEAN-P2-2: read from /project-positions and map back to the legacy
+    // AssignmentDirectoryResponse shape. Status filter is translated through
+    // the FE enum bridge — see position-to-assignment-mapper.
+    const fillStatuses: PositionFillStatus[] | undefined = filters.status
+      ? [mapAssignmentStatusToFillStatus(filters.status as never)]
+      : undefined;
+    const pageSize = filters.pageSize;
+    const page = filters.page;
+    const take = pageSize;
+    const skip = page && pageSize ? (page - 1) * pageSize : undefined;
+    void listProjectPositions({
+      activePersonId: filters.personId || undefined,
+      fillStatuses,
+      skip,
+      take,
     })
+      .then((response): AssignmentDirectoryResponse => mapListResponseToDirectory(response))
       .then((data) => {
         if (!active) {
           return;
