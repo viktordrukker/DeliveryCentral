@@ -1,8 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+import { mapStaffingRequestStatusToFillStatus } from '@src/shared/lean-migration/enum-mappings';
 
 const PROJECT_STATUSES_BLOCKED_FOR_NEW_REQUESTS = new Set(['CLOSED', 'ARCHIVED', 'CANCELLED', 'COMPLETED']);
 const STAFFING_ROLES_DICTIONARY_KEY = 'staffing-roles';
@@ -76,6 +77,12 @@ type PrismaRecord = Prisma.StaffingRequestGetPayload<{ include: { fulfilments: t
 
 @Injectable()
 export class InMemoryStaffingRequestService {
+  // LEAN-P1-9 — best-effort logger for the dual-write to ProjectPosition.
+  // Failures on the lean side must never block the legacy write; precedent is
+  // `ProjectPositionMirrorService` (see src/modules/project-positions/application
+  // /project-position-mirror.service.ts).
+  private readonly logger = new Logger(InMemoryStaffingRequestService.name);
+
   public constructor(private readonly prisma: PrismaService) {}
 
   public async create(command: CreateStaffingRequestCommand): Promise<StaffingRequest> {
@@ -107,6 +114,10 @@ export class InMemoryStaffingRequestService {
       },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — dual-write the matching ProjectPosition row so the lean
+    // model can serve reads in Phase 2 (one mirror position per SR; the SR
+    // headcountRequired/headcountFulfilled counts are synthesized-on-read).
+    await this.dualWriteProjectPosition(record, command.requestedByPersonId);
     const projectName = await this.resolveProjectName(command.projectId);
     return this.toResponse(record, projectName);
   }
@@ -209,6 +220,8 @@ export class InMemoryStaffingRequestService {
       data: { status: 'OPEN', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — propagate the DRAFT → OPEN transition onto the mirror position.
+    await this.dualWriteProjectPosition(record, actorId);
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -224,6 +237,9 @@ export class InMemoryStaffingRequestService {
       data: { status: 'IN_REVIEW', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — IN_REVIEW maps to PROPOSED on the lean position (mapper
+    // collapses both legacy review and proposal states onto PROPOSED).
+    await this.dualWriteProjectPosition(record, actorId);
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -239,6 +255,10 @@ export class InMemoryStaffingRequestService {
       data: { status: 'OPEN', updatedByPersonId: actorId ?? null },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — release here means "send the proposal back to OPEN"
+    // (not the lean terminal RELEASED state). The mapper renders OPEN as
+    // OPEN on the lean position.
+    await this.dualWriteProjectPosition(record, actorId);
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -283,6 +303,13 @@ export class InMemoryStaffingRequestService {
       },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — sync the mirror position. The enum mapper renders FULFILLED
+    // as ASSIGNED and IN_REVIEW as PROPOSED on the lean position. activePersonId
+    // is set to the just-assigned person so lean readers can resolve who is on
+    // the position without joining back through StaffingRequestFulfilment.
+    await this.dualWriteProjectPosition(record, proposedByPersonId, {
+      activePersonId: assignedPersonId,
+    });
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -315,6 +342,9 @@ export class InMemoryStaffingRequestService {
       },
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — spawn a fresh mirror position for the duplicated SR
+    // (legacyStaffingRequestId points to the new row, not the source).
+    await this.dualWriteProjectPosition(record, actorId ?? source.requestedByPersonId);
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -368,6 +398,12 @@ export class InMemoryStaffingRequestService {
         include: { fulfilments: true },
       });
     });
+    // LEAN-P1-9 — propagate CANCELLED → RELEASED onto the mirror position.
+    // The reason text is captured on `cancellationReason` for forensic parity
+    // with the legacy SR `cancelledAt` timestamp.
+    await this.dualWriteProjectPosition(record, actorId, {
+      cancellationReason: 'Staffing request cancelled.',
+    });
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -400,6 +436,10 @@ export class InMemoryStaffingRequestService {
       data,
       include: { fulfilments: true },
     });
+    // LEAN-P1-9 — propagate the DRAFT-only field updates onto the mirror
+    // position so demand-side reads (role/skills/dates/allocation/priority)
+    // stay in lockstep.
+    await this.dualWriteProjectPosition(record, actorId);
     const projectName = await this.resolveProjectName(record.projectId);
     return this.toResponse(record, projectName);
   }
@@ -463,5 +503,92 @@ export class InMemoryStaffingRequestService {
       select: { id: true, name: true },
     });
     return Object.fromEntries(projects.map((p) => [p.id, p.name]));
+  }
+
+  /**
+   * LEAN-P1-9 — dual-write the matching `ProjectPosition` row whose
+   * `legacyStaffingRequestId` provenance points at this `StaffingRequest`.
+   *
+   * Strategy (per `docs/planning/lean-data-shape-audit.md` §"Model 4 —
+   * StaffingRequest → (1:N ProjectPosition rows…)"): during the dual-write
+   * window we maintain a single mirror position per SR. The SR-level
+   * `headcountRequired` and `headcountFulfilled` are synthesized-on-read from
+   * the sibling ProjectPosition rows — the position-fanout writer for
+   * headcount > 1 lives in `GenerateStaffingRequestsFromPlanService`
+   * (LEAN-P1-10). Here we keep the 1:1 mirror for the SR-aggregate writes.
+   *
+   * Best-effort: failures never block the canonical legacy SR write. The
+   * precedent is `ProjectPositionMirrorService` which logs + swallows mirror
+   * exceptions so the canonical write path stays clean.
+   */
+  private async dualWriteProjectPosition(
+    record: PrismaRecord,
+    actorId: string | undefined | null,
+    overrides: {
+      activePersonId?: string | null;
+      cancellationReason?: string | null;
+    } = {},
+  ): Promise<void> {
+    try {
+      const fillStatus = mapStaffingRequestStatusToFillStatus(record.status);
+      const isActive = fillStatus === 'BOOKED'
+        || fillStatus === 'ONBOARDING'
+        || fillStatus === 'ASSIGNED'
+        || fillStatus === 'ON_HOLD';
+
+      // Single mirror position per SR — match on legacyStaffingRequestId
+      // (indexed, not unique because headcount > 1 may spawn N positions via
+      // GenerateStaffingRequestsFromPlanService).
+      const existing = await this.prisma.projectPosition.findFirst({
+        where: { legacyStaffingRequestId: record.id },
+        select: { id: true },
+      });
+
+      const activePersonId = overrides.activePersonId
+        ?? (isActive ? record.candidatePersonId ?? null : null);
+
+      const baseFields = {
+        projectId: record.projectId,
+        role: record.role,
+        skills: record.skills,
+        summary: record.summary,
+        requiredAllocationPercent: record.allocationPercent,
+        startDate: record.startDate,
+        endDate: record.endDate,
+        priority: record.priority,
+        requestedByPersonId: record.requestedByPersonId,
+        fillStatus,
+        activePersonId,
+        activeAllocationPercent: isActive ? record.allocationPercent : null,
+        activeValidFrom: isActive ? record.createdAt : null,
+        activeValidTo: isActive ? record.endDate : null,
+        cancellationReason: overrides.cancellationReason ?? null,
+        // D-103-write-path — actor on every mirror write. NULL only when the
+        // legacy SR write also had no actor (e.g. legacy `create` falls back
+        // to the requester).
+        updatedByPersonId: actorId ?? null,
+      };
+
+      if (existing) {
+        await this.prisma.projectPosition.update({
+          where: { id: existing.id },
+          data: baseFields,
+        });
+        return;
+      }
+
+      await this.prisma.projectPosition.create({
+        data: {
+          ...baseFields,
+          tenantId: record.tenantId ?? null,
+          legacyStaffingRequestId: record.id,
+          createdByPersonId: actorId ?? record.requestedByPersonId,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `ProjectPosition dual-write failed for staffing request ${record.id} → ${(err as Error).message}`,
+      );
+    }
   }
 }
