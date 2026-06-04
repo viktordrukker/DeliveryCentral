@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import { bulkCreateAssignments } from '@/lib/api/assignments';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import {
@@ -25,18 +24,10 @@ vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: vi.fn(),
 }));
 
-vi.mock('@/lib/api/assignments', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api/assignments')>('@/lib/api/assignments');
-
-  return {
-    ...actual,
-    bulkCreateAssignments: vi.fn(),
-  };
-});
-
-// LEAN-P2-2: bulk submit now fans out createProjectPosition +
-// transitionProjectPositionFill calls per row. Mock both paths and aggregate
-// in the test.
+// LEAN-P2-7: bulk submit fans out createProjectPosition +
+// transitionProjectPositionFill calls per row via the P2-2 hook layer. The
+// legacy `bulkCreateAssignments` POST is no longer reachable from this page
+// so we no longer mock @/lib/api/assignments.
 vi.mock('@/lib/api/project-positions', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
     '@/lib/api/project-positions',
@@ -51,7 +42,6 @@ vi.mock('@/lib/api/project-positions', async () => {
 
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
-const mockedBulkCreateAssignments = vi.mocked(bulkCreateAssignments);
 const mockedCreateProjectPosition = vi.mocked(createProjectPosition);
 const mockedTransitionProjectPositionFill = vi.mocked(transitionProjectPositionFill);
 
@@ -72,7 +62,6 @@ describe('BulkAssignmentPage', () => {
   beforeEach(() => {
     mockedFetchPersonDirectory.mockReset();
     mockedFetchProjectDirectory.mockReset();
-    mockedBulkCreateAssignments.mockReset();
     mockedCreateProjectPosition.mockReset();
     mockedTransitionProjectPositionFill.mockReset();
 

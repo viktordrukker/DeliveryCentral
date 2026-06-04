@@ -1,4 +1,4 @@
-import { BulkAssignmentResponse } from '@/lib/api/assignments';
+import type { BulkAssignmentResponse } from '@/lib/api/assignments';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { SectionCard } from '@/components/common/SectionCard';
