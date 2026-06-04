@@ -1,0 +1,5 @@
+# Lean migration soak log
+
+Daily snapshots written by `scripts/lean-migration-soak-monitor.ts` during
+the Phase 2 → C0 staging soak. One JSON file per day, named `YYYY-MM-DD.json`.
+The directory must exist for the script to write into it.

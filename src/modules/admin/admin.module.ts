@@ -9,11 +9,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { AdminConfigQueryService } from './application/admin-config-query.service';
 import { IntegrationsRegistryService } from './application/integrations-registry.service';
+import { LeanMigrationParityService } from './application/lean-migration-parity.service';
 import { RedactPersonAuditService } from './application/redact-person-audit.service';
 import { InMemoryWebhookService } from './infrastructure/in-memory-webhook.service';
 import { AdminConfigController } from './presentation/admin-config.controller';
 import { AuditRetentionAdminController } from './presentation/audit-retention-admin.controller';
 import { IntegrationsRegistryAdminController } from './presentation/integrations-registry-admin.controller';
+import { LeanMigrationParityController } from './presentation/lean-migration-parity.controller';
 import { RedactPersonAdminController } from './presentation/redact-person-admin.controller';
 import { RolePresetsAdminController } from './presentation/role-presets-admin.controller';
 
@@ -29,12 +31,14 @@ import { RolePresetsAdminController } from './presentation/role-presets-admin.co
     AdminConfigController,
     AuditRetentionAdminController,
     IntegrationsRegistryAdminController,
+    LeanMigrationParityController,
     RedactPersonAdminController,
     RolePresetsAdminController,
   ],
   providers: [
     AdminConfigQueryService,
     IntegrationsRegistryService,
+    LeanMigrationParityService,
     PrismaService,
     InMemoryWebhookService,
     RedactPersonAuditService,
@@ -42,6 +46,7 @@ import { RolePresetsAdminController } from './presentation/role-presets-admin.co
   exports: [
     AdminConfigQueryService,
     IntegrationsRegistryService,
+    LeanMigrationParityService,
     InMemoryWebhookService,
     RedactPersonAuditService,
   ],
