@@ -8,6 +8,7 @@ import { DataView, type Column } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
 import { exportToXlsx } from '@/lib/export';
 import { ErrorState } from '@/components/common/ErrorState';
+import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { ListLayout } from '@/components/layout/ListLayout';
 import { ProjectHealthBadge } from '@/components/common/ProjectHealthBadge';
@@ -21,8 +22,7 @@ import { useProjectRegistry } from '@/features/projects/useProjectRegistry';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-
-const NUM = { fontVariantNumeric: 'tabular-nums' as const, textAlign: 'right' as const };
+import { ProjectDirectoryInspector } from '@/components/projects/ProjectDirectoryInspector';
 
 // V2 Scope §4 item 4 — Law-9 drilldown params from /dashboards/director (finance band).
 // `status`, `cpiBelow`, `budgetStatus`, `hasOpenGaps`, `closingInDays`, `view` arrive
@@ -47,6 +47,9 @@ export function ProjectsPage(): JSX.Element {
   const { principal } = useAuth();
   const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
   const [healthMap, setHealthMap] = useState<Map<string, ProjectHealthDto>>(new Map());
+  // SCOPED-MIN-1 — list-detail inspector pane (UX Law 4). Only used under
+  // dsRefresh; OFF path keeps legacy navigate-on-click for back-compat.
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const sortByHealth = (filters.sort === 'asc' || filters.sort === 'desc') ? filters.sort : null;
   const setSortByHealth = (v: 'asc' | 'desc' | null) => setFilters({ sort: v ?? '' });
   const state = useProjectRegistry({
@@ -68,53 +71,59 @@ export function ProjectsPage(): JSX.Element {
   const { setActions } = useTitleBarActions();
 
   // Title bar actions — stabilized with useMemo (20d-04)
+  // SCOPED-MIN-1 — under dsRefresh, filter inputs move into the canonical
+  // <FilterBar> below the title bar; the title bar shrinks to actions only.
   const hasItems = state.visibleItems.length > 0;
   const titleBarContent = useMemo(() => (
     <>
-      <input
-        onChange={(event) => setFilters({ search: event.target.value })}
-        placeholder="Search projects..."
-        type="search"
-        value={filters.search}
-        style={{ fontSize: 12, padding: '4px 8px', height: 28, minWidth: 140 }}
-      />
-      <select
-        onChange={(e) => setFilters({ engagement: e.target.value })}
-        value={filters.engagement}
-        style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
-      >
-        <option value="">All models</option>
-        <option value="TIME_AND_MATERIAL">T&M</option>
-        <option value="FIXED_PRICE">Fixed Price</option>
-        <option value="MANAGED_SERVICE">Managed Service</option>
-        <option value="INTERNAL">Internal</option>
-      </select>
-      <select
-        onChange={(e) => setFilters({ priority: e.target.value })}
-        value={filters.priority}
-        style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
-      >
-        <option value="">All priorities</option>
-        <option value="CRITICAL">Critical</option>
-        <option value="HIGH">High</option>
-        <option value="MEDIUM">Medium</option>
-        <option value="LOW">Low</option>
-      </select>
-      {/* F-4.3 — filter by external source (Jira PPM, M365, etc.). The
-          underlying URL param + BE filter were already wired; this
-          dropdown surfaces the option in the title bar. */}
-      <select
-        aria-label="Filter by external source"
-        data-jtbd="Which projects come from Jira / external systems?"
-        onChange={(e) => setFilters({ source: e.target.value })}
-        value={filters.source}
-        style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
-      >
-        <option value="">All sources</option>
-        <option value="JIRA">Jira PPM</option>
-        <option value="M365">M365</option>
-        <option value="RADIUS">Radius</option>
-      </select>
+      {!dsRefreshEnabled ? (
+        <>
+          <input
+            onChange={(event) => setFilters({ search: event.target.value })}
+            placeholder="Search projects..."
+            type="search"
+            value={filters.search}
+            style={{ fontSize: 12, padding: '4px 8px', height: 28, minWidth: 140 }}
+          />
+          <select
+            onChange={(e) => setFilters({ engagement: e.target.value })}
+            value={filters.engagement}
+            style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
+          >
+            <option value="">All models</option>
+            <option value="TIME_AND_MATERIAL">T&M</option>
+            <option value="FIXED_PRICE">Fixed Price</option>
+            <option value="MANAGED_SERVICE">Managed Service</option>
+            <option value="INTERNAL">Internal</option>
+          </select>
+          <select
+            onChange={(e) => setFilters({ priority: e.target.value })}
+            value={filters.priority}
+            style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
+          >
+            <option value="">All priorities</option>
+            <option value="CRITICAL">Critical</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+          {/* F-4.3 — filter by external source (Jira PPM, M365, etc.). The
+              underlying URL param + BE filter were already wired; this
+              dropdown surfaces the option in the title bar. */}
+          <select
+            aria-label="Filter by external source"
+            data-jtbd="Which projects come from Jira / external systems?"
+            onChange={(e) => setFilters({ source: e.target.value })}
+            value={filters.source}
+            style={{ fontSize: 12, padding: '4px 8px', height: 28 }}
+          >
+            <option value="">All sources</option>
+            <option value="JIRA">Jira PPM</option>
+            <option value="M365">M365</option>
+            <option value="RADIUS">Radius</option>
+          </select>
+        </>
+      ) : null}
       {hasItems ? (
         <Button
           variant="secondary"
@@ -143,7 +152,7 @@ export function ProjectsPage(): JSX.Element {
       <CopyLinkButton />
       <TipTrigger />
     </>
-  ), [filters.search, filters.engagement, filters.priority, hasItems, state.isLoading, state.visibleItems, healthMap, canCreateProject, setFilters]);
+  ), [dsRefreshEnabled, filters.search, filters.engagement, filters.priority, filters.source, hasItems, state.isLoading, state.visibleItems, healthMap, canCreateProject, setFilters]);
 
   useEffect(() => {
     setActions(titleBarContent);
@@ -256,13 +265,13 @@ export function ProjectsPage(): JSX.Element {
           status={item.priority === 'CRITICAL' ? 'danger' : item.priority === 'HIGH' ? 'warning' : item.priority === 'LOW' ? 'neutral' : 'info'}
           variant="dot"
         />
-      ) : <span style={{ color: 'var(--color-text-muted)' }}>{'\u2014'}</span>,
+      ) : <span style={{ color: 'var(--color-text-muted)' }}>{'—'}</span>,
       title: 'Priority',
       width: 85,
     },
     {
       key: 'client',
-      render: (item) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.clientName || '\u2014'}</span>,
+      render: (item) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{item.clientName || '—'}</span>,
       title: 'Client',
       width: 120,
     },
@@ -272,7 +281,7 @@ export function ProjectsPage(): JSX.Element {
         <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
           {item.externalLinksCount > 0
             ? item.externalLinksSummary.map((link) => `${link.provider} (${link.count})`).join(', ')
-            : '\u2014'}
+            : '—'}
         </span>
       ),
       title: (
@@ -296,7 +305,7 @@ export function ProjectsPage(): JSX.Element {
         return health ? (
           <ProjectHealthBadge grade={health.grade} score={health.score} size="sm" />
         ) : (
-          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{'\u2014'}</span>
+          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{'—'}</span>
         );
       },
       title: (
@@ -306,7 +315,7 @@ export function ProjectsPage(): JSX.Element {
           onClick={handleHealthSortToggle}
           type="button"
         >
-          Health {sortByHealth === 'desc' ? '\u25BC' : sortByHealth === 'asc' ? '\u25B2' : '\u2195'}
+          Health {sortByHealth === 'desc' ? '▼' : sortByHealth === 'asc' ? '▲' : '↕'}
         </Button>
       ),
       width: 90,
@@ -334,25 +343,221 @@ export function ProjectsPage(): JSX.Element {
     </>
   );
 
-  return (
-    <ListLayout testId="project-registry-page" viewport banners={banners}>
-      {!state.isLoading && !state.error ? (
-        <DataView
-          caption="Project registry"
-          columns={columns}
-          getRowKey={(item) => item.id}
-          rows={sortedItems}
-          onRowClick={(item) => navigate(`/projects/${item.id}`)}
-          variant="compact"
-          pageSizeOptions={[1000]}
-          emptyState={
-            <EmptyState
-              action={{ href: '/projects/new', label: 'Create Project' }}
-              description="The internal project registry has no matching projects for the current filters."
-              title="No projects yet"
-            />
-          }
+  // SCOPED-MIN-1 — KPI strip (UX Law 9: every KPI is a clickable drilldown).
+  // Only renders under dsRefresh to keep legacy snapshots stable.
+  const kpiTotals = useMemo(() => {
+    const items = state.visibleItems;
+    const total = items.length;
+    const active = items.filter((p) => p.status === 'ACTIVE').length;
+    const critical = items.filter((p) => p.priority === 'CRITICAL').length;
+    let atRisk = 0;
+    for (const it of items) {
+      const h = healthMap.get(it.id);
+      if (h && (h.grade === 'red' || h.grade === 'yellow')) atRisk += 1;
+    }
+    return { total, active, critical, atRisk };
+  }, [state.visibleItems, healthMap]);
+
+  // SCOPED-MIN-1 — canonical FilterBar (UX Law 5: filter persistence already
+  // via useFilterParams; this just moves the inputs to the standard slot).
+  const filterBar = dsRefreshEnabled ? (
+    <FilterBar>
+      <label className="field">
+        <span className="field__label">Search</span>
+        <input
+          className="field__control"
+          onChange={(event) => setFilters({ search: event.target.value })}
+          placeholder="Search by project, code, or status"
+          type="search"
+          value={filters.search}
+          data-testid="projects-filter-search"
         />
+      </label>
+      <label className="field">
+        <span className="field__label">Engagement</span>
+        <select
+          className="field__control"
+          onChange={(e) => setFilters({ engagement: e.target.value })}
+          value={filters.engagement}
+          data-testid="projects-filter-engagement"
+        >
+          <option value="">All models</option>
+          <option value="TIME_AND_MATERIAL">T&M</option>
+          <option value="FIXED_PRICE">Fixed Price</option>
+          <option value="MANAGED_SERVICE">Managed Service</option>
+          <option value="INTERNAL">Internal</option>
+        </select>
+      </label>
+      <label className="field">
+        <span className="field__label">Priority</span>
+        <select
+          className="field__control"
+          onChange={(e) => setFilters({ priority: e.target.value })}
+          value={filters.priority}
+          data-testid="projects-filter-priority"
+        >
+          <option value="">All priorities</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+      </label>
+      <label className="field">
+        <span className="field__label">Status</span>
+        <select
+          className="field__control"
+          onChange={(e) => setFilters({ status: e.target.value })}
+          value={filters.status}
+          data-testid="projects-filter-status"
+        >
+          <option value="">All statuses</option>
+          <option value="DRAFT">Draft</option>
+          <option value="PLANNED">Planned</option>
+          <option value="ACTIVE">Active</option>
+          <option value="ON_HOLD">On hold</option>
+          <option value="CLOSED">Closed</option>
+        </select>
+      </label>
+      <label className="field">
+        <span className="field__label">Source</span>
+        <select
+          className="field__control"
+          aria-label="Filter by external source"
+          onChange={(e) => setFilters({ source: e.target.value })}
+          value={filters.source}
+          data-testid="projects-filter-source"
+        >
+          <option value="">All sources</option>
+          <option value="JIRA">Jira PPM</option>
+          <option value="M365">M365</option>
+          <option value="RADIUS">Radius</option>
+        </select>
+      </label>
+    </FilterBar>
+  ) : null;
+
+  // KPI strip rendered above the FilterBar via the `header` slot.
+  const header = dsRefreshEnabled ? (
+    <div className="kpi-strip" data-testid="projects-kpi-strip">
+      <Link
+        className="kpi-strip__item"
+        to="/projects"
+        data-testid="projects-kpi-total"
+        style={{ borderLeft: '3px solid var(--color-status-info)' }}
+      >
+        <span className="kpi-strip__value">{kpiTotals.total}</span>
+        <span className="kpi-strip__label">Total projects</span>
+      </Link>
+      <Link
+        className="kpi-strip__item"
+        to="/projects?status=ACTIVE"
+        data-testid="projects-kpi-active"
+        style={{ borderLeft: '3px solid var(--color-status-active)' }}
+      >
+        <span className="kpi-strip__value">{kpiTotals.active}</span>
+        <span className="kpi-strip__label">Active</span>
+      </Link>
+      <Link
+        className="kpi-strip__item"
+        to="/projects?priority=CRITICAL"
+        data-testid="projects-kpi-critical"
+        style={{ borderLeft: '3px solid var(--color-status-danger)' }}
+      >
+        <span className="kpi-strip__value">{kpiTotals.critical}</span>
+        <span className="kpi-strip__label">Critical priority</span>
+      </Link>
+      <Link
+        className="kpi-strip__item"
+        to="/projects?sort=asc"
+        data-testid="projects-kpi-at-risk"
+        style={{ borderLeft: '3px solid var(--color-status-warning)' }}
+      >
+        <span className="kpi-strip__value">{kpiTotals.atRisk}</span>
+        <span className="kpi-strip__label">At risk (red/yellow)</span>
+      </Link>
+    </div>
+  ) : null;
+
+  const selectedRow = dsRefreshEnabled && selectedProjectId
+    ? sortedItems.find((p) => p.id === selectedProjectId) ?? null
+    : null;
+  const selectedIndex = selectedRow
+    ? sortedItems.findIndex((p) => p.id === selectedRow.id)
+    : -1;
+  const stepTo = (delta: number): void => {
+    if (selectedIndex < 0) return;
+    const next = selectedIndex + delta;
+    if (next < 0 || next >= sortedItems.length) return;
+    setSelectedProjectId(sortedItems[next].id);
+  };
+
+  return (
+    <ListLayout testId="project-registry-page" viewport banners={banners} header={header} filterBar={filterBar}>
+      {!state.isLoading && !state.error ? (
+        dsRefreshEnabled ? (
+          <div
+            data-testid="projects-list-detail"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: selectedRow
+                ? 'minmax(0, 1fr) minmax(300px, 380px)'
+                : 'minmax(0, 1fr)',
+              gap: 16,
+              alignItems: 'start',
+            }}
+          >
+            <DataView
+              caption="Project registry"
+              columns={columns}
+              getRowKey={(item) => item.id}
+              rows={sortedItems}
+              onRowClick={(item) => setSelectedProjectId(item.id)}
+              variant="compact"
+              pageSizeOptions={[1000]}
+              emptyState={
+                <EmptyState
+                  action={{ href: '/projects/new', label: 'Create Project' }}
+                  description="The internal project registry has no matching projects for the current filters."
+                  title="No projects yet"
+                />
+              }
+            />
+            {selectedRow ? (
+              <ProjectDirectoryInspector
+                row={selectedRow}
+                health={healthMap.get(selectedRow.id) ?? null}
+                onClose={() => setSelectedProjectId(null)}
+                position={{
+                  index: selectedIndex,
+                  total: sortedItems.length,
+                  onPrev: selectedIndex > 0 ? () => stepTo(-1) : undefined,
+                  onNext:
+                    selectedIndex < sortedItems.length - 1
+                      ? () => stepTo(1)
+                      : undefined,
+                }}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <DataView
+            caption="Project registry"
+            columns={columns}
+            getRowKey={(item) => item.id}
+            rows={sortedItems}
+            onRowClick={(item) => navigate(`/projects/${item.id}`)}
+            variant="compact"
+            pageSizeOptions={[1000]}
+            emptyState={
+              <EmptyState
+                action={{ href: '/projects/new', label: 'Create Project' }}
+                description="The internal project registry has no matching projects for the current filters."
+                title="No projects yet"
+              />
+            }
+          />
+        )
       ) : null}
     </ListLayout>
   );
