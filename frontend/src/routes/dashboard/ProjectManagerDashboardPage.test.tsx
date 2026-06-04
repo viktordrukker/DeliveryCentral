@@ -5,7 +5,6 @@ import { vi } from 'vitest';
 import { fetchProjectManagerDashboard } from '@/lib/api/dashboard-project-manager';
 import { fetchPendingActions } from '@/lib/api/dashboard-pending-actions';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
-import { fetchStaffingRequests } from '@/lib/api/staffing-requests';
 import { fetchWorkloadMatrix } from '@/lib/api/workload';
 import { renderRoute } from '@test/render-route';
 import { ProjectManagerDashboardPage } from './ProjectManagerDashboardPage';
@@ -13,9 +12,12 @@ import { ProjectManagerDashboardPage } from './ProjectManagerDashboardPage';
 // `vi.restoreAllMocks()` in src/test/setup.ts wipes inline `mockResolvedValue`
 // between tests, so declare the fn refs outside the factory and set defaults
 // in beforeEach (see memory `feedback-...` — same pattern as EmployeeDirectory).
+// LEAN-P2-8: removed dead `fetchStaffingRequests` mock — production page reads
+// staffing-request data through the aggregated `fetchProjectManagerDashboard`
+// payload server-side now; the legacy direct fetch is no longer fired by the
+// dashboard page after the Phase 1 read-path re-point.
 const fetchProjectManagerDashboardMock = vi.fn();
 const fetchPersonDirectoryMock = vi.fn();
-const fetchStaffingRequestsMock = vi.fn();
 const fetchWorkloadMatrixMock = vi.fn();
 const fetchPendingActionsMock = vi.fn();
 
@@ -24,9 +26,6 @@ vi.mock('@/lib/api/dashboard-project-manager', () => ({
 }));
 vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: (...args: unknown[]) => fetchPersonDirectoryMock(...args),
-}));
-vi.mock('@/lib/api/staffing-requests', () => ({
-  fetchStaffingRequests: (...args: unknown[]) => fetchStaffingRequestsMock(...args),
 }));
 vi.mock('@/lib/api/workload', () => ({
   fetchWorkloadMatrix: (...args: unknown[]) => fetchWorkloadMatrixMock(...args),
@@ -52,17 +51,14 @@ const mockedFetchPendingActions = fetchPendingActionsMock;
 void fetchProjectManagerDashboard;
 void fetchPersonDirectory;
 void fetchPendingActions;
-void fetchStaffingRequests;
 void fetchWorkloadMatrix;
 
 describe('ProjectManagerDashboardPage', () => {
   beforeEach(() => {
     fetchProjectManagerDashboardMock.mockReset();
     fetchPersonDirectoryMock.mockReset();
-    fetchStaffingRequestsMock.mockReset();
     fetchWorkloadMatrixMock.mockReset();
     fetchPendingActionsMock.mockReset();
-    fetchStaffingRequestsMock.mockResolvedValue([]);
     fetchWorkloadMatrixMock.mockResolvedValue({ people: [] });
     fetchPendingActionsMock.mockResolvedValue({ items: [], totalCount: 0 });
   });

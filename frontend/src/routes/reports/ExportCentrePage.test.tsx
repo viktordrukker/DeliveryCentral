@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import { fetchAssignments } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
 import { fetchCapitalisationReport } from '@/lib/api/capitalisation';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchApprovalQueue } from '@/lib/api/timesheets';
@@ -12,14 +12,16 @@ import { exportToXlsx } from '@/lib/export';
 import { renderRoute } from '@test/render-route';
 import { ExportCentrePage } from './ExportCentrePage';
 
-vi.mock('@/lib/api/assignments', () => ({ fetchAssignments: vi.fn() }));
+// LEAN-P2-8: mock the new project-positions client; page re-points to it
+// through the legacy mapper.
+vi.mock('@/lib/api/project-positions', () => ({ listProjectPositions: vi.fn() }));
 vi.mock('@/lib/api/capitalisation', () => ({ fetchCapitalisationReport: vi.fn() }));
 vi.mock('@/lib/api/person-directory', () => ({ fetchPersonDirectory: vi.fn() }));
 vi.mock('@/lib/api/timesheets', () => ({ fetchApprovalQueue: vi.fn() }));
 vi.mock('@/lib/api/workload', () => ({ fetchWorkloadMatrix: vi.fn() }));
 vi.mock('@/lib/export', () => ({ exportToXlsx: vi.fn() }));
 
-const mockedFetchAssignments = vi.mocked(fetchAssignments);
+const mockedListProjectPositions = vi.mocked(listProjectPositions);
 const mockedFetchCapitalisationReport = vi.mocked(fetchCapitalisationReport);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchApprovalQueue = vi.mocked(fetchApprovalQueue);
@@ -28,7 +30,7 @@ const mockedExportToXlsx = vi.mocked(exportToXlsx);
 
 describe('ExportCentrePage', () => {
   beforeEach(() => {
-    mockedFetchAssignments.mockReset();
+    mockedListProjectPositions.mockReset();
     mockedFetchCapitalisationReport.mockReset();
     mockedFetchPersonDirectory.mockReset();
     mockedFetchApprovalQueue.mockReset();
@@ -103,23 +105,27 @@ describe('ExportCentrePage', () => {
     );
   });
 
-  it('calls fetchAssignments and exportToXlsx when Assignment Overview generated', async () => {
+  it('calls listProjectPositions and exportToXlsx when Assignment Overview generated', async () => {
     const user = userEvent.setup();
 
-    mockedFetchAssignments.mockResolvedValue({
-      items: [
+    // LEAN-P2-8: page now calls listProjectPositions and runs the result
+    // through mapListResponseToDirectory. The mapper fills `person.displayName`
+    // / `project.displayName` with the underlying IDs when the BE DTO doesn't
+    // carry joined records — assert against that shape.
+    mockedListProjectPositions.mockResolvedValue({
+      positions: [
         {
-          allocationPercent: 100,
-          approvalState: 'APPROVED',
-          endDate: null,
           id: 'asn-1',
-          person: { displayName: 'Bob Taylor', id: 'person-2' },
-          project: { displayName: 'Atlas Project', id: 'project-1' },
-          staffingRole: 'Developer',
-          startDate: '2026-01-01',
+          projectId: 'project-1',
+          role: 'Developer',
+          requiredAllocationPercent: 100,
+          fillStatus: 'ASSIGNED',
+          activePersonId: 'person-2',
+          activeAllocationPercent: 100,
+          version: 1,
         },
       ],
-      totalCount: 1,
+      total: 1,
     });
 
     renderWithRouter();
@@ -127,10 +133,10 @@ describe('ExportCentrePage', () => {
     const buttons = screen.getAllByRole('button', { name: 'Generate & Download' });
     await user.click(buttons[1]); // Assignment Overview is second
 
-    expect(mockedFetchAssignments).toHaveBeenCalledWith({ pageSize: 500 });
+    expect(mockedListProjectPositions).toHaveBeenCalledWith({ take: 500 });
     expect(mockedExportToXlsx).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ Person: 'Bob Taylor', Project: 'Atlas Project' }),
+        expect.objectContaining({ Person: 'person-2', Project: 'project-1', Role: 'Developer' }),
       ]),
       expect.stringContaining('assignments_'),
     );

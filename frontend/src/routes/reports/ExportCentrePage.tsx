@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { fetchAssignments } from '@/lib/api/assignments';
+// LEAN-P2-8: read-path re-pointed to /project-positions via the legacy mapper.
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { fetchCapitalisationReport } from '@/lib/api/capitalisation';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchApprovalQueue } from '@/lib/api/timesheets';
@@ -100,7 +102,7 @@ export function ExportCentrePage(): JSX.Element {
   }
 
   async function generateAssignmentOverview(): Promise<void> {
-    const res = await fetchAssignments({ pageSize: 500 });
+    const res = mapListResponseToDirectory(await listProjectPositions({ take: 500 }));
     const rows = res.items.map((a) => ({
       'Allocation %': a.allocationPercent,
       'End Date': a.endDate ?? '',
