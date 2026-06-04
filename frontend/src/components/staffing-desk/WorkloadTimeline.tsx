@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Timeline, type TimelineMarker, type TimelineSegment } from '@/components/ds';
-import {
-  fetchAssignments,
-  type AssignmentDirectoryItem,
-} from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapPositionToDirectoryItem } from '@/features/lean-migration/position-to-assignment-mapper';
 
 export interface PlannedAssignment {
   allocationPercent: number;
@@ -31,8 +30,8 @@ export interface WorkloadTimelineProps {
    * When the timeline is rendered on a page that *already represents* an
    * existing assignment (e.g. AssignmentDetails), pass that assignment's id
    * here so it is filtered out of the fetched workload list. Without this the
-   * same record is drawn twice — once from `fetchAssignments` and once from
-   * the `planned` overlay.
+   * same record is drawn twice — once from the project-positions fetch and
+   * once from the `planned` overlay.
    */
   excludeAssignmentId?: string;
   /** Pre-loaded assignments — when provided, skips the API fetch entirely */
@@ -80,8 +79,14 @@ export function WorkloadTimeline({
     }
     let active = true;
     setLoading(true);
-    void fetchAssignments({ personId, pageSize: 200 })
-      .then((r) => { if (active) setFetchedAssignments(r.items); })
+    // LEAN-P2-3: read from /project-positions (canonical) and map back to
+    // the legacy AssignmentDirectoryItem shape so downstream rendering does
+    // not change. `activePersonId` returns positions where this person is
+    // currently filling; `take: 200` matches the legacy pageSize.
+    void listProjectPositions({ activePersonId: personId, take: 200 })
+      .then((r) => {
+        if (active) setFetchedAssignments(r.positions.map(mapPositionToDirectoryItem));
+      })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
-import { createAssignment } from '@/lib/api/assignments';
+import { createProjectPosition, transitionProjectPositionFill } from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { PlannerBenchPerson } from '@/lib/api/staffing-desk';
 import {
@@ -62,17 +62,32 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
     setSubmitting(true);
     setError(null);
     try {
-      await createAssignment({
-        actorId,
-        personId,
+      // LEAN-P2-3: replace the legacy single-shot /assignments POST with the
+      // canonical two-step flow:
+      //   1) POST /project-positions to create the demand row.
+      //   2) For "Create & request" (asDraft=false), transition to BOOKED
+      //      with the picked person + allocation pinned in the transition
+      //      body. Drafts skip step 2 and leave the position at DRAFT until
+      //      the operator picks a candidate.
+      const position = await createProjectPosition({
         projectId,
-        staffingRole: effectiveRole,
-        allocationPercent: allocPercent,
+        role: effectiveRole,
+        requiredAllocationPercent: allocPercent,
         startDate,
-        ...(endDate ? { endDate } : {}),
-        ...(note.trim() ? { note: note.trim() } : {}),
-        ...(asDraft ? { draft: true } : {}),
+        endDate: endDate || startDate,
+        ...(note.trim() ? { summary: note.trim() } : {}),
+        ...(actorId ? { requestedByPersonId: actorId } : {}),
+        openImmediately: !asDraft,
       });
+      if (!asDraft) {
+        await transitionProjectPositionFill(position.id, {
+          toStatus: 'BOOKED',
+          personId,
+          allocationPercent: allocPercent,
+          validFrom: startDate,
+          ...(endDate ? { validTo: endDate } : {}),
+        });
+      }
       toast.success(asDraft ? 'Draft assignment saved' : 'Assignment requested');
       onCreated();
     } catch (err: unknown) {
