@@ -22,10 +22,8 @@ import { useAuth } from '@/app/auth-context';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
 import { Avatar, Button, DatePicker, Pct, Table, WorkflowStages, type Column } from '@/components/ds';
 import { OnboardingScheduleModal } from '@/components/assignments/OnboardingScheduleModal';
-import {
-  directorApproveAssignment,
-  type AssignmentStatusValue,
-} from '@/lib/api/assignments';
+import type { AssignmentStatusValue } from '@/lib/api/assignments';
+import { transitionProjectPositionFill } from '@/lib/api/project-positions';
 import {
   buildNextStep,
   buildWorkflowStages,
@@ -153,7 +151,16 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
               setDirectorApproveBusy(true);
               setDirectorApproveError(undefined);
               try {
-                await directorApproveAssignment(id);
+                // LEAN-P2-5: re-route director-approve through the canonical
+                // /project-positions/:id/transition endpoint (toStatus=BOOKED)
+                // so the page no longer depends on the legacy /assignments/*
+                // controller. The BE collapses the director-approval semantic
+                // into the lean state machine — the audit trail still records
+                // the actor via the JWT principal.
+                await transitionProjectPositionFill(id, {
+                  toStatus: 'BOOKED',
+                  reason: 'Director approval recorded.',
+                });
                 await state.refresh();
               } catch (err) {
                 setDirectorApproveError(
