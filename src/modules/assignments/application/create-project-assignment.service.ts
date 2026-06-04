@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { AssignmentStatus as PrismaAssignmentStatus, Prisma } from '@prisma/client';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+import { mapAssignmentStatusToFillStatus } from '@src/shared/lean-migration/enum-mappings';
 
 /**
  * Minimal `$transaction` runner used when no PrismaService is injected
@@ -58,9 +60,15 @@ export class CreateProjectAssignmentService {
     private readonly directorApprovalThresholdService?: DirectorApprovalThresholdService,
   ) {
     this.prisma = prisma ?? PASSTHROUGH_TX_RUNNER;
+    // LEAN-P1-6 — only the real PrismaService carries the projectPosition /
+    // projectPositionFillHistory delegates. The PASSTHROUGH_TX_RUNNER stub
+    // used by in-memory unit tests does not — skip canonical-position writes
+    // there so the existing test-suite shape is preserved byte-for-byte.
+    this.hasRealPrisma = prisma !== undefined;
   }
 
   private readonly prisma: PrismaService;
+  private readonly hasRealPrisma: boolean;
 
   public async execute(command: CreateProjectAssignmentCommand): Promise<ProjectAssignment> {
     const startDate = new Date(command.startDate);
@@ -219,6 +227,17 @@ export class CreateProjectAssignmentService {
         : undefined;
 
     await this.prisma.$transaction(async (tx) => {
+      // LEAN-P1-6 — canonical write order: ProjectPosition + FillHistory
+      // first (when a real Prisma client is wired), then the legacy
+      // ProjectAssignment row keyed back to it via `legacyAssignmentId`.
+      // The inverted mirror service (LEAN-P0-4) keeps the legacy row in
+      // sync on subsequent transitions; here on first create we own both
+      // writes inside the same atomic unit so consumers see a consistent
+      // pair from the start.
+      if (this.hasRealPrisma) {
+        await this.writeCanonicalProjectPosition(assignment, command.actorId, tx);
+      }
+
       await this.projectAssignmentRepository.save(assignment, tx);
       await this.projectAssignmentRepository.appendApproval(initialApproval, tx);
       await this.projectAssignmentRepository.appendHistory(historyEntry, tx);
@@ -312,6 +331,112 @@ export class CreateProjectAssignmentService {
     });
 
     return assignment;
+  }
+
+  /**
+   * LEAN-P1-6 — write the canonical `ProjectPosition` (and its first
+   * `ProjectPositionFillHistory` row) for a newly created assignment.
+   *
+   * Idempotent via `legacyAssignmentId` (one position per legacy assignment).
+   * The legacy `ProjectAssignment` write that follows in the same tx is
+   * keyed back to this row via the same id, so the inverted mirror service
+   * (LEAN-P0-4) can keep the legacy follower in sync on later transitions.
+   *
+   * `fillStatus` is computed via `mapAssignmentStatusToFillStatus` (Phase 0
+   * shared mapper). The `activePersonId` slot is populated only when the
+   * lean status lands on an "active" state (BOOKED/ONBOARDING/ASSIGNED/
+   * ON_HOLD) so the read model can answer "who is filling this position
+   * right now" without re-deriving it from history.
+   *
+   * D-103 actor-audit: `createdByPersonId` + `updatedByPersonId` are
+   * stamped with the same `actorId` that wrote the legacy row.
+   */
+  private async writeCanonicalProjectPosition(
+    assignment: ProjectAssignment,
+    actorId: string,
+    tx: unknown,
+  ): Promise<void> {
+    // Domain `AssignmentStatusValue` and Prisma `AssignmentStatus` are
+    // identical string-literal unions (see `prisma/schema.prisma:357`).
+    // The shared Phase-0 helper takes the Prisma type; the cast bridges
+    // the two type aliases without runtime cost.
+    const fillStatus = mapAssignmentStatusToFillStatus(
+      assignment.status.value as PrismaAssignmentStatus,
+    );
+    const isActive =
+      fillStatus === 'BOOKED' ||
+      fillStatus === 'ONBOARDING' ||
+      fillStatus === 'ASSIGNED' ||
+      fillStatus === 'ON_HOLD';
+    const allocation = assignment.allocationPercent?.value ?? 100;
+    // The legacy schema makes `endDate` required on ProjectPosition but
+    // optional on ProjectAssignment. When the legacy row has no end date,
+    // fall back to a 365-day window — same convention the Sprint-2 backfill
+    // and the inverted mirror service use.
+    const endDate =
+      assignment.validTo ??
+      new Date(assignment.validFrom.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+    const txClient = tx as Prisma.TransactionClient;
+
+    const positionData: Prisma.ProjectPositionUncheckedCreateInput = {
+      projectId: assignment.projectId,
+      role: assignment.staffingRole,
+      requiredAllocationPercent: allocation.toString(),
+      startDate: assignment.validFrom,
+      endDate,
+      fillStatus,
+      activePersonId: isActive ? assignment.personId : null,
+      activeAllocationPercent: isActive ? allocation.toString() : null,
+      activeValidFrom: isActive ? assignment.validFrom : null,
+      activeValidTo: isActive ? (assignment.validTo ?? null) : null,
+      notes: assignment.notes ?? null,
+      requiresDirectorApproval: assignment.requiresDirectorApproval,
+      requestedByPersonId: assignment.requestedByPersonId ?? null,
+      createdByPersonId: actorId,
+      updatedByPersonId: actorId,
+      legacyAssignmentId: assignment.assignmentId.value,
+      legacyStaffingRequestId: assignment.staffingRequestId ?? null,
+    };
+
+    // Brand-new assignment → brand-new canonical position. The
+    // `legacyAssignmentId` is freshly minted in this command, so a plain
+    // `create` is safe. (No `@unique` constraint on `legacyAssignmentId`
+    // means upsert would require composite-key lookups; we don't need
+    // them for first-write.)
+    const position = await txClient.projectPosition.create({
+      data: positionData,
+      select: { id: true },
+    });
+
+    // First fill-history row records the canonical creation. Subsequent
+    // transitions append further rows via TransitionProjectPositionFillService.
+    const changeType: Prisma.ProjectPositionFillHistoryUncheckedCreateInput['changeType'] =
+      fillStatus === 'DRAFT'
+        ? 'DRAFTED'
+        : fillStatus === 'OPEN'
+          ? 'OPENED'
+          : fillStatus === 'PROPOSED'
+            ? 'PROPOSED'
+            : 'BOOKED';
+
+    await txClient.projectPositionFillHistory.create({
+      data: {
+        positionId: position.id,
+        changeType,
+        changedByPersonId: actorId,
+        changeReason: 'Initial assignment created (canonical write).',
+        newPersonId: isActive ? assignment.personId : null,
+        newStatus: fillStatus,
+        newSnapshot: {
+          allocationPercent: allocation,
+          personId: assignment.personId,
+          projectId: assignment.projectId,
+          staffingRole: assignment.staffingRole,
+          status: fillStatus,
+        },
+      },
+    });
   }
 
   private readonly logger = new Logger(CreateProjectAssignmentService.name);
