@@ -12,8 +12,16 @@ interface FakeBudget {
   earnedValue?: Prisma.Decimal | number | null;
 }
 
-function buildStub(rows: FakeBudget[]): PrismaService {
-  const projectBudget = { findMany: async (_q: unknown) => rows };
+function buildStub(rows: FakeBudget[], latestYear?: number | null): PrismaService {
+  const projectBudget = {
+    findMany: async (_q: unknown) => rows,
+    findFirst: async (_q: unknown) =>
+      latestYear === undefined
+        ? null
+        : latestYear === null
+          ? null
+          : { fiscalYear: latestYear },
+  };
   return { projectBudget } as unknown as PrismaService;
 }
 
@@ -71,8 +79,14 @@ describe('PortfolioFinanceSummaryService', () => {
     expect(r.totalActualCost).toBe(0);
   });
 
-  it('defaults to current fiscal year when none provided', async () => {
-    const svc = new PortfolioFinanceSummaryService(buildStub([]));
+  it('defaults to the latest fiscal year with budget rows when none provided', async () => {
+    const svc = new PortfolioFinanceSummaryService(buildStub([], 2025));
+    const r = await svc.summarize();
+    expect(r.fiscalYear).toBe(2025);
+  });
+
+  it('falls back to current year when the budget table is empty', async () => {
+    const svc = new PortfolioFinanceSummaryService(buildStub([], null));
     const r = await svc.summarize();
     expect(r.fiscalYear).toBe(new Date().getUTCFullYear());
   });

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { ACTIVE_FILL_STATUSES } from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { OrgHealthResponseDto, OrgHealthUnitDto } from './contracts/org-health.dto';
@@ -9,10 +10,11 @@ import { OrgHealthResponseDto, OrgHealthUnitDto } from './contracts/org-health.d
  *
  * Single read pass: per active OrgUnit, count active PersonOrgMembership rows,
  * intersect against active ProjectPosition rows (canonical staffing aggregate),
- * derive bench size and unfill rate. Person employment-status filter mirrors
- * DirectorDashboardQueryService (`ACTIVE` or `LEAVE` count as "in the org").
+ * derive bench size and unfill rate. Person employment-status filter is the
+ * canonical "active employee" predicate (see bench-query.ts) so the
+ * portfolio bench number on this dashboard matches the sidebar nav badge,
+ * the Bench page, and the Staffing Desk supply panel.
  */
-const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
 
 @Injectable()
 export class OrgHealthService {
@@ -34,7 +36,12 @@ export class OrgHealthService {
           archivedAt: null,
           validFrom: { lte: asOf },
           OR: [{ validTo: null }, { validTo: { gt: asOf } }],
-          person: { employmentStatus: { in: ['ACTIVE', 'LEAVE'] } },
+          person: {
+            deletedAt: null,
+            archivedAt: null,
+            terminatedAt: null,
+            employmentStatus: 'ACTIVE',
+          },
         },
         select: { personId: true, orgUnitId: true },
       }),
@@ -43,17 +50,10 @@ export class OrgHealthService {
           archivedAt: null,
           fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
           activePersonId: { not: null },
+          activeValidFrom: { lte: asOf },
           OR: [
-            { activeValidFrom: null },
-            { activeValidFrom: { lte: asOf } },
-          ],
-          AND: [
-            {
-              OR: [
-                { activeValidTo: null },
-                { activeValidTo: { gt: asOf } },
-              ],
-            },
+            { activeValidTo: null },
+            { activeValidTo: { gte: asOf } },
           ],
         },
         select: { activePersonId: true },

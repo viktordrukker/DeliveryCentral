@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { countBench as canonicalCountBench } from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { SidebarCountsDto } from './contracts/sidebar-counts.dto';
@@ -58,29 +59,10 @@ export class SidebarCountsService {
   }
 
   private async countBench(): Promise<number> {
-    // Bench = active employees with NO active fill on today.
-    // For the badge, we only need a count, not the enriched rows; an
-    // anti-join via groupBy + filter is the cheapest path that matches
-    // the enriched-bench definition.
-    const today = new Date();
-    const activePeople = await this.prisma.person.count({
-      where: {
-        deletedAt: null,
-        archivedAt: null,
-        terminatedAt: null,
-        employmentStatus: 'ACTIVE',
-      },
-    });
-    const filledDistinct = await this.prisma.projectPosition.groupBy({
-      by: ['activePersonId'],
-      where: {
-        activePersonId: { not: null },
-        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        activeValidFrom: { lte: today },
-        OR: [{ activeValidTo: null }, { activeValidTo: { gte: today } }],
-      },
-    });
-    return Math.max(0, activePeople - filledDistinct.length);
+    // Canonical bench query — shared with Bench page, Staffing Desk supply
+    // metrics, Director Org Health, and any future consumer. See
+    // `src/shared/persistence/bench-query.ts` for the single source of truth.
+    return canonicalCountBench(this.prisma);
   }
 
   private async countHrQueue(): Promise<number> {
