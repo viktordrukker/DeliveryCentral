@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
+import {
+  canonicalActivePersonWhere,
+  listBenchPersonIds,
+} from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import {
@@ -41,18 +45,14 @@ export class BenchAgingByDimensionService {
   ): Promise<BenchAgingByDimensionResponseDto> {
     const now = new Date();
 
-    const activePeople = await this.prisma.person.findMany({
-      where: { employmentStatus: 'ACTIVE' },
-      select: {
-        id: true,
-        hiredAt: true,
-        createdAt: true,
-        skillsets: true,
-      },
-    });
-    const activeIds = activePeople.map((p) => p.id);
+    // Canonical bench-person ID set (single source of truth shared with
+    // sidebar nav badge, /people/bench, Staffing Desk supply panel, and
+    // Director Org Health). The previous local predicate diverged on the
+    // `deletedAt` / `archivedAt` / `terminatedAt` filters which produced a
+    // different "bench" denominator than the rest of the platform.
+    const benchIdSet = await listBenchPersonIds(this.prisma, now);
 
-    if (activeIds.length === 0) {
+    if (benchIdSet.size === 0) {
       return {
         dimension,
         asOf: now.toISOString(),
@@ -62,21 +62,18 @@ export class BenchAgingByDimensionService {
       };
     }
 
-    // Currently-filled positions identify staffed people.
-    const filledPositions = await this.prisma.projectPosition.findMany({
+    const benchPeople = await this.prisma.person.findMany({
       where: {
-        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        activePersonId: { in: activeIds },
+        ...canonicalActivePersonWhere(),
+        id: { in: [...benchIdSet] },
       },
-      select: { activePersonId: true },
+      select: {
+        id: true,
+        hiredAt: true,
+        createdAt: true,
+        skillsets: true,
+      },
     });
-    const staffedIds = new Set(
-      filledPositions
-        .map((p) => p.activePersonId)
-        .filter((id): id is string => id !== null),
-    );
-
-    const benchPeople = activePeople.filter((p) => !staffedIds.has(p.id));
     const benchIds = benchPeople.map((p) => p.id);
 
     if (benchIds.length === 0) {

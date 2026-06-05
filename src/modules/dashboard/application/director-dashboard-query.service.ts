@@ -5,6 +5,8 @@ import { InMemoryPersonOrgMembershipRepository } from '@src/modules/organization
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
+import { countBench as canonicalCountBench } from '@src/shared/persistence/bench-query';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { DirectorDashboardResponseDto } from './contracts/director-dashboard.dto';
 
@@ -20,6 +22,7 @@ export class DirectorDashboardQueryService {
     private readonly personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
     private readonly projectRepository: InMemoryProjectRepository,
     private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   public async execute(query: DirectorDashboardQuery): Promise<DirectorDashboardResponseDto> {
@@ -52,9 +55,13 @@ export class DirectorDashboardQueryService {
         .map((assignment) => assignment.personId),
     );
     const staffedPersonCount = staffedPersonIds.size;
-    const unstaffedActivePersonCount = activePeople.filter(
-      (person) => !staffedPersonIds.has(person.personId.value),
-    ).length;
+    // "On Bench" KPI on the Director dashboard must match the sidebar nav
+    // badge, /people/bench, Staffing Desk supply panel, and Org Health.
+    // Delegate to the canonical bench helper (single source of truth);
+    // see `src/shared/persistence/bench-query.ts`. The legacy in-memory
+    // assignment scan above stayed in for the unit-utilisation widget,
+    // which still reads from the InMemory aggregate.
+    const unstaffedActivePersonCount = await canonicalCountBench(this.prisma, asOf);
     const staffingUtilisationRate =
       activePeople.length > 0
         ? Number(((staffedPersonCount / activePeople.length) * 100).toFixed(1))

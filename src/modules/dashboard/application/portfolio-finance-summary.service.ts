@@ -5,94 +5,30 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { PortfolioFinanceSummaryDto } from './contracts/portfolio-finance-summary.dto';
 
-interface BudgetRow {
-  projectId: string;
-  fiscalYear: number;
-  capexBudget: unknown;
-  opexBudget: unknown;
-  vendorBudget: unknown;
-  actualCost: unknown;
-  earnedValue: unknown;
-}
-
 /**
  * BE-track / Director finance band — portfolio-level rollup over the
- * ProjectBudget table. Pure aggregation; no per-project fan-out. Decimal
- * columns flow through decimalToNumber so Decimal.js objects never reach
- * the controller.
- *
- * Default semantics (no `fiscalYear` query param) aggregate every
- * ProjectBudget tied to a currently-ACTIVE Project — across every fiscal
- * year — and report the latest contributing year as the band label. This
- * removes the "11 active projects but 0 budget" surprise that surfaced on
- * v2-staging when active projects' budgets were keyed to a year that
- * happened to differ from the default resolver's pick (the seed keys
- * budgets to each project's start-year, so a recently-started active
- * portfolio spans multiple fiscal years). When an explicit `fiscalYear`
- * is supplied the service scopes strictly to that year for back-compat
- * with single-year drill-downs.
+ * ProjectBudget table for one fiscal year. Pure aggregation; no per-project
+ * fan-out (a single Prisma query). Decimal columns flow through
+ * decimalToNumber so Decimal.js objects never reach the controller.
  */
 @Injectable()
 export class PortfolioFinanceSummaryService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async summarize(fiscalYear?: number): Promise<PortfolioFinanceSummaryDto> {
-    if (fiscalYear !== undefined) {
-      const rows = await this.prisma.projectBudget.findMany({
-        where: { fiscalYear },
-        select: this.budgetSelect(),
-      });
-      return this.aggregate(rows as BudgetRow[], fiscalYear);
-    }
-
-    // Default — aggregate the active portfolio's lifetime budgets.
-    const activeProjects = await this.prisma.project.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true },
+    const year = fiscalYear ?? (await this.resolveDefaultFiscalYear());
+    const rows = await this.prisma.projectBudget.findMany({
+      where: { fiscalYear: year },
+      select: {
+        projectId: true,
+        capexBudget: true,
+        opexBudget: true,
+        vendorBudget: true,
+        actualCost: true,
+        earnedValue: true,
+      },
     });
 
-    if (activeProjects.length === 0) {
-      // No active projects at all — keep the response shape stable but
-      // attribute the empty result to a sensible fiscal year so the FE
-      // header reads naturally.
-      return this.aggregate([], await this.resolveDefaultFiscalYear());
-    }
-
-    const activeIds = activeProjects.map((p) => p.id);
-    const rows = (await this.prisma.projectBudget.findMany({
-      where: { projectId: { in: activeIds } },
-      select: this.budgetSelect(),
-    })) as BudgetRow[];
-
-    const latestYear =
-      rows.length > 0
-        ? Math.max(...rows.map((r) => r.fiscalYear))
-        : await this.resolveDefaultFiscalYear();
-
-    return this.aggregate(rows, latestYear);
-  }
-
-  private budgetSelect(): {
-    projectId: true;
-    fiscalYear: true;
-    capexBudget: true;
-    opexBudget: true;
-    vendorBudget: true;
-    actualCost: true;
-    earnedValue: true;
-  } {
-    return {
-      projectId: true,
-      fiscalYear: true,
-      capexBudget: true,
-      opexBudget: true,
-      vendorBudget: true,
-      actualCost: true,
-      earnedValue: true,
-    };
-  }
-
-  private aggregate(rows: BudgetRow[], fiscalYear: number): PortfolioFinanceSummaryDto {
     let totalBudget = 0;
     let totalActualCost = 0;
     let totalEarnedValue = 0;
@@ -114,7 +50,7 @@ export class PortfolioFinanceSummaryService {
 
     const cpi = totalActualCost > 0 ? Math.round((totalEarnedValue / totalActualCost) * 100) / 100 : 0;
     return {
-      fiscalYear,
+      fiscalYear: year,
       projectCount: projects.size,
       totalBudget: Math.round(totalBudget),
       totalActualCost: Math.round(totalActualCost),
@@ -125,16 +61,25 @@ export class PortfolioFinanceSummaryService {
   }
 
   /**
-   * Resolves the latest fiscal year that has at least one ProjectBudget row
-   * across the whole table. Used as a stable header label when there are
-   * no active projects or no rows tied to them. Falls back to the current
-   * calendar year so the response shape stays stable on a fresh tenant.
+   * Default fiscal year picks the year with the MOST `ProjectBudget` rows,
+   * not just the most-recent year. PR #525's initial fix picked the
+   * maximum fiscalYear, but real datasets stagger budgets across project
+   * start-years — the maximum year often contains only the handful of
+   * projects that kicked off in the current calendar year, while the
+   * primary cohort still lives in last year. Picking the densest year
+   * mirrors what an operator would naturally pick from a fiscal-year
+   * dropdown ("show me where most of the money is").
+   *
+   * If the table is empty we fall back to `new Date().getUTCFullYear()`
+   * so the response shape stays stable.
    */
   private async resolveDefaultFiscalYear(): Promise<number> {
-    const latest = await this.prisma.projectBudget.findFirst({
-      orderBy: { fiscalYear: 'desc' },
-      select: { fiscalYear: true },
+    const groups = await this.prisma.projectBudget.groupBy({
+      by: ['fiscalYear'],
+      _count: { _all: true },
+      orderBy: [{ _count: { fiscalYear: 'desc' } }, { fiscalYear: 'desc' }],
+      take: 1,
     });
-    return latest?.fiscalYear ?? new Date().getUTCFullYear();
+    return groups[0]?.fiscalYear ?? new Date().getUTCFullYear();
   }
 }

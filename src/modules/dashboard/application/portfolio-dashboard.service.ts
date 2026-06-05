@@ -202,32 +202,53 @@ export class PortfolioDashboardService {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // Find people who are either unassigned or have assignments ending within 30 days
+    // Active employees — canonical predicate so the denominator matches
+    // the bench / Org Health / sidebar counts surfaces.
     const allPeople = await this.prisma.person.findMany({
-      where: { employmentStatus: 'ACTIVE', deletedAt: null },
+      where: {
+        employmentStatus: 'ACTIVE',
+        deletedAt: null,
+        archivedAt: null,
+        terminatedAt: null,
+      },
       select: { id: true, displayName: true, skillsets: true, location: true },
     });
 
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-      select: { personId: true, allocationPercent: true, validTo: true },
+    // Pull active fills from the canonical staffing aggregate
+    // (ProjectPosition), not the legacy ProjectAssignment table — the
+    // two diverge on activation rules and previously produced an
+    // "Available Pool" count that didn't reconcile against bench size
+    // on the same dashboard.
+    const activePositions = await this.prisma.projectPosition.findMany({
+      where: {
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
+      },
+      select: {
+        activePersonId: true,
+        activeAllocationPercent: true,
+        activeValidTo: true,
+      },
     });
 
-    // Calculate current allocation per person
+    // Calculate current allocation per person.
     const allocationByPerson = new Map<string, { total: number; earliestEnd: Date | null }>();
-    for (const a of activeAssignments) {
-      const existing = allocationByPerson.get(a.personId) ?? { total: 0, earliestEnd: null };
-      existing.total += Number(a.allocationPercent ?? 0);
-      if (a.validTo && (!existing.earliestEnd || a.validTo < existing.earliestEnd)) {
-        existing.earliestEnd = a.validTo;
+    for (const a of activePositions) {
+      if (!a.activePersonId) continue;
+      const existing = allocationByPerson.get(a.activePersonId) ?? { total: 0, earliestEnd: null };
+      existing.total += Number(a.activeAllocationPercent ?? 0);
+      if (a.activeValidTo && (!existing.earliestEnd || a.activeValidTo < existing.earliestEnd)) {
+        existing.earliestEnd = a.activeValidTo;
       }
-      allocationByPerson.set(a.personId, existing);
+      allocationByPerson.set(a.activePersonId, existing);
     }
 
     return allPeople
       .filter((person) => {
         const alloc = allocationByPerson.get(person.id);
-        if (!alloc) return true; // No assignments = available
+        if (!alloc) return true; // No assignments = available (bench)
         if (alloc.total < 100) return true; // Partial allocation = has headroom
         if (alloc.earliestEnd && alloc.earliestEnd <= thirtyDaysFromNow) return true; // Ending soon
         return false;
