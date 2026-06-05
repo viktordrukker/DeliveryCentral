@@ -104,3 +104,24 @@ export class SkillMatchCandidateDto {
   @ApiProperty()
   public currentAllocation!: number;
 }
+
+/**
+ * LEAN-P4d-4 — body for `POST /api/me/skills`. The actor is the
+ * authenticated employee, so there is no `personId` field — the
+ * controller resolves it from the request principal.
+ */
+export class SelfEndorseSkillDto {
+  @ApiProperty({
+    description:
+      'Skill identifier. Accepts either the uuid (legacy) or the `skl_…` publicId (DMD-026).',
+  })
+  @Matches(/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|skl_[A-Za-z0-9]{10,})$/i)
+  @IsNotEmpty()
+  public skillId!: string;
+
+  @ApiProperty({ minimum: 1, maximum: 4 })
+  @IsNumber()
+  @Min(1)
+  @Max(4)
+  public proficiency!: number;
+}

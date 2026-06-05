@@ -69,3 +69,20 @@ export async function fetchSkillMatch(
   if (projectId) params.set('projectId', projectId);
   return httpGet<SkillMatchCandidate[]>(`/assignments/skill-match?${params.toString()}`);
 }
+
+/**
+ * LEAN-P4d-4 — Employee self-endorsement.
+ *
+ * Writes a `PersonSkill` row on the caller's own profile without
+ * routing through the HR approval flow. The backend resolves the
+ * personId from the request principal; no path param is needed.
+ */
+export async function endorseOwnSkill(
+  skillId: string,
+  proficiency: number,
+): Promise<PersonSkill> {
+  return httpPost<PersonSkill, { skillId: string; proficiency: number }>(
+    '/me/skills',
+    { skillId, proficiency },
+  );
+}

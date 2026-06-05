@@ -2618,6 +2618,9 @@ model PersonSkill {
   certified   Boolean  @default(false)
   // FE-#263 — drives "certification_stale" HR action-cards. NULL = no expiry.
   certificationExpiresAt DateTime? @db.Date
+  // LEAN-P4d-4 — TRUE when the employee added the row from /me/skills
+  // (no HR review). HR dashboards surface this pool as "unverified".
+  selfEndorsed Boolean @default(false)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([personId, skillId])
