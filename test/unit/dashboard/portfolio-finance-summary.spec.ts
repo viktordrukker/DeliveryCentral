@@ -39,6 +39,10 @@ function buildStub({ rows, latestYear, activeProjectIds }: StubOptions): PrismaS
         : latestYear === null
           ? null
           : { fiscalYear: latestYear },
+    groupBy: async (_q: unknown) =>
+      latestYear === undefined || latestYear === null
+        ? []
+        : [{ fiscalYear: latestYear, _count: { _all: 1 } }],
   };
   const project = {
     findMany: async (_q: unknown) =>
