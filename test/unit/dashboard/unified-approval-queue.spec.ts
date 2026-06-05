@@ -108,3 +108,93 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
     expect(out.items[0]!.submittedAt).toBe('2026-05-19T12:00:00.000Z');
   });
 });
+
+/**
+ * LEAN-P4c-3 — leave items surface in the unified approval queue so HR
+ * (and authorized managers) decide them from /approvals instead of
+ * navigating to /leave-requests separately.
+ */
+describe('UnifiedApprovalQueueService — leave source', () => {
+  interface LeaveRow {
+    id: string;
+    type: 'ANNUAL' | 'SICK' | 'OTHER';
+    startDate: Date;
+    endDate: Date;
+    createdAt: Date;
+    createdByPerson: { id: string; displayName: string } | null;
+  }
+
+  function buildStub(leaves: LeaveRow[]): PrismaService {
+    return {
+      projectPosition: { findMany: async () => [] },
+      budgetApproval: { findMany: async () => [] },
+      projectActivationApproval: { findMany: async () => [] },
+      leaveRequest: { findMany: async () => leaves },
+      caseRecord: { findMany: async () => [] },
+      timesheetWeek: { findMany: async () => [] },
+      person: { findMany: async () => [] },
+    } as unknown as PrismaService;
+  }
+
+  it('includes PENDING leave requests mapped to the leave source', async () => {
+    const svc = new UnifiedApprovalQueueService(
+      buildStub([
+        {
+          id: 'lr-1',
+          type: 'ANNUAL',
+          startDate: new Date('2026-06-15T00:00:00Z'),
+          endDate: new Date('2026-06-20T00:00:00Z'),
+          createdAt: new Date('2026-06-01T09:00:00Z'),
+          createdByPerson: { id: 'p-1', displayName: 'Ethan Brooks' },
+        },
+      ]),
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+    );
+    const out = await svc.list({ sources: ['leave'] });
+    expect(out.items).toHaveLength(1);
+    const item = out.items[0]!;
+    expect(item.source).toBe('leave');
+    expect(item.title).toBe('Leave: ANNUAL 2026-06-15…2026-06-20');
+    expect(item.submittedBy).toEqual({ personId: 'p-1', displayName: 'Ethan Brooks' });
+    expect(item.href).toBe('/leave-requests/lr-1');
+    expect(item.submittedAt).toBe('2026-06-01T09:00:00.000Z');
+    expect(item.meta).toMatchObject({ type: 'ANNUAL' });
+  });
+
+  it('mixes leave items alongside other sources in the same response', async () => {
+    const svc = new UnifiedApprovalQueueService(
+      buildStub([
+        {
+          id: 'lr-2',
+          type: 'SICK',
+          startDate: new Date('2026-06-10T00:00:00Z'),
+          endDate: new Date('2026-06-11T00:00:00Z'),
+          createdAt: new Date('2026-06-09T12:00:00Z'),
+          createdByPerson: { id: 'p-2', displayName: 'Jane Doe' },
+        },
+      ]),
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+    );
+    const out = await svc.list({});
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0]!.source).toBe('leave');
+  });
+
+  it('omits leave items when only other sources are requested', async () => {
+    const svc = new UnifiedApprovalQueueService(
+      buildStub([
+        {
+          id: 'lr-3',
+          type: 'OTHER',
+          startDate: new Date('2026-06-05T00:00:00Z'),
+          endDate: new Date('2026-06-05T00:00:00Z'),
+          createdAt: new Date('2026-06-04T08:00:00Z'),
+          createdByPerson: null,
+        },
+      ]),
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+    );
+    const out = await svc.list({ sources: ['budget'] });
+    expect(out.items).toHaveLength(0);
+  });
+});
