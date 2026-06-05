@@ -12,6 +12,8 @@ import { ProjectPositionsModule } from '@src/modules/project-positions/project-p
 import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
 import { ProjectRegistryModule } from '@src/modules/project-registry/project-registry.module';
 import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
+import { SkillsModule } from '@src/modules/skills/skills.module';
+import { SkillEndorsementService } from '@src/modules/skills/application/skill-endorsement.service';
 import { StaffingRequestsModule } from '@src/modules/staffing-requests/staffing-requests.module';
 import { TimesheetsModule } from '@src/modules/timesheets/timesheets.module';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
@@ -55,7 +57,7 @@ import { MeHomeController } from './presentation/me-home.controller';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
-  imports: [AssignmentsModule, CaseManagementModule, FinancialGovernanceModule, LeaveRequestsModule, OrganizationModule, PlatformSettingsModule, ProjectPositionsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
+  imports: [AssignmentsModule, CaseManagementModule, FinancialGovernanceModule, LeaveRequestsModule, OrganizationModule, PlatformSettingsModule, ProjectPositionsModule, ProjectRegistryModule, SkillsModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
   controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController, MeHomeController, SidebarCountsController],
   providers: [
     {
@@ -73,6 +75,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
         approveCaseService: ApproveCaseService,
         timesheetsService: TimesheetsService,
         transitionProjectPositionFillService: TransitionProjectPositionFillService,
+        skillEndorsementService: SkillEndorsementService,
       ) =>
         new UnifiedApprovalQueueService(
           prisma,
@@ -82,6 +85,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
           approveCaseService,
           timesheetsService,
           transitionProjectPositionFillService,
+          skillEndorsementService,
         ),
       inject: [
         PrismaService,
@@ -91,6 +95,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
         ApproveCaseService,
         TimesheetsService,
         TransitionProjectPositionFillService,
+        SkillEndorsementService,
       ],
     },
     {
