@@ -18,6 +18,8 @@ import { DirectorApprovalThresholdService } from './application/director-approva
 import { DirectorApproveService } from './application/director-approve.service';
 import { EndProjectAssignmentService } from './application/end-project-assignment.service';
 import { ScheduleOnboardingService } from './application/schedule-onboarding.service';
+import { ApproveOnboardingService } from './application/approve-onboarding.service';
+import { OnboardingApprovalGateService } from './application/onboarding-approval-gate.service';
 import { GetAssignmentByIdService } from './application/get-assignment-by-id.service';
 import { ListAssignmentsService } from './application/list-assignments.service';
 import { RejectProjectAssignmentService } from './application/reject-project-assignment.service';
@@ -225,6 +227,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
         undoService: UndoService,
         billRateResolver: EffectiveBillRateResolverService,
         prisma: PrismaService,
+        onboardingGate: OnboardingApprovalGateService,
       ) =>
         new TransitionProjectAssignmentService(
           repository,
@@ -234,6 +237,7 @@ import { AssignmentsController } from './presentation/assignments.controller';
           undoService,
           billRateResolver,
           prisma,
+          onboardingGate,
         ),
       inject: [
         InMemoryProjectAssignmentRepository,
@@ -243,7 +247,19 @@ import { AssignmentsController } from './presentation/assignments.controller';
         UndoService,
         EffectiveBillRateResolverService,
         PrismaService,
+        OnboardingApprovalGateService,
       ],
+    },
+    {
+      provide: OnboardingApprovalGateService,
+      useFactory: (prisma: PrismaService) => new OnboardingApprovalGateService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: ApproveOnboardingService,
+      useFactory: (prisma: PrismaService, auditLogger: AuditLoggerService) =>
+        new ApproveOnboardingService(prisma, auditLogger),
+      inject: [PrismaService, AuditLoggerService],
     },
     {
       provide: AssignmentCancelUndoExecutor,
@@ -270,6 +286,8 @@ import { AssignmentsController } from './presentation/assignments.controller';
     DirectorApprovalThresholdService,
     DirectorApproveService,
     ScheduleOnboardingService,
+    ApproveOnboardingService,
+    OnboardingApprovalGateService,
     AssignmentSlaService,
     AssignmentSlaSweepService,
   ],

@@ -24,6 +24,7 @@ import { OptionalReasonBodyDto } from '@src/shared/http/reason-body.dto';
 import { ActivateApprovedAssignmentsService } from '../application/activate-approved-assignments.service';
 import { DirectorApproveService } from '../application/director-approve.service';
 import { ScheduleOnboardingService } from '../application/schedule-onboarding.service';
+import { ApproveOnboardingService } from '../application/approve-onboarding.service';
 import { BulkCreateProjectAssignmentsService } from '../application/bulk-create-project-assignments.service';
 import {
   AssignmentDetailsDto,
@@ -93,6 +94,7 @@ export class AssignmentsController {
     private readonly transitionProjectAssignmentService: TransitionProjectAssignmentService,
     private readonly directorApproveService: DirectorApproveService,
     private readonly scheduleOnboardingService: ScheduleOnboardingService,
+    private readonly approveOnboardingService: ApproveOnboardingService,
   ) {}
 
   @Post('activate')
@@ -323,6 +325,57 @@ export class AssignmentsController {
       return this.mapAssignmentResponse(assignment);
     }
     return this.runTransition('ONBOARDING', id, request, httpRequest);
+  }
+
+  // LEAN-P4c-1 — PM approves the onboarding-stage gate on the paired
+  // ProjectPosition. After approval the assignment may be transitioned
+  // ONBOARDING → ASSIGNED. Gated to PROJECT_DELIVERY_ROLES (PM + DM +
+  // director + admin) matching the canonical "delivery-side decision"
+  // surface for onboarding lifecycle.
+  @Post(':id/onboarding/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve the onboarding-stage gate for an assignment (LEAN-P4c-1)' })
+  @ApiOkResponse({ description: 'Gate approved' })
+  @ApiNotFoundResponse({ description: 'Assignment / paired position not found.' })
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
+  public async approveOnboarding(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: OptionalReasonBodyDto | undefined,
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<{
+    assignmentId: string;
+    positionId: string;
+    onboardingApprovedAt: string;
+    onboardingApprovedByPersonId: string;
+  }> {
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    return this.approveOnboardingService.approve({
+      actorId,
+      assignmentId: id,
+      reason: request?.reason,
+    });
+  }
+
+  @Post(':id/onboarding/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject the onboarding-stage gate for an assignment (LEAN-P4c-1)' })
+  @ApiOkResponse({ description: 'Gate rejected' })
+  @ApiNotFoundResponse({ description: 'Assignment / paired position not found.' })
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
+  public async rejectOnboarding(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() request: { reason: string },
+    @Req() httpRequest: { principal?: { personId?: string; userId?: string; roles?: PlatformRole[] } },
+  ): Promise<{ assignmentId: string; positionId: string; rejectionReason: string }> {
+    const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? 'unknown';
+    if (!request?.reason || request.reason.trim().length === 0) {
+      throw new BadRequestException('A rejection reason is required.');
+    }
+    return this.approveOnboardingService.reject({
+      actorId,
+      assignmentId: id,
+      reason: request.reason,
+    });
   }
 
   @Post(':id/assign')
