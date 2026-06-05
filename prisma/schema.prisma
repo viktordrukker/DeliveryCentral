@@ -531,6 +531,8 @@ model Person {
   subjectReportingLines                    ReportingLine[]                     @relation("ReportingLineSubject")
   resourcePoolMemberships                  PersonResourcePoolMembership[]
   personSkills                             PersonSkill[]
+  // LEAN-P4c-4 — back-relation: skills this person endorsed for others.
+  endorsedPersonSkills                     PersonSkill[]                       @relation("PersonSkillEndorsedBy")
   requestedAssignments                     ProjectAssignment[]                 @relation("AssignmentRequestedBy")
   projectAssignments                       ProjectAssignment[]                 @relation("AssignmentPerson")
   assignmentApprovalsMade                  AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
@@ -2621,11 +2623,18 @@ model PersonSkill {
   // LEAN-P4d-4 — TRUE when the employee added the row from /me/skills
   // (no HR review). HR dashboards surface this pool as "unverified".
   selfEndorsed Boolean @default(false)
+  // LEAN-P4c-4 — manager-approval audit columns. NULL while the row is
+  // still pending HR review; populated on the APPROVE path. A reject
+  // deletes the row outright (no soft-delete flag).
+  endorsedByPersonId String?  @db.Uuid
+  endorsedByPerson   Person?  @relation("PersonSkillEndorsedBy", fields: [endorsedByPersonId], references: [id], onDelete: SetNull)
+  endorsedAt         DateTime? @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([personId, skillId])
   @@index([personId])
   @@index([skillId])
+  @@index([endorsedByPersonId], map: "person_skills_endorsedByPerson_idx")
   @@map("person_skills")
 }
 

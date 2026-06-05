@@ -1,4 +1,4 @@
-import { BadRequestException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 import { UnifiedApprovalQueueService } from '@src/modules/dashboard/application/unified-approval-queue.service';
 import type { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -8,6 +8,7 @@ import type { DecideProjectActivationService } from '@src/modules/project-regist
 import type { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
 import type { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
 import type { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
+import type { SkillEndorsementService } from '@src/modules/skills/application/skill-endorsement.service';
 
 interface Spies {
   leaveApprove: jest.Mock;
@@ -19,6 +20,8 @@ interface Spies {
   timesheetApprove: jest.Mock;
   timesheetReject: jest.Mock;
   positionTransition: jest.Mock;
+  skillApprove: jest.Mock;
+  skillReject: jest.Mock;
 }
 
 function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
@@ -39,6 +42,8 @@ function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
     positionTransition: jest.fn(async () => ({
       positionId: { value: 'pp-1' },
     })),
+    skillApprove: jest.fn(async () => ({ id: 'ps-1', endorsedAt: reviewedAt })),
+    skillReject: jest.fn(async () => ({ id: 'ps-1' })),
   };
 
   const leave = { approve: spies.leaveApprove, reject: spies.leaveReject } as unknown as LeaveRequestsService;
@@ -52,10 +57,14 @@ function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
   const positions = {
     execute: spies.positionTransition,
   } as unknown as TransitionProjectPositionFillService;
+  const skills = {
+    approve: spies.skillApprove,
+    reject: spies.skillReject,
+  } as unknown as SkillEndorsementService;
   const prisma = {} as PrismaService;
 
   return {
-    svc: new UnifiedApprovalQueueService(prisma, leave, budget, activation, cases, timesheets, positions),
+    svc: new UnifiedApprovalQueueService(prisma, leave, budget, activation, cases, timesheets, positions, skills),
     spies,
   };
 }
@@ -222,18 +231,37 @@ describe('UnifiedApprovalQueueService.decide (V2 §4)', () => {
     expect(spies.positionTransition).not.toHaveBeenCalled();
   });
 
-  it('rejects source=skill-review with NotImplementedException (501)', async () => {
+  it('routes source=skill-review APPROVE → SkillEndorsementService.approve(id, actorId)', async () => {
     const { svc, spies } = buildService();
-    await expect(
-      svc.decide({
-        approvalId: 'sr-1',
-        source: 'skill-review',
-        decision: 'APPROVE',
-        actorId: 'actor-11',
-        actorRoles: ['hr_manager'],
-      }),
-    ).rejects.toBeInstanceOf(NotImplementedException);
-    expect(spies.positionTransition).not.toHaveBeenCalled();
+    const out = await svc.decide({
+      approvalId: 'ps-1',
+      source: 'skill-review',
+      decision: 'APPROVE',
+      actorId: 'hr-actor',
+      actorRoles: ['hr_manager'],
+    });
+    expect(spies.skillApprove).toHaveBeenCalledWith('ps-1', 'hr-actor');
+    expect(spies.skillReject).not.toHaveBeenCalled();
+    expect(out.source).toBe('skill-review');
+    expect(out.decision).toBe('APPROVED');
+    expect(out.approvalId).toBe('ps-1');
+    expect(out.decidedByPersonId).toBe('hr-actor');
+  });
+
+  it('routes source=skill-review REJECT → SkillEndorsementService.reject(id, actorId, reason)', async () => {
+    const { svc, spies } = buildService();
+    const out = await svc.decide({
+      approvalId: 'ps-2',
+      source: 'skill-review',
+      decision: 'REJECT',
+      actorId: 'hr-actor-2',
+      actorRoles: ['hr_manager'],
+      reason: 'wrong proficiency',
+    });
+    expect(spies.skillReject).toHaveBeenCalledWith('ps-2', 'hr-actor-2', 'wrong proficiency');
+    expect(spies.skillApprove).not.toHaveBeenCalled();
+    expect(out.source).toBe('skill-review');
+    expect(out.decision).toBe('REJECTED');
   });
 
   it('filters non-platform roles before forwarding to the position transition service', async () => {

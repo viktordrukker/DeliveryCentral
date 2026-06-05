@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
 import { DecideBudgetChangeService } from '@src/modules/financial-governance/application/decide-budget-change.service';
@@ -6,6 +6,7 @@ import { PlatformRole, isPlatformRole } from '@src/modules/identity-access/domai
 import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
 import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
 import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
+import { SkillEndorsementService } from '@src/modules/skills/application/skill-endorsement.service';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -41,7 +42,7 @@ const HOUR_MS = 60 * 60 * 1000;
 /**
  * FE-#264 — unified approval queue aggregator.
  *
- * Combines pending approvals across 6 source kinds into a single ranked
+ * Combines pending approvals across 7 source kinds into a single ranked
  * list. v1 fields:
  *   - position-proposal — ProjectPosition with fillStatus=PROPOSED
  *   - budget            — BudgetApproval status=PENDING
@@ -49,8 +50,8 @@ const HOUR_MS = 60 * 60 * 1000;
  *   - leave             — LeaveRequest status=PENDING
  *   - case              — CaseRecord status='OPEN' (any case awaiting action)
  *   - timesheet         — TimesheetWeek status=SUBMITTED
- *
- * skill-review deferred — no canonical SkillReview model in main yet.
+ *   - skill-review      — PersonSkill where selfEndorsed=TRUE AND
+ *                         endorsedByPersonId IS NULL (LEAN-P4c-4).
  *
  * SLA fields (slaDueAt / slaBreachedAt / slaStage) are NULL in v1; they
  * populate when issue #257 lands the columns on ApprovalQueueItem source
@@ -69,6 +70,7 @@ export class UnifiedApprovalQueueService {
     private readonly approveCaseService: ApproveCaseService,
     private readonly timesheetsService: TimesheetsService,
     private readonly transitionProjectPositionFillService: TransitionProjectPositionFillService,
+    private readonly skillEndorsementService: SkillEndorsementService,
   ) {}
 
   /**
@@ -82,15 +84,6 @@ export class UnifiedApprovalQueueService {
    * the FE gets a single, consistent 400 instead of three different errors.
    */
   public async decide(args: DecideArgs): Promise<UnifiedApprovalDecisionResponseDto> {
-    if (args.source === 'skill-review') {
-      // V2 lifecycle gap — no canonical SkillReview model lands until issue
-      // #312. Surface a 501 rather than a 400 so the FE can distinguish
-      // "not built yet" from "bad request" and keep the queue working for
-      // the other six sources.
-      throw new NotImplementedException(
-        'Skill review decisions are not yet implemented. Use the per-source decision endpoint when issue #312 lands.',
-      );
-    }
     if (
       args.decision === 'REJECT' &&
       !args.reason?.trim() &&
@@ -202,6 +195,35 @@ export class UnifiedApprovalQueueService {
       };
     }
 
+    if (args.source === 'skill-review') {
+      // LEAN-P4c-4 — HR manager approves or rejects a self-added skill row.
+      // APPROVE stamps `endorsedByPersonId` + `endorsedAt`; REJECT deletes
+      // the row (no soft-delete). Both paths emit a skill-endorsement audit
+      // log entry.
+      if (args.decision === 'APPROVE') {
+        const result = await this.skillEndorsementService.approve(args.approvalId, args.actorId);
+        return {
+          approvalId: result.id,
+          source: 'skill-review',
+          decision: 'APPROVED',
+          decidedAt: decidedAtIso(result.endorsedAt),
+          decidedByPersonId: args.actorId,
+        };
+      }
+      const result = await this.skillEndorsementService.reject(
+        args.approvalId,
+        args.actorId,
+        args.reason ?? args.comment,
+      );
+      return {
+        approvalId: result.id,
+        source: 'skill-review',
+        decision: 'REJECTED',
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
+
     if (args.source === 'timesheet') {
       const row =
         args.decision === 'APPROVE'
@@ -236,17 +258,20 @@ export class UnifiedApprovalQueueService {
             'leave',
             'case',
             'timesheet',
+            'skill-review',
           ] as ApprovalQueueSource[]),
     );
 
-    const [positions, budgets, activations, leaves, cases, timesheets] = await Promise.all([
-      sources.has('position-proposal') ? this.loadPositionProposals() : [],
-      sources.has('budget') ? this.loadBudgetApprovals() : [],
-      sources.has('activation') ? this.loadActivations() : [],
-      sources.has('leave') ? this.loadLeaveRequests() : [],
-      sources.has('case') ? this.loadCases() : [],
-      sources.has('timesheet') ? this.loadTimesheets() : [],
-    ]);
+    const [positions, budgets, activations, leaves, cases, timesheets, skillReviews] =
+      await Promise.all([
+        sources.has('position-proposal') ? this.loadPositionProposals() : [],
+        sources.has('budget') ? this.loadBudgetApprovals() : [],
+        sources.has('activation') ? this.loadActivations() : [],
+        sources.has('leave') ? this.loadLeaveRequests() : [],
+        sources.has('case') ? this.loadCases() : [],
+        sources.has('timesheet') ? this.loadTimesheets() : [],
+        sources.has('skill-review') ? this.skillEndorsementService.listPending() : [],
+      ]);
 
     const items: ApprovalQueueItemDto[] = [
       ...positions,
@@ -255,6 +280,7 @@ export class UnifiedApprovalQueueService {
       ...leaves,
       ...cases,
       ...timesheets,
+      ...skillReviews,
     ];
     items.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     const total = items.length;
