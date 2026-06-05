@@ -2,11 +2,15 @@ import { FormEvent, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import {
-  createAssignment,
-  type CreateAssignmentRequest,
-  type ProjectAssignmentResponse,
+import type {
+  CreateAssignmentRequest,
+  ProjectAssignmentResponse,
 } from '@/lib/api/assignments';
+import {
+  createProjectPosition,
+  transitionProjectPositionFill,
+} from '@/lib/api/project-positions';
+import { mapPositionToAssignmentResponse } from '@/features/lean-migration/position-to-assignment-mapper';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { UtilisationPeek } from '@/components/assignments/UtilisationPeek';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
@@ -110,7 +114,30 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
     setError(null);
 
     try {
-      const response = await createAssignment(buildRequest(asDraft, forceOverlap));
+      // LEAN-P2 exit-gate: legacy POST /assignments replaced with
+      // createProjectPosition (OPEN) → transitionProjectPositionFill(BOOKED).
+      // Drafts skip the transition and leave the position in DRAFT.
+      const req = buildRequest(asDraft, forceOverlap);
+      const position = await createProjectPosition({
+        projectId: req.projectId,
+        role: req.staffingRole,
+        requiredAllocationPercent: req.allocationPercent,
+        startDate: req.startDate,
+        endDate: req.endDate ?? req.startDate,
+        openImmediately: !asDraft,
+        requestedByPersonId: req.actorId,
+      });
+      const finalPosition = asDraft
+        ? position
+        : await transitionProjectPositionFill(position.id, {
+            toStatus: 'BOOKED',
+            personId: req.personId,
+            allocationPercent: req.allocationPercent,
+            validFrom: req.startDate,
+            ...(req.endDate ? { validTo: req.endDate } : {}),
+            ...(req.note ? { reason: req.note } : {}),
+          });
+      const response: ProjectAssignmentResponse = mapPositionToAssignmentResponse(finalPosition);
       setStaffingRole('');
       setCustomRole('');
       setAllocInput('100');

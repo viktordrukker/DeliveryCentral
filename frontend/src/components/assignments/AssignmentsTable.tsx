@@ -5,7 +5,7 @@ import { ColumnVisibilityMenu } from '@/components/common/ColumnVisibilityMenu';
 import { EmptyState } from '@/components/common/EmptyState';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { useColumnVisibility } from '@/lib/hooks/useColumnVisibility';
-import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { ASSIGNMENT_STATUS_LABELS, humanizeEnum } from '@/lib/labels';
 import { formatDateShort } from '@/lib/format-date';
 

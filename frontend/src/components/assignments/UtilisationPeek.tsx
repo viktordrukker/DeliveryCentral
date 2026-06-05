@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Pct } from '@/components/ds';
-import { checkAllocationConflict } from '@/lib/api/staffing-requests';
+import { listProjectPositions } from '@/lib/api/project-positions';
 
 interface Props {
   personId: string;
@@ -30,14 +30,26 @@ export function UtilisationPeek({ personId, startDate, endDate, allocationPercen
     setIsLoading(true);
 
     const handle = setTimeout(() => {
-      checkAllocationConflict({
-        allocation: allocationPercent,
-        from: startDate,
-        personId,
-        to,
+      // LEAN-P2: legacy /workload/check-conflict replaced by a client-side
+      // sum over /project-positions filtered to the person's active fills.
+      // The lean conflict-check endpoint lands in LEAN-P2-11; until then we
+      // sum allocationPercent across BOOKED/ASSIGNED/ONBOARDING positions
+      // intersecting the [startDate, to] window.
+      listProjectPositions({
+        activePersonId: personId,
+        fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'],
+        take: 100,
       })
         .then((res) => {
-          if (active) setTotal(res.totalAllocationPercent);
+          if (!active) return;
+          const existing = res.positions
+            .filter((p) => {
+              const from = p.activeValidFrom ?? '0000-01-01';
+              const until = p.activeValidTo ?? '9999-12-31';
+              return from <= to && until >= startDate;
+            })
+            .reduce((sum, p) => sum + (p.activeAllocationPercent ?? 0), 0);
+          setTotal(existing + allocationPercent);
         })
         .catch(() => {
           if (active) setTotal(null);

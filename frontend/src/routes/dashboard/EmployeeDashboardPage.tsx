@@ -16,7 +16,7 @@ import { WorkloadGauge } from '@/components/charts/WorkloadGauge';
 import { WeeklyAllocationArea } from '@/components/charts/WeeklyAllocationArea';
 import { PulseWidget } from '@/components/common/PulseWidget';
 import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard';
-import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { HR_DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Button } from '@/components/ds';
 import { ReportIssueModal } from '@/components/employee/ReportIssueModal';

@@ -84,4 +84,46 @@ describe('position-to-assignment-mapper', () => {
     expect(response.allocationPercent).toBe(80);
     expect(response.version).toBe(1);
   });
+
+  it('forwards demand window / active validity dates onto the legacy shape', () => {
+    // When the BE DTO carries the active validity window, surface it onto
+    // the legacy startDate / endDate so date-range filters (e.g. the leave
+    // overlap drawer) work without further enrichment.
+    const item = mapPositionToDirectoryItem(
+      buildPosition({
+        activeValidFrom: '2026-05-01',
+        activeValidTo: '2026-12-31',
+      }),
+    );
+    expect(item.startDate).toBe('2026-05-01');
+    expect(item.endDate).toBe('2026-12-31');
+  });
+
+  it('falls back to demand window dates when active fill window is absent', () => {
+    const item = mapPositionToDirectoryItem(
+      buildPosition({
+        activePersonId: undefined,
+        activeAllocationPercent: undefined,
+        activeValidFrom: undefined,
+        activeValidTo: undefined,
+        startDate: '2026-04-01',
+        endDate: '2026-09-30',
+      }),
+    );
+    expect(item.startDate).toBe('2026-04-01');
+    expect(item.endDate).toBe('2026-09-30');
+  });
+
+  it('keeps the empty / null defaults when neither window is exposed', () => {
+    const item = mapPositionToDirectoryItem(
+      buildPosition({
+        activeValidFrom: undefined,
+        activeValidTo: undefined,
+        startDate: undefined,
+        endDate: undefined,
+      }),
+    );
+    expect(item.startDate).toBe('');
+    expect(item.endDate).toBeNull();
+  });
 });

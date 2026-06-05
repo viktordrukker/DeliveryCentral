@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { BalanceMeter, Button, Drawer, Pct, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import {
   approveLeaveRequest,
   fetchMyLeaveBalance,
@@ -105,9 +107,9 @@ export function LeaveDecisionDrawer({
       // The drawer still works without it: the conflict table is the
       // primary decision input.
       fetchMyLeaveBalance(year).catch(() => [] as LeaveBalanceDto[]),
-      fetchAssignments({ personId: target.personId, pageSize: 100 }).catch(
-        () => ({ items: [] as AssignmentDirectoryItem[], totalCount: 0 }),
-      ),
+      listProjectPositions({ activePersonId: target.personId, take: 100 })
+        .then(mapListResponseToDirectory)
+        .catch(() => ({ items: [] as AssignmentDirectoryItem[], totalCount: 0 })),
     ])
       .then(([balances, assignmentsResp]) => {
         if (!active) return;
