@@ -13,7 +13,7 @@ import {
 } from '@/lib/api/project-registry';
 import { fetchTeams } from '@/lib/api/teams';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
-import { fetchAssignments } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
 import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { fetchProjectHealth } from '@/lib/api/project-health';
 import { fetchPendingBudgetChangeRequests, fetchProjectBudgetDashboard } from '@/lib/api/project-budget';
@@ -66,11 +66,11 @@ vi.mock('@/lib/api/teams', async () => {
   };
 });
 
-vi.mock('@/lib/api/assignments', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api/assignments')>(
-    '@/lib/api/assignments',
+vi.mock('@/lib/api/project-positions', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
+    '@/lib/api/project-positions',
   );
-  return { ...actual, fetchAssignments: vi.fn() };
+  return { ...actual, listProjectPositions: vi.fn() };
 });
 
 vi.mock('@/lib/api/work-evidence', async () => {
@@ -159,7 +159,7 @@ const mockedCloseProjectOverride = vi.mocked(closeProjectOverride);
 const mockedAssignTeamToProject = vi.mocked(assignTeamToProject);
 const mockedFetchTeams = vi.mocked(fetchTeams);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
-const mockedFetchAssignments = vi.mocked(fetchAssignments);
+const mockedListProjectPositions = vi.mocked(listProjectPositions);
 const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
 const mockedFetchProjectBudgetDashboard = vi.mocked(fetchProjectBudgetDashboard);
@@ -227,7 +227,7 @@ describe('ProjectDetailPage', () => {
     mockedCloseProjectOverride.mockReset();
     mockedAssignTeamToProject.mockReset();
     mockedFetchTeams.mockReset();
-    mockedFetchAssignments.mockResolvedValue({ items: [], totalCount: 0 });
+    mockedListProjectPositions.mockResolvedValue({ positions: [], total: 0 });
     mockedFetchWorkEvidence.mockResolvedValue({ items: [] });
     mockedFetchProjectHealth.mockResolvedValue({
       timeScore: 0,
@@ -638,20 +638,24 @@ describe('ProjectDetailPage', () => {
 
   it('navigates between tabs and shows correct content', async () => {
     mockedFetchProjectById.mockResolvedValue(buildActiveProject());
-    mockedFetchAssignments.mockResolvedValue({
-      items: [
+    // LEAN-P2 exit-gate: hook reads /project-positions and runs the response
+    // through mapListResponseToDirectory. The mapper sets person.displayName
+    // to the personId (joined display names are filled in BE-side by a future
+    // DTO enrichment); assertions below verify role + the personId surrogate.
+    mockedListProjectPositions.mockResolvedValue({
+      positions: [
         {
-          allocationPercent: 80,
-          approvalState: 'APPROVED',
-          endDate: '2026-09-30T00:00:00.000Z',
           id: 'asn-1',
-          person: { displayName: 'Alice Smith', id: 'person-1' },
-          project: { displayName: 'Atlas ERP Rollout', id: 'prj-1' },
-          staffingRole: 'Lead Engineer',
-          startDate: '2026-04-01T00:00:00.000Z',
+          projectId: 'prj-1',
+          role: 'Lead Engineer',
+          requiredAllocationPercent: 80,
+          fillStatus: 'ASSIGNED',
+          activePersonId: 'person-1',
+          activeAllocationPercent: 80,
+          version: 1,
         },
       ],
-      totalCount: 1,
+      total: 1,
     });
 
     const user = userEvent.setup();
@@ -662,7 +666,9 @@ describe('ProjectDetailPage', () => {
 
     // Click Team tab
     await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
-    expect((await screen.findAllByText('Alice Smith')).length).toBeGreaterThan(0);
+    // Until the BE DTO enriches person.displayName, the mapper surfaces the
+    // personId in its place — the row presence is what we verify here.
+    expect((await screen.findAllByText('person-1')).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Lead Engineer').length).toBeGreaterThan(0);
 
     // Click back to Radiator tab
