@@ -6,7 +6,7 @@ import { fetchPortfolioSummary } from '@/lib/api/portfolio-dashboard';
 import { fetchWorkloadDashboardSummary } from '@/lib/api/workload-dashboard';
 import { fetchResourcePools } from '@/lib/api/resource-pools';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
-import { fetchStaffingRequests } from '@/lib/api/staffing-requests';
+import { listProjectPositions } from '@/lib/api/project-positions';
 
 interface ChecklistStep {
   label: string;
@@ -25,15 +25,16 @@ export function OnboardingChecklist(): JSX.Element | null {
       fetchResourcePools().catch(() => ({ items: [] })),
       fetchPortfolioSummary().catch(() => ({ totalProjects: 0 })),
       fetchPersonDirectory({ page: 1, pageSize: 1 }).catch(() => ({ items: [], total: 0 })),
-      fetchStaffingRequests().catch(() => [] as unknown[]),
+      // LEAN-P2: legacy staffing-requests map to OPEN/DRAFT/PROPOSED positions.
+      listProjectPositions({ fillStatuses: ['DRAFT', 'OPEN', 'PROPOSED'], take: 50 }).catch(() => ({ positions: [], total: 0 })),
     ])
-      .then(([pools, portfolio, directory, staffingRequests]) => {
+      .then(([pools, portfolio, directory, positionsResp]) => {
         if (!active) return;
 
         const poolCount = pools.items.length;
         const projectCount = portfolio.totalProjects;
         const personCount = directory.total ?? directory.items.length;
-        const requestCount = Array.isArray(staffingRequests) ? staffingRequests.length : 0;
+        const requestCount = positionsResp.positions.length;
 
         setSteps([
           {
@@ -55,9 +56,9 @@ export function OnboardingChecklist(): JSX.Element | null {
             done: personCount > 0,
           },
           {
-            label: 'File a Staffing Request',
-            description: 'Kick off the demand pipeline to get people assigned.',
-            href: '/staffing-requests/new',
+            label: 'Open positions on a project',
+            description: 'Define roles and required allocations on a project to kick off staffing.',
+            href: '/staffing-desk?view=board',
             done: requestCount > 0,
           },
         ]);

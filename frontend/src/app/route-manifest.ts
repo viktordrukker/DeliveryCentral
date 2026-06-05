@@ -259,17 +259,12 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: PROJECT_CREATE_ROLES, path: '/projects/new' },
   { allowedRoles: ALL_ROLES, path: '/projects/:id' },
   { allowedRoles: ALL_ROLES, path: '/projects/:id/dashboard' },
-  { allowedRoles: STAFFING_DESK_ROLES, description: 'Authoritative staffing assignments.', group: 'staffing', navVisible: true, obsoleteInV2: true, path: '/assignments', title: 'Assignments' },
-  // Sprint F-0.10 (Decision-10) — `/assignments/new` direct path is gated
-  // OFF in v1. The canonical flow is `Create Staffing Request → Slate → Pick`.
-  // The route still exists in code (so the page component continues to be
-  // testable + reachable when the flag flips), but it's hidden from the
-  // sidebar AND gated by the `staffingMakeAssignment` flag (default OFF).
-  { allowedRoles: DIRECTOR_ADMIN_ROLES, flag: 'staffingMakeAssignment', navVisible: false, path: '/assignments/new' },
-  // `/assignments/bulk` stays accessible to RM/Admin via direct URL (utility),
-  // not in the sidebar.
-  { allowedRoles: ASSIGNMENT_CREATE_ROLES, flag: 'staffingBulkAssignment', navVisible: false, path: '/assignments/bulk' },
-  { allowedRoles: MANAGEMENT_ROLES, description: 'Pending approval queue for proposal slates and director sign-off.', group: 'staffing', navVisible: true, obsoleteInV2: true, path: '/assignments/queue', title: 'Approval Queue' },
+  // LEAN-P2 exit-gate: legacy /assignments surfaces deleted; entries kept
+  // for the route registry (the router redirects them) but hidden from nav.
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/new' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/bulk' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/queue' },
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },
@@ -291,10 +286,13 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Available vs assigned vs actual hours per person — utilization drill-down.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/reports/utilization', title: 'Utilization' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Build custom reports from any data source, save templates, and export to XLSX.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/reports/builder', title: 'Report Builder' },
   { allowedRoles: ALL_ROLES, description: 'Onboarding and operational case workflows.', group: 'time', groupV2: 'workforce', navVisible: true, titleV2: 'HR Queue', path: '/cases', title: 'Cases' },
-  { allowedRoles: ALL_ROLES, description: 'Post and track staffing requests; resource managers propose candidates.', group: 'staffing', navVisible: false, path: '/staffing-requests', title: 'Staffing Requests' },
-  { allowedRoles: STAFFING_BOARD_ROLES, description: 'Conflict-aware drag-and-drop staffing board — move assignments between people.', group: 'staffing', navVisible: false, path: '/staffing-board', title: 'Staffing Board' },
+  // LEAN-P2 exit-gate: legacy /staffing-requests and /staffing-board
+  // surfaces deleted; entries kept for the registry (router redirects them)
+  // but hidden from nav.
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-requests' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-board' },
   { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
-  { allowedRoles: STAFFING_REQUEST_ROLES, path: '/staffing-requests/new' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-requests/new' },
   { allowedRoles: ALL_ROLES, path: '/staffing-requests/:id' },
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },

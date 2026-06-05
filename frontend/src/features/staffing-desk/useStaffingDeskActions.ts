@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 
 import { transitionProjectPositionFill } from '@/lib/api/project-positions';
-import { reviewStaffingRequest, fulfilStaffingRequest, cancelStaffingRequest, releaseStaffingRequest } from '@/lib/api/staffing-requests';
 import { showUndoToast } from '@/lib/undo-toast';
 
 export interface StaffingDeskActions {
@@ -72,21 +71,35 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
       },
       [wrap],
     ),
+    // LEAN-P2 exit-gate: staffing-request actions migrated onto the unified
+    // /project-positions transition handler. Mappings:
+    //   reviewRequest  → toStatus: 'PROPOSED' (RM is reviewing a candidate)
+    //   releaseRequest → toStatus: 'OPEN' (release back to the queue)
+    //   fulfilRequest  → toStatus: 'BOOKED' with personId
+    //   cancelRequest  → toStatus: 'RELEASED'
     reviewRequest: useCallback(
-      (id: string) => wrap('Request taken into review', () => reviewStaffingRequest(id)),
+      (id: string) => wrap('Request taken into review', () =>
+        transitionProjectPositionFill(id, { toStatus: 'PROPOSED' }),
+      ),
       [wrap],
     ),
     releaseRequest: useCallback(
-      (id: string) => wrap('Request released', () => releaseStaffingRequest(id)),
+      (id: string) => wrap('Request released', () =>
+        transitionProjectPositionFill(id, { toStatus: 'OPEN' }),
+      ),
       [wrap],
     ),
     fulfilRequest: useCallback(
-      (id: string, proposedByPersonId: string, assignedPersonId: string) =>
-        wrap('Request fulfilled', () => fulfilStaffingRequest(id, proposedByPersonId, assignedPersonId)),
+      (id: string, _proposedByPersonId: string, assignedPersonId: string) =>
+        wrap('Request fulfilled', () =>
+          transitionProjectPositionFill(id, { toStatus: 'BOOKED', personId: assignedPersonId }),
+        ),
       [wrap],
     ),
     cancelRequest: useCallback(
-      (id: string) => wrap('Request cancelled', () => cancelStaffingRequest(id)),
+      (id: string) => wrap('Request cancelled', () =>
+        transitionProjectPositionFill(id, { toStatus: 'RELEASED' }),
+      ),
       [wrap],
     ),
   };

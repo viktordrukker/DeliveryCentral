@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { Button } from '@/components/ds';
 
 interface AssignmentListProps {
