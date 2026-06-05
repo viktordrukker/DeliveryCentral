@@ -8,7 +8,8 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { Button, Tabs } from '@/components/ds';
 import { fetchInbox } from '@/lib/api/inbox';
 import { fetchMyLeaveRequests } from '@/lib/api/leaveRequests';
-import { fetchAssignments } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 
 import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
@@ -101,7 +102,9 @@ export function WorkspaceShellPage(): JSX.Element {
     Promise.all([
       fetchInbox({ limit: 100 }).catch(() => null),
       fetchMyLeaveRequests().catch(() => null),
-      fetchAssignments({ personId, pageSize: 200 }).catch(() => null),
+      listProjectPositions({ activePersonId: personId, take: 200 })
+        .then(mapListResponseToDirectory)
+        .catch(() => null),
     ]).then(([inbox, leave, assignments]) => {
       if (!active) return;
       if (inbox) setInboxCount(inbox.filter((n) => !n.readAt).length);

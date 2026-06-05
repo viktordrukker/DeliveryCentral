@@ -3,10 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import {
-  fetchAssignmentById,
-  transitionAssignment,
-} from '@/lib/api/assignments';
+import type { AssignmentDetails } from '@/lib/api/assignments';
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import {
   getProjectPositionById,
@@ -16,18 +13,9 @@ import {
 } from '@/lib/api/project-positions';
 import { AssignmentDetailsPlaceholderPage } from './AssignmentDetailsPlaceholderPage';
 
-vi.mock('@/lib/api/assignments', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api/assignments')>('@/lib/api/assignments');
-  return {
-    ...actual,
-    fetchAssignmentById: vi.fn(),
-    transitionAssignment: vi.fn(),
-  };
-});
-
-// LEAN-P2-2: hook now reads/writes via /project-positions; mock those paths
-// and translate the legacy AssignmentDetails fixtures to ProjectPosition
-// shapes via `assignmentDetailsToPosition` below.
+// LEAN-P2 exit-gate: hook reads/writes go through /project-positions only.
+// The legacy /assignments client mocks were removed — useAssignmentDetails no
+// longer imports a runtime symbol from there.
 vi.mock('@/lib/api/project-positions', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
     '@/lib/api/project-positions',
@@ -51,8 +39,6 @@ vi.mock('@/lib/api/business-audit', () => ({
   fetchBusinessAudit: vi.fn(),
 }));
 
-const mockedFetchAssignmentById = vi.mocked(fetchAssignmentById);
-const mockedTransitionAssignment = vi.mocked(transitionAssignment);
 const mockedGetProjectPositionById = vi.mocked(getProjectPositionById);
 const mockedTransitionProjectPositionFill = vi.mocked(transitionProjectPositionFill);
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
@@ -88,8 +74,6 @@ function assignmentDetailsToPosition(details: ReturnType<typeof buildAssignmentD
 
 describe('AssignmentDetailsPage', () => {
   beforeEach(() => {
-    mockedFetchAssignmentById.mockReset();
-    mockedTransitionAssignment.mockReset();
     mockedGetProjectPositionById.mockReset();
     mockedTransitionProjectPositionFill.mockReset();
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
@@ -101,7 +85,6 @@ describe('AssignmentDetailsPage', () => {
 
   it('renders dynamic transition buttons for the current status', async () => {
     const details = buildAssignmentDetails();
-    mockedFetchAssignmentById.mockResolvedValue(details);
     mockedGetProjectPositionById.mockResolvedValue(assignmentDetailsToPosition(details));
 
     const user = userEvent.setup();
@@ -141,22 +124,9 @@ describe('AssignmentDetailsPage', () => {
         buildHistoryItem('STATUS_PROPOSED'),
       ],
     });
-    mockedFetchAssignmentById
-      .mockResolvedValueOnce(initial)
-      .mockResolvedValueOnce(booked);
     mockedGetProjectPositionById
       .mockResolvedValueOnce(assignmentDetailsToPosition(initial))
       .mockResolvedValueOnce(assignmentDetailsToPosition(booked));
-    mockedTransitionAssignment.mockResolvedValue({
-      allocationPercent: 50,
-      id: 'asn-1',
-      personId: 'person-1',
-      projectId: 'project-1',
-      requestedAt: '2025-03-10T10:00:00.000Z',
-      staffingRole: 'Lead Engineer',
-      startDate: '2025-02-01T00:00:00.000Z',
-      status: 'BOOKED',
-    });
     mockedTransitionProjectPositionFill.mockResolvedValue(assignmentDetailsToPosition(booked));
 
     const user = userEvent.setup();
@@ -203,22 +173,9 @@ describe('AssignmentDetailsPage', () => {
         buildHistoryItem('STATUS_PROPOSED'),
       ],
     });
-    mockedFetchAssignmentById
-      .mockResolvedValueOnce(initial)
-      .mockResolvedValueOnce(rejected);
     mockedGetProjectPositionById
       .mockResolvedValueOnce(assignmentDetailsToPosition(initial))
       .mockResolvedValueOnce(assignmentDetailsToPosition(rejected));
-    mockedTransitionAssignment.mockResolvedValue({
-      allocationPercent: 50,
-      id: 'asn-1',
-      personId: 'person-1',
-      projectId: 'project-1',
-      requestedAt: '2025-03-10T10:00:00.000Z',
-      staffingRole: 'Lead Engineer',
-      startDate: '2025-02-01T00:00:00.000Z',
-      status: 'REJECTED',
-    });
     mockedTransitionProjectPositionFill.mockResolvedValue(assignmentDetailsToPosition(rejected));
 
     const user = userEvent.setup();
@@ -272,7 +229,6 @@ describe('AssignmentDetailsPage', () => {
         buildHistoryItem('STATUS_PROPOSED'),
       ],
     });
-    mockedFetchAssignmentById.mockResolvedValueOnce(completed);
     mockedGetProjectPositionById.mockResolvedValueOnce(assignmentDetailsToPosition(completed));
 
     renderWithRouter('/assignments/asn-1');
@@ -297,9 +253,7 @@ describe('AssignmentDetailsPage', () => {
   });
 });
 
-function buildAssignmentDetails(
-  overrides: Partial<Awaited<ReturnType<typeof fetchAssignmentById>>> = {},
-) {
+function buildAssignmentDetails(overrides: Partial<AssignmentDetails> = {}): AssignmentDetails {
   return {
     allocationPercent: 50,
     approvalState: 'PROPOSED',

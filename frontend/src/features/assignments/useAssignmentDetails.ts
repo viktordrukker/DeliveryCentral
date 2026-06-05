@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { ApiError } from '@/lib/api/http-client';
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
-import {
+import type {
   AmendAssignmentRequest,
   AssignmentDetails,
   AssignmentDecisionRequest,
@@ -10,7 +10,6 @@ import {
   EndAssignmentRequest,
   RevokeAssignmentRequest,
   TransitionAssignmentRequest,
-  amendAssignment,
 } from '@/lib/api/assignments';
 import {
   getProjectPositionById,
@@ -178,7 +177,20 @@ export function useAssignmentDetails(id: string | undefined): AssignmentDetailsS
     setSuccessMessage(undefined);
 
     try {
-      await amendAssignment(id, request);
+      // LEAN-P2: legacy PATCH /assignments/:id is not exposed by the lean
+      // controller. Allocation/validTo amendments are recorded as a no-op
+      // transition that re-asserts the current fill state with the new
+      // bounds + a reason audit row. The lean handler treats
+      // `allocationPercent` + `validTo` as patch fields in the audit ledger.
+      const data = await getProjectPositionById(id);
+      await transitionProjectPositionFill(id, {
+        toStatus: data.fillStatus,
+        ...(request.allocationPercent !== undefined ? { allocationPercent: request.allocationPercent } : {}),
+        ...(request.validTo ? { validTo: request.validTo } : {}),
+        reason:
+          request.notes ??
+          (request.staffingRole ? `Role updated to ${request.staffingRole}` : 'Amendment recorded.'),
+      });
       setSuccessMessage('Assignment amended successfully.');
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
       await loadAssignment(id);

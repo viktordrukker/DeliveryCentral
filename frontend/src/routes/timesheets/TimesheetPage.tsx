@@ -10,7 +10,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { useTimesheetWeek } from '@/features/timesheets/useTimesheetWeek';
-import { fetchAssignments } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { formatDateRange } from '@/lib/format-date';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchMyTimesheetWeek, UpsertEntryInput } from '@/lib/api/timesheets';
@@ -399,11 +400,13 @@ export function TimesheetPage(): JSX.Element {
   async function autoPopulateFromAssignments(): Promise<void> {
     if (!principal?.personId) return;
     try {
-      const [approvedResult, activeResult] = await Promise.all([
-        fetchAssignments({ personId: principal.personId, status: 'APPROVED' }),
-        fetchAssignments({ personId: principal.personId, status: 'ACTIVE' }),
-      ]);
-      const allItems = [...approvedResult.items, ...activeResult.items];
+      // LEAN-P2: APPROVED/ACTIVE legacy statuses map to BOOKED/ASSIGNED/ONBOARDING
+      // on the lean aggregate. One fetch covers the full active set.
+      const positionsResponse = await listProjectPositions({
+        activePersonId: principal.personId,
+        fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'],
+      }).then(mapListResponseToDirectory);
+      const allItems = positionsResponse.items;
       const seen = new Set<string>();
       const uniqueItems = allItems.filter((a) => {
         if (seen.has(a.id)) return false;
@@ -460,7 +463,10 @@ export function TimesheetPage(): JSX.Element {
     setSelectedProjectId('');
     setProjectSearch('');
     try {
-      const result = await fetchAssignments({ personId: principal.personId, status: 'APPROVED' });
+      const result = await listProjectPositions({
+        activePersonId: principal.personId,
+        fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'],
+      }).then(mapListResponseToDirectory);
       const existing = new Set(week ? getProjectRows(week.entries, []) : []);
       setAvailableProjects(
         result.items

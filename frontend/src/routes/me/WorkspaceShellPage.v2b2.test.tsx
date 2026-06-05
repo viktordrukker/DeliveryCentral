@@ -15,8 +15,10 @@ describe('V2-B.2 — WorkspaceShellPage tab counts', () => {
   it('fetches inbox / leave / projects counts in one effect on the shell', () => {
     expect(src).toMatch(/import \{ fetchInbox \} from '@\/lib\/api\/inbox'/);
     expect(src).toMatch(/import \{ fetchMyLeaveRequests \} from '@\/lib\/api\/leaveRequests'/);
-    expect(src).toMatch(/import \{ fetchAssignments \} from '@\/lib\/api\/assignments'/);
-    expect(src).toMatch(/Promise\.all\(\[[\s\S]*?fetchInbox[\s\S]*?fetchMyLeaveRequests[\s\S]*?fetchAssignments/);
+    // LEAN-P2 exit-gate: the legacy /assignments client is dropped; projects
+    // count is sourced from /project-positions via the canonical client.
+    expect(src).toMatch(/import \{ listProjectPositions \} from '@\/lib\/api\/project-positions'/);
+    expect(src).toMatch(/Promise\.all\(\[[\s\S]*?fetchInbox[\s\S]*?fetchMyLeaveRequests[\s\S]*?listProjectPositions/);
   });
 
   it('counts are tracked in state and gated by principal.personId', () => {

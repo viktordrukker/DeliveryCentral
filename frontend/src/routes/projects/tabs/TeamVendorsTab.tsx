@@ -17,7 +17,9 @@ import { ProjectTeamAssignmentForm, ProjectTeamAssignmentFormValues } from '@/co
 import { formatDateShort, formatDate } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
-import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
@@ -67,7 +69,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
 
     void (async () => {
       const [assignmentResponse, planEntries, vendors, dashResp] = await Promise.all([
-        fetchAssignments({ projectId }),
+        listProjectPositions({ projectId }).then(mapListResponseToDirectory),
         fetchRolePlan(projectId).catch(() => [] as RolePlanEntryDto[]),
         fetchProjectVendors(projectId).catch(() => [] as ProjectVendorEngagementDto[]),
         fetchProjectDashboard(projectId).catch(() => null),
@@ -133,7 +135,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
       setAssignTeamValues({ actorId: '', allocationPercent: '100', endDate: '', note: '', staffingRole: '', startDate: '', teamId: '' });
       setAssignTeamErrors({});
       await reload();
-      const fresh = await fetchAssignments({ projectId });
+      const fresh = await listProjectPositions({ projectId }).then(mapListResponseToDirectory);
       setTeamAssignments(fresh.items);
     } catch (error: unknown) {
       setActionError(error instanceof Error ? error.message : 'Failed to assign team.');

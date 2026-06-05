@@ -1,7 +1,9 @@
 import { useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
-import { bulkCreateAssignments, type BulkAssignmentResponse } from '@/lib/api/assignments';
+import type { BulkAssignmentResponse } from '@/lib/api/assignments';
+import { createProjectPosition, transitionProjectPositionFill } from '@/lib/api/project-positions';
+import { mapPositionToAssignmentResponse } from '@/features/lean-migration/position-to-assignment-mapper';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
 import { DatePicker, FormField, FormModal, Input, Select, Table, type Column } from '@/components/ds';
@@ -52,16 +54,51 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
 
     setError(null);
     try {
-      const response = await bulkCreateAssignments({
-        actorId,
-        entries: items.map((item) => ({
-          allocationPercent,
-          personId: item.personId,
-          projectId: item.projectId,
-          staffingRole: effectiveRole.trim(),
-          startDate,
-        })),
-      });
+      // LEAN-P2 exit-gate: legacy POST /assignments/bulk replaced with a
+      // per-item createProjectPosition (OPEN) → transitionProjectPositionFill
+      // (BOOKED) fan-out. Successes/failures aggregated into the legacy
+      // BulkAssignmentResponse envelope so downstream UI stays compatible.
+      const createdItems: BulkAssignmentResponse['createdItems'] = [];
+      const failedItems: BulkAssignmentResponse['failedItems'] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        try {
+          const position = await createProjectPosition({
+            projectId: item.projectId,
+            role: effectiveRole.trim(),
+            requiredAllocationPercent: allocationPercent,
+            startDate,
+            endDate: startDate,
+            openImmediately: true,
+            requestedByPersonId: actorId,
+          });
+          const booked = await transitionProjectPositionFill(position.id, {
+            toStatus: 'BOOKED',
+            personId: item.personId,
+            allocationPercent,
+            validFrom: startDate,
+          });
+          createdItems.push({ assignment: mapPositionToAssignmentResponse(booked), index: i });
+        } catch (rowErr) {
+          failedItems.push({
+            code: 'CREATE_FAILED',
+            index: i,
+            message: rowErr instanceof Error ? rowErr.message : 'Failed to create assignment.',
+            personId: item.personId,
+            projectId: item.projectId,
+            staffingRole: effectiveRole.trim(),
+          });
+        }
+      }
+      const response: BulkAssignmentResponse = {
+        createdCount: createdItems.length,
+        createdItems,
+        failedCount: failedItems.length,
+        failedItems,
+        message: `Created ${createdItems.length} of ${items.length}.`,
+        strategy: 'PER_ROW',
+        totalCount: items.length,
+      };
       setStaffingRole('');
       setAllocationPercent(100);
       setStartDate('');

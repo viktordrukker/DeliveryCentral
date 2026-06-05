@@ -15,7 +15,9 @@ import { ProjectTeamAssignmentForm, ProjectTeamAssignmentFormValues } from '@/co
 import { formatDateShort } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
-import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { Avatar, Button, Pct, Table, type Column } from '@/components/ds';
 import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
@@ -59,7 +61,7 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
 
     void (async () => {
       const [assignmentResponse, planEntries] = await Promise.all([
-        fetchAssignments({ projectId }),
+        listProjectPositions({ projectId }).then(mapListResponseToDirectory),
         fetchRolePlan(projectId).catch(() => [] as RolePlanEntryDto[]),
       ]);
       if (!active) return;
@@ -121,8 +123,9 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
       setAssignTeamValues({ actorId: '', allocationPercent: '100', endDate: '', note: '', staffingRole: '', startDate: '', teamId: '' });
       setAssignTeamErrors({});
       await reload();
-      // Reload assignments
-      const fresh = await fetchAssignments({ projectId });
+      // Reload assignments via the canonical project-positions surface
+      // (LEAN-P2 exit-gate — legacy fetchAssignments retired).
+      const fresh = await listProjectPositions({ projectId }).then(mapListResponseToDirectory);
       setTeamAssignments(fresh.items);
     } catch (error: unknown) {
       setActionError(error instanceof Error ? error.message : 'Failed to assign team.');

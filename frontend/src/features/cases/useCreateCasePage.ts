@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { CaseFormValues } from '@/components/cases/CaseForm';
-import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { CaseRecord, createCase } from '@/lib/api/cases';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
@@ -39,7 +41,7 @@ export function useCreateCasePage(): UseCreateCasePageState {
     void Promise.all([
       fetchPersonDirectory({ page: 1, pageSize: 100 }),
       fetchProjectDirectory(),
-      fetchAssignments(),
+      listProjectPositions().then(mapListResponseToDirectory),
     ])
       .then(([peopleResponse, projectResponse, assignmentResponse]) => {
         if (!active) {

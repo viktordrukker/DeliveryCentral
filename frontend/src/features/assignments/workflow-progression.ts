@@ -1,5 +1,5 @@
 import { type WorkflowStage } from '@/components/ds';
-import { type AssignmentStatusValue } from '@/lib/api/assignments';
+import type { AssignmentStatusValue } from '@/lib/api/assignments';
 
 export interface NextStep {
   /** One-line headline shown on the Next Step card. */

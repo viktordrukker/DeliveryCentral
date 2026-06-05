@@ -8,7 +8,9 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Pct, Table, type Column } from '@/components/ds';
-import { fetchAssignments, type AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { formatDate } from '@/lib/format-date';
 
 const NUM = { fontVariantNumeric: 'tabular-nums' as const };
@@ -37,7 +39,8 @@ export function ProjectsTab(): JSX.Element {
     let active = true;
     setLoading(true);
     setError(null);
-    fetchAssignments({ personId: principal.personId, pageSize: 200 })
+    listProjectPositions({ activePersonId: principal.personId, take: 200 })
+      .then(mapListResponseToDirectory)
       .then((res) => {
         if (active) setItems(res.items);
       })
