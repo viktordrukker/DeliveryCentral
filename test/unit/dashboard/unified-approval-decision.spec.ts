@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotImplementedException } from '@nestjs/common';
 
 import { UnifiedApprovalQueueService } from '@src/modules/dashboard/application/unified-approval-queue.service';
 import type { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -7,6 +7,7 @@ import type { DecideBudgetChangeService } from '@src/modules/financial-governanc
 import type { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
 import type { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
 import type { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
+import type { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
 
 interface Spies {
   leaveApprove: jest.Mock;
@@ -17,6 +18,7 @@ interface Spies {
   caseReject: jest.Mock;
   timesheetApprove: jest.Mock;
   timesheetReject: jest.Mock;
+  positionTransition: jest.Mock;
 }
 
 function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
@@ -34,6 +36,9 @@ function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
     caseReject: jest.fn(async () => ({ id: 'c-1' })),
     timesheetApprove: jest.fn(async () => ({ id: 'tw-1' })),
     timesheetReject: jest.fn(async () => ({ id: 'tw-1' })),
+    positionTransition: jest.fn(async () => ({
+      positionId: { value: 'pp-1' },
+    })),
   };
 
   const leave = { approve: spies.leaveApprove, reject: spies.leaveReject } as unknown as LeaveRequestsService;
@@ -44,10 +49,13 @@ function buildService(): { svc: UnifiedApprovalQueueService; spies: Spies } {
     approveWeek: spies.timesheetApprove,
     rejectWeek: spies.timesheetReject,
   } as unknown as TimesheetsService;
+  const positions = {
+    execute: spies.positionTransition,
+  } as unknown as TransitionProjectPositionFillService;
   const prisma = {} as PrismaService;
 
   return {
-    svc: new UnifiedApprovalQueueService(prisma, leave, budget, activation, cases, timesheets),
+    svc: new UnifiedApprovalQueueService(prisma, leave, budget, activation, cases, timesheets, positions),
     spies,
   };
 }
@@ -159,16 +167,85 @@ describe('UnifiedApprovalQueueService.decide (V2 §4)', () => {
     expect(spies.timesheetApprove).toHaveBeenCalledWith('tw-1', 'actor-7', ['project_manager']);
   });
 
-  it('rejects position-proposal source with BadRequest (not yet supported)', async () => {
-    const { svc } = buildService();
+  it('routes source=position-proposal APPROVE → transitionFill(PROPOSED → BOOKED)', async () => {
+    const { svc, spies } = buildService();
+    const out = await svc.decide({
+      approvalId: 'pp-1',
+      source: 'position-proposal',
+      decision: 'APPROVE',
+      actorId: 'actor-8',
+      actorRoles: ['project_manager'],
+      comment: 'Approved',
+    });
+    expect(spies.positionTransition).toHaveBeenCalledWith({
+      positionId: 'pp-1',
+      toStatus: 'BOOKED',
+      actorId: 'actor-8',
+      actorRoles: ['project_manager'],
+      reason: 'Approved',
+    });
+    expect(out.source).toBe('position-proposal');
+    expect(out.decision).toBe('APPROVED');
+    expect(out.approvalId).toBe('pp-1');
+  });
+
+  it('routes source=position-proposal REJECT (with reason) → transitionFill(PROPOSED → OPEN)', async () => {
+    const { svc, spies } = buildService();
+    await svc.decide({
+      approvalId: 'pp-2',
+      source: 'position-proposal',
+      decision: 'REJECT',
+      actorId: 'actor-9',
+      actorRoles: ['delivery_manager'],
+      reason: 'Skill mismatch',
+    });
+    expect(spies.positionTransition).toHaveBeenCalledWith({
+      positionId: 'pp-2',
+      toStatus: 'OPEN',
+      actorId: 'actor-9',
+      actorRoles: ['delivery_manager'],
+      reason: 'Skill mismatch',
+    });
+  });
+
+  it('rejects position-proposal REJECT without reason with BadRequest', async () => {
+    const { svc, spies } = buildService();
     await expect(
       svc.decide({
-        approvalId: 'pp-1',
+        approvalId: 'pp-3',
         source: 'position-proposal',
-        decision: 'APPROVE',
-        actorId: 'actor-8',
+        decision: 'REJECT',
+        actorId: 'actor-10',
         actorRoles: ['project_manager'],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    expect(spies.positionTransition).not.toHaveBeenCalled();
+  });
+
+  it('rejects source=skill-review with NotImplementedException (501)', async () => {
+    const { svc, spies } = buildService();
+    await expect(
+      svc.decide({
+        approvalId: 'sr-1',
+        source: 'skill-review',
+        decision: 'APPROVE',
+        actorId: 'actor-11',
+        actorRoles: ['hr_manager'],
+      }),
+    ).rejects.toBeInstanceOf(NotImplementedException);
+    expect(spies.positionTransition).not.toHaveBeenCalled();
+  });
+
+  it('filters non-platform roles before forwarding to the position transition service', async () => {
+    const { svc, spies } = buildService();
+    await svc.decide({
+      approvalId: 'pp-4',
+      source: 'position-proposal',
+      decision: 'APPROVE',
+      actorId: 'actor-12',
+      actorRoles: ['project_manager', 'not_a_real_role'],
+    });
+    const callArg = spies.positionTransition.mock.calls[0]![0];
+    expect(callArg.actorRoles).toEqual(['project_manager']);
   });
 });

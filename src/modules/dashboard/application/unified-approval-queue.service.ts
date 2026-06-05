@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotImplementedException } from '@nestjs/common';
 
 import { ApproveCaseService } from '@src/modules/case-management/application/approve-case.service';
 import { DecideBudgetChangeService } from '@src/modules/financial-governance/application/decide-budget-change.service';
+import { PlatformRole, isPlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
 import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
+import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -66,6 +68,7 @@ export class UnifiedApprovalQueueService {
     private readonly decideProjectActivationService: DecideProjectActivationService,
     private readonly approveCaseService: ApproveCaseService,
     private readonly timesheetsService: TimesheetsService,
+    private readonly transitionProjectPositionFillService: TransitionProjectPositionFillService,
   ) {}
 
   /**
@@ -79,15 +82,22 @@ export class UnifiedApprovalQueueService {
    * the FE gets a single, consistent 400 instead of three different errors.
    */
   public async decide(args: DecideArgs): Promise<UnifiedApprovalDecisionResponseDto> {
-    if (args.source === 'position-proposal' || args.source === 'skill-review') {
-      throw new BadRequestException(
-        `Decisions for ${args.source} are not yet supported via the unified endpoint.`,
+    if (args.source === 'skill-review') {
+      // V2 lifecycle gap — no canonical SkillReview model lands until issue
+      // #312. Surface a 501 rather than a 400 so the FE can distinguish
+      // "not built yet" from "bad request" and keep the queue working for
+      // the other six sources.
+      throw new NotImplementedException(
+        'Skill review decisions are not yet implemented. Use the per-source decision endpoint when issue #312 lands.',
       );
     }
     if (
       args.decision === 'REJECT' &&
       !args.reason?.trim() &&
-      (args.source === 'budget' || args.source === 'activation' || args.source === 'case')
+      (args.source === 'budget' ||
+        args.source === 'activation' ||
+        args.source === 'case' ||
+        args.source === 'position-proposal')
     ) {
       throw new BadRequestException(
         `A reason is required when rejecting a ${args.source} approval.`,
@@ -100,6 +110,30 @@ export class UnifiedApprovalQueueService {
         : date instanceof Date
           ? date.toISOString()
           : new Date().toISOString();
+
+    if (args.source === 'position-proposal') {
+      // The queue surfaces ProjectPosition rows with fillStatus=PROPOSED;
+      // approval flips PROPOSED → BOOKED and rejection flips PROPOSED → OPEN
+      // (the position stays available for re-proposal). Both transitions are
+      // gated by TransitionProjectPositionFillService's state machine, which
+      // owns the PM/DM/director/admin RBAC check.
+      const toStatus = args.decision === 'APPROVE' ? 'BOOKED' : 'OPEN';
+      const platformRoles = args.actorRoles.filter(isPlatformRole) as readonly PlatformRole[];
+      const position = await this.transitionProjectPositionFillService.execute({
+        positionId: args.approvalId,
+        toStatus,
+        actorId: args.actorId,
+        actorRoles: platformRoles,
+        reason: args.reason ?? args.comment,
+      });
+      return {
+        approvalId: position.positionId.value,
+        source: 'position-proposal',
+        decision: args.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        decidedAt: decidedAtIso(null),
+        decidedByPersonId: args.actorId,
+      };
+    }
 
     if (args.source === 'leave') {
       const row =

@@ -185,6 +185,10 @@ export const EXPORT_CENTRE_ROLES: AppRole[] = ['hr_manager', 'delivery_manager',
 export const STAFFING_BOARD_ROLES: AppRole[] = ['resource_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_REQUEST_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin'];
+// /approvals merges leave + case approvals (HR-governed) with staffing-side
+// approvals, so HR must be allowed in alongside the staffing roles. Mirrors
+// backend `UNIFIED_APPROVAL_QUEUE_ROLES` on the controller.
+export const APPROVALS_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'hr_manager', 'director', 'admin'];
 export const ADMIN_ROLES: AppRole[] = ['admin'];
 
 export const PEOPLE_MANAGE_ROLES: AppRole[] = ['hr_manager', 'resource_manager', 'director', 'admin'];
@@ -251,7 +255,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: RESOURCE_POOL_ROLES, description: 'People with no active project assignment — sorted by days off project.', group: 'people-org', navVisible: true, path: '/people/bench', title: 'Bench', titleV2: 'Bench' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/people/new' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Unified operational queue for staffing, project, and time-compliance anomalies.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/exceptions', title: 'Exceptions' },
-  { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
+  { allowedRoles: APPROVALS_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
   { allowedRoles: ALL_ROLES, description: 'Operational team management distinct from the organization hierarchy.', group: 'people-org', navVisible: true, obsoleteInV2: true, path: '/teams', title: 'Teams' },
   { allowedRoles: ALL_ROLES, path: '/teams/:id/dashboard' },
   { allowedRoles: ALL_ROLES, path: '/people/:id' },

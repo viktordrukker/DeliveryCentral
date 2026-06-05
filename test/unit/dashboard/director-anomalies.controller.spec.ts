@@ -55,6 +55,7 @@ describe('DirectorAnomaliesController RBAC', () => {
       {} as never,
       {} as never,
       service as never,
+      {} as never, // benchAgingService (LEAN-P4b-3)
     );
     const out = await controller.orgHealth('2026-06-05T00:00:00.000Z');
     expect(calls).toEqual(['2026-06-05T00:00:00.000Z']);

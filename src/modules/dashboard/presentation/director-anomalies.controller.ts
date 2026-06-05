@@ -1,4 +1,4 @@
-import { Controller, DefaultValuePipe, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { BadRequestException, Controller, DefaultValuePipe, Get, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import type { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
@@ -11,6 +11,11 @@ import { OrgHealthService } from '../application/org-health.service';
 import { OrgHealthResponseDto } from '../application/contracts/org-health.dto';
 import { PortfolioFinanceSummaryService } from '../application/portfolio-finance-summary.service';
 import { PortfolioFinanceSummaryDto } from '../application/contracts/portfolio-finance-summary.dto';
+import { BenchAgingByDimensionService } from '../application/bench-aging-by-dimension.service';
+import {
+  BenchAgingByDimensionResponseDto,
+  BenchAgingDimension,
+} from '../application/contracts/bench-aging-by-dimension.dto';
 
 const DIRECTOR_AND_HR_ROLES: readonly PlatformRole[] = Array.from(
   new Set<PlatformRole>([...EXEC_ROLES, ...HR_GOVERNANCE_ROLES]),
@@ -23,6 +28,7 @@ export class DirectorAnomaliesController {
     private readonly service: DirectorAnomalyDetectionService,
     private readonly financeService: PortfolioFinanceSummaryService,
     private readonly orgHealthService: OrgHealthService,
+    private readonly benchAgingService: BenchAgingByDimensionService,
   ) {}
 
   @Get('anomalies')
@@ -66,5 +72,24 @@ export class DirectorAnomaliesController {
   @ApiOkResponse({ type: OrgHealthResponseDto })
   public async orgHealth(@Query('asOf') asOf?: string): Promise<OrgHealthResponseDto> {
     return this.orgHealthService.execute(asOf);
+  }
+
+  @Get('bench-aging')
+  @RequireRoles(...EXEC_ROLES)
+  @ApiOperation({
+    summary:
+      'LEAN-P4b-3 — Portfolio bench aging matrix: people-on-bench grouped by ' +
+      'skill or org-unit and bucketed by days-on-bench (0-7 / 8-30 / 31-60 / ' +
+      '61-90 / 90+).',
+  })
+  @ApiQuery({ name: 'dimension', enum: ['skill', 'unit'], required: false })
+  @ApiOkResponse({ type: BenchAgingByDimensionResponseDto })
+  public async benchAging(
+    @Query('dimension', new DefaultValuePipe('skill')) dimension: string,
+  ): Promise<BenchAgingByDimensionResponseDto> {
+    if (dimension !== 'skill' && dimension !== 'unit') {
+      throw new BadRequestException("dimension must be 'skill' or 'unit'");
+    }
+    return this.benchAgingService.summarize(dimension as BenchAgingDimension);
   }
 }

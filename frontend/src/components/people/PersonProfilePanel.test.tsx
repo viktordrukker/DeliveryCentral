@@ -92,8 +92,10 @@ describe('PersonProfilePanel', () => {
     fetchPersonProfile.mockResolvedValue(sampleProfile);
     renderRoute(<PersonProfilePanel personId="p1" />);
     await waitFor(() => expect(screen.getByText('Recent activity')).toBeInTheDocument());
-    // feed fetched for this person
-    expect(fetchEmployeeActivity).toHaveBeenCalledWith('p1', 10);
+    // feed fetched for this person — PersonActivityFeed effect fires after
+    // the panel's outer mount; wrap in waitFor to avoid the race condition
+    // that made this assertion flake across CI runs.
+    await waitFor(() => expect(fetchEmployeeActivity).toHaveBeenCalledWith('p1', 10));
   });
 
   it('omits cost-rate KPI when costRate is absent (redacted)', async () => {

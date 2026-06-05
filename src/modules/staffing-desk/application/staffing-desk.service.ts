@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import {
+  ACTIVE_FILL_STATUSES,
+  canonicalActivePersonWhere,
+  listBenchPersonIds,
+} from '@src/shared/persistence/bench-query';
 import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -436,32 +441,45 @@ export class StaffingDeskService {
     dto: StaffingDeskQueryDto,
     personScope: Set<string> | null,
   ): Promise<SupplyDemandMetrics> {
-    // Supply: people with active/approved assignments
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
+    // Supply: people with active fills on `now` (canonical ProjectPosition
+    // aggregate, replacing the legacy ProjectAssignment read). Without this
+    // shape the Staffing Desk and the Bench page disagreed on the bench
+    // headcount even though they were looking at the same data.
+    const now = new Date();
+    const activeAssignments = await this.prisma.projectPosition.findMany({
       where: {
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        ...(personScope ? { personId: { in: [...personScope] } } : {}),
+        fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
+        activePersonId: { not: null, ...(personScope ? { in: [...personScope] } : {}) },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true, allocationPercent: true },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
 
     const personAlloc = new Map<string, number>();
     for (const a of activeAssignments) {
-      personAlloc.set(a.personId, (personAlloc.get(a.personId) ?? 0) + (a.allocationPercent?.toNumber() ?? 0));
+      if (!a.activePersonId) continue;
+      personAlloc.set(
+        a.activePersonId,
+        (personAlloc.get(a.activePersonId) ?? 0) + (a.activeAllocationPercent?.toNumber() ?? 0),
+      );
     }
 
-    // All people in scope
-    const allPeopleWhere: Record<string, unknown> = { employmentStatus: 'ACTIVE' };
+    // All people in scope — canonical active-employee predicate so the
+    // headcount denominator matches the bench-set numerator.
+    const allPeopleWhere: Record<string, unknown> = { ...canonicalActivePersonWhere() };
     if (personScope) allPeopleWhere.id = { in: [...personScope] };
     const allPeople = await this.prisma.person.findMany({ where: allPeopleWhere, select: { id: true } });
 
+    // Bench: canonical bench set intersected with this view's scope.
+    const canonicalBench = await listBenchPersonIds(this.prisma, now);
     const totalPeople = allPeople.length;
     let availableFte = 0;
     let benchCount = 0;
     for (const p of allPeople) {
       const alloc = personAlloc.get(p.id) ?? 0;
       if (alloc < 100) availableFte++;
-      if (alloc === 0) benchCount++;
+      if (canonicalBench.has(p.id)) benchCount++;
     }
 
     // Demand: open/in-review requests
