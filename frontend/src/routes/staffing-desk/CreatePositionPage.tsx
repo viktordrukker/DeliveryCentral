@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
 import { ErrorState } from '@/components/common/ErrorState';
+import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -13,6 +14,49 @@ import {
   transitionProjectPositionFill,
   type CreateProjectPositionRequest,
 } from '@/lib/api/project-positions';
+import {
+  fetchProjectDirectory,
+  type ProjectDirectoryItem,
+} from '@/lib/api/project-registry';
+
+// Common engineering roles surfaced for quick-selection; users can still
+// type a custom value via the free-text option.
+const COMMON_ROLES = [
+  'Senior Frontend Engineer',
+  'Frontend Engineer',
+  'Senior Backend Engineer',
+  'Backend Engineer',
+  'Full-Stack Engineer',
+  'Mobile Engineer',
+  'QA Engineer',
+  'Data Engineer',
+  'ML Engineer',
+  'DevOps Engineer',
+  'Platform Engineer',
+  'Security Engineer',
+  'Solution Architect',
+  'Engineering Manager',
+  'Product Manager',
+  'Project Manager',
+  'Tech Lead',
+  'Staff Engineer',
+  'Designer',
+  'Business Analyst',
+];
+
+const PRIORITY_OPTIONS = [
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'URGENT', label: 'Urgent' },
+];
+
+const ALLOCATION_OPTIONS = [
+  { value: '25', label: '25% — quarter-time' },
+  { value: '50', label: '50% — half-time' },
+  { value: '75', label: '75% — three-quarter-time' },
+  { value: '100', label: '100% — full-time' },
+];
 
 /**
  * CreatePositionPage — lean-flow full-page form for opening a new
@@ -30,6 +74,8 @@ import {
 interface FormState {
   projectId: string;
   role: string;
+  customRole: string;
+  priority: string;
   requiredAllocationPercent: string;
   startDate: string;
   endDate: string;
@@ -40,6 +86,8 @@ interface FormState {
 const INITIAL: FormState = {
   projectId: '',
   role: '',
+  customRole: '',
+  priority: 'MEDIUM',
   requiredAllocationPercent: '100',
   startDate: '',
   endDate: '',
@@ -47,10 +95,15 @@ const INITIAL: FormState = {
   openImmediately: true,
 };
 
+function resolveRole(values: FormState): string {
+  return values.role === '__custom' ? values.customRole.trim() : values.role.trim();
+}
+
 function validate(values: FormState): { ok: boolean; errors: Partial<Record<keyof FormState, string>> } {
   const errors: Partial<Record<keyof FormState, string>> = {};
   if (!values.projectId) errors.projectId = 'Project is required';
-  if (!values.role.trim()) errors.role = 'Role is required';
+  const role = resolveRole(values);
+  if (!role) errors.role = 'Role is required';
   if (!values.startDate) errors.startDate = 'Start date is required';
   if (!values.endDate) errors.endDate = 'End date is required';
   if (values.startDate && values.endDate && values.startDate > values.endDate) {
@@ -71,11 +124,40 @@ export function CreatePositionPage(): JSX.Element {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setValues((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
+
+  // Load eligible projects on mount (active + on-hold). Closed/archived
+  // projects are excluded — you can't open a position on something not running.
+  useEffect(() => {
+    let active = true;
+    setProjectsLoading(true);
+    setProjectsError(null);
+    fetchProjectDirectory({ pageSize: 200 })
+      .then((response) => {
+        if (!active) return;
+        const eligible = response.items.filter(
+          (p) => !['CLOSED', 'ARCHIVED', 'CANCELLED', 'COMPLETED'].includes(p.status.toUpperCase()),
+        );
+        setProjects(eligible);
+      })
+      .catch((e: unknown) => {
+        if (!active) return;
+        setProjectsError(e instanceof Error ? e.message : 'Could not load projects.');
+      })
+      .finally(() => {
+        if (active) setProjectsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault();
@@ -94,7 +176,7 @@ export function CreatePositionPage(): JSX.Element {
     try {
       const request: CreateProjectPositionRequest = {
         projectId: values.projectId,
-        role: values.role.trim(),
+        role: resolveRole(values),
         requiredAllocationPercent: Number(values.requiredAllocationPercent),
         startDate: values.startDate,
         endDate: values.endDate,
@@ -130,31 +212,71 @@ export function CreatePositionPage(): JSX.Element {
           {submitError && <ErrorState description={submitError} />}
 
           <label className="field">
-            <span className="field__label">Project ID</span>
-            <input
-              className="field__control"
-              type="text"
-              value={values.projectId}
-              onChange={(e) => setField('projectId', e.target.value)}
-              placeholder="UUID of an active project"
-              disabled={submitting}
-              aria-invalid={Boolean(errors.projectId)}
-            />
+            <span className="field__label">Project</span>
+            {projectsLoading ? (
+              <LoadingState label="Loading projects…" />
+            ) : projectsError ? (
+              <ErrorState description={projectsError} />
+            ) : (
+              <select
+                className="field__control"
+                value={values.projectId}
+                onChange={(e) => setField('projectId', e.target.value)}
+                disabled={submitting}
+                aria-invalid={Boolean(errors.projectId)}
+              >
+                <option value="">Select an active project…</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.projectCode} — {p.name}{p.clientName ? ` (${p.clientName})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
             {errors.projectId && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.projectId}</span>}
           </label>
 
           <label className="field">
             <span className="field__label">Role</span>
-            <input
+            <select
               className="field__control"
-              type="text"
               value={values.role}
               onChange={(e) => setField('role', e.target.value)}
-              placeholder="e.g. Senior Frontend Engineer"
               disabled={submitting}
               aria-invalid={Boolean(errors.role)}
-            />
+            >
+              <option value="">Select a role…</option>
+              {COMMON_ROLES.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+              <option value="__custom">Other (specify below)…</option>
+            </select>
+            {values.role === '__custom' && (
+              <input
+                className="field__control"
+                type="text"
+                value={values.customRole}
+                onChange={(e) => setField('customRole', e.target.value)}
+                placeholder="Custom role title"
+                disabled={submitting}
+                style={{ marginTop: 'var(--space-2)' }}
+              />
+            )}
             {errors.role && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.role}</span>}
+          </label>
+
+          <label className="field">
+            <span className="field__label">Priority</span>
+            <select
+              className="field__control"
+              value={values.priority}
+              onChange={(e) => setField('priority', e.target.value)}
+              disabled={submitting}
+            >
+              {PRIORITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
