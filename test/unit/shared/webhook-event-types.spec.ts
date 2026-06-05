@@ -51,6 +51,7 @@ describe('F-27 / D-170 — webhook event-type registry', () => {
       'staffing_request',
       'case',
       'timesheet',
+      'leave',
       'person',
       'position',
       'scenario',
