@@ -4919,8 +4919,8 @@ describe('DM-R-13 per-migration contract', () => {
     });
   });
 
-  describe('20260605_lean_p4c_1_onboarding_approval_gate', () => {
-    const migrationDir = path.join(migrationsRoot, "20260605_lean_p4c_1_onboarding_approval_gate");
+  describe('20260605_lean_p4d_4_person_skill_self_endorsed', () => {
+    const migrationDir = path.join(migrationsRoot, "20260605_lean_p4d_4_person_skill_self_endorsed");
   
     it('migration.sql exists + non-empty', () => {
       const p = path.join(migrationDir, 'migration.sql');
@@ -4936,7 +4936,7 @@ describe('DM-R-13 per-migration contract', () => {
     });
   
     it('migration.sql SHA-256 is frozen', () => {
-      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("231eb34d13b5497a180cb87076eefe92a8cc863c708d0a60b2df60d404e5db54");
+      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("8b38d4111d624456db27fb7581d7571e03d27c2fde7c10fdd3b4055e760feceb");
     });
   
     it('rollback.sql exists + non-empty (REVERSIBLE)', () => {
@@ -4946,7 +4946,7 @@ describe('DM-R-13 per-migration contract', () => {
     });
   
     it('rollback.sql SHA-256 is frozen', () => {
-      expect(sha256File(path.join(migrationDir, 'rollback.sql'))).toBe("52faf1e90dcb6d219b1e03c71c7d86d395d8433bb3596f19b88c3ae2b7b3905a");
+      expect(sha256File(path.join(migrationDir, 'rollback.sql'))).toBe("d7a35f0d798eff4efc36da407423c8d1f40a7cfc506d019f94d2816d33bdc7d4");
     });
   });
 });

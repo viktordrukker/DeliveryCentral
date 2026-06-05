@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,17 +11,21 @@ import {
   Post,
   Put,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
+import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
+import { SelfEndorseSkillService } from '../application/self-endorse-skill.service';
 import { SkillsService } from '../application/skills.service';
 import {
   CreateSkillDto,
   PersonSkillDto,
+  SelfEndorseSkillDto,
   SkillDto,
   SkillMatchCandidateDto,
   UpsertPersonSkillItemDto,
@@ -88,6 +93,36 @@ export class PersonSkillsController {
     @Body() items: UpsertPersonSkillItemDto[],
   ): Promise<PersonSkillDto[]> {
     return this.service.upsertPersonSkills(personId, items);
+  }
+}
+
+@ApiTags('me')
+@Controller('me/skills')
+export class MeSkillsController {
+  public constructor(private readonly service: SelfEndorseSkillService) {}
+
+  /**
+   * LEAN-P4d-4 — Employee self-endorsement. The caller writes a skill
+   * row to their OWN profile without HR review. The row is flagged
+   * `selfEndorsed=true` so HR can still surface it as "unverified".
+   *
+   * RBAC: any authenticated person can act on themselves. The actor is
+   * resolved from `req.principal.personId`; no path param is needed.
+   */
+  @Post()
+  @HttpCode(HttpStatus.OK)
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @ApiOperation({ summary: 'Self-endorse a skill on the caller\'s own profile (no HR gate).' })
+  @ApiOkResponse({ type: PersonSkillDto })
+  public async endorse(
+    @Body() dto: SelfEndorseSkillDto,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<PersonSkillDto> {
+    const personId = req.principal?.personId ?? req.principal?.userId;
+    if (!personId) {
+      throw new BadRequestException('Could not determine actor identity from request.');
+    }
+    return this.service.endorse(personId, dto.skillId, dto.proficiency);
   }
 }
 
