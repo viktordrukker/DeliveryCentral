@@ -21,6 +21,7 @@ import { STAFFING_ROLES } from '@src/shared/auth/role-presets';
 
 import {
   CreatePlannerScenarioRequestDto,
+  ListPlannerScenariosQueryDto,
   PlannerScenarioDto,
   UpdatePlannerScenarioRequestDto,
 } from '../application/contracts/planner-scenario.dto';
@@ -39,19 +40,19 @@ export class PlannerScenariosController {
 
   @Get()
   @RequireRoles(...STAFFING_ROLES)
-  @ApiOperation({ summary: 'FE-#266 — list planner scenarios (filter by owner=me)' })
+  @ApiOperation({ summary: 'LEAN-P4a-1 — list planner scenarios (filter by owner=me, status, limit)' })
   @ApiOkResponse({ type: [Object] })
   public async list(
-    @Query('owner') owner: string | undefined,
+    @Query() query: ListPlannerScenariosQueryDto,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<PlannerScenarioDto[]> {
-    const ownerId = owner === 'me' ? resolveActor(req) : undefined;
-    return this.service.list({ ownerId });
+    const ownerId = query.owner === 'me' ? resolveActor(req) : undefined;
+    return this.service.list({ ownerId, status: query.status, limit: query.limit });
   }
 
   @Get(':id')
   @RequireRoles(...STAFFING_ROLES)
-  @ApiOperation({ summary: 'FE-#266 — get planner scenario by id' })
+  @ApiOperation({ summary: 'LEAN-P4a-1 — get planner scenario by id' })
   @ApiOkResponse({ type: Object })
   public async getById(@Param('id', ParseUUIDPipe) id: string): Promise<PlannerScenarioDto> {
     return this.service.getById(id);
@@ -60,7 +61,7 @@ export class PlannerScenariosController {
   @Post()
   @RequireRoles(...STAFFING_ROLES)
   @ApiCreatedResponse({ type: Object })
-  @ApiOperation({ summary: 'FE-#266 — create planner scenario (DRAFT)' })
+  @ApiOperation({ summary: 'LEAN-P4a-1 — create planner scenario (DRAFT)' })
   public async create(
     @Body() body: CreatePlannerScenarioRequestDto,
     @Req() req: { principal?: RequestPrincipal },
@@ -72,7 +73,7 @@ export class PlannerScenariosController {
   @Patch(':id')
   @RequireRoles(...STAFFING_ROLES)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'FE-#266 — update planner scenario (owner-only / admin)' })
+  @ApiOperation({ summary: 'LEAN-P4a-1 — update planner scenario (owner-only / admin)' })
   @ApiOkResponse({ type: Object })
   public async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -86,12 +87,14 @@ export class PlannerScenariosController {
   @Delete(':id')
   @RequireRoles(...STAFFING_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'FE-#266 — delete planner scenario (owner or admin)' })
+  @ApiOperation({
+    summary: 'LEAN-P4a-1 — soft-cancel planner scenario (status=CANCELLED, owner or admin)',
+  })
   public async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<void> {
     const actor = resolveActor(req);
-    await this.service.delete(id, actor, req.principal?.roles ?? []);
+    await this.service.cancel(id, actor, req.principal?.roles ?? []);
   }
 }

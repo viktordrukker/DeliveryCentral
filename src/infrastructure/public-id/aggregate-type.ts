@@ -32,6 +32,7 @@ export enum AggregateType {
   EmploymentEvent = 'emp',
   Contact = 'ctc',
   BudgetApproval = 'ba',
+  PlannerScenario = 'psc',
 }
 
 /**
@@ -48,6 +49,7 @@ export const MODEL_TO_AGGREGATE_TYPE: Readonly<Record<string, AggregateType>> = 
   LeaveRequest: AggregateType.LeaveRequest,
   StaffingRequest: AggregateType.StaffingRequest,
   TimesheetWeek: AggregateType.TimesheetWeek,
+  PlannerScenario: AggregateType.PlannerScenario,
 });
 
 /** All registered prefixes, for format-shape validation. */

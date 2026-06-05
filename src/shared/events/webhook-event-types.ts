@@ -44,6 +44,10 @@ export const WEBHOOK_EVENT_TYPES = [
   'assignment.proposal_director_approval_requested',
   // Position (LEAN-P1-5 — lean-migration ProjectPosition lifecycle events)
   'position.fill_changed',
+  // PlannerScenario (LEAN-P4a-1 — Distribution Studio scenario lifecycle)
+  'scenario.created',
+  'scenario.updated',
+  'scenario.cancelled',
   // Project
   'project.submitted_for_approval',
   'project.approved',
@@ -105,6 +109,9 @@ export const WEBHOOK_EVENT_DESCRIPTIONS: Record<WebhookEventType, string> = {
   'assignment.proposal_acknowledged': 'A staffing proposal was acknowledged by the recipient.',
   'assignment.proposal_director_approval_requested': 'A staffing proposal requires director-level approval.',
   'position.fill_changed': 'A ProjectPosition lifecycle changed (lean-migration canonical event — fillStatus or activeFill mutation).',
+  'scenario.created': 'A Distribution Studio planner scenario was created (DRAFT).',
+  'scenario.updated': 'A planner scenario was modified (name, description, state, or status).',
+  'scenario.cancelled': 'A planner scenario was soft-cancelled (status → CANCELLED).',
   'project.submitted_for_approval': 'A project was submitted for activation approval.',
   'project.approved': 'A project activation request was approved.',
   'project.rejected': 'A project activation request was rejected.',
@@ -148,7 +155,7 @@ export function isWebhookEventType(value: unknown): value is WebhookEventType {
 export interface WebhookEventTypeDescriptor {
   eventType: WebhookEventType;
   description: string;
-  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'person' | 'position' | 'integration' | 'nudge';
+  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'person' | 'position' | 'scenario' | 'integration' | 'nudge';
 }
 
 function domainOf(eventType: WebhookEventType): WebhookEventTypeDescriptor['domain'] {

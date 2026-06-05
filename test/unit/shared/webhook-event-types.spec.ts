@@ -53,6 +53,7 @@ describe('F-27 / D-170 — webhook event-type registry', () => {
       'timesheet',
       'person',
       'position',
+      'scenario',
       'integration',
       'nudge',
     ]);
