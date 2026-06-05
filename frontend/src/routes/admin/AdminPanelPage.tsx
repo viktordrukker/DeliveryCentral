@@ -29,6 +29,12 @@ import {
 import { formatFeatureFlag } from '@/lib/labels';
 import { Button, Table, type Column } from '@/components/ds';
 import { DictionariesAdminContent } from './DictionariesPage';
+import { SettingsAdminContent } from './SettingsPage';
+import { IntegrationsAdminContent } from './IntegrationsAdminPage';
+import { FeatureFlagsAdminContent } from './FeatureFlagsAdminPage';
+import { RolePermissionAdminContent } from './RolePermissionAdminPage';
+import { BusinessAuditAdminContent } from './BusinessAuditPage';
+import { OrganizationConfigAdminContent } from './OrganizationConfigPage';
 
 type AdminSectionKey =
   | 'accounts'
@@ -38,9 +44,25 @@ type AdminSectionKey =
   | 'settings'
   | 'assignment-workflow';
 
+// V2 LEAN-P4d-1 — 5-tab Admin Control Surface grammar (Phase 18).
+// Each tab inline-mounts the relevant admin sub-page content so deep-link
+// friction disappears. Standalone routes continue to work as deep links.
+type AdminTabKey =
+  | 'general'
+  | 'integrations'
+  | 'governance'
+  | 'people-config'
+  | 'feature-flags';
+
 interface AdminSectionDefinition {
   description: string;
   key: AdminSectionKey;
+  title: string;
+}
+
+interface AdminTabDefinition {
+  description: string;
+  key: AdminTabKey;
   title: string;
 }
 
@@ -77,6 +99,34 @@ const adminSections: AdminSectionDefinition[] = [
   },
 ];
 
+const adminTabs: AdminTabDefinition[] = [
+  {
+    description: 'Platform-wide behaviour: timesheets, capitalisation, pulse, notifications, security.',
+    key: 'general',
+    title: 'General',
+  },
+  {
+    description: 'Provider health, sync status, retry/test controls for JSM, M365, LDAP, Jira PPM.',
+    key: 'integrations',
+    title: 'Integrations',
+  },
+  {
+    description: 'RBAC matrix, role permissions, audit log viewer.',
+    key: 'governance',
+    title: 'Governance',
+  },
+  {
+    description: 'Dictionaries, organization config, leave policies, org structure.',
+    key: 'people-config',
+    title: 'People Config',
+  },
+  {
+    description: 'Toggle platform features per tenant; maturity, ownership, and dependency metadata.',
+    key: 'feature-flags',
+    title: 'Feature Flags',
+  },
+];
+
 interface AccountFormState {
   email: string;
   error: string | null;
@@ -90,13 +140,31 @@ interface AccountFormState {
 export function AdminPanelPage(): JSX.Element {
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // V2 LEAN-P4d-1 — under dsRefresh the URL is driven by ?tab=<AdminTabKey>.
+  // Legacy ?section=<AdminSectionKey> still works in the sidebar shell.
+  const tabParam = searchParams.get('tab');
   const sectionParam = searchParams.get('section');
+  const isValidTab = (key: string | null): key is AdminTabKey =>
+    !!key && adminTabs.some((t) => t.key === key);
   const isValidSection = (key: string | null): key is AdminSectionKey =>
     !!key && adminSections.some((s) => s.key === key);
+
+  const initialTab: AdminTabKey = isValidTab(tabParam) ? tabParam : 'general';
   const initialSection: AdminSectionKey = isValidSection(sectionParam) ? sectionParam : 'accounts';
+
+  const [selectedTab, setSelectedTabState] = useState<AdminTabKey>(initialTab);
   const [selectedSection, setSelectedSectionState] = useState<AdminSectionKey>(initialSection);
-  // Phase B5 — keep URL in sync so reload + deep links work + the new tabbed
-  // shell can be driven by ?section=...
+
+  const setSelectedTab = (key: AdminTabKey): void => {
+    setSelectedTabState(key);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', key);
+      return next;
+    }, { replace: true });
+  };
+
   const setSelectedSection = (key: AdminSectionKey): void => {
     setSelectedSectionState(key);
     setSearchParams((prev) => {
@@ -105,11 +173,18 @@ export function AdminPanelPage(): JSX.Element {
       return next;
     }, { replace: true });
   };
+
+  useEffect(() => {
+    if (isValidTab(tabParam) && tabParam !== selectedTab) {
+      setSelectedTabState(tabParam);
+    }
+  }, [tabParam]);
   useEffect(() => {
     if (isValidSection(sectionParam) && sectionParam !== selectedSection) {
       setSelectedSectionState(sectionParam);
     }
   }, [sectionParam]);
+
   const state = useAdminPanel();
   const [accountForm, setAccountForm] = useState<AccountFormState>({
     email: '',
@@ -157,6 +232,10 @@ export function AdminPanelPage(): JSX.Element {
     () => adminSections.find((section) => section.key === selectedSection) ?? adminSections[0],
     [selectedSection],
   );
+  const activeTab = useMemo(
+    () => adminTabs.find((tab) => tab.key === selectedTab) ?? adminTabs[0],
+    [selectedTab],
+  );
 
   const totalItemCount = state.data
     ? state.data.config.dictionaries.length +
@@ -166,7 +245,7 @@ export function AdminPanelPage(): JSX.Element {
       state.data.settings.systemFlags.length
     : 0;
 
-  const sectionBody = (
+  const sidebarSectionBody = (
     <>
       {selectedSection === 'accounts'
         ? <AdminAccountsSection
@@ -180,68 +259,150 @@ export function AdminPanelPage(): JSX.Element {
     </>
   );
 
+  const tabBody = (
+    <AdminTabContent
+      accountForm={accountForm}
+      onFormChange={setAccountForm}
+      onCreateAccount={handleCreateAccount}
+      tab={selectedTab}
+    />
+  );
+
   return (
     <PageContainer viewport>
       <PageHeader
         eyebrow="Administration"
         subtitle="Consolidate metadata, integrations, notifications, and runtime settings behind explicit admin aggregation endpoints. The UI stays config-driven and avoids embedding business-specific entities."
         title="Admin Panel"
-        tabs={dsRefreshEnabled ? adminSections.map((s) => ({ id: s.key, label: s.title })) : undefined}
-        activeTab={dsRefreshEnabled ? selectedSection : undefined}
-        onTabChange={dsRefreshEnabled ? (id) => setSelectedSection(id as AdminSectionKey) : undefined}
+        tabs={dsRefreshEnabled ? adminTabs.map((t) => ({ id: t.key, label: t.title })) : undefined}
+        activeTab={dsRefreshEnabled ? selectedTab : undefined}
+        onTabChange={dsRefreshEnabled ? (id) => setSelectedTab(id as AdminTabKey) : undefined}
       />
 
-      {state.isLoading ? <LoadingState label="Loading admin panel..." variant="skeleton" skeletonType="page" /> : null}
-      {state.error ? <ErrorState description={state.error} /> : null}
+      {dsRefreshEnabled ? (
+        <section className="admin-panel admin-panel--tabbed" data-testid="admin-tabbed">
+          <header className="admin-panel__main-header">
+            <h2>{activeTab.title}</h2>
+            <p>{activeTab.description}</p>
+          </header>
+          {tabBody}
+        </section>
+      ) : (
+        <>
+          {state.isLoading ? <LoadingState label="Loading admin panel..." variant="skeleton" skeletonType="page" /> : null}
+          {state.error ? <ErrorState description={state.error} /> : null}
 
-      {!state.isLoading && !state.error && state.data ? (
-        totalItemCount === 0 ? (
-          <EmptyState
-            description="Admin aggregation endpoints returned no data for dictionaries, integrations, notifications, or system settings."
-            title="No admin configuration available"
-          />
-        ) : dsRefreshEnabled ? (
-          <section className="admin-panel admin-panel--tabbed" data-testid="admin-tabbed">
-            <header className="admin-panel__main-header">
-              <h2>{activeSection.title}</h2>
-              <p>{activeSection.description}</p>
-            </header>
-            {sectionBody}
-          </section>
-        ) : (
-          <div className="admin-panel">
-            <aside className="admin-panel__sidebar">
-              <div className="admin-panel__sidebar-title">Sections</div>
-              <div className="admin-panel__sidebar-list">
-                {adminSections.map((section) => (
-                  <Button
-                    variant="secondary"
-                    className={`admin-panel__sidebar-item${
-                      section.key === selectedSection ? ' admin-panel__sidebar-item--active' : ''
-                    }`}
-                    key={section.key}
-                    onClick={() => setSelectedSection(section.key)}
-                    type="button"
-                  >
-                    <span className="admin-panel__sidebar-item-title">{section.title}</span>
-                    <span className="admin-panel__sidebar-item-description">{section.description}</span>
-                  </Button>
-                ))}
+          {!state.isLoading && !state.error && state.data ? (
+            totalItemCount === 0 ? (
+              <EmptyState
+                description="Admin aggregation endpoints returned no data for dictionaries, integrations, notifications, or system settings."
+                title="No admin configuration available"
+              />
+            ) : (
+              <div className="admin-panel">
+                <aside className="admin-panel__sidebar">
+                  <div className="admin-panel__sidebar-title">Sections</div>
+                  <div className="admin-panel__sidebar-list">
+                    {adminSections.map((section) => (
+                      <Button
+                        variant="secondary"
+                        className={`admin-panel__sidebar-item${
+                          section.key === selectedSection ? ' admin-panel__sidebar-item--active' : ''
+                        }`}
+                        key={section.key}
+                        onClick={() => setSelectedSection(section.key)}
+                        type="button"
+                      >
+                        <span className="admin-panel__sidebar-item-title">{section.title}</span>
+                        <span className="admin-panel__sidebar-item-description">{section.description}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </aside>
+
+                <section className="admin-panel__main">
+                  <header className="admin-panel__main-header">
+                    <h2>{activeSection.title}</h2>
+                    <p>{activeSection.description}</p>
+                  </header>
+                  {sidebarSectionBody}
+                </section>
               </div>
-            </aside>
-
-            <section className="admin-panel__main">
-              <header className="admin-panel__main-header">
-                <h2>{activeSection.title}</h2>
-                <p>{activeSection.description}</p>
-              </header>
-              {sectionBody}
-            </section>
-          </div>
-        )
-      ) : null}
+            )
+          ) : null}
+        </>
+      )}
     </PageContainer>
   );
+}
+
+interface AdminTabContentProps {
+  accountForm: AccountFormState;
+  onCreateAccount: (e: React.FormEvent) => Promise<void>;
+  onFormChange: React.Dispatch<React.SetStateAction<AccountFormState>>;
+  tab: AdminTabKey;
+}
+
+function AdminTabContent({
+  accountForm,
+  onCreateAccount,
+  onFormChange,
+  tab,
+}: AdminTabContentProps): JSX.Element {
+  switch (tab) {
+    case 'general':
+      return (
+        <div className="admin-panel__cards" data-testid="admin-tab-general">
+          <SettingsAdminContent />
+          <SectionCard title="Assignment Workflow">
+            <AssignmentWorkflowSettings />
+          </SectionCard>
+        </div>
+      );
+    case 'integrations':
+      return (
+        <div className="admin-panel__cards" data-testid="admin-tab-integrations">
+          <IntegrationsAdminContent />
+        </div>
+      );
+    case 'governance':
+      return (
+        <div className="admin-panel__cards" data-testid="admin-tab-governance">
+          <SectionCard title="User Accounts">
+            <AdminAccountsSection
+              accountForm={accountForm}
+              onFormChange={onFormChange}
+              onCreateAccount={onCreateAccount}
+            />
+          </SectionCard>
+          <SectionCard title="Role Permissions">
+            <RolePermissionAdminContent />
+          </SectionCard>
+          <SectionCard title="Business Audit">
+            <BusinessAuditAdminContent />
+          </SectionCard>
+        </div>
+      );
+    case 'people-config':
+      return (
+        <div className="admin-panel__cards" data-testid="admin-tab-people-config">
+          <SectionCard title="Organization Configuration">
+            <OrganizationConfigAdminContent />
+          </SectionCard>
+          <SectionCard title="Dictionaries">
+            <DictionariesAdminContent />
+          </SectionCard>
+        </div>
+      );
+    case 'feature-flags':
+      return (
+        <div className="admin-panel__cards" data-testid="admin-tab-feature-flags">
+          <FeatureFlagsAdminContent />
+        </div>
+      );
+    default:
+      return <></>;
+  }
 }
 
 interface AdminAccountsSectionProps {

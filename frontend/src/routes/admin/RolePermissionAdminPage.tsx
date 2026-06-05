@@ -28,7 +28,12 @@ import {
  * Ships behind `flag.feature.admin.rolePermissionUI.enabled` (default OFF;
  * 30-day staging soak before promotion per Phase 11 R-03).
  */
-export function RolePermissionAdminPage(): JSX.Element {
+/**
+ * Inline-mountable Role Permissions admin content. Renders the preset
+ * editor without PageContainer/PageHeader chrome so AdminPanelPage can
+ * mount it inside the Governance tab under dsRefresh.
+ */
+export function RolePermissionAdminContent(): JSX.Element {
   const [presets, setPresets] = useState<RolePresetView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,13 +108,7 @@ export function RolePermissionAdminPage(): JSX.Element {
   }
 
   return (
-    <PageContainer testId="role-permission-admin" viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Override the role set behind each named preset. Used by every route declared with @RequireRolePreset. admin is always required."
-        title="Role permissions"
-      />
-
+    <>
       {isLoading ? <LoadingState label="Loading role presets..." variant="skeleton" /> : null}
       {error ? <ErrorState description={error} onRetry={() => void reload()} /> : null}
 
@@ -267,6 +266,19 @@ export function RolePermissionAdminPage(): JSX.Element {
           confirmLabel={isSaving ? 'Resetting…' : 'Reset'}
         />
       ) : null}
+    </>
+  );
+}
+
+export function RolePermissionAdminPage(): JSX.Element {
+  return (
+    <PageContainer testId="role-permission-admin" viewport>
+      <PageHeader
+        eyebrow="Admin"
+        subtitle="Override the role set behind each named preset. Used by every route declared with @RequireRolePreset. admin is always required."
+        title="Role permissions"
+      />
+      <RolePermissionAdminContent />
     </PageContainer>
   );
 }

@@ -14,7 +14,12 @@ import { useBusinessAudit } from '@/features/admin/useBusinessAudit';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { Button } from '@/components/ds';
 
-export function BusinessAuditPage(): JSX.Element {
+/**
+ * Inline-mountable Business Audit admin content. Renders investigation
+ * filters + audit records without PageContainer/PageHeader chrome so
+ * AdminPanelPage can mount it inside the Governance tab under dsRefresh.
+ */
+export function BusinessAuditAdminContent(): JSX.Element {
   const state = useBusinessAudit();
   const tokenState = useStoredApiToken();
 
@@ -22,41 +27,7 @@ export function BusinessAuditPage(): JSX.Element {
   const totalPages = Math.max(1, Math.ceil(state.totalCount / pageSize));
 
   return (
-    <PageContainer testId="business-audit-page" viewport>
-      <PageHeader
-        actions={
-          <>
-            {state.data.length > 0 ? (
-              <Button
-                variant="secondary"
-                disabled={state.isLoading}
-                onClick={() => {
-                  exportToXlsx(
-                    state.data.map((entry) => ({
-                      Action: entry.actionType,
-                      Actor: entry.actorId ?? '',
-                      'Entity ID': entry.targetEntityId ?? '',
-                      'Entity Type': entry.targetEntityType,
-                      Timestamp: entry.occurredAt,
-                    })),
-                    'business-audit',
-                  );
-                }}
-                type="button"
-              >
-                Export XLSX
-              </Button>
-            ) : null}
-            <Button as={Link} variant="secondary" to="/admin">
-              Back to admin panel
-            </Button>
-          </>
-        }
-        eyebrow="Administration"
-        subtitle="Browse business actions, not technical request logs. This view is meant for governance, HR, and operational investigation workflows."
-        title="Business Audit"
-      />
-
+    <>
       {!tokenState.hasToken ? (
         <SectionCard title="Authentication">
           <AuthTokenField
@@ -95,6 +66,30 @@ export function BusinessAuditPage(): JSX.Element {
             <span>Business events only. Technical logs stay in monitoring.</span>
           </div>
 
+          {state.data.length > 0 ? (
+            <div className="section-card__actions-row section-card__actions-row--start">
+              <Button
+                variant="secondary"
+                disabled={state.isLoading}
+                onClick={() => {
+                  exportToXlsx(
+                    state.data.map((entry) => ({
+                      Action: entry.actionType,
+                      Actor: entry.actorId ?? '',
+                      'Entity ID': entry.targetEntityId ?? '',
+                      'Entity Type': entry.targetEntityType,
+                      Timestamp: entry.occurredAt,
+                    })),
+                    'business-audit',
+                  );
+                }}
+                type="button"
+              >
+                Export XLSX
+              </Button>
+            </div>
+          ) : null}
+
           {state.data.length === 0 ? (
             <EmptyState
               description="Adjust the investigation filters or broaden the time window to find matching business records."
@@ -119,6 +114,24 @@ export function BusinessAuditPage(): JSX.Element {
           ) : null}
         </SectionCard>
       ) : null}
+    </>
+  );
+}
+
+export function BusinessAuditPage(): JSX.Element {
+  return (
+    <PageContainer testId="business-audit-page" viewport>
+      <PageHeader
+        actions={
+          <Button as={Link} variant="secondary" to="/admin">
+            Back to admin panel
+          </Button>
+        }
+        eyebrow="Administration"
+        subtitle="Browse business actions, not technical request logs. This view is meant for governance, HR, and operational investigation workflows."
+        title="Business Audit"
+      />
+      <BusinessAuditAdminContent />
     </PageContainer>
   );
 }

@@ -36,7 +36,12 @@ function maturityTone(level: FeatureFlagAdminEntry['maturityLevel']): 'active' |
   }
 }
 
-export function FeatureFlagsAdminPage(): JSX.Element {
+/**
+ * Inline-mountable Feature Flags admin content. Renders the flag registry
+ * without PageContainer/PageHeader chrome so AdminPanelPage can mount it
+ * inside the Feature Flags tab under dsRefresh.
+ */
+export function FeatureFlagsAdminContent(): JSX.Element {
   const [flags, setFlags] = useState<FeatureFlagAdminEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,13 +115,7 @@ export function FeatureFlagsAdminPage(): JSX.Element {
   }, [flags]);
 
   return (
-    <PageContainer testId="admin-feature-flags-page">
-      <PageHeader
-        eyebrow="Administration"
-        title="Feature Flags"
-        subtitle="Toggle platform features per tenant. Changes propagate after the 30-second flag cache cycle."
-      />
-
+    <>
       {error ? <ErrorState description={error} onRetry={() => void load()} /> : null}
 
       {isLoading ? (
@@ -260,6 +259,19 @@ export function FeatureFlagsAdminPage(): JSX.Element {
           })}
         </>
       )}
+    </>
+  );
+}
+
+export function FeatureFlagsAdminPage(): JSX.Element {
+  return (
+    <PageContainer testId="admin-feature-flags-page">
+      <PageHeader
+        eyebrow="Administration"
+        title="Feature Flags"
+        subtitle="Toggle platform features per tenant. Changes propagate after the 30-second flag cache cycle."
+      />
+      <FeatureFlagsAdminContent />
     </PageContainer>
   );
 }
