@@ -215,4 +215,19 @@ describe('CapitalisationPage', () => {
 
     expect(screen.getByText('150.0')).toBeInTheDocument();
   });
+
+  it('renders Analysis Surface KPI strip with CAPEX / OPEX / Total / Alerts (SCOPED-MIN-5)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('kpi-capex')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('kpi-capex')).toHaveTextContent('CAPEX Hours');
+    expect(screen.getByTestId('kpi-opex')).toHaveTextContent('OPEX Hours');
+    expect(screen.getByTestId('kpi-total')).toHaveTextContent('Total Hours');
+    expect(screen.getByTestId('kpi-capex-pct')).toHaveTextContent('CAPEX %');
+    // One project has alert=true → counter should be 1.
+    expect(screen.getByTestId('kpi-alerts')).toHaveTextContent('1');
+  });
 });

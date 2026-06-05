@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -69,8 +70,26 @@ function UtilizationBar({ pct }: { pct: number }): JSX.Element {
 }
 
 export function UtilizationPage(): JSX.Element {
-  const [from, setFrom] = useState(monthAgo());
-  const [to, setTo] = useState(today());
+  // UX Law 5 — filter persistence via URL search params.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const from = searchParams.get('from') ?? monthAgo();
+  const to = searchParams.get('to') ?? today();
+
+  const updateParam = (key: string, value: string): void => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const setFrom = (v: string): void => updateParam('from', v);
+  const setTo = (v: string): void => updateParam('to', v);
+
   const [report, setReport] = useState<UtilizationReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +127,14 @@ export function UtilizationPage(): JSX.Element {
     pct: row.utilizationPercent,
   }));
 
+  // KPI rollups — only meaningful when we have data.
+  const totalPeople = baseData.length;
+  const avgUtilization = totalPeople > 0
+    ? Math.round(baseData.reduce((s, r) => s + r.utilizationPercent, 0) / totalPeople)
+    : 0;
+  const overAllocated = baseData.filter((r) => r.utilizationPercent > 100).length;
+  const underUtilized = baseData.filter((r) => r.utilizationPercent < 50).length;
+
   return (
     <AnalysisLayout
       viewport
@@ -134,6 +161,43 @@ export function UtilizationPage(): JSX.Element {
         </>
       }
     >
+      {!isLoading && !error && totalPeople > 0 ? (
+        <div className="kpi-strip" aria-label="Utilization summary">
+          <div
+            className="kpi-strip__item"
+            style={{ borderLeft: '3px solid var(--color-status-info)' }}
+            data-testid="kpi-people"
+          >
+            <span className="kpi-strip__value">{totalPeople}</span>
+            <span className="kpi-strip__label">People</span>
+          </div>
+          <div
+            className="kpi-strip__item"
+            style={{ borderLeft: `3px solid ${avgUtilization > 100 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            data-testid="kpi-avg-utilization"
+          >
+            <span className="kpi-strip__value"><Pct value={avgUtilization} fractionDigits={0} /></span>
+            <span className="kpi-strip__label">Avg Utilization</span>
+          </div>
+          <div
+            className="kpi-strip__item"
+            style={{ borderLeft: `3px solid ${overAllocated > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
+            data-testid="kpi-over-allocated"
+          >
+            <span className="kpi-strip__value">{overAllocated}</span>
+            <span className="kpi-strip__label">Over-allocated</span>
+          </div>
+          <div
+            className="kpi-strip__item"
+            style={{ borderLeft: `3px solid ${underUtilized > 0 ? 'var(--color-status-warning)' : 'var(--color-status-active)'}` }}
+            data-testid="kpi-under-utilized"
+          >
+            <span className="kpi-strip__value">{underUtilized}</span>
+            <span className="kpi-strip__label">Under-utilized</span>
+          </div>
+        </div>
+      ) : null}
+
       {!isLoading && !error && chartData.length > 0 ? (
         <SectionCard title="Utilization by Person — Overview">
           <ChartWrapper ariaLabel="Utilization bar chart — percentage per person">
