@@ -32,6 +32,7 @@ import { ResourceManagerDashboardQueryService } from './application/resource-man
 import { RoleDashboardQueryService } from './application/role-dashboard-query.service';
 import { WorkloadDashboardQueryService } from './application/workload-dashboard-query.service';
 import { DirectorAnomalyDetectionService } from './application/director-anomaly-detection.service';
+import { OrgHealthService } from './application/org-health.service';
 import { PortfolioFinanceSummaryService } from './application/portfolio-finance-summary.service';
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
@@ -101,6 +102,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
       useFactory: (prisma: PrismaService) => new PortfolioFinanceSummaryService(prisma),
       inject: [PrismaService],
     },
+    {
+      provide: OrgHealthService,
+      useFactory: (prisma: PrismaService) => new OrgHealthService(prisma),
+      inject: [PrismaService],
+    },
     MeHomeService,
     {
       provide: SidebarCountsService,
@@ -160,6 +166,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     DirectorAnomalyDetectionService,
     MeHomeService,
     SidebarCountsService,
+    OrgHealthService,
   ],
 })
 export class DashboardModule {}
