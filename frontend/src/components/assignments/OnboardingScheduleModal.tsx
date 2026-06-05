@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DatePicker, FormField, FormModal } from '@/components/ds';
-import { scheduleOnboarding } from '@/lib/api/assignments';
+import { transitionProjectPositionFill } from '@/lib/api/project-positions';
 
 interface OnboardingScheduleModalProps {
   open: boolean;
@@ -57,7 +57,14 @@ function OnboardingScheduleModalInner({
   async function handleSubmit(): Promise<void> {
     setError(undefined);
     try {
-      await scheduleOnboarding(assignmentId, { onboardingDate });
+      // LEAN-P2 exit-gate: legacy POST /assignments/:id/onboarding replaced
+      // with the canonical /project-positions transition handler. The
+      // onboarding-start date is forwarded via the reason audit field so the
+      // bound is preserved on the timeline.
+      await transitionProjectPositionFill(assignmentId, {
+        toStatus: 'ONBOARDING',
+        reason: `Onboarding starts ${onboardingDate}`,
+      });
       onScheduled();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not schedule onboarding.');

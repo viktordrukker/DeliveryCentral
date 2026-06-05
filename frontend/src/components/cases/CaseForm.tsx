@@ -1,6 +1,6 @@
 import { FormEvent } from 'react';
 
-import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { fetchPersonSkills, PersonSkill } from '@/lib/api/skills';
 import { fetchExceptions, ExceptionQueueItem } from '@/lib/api/exceptions';
-import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 
 export interface PersonSidebarData {
   skills: PersonSkill[];
@@ -52,7 +54,10 @@ export function usePersonSidebarData(personId: string | null): PersonSidebarData
     Promise.all([
       fetchPersonSkills(personId).catch(() => [] as PersonSkill[]),
       fetchExceptions({ targetEntityId: personId, status: 'OPEN', limit: 20 }).catch(() => ({ items: [] as ExceptionQueueItem[] })),
-      fetchAssignments({ personId, status: 'active', pageSize: 20 }).catch(() => ({ items: [] as AssignmentDirectoryItem[] })),
+      // LEAN-P2: legacy `status:active` maps to BOOKED/ASSIGNED/ONBOARDING.
+      listProjectPositions({ activePersonId: personId, fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'], take: 20 })
+        .then(mapListResponseToDirectory)
+        .catch(() => ({ items: [] as AssignmentDirectoryItem[] })),
     ]).then(([skills, exceptionsRes, assignmentsRes]) => {
       if (controller.signal.aborted) return;
 

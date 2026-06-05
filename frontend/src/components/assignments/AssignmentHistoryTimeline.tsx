@@ -1,4 +1,4 @@
-import { AssignmentHistoryItem } from '@/lib/api/assignments';
+import type { AssignmentHistoryItem } from '@/lib/api/assignments';
 import { formatDateTime } from '@/lib/format-date';
 
 interface AssignmentHistoryTimelineProps {

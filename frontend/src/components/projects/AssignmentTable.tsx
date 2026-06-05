@@ -1,6 +1,6 @@
 import { DataView, Pct } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
-import { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 
 interface AssignmentTableProps {
   items: AssignmentDirectoryItem[];

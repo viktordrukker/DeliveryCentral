@@ -6,7 +6,6 @@ import {
   ALL_ROLES,
   ADMIN_ROLES,
   appRoutes,
-  ASSIGNMENT_CREATE_ROLES,
   CAPITALISATION_ROLES,
   CASE_CREATE_ROLES,
   DELIVERY_DASHBOARD_ROLES,
@@ -25,8 +24,6 @@ import {
   RM_DASHBOARD_ROLES,
   STAFFING_BOARD_ROLES,
   STAFFING_DESK_ROLES,
-  STAFFING_REQUEST_ROLES,
-  APPROVALS_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
 } from './route-manifest';
@@ -58,19 +55,11 @@ import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
 import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
-import { ApprovalQueuePage } from '@/routes/assignments/ApprovalQueuePage';
 import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
-import { AssignmentsPage } from '@/routes/assignments/AssignmentsPage';
-import { BulkAssignmentPage } from '@/routes/assignments/BulkAssignmentPage';
-import { CreateAssignmentPage } from '@/routes/assignments/CreateAssignmentPage';
 import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
-import { StaffingRequestsPage } from '@/routes/staffing-requests/StaffingRequestsPage';
-import { StaffingRequestDetailPage } from '@/routes/staffing-requests/StaffingRequestDetailPage';
-import { CreateStaffingRequestPage } from '@/routes/staffing-requests/CreateStaffingRequestPage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
-import { DashboardRedirect } from '@/routes/DashboardRedirect';
 import { HomeRedirect } from '@/routes/HomeRedirect';
 import { V2Redirect } from '@/routes/V2Redirect';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -131,7 +120,6 @@ function ProjectDashboardRedirect(): JSX.Element {
   return <Navigate to={`/projects/${id ?? ''}?tab=${tab}`} replace />;
 }
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
-const StaffingBoardPage = lazy(() => import('@/routes/staffing-board/StaffingBoardPage').then(m => ({ default: m.StaffingBoardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
 const ReportsPage = lazy(() => import('@/routes/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
@@ -148,10 +136,6 @@ function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
 
 const dashboardChildren = [
   { element: <HomeRedirect />, path: '/' },
-  // `/dashboard` bare URL — per-role redirect to the persona's default dashboard.
-  // Without this, `/dashboard` falls through to the catch-all 404 (hard-locked
-  // on the v2 QA walk for every persona).
-  { element: <DashboardRedirect />, path: 'dashboard' },
   { element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><LazyPage><PlannedVsActualPage /></LazyPage></RoleGuard>, path: 'dashboard/planned-vs-actual' },
   // Sprint F-0.11 (Decision-11) — merged Manager + Exec dashboards.
   // The per-role routes below remain for direct access; the merged routes
@@ -197,7 +181,7 @@ const dashboardChildren = [
     path: 'dashboard/director',
   },
   {
-    element: <RoleGuard allowedRoles={APPROVALS_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
     path: 'approvals',
   },
   {
@@ -261,19 +245,13 @@ const dashboardChildren = [
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDetailPage /></RoleGuard>, path: 'projects/:id' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDashboardRedirect /></RoleGuard>, path: 'projects/:id/dashboard' },
-  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><AssignmentsPage /></RoleGuard>, path: 'assignments' },
-  {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><CreateAssignmentPage /></RoleGuard>,
-    path: 'assignments/new',
-  },
-  {
-    element: <RoleGuard allowedRoles={ASSIGNMENT_CREATE_ROLES}><BulkAssignmentPage /></RoleGuard>,
-    path: 'assignments/bulk',
-  },
-  {
-    element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><ApprovalQueuePage /></RoleGuard>,
-    path: 'assignments/queue',
-  },
+  // LEAN-P2 exit-gate: legacy /assignments surfaces removed. Direct visits
+  // redirect to the canonical project-positions surfaces (staffing desk,
+  // approvals queue).
+  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments' },
+  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/new' },
+  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/bulk' },
+  { element: <Navigate to="/approvals" replace />, path: 'assignments/queue' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentDetailsPlaceholderPage /></RoleGuard>, path: 'assignments/:id' },
   { element: <AccountSettingsPage />, path: 'settings/account' },
   { element: <InboxPage />, path: 'notifications' },
@@ -348,7 +326,9 @@ const dashboardChildren = [
     path: 'reports/builder',
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
-  { element: <StaffingRequestsPage />, path: 'staffing-requests' },
+  // LEAN-P2 exit-gate: legacy /staffing-requests surfaces removed. Redirect
+  // to the canonical staffing-desk and position-detail surfaces.
+  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests' },
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
@@ -361,11 +341,10 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><StaffingDeskPage /></LazyPage></RoleGuard>,
     path: 'staffing-desk',
   },
-  {
-    element: <RoleGuard allowedRoles={STAFFING_REQUEST_ROLES}><CreateStaffingRequestPage /></RoleGuard>,
-    path: 'staffing-requests/new',
-  },
-  { element: <StaffingRequestDetailPage />, path: 'staffing-requests/:id' },
+  // LEAN-P2 exit-gate: legacy staffing-request surfaces redirect to the
+  // canonical staffing-desk and project-position detail flows.
+  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/new' },
+  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',

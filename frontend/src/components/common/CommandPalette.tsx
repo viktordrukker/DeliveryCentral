@@ -8,7 +8,9 @@ import { markSidebarNavigation } from '@/app/drilldown-context';
 import { appRoutes } from '@/app/navigation';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
-import { fetchAssignments, AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import { listProjectPositions } from '@/lib/api/project-positions';
+import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { fetchCases, CaseRecord } from '@/lib/api/cases';
 
 export interface RecentPage {
@@ -81,7 +83,10 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
         void fetchProjectDirectory({ search: query }).then((r) => {
           setProjects(r.items.slice(0, 5));
         });
-        void fetchAssignments({ status: 'ACTIVE', pageSize: 15 }).then((r) => {
+        // LEAN-P2: legacy ACTIVE status maps to BOOKED/ASSIGNED/ONBOARDING.
+        void listProjectPositions({ fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'], take: 15 })
+          .then(mapListResponseToDirectory)
+          .then((r) => {
           setAssignments(
             r.items
               .filter((a) =>
