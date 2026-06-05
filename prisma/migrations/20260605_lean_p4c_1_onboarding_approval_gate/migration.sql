@@ -28,7 +28,7 @@ ALTER TABLE "ProjectPosition"
 
 DO $$ BEGIN
   ALTER TABLE "ProjectPosition"
-    ADD CONSTRAINT "ProjectPosition_onboardingApprovedByPerson_fkey"
+    ADD CONSTRAINT "ProjectPosition_onboardingApprovedByPersonId_fkey"
     FOREIGN KEY ("onboardingApprovedByPersonId")
     REFERENCES "Person"("id")
     ON DELETE SET NULL ON UPDATE CASCADE;
@@ -36,5 +36,5 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE INDEX IF NOT EXISTS "ProjectPosition_onboardingApprovedByPerson_idx"
+CREATE INDEX IF NOT EXISTS "ProjectPosition_onboardingApprovedByPersonId_idx"
   ON "ProjectPosition" ("onboardingApprovedByPersonId");
