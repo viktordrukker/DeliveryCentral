@@ -152,7 +152,7 @@ describe('UnifiedApprovalQueueService — leave source', () => {
           createdByPerson: { id: 'p-1', displayName: 'Ethan Brooks' },
         },
       ]),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
     );
     const out = await svc.list({ sources: ['leave'] });
     expect(out.items).toHaveLength(1);
@@ -177,7 +177,7 @@ describe('UnifiedApprovalQueueService — leave source', () => {
           createdByPerson: { id: 'p-2', displayName: 'Jane Doe' },
         },
       ]),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
     );
     const out = await svc.list({});
     expect(out.items).toHaveLength(1);
@@ -196,7 +196,7 @@ describe('UnifiedApprovalQueueService — leave source', () => {
           createdByPerson: null,
         },
       ]),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
     );
     const out = await svc.list({ sources: ['budget'] });
     expect(out.items).toHaveLength(0);
