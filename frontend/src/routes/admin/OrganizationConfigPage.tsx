@@ -34,7 +34,13 @@ const DEFAULT_SHAPES: Array<{ value: 'SMALL' | 'STANDARD'; label: string }> = [
   { value: 'SMALL', label: 'Small' },
 ];
 
-export function OrganizationConfigPage(): JSX.Element {
+/**
+ * Inline-mountable Organization Config admin content. Renders reporting
+ * cadence, thresholds, governance, and RAG cutoff editors without
+ * FormPageLayout chrome so AdminPanelPage can mount it inside the People
+ * Config tab under dsRefresh.
+ */
+export function OrganizationConfigAdminContent(): JSX.Element {
   const [config, setConfig] = useState<OrgConfigDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,13 +110,9 @@ export function OrganizationConfigPage(): JSX.Element {
   };
 
   return (
-    <FormPageLayout
-      testId="organization-config-page"
-      eyebrow="Admin"
-      title="Organization configuration"
-      subtitle="Tune reporting cadence, thresholds, and governance without code deploys. Every change is audit-logged."
-      actions={
-        <div style={{ display: 'flex', gap: 8 }}>
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button variant="secondary" disabled={saving} onClick={handleReset}>
             Reset to defaults
           </Button>
@@ -122,10 +124,6 @@ export function OrganizationConfigPage(): JSX.Element {
             {saving ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
-      }
-    >
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {/* Reporting category */}
         <SectionCard compact collapsible title="Reporting">
           <div style={{ display: 'grid', gap: 'var(--space-3)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
@@ -357,6 +355,19 @@ export function OrganizationConfigPage(): JSX.Element {
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => void performReset()}
       />
+    </>
+  );
+}
+
+export function OrganizationConfigPage(): JSX.Element {
+  return (
+    <FormPageLayout
+      testId="organization-config-page"
+      eyebrow="Admin"
+      title="Organization configuration"
+      subtitle="Tune reporting cadence, thresholds, and governance without code deploys. Every change is audit-logged."
+    >
+      <OrganizationConfigAdminContent />
     </FormPageLayout>
   );
 }

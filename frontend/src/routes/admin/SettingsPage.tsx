@@ -157,7 +157,13 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
-export function SettingsPage(): JSX.Element {
+/**
+ * Inline-mountable platform settings admin content. Renders the settings
+ * sections without PageContainer/PageHeader chrome so AdminPanelPage can
+ * mount it inside the General tab under dsRefresh. Standalone SettingsPage
+ * still wraps this with its own chrome.
+ */
+export function SettingsAdminContent(): JSX.Element {
   const [settings, setSettings] = useState<PlatformSettingsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -180,13 +186,7 @@ export function SettingsPage(): JSX.Element {
   }, [load]);
 
   return (
-    <PageContainer testId="settings-page" viewport>
-      <PageHeader
-        eyebrow="Administration"
-        subtitle="Configure platform-wide behaviour for timesheets, capitalisation, pulse, notifications, and security."
-        title="Platform Settings"
-      />
-
+    <>
       {isLoading ? <LoadingState label="Loading settings..." variant="skeleton" skeletonType="page" /> : null}
       {loadError ? <ErrorState description={loadError} /> : null}
 
@@ -214,6 +214,19 @@ export function SettingsPage(): JSX.Element {
           ))}
         </div>
       ) : null}
+    </>
+  );
+}
+
+export function SettingsPage(): JSX.Element {
+  return (
+    <PageContainer testId="settings-page" viewport>
+      <PageHeader
+        eyebrow="Administration"
+        subtitle="Configure platform-wide behaviour for timesheets, capitalisation, pulse, notifications, and security."
+        title="Platform Settings"
+      />
+      <SettingsAdminContent />
     </PageContainer>
   );
 }

@@ -3,21 +3,55 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  fetchAdminConfig,
-  fetchAdminIntegrations,
-  fetchAdminNotifications,
-  fetchAdminSettings,
-} from '@/lib/api/admin';
 import { ImpersonationProvider } from '@/app/impersonation-context';
 import { AdminPanelPage } from './AdminPanelPage';
 
+// LEAN-P4d-1 — under dsRefresh the admin panel uses the 5-tab Phase 18
+// Admin Control Surface grammar. Each tab inline-mounts a sub-page's
+// AdminContent helper rather than deep-linking. We mock the sub-page
+// content modules to keep this test focused on the tab shell + URL
+// persistence contract; per-sub-page rendering is covered by the
+// sub-pages' own tests.
+vi.mock('./SettingsPage', () => ({
+  SettingsAdminContent: () => <div data-testid="mock-settings-content">Settings</div>,
+  SettingsPage: () => <div />,
+}));
+vi.mock('./IntegrationsAdminPage', () => ({
+  IntegrationsAdminContent: () => <div data-testid="mock-integrations-content">Integrations</div>,
+  IntegrationsAdminPage: () => <div />,
+}));
+vi.mock('./FeatureFlagsAdminPage', () => ({
+  FeatureFlagsAdminContent: () => <div data-testid="mock-feature-flags-content">Feature Flags</div>,
+  FeatureFlagsAdminPage: () => <div />,
+}));
+vi.mock('./RolePermissionAdminPage', () => ({
+  RolePermissionAdminContent: () => <div data-testid="mock-role-permissions-content">Roles</div>,
+  RolePermissionAdminPage: () => <div />,
+}));
+vi.mock('./BusinessAuditPage', () => ({
+  BusinessAuditAdminContent: () => <div data-testid="mock-business-audit-content">Audit</div>,
+  BusinessAuditPage: () => <div />,
+}));
+vi.mock('./OrganizationConfigPage', () => ({
+  OrganizationConfigAdminContent: () => <div data-testid="mock-org-config-content">Org</div>,
+  OrganizationConfigPage: () => <div />,
+}));
+vi.mock('./DictionariesPage', () => ({
+  DictionariesAdminContent: () => <div data-testid="mock-dictionaries-content">Dictionaries</div>,
+  DictionariesPage: () => <div />,
+}));
+
 vi.mock('@/lib/api/admin', () => ({
-  fetchAdminConfig: vi.fn(),
-  fetchAdminIntegrations: vi.fn(),
-  fetchAdminNotifications: vi.fn(),
-  fetchAdminSettings: vi.fn(),
+  fetchAdminConfig: vi.fn(async () => ({
+    dictionaries: [], integrations: [], systemFlags: [],
+  })),
+  fetchAdminIntegrations: vi.fn(async () => ({ integrations: [] })),
+  fetchAdminNotifications: vi.fn(async () => ({ channels: [], templates: [] })),
+  fetchAdminSettings: vi.fn(async () => ({ systemFlags: [] })),
   fetchAdminAccounts: vi.fn(async () => ({ items: [], total: 0 })),
+  createLocalAccount: vi.fn(),
+  deleteAdminAccount: vi.fn(),
+  updateAdminAccount: vi.fn(),
 }));
 
 vi.mock('@/lib/feature-flags', async (importOriginal) => {
@@ -28,32 +62,7 @@ vi.mock('@/lib/feature-flags', async (importOriginal) => {
   };
 });
 
-const mockedFetchAdminConfig = vi.mocked(fetchAdminConfig);
-const mockedFetchAdminSettings = vi.mocked(fetchAdminSettings);
-const mockedFetchAdminIntegrations = vi.mocked(fetchAdminIntegrations);
-const mockedFetchAdminNotifications = vi.mocked(fetchAdminNotifications);
-
-function mockResponses(): void {
-  mockedFetchAdminConfig.mockResolvedValue({
-    dictionaries: [{ key: 'project-types', label: 'Project Types', items: [{ key: 'fp', label: 'Fixed Price' }] }],
-    metadata: { generatedAt: '2026-05-24T00:00:00Z' },
-  } as never);
-  mockedFetchAdminIntegrations.mockResolvedValue({
-    integrations: [{ key: 'slack', label: 'Slack', status: 'connected' }],
-    metadata: { generatedAt: '2026-05-24T00:00:00Z' },
-  } as never);
-  mockedFetchAdminNotifications.mockResolvedValue({
-    channels: [{ key: 'teams', label: 'Microsoft Teams Webhook', status: 'connected' }],
-    templates: [{ key: 'assignment-created', label: 'Assignment Created' }],
-    metadata: { generatedAt: '2026-05-24T00:00:00Z' },
-  } as never);
-  mockedFetchAdminSettings.mockResolvedValue({
-    systemFlags: [{ key: 'flag1', label: 'Flag 1', enabled: true }],
-    metadata: { generatedAt: '2026-05-24T00:00:00Z' },
-  } as never);
-}
-
-function renderTabbed(initialEntries = ['/admin']): void {
+function renderTabbed(initialEntries: string[] = ['/admin']): void {
   render(
     <MemoryRouter initialEntries={initialEntries}>
       <ImpersonationProvider>
@@ -63,42 +72,80 @@ function renderTabbed(initialEntries = ['/admin']): void {
   );
 }
 
-describe('AdminPanelPage — Phase B5 tabbed landing', () => {
+describe('AdminPanelPage — LEAN-P4d-1 5-tab Admin Control Surface', () => {
   it('renders the tabbed shell instead of the sidebar when dsRefresh is ON', async () => {
-    mockResponses();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
     expect(screen.queryByText('Sections')).not.toBeInTheDocument();
   });
 
-  it('exposes every section as a tab in the PageHeader strip', async () => {
-    mockResponses();
+  it('exposes the 5 Phase 18 tabs in the PageHeader strip', async () => {
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    expect(screen.getByRole('tab', { name: /User Accounts/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Dictionaries/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /General/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Integrations/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Notifications/i })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /System Settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Governance/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /People Config/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Feature Flags/i })).toBeInTheDocument();
   });
 
-  it('switching tabs updates the active section header', async () => {
-    mockResponses();
+  it('mounts SettingsAdminContent inline under the General tab (default)', async () => {
+    renderTabbed();
+    await waitFor(() => expect(screen.getByTestId('admin-tab-general')).toBeInTheDocument());
+    expect(screen.getByTestId('mock-settings-content')).toBeInTheDocument();
+  });
+
+  it('switching to Integrations mounts IntegrationsAdminContent inline', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    // accounts is the default; clicking System Settings should swap the heading.
-    await user.click(screen.getByRole('tab', { name: /System Settings/i }));
+    await user.click(screen.getByRole('tab', { name: /Integrations/i }));
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: /System Settings/i })).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-integrations')).toBeInTheDocument(),
     );
+    expect(screen.getByTestId('mock-integrations-content')).toBeInTheDocument();
   });
 
-  it('respects ?section=… in the URL on initial render', async () => {
-    mockResponses();
-    renderTabbed(['/admin?section=settings']);
+  it('switching to Governance mounts RolePermissions + BusinessAudit inline', async () => {
+    const user = userEvent.setup();
+    renderTabbed();
+    await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
+    await user.click(screen.getByRole('tab', { name: /Governance/i }));
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 2, name: /System Settings/i })).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-governance')).toBeInTheDocument(),
     );
+    expect(screen.getByTestId('mock-role-permissions-content')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-business-audit-content')).toBeInTheDocument();
+  });
+
+  it('switching to People Config mounts Dictionaries + OrgConfig inline', async () => {
+    const user = userEvent.setup();
+    renderTabbed();
+    await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
+    await user.click(screen.getByRole('tab', { name: /People Config/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-tab-people-config')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('mock-dictionaries-content')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-org-config-content')).toBeInTheDocument();
+  });
+
+  it('switching to Feature Flags mounts FeatureFlagsAdminContent inline', async () => {
+    const user = userEvent.setup();
+    renderTabbed();
+    await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
+    await user.click(screen.getByRole('tab', { name: /Feature Flags/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-tab-feature-flags')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('mock-feature-flags-content')).toBeInTheDocument();
+  });
+
+  it('respects ?tab=… in the URL on initial render', async () => {
+    renderTabbed(['/admin?tab=feature-flags']);
+    await waitFor(() =>
+      expect(screen.getByTestId('admin-tab-feature-flags')).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('heading', { level: 2, name: /Feature Flags/i })).toBeInTheDocument();
   });
 });

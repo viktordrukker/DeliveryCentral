@@ -20,7 +20,13 @@ import { StatusIndicator } from '@/components/integrations/StatusIndicator';
 import { SyncButton } from '@/components/integrations/SyncButton';
 import { Button } from '@/components/ds';
 
-export function IntegrationsAdminPage(): JSX.Element {
+/**
+ * Inline-mountable Integrations admin content. Renders provider health,
+ * sync controls, and remediation actions without PageContainer/PageHeader
+ * chrome so AdminPanelPage can mount it inside the Integrations tab under
+ * dsRefresh.
+ */
+export function IntegrationsAdminContent(): JSX.Element {
   const state = useIntegrationAdmin();
   const selectedStatus = state.selectedProvider
     ? state.statusByProvider[state.selectedProvider]
@@ -30,18 +36,7 @@ export function IntegrationsAdminPage(): JSX.Element {
     dsRefreshEnabled && state.selectedProvider === 'jira';
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        actions={
-          <Button as={Link} variant="secondary" to="/admin">
-            Back to admin panel
-          </Button>
-        }
-        eyebrow="Administration"
-        subtitle="Review provider health and trigger supported sync operations without exposing connection details or credentials."
-        title="Integrations"
-      />
-
+    <>
       {state.isLoading ? <LoadingState label="Loading integration status..." variant="skeleton" skeletonType="page" /> : null}
       {state.error ? <ErrorState description={state.error} /> : null}
       {state.successMessage ? (
@@ -227,6 +222,24 @@ export function IntegrationsAdminPage(): JSX.Element {
           </div>
         )
       ) : null}
+    </>
+  );
+}
+
+export function IntegrationsAdminPage(): JSX.Element {
+  return (
+    <PageContainer viewport>
+      <PageHeader
+        actions={
+          <Button as={Link} variant="secondary" to="/admin">
+            Back to admin panel
+          </Button>
+        }
+        eyebrow="Administration"
+        subtitle="Review provider health and trigger supported sync operations without exposing connection details or credentials."
+        title="Integrations"
+      />
+      <IntegrationsAdminContent />
     </PageContainer>
   );
 }
