@@ -1,5 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import {
+  fetchProjectPosition,
+  listProjectPositions,
+} from '@/lib/api/project-positions';
 
 import { useDrilldown } from '@/app/drilldown-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
@@ -50,11 +56,45 @@ function shouldShowMissingRateBanner(details: { approvalState: string; effective
 
 export function AssignmentDetailsPlaceholderPage(): JSX.Element {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { principal } = useAuth();
   const state = useAssignmentDetails(id);
   const { setCurrentLabel } = useDrilldown();
   const { setActions } = useTitleBarActions();
   const actorId = principal?.personId ?? '';
+
+  // Lean fallback: if the assignment lookup 404s, try to resolve the same id
+  // as a ProjectPosition (direct or via legacyAssignmentId) and navigate to
+  // the position-detail surface. Falls back to /staffing-desk if nothing matches.
+  useEffect(() => {
+    if (!state.notFound || !id) return;
+    let active = true;
+    (async () => {
+      try {
+        const pp = await fetchProjectPosition(id);
+        if (!active) return;
+        navigate(`/projects/${pp.projectId}/positions/${pp.id}`, { replace: true });
+      } catch {
+        try {
+          const { positions } = await listProjectPositions({ take: 500 });
+          if (!active) return;
+          const match = positions.find((p) => p.legacyAssignmentId === id);
+          if (match) {
+            navigate(`/projects/${match.projectId}/positions/${match.id}`, { replace: true });
+          } else {
+            toast.warning('Position not found for this id; showing staffing desk.');
+            navigate('/staffing-desk?view=table', { replace: true });
+          }
+        } catch {
+          if (!active) return;
+          navigate('/staffing-desk?view=table', { replace: true });
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [state.notFound, id, navigate]);
 
   const [amendAllocation, setAmendAllocation] = useState('');
   const [amendRole, setAmendRole] = useState('');
@@ -331,8 +371,8 @@ export function AssignmentDetailsPlaceholderPage(): JSX.Element {
       {state.notFound ? (
         <SectionCard>
           <EmptyState
-            description={`No assignment was found for ${id ?? 'the requested id'}.`}
-            title="Assignment not found"
+            description={`Looking for a ProjectPosition with this id… If nothing matches, you'll be sent to the staffing desk.`}
+            title="Resolving as position"
           />
         </SectionCard>
       ) : null}

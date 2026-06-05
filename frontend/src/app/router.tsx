@@ -122,6 +122,7 @@ function ProjectDashboardRedirect(): JSX.Element {
 }
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
+const CreatePositionPage = lazy(() => import('@/routes/staffing-desk/CreatePositionPage').then(m => ({ default: m.CreatePositionPage })));
 const ReportsPage = lazy(() => import('@/routes/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
 const ReportBuilderPage = lazy(() => import('@/routes/reports/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
@@ -349,10 +350,13 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><StaffingDeskPage /></LazyPage></RoleGuard>,
     path: 'staffing-desk',
   },
-  // LEAN-P2 exit-gate: legacy staffing-request surfaces redirect to the
-  // canonical staffing-desk and project-position detail flows.
-  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/new' },
-  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/:id' },
+  // Lean full-page flow for opening a new ProjectPosition. Replaces the
+  // legacy CreateStaffingRequestPage with a thin form that writes the
+  // canonical aggregate directly — no interim ProjectAssignment.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-requests/new' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-desk/positions/new' },
+  // /staffing-requests/:id keeps redirecting — position detail lives at /projects/:projectId/positions/:positionId.
+  { element: <Navigate to="/staffing-desk?view=table" replace />, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',
