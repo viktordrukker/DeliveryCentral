@@ -15,6 +15,7 @@ import type { ProjectDetails } from '@/lib/api/project-registry';
 import { useProjectDetails } from '@/features/projects/useProjectDetails';
 import { type ComputedRag, fetchComputedRag } from '@/lib/api/project-rag';
 import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-role-plan';
+import { type ProjectTimeToFill, fetchProjectTimeToFill } from '@/lib/api/project-time-to-fill';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { Button, Pct } from '@/components/ds';
@@ -92,6 +93,7 @@ export function ProjectDetailPage(): JSX.Element {
   // KPI strip data
   const [computedRag, setComputedRag] = useState<ComputedRag | null>(null);
   const [staffingSummary, setStaffingSummary] = useState<StaffingSummary | null>(null);
+  const [timeToFill, setTimeToFill] = useState<ProjectTimeToFill | null>(null);
   // V2-B.7 — header-driven add signals for the Plan sub-tabs (open their create forms).
   const [milestoneAddSignal, setMilestoneAddSignal] = useState(0);
   const [crAddSignal, setCrAddSignal] = useState(0);
@@ -116,6 +118,7 @@ export function ProjectDetailPage(): JSX.Element {
         try { const r = await fetchComputedRag(id); if (active) setComputedRag(r); } catch { /* optional */ }
       }
       try { const s = await fetchStaffingSummary(id); if (active) setStaffingSummary(s); } catch { /* optional */ }
+      try { const t = await fetchProjectTimeToFill(id); if (active) setTimeToFill(t); } catch { /* optional */ }
     })();
 
     return () => { active = false; };
@@ -165,6 +168,16 @@ export function ProjectDetailPage(): JSX.Element {
           style={{ borderLeft: `3px solid ${staffingSummary.fillRate >= 80 ? 'var(--color-status-active)' : staffingSummary.fillRate >= 50 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
           <span className="kpi-strip__value"><Pct value={staffingSummary.fillRate} /></span>
           <span className="kpi-strip__label">Fill Rate</span>
+        </Link>
+      ) : null}
+
+      {timeToFill && timeToFill.positionCount > 0 ? (
+        <Link className="kpi-strip__item" to={`/projects/${id ?? ''}/positions`}
+          style={{ borderLeft: `3px solid ${timeToFill.medianDays === null ? 'var(--color-status-neutral)' : timeToFill.medianDays <= 14 ? 'var(--color-status-active)' : timeToFill.medianDays <= 30 ? 'var(--color-status-warning)' : 'var(--color-status-danger)'}` }}>
+          <TipBalloon tip="Median days from a position opening to its first booking, across all positions on this project." arrow="left" />
+          <span className="kpi-strip__value">{timeToFill.medianDays === null ? '—' : `${Math.round(timeToFill.medianDays)}d`}</span>
+          <span className="kpi-strip__label">Time to Fill</span>
+          <span className="kpi-strip__context">{timeToFill.filledCount}/{timeToFill.positionCount} filled</span>
         </Link>
       ) : null}
 

@@ -53,6 +53,7 @@ import { ProjectDirectoryQueryService } from '../application/project-directory-q
 import { ProjectClosureReadinessService } from '../application/project-closure-readiness.service';
 import { ProjectHealthDto, ProjectHealthQueryService } from '../application/project-health-query.service';
 import { ProjectLifecycleConflictError } from '../application/project-lifecycle-conflict.error';
+import { ProjectTimeToFillDto, TimeToFillService } from '../application/time-to-fill.service';
 import { UpdateProjectService } from '../application/update-project.service';
 import { Project, ProjectStatus } from '../domain/entities/project.entity';
 
@@ -80,6 +81,7 @@ export class ProjectsController {
     private readonly updateProjectService: UpdateProjectService,
     private readonly projectHealthQueryService: ProjectHealthQueryService,
     private readonly closureReadinessService: ProjectClosureReadinessService,
+    private readonly timeToFillService: TimeToFillService,
   ) {}
 
   @Post()
@@ -416,6 +418,24 @@ export class ProjectsController {
     }
 
     return project;
+  }
+
+  @Get(':id/metrics/time-to-fill')
+  @RequireRoles(...STAFFING_ROLES)
+  @ApiOperation({
+    summary:
+      'LEAN-P4b-1 — per-position time-to-fill (OPENED → BOOKED) plus median across all positions',
+  })
+  @ApiOkResponse({ description: 'Time-to-fill metric for the project.' })
+  @ApiNotFoundResponse({ description: 'Project not found.' })
+  public async getProjectTimeToFill(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ProjectTimeToFillDto> {
+    const project = await this.getProjectByIdService.execute(id);
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+    return this.timeToFillService.execute(id);
   }
 
   @Get(':id/closure-readiness')
