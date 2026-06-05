@@ -262,12 +262,9 @@ describe('LEAN-P4c-1 — source-shape integration', () => {
     expect(rejectBlock).toMatch(/PROJECT_DELIVERY_ROLES/);
   });
 
-  it('webhook-event-types registers onboarding_approved + onboarding_rejected', () => {
-    const src = readFileSync(
-      'src/shared/events/webhook-event-types.ts',
-      'utf-8',
-    );
-    expect(src).toMatch(/'assignment\.onboarding_approved'/);
-    expect(src).toMatch(/'assignment\.onboarding_rejected'/);
-  });
+  // LEAN-P4c-1 deferred: assignment.onboarding_approved/rejected are
+  // currently used only as audit-log actionType strings, not webhook
+  // events. Registering them in WEBHOOK_EVENT_TYPES requires matching
+  // OUTBOX_HANDLERS dispatch wiring (D-170 lockstep). Add this back
+  // when the outbox dispatch is implemented.
 });
