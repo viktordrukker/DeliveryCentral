@@ -309,47 +309,6 @@ export class LeaveRequestsService {
     return this.toDto(updated);
   }
 
-  /**
-   * LEAN-P4-missing-11 — self-serve cancel of a PENDING leave request.
-   *
-   * Authorization: only the requester (record.personId === actorId) can
-   * cancel their own pending request. HR / managers should reject via the
-   * existing /reject endpoint. Returns the updated DTO with status =
-   * CANCELLED and releases the pending balance.
-   */
-  public async cancel(id: string, actorId: string): Promise<LeaveRequestDto> {
-    const record = await this.repository.findById(id);
-    if (!record) throw new NotFoundException('Leave request not found');
-    if (record.personId !== actorId) {
-      throw new ForbiddenException('You can only cancel your own leave requests.');
-    }
-    if (record.status !== 'PENDING') {
-      throw new ForbiddenException('Only pending requests can be cancelled.');
-    }
-
-    const updated = await this.repository.cancel(id, { actorId });
-
-    // Release the pending balance reservation the create() call put on hold.
-    const days = calculateLeaveDaysInclusive(record.startDate, record.endDate);
-    const year = record.startDate.getUTCFullYear();
-    await this.balanceService.ensureBalance(
-      record.personId,
-      year,
-      record.type as LeaveRequestType,
-      0,
-      actorId,
-    );
-    await this.balanceService.restorePending(
-      record.personId,
-      year,
-      record.type as LeaveRequestType,
-      days,
-      actorId,
-    );
-
-    return this.toDto(updated);
-  }
-
   private toDto(record: LeaveRequestRow): LeaveRequestDto {
     return {
       createdAt: record.createdAt.toISOString(),

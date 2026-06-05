@@ -107,7 +107,8 @@ export async function previewLeave(input: {
   return httpGet<LeaveImpactPreviewDto>(`/leave-requests/preview?${query.toString()}`);
 }
 
-/** LEAN-P4-missing-11 — cancel an own PENDING leave request. */
+/** LEAN-P4-missing-11 — cancel an own PENDING leave request via the canonical
+ *  cancelByEmployee path added by LEAN-P4-missing-12 (#532). */
 export async function cancelLeaveRequest(id: string): Promise<LeaveRequestDto> {
-  return httpDelete<LeaveRequestDto>(`/leave-requests/${id}`);
+  return httpPost<LeaveRequestDto>(`/leave-requests/${id}/cancel`, {});
 }
