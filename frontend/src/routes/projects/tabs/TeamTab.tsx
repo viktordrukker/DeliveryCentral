@@ -123,8 +123,9 @@ export function TeamTab({ project, projectId, reload }: TeamTabProps): JSX.Eleme
       setAssignTeamValues({ actorId: '', allocationPercent: '100', endDate: '', note: '', staffingRole: '', startDate: '', teamId: '' });
       setAssignTeamErrors({});
       await reload();
-      // Reload assignments
-      const fresh = await fetchAssignments({ projectId });
+      // Reload assignments via the canonical project-positions surface
+      // (LEAN-P2 exit-gate — legacy fetchAssignments retired).
+      const fresh = await listProjectPositions({ projectId }).then(mapListResponseToDirectory);
       setTeamAssignments(fresh.items);
     } catch (error: unknown) {
       setActionError(error instanceof Error ? error.message : 'Failed to assign team.');
