@@ -165,7 +165,7 @@ export function StaffingDeskPage(): JSX.Element {
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
-      {!state.isLoading && !state.error && filters.view === 'table' && (
+      {!state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
         <StaffingDeskTable
           items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
           onRowClick={setSelectedRow}
