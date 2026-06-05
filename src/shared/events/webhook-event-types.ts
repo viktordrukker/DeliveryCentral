@@ -71,6 +71,11 @@ export const WEBHOOK_EVENT_TYPES = [
   // Timesheet
   'timesheet.approved',
   'timesheet.rejected',
+  // Leave (LEAN-P4-missing-12)
+  'leave.submitted',
+  'leave.approved',
+  'leave.rejected',
+  'leave.cancelled_by_employee',
   // Person
   'employee.terminated',
   'employee.deactivated',
@@ -131,6 +136,10 @@ export const WEBHOOK_EVENT_DESCRIPTIONS: Record<WebhookEventType, string> = {
   'case.rejected': 'A CaseRecord was rejected.',
   'timesheet.approved': 'A timesheet week was approved.',
   'timesheet.rejected': 'A timesheet week was rejected.',
+  'leave.submitted': 'An employee submitted a leave request awaiting manager approval.',
+  'leave.approved': 'A leave request was approved by a manager / HR.',
+  'leave.rejected': 'A leave request was rejected by a manager / HR.',
+  'leave.cancelled_by_employee': 'An employee cancelled their own pending leave request.',
   'employee.terminated': 'A Person was terminated (TERMINATE EmploymentEvent).',
   'employee.deactivated': 'A Person was deactivated (status moved to INACTIVE).',
   'person.release.requested': 'A person-release approval flow was opened.',
@@ -155,7 +164,7 @@ export function isWebhookEventType(value: unknown): value is WebhookEventType {
 export interface WebhookEventTypeDescriptor {
   eventType: WebhookEventType;
   description: string;
-  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'person' | 'position' | 'scenario' | 'integration' | 'nudge';
+  domain: 'assignment' | 'project' | 'staffing_request' | 'case' | 'timesheet' | 'leave' | 'person' | 'position' | 'scenario' | 'integration' | 'nudge';
 }
 
 function domainOf(eventType: WebhookEventType): WebhookEventTypeDescriptor['domain'] {

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { LeaveImpactPreviewService } from './application/leave-impact-preview.service';
@@ -10,6 +12,7 @@ import { PrismaLeaveRequestRepository } from './infrastructure/repositories/pris
 import { LeaveRequestsController } from './presentation/leave-requests.controller';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [LeaveRequestsController],
   exports: [LeaveRequestsService, LeaveBalanceService, LeaveImpactPreviewService],
   providers: [
@@ -21,10 +24,15 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
       useFactory: (prisma: PrismaService) => new PrismaLeaveRequestRepository(prisma),
     },
     {
-      inject: [LEAVE_REQUEST_REPOSITORY, LeaveBalanceService],
+      // LEAN-P4-missing-12 — translator injected so create/approve/reject/
+      // cancel paths fan out leave.* events to email + in-app + outbox.
+      inject: [LEAVE_REQUEST_REPOSITORY, LeaveBalanceService, NotificationEventTranslatorService],
       provide: LeaveRequestsService,
-      useFactory: (repo: PrismaLeaveRequestRepository, balance: LeaveBalanceService) =>
-        new LeaveRequestsService(repo, balance),
+      useFactory: (
+        repo: PrismaLeaveRequestRepository,
+        balance: LeaveBalanceService,
+        translator: NotificationEventTranslatorService,
+      ) => new LeaveRequestsService(repo, balance, translator),
     },
     LeaveBalanceService,
     LeaveImpactPreviewService,

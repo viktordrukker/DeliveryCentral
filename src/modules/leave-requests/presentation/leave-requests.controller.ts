@@ -165,6 +165,19 @@ export class LeaveRequestsController {
     return this.service.reject(id, reviewerId, body.reviewComment);
   }
 
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel own pending leave request (employee-initiated)' })
+  @ApiOkResponse({ description: 'Cancelled leave request' })
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  public async cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { principal?: RequestPrincipal },
+  ): Promise<LeaveRequestDto> {
+    const employeeId = this.resolvePersonId(req);
+    return this.service.cancelByEmployee(id, employeeId);
+  }
+
   private resolvePersonId(req: { principal?: RequestPrincipal }): string {
     const id = req.principal?.personId ?? req.principal?.userId;
     if (!id) {

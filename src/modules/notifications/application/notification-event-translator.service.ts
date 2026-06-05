@@ -113,6 +113,11 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     // Timesheet
     { eventName: 'timesheet.approved', dispatch: 'dispatchTimesheetApproved' },
     { eventName: 'timesheet.rejected', dispatch: 'dispatchTimesheetRejected' },
+    // Leave (LEAN-P4-missing-12)
+    { eventName: 'leave.submitted', dispatch: 'dispatchLeaveSubmitted' },
+    { eventName: 'leave.approved', dispatch: 'dispatchLeaveApproved' },
+    { eventName: 'leave.rejected', dispatch: 'dispatchLeaveRejected' },
+    { eventName: 'leave.cancelled_by_employee', dispatch: 'dispatchLeaveCancelledByEmployee' },
     // Person
     { eventName: 'employee.terminated', dispatch: 'dispatchEmployeeTerminated' },
     { eventName: 'employee.deactivated', dispatch: 'dispatchEmployeeDeactivated' },
@@ -943,6 +948,167 @@ export class NotificationEventTranslatorService implements OnModuleInit {
       payload.reason,
       '/timesheets',
     );
+  }
+
+  // ── Leave Events (LEAN-P4-missing-12) ─────────────────────────────────
+  //
+  // Lifecycle:
+  //   submit                → leave.submitted             (recipient: manager)
+  //   approve               → leave.approved              (recipient: employee)
+  //   reject                → leave.rejected              (recipient: employee)
+  //   cancel-by-employee    → leave.cancelled_by_employee (recipient: manager)
+  //
+  // Manager-id resolution is the caller's responsibility — the translator
+  // accepts an optional `managerPersonId` so the dispatch path can fan
+  // out the in-app notification when present, and stay silent (email only)
+  // when the bank has no primary manager configured for the employee.
+
+  public async leaveSubmitted(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    managerPersonId?: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'leave.submitted',
+      aggregateType: 'LeaveRequest',
+      aggregateId: payload.leaveRequestId,
+      payload,
+      dispatch: () => this.dispatchLeaveSubmitted(payload),
+    });
+  }
+
+  private async dispatchLeaveSubmitted(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    managerPersonId?: string;
+  }): Promise<void> {
+    await this.sendEmail('leave.submitted', 'leave-submitted-email', payload);
+    if (payload.managerPersonId) {
+      this.createInAppNotification(
+        payload.managerPersonId,
+        'leave.submitted',
+        `Leave request awaiting your approval (${payload.startDate} → ${payload.endDate})`,
+        undefined,
+        `/leave-requests/${payload.leaveRequestId}`,
+      );
+    }
+  }
+
+  public async leaveApproved(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    reviewerPersonId: string;
+    reviewComment?: string | null;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'leave.approved',
+      aggregateType: 'LeaveRequest',
+      aggregateId: payload.leaveRequestId,
+      payload,
+      dispatch: () => this.dispatchLeaveApproved(payload),
+    });
+  }
+
+  private async dispatchLeaveApproved(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    reviewerPersonId: string;
+    reviewComment?: string | null;
+  }): Promise<void> {
+    await this.sendEmail('leave.approved', 'leave-approved-email', payload);
+    this.createInAppNotification(
+      payload.personId,
+      'leave.approved',
+      `Leave approved (${payload.startDate} → ${payload.endDate})`,
+      payload.reviewComment ?? undefined,
+      `/leave-requests/${payload.leaveRequestId}`,
+    );
+  }
+
+  public async leaveRejected(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    reviewerPersonId: string;
+    reviewComment?: string | null;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'leave.rejected',
+      aggregateType: 'LeaveRequest',
+      aggregateId: payload.leaveRequestId,
+      payload,
+      dispatch: () => this.dispatchLeaveRejected(payload),
+    });
+  }
+
+  private async dispatchLeaveRejected(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    reviewerPersonId: string;
+    reviewComment?: string | null;
+  }): Promise<void> {
+    await this.sendEmail('leave.rejected', 'leave-rejected-email', payload);
+    this.createInAppNotification(
+      payload.personId,
+      'leave.rejected',
+      `Leave rejected (${payload.startDate} → ${payload.endDate})`,
+      payload.reviewComment ?? undefined,
+      `/leave-requests/${payload.leaveRequestId}`,
+    );
+  }
+
+  public async leaveCancelledByEmployee(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    managerPersonId?: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'leave.cancelled_by_employee',
+      aggregateType: 'LeaveRequest',
+      aggregateId: payload.leaveRequestId,
+      payload,
+      dispatch: () => this.dispatchLeaveCancelledByEmployee(payload),
+    });
+  }
+
+  private async dispatchLeaveCancelledByEmployee(payload: {
+    leaveRequestId: string;
+    personId: string;
+    startDate: string;
+    endDate: string;
+    type: string;
+    managerPersonId?: string;
+  }): Promise<void> {
+    await this.sendEmail('leave.cancelled_by_employee', 'leave-cancelled-by-employee-email', payload);
+    if (payload.managerPersonId) {
+      this.createInAppNotification(
+        payload.managerPersonId,
+        'leave.cancelled_by_employee',
+        `Leave cancelled by employee (${payload.startDate} → ${payload.endDate})`,
+        undefined,
+        `/leave-requests/${payload.leaveRequestId}`,
+      );
+    }
   }
 
   // ── Staffing Request Events ───────────────────────────────────────────

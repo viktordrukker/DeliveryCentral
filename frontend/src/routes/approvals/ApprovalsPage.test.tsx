@@ -155,4 +155,34 @@ describe('ApprovalsPage', () => {
     await user.click(screen.getByTestId('approvals-refresh'));
     await waitFor(() => expect(fetchUnifiedApprovals).toHaveBeenCalled());
   });
+
+  // LEAN-P4c-3 — HR (and authorized managers) decide leave from /approvals
+  // instead of navigating to /leave-requests separately.
+  it('renders leave items and refetches with the leave source when chip clicked', async () => {
+    const leaveItem: ApprovalQueueItemDto = {
+      id: 'lr-1',
+      source: 'leave',
+      title: 'Leave: ANNUAL 2026-06-15…2026-06-20',
+      submittedBy: { personId: 'p9', displayName: 'Ethan Brooks' },
+      submittedAt: '2026-06-01T09:00:00Z',
+      slaDueAt: null,
+      slaBreachedAt: null,
+      slaStage: null,
+      ageHours: 24,
+      href: '/leave-requests/lr-1',
+      meta: { type: 'ANNUAL' },
+    };
+    fetchUnifiedApprovals.mockResolvedValue(response([leaveItem]));
+    const user = userEvent.setup();
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
+    expect(screen.getByText('Leave: ANNUAL 2026-06-15…2026-06-20')).toBeInTheDocument();
+    const openLink = screen.getByRole('link', { name: /Open/ });
+    expect(openLink.getAttribute('href')).toBe('/leave-requests/lr-1');
+    fetchUnifiedApprovals.mockClear();
+    await user.click(screen.getByRole('button', { name: /Leave · 1/ }));
+    await waitFor(() =>
+      expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['leave'], pageSize: 100 }),
+    );
+  });
 });
