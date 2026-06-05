@@ -61,3 +61,27 @@ export async function fetchDirectorDashboard(
 ): Promise<DirectorDashboardResponse> {
   return fetchDashboardEndpoint<DirectorDashboardResponse>('/dashboard/director', { asOf });
 }
+
+/** LEAN-P4-missing-5 — per-OrgUnit Org Health metrics. */
+export interface OrgHealthUnit {
+  orgUnitId: string;
+  orgUnitCode: string;
+  orgUnitName: string;
+  headcount: number;
+  staffedCount: number;
+  benchSize: number;
+  unfillRatePct: number;
+}
+
+export interface OrgHealthResponse {
+  asOf: string;
+  totalHeadcount: number;
+  totalBenchSize: number;
+  portfolioUnfillRatePct: number;
+  units: OrgHealthUnit[];
+}
+
+export async function fetchDirectorOrgHealth(asOf?: string): Promise<OrgHealthResponse> {
+  const qs = asOf ? `?asOf=${encodeURIComponent(asOf)}` : '';
+  return httpGet<OrgHealthResponse>(`/dashboards/director/org-health${qs}`);
+}

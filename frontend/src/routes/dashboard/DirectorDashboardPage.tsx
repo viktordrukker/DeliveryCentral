@@ -40,6 +40,7 @@ import { useDirectorDashboard } from '@/features/dashboard/useDirectorDashboard'
 import { exportToXlsx } from '@/lib/export';
 import { type PortfolioHeatmapResponse, type PortfolioSummaryResponse, type AvailablePoolPerson, type PortfolioFinanceSummary, fetchPortfolioHeatmap, fetchPortfolioSummary, fetchAvailablePool, fetchPortfolioFinance } from '@/lib/api/portfolio-dashboard';
 import { type DirectorSlaSummary, fetchDirectorSlaSummary } from '@/lib/api/dashboard-exec-sla';
+import { type OrgHealthResponse, fetchDirectorOrgHealth } from '@/lib/api/dashboard-director';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchProjectHealthBatch, type ProjectHealthDto } from '@/lib/api/project-health';
 import { Button, DataView, Pct, Table, type Column } from '@/components/ds';
@@ -138,6 +139,16 @@ export function DirectorDashboardPage(): JSX.Element {
     fetchDirectorSlaSummary()
       .then((data) => { if (active) setSlaSummary(data); })
       .catch(() => { if (active) setSlaSummary(null); });
+    return () => { active = false; };
+  }, []);
+
+  // LEAN-P4-missing-5 — per-OrgUnit headcount + bench + unfill rate.
+  const [orgHealth, setOrgHealth] = useState<OrgHealthResponse | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetchDirectorOrgHealth()
+      .then((data) => { if (active) setOrgHealth(data); })
+      .catch(() => { if (active) setOrgHealth(null); });
     return () => { active = false; };
   }, []);
 
@@ -475,6 +486,77 @@ export function DirectorDashboardPage(): JSX.Element {
           </div>
 
           {/* Charts section moved above heatmap */}
+
+          {/* ═══ ORG HEALTH: headcount + bench + unfill rate by org unit ═══ */}
+          <SectionCard
+            title={`Org Health by Unit${orgHealth ? ` · ${orgHealth.totalHeadcount} HC · ${orgHealth.totalBenchSize} bench (${orgHealth.portfolioUnfillRatePct}%)` : ''}`}
+            collapsible
+          >
+            {!orgHealth ? (
+              <LoadingState variant="skeleton" skeletonType="table" />
+            ) : orgHealth.units.length === 0 ? (
+              <EmptyState
+                description="No active org units yet. Create one to see headcount and bench metrics."
+                title="No org units"
+                action={{ href: '/admin/organization', label: 'Manage organization' }}
+              />
+            ) : (
+              <div data-testid="director-org-health-section">
+                <Table
+                  variant="compact"
+                  columns={[
+                    {
+                      key: 'unit',
+                      title: 'Org Unit',
+                      getValue: (u) => u.orgUnitName,
+                      render: (u) => (
+                        <span>
+                          <span style={{ fontWeight: 500 }}>{u.orgUnitName}</span>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'var(--space-2)' }}>
+                            {u.orgUnitCode}
+                          </span>
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'headcount',
+                      title: 'Headcount',
+                      align: 'right',
+                      getValue: (u) => u.headcount,
+                      render: (u) => <span style={NUM}>{u.headcount}</span>,
+                    },
+                    {
+                      key: 'staffed',
+                      title: 'Staffed',
+                      align: 'right',
+                      getValue: (u) => u.staffedCount,
+                      render: (u) => <span style={NUM}>{u.staffedCount}</span>,
+                    },
+                    {
+                      key: 'bench',
+                      title: 'Bench',
+                      align: 'right',
+                      getValue: (u) => u.benchSize,
+                      render: (u) => <span style={{ ...NUM, color: u.benchSize > 0 ? 'var(--color-status-warning)' : 'var(--color-text-muted)' }}>{u.benchSize}</span>,
+                    },
+                    {
+                      key: 'unfill',
+                      title: 'Unfill %',
+                      align: 'right',
+                      getValue: (u) => u.unfillRatePct,
+                      render: (u) => (
+                        <span style={{ ...NUM, fontWeight: 600, color: tc(u.unfillRatePct, 20, 40) }}>
+                          <Pct value={u.unfillRatePct} />
+                        </span>
+                      ),
+                    },
+                  ] as Column<OrgHealthResponse['units'][number]>[]}
+                  rows={orgHealth.units}
+                  getRowKey={(u) => u.orgUnitId}
+                />
+              </div>
+            )}
+          </SectionCard>
 
           {/* ═══ RECENT ACTIVITY RAIL ═══ */}
           <RecentActivityRail role="director" />
