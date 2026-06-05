@@ -17,6 +17,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/lib/format-date';
 import { useAdminPanel } from '@/features/admin/useAdminPanel';
 import {
@@ -27,7 +28,7 @@ import {
   updateAdminAccount,
 } from '@/lib/api/admin';
 import { formatFeatureFlag } from '@/lib/labels';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, FormField, Input, Table, type Column } from '@/components/ds';
 import { DictionariesAdminContent } from './DictionariesPage';
 import { SettingsAdminContent } from './SettingsPage';
 import { IntegrationsAdminContent } from './IntegrationsAdminPage';
@@ -496,9 +497,11 @@ function AdminAccountsSection({
                 { key: 'email', title: 'Email', getValue: (a) => a.email, render: (a) => a.email },
                 { key: 'roles', title: 'Roles', getValue: (a) => a.roles.join(', '), render: (a) => a.roles.join(', ') },
                 { key: 'status', title: 'Status', getValue: (a) => a.isEnabled ? 'Enabled' : 'Disabled', render: (a) => (
-                  <span style={{ color: a.isEnabled ? 'var(--color-status-active)' : 'var(--color-status-danger)', fontWeight: 600 }}>
-                    {a.isEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
+                  <StatusBadge
+                    label={a.isEnabled ? 'Enabled' : 'Disabled'}
+                    tone={a.isEnabled ? 'active' : 'danger'}
+                    variant="text"
+                  />
                 ) },
                 { key: 'actions', title: 'Actions', render: (a) => (
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -536,65 +539,67 @@ function AdminAccountsSection({
       </AdminSectionCard>
 
       <SectionCard title="Create Local Account">
-        <p style={{ marginBottom: '16px' }}>
+        <p className="admin-section-card__description">
           Creates a local authentication account linked to an existing person record.
           Use person IDs from the People directory.
         </p>
         {accountForm.error ? <ErrorState description={accountForm.error} /> : null}
         {accountForm.success ? <div className="success-banner">{accountForm.success}</div> : null}
         <form
+          className="entity-form"
           onSubmit={(e) => { void onCreateAccount(e); }}
-          style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '480px' }}
+          style={{ maxWidth: '480px' }}
         >
-          <label>
-            <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Person ID</span>
-            <input
-              className="input"
-              onChange={(e) => { onFormChange((prev) => ({ ...prev, personId: e.target.value })); }}
-              placeholder="UUID of the person record"
-              required
-              type="text"
-              value={accountForm.personId}
-            />
-          </label>
-          <label>
-            <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Email</span>
-            <input
-              className="input"
-              onChange={(e) => { onFormChange((prev) => ({ ...prev, email: e.target.value })); }}
-              placeholder="login@example.com"
-              required
-              type="email"
-              value={accountForm.email}
-            />
-          </label>
-          <label>
-            <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Password</span>
-            <input
-              className="input"
-              onChange={(e) => { onFormChange((prev) => ({ ...prev, password: e.target.value })); }}
-              placeholder="Minimum 8 characters"
-              required
-              type="password"
-              value={accountForm.password}
-            />
-          </label>
-          <label>
-            <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-              Roles (comma-separated)
-            </span>
-            <input
-              className="input"
-              onChange={(e) => { onFormChange((prev) => ({ ...prev, roles: e.target.value })); }}
-              placeholder="delivery_manager, admin, hr_manager"
-              required
-              type="text"
-              value={accountForm.roles}
-            />
-            <span style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-              Available: admin, delivery_manager, project_manager, resource_manager, hr_manager, director, employee
-            </span>
-          </label>
+          <FormField label="Person ID" required>
+            {(props) => (
+              <Input
+                {...props}
+                onChange={(e) => { onFormChange((prev) => ({ ...prev, personId: e.target.value })); }}
+                placeholder="UUID of the person record"
+                required
+                value={accountForm.personId}
+              />
+            )}
+          </FormField>
+          <FormField label="Email" required>
+            {(props) => (
+              <Input
+                {...props}
+                onChange={(e) => { onFormChange((prev) => ({ ...prev, email: e.target.value })); }}
+                placeholder="login@example.com"
+                required
+                type="email"
+                value={accountForm.email}
+              />
+            )}
+          </FormField>
+          <FormField label="Password" required>
+            {(props) => (
+              <Input
+                {...props}
+                onChange={(e) => { onFormChange((prev) => ({ ...prev, password: e.target.value })); }}
+                placeholder="Minimum 8 characters"
+                required
+                type="password"
+                value={accountForm.password}
+              />
+            )}
+          </FormField>
+          <FormField
+            hint="Available: admin, delivery_manager, project_manager, resource_manager, hr_manager, director, employee"
+            label="Roles (comma-separated)"
+            required
+          >
+            {(props) => (
+              <Input
+                {...props}
+                onChange={(e) => { onFormChange((prev) => ({ ...prev, roles: e.target.value })); }}
+                placeholder="delivery_manager, admin, hr_manager"
+                required
+                value={accountForm.roles}
+              />
+            )}
+          </FormField>
           <div>
             <Button variant="primary" disabled={accountForm.isSubmitting} type="submit">
               {accountForm.isSubmitting ? 'Creating account...' : 'Create account'}
