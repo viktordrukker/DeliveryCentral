@@ -76,6 +76,18 @@ describe('position-to-assignment-mapper', () => {
     expect(booked.canEnd).toBe(true);
   });
 
+  it('passes createdAt through to the directory item (LEAN-P4-missing-2)', () => {
+    const item = mapPositionToDirectoryItem(
+      buildPosition({ createdAt: '2026-06-01T10:00:00.000Z' }),
+    );
+    expect(item.createdAt).toBe('2026-06-01T10:00:00.000Z');
+  });
+
+  it('defaults createdAt to null when the position DTO omits it', () => {
+    const item = mapPositionToDirectoryItem(buildPosition());
+    expect(item.createdAt).toBeNull();
+  });
+
   it('flattens a position into ProjectAssignmentResponse envelope', () => {
     const response = mapPositionToAssignmentResponse(buildPosition());
     expect(response.id).toBe('pos-1');

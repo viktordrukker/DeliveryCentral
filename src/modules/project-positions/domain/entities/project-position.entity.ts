@@ -47,6 +47,7 @@ interface ProjectPositionProps {
   requestedByPersonId?: string;
   createdByPersonId?: string;
   updatedByPersonId?: string;
+  createdAt?: Date;
   version?: number;
 }
 
@@ -228,5 +229,15 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
 
   public get createdByPersonId(): string | undefined {
     return this.props.createdByPersonId;
+  }
+
+  /**
+   * When the demand record was opened. Drives the FE "Time in queue" column
+   * on the approval surfaces (LEAN-P4-missing-2). Populated by the mapper
+   * from the underlying Prisma row; absent on freshly-`create()`d aggregates
+   * that haven't been persisted yet.
+   */
+  public get createdAt(): Date | undefined {
+    return this.props.createdAt;
   }
 }

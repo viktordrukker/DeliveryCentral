@@ -18,6 +18,9 @@ export class ProjectPositionResponseDto {
   @ApiProperty() version!: number;
   @ApiProperty({ required: false }) createdByPersonId?: string;
   @ApiProperty({ required: false }) updatedByPersonId?: string;
+  // LEAN-P4-missing-2 — ISO timestamp the demand record was opened. Drives
+  // the "Time in queue" column on the FE approval surfaces.
+  @ApiProperty({ required: false }) createdAt?: string;
 
   public static from(position: ProjectPosition): ProjectPositionResponseDto {
     return {
@@ -34,6 +37,7 @@ export class ProjectPositionResponseDto {
       version: position.version,
       createdByPersonId: position.createdByPersonId,
       updatedByPersonId: position.updatedByPersonId,
+      createdAt: position.createdAt?.toISOString(),
     };
   }
 }

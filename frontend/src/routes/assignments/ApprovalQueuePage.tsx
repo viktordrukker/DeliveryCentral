@@ -47,6 +47,35 @@ function rowTone(item: AssignmentDirectoryItem): 'danger' | 'warning' | undefine
   return undefined;
 }
 
+// LEAN-P4-missing-2 — format an elapsed millisecond duration as "Xd Yh" or
+// "Yh Zm". Falls back to "—" when no timestamp is known. Mirrors the brief
+// style PMs already read in dashboards (no relative "ago" suffix because the
+// column header already names the dimension).
+function formatTimeInQueue(now: Date, createdAt: string | null | undefined): string {
+  if (!createdAt) return '—';
+  const created = new Date(createdAt);
+  const ms = now.getTime() - created.getTime();
+  if (!Number.isFinite(ms) || ms < 0) return '—';
+  const totalMinutes = Math.floor(ms / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+// LEAN-P4-missing-2 — threshold-based color for the "Time in queue" column.
+// Green ≤24h, amber ≤72h, red >72h. Returns a CSS variable, never a raw hex.
+function timeInQueueColor(now: Date, createdAt: string | null | undefined): string {
+  if (!createdAt) return 'var(--color-text-muted)';
+  const ms = now.getTime() - new Date(createdAt).getTime();
+  const hours = ms / (1000 * 60 * 60);
+  if (hours > 72) return 'var(--color-status-danger)';
+  if (hours > 24) return 'var(--color-status-warning)';
+  return 'var(--color-status-active)';
+}
+
 export function ApprovalQueuePage(): JSX.Element {
   const navigate = useNavigate();
   const { principal, isLoading: authLoading } = useAuth();
@@ -76,6 +105,7 @@ export function ApprovalQueuePage(): JSX.Element {
       { key: 'allocationPercent', label: 'Allocation %', accessor: (r) => r.allocationPercent },
       { key: 'slaDueAt', label: 'SLA due', accessor: (r) => r.slaDueAt ?? '' },
       { key: 'slaBreachedAt', label: 'SLA breached', accessor: (r) => r.slaBreachedAt ?? '' },
+      { key: 'createdAt', label: 'Opened at', accessor: (r) => r.createdAt ?? '' },
     ],
     [],
   );
@@ -150,6 +180,17 @@ export function ApprovalQueuePage(): JSX.Element {
             : 'var(--color-text)';
           return <span style={{ color }}>{formatDue(now, row.slaDueAt)}</span>;
         },
+      },
+      {
+        key: 'timeInQueue',
+        title: 'Time in queue',
+        width: 110,
+        cellStyle: NUM,
+        render: (row) => (
+          <span style={{ color: timeInQueueColor(now, row.createdAt) }}>
+            {formatTimeInQueue(now, row.createdAt)}
+          </span>
+        ),
       },
       {
         key: 'allocation',

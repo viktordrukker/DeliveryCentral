@@ -38,6 +38,7 @@ export class ProjectPositionPrismaMapper {
         requestedByPersonId: row.requestedByPersonId ?? undefined,
         createdByPersonId: row.createdByPersonId ?? undefined,
         updatedByPersonId: row.updatedByPersonId ?? undefined,
+        createdAt: row.createdAt,
         version: row.version,
       },
       PositionId.from(row.id),

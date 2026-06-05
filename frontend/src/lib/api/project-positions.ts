@@ -55,6 +55,10 @@ export interface ProjectPosition {
   version: number;
   createdByPersonId?: string;
   updatedByPersonId?: string;
+  // LEAN-P4-missing-2 — ISO timestamp the position was opened. Drives the
+  // "Time in queue" column on the approval queue. Optional on the wire
+  // because legacy responses pre-dating the DTO addition omit it.
+  createdAt?: string;
   // Migration provenance — populated by the Sprint 2 backfill. Used by
   // forensic queries during the legacy contract migration; never edited
   // from the FE.

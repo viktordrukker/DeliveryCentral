@@ -100,6 +100,7 @@ export function mapPositionToDirectoryItem(position: ProjectPosition): Assignmen
     slaDueAt: null,
     slaBreachedAt: null,
     requiresDirectorApproval: false,
+    createdAt: position.createdAt ?? null,
   };
 }
 

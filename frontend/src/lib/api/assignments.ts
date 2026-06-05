@@ -18,6 +18,10 @@ export interface AssignmentDirectoryItem {
   slaDueAt?: string | null;
   slaBreachedAt?: string | null;
   requiresDirectorApproval?: boolean;
+  // LEAN-P4-missing-2 — when the underlying demand was opened. Used by the
+  // approval-queue page to render a "Time in queue" column with threshold
+  // colors (green ≤24h, amber ≤72h, red >72h).
+  createdAt?: string | null;
 }
 
 export interface AssignmentDirectoryResponse {

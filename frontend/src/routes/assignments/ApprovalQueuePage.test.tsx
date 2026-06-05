@@ -15,6 +15,11 @@ vi.mock('@/app/auth-context', () => ({
   }),
 }));
 
+const NOW = new Date('2026-06-05T12:00:00.000Z');
+const FRESH_CREATED = new Date(NOW.getTime() - 3 * 60 * 60 * 1000).toISOString(); // 3h
+const STALE_CREATED = new Date(NOW.getTime() - 48 * 60 * 60 * 1000).toISOString(); // 48h
+const BREACH_CREATED = new Date(NOW.getTime() - 96 * 60 * 60 * 1000).toISOString(); // 96h
+
 vi.mock('@/features/assignments/useApprovalQueue', () => ({
   useApprovalQueue: () => ({
     items: [
@@ -27,9 +32,32 @@ vi.mock('@/features/assignments/useApprovalQueue', () => ({
         endDate: null,
         approvalState: 'BOOKED',
         allocationPercent: 80,
+        createdAt: FRESH_CREATED,
+      },
+      {
+        id: 'a-2',
+        person: { id: 'p-2', displayName: 'Bob' },
+        project: { id: 'pr-2', displayName: 'Borealis' },
+        staffingRole: 'Engineer',
+        startDate: '2026-01-01',
+        endDate: null,
+        approvalState: 'PROPOSED',
+        allocationPercent: 50,
+        createdAt: STALE_CREATED,
+      },
+      {
+        id: 'a-3',
+        person: { id: 'p-3', displayName: 'Carol' },
+        project: { id: 'pr-3', displayName: 'Cygnus' },
+        staffingRole: 'Engineer',
+        startDate: '2026-01-01',
+        endDate: null,
+        approvalState: 'PROPOSED',
+        allocationPercent: 50,
+        createdAt: BREACH_CREATED,
       },
     ],
-    totalCount: 1,
+    totalCount: 3,
     isLoading: false,
     error: null,
     refresh: vi.fn(),
@@ -42,6 +70,15 @@ vi.mock('@/app/title-bar-context', () => ({
 }));
 
 describe('ApprovalQueuePage — Export retrofit (HD-8 chunk 8.5)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders the title-bar Export button alongside scope filters', async () => {
     render(
       <MemoryRouter>
@@ -60,5 +97,34 @@ describe('ApprovalQueuePage — Export retrofit (HD-8 chunk 8.5)', () => {
 
     expect(screen.getByRole('button', { name: /Export/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /All/i })).toBeInTheDocument();
+  });
+
+  // LEAN-P4-missing-2 — column render + threshold colors.
+  it('renders the Time in queue column with threshold-coloured cells', async () => {
+    render(
+      <MemoryRouter>
+        <ApprovalQueuePage />
+      </MemoryRouter>,
+    );
+
+    // Column header is present once the table renders.
+    await waitFor(() => {
+      expect(screen.getByText(/Time in queue/i)).toBeInTheDocument();
+    });
+
+    // Fresh (3h) → "3h 0m" in active colour.
+    const fresh = screen.getByText(/^3h 0m$/);
+    expect(fresh).toBeInTheDocument();
+    expect(fresh.getAttribute('style')).toContain('var(--color-status-active)');
+
+    // Stale (48h) → "2d 0h" in warning colour (>24h, ≤72h).
+    const stale = screen.getByText(/^2d 0h$/);
+    expect(stale).toBeInTheDocument();
+    expect(stale.getAttribute('style')).toContain('var(--color-status-warning)');
+
+    // Breach (96h) → "4d 0h" in danger colour (>72h).
+    const breach = screen.getByText(/^4d 0h$/);
+    expect(breach).toBeInTheDocument();
+    expect(breach.getAttribute('style')).toContain('var(--color-status-danger)');
   });
 });
