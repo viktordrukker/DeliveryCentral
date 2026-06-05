@@ -10,7 +10,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
-import { Button, DescriptionList, Pct, Table, type Column } from '@/components/ds';
+import { Button, DescriptionList, Pct, Table, WorkflowStages, type Column, type WorkflowStage, type WorkflowStageStatus } from '@/components/ds';
 import {
   type PositionCandidate,
   type PositionFillStatus,
@@ -40,8 +40,67 @@ const STATUS_TONE: Record<PositionFillStatus, StatusTone> = {
 // Positions still seeking a fill — Propose is meaningful here.
 const PROPOSABLE: ReadonlySet<PositionFillStatus> = new Set(['DRAFT', 'OPEN']);
 
+// Canonical lifecycle order for the workflow visualization. ON_HOLD and
+// RELEASED are terminal/branch states and are not part of the linear flow.
+const LIFECYCLE_ORDER: PositionFillStatus[] = [
+  'DRAFT',
+  'OPEN',
+  'PROPOSED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+];
+
+const LIFECYCLE_DESCRIPTIONS: Record<PositionFillStatus, string> = {
+  DRAFT: 'Position drafted, not yet open to candidates.',
+  OPEN: 'Position is open and accepting candidate proposals.',
+  PROPOSED: 'Candidate slate submitted; awaiting decision.',
+  BOOKED: 'Candidate selected; assignment is committed.',
+  ONBOARDING: 'Person is onboarding into the role.',
+  ASSIGNED: 'Person is actively assigned to the position.',
+  ON_HOLD: 'Position is paused; resume to ASSIGNED when ready.',
+  RELEASED: 'Position is closed — person rolled off.',
+};
+
+function buildLifecycleStages(current: PositionFillStatus): WorkflowStage[] {
+  if (current === 'ON_HOLD' || current === 'RELEASED') {
+    return [
+      ...LIFECYCLE_ORDER.map((s, i) => ({
+        key: s,
+        label: s,
+        description: LIFECYCLE_DESCRIPTIONS[s],
+        status: 'done' as WorkflowStageStatus,
+      })),
+      {
+        key: current,
+        label: current.replace('_', '-'),
+        description: LIFECYCLE_DESCRIPTIONS[current],
+        status: 'current' as WorkflowStageStatus,
+      },
+    ];
+  }
+  const idx = LIFECYCLE_ORDER.indexOf(current);
+  return LIFECYCLE_ORDER.map((s, i) => {
+    let status: WorkflowStageStatus = 'upcoming';
+    if (i < idx) status = 'done';
+    else if (i === idx) status = 'current';
+    return {
+      key: s,
+      label: s,
+      description: LIFECYCLE_DESCRIPTIONS[s],
+      status,
+    };
+  });
+}
+
 export function ProjectPositionDetailPage(): JSX.Element {
-  const { projectId, positionId } = useParams<{ projectId: string; positionId: string }>();
+  // Unified entry point — works for /projects/:projectId/positions/:positionId
+  // AND /positions/:id AND /staffing-requests/:id AND /assignments/:id (where
+  // :id is treated as positionId; if that 404s, we fall back to a legacy id
+  // lookup via the parent placeholder pages' redirect).
+  const params = useParams<{ projectId?: string; positionId?: string; id?: string }>();
+  const projectId = params.projectId;
+  const positionId = params.positionId ?? params.id;
   const { principal } = useAuth();
   const canStaff = hasAnyRole(principal?.roles, STAFFING_DESK_ROLES);
 
@@ -176,6 +235,14 @@ export function ProjectPositionDetailPage(): JSX.Element {
                 },
                 { label: 'Required skills', value: requiredSkills.length > 0 ? requiredSkills.join(', ') : '—' },
               ]}
+            />
+          </SectionCard>
+
+          <SectionCard title="Position lifecycle">
+            <WorkflowStages
+              stages={buildLifecycleStages(position.fillStatus)}
+              orientation="horizontal"
+              ariaLabel="Position lifecycle stages"
             />
           </SectionCard>
 

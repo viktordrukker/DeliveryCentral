@@ -71,7 +71,7 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
   const canViewAssignments = hasAnyRole(roles, [...ASSIGNMENT_CREATE_ROLES]);
   const canViewTimesheets = hasAnyRole(roles, [...TIMESHEET_MANAGER_ROLES]);
 
-  const eyebrow = row.kind === 'assignment' ? 'Assignment' : 'Staffing Request';
+  const eyebrow = row.kind === 'assignment' ? 'Position' : 'Staffing Request';
   const title = row.personName ?? row.role;
 
   return (
@@ -108,8 +108,8 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
               </Button>
             )}
             {canViewAssignments && (
-              <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/assignments/${row.id}`)}>
-                View Assignment Details
+              <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/positions/${row.id}`)}>
+                View Position Details
               </Button>
             )}
             {canViewTimesheets && (
@@ -128,8 +128,8 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
         <>
           <div style={SECTION}>Quick Actions</div>
           <div style={S_NAV}>
-            <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/staffing-requests/${row.id}`)}>
-              View Request Details
+            <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/positions/${row.id}`)}>
+              View Position Details
             </Button>
             <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/projects/${row.projectId}`)}>
               View Project
