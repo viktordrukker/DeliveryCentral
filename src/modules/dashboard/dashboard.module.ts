@@ -34,6 +34,7 @@ import { WorkloadDashboardQueryService } from './application/workload-dashboard-
 import { DirectorAnomalyDetectionService } from './application/director-anomaly-detection.service';
 import { OrgHealthService } from './application/org-health.service';
 import { PortfolioFinanceSummaryService } from './application/portfolio-finance-summary.service';
+import { BenchAgingByDimensionService } from './application/bench-aging-by-dimension.service';
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
@@ -105,6 +106,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     {
       provide: OrgHealthService,
       useFactory: (prisma: PrismaService) => new OrgHealthService(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: BenchAgingByDimensionService,
+      useFactory: (prisma: PrismaService) => new BenchAgingByDimensionService(prisma),
       inject: [PrismaService],
     },
     MeHomeService,
