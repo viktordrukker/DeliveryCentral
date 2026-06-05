@@ -1,11 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
-  Logger,
-  NotFoundException,
   Param,
   Patch,
   Req,
@@ -13,12 +12,8 @@ import {
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
-import {
-  PLATFORM_FLAGS,
-  PlatformFlagsService,
-} from '@src/shared/config/platform-flags.service';
-import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { FeatureFlagAdminService } from './application/feature-flag-admin.service';
 import { UpdateFeatureFlagDto } from './feature-flag.dto';
 
 /**
@@ -26,21 +21,20 @@ import { UpdateFeatureFlagDto } from './feature-flag.dto';
  *
  * Renders the 88-flag registry with metadata so admins can see every
  * toggle-able feature in one place + flip per-tenant overrides without
- * touching the database. Backs the `/admin/feature-flags` FE page.
+ * touching the database. Backs the `/admin/feature-flags` FE page and the
+ * `/admin?tab=feature-flags` inline mount (LEAN-P4d-1).
  *
  * The PATCH endpoint writes to the same `PlatformSetting` rows that
  * `PlatformFlagsService.isEnabledByKey()` reads from, then invalidates the
  * 30s cache so the change takes effect on the next request.
+ *
+ * LEAN-P4d-2 — accepts BOTH `{ value }` (legacy) and `{ enabled }`
+ * (toggle UI) request bodies for back-compat.
  */
 @ApiTags('admin')
 @Controller('admin/feature-flags')
 export class FeatureFlagsAdminController {
-  private readonly logger = new Logger(FeatureFlagsAdminController.name);
-
-  public constructor(
-    private readonly flags: PlatformFlagsService,
-    private readonly prisma: PrismaService,
-  ) {}
+  public constructor(private readonly service: FeatureFlagAdminService) {}
 
   @Get()
   @RequireRoles('admin')
@@ -64,7 +58,7 @@ export class FeatureFlagsAdminController {
       currentValue: boolean;
     }>
   > {
-    return this.flags.listAll();
+    return this.service.list();
   }
 
   @Patch(':id')
@@ -84,32 +78,13 @@ export class FeatureFlagsAdminController {
     previousValue: boolean;
     currentValue: boolean;
   }> {
-    const flag = (PLATFORM_FLAGS as Record<string, { key: string; default: boolean } | undefined>)[id];
-    if (!flag) {
-      throw new NotFoundException(`Unknown feature flag: ${id}`);
+    const next = dto.enabled ?? dto.value;
+    if (typeof next !== 'boolean') {
+      throw new BadRequestException(
+        'Request body must include either { value: boolean } or { enabled: boolean }.',
+      );
     }
-    const previousValue = await this.flags.isEnabledByKey(flag.key, flag.default);
-    // F-117 / D-103-write-path round 27 — actor-audit on flag flips.
     const actorId = httpRequest.principal?.personId ?? httpRequest.principal?.userId ?? null;
-    await this.prisma.platformSetting.upsert({
-      where: { key: flag.key },
-      create: {
-        key: flag.key,
-        value: dto.value,
-        createdByPersonId: actorId,
-        updatedByPersonId: actorId,
-      },
-      update: { value: dto.value, updatedByPersonId: actorId },
-    });
-    this.flags.invalidate();
-    this.logger.log(
-      `Feature flag '${id}' (${flag.key}) flipped ${previousValue} → ${dto.value}`,
-    );
-    return {
-      id,
-      key: flag.key,
-      previousValue,
-      currentValue: dto.value,
-    };
+    return this.service.toggle(id, next, actorId);
   }
 }

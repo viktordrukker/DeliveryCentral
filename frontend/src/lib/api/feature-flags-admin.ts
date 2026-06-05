@@ -32,3 +32,16 @@ export async function updateFeatureFlag(
     value,
   });
 }
+
+/**
+ * LEAN-P4d-2 — semantic alias for inline flag toggling on
+ * `/admin?tab=feature-flags` and `/admin/feature-flags`. The wire shape stays
+ * identical to `updateFeatureFlag`; this function exists so callers can read
+ * `toggleFeatureFlag(id, enabled)` rather than the older value-named call.
+ */
+export async function toggleFeatureFlag(
+  id: string,
+  enabled: boolean,
+): Promise<UpdateFeatureFlagResponse> {
+  return updateFeatureFlag(id, enabled);
+}
