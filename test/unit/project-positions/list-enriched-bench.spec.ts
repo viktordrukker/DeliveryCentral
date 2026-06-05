@@ -10,26 +10,44 @@ interface FakePerson {
   hiredAt: Date | null;
 }
 
-interface FakeFill {
-  activePersonId: string;
-  activeAllocationPercent: number;
-}
-
 interface FakeHistory {
   previousPersonId: string;
   occurredAt: Date;
 }
 
+/**
+ * Stub mirrors the canonical bench helper's shape: `person.findMany`
+ * resolves the active employee cohort, `projectPosition.groupBy` returns
+ * the personIds currently holding an active fill (these are subtracted
+ * from the bench). The second `person.findMany` (called by the service
+ * to hydrate display attributes) returns rows whose id matches the
+ * canonical bench-id set.
+ */
 function buildStub(seed: {
   people?: FakePerson[];
-  activeFills?: FakeFill[];
+  filledPersonIds?: string[];
   releasedHistory?: FakeHistory[];
 }): PrismaService {
+  const filled = new Set(seed.filledPersonIds ?? []);
+  const benchPeople = (seed.people ?? []).filter((p) => !filled.has(p.id));
+  let findManyCall = 0;
   const person = {
-    findMany: async (_q: unknown): Promise<FakePerson[]> => seed.people ?? [],
+    // First call inside listBenchPersonIds — returns the active cohort with
+    // just `id`. Second call inside listBench — returns bench-only rows
+    // with display attributes. We honour whichever shape Prisma asks for
+    // by reading the caller's `select`/`where` is too much for this stub,
+    // so we use call-order to switch shape.
+    findMany: async (_q: unknown) => {
+      findManyCall += 1;
+      if (findManyCall === 1) {
+        return (seed.people ?? []).map((p) => ({ id: p.id }));
+      }
+      return benchPeople;
+    },
   };
   const projectPosition = {
-    findMany: async (_q: unknown): Promise<FakeFill[]> => seed.activeFills ?? [],
+    groupBy: async (_q: unknown) =>
+      (seed.filledPersonIds ?? []).map((id) => ({ activePersonId: id })),
   };
   const projectPositionFillHistory = {
     groupBy: async (_q: unknown): Promise<Array<{ previousPersonId: string; _max: { occurredAt: Date } }>> => {
@@ -60,7 +78,7 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
         { id: 'p1', displayName: 'On Bench', role: 'PM', location: 'NYC', grade: 'L5', hiredAt: new Date('2026-01-01') },
         { id: 'p2', displayName: 'Booked', role: 'PM', location: 'LON', grade: 'L4', hiredAt: new Date('2026-01-01') },
       ],
-      activeFills: [{ activePersonId: 'p2', activeAllocationPercent: 100 }],
+      filledPersonIds: ['p2'],
     });
     void today;
     const svc = new ListEnrichedBenchService(prisma);
@@ -98,5 +116,25 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
     const rows = await svc.listBench();
     expect(rows[0]!.isOnBench).toBe(true);
     expect(rows[0]!.suggestedProjectIds).toEqual([]);
+  });
+
+  it('row count reconciles with the canonical bench helper', async () => {
+    // 5 active people, 2 filled — canonical bench = 3 people.
+    // Endpoint must return exactly 3 rows (no broken positionsHeld filter
+    // silently dropping rows like PR #525's miss).
+    const prisma = buildStub({
+      people: [
+        { id: 'p1', displayName: 'A', role: 'PM', location: null, grade: null, hiredAt: new Date('2026-01-01') },
+        { id: 'p2', displayName: 'B', role: 'PM', location: null, grade: null, hiredAt: new Date('2026-01-01') },
+        { id: 'p3', displayName: 'C', role: 'PM', location: null, grade: null, hiredAt: new Date('2026-01-01') },
+        { id: 'p4', displayName: 'D', role: 'PM', location: null, grade: null, hiredAt: new Date('2026-01-01') },
+        { id: 'p5', displayName: 'E', role: 'PM', location: null, grade: null, hiredAt: new Date('2026-01-01') },
+      ],
+      filledPersonIds: ['p2', 'p4'],
+    });
+    const svc = new ListEnrichedBenchService(prisma);
+    const rows = await svc.listBench();
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.personId).sort()).toEqual(['p1', 'p3', 'p5']);
   });
 });

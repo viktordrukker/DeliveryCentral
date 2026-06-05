@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
+import {
+  canonicalActivePersonWhere,
+  listBenchPersonIds,
+} from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BenchEnrichedRowDto } from './contracts/bench-enriched.dto';
@@ -7,20 +11,19 @@ import { BenchEnrichedRowDto } from './contracts/bench-enriched.dto';
 /**
  * FE-#261 — Enriched bench listing.
  *
- * Bench is derived (not a stored entity) — a Person is on the bench iff
- * they have zero active fills (ProjectPosition.activePersonId pointing at
- * them with non-terminal fillStatus). This service:
- *   1. Lists active, non-terminated, non-archived persons.
- *   2. Removes anyone with an active fill on the as-of date.
- *   3. Enriches the survivors with daysOnBench (from
- *      ProjectPositionFillHistory.RELEASED or hiredAt fallback) and
- *      availabilityHours14d (80 minus scheduled hours over next 14d).
- *   4. Returns suggestedProjectIds as `[]` in v1; the matching engine
- *      (issue #267) populates it when wired.
+ * Bench is derived (not a stored entity). This service delegates the
+ * "who is on the bench" decision to the canonical helper in
+ * `src/shared/persistence/bench-query.ts` — the same helper that backs
+ * the sidebar nav badge, Staffing Desk supply panel, Director Org
+ * Health, and Bench Aging matrix. The previous local predicate added a
+ * spurious `positionsHeld: { none: {} }` clause on the org-position
+ * relation (NOT the project-position relation), which silently masked
+ * 99% of active employees and produced a 5-row response while the
+ * sidebar showed 203.
  *
- * Performance: 2 Prisma reads regardless of bench size. The fill-history
- * lookup uses a single groupBy by personId; we hydrate display attributes
- * inline rather than firing per-person follow-up queries.
+ * Performance: 3 Prisma reads regardless of bench size — canonical
+ * bench-id resolution (2 reads inside the helper) + a fill-history
+ * groupBy. Display attributes hydrate inline.
  */
 @Injectable()
 export class ListEnrichedBenchService {
@@ -29,16 +32,18 @@ export class ListEnrichedBenchService {
   public async listBench(args?: { asOf?: Date }): Promise<BenchEnrichedRowDto[]> {
     const asOf = args?.asOf ?? new Date();
 
-    // Active employees, not currently filling any non-terminal position.
-    const people = await this.prisma.person.findMany({
+    // Canonical bench-person ID set (single source of truth).
+    const benchIds = await listBenchPersonIds(this.prisma, asOf);
+    if (benchIds.size === 0) return [];
+
+    // Hydrate display attributes for the bench cohort. Canonical predicate
+    // is reapplied here to make the row select tenancy-safe — the helper
+    // already enforces the same predicate, so the intersection equals the
+    // original bench set.
+    const benchPeople = await this.prisma.person.findMany({
       where: {
-        deletedAt: null,
-        archivedAt: null,
-        terminatedAt: null,
-        employmentStatus: 'ACTIVE',
-        // Anti-join: no ProjectPosition where person is the active fill on
-        // a non-terminal status.
-        positionsHeld: { none: {} }, // not used directly; we filter below
+        ...canonicalActivePersonWhere(),
+        id: { in: [...benchIds] },
       },
       select: {
         id: true,
@@ -48,38 +53,7 @@ export class ListEnrichedBenchService {
         grade: true,
         hiredAt: true,
       },
-      take: 1000,
     });
-
-    if (people.length === 0) return [];
-    const personIds = people.map((p) => p.id);
-
-    // Pull every active fill for these people in one shot; anyone present
-    // here is NOT on bench.
-    const activeFills = await this.prisma.projectPosition.findMany({
-      where: {
-        activePersonId: { in: personIds },
-        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        activeValidFrom: { lte: asOf },
-        OR: [{ activeValidTo: null }, { activeValidTo: { gte: asOf } }],
-      },
-      select: {
-        activePersonId: true,
-        activeAllocationPercent: true,
-      },
-    });
-
-    const allocationByPerson = new Map<string, number>();
-    for (const f of activeFills) {
-      if (!f.activePersonId) continue;
-      const prev = allocationByPerson.get(f.activePersonId) ?? 0;
-      allocationByPerson.set(
-        f.activePersonId,
-        prev + (f.activeAllocationPercent === null ? 0 : Number(f.activeAllocationPercent)),
-      );
-    }
-
-    const benchPeople = people.filter((p) => !allocationByPerson.has(p.id));
     if (benchPeople.length === 0) return [];
 
     // For each bench person: when was their most recent RELEASED transition?
