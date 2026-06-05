@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -11,8 +13,15 @@ import { Button, Table, type Column } from '@/components/ds';
 import {
   type FeatureFlagAdminEntry,
   fetchFeatureFlags,
-  updateFeatureFlag,
+  toggleFeatureFlag,
 } from '@/lib/api/feature-flags-admin';
+
+/**
+ * LEAN-P4d-2 — Flags whose rollout is owned by a separate (staged) path and
+ * must NEVER be flipped from this admin surface. Toggling these in the UI
+ * would bypass the controlled v2 rollout, so the row renders as locked.
+ */
+const ROLLOUT_LOCKED_FLAG_IDS = new Set<string>(['dsRefresh', 'workspaceMe']);
 
 /**
  * Sprint F-1.1 — Tenant Settings Catalog admin page.
@@ -36,6 +45,11 @@ function maturityTone(level: FeatureFlagAdminEntry['maturityLevel']): 'active' |
   }
 }
 
+interface PendingToggle {
+  flag: FeatureFlagAdminEntry;
+  next: boolean;
+}
+
 /**
  * Inline-mountable Feature Flags admin content. Renders the flag registry
  * without PageContainer/PageHeader chrome so AdminPanelPage can mount it
@@ -47,6 +61,7 @@ export function FeatureFlagsAdminContent(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('');
+  const [pendingToggle, setPendingToggle] = useState<PendingToggle | null>(null);
 
   async function load(): Promise<void> {
     setIsLoading(true);
@@ -64,20 +79,30 @@ export function FeatureFlagsAdminContent(): JSX.Element {
     void load();
   }, []);
 
-  async function handleToggle(flag: FeatureFlagAdminEntry, next: boolean): Promise<void> {
+  function requestToggle(flag: FeatureFlagAdminEntry, next: boolean): void {
+    setPendingToggle({ flag, next });
+  }
+
+  async function confirmToggle(): Promise<void> {
+    if (!pendingToggle) return;
+    const { flag, next } = pendingToggle;
+    setPendingToggle(null);
     setBusyIds((prev) => new Set(prev).add(flag.id));
     // Optimistic update
     setFlags((prev) =>
       prev.map((f) => (f.id === flag.id ? { ...f, currentValue: next } : f)),
     );
     try {
-      await updateFeatureFlag(flag.id, next);
+      await toggleFeatureFlag(flag.id, next);
+      toast.success(`Flag ${flag.id} ${next ? 'enabled' : 'disabled'}.`);
     } catch (e) {
       // Revert on failure
       setFlags((prev) =>
         prev.map((f) => (f.id === flag.id ? { ...f, currentValue: !next } : f)),
       );
-      setError(e instanceof Error ? e.message : 'Failed to update flag.');
+      const message = e instanceof Error ? e.message : 'Failed to update flag.';
+      setError(message);
+      toast.error(`Toggle failed: ${message}`);
     } finally {
       setBusyIds((prev) => {
         const out = new Set(prev);
@@ -230,11 +255,21 @@ export function FeatureFlagsAdminContent(): JSX.Element {
                 getValue: () => '',
                 render: (flag) => {
                   const busy = busyIds.has(flag.id);
+                  const locked = ROLLOUT_LOCKED_FLAG_IDS.has(flag.id);
+                  if (locked) {
+                    return (
+                      <StatusBadge
+                        label="Rollout-locked"
+                        tone="info"
+                        variant="chip"
+                      />
+                    );
+                  }
                   return (
                     <Button
                       data-testid={`toggle-${flag.id}`}
                       disabled={busy}
-                      onClick={() => void handleToggle(flag, !flag.currentValue)}
+                      onClick={() => requestToggle(flag, !flag.currentValue)}
                       size="sm"
                       type="button"
                       variant={flag.currentValue ? 'secondary' : 'primary'}
@@ -259,6 +294,19 @@ export function FeatureFlagsAdminContent(): JSX.Element {
           })}
         </>
       )}
+      <ConfirmDialog
+        confirmLabel={pendingToggle ? (pendingToggle.next ? 'Enable flag' : 'Disable flag') : 'Confirm'}
+        message={
+          pendingToggle
+            ? `${pendingToggle.next ? 'Enable' : 'Disable'} feature flag “${pendingToggle.flag.id}”? This change takes effect after the 30-second flag cache cycle.`
+            : ''
+        }
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => void confirmToggle()}
+        open={pendingToggle !== null}
+        title="Confirm flag toggle"
+        tone={pendingToggle && !pendingToggle.next ? 'danger' : 'default'}
+      />
     </>
   );
 }

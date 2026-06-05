@@ -13,6 +13,10 @@ describe('D-103 write-path — PlatformSetting actor-audit (source-shape)', () =
     'src/modules/admin-feature-flags/feature-flags.controller.ts',
     'utf-8',
   );
+  const flagsAdminServiceSrc = readFileSync(
+    'src/modules/admin-feature-flags/application/feature-flag-admin.service.ts',
+    'utf-8',
+  );
 
   it('PlatformSettingsService.updateKey: upsert populates BOTH cols on create, updatedByPersonId on update', () => {
     const section = serviceSrc.slice(
@@ -29,13 +33,24 @@ describe('D-103 write-path — PlatformSetting actor-audit (source-shape)', () =
     expect(updatedMatches?.length).toBe(2);
   });
 
-  it('FeatureFlagsAdminController.update: resolves actor from @Req + populates cols on upsert', () => {
+  it('FeatureFlagsAdminController.update: resolves actor from @Req + delegates to service', () => {
+    // LEAN-P4d-2 refactored the upsert into FeatureFlagAdminService.toggle.
+    // The controller now resolves actorId from @Req and passes it through.
     expect(flagsControllerSrc).toMatch(/principal\?\.personId\s*\?\?\s*httpRequest\.principal\?\.userId/);
-    const updateSection = flagsControllerSrc.slice(
-      flagsControllerSrc.indexOf('public async update'),
-      flagsControllerSrc.length,
+  });
+
+  it('FeatureFlagAdminService.toggle: upsert populates BOTH cols on create, updatedByPersonId on update', () => {
+    // LEAN-P4d-2 — actor-audit moved here from the controller. Source-shape
+    // assertion ensures D-103 trail remains complete after the refactor.
+    const section = flagsAdminServiceSrc.slice(
+      flagsAdminServiceSrc.indexOf('public async toggle'),
+      flagsAdminServiceSrc.length,
     );
-    expect(updateSection).toMatch(/createdByPersonId:\s*actorId/);
-    expect(updateSection).toMatch(/updatedByPersonId:\s*actorId/);
+    const upsertCall = section.slice(
+      section.indexOf('platformSetting.upsert'),
+      section.length,
+    );
+    expect(upsertCall).toMatch(/createdByPersonId:\s*actorId/);
+    expect(upsertCall).toMatch(/updatedByPersonId:\s*actorId/);
   });
 });
