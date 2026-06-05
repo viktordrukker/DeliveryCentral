@@ -109,11 +109,8 @@ describe('route manifest', () => {
 
   it('maps critical persona paths consistently', () => {
     const expectations: Array<{ hidden?: string[]; role: AppRole; visible: string[] }> = [
-      // LEAN-P2 exit-gate: /staffing-board and /assignments are now redirect-
-      // only paths with allowedRoles: ALL_ROLES in the manifest (RBAC is
-      // enforced at the canonical /staffing-desk destination). They remain
-      // navVisible: false so the sidebar still hides them for employees.
-      { role: 'employee', visible: ['/dashboard/employee', '/people', '/projects', '/settings/account'], hidden: ['/admin'] },
+      // /assignments narrowed to STAFFING_DESK_ROLES (customer-walk fix #11) — no longer accessible to employees.
+      { role: 'employee', visible: ['/dashboard/employee', '/people', '/projects', '/settings/account'], hidden: ['/admin', '/staffing-board', '/assignments'] },
       { role: 'project_manager', visible: ['/dashboard/project-manager', '/staffing-requests', '/reports/time'], hidden: ['/admin', '/workload'] },
       { role: 'resource_manager', visible: ['/dashboard/resource-manager', '/workload', '/resource-pools', '/staffing-board'], hidden: ['/admin'] },
       // F-12.4 / D-101 — /admin/dictionaries consolidated into /metadata-admin (now HR-visible via widened RBAC).
@@ -246,18 +243,17 @@ describe('persona smoke: full navigation coverage per role', () => {
     },
     // Per Decision-11, per-role dashboards are navVisible: false in favour of the
     // merged Manager Dashboard / Exec Dashboard. The per-role pages remain routable.
+    // LEAN-P2 exit-gate: 'Assignments' nav entry retired — the page redirects
+    // to /staffing-desk; no longer in mustSee, added to mustNotSee.
     project_manager: {
       minNav: 15,
-      // LEAN-P2 exit-gate: /assignments is now navVisible: false (legacy page
-      // deleted; route redirects to /staffing-desk). 'Assignments' no longer
-      // surfaces in the sidebar for any role.
       mustSee: ['Manager Dashboard', 'Projects', 'Time Management', 'Time Analytics', 'Exceptions', 'Report Builder'],
-      mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix', 'Resource Pools'],
+      mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix', 'Resource Pools', 'Assignments'],
     },
     resource_manager: {
       minNav: 15,
       mustSee: ['Manager Dashboard', 'Resource Pools', 'Exceptions'],
-      mustNotSee: ['Admin', 'Platform Settings'],
+      mustNotSee: ['Admin', 'Platform Settings', 'Assignments'],
     },
     hr_manager: {
       minNav: 15,
@@ -267,8 +263,9 @@ describe('persona smoke: full navigation coverage per role', () => {
     },
     delivery_manager: {
       minNav: 15,
+      // LEAN-P2 exit-gate: 'Assignments' nav entry retired.
       mustSee: ['Manager Dashboard', 'Planned vs Actual Time', 'Export Centre', 'Capitalisation', 'Exceptions'],
-      mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix'],
+      mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix', 'Assignments'],
     },
     // /admin/integrations + /admin/monitoring narrowed to ADMIN_ONLY_ROLES (customer-walk fix #9).
     director: {

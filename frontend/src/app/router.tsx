@@ -22,6 +22,7 @@ import {
   PROJECT_CREATE_ROLES,
   RESOURCE_POOL_ROLES,
   RM_DASHBOARD_ROLES,
+  STAFFING_BOARD_ROLES,
   STAFFING_DESK_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
@@ -246,11 +247,12 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectDashboardRedirect /></RoleGuard>, path: 'projects/:id/dashboard' },
   // LEAN-P2 exit-gate: legacy /assignments surfaces removed. Direct visits
   // redirect to the canonical project-positions surfaces (staffing desk,
-  // approvals queue).
-  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments' },
-  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/new' },
-  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/bulk' },
-  { element: <Navigate to="/approvals" replace />, path: 'assignments/queue' },
+  // approvals queue). RoleGuards mirror the manifest entries so the route
+  // registry stays consistent with the canonical staffing-desk RBAC.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>, path: 'assignments' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>, path: 'assignments/new' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>, path: 'assignments/bulk' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/approvals" replace /></RoleGuard>, path: 'assignments/queue' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentDetailsPlaceholderPage /></RoleGuard>, path: 'assignments/:id' },
   { element: <AccountSettingsPage />, path: 'settings/account' },
   { element: <InboxPage />, path: 'notifications' },
@@ -326,17 +328,15 @@ const dashboardChildren = [
   },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
   // LEAN-P2 exit-gate: legacy /staffing-requests surfaces removed. Redirect
-  // to the canonical staffing-desk and position-detail surfaces.
-  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests' },
+  // to the canonical staffing-desk and position-detail surfaces. RoleGuard
+  // mirrors the manifest so the registry-alignment test stays green.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=board" replace /></RoleGuard>, path: 'staffing-requests' },
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
   { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
-  // LEAN-P2 exit-gate: /staffing-board is now a redirect-only path. RBAC is
-  // enforced at the canonical /staffing-desk destination — keep this entry
-  // permissive (matches manifest ALL_ROLES) so redirects always resolve.
   {
-    element: <Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace />,
+    element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'staffing-board',
   },
   {
@@ -344,9 +344,10 @@ const dashboardChildren = [
     path: 'staffing-desk',
   },
   // LEAN-P2 exit-gate: legacy staffing-request surfaces redirect to the
-  // canonical staffing-desk and project-position detail flows.
-  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/new' },
-  { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests/:id' },
+  // canonical staffing-desk and project-position detail flows. RoleGuards
+  // mirror the manifest entries so the registry-alignment test stays green.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=board" replace /></RoleGuard>, path: 'staffing-requests/new' },
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><Navigate to="/staffing-desk?view=board" replace /></RoleGuard>, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',

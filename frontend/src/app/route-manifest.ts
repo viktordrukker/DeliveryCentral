@@ -261,10 +261,12 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/projects/:id/dashboard' },
   // LEAN-P2 exit-gate: legacy /assignments surfaces deleted; entries kept
   // for the route registry (the router redirects them) but hidden from nav.
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/new' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/bulk' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/queue' },
+  // Role gates mirror the router RoleGuards on the redirect targets so the
+  // RBAC manifest <-> router stays aligned.
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/assignments' },
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/assignments/new' },
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/assignments/bulk' },
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/assignments/queue' },
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },
@@ -288,12 +290,13 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, description: 'Onboarding and operational case workflows.', group: 'time', groupV2: 'workforce', navVisible: true, titleV2: 'HR Queue', path: '/cases', title: 'Cases' },
   // LEAN-P2 exit-gate: legacy /staffing-requests and /staffing-board
   // surfaces deleted; entries kept for the registry (router redirects them)
-  // but hidden from nav.
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-requests' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-board' },
+  // but hidden from nav. Role gates mirror the router redirect guards so
+  // RBAC manifest <-> router stays aligned.
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests' },
+  { allowedRoles: STAFFING_BOARD_ROLES, navVisible: false, path: '/staffing-board' },
   { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-requests/new' },
-  { allowedRoles: ALL_ROLES, path: '/staffing-requests/:id' },
+  { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/new' },
+  { allowedRoles: STAFFING_DESK_ROLES, path: '/staffing-requests/:id' },
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },
   { allowedRoles: ADMIN_ROLES, description: 'Consolidated operator-facing control surface for configuration and platform settings.', group: 'admin-config', navVisible: true, path: '/admin', title: 'Admin' },
