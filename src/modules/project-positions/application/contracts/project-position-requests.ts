@@ -8,7 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
+  Matches,
   Max,
   Min,
   MinLength,
@@ -18,7 +18,7 @@ import { POSITION_FILL_STATUS_VALUES, PositionFillStatusValue } from '../../doma
 
 export class CreateProjectPositionRequestDto {
   @ApiProperty()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   projectId!: string;
 
   @ApiProperty()
@@ -53,7 +53,7 @@ export class CreateProjectPositionRequestDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   requestedByPersonId?: string;
 
   @ApiProperty({ required: false, default: false })
@@ -74,7 +74,7 @@ export class TransitionProjectPositionFillRequestDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   caseId?: string;
 
   @ApiProperty({
@@ -83,7 +83,7 @@ export class TransitionProjectPositionFillRequestDto {
       'Person filling the position. Required for fill-side transitions (PROPOSED/BOOKED/ONBOARDING/ASSIGNED) when activePersonId is not already set.',
   })
   @IsOptional()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   personId?: string;
 
   @ApiProperty({ required: false })
@@ -107,12 +107,12 @@ export class TransitionProjectPositionFillRequestDto {
 export class ListProjectPositionsQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   projectId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID('all')
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   activePersonId?: string;
 
   @ApiProperty({ required: false, enum: POSITION_FILL_STATUS_VALUES, isArray: true })
@@ -143,7 +143,7 @@ export class ListProjectPositionsQueryDto {
 export class BenchCheckRequestDto {
   @ApiProperty({ type: [String] })
   @IsArray()
-  @IsUUID('all', { each: true })
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { each: true, message: '$property entries must be UUID-shaped strings' })
   personIds!: string[];
 
   @ApiProperty({ required: false, example: '2026-06-01' })
