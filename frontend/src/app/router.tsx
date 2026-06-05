@@ -26,6 +26,7 @@ import {
   STAFFING_BOARD_ROLES,
   STAFFING_DESK_ROLES,
   STAFFING_REQUEST_ROLES,
+  APPROVALS_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
 } from './route-manifest';
@@ -191,7 +192,7 @@ const dashboardChildren = [
     path: 'dashboard/director',
   },
   {
-    element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={APPROVALS_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
     path: 'approvals',
   },
   {
