@@ -12,6 +12,7 @@ import { GetProjectPositionByIdService } from './application/get-project-positio
 import { ListBenchPeopleService } from './application/list-bench-people.service';
 import { ListEnrichedBenchService } from './application/list-enriched-bench.service';
 import { ListProjectPositionsService } from './application/list-project-positions.service';
+import { PositionForensicsService } from './application/position-forensics.service';
 import { ProjectPositionMirrorService } from './application/project-position-mirror.service';
 import { SuggestFillsService } from './application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
@@ -99,6 +100,7 @@ import {
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new SuggestFillsService(prisma),
     },
+    PositionForensicsService,
     {
       provide: ProjectPositionMirrorService,
       inject: [PrismaService, DomainEventService],
@@ -114,6 +116,7 @@ import {
     ListBenchPeopleService,
     ListEnrichedBenchService,
     SuggestFillsService,
+    PositionForensicsService,
     ProjectPositionMirrorService,
     PROJECT_POSITION_REPOSITORY,
   ],

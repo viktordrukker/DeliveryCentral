@@ -257,6 +257,37 @@ export async function fetchPersonSuggestedPositions(
   );
 }
 
+// LEAN-P4b-2 — position lifecycle forensics. Each row in the timeline
+// carries the change type, previous/new status, actor, optional reason, and
+// the dwell-time in `newStatus` (`dwellMs`). `longDwell` is true when the
+// dwell exceeded the OPEN > 7d / PROPOSED > 3d thresholds.
+export interface PositionForensicsEvent {
+  id: string;
+  changeType: ProjectPositionFillChangeType | string;
+  previousStatus: ProjectPositionFillStatus | null;
+  newStatus: ProjectPositionFillStatus | null;
+  previousPersonId: string | null;
+  newPersonId: string | null;
+  changedByPersonId: string | null;
+  changeReason: string | null;
+  occurredAt: string;
+  dwellMs: number | null;
+  longDwell: boolean;
+}
+
+export interface PositionForensics {
+  positionId: string;
+  projectId: string;
+  role: string;
+  currentStatus: ProjectPositionFillStatus;
+  events: PositionForensicsEvent[];
+  asOf: string;
+}
+
+export async function fetchPositionForensics(positionId: string): Promise<PositionForensics> {
+  return httpGet<PositionForensics>(`/project-positions/${positionId}/forensics`);
+}
+
 // ─── Legacy aliases ────────────────────────────────────────────────────────
 // Phase 2 transitional surface. Consumers still importing the legacy assignment
 // types can switch their import path to '@/lib/api/project-positions' and pick
