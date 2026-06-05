@@ -36,5 +36,5 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-CREATE INDEX IF NOT EXISTS "ProjectPosition_onboardingApprovedByPersonId_idx"
+CREATE INDEX IF NOT EXISTS "ProjectPosition_onboardingApprovedByPerson_idx"
   ON "ProjectPosition" ("onboardingApprovedByPersonId");
