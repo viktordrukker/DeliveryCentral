@@ -22,6 +22,7 @@ import {
   PROJECT_CREATE_ROLES,
   RESOURCE_POOL_ROLES,
   RM_DASHBOARD_ROLES,
+  STAFFING_BOARD_ROLES,
   STAFFING_DESK_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
@@ -332,11 +333,8 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
   { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
-  // LEAN-P2 exit-gate: /staffing-board is now a redirect-only path. RBAC is
-  // enforced at the canonical /staffing-desk destination — keep this entry
-  // permissive (matches manifest ALL_ROLES) so redirects always resolve.
   {
-    element: <Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace />,
+    element: <RoleGuard allowedRoles={STAFFING_BOARD_ROLES}><Navigate to="/staffing-desk?view=timeline&kind=assignment&status=APPROVED,ACTIVE" replace /></RoleGuard>,
     path: 'staffing-board',
   },
   {

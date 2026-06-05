@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
-import { listProjectPositions } from '@/lib/api/project-positions';
+import { fetchAssignments } from '@/lib/api/assignments';
 import { createCase } from '@/lib/api/cases';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
@@ -40,28 +40,28 @@ vi.mock('@/lib/api/project-registry', async () => {
   };
 });
 
-vi.mock('@/lib/api/project-positions', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/api/project-positions')>(
-    '@/lib/api/project-positions',
+vi.mock('@/lib/api/assignments', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api/assignments')>(
+    '@/lib/api/assignments',
   );
 
   return {
     ...actual,
-    listProjectPositions: vi.fn(),
+    fetchAssignments: vi.fn(),
   };
 });
 
 const mockedCreateCase = vi.mocked(createCase);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
 const mockedFetchProjectDirectory = vi.mocked(fetchProjectDirectory);
-const mockedListProjectPositions = vi.mocked(listProjectPositions);
+const mockedFetchAssignments = vi.mocked(fetchAssignments);
 
 describe('CreateCasePage', () => {
   beforeEach(() => {
     mockedCreateCase.mockReset();
     mockedFetchPersonDirectory.mockReset();
     mockedFetchProjectDirectory.mockReset();
-    mockedListProjectPositions.mockReset();
+    mockedFetchAssignments.mockReset();
     window.localStorage.clear();
 
     mockedFetchPersonDirectory.mockResolvedValue({
@@ -114,22 +114,20 @@ describe('CreateCasePage', () => {
       ],
     });
 
-    // LEAN-P2 exit-gate: hook now reads /project-positions and runs the
-    // result through mapListResponseToDirectory. Mock the canonical shape.
-    mockedListProjectPositions.mockResolvedValue({
-      positions: [
+    mockedFetchAssignments.mockResolvedValue({
+      items: [
         {
+          allocationPercent: 50,
+          approvalState: 'APPROVED',
+          endDate: null,
           id: 'asn-1',
-          projectId: 'prj-1',
-          role: 'Analyst',
-          requiredAllocationPercent: 50,
-          fillStatus: 'ASSIGNED',
-          activePersonId: 'person-1',
-          activeAllocationPercent: 50,
-          version: 1,
+          person: { displayName: 'Casey Nguyen', id: 'person-1' },
+          project: { displayName: 'Northstar Modernization', id: 'prj-1' },
+          staffingRole: 'Analyst',
+          startDate: '2026-04-01T00:00:00.000Z',
         },
       ],
-      total: 1,
+      totalCount: 1,
     });
   });
 

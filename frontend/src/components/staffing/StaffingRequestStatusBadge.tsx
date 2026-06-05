@@ -1,4 +1,4 @@
-import type { StaffingRequestStatus } from '@/lib/api/staffing-requests';
+import { StaffingRequestStatus } from '@/lib/api/staffing-requests';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 
 export function StaffingRequestStatusBadge({ status }: { status: StaffingRequestStatus }): JSX.Element {

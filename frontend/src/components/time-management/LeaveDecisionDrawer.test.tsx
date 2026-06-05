@@ -8,7 +8,7 @@ import { LeaveDecisionDrawer, type LeaveDecisionTarget } from './LeaveDecisionDr
 const approveMock = vi.fn();
 const rejectMock = vi.fn();
 const fetchBalanceMock = vi.fn();
-const listProjectPositionsMock = vi.fn();
+const fetchAssignmentsMock = vi.fn();
 // Default (unset) → falsy, so the dsRefresh-gated B23 banner stays OFF for the
 // existing tests (no Router needed). The B23 tests set this explicitly.
 const isFeatureEnabledMock = vi.fn();
@@ -19,10 +19,8 @@ vi.mock('@/lib/api/leaveRequests', () => ({
   fetchMyLeaveBalance: (...args: unknown[]) => fetchBalanceMock(...args),
 }));
 
-// LEAN-P2 exit-gate: LeaveDecisionDrawer reads conflicts via
-// /project-positions + the position-to-assignment mapper.
-vi.mock('@/lib/api/project-positions', () => ({
-  listProjectPositions: (...args: unknown[]) => listProjectPositionsMock(...args),
+vi.mock('@/lib/api/assignments', () => ({
+  fetchAssignments: (...args: unknown[]) => fetchAssignmentsMock(...args),
 }));
 
 vi.mock('@/lib/feature-flags', () => ({
@@ -45,33 +43,25 @@ function defaultMocks(): void {
   approveMock.mockResolvedValue({ id: 'lr-1', status: 'APPROVED' });
   rejectMock.mockResolvedValue({ id: 'lr-1', status: 'REJECTED' });
   fetchBalanceMock.mockResolvedValue([]);
-  listProjectPositionsMock.mockResolvedValue({ positions: [], total: 0 });
+  fetchAssignmentsMock.mockResolvedValue({ items: [], totalCount: 0 });
 }
 
 afterEach(() => {
   approveMock.mockReset();
   rejectMock.mockReset();
   fetchBalanceMock.mockReset();
-  listProjectPositionsMock.mockReset();
+  fetchAssignmentsMock.mockReset();
   isFeatureEnabledMock.mockReset();
 });
 
-// LEAN-P2 exit-gate: the drawer now reads via /project-positions. Express
-// the conflict fixture in the lean shape — the mapper flattens projectId to
-// project.displayName until the BE DTO enrichment lands.
-const CONFLICT_POSITION = {
+const CONFLICT = {
   id: 'a1',
-  projectId: 'Atlas',
-  role: 'Engineer',
-  requiredAllocationPercent: 60,
-  fillStatus: 'ASSIGNED' as const,
-  activePersonId: 'p-1',
-  activeAllocationPercent: 60,
-  // Window overlaps the leave dates (2026-06-01 → 2026-06-05) so the
-  // drawer's overlap filter keeps the row.
-  activeValidFrom: '2026-05-01',
-  activeValidTo: '2026-12-31',
-  version: 1,
+  project: { displayName: 'Atlas' },
+  staffingRole: 'Engineer',
+  startDate: '2026-05-01',
+  endDate: '2026-12-31',
+  allocationPercent: 60,
+  approvalState: 'APPROVED',
 };
 
 describe('LeaveDecisionDrawer', () => {
@@ -100,9 +90,7 @@ describe('LeaveDecisionDrawer', () => {
     expect(screen.getByText(/Priya Natarajan/)).toBeInTheDocument();
     expect(screen.getByText(/Annual Leave/)).toBeInTheDocument();
     expect(screen.getByText(/5 days/)).toBeInTheDocument();
-    // LEAN-P2 exit-gate: the drawer now reads via /project-positions with
-    // the lean activePersonId filter (mapped via position-to-assignment-mapper).
-    await waitFor(() => expect(listProjectPositionsMock).toHaveBeenCalledWith({ activePersonId: 'p-1', take: 100 }));
+    await waitFor(() => expect(fetchAssignmentsMock).toHaveBeenCalledWith({ personId: 'p-1', pageSize: 100 }));
   });
 
   it('renders the requester notes when present', () => {
@@ -120,27 +108,20 @@ describe('LeaveDecisionDrawer', () => {
 
   it('renders conflicting assignments when fetch returns rows in range', async () => {
     defaultMocks();
-    // LEAN-P2 exit-gate: drawer reads /project-positions. Mock the canonical
-    // shape — the mapper projects projectId → project.displayName until the
-    // BE DTO enrichment lands, so use the desired display string as projectId.
-    listProjectPositionsMock.mockResolvedValue({
-      positions: [
+    fetchAssignmentsMock.mockResolvedValue({
+      items: [
         {
           id: 'a-1',
-          projectId: 'MCB-UK',
-          role: 'Senior FE',
-          requiredAllocationPercent: 80,
-          fillStatus: 'ASSIGNED',
-          activePersonId: 'p-1',
-          activeAllocationPercent: 80,
-          // Window overlaps the leave dates (2026-06-01 → 2026-06-05) so
-          // the drawer's overlap filter keeps the row visible.
-          activeValidFrom: '2026-05-01',
-          activeValidTo: '2026-06-10',
-          version: 1,
+          allocationPercent: 80,
+          approvalState: 'ASSIGNED',
+          endDate: '2026-06-10',
+          startDate: '2026-05-01',
+          person: { id: 'p-1', displayName: 'Priya Natarajan' },
+          project: { id: 'proj-1', displayName: 'MCB-UK' },
+          staffingRole: 'Senior FE',
         },
       ],
-      total: 1,
+      totalCount: 1,
     });
     render(
       <LeaveDecisionDrawer
@@ -271,7 +252,7 @@ describe('LeaveDecisionDrawer', () => {
   it('B23: shows a dsRefresh-gated overlap-warning banner when conflicts exist', async () => {
     defaultMocks();
     isFeatureEnabledMock.mockReturnValue(true);
-    listProjectPositionsMock.mockResolvedValue({ positions: [CONFLICT_POSITION], total: 1 });
+    fetchAssignmentsMock.mockResolvedValue({ items: [CONFLICT], totalCount: 1 });
     render(
       <MemoryRouter>
         <LeaveDecisionDrawer open target={TARGET} onClose={() => undefined} onDecided={() => undefined} />
@@ -285,7 +266,7 @@ describe('LeaveDecisionDrawer', () => {
   it('B23: hides the overlap banner when dsRefresh is off (legacy unchanged)', async () => {
     defaultMocks();
     isFeatureEnabledMock.mockReturnValue(false);
-    listProjectPositionsMock.mockResolvedValue({ positions: [CONFLICT_POSITION], total: 1 });
+    fetchAssignmentsMock.mockResolvedValue({ items: [CONFLICT], totalCount: 1 });
     render(
       <LeaveDecisionDrawer open target={TARGET} onClose={() => undefined} onDecided={() => undefined} />,
     );

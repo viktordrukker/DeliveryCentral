@@ -81,21 +81,11 @@ export function mapAssignmentStatusToFillStatus(status: AssignmentStatusValue): 
  */
 export function mapPositionToDirectoryItem(position: ProjectPosition): AssignmentDirectoryItem {
   const personId = position.activePersonId ?? '';
-  // LEAN-P2 exit-gate: when the BE DTO exposes the position's demand window
-  // (`startDate` / `endDate`) or the active fill's validity window
-  // (`activeValidFrom` / `activeValidTo`), surface those onto the legacy
-  // shape so callers that filter by date (e.g. LeaveDecisionDrawer overlap
-  // check) keep working. Otherwise fall back to empty / null so the call
-  // site can tolerate the absence.
-  const startDate =
-    position.activeValidFrom ?? position.startDate ?? '';
-  const endDate =
-    position.activeValidTo ?? position.endDate ?? null;
   return {
     id: position.id,
     allocationPercent: position.activeAllocationPercent ?? 0,
     approvalState: mapFillStatusToAssignmentStatus(position.fillStatus),
-    endDate,
+    endDate: null,
     person: {
       id: personId,
       displayName: personId,
@@ -105,7 +95,7 @@ export function mapPositionToDirectoryItem(position: ProjectPosition): Assignmen
       displayName: position.projectId,
     },
     staffingRole: position.role,
-    startDate,
+    startDate: '',
     slaStage: null,
     slaDueAt: null,
     slaBreachedAt: null,
@@ -160,10 +150,7 @@ export function mapPositionToAssignmentResponse(
     projectId: position.projectId,
     requestedAt: '',
     staffingRole: position.role,
-    startDate: position.activeValidFrom ?? position.startDate ?? '',
-    ...(position.activeValidTo ?? position.endDate
-      ? { endDate: position.activeValidTo ?? position.endDate }
-      : {}),
+    startDate: '',
     status: mapFillStatusToAssignmentStatus(position.fillStatus),
     version: position.version,
   };
