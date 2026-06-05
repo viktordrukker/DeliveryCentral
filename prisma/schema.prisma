@@ -777,6 +777,7 @@ model Person {
   projectPositionsRequested                ProjectPosition[]                   @relation("ProjectPositionRequestedBy")
   projectPositionsCreated                  ProjectPosition[]                   @relation("ProjectPositionCreatedBy")
   projectPositionsUpdated                  ProjectPosition[]                   @relation("ProjectPositionUpdatedBy")
+  projectPositionsOnboardingApproved       ProjectPosition[]                   @relation("ProjectPositionOnboardingApprovedBy")
   projectPositionCandidates                ProjectPositionCandidate[]          @relation("ProjectPositionCandidatePerson")
   projectPositionCandidatesCreated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateCreatedBy")
   projectPositionCandidatesUpdated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateUpdatedBy")
@@ -3995,6 +3996,14 @@ model ProjectPosition {
   activeValidFrom          DateTime?                    @db.Timestamptz(3)
   activeValidTo            DateTime?                    @db.Timestamptz(3)
   onboardingDate           DateTime?                    @db.Timestamptz(3)
+  // LEAN-P4c-1 — onboarding-stage approval gate. When `requiresOnboardingApproval`
+  // is TRUE, the paired ProjectAssignment cannot transition ONBOARDING → ASSIGNED
+  // until `onboardingApprovedAt` is populated (set by `ApproveOnboardingService`).
+  // PM-only approval; defaults to FALSE so positions without a gate keep the
+  // existing direct-to-ASSIGNED behaviour.
+  requiresOnboardingApproval Boolean                    @default(false)
+  onboardingApprovedAt       DateTime?                  @db.Timestamptz(3)
+  onboardingApprovedByPersonId String?                  @db.Uuid
   notes                    String?
   // SLA tracking (was: ProjectAssignment SLA fields).
   requiresDirectorApproval Boolean                      @default(false)
@@ -4035,6 +4044,7 @@ model ProjectPosition {
   requestedByPerson        Person?                      @relation("ProjectPositionRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: SetNull)
   createdByPerson          Person?                      @relation("ProjectPositionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
   updatedByPerson          Person?                      @relation("ProjectPositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  onboardingApprovedByPerson Person?                    @relation("ProjectPositionOnboardingApprovedBy", fields: [onboardingApprovedByPersonId], references: [id], onDelete: SetNull)
   candidates               ProjectPositionCandidate[]
   fillHistory              ProjectPositionFillHistory[]
   // LEAN-P0-5 — back-relation for TimesheetEntry.positionId.
@@ -4052,6 +4062,7 @@ model ProjectPosition {
   @@index([appliedRateCardEntryId])
   @@index([legacyStaffingRequestId])
   @@index([legacyAssignmentId])
+  @@index([onboardingApprovedByPersonId], map: "ProjectPosition_onboardingApprovedByPerson_idx")
   @@map("ProjectPosition")
 }
 

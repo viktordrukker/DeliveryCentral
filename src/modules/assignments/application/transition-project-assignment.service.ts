@@ -16,6 +16,7 @@ import {
   AssignmentStatusValue,
   findTransition,
 } from '../domain/value-objects/assignment-status';
+import { OnboardingApprovalGateService } from './onboarding-approval-gate.service';
 
 export interface TransitionAssignmentCommand {
   actorId: string;
@@ -86,6 +87,10 @@ export class TransitionProjectAssignmentService {
     // pre-HD-3 behaviour preserved.
     private readonly billRateResolver?: EffectiveBillRateResolverService,
     private readonly prisma?: PrismaService,
+    // LEAN-P4c-1 — optional. When wired, ONBOARDING → ASSIGNED transitions
+    // are blocked if the paired ProjectPosition has
+    // `requiresOnboardingApproval=true` and no approval recorded.
+    private readonly onboardingGate?: OnboardingApprovalGateService,
   ) {}
 
   /**
@@ -220,6 +225,12 @@ export class TransitionProjectAssignmentService {
       throw new ConflictException(
         `Assignment cannot transition from ${previousStatus} to ${command.target}.`,
       );
+    }
+
+    // LEAN-P4c-1 — onboarding-stage approval gate. Block the move to
+    // ASSIGNED when the paired position requires an unsatisfied approval.
+    if (this.onboardingGate) {
+      await this.onboardingGate.assertTransitionAllowed(command.assignmentId, command.target);
     }
 
     assignment.transitionTo(command.target, {

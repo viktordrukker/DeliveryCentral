@@ -141,6 +141,7 @@ function buildAssignmentsController(
     {} as never, // transitionProjectAssignmentService
     {} as never, // directorApproveService
     {} as never, // scheduleOnboardingService
+    {} as never, // approveOnboardingService (LEAN-P4c-1)
   );
 }
 
@@ -258,6 +259,7 @@ describe('AssignmentsController — LEAN-P1-11 backward-compat snapshot', () => 
       transitionService as never,
       {} as never,
       {} as never,
+      {} as never, // approveOnboardingService (LEAN-P4c-1)
     );
 
     const dto = await controller.cancelAssignment(
