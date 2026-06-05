@@ -252,5 +252,28 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
     // StatusBadge for the week renders the status label as text.
     expect(screen.getByText('SUBMITTED')).toBeInTheDocument();
   });
+
+  it('blocks a cell commit + shows an inline error when hours exceed 24/day', async () => {
+    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
+    const user = userEvent.setup();
+    const { container } = render(<TimeTab />);
+
+    await screen.findByTestId('me-time-weekly-grid');
+
+    const editButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('button.ds-editable-cell'));
+    const alphaDay0 = editButtons.find((b) => b.textContent?.trim() === '5.0');
+    expect(alphaDay0).toBeDefined();
+    await user.click(alphaDay0!);
+
+    const input = await screen.findByDisplayValue('5');
+    fireEvent.change(input, { target: { value: '25' } });
+    fireEvent.blur(input);
+
+    // Inline error renders via role="alert"; commit must NOT have been called.
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Max 24h per day/);
+    });
+    expect(upsertTimesheetEntryMock).not.toHaveBeenCalled();
+  });
 });
 
