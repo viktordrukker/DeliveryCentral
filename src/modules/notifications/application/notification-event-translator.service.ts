@@ -138,6 +138,13 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     // position-centric path (LEAN-P1-6 .. P1-11), the legacy handlers
     // above can be retired in the LEAN Sprint 5 contract phase.
     { eventName: 'position.fill_changed', dispatch: 'dispatchPositionFillChanged' },
+    // LEAN-P4a-1 — Distribution Studio planner-scenario lifecycle.
+    // These are content-light notifications (lifecycle audit trail) — the
+    // dispatch path is a no-op email; subscribers consume the outbox event
+    // directly via the webhook bus.
+    { eventName: 'scenario.created', dispatch: 'dispatchScenarioCreated' },
+    { eventName: 'scenario.updated', dispatch: 'dispatchScenarioUpdated' },
+    { eventName: 'scenario.cancelled', dispatch: 'dispatchScenarioCancelled' },
   ] as const;
 
   /**
@@ -1740,5 +1747,68 @@ export class NotificationEventTranslatorService implements OnModuleInit {
     } catch {
       // Notification infrastructure must not block the originating business workflow.
     }
+  }
+
+  // ── Planner Scenario Events (LEAN-P4a-1) ────────────────────────────
+  //
+  // Distribution Studio scenarios are author-facing simulations — the
+  // primary consumer is the outbox / webhook bus (for audit forwarding
+  // into bank PPM tooling), not end-user email. The dispatch handlers
+  // are intentionally minimal: they exist so the OUTBOX_HANDLERS list
+  // stays in lockstep with WEBHOOK_EVENT_TYPES (enforced by the
+  // F-27 / D-170 webhook-event-types.spec.ts).
+
+  public async scenarioCreated(payload: {
+    scenarioId: string;
+    actorPersonId: string;
+    name: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'scenario.created',
+      aggregateType: 'PlannerScenario',
+      aggregateId: payload.scenarioId,
+      payload,
+      dispatch: () => this.dispatchScenarioCreated(payload),
+    });
+  }
+
+  private async dispatchScenarioCreated(_payload: object): Promise<void> {
+    // No-op email dispatch; webhook subscribers consume via the outbox.
+    return;
+  }
+
+  public async scenarioUpdated(payload: {
+    scenarioId: string;
+    actorPersonId: string;
+    fields: readonly string[];
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'scenario.updated',
+      aggregateType: 'PlannerScenario',
+      aggregateId: payload.scenarioId,
+      payload,
+      dispatch: () => this.dispatchScenarioUpdated(payload),
+    });
+  }
+
+  private async dispatchScenarioUpdated(_payload: object): Promise<void> {
+    return;
+  }
+
+  public async scenarioCancelled(payload: {
+    scenarioId: string;
+    actorPersonId: string;
+  }): Promise<void> {
+    await this.dualDispatch({
+      eventName: 'scenario.cancelled',
+      aggregateType: 'PlannerScenario',
+      aggregateId: payload.scenarioId,
+      payload,
+      dispatch: () => this.dispatchScenarioCancelled(payload),
+    });
+  }
+
+  private async dispatchScenarioCancelled(_payload: object): Promise<void> {
+    return;
   }
 }

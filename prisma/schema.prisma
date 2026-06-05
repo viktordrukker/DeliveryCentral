@@ -760,6 +760,7 @@ model Person {
   radiatorThresholdUpdates                 RadiatorThresholdConfig[]
   radiusReconciliationRecords              RadiusReconciliationRecord[]
   plannerScenarios                         PlannerScenario[]                   @relation("PlannerScenarioCreator")
+  plannerScenariosUpdated                  PlannerScenario[]                   @relation("PlannerScenarioUpdater")
   notificationPreferences                  PersonNotificationPreference[]
   notificationDigest                       PersonNotificationDigest?
   undoActionsRegistered                    UndoAction[]                        @relation("UndoActionActor")
@@ -3689,27 +3690,42 @@ model ProjectRisk {
 // =============================================================================
 
 model PlannerScenario {
-  id                 String    @id @default(uuid()) @db.Uuid
-  name               String
-  description        String?
-  createdByPersonId  String    @db.Uuid
-  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
-  archivedAt         DateTime? @db.Timestamptz(3)
-  state              Json
-  summaryAssignments Int       @default(0)
-  summaryHires       Int       @default(0)
-  summaryReleases    Int       @default(0)
-  summaryExtensions  Int       @default(0)
-  summaryAnomalies   Int       @default(0)
-  horizonFrom        DateTime? @db.Date
-  horizonWeeks       Int?
+  id                  String                @id @default(uuid()) @db.Uuid
+  publicId            String?               @unique @db.VarChar(32)
+  tenantId            String?               @db.Uuid
+  name                String
+  description         String?
+  status              PlannerScenarioStatus @default(DRAFT)
+  createdByPersonId   String                @db.Uuid
+  updatedByPersonId   String?               @db.Uuid
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  archivedAt          DateTime?             @db.Timestamptz(3)
+  state               Json
+  summaryAssignments  Int                   @default(0)
+  summaryHires        Int                   @default(0)
+  summaryReleases     Int                   @default(0)
+  summaryExtensions   Int                   @default(0)
+  summaryAnomalies    Int                   @default(0)
+  horizonFrom         DateTime?             @db.Date
+  horizonWeeks        Int?
 
-  createdBy Person @relation("PlannerScenarioCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  createdBy Person  @relation("PlannerScenarioCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
+  updatedBy Person? @relation("PlannerScenarioUpdater", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  tenant    Tenant? @relation("PlannerScenarioTenant", fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([createdByPersonId])
+  @@index([updatedByPersonId])
   @@index([archivedAt])
+  @@index([tenantId, status])
   @@map("planner_scenarios")
+}
+
+enum PlannerScenarioStatus {
+  DRAFT
+  SUBMITTED
+  APPLIED
+  CANCELLED
 }
 
 // Phase 21-07 — server-side notification preferences (one row per person × channel)
@@ -3939,6 +3955,8 @@ model Tenant {
   Vendor                    Vendor[]
   // Sprint 2 / S2-1 — lean staffing aggregate.
   ProjectPosition           ProjectPosition[]        @relation("ProjectPositionTenant")
+  // LEAN-P4a-1 — Distribution Studio scenario tenancy.
+  PlannerScenario           PlannerScenario[]        @relation("PlannerScenarioTenant")
 
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
