@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { LeaveImpactPreviewService } from './application/leave-impact-preview.service';
 import { LeaveRequestsService } from './application/leave-requests.service';
 import { LeaveBalanceService } from './application/leave-balance.service';
 import { LEAVE_REQUEST_REPOSITORY } from './domain/repositories/leave-request-repository.port';
@@ -10,7 +11,7 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
 
 @Module({
   controllers: [LeaveRequestsController],
-  exports: [LeaveRequestsService, LeaveBalanceService],
+  exports: [LeaveRequestsService, LeaveBalanceService, LeaveImpactPreviewService],
   providers: [
     // F-14.2 / 20c-02 — bind the new LeaveRequest repository port to its
     // Prisma adapter so `LeaveRequestsService` doesn't speak Prisma directly.
@@ -26,6 +27,7 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
         new LeaveRequestsService(repo, balance),
     },
     LeaveBalanceService,
+    LeaveImpactPreviewService,
   ],
 })
 export class LeaveRequestsModule {}

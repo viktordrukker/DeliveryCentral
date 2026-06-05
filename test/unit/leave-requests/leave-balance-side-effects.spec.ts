@@ -139,6 +139,11 @@ class InMemoryFake implements LeaveRequestRepositoryPort {
       reviewComment: input.reviewComment === undefined ? row.reviewComment : input.reviewComment,
     };
   }
+
+  async cancel(id: string): Promise<LeaveRequestRow> {
+    const row = this.rows.find((r) => r.id === id)!;
+    return { ...row, status: 'CANCELLED' };
+  }
 }
 
 describe('LeaveRequestsService — LeaveBalance side effects (20c-05)', () => {

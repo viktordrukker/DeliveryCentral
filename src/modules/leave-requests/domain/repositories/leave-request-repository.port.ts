@@ -50,6 +50,12 @@ export interface UpdateLeaveRequestStatusInput {
   reviewComment?: string | null;
 }
 
+export interface CancelLeaveRequestInput {
+  // LEAN-P4-missing-11 — self-serve cancel. `actorId` is the requester
+  // cancelling their own pending request; populates updatedByPersonId.
+  actorId: string;
+}
+
 export interface FindLeaveRequestsFilter {
   personId?: string;
   status?: string;
@@ -69,6 +75,9 @@ export interface LeaveRequestRepositoryPort {
   findMany(filter: FindLeaveRequestsFilter): Promise<LeaveRequestRow[]>;
   findFirstOverlappingApproved(input: FindOverlappingApprovedInput): Promise<LeaveRequestRow | null>;
   updateStatus(id: string, input: UpdateLeaveRequestStatusInput): Promise<LeaveRequestRow>;
+  // LEAN-P4-missing-11 — cancel a pending leave request. Sets status to
+  // CANCELLED and stamps the actor as updatedByPersonId.
+  cancel(id: string, input: CancelLeaveRequestInput): Promise<LeaveRequestRow>;
 }
 
 export const LEAVE_REQUEST_REPOSITORY = Symbol.for('LeaveRequestRepositoryPort');

@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import {
+  CancelLeaveRequestInput,
   CreateLeaveRequestRowInput,
   FindLeaveRequestsFilter,
   FindOverlappingApprovedInput,
@@ -88,6 +89,16 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
         // `undefined` leaves the existing value untouched (matches Prisma
         // partial-update semantics). `null` explicitly clears it.
         ...(input.reviewComment !== undefined ? { reviewComment: input.reviewComment } : {}),
+      },
+      where: { id },
+    });
+  }
+
+  public async cancel(id: string, input: CancelLeaveRequestInput): Promise<LeaveRequestRow> {
+    return this.prisma.leaveRequest.update({
+      data: {
+        status: 'CANCELLED',
+        updatedByPersonId: input.actorId,
       },
       where: { id },
     });

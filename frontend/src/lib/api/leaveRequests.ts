@@ -1,7 +1,7 @@
-import { httpGet, httpPost } from './http-client';
+import { httpDelete, httpGet, httpPost } from './http-client';
 
 export type LeaveRequestType = 'ANNUAL' | 'SICK' | 'OTHER' | 'OT_OFF' | 'PERSONAL' | 'PARENTAL' | 'BEREAVEMENT' | 'STUDY';
-export type LeaveRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type LeaveRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveRequestDto {
   createdAt: string;
@@ -77,4 +77,37 @@ export interface LeaveBalanceDto {
 export async function fetchMyLeaveBalance(year?: number): Promise<LeaveBalanceDto[]> {
   const qs = year ? `?year=${year}` : '';
   return httpGet<LeaveBalanceDto[]>(`/leave-requests/my-balance${qs}`);
+}
+
+/**
+ * LEAN-P4-missing-11 — server-side impact preview surfaced before submit.
+ * Mirrors the legacy client-side preview (workingDays, balanceAfter,
+ * conflicts) so consumers don't have to recompute holiday + assignment
+ * overlap math in the browser.
+ */
+export interface LeaveImpactPreviewDto {
+  workingDaysRequested: number;
+  skippedHolidays: string[];
+  balanceAfter: number | null;
+  conflictingAssignmentIds: string[];
+  conflictingTeamLeaveIds: string[];
+}
+
+export async function previewLeave(input: {
+  startDate: string;
+  endDate: string;
+  type: LeaveRequestType;
+  personId?: string;
+}): Promise<LeaveImpactPreviewDto> {
+  const query = new URLSearchParams();
+  query.set('startDate', input.startDate);
+  query.set('endDate', input.endDate);
+  query.set('type', input.type);
+  if (input.personId) query.set('personId', input.personId);
+  return httpGet<LeaveImpactPreviewDto>(`/leave-requests/preview?${query.toString()}`);
+}
+
+/** LEAN-P4-missing-11 — cancel an own PENDING leave request. */
+export async function cancelLeaveRequest(id: string): Promise<LeaveRequestDto> {
+  return httpDelete<LeaveRequestDto>(`/leave-requests/${id}`);
 }

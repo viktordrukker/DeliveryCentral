@@ -1,18 +1,24 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { BalanceMeter, Button, Calendar, Pct, type CalendarEvent } from '@/components/ds';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { fetchEmployeeDashboard, type EmployeeDashboardResponse } from '@/lib/api/dashboard-employee';
 import { fetchPublicHolidays, type PublicHoliday } from '@/lib/api/my-time';
 import {
+  cancelLeaveRequest,
   createLeaveRequest,
   fetchMyLeaveBalance,
   fetchMyLeaveRequests,
+  previewLeave,
   type LeaveBalanceDto,
+  type LeaveImpactPreviewDto,
   type LeaveRequestDto,
   type LeaveRequestType,
 } from '@/lib/api/leaveRequests';
@@ -71,6 +77,12 @@ export function LeaveTab(): JSX.Element {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
+  // LEAN-P4-missing-11 — server preview (dsRefresh) + cancel.
+  const dsRefresh = isFeatureEnabled('dsRefresh');
+  const [serverPreview, setServerPreview] = useState<LeaveImpactPreviewDto | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<LeaveRequestDto | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
   const personId = principal?.personId;
 
   const loadAll = (): void => {
@@ -116,6 +128,46 @@ export function LeaveTab(): JSX.Element {
       active = false;
     };
   }, [personId, year]);
+
+  // LEAN-P4-missing-11 — debounced server-side preview when dsRefresh is on.
+  // Augments the client-side estimate with authoritative conflicts coming
+  // from the backend (project assignments + team leave in same OrgUnit).
+  useEffect(() => {
+    if (!dsRefresh) return;
+    if (!startDate || !endDate) {
+      setServerPreview(null);
+      return;
+    }
+    let active = true;
+    const handle = window.setTimeout(() => {
+      previewLeave({ startDate, endDate, type })
+        .then((dto) => {
+          if (active) setServerPreview(dto);
+        })
+        .catch(() => {
+          if (active) setServerPreview(null);
+        });
+    }, 300);
+    return () => {
+      active = false;
+      window.clearTimeout(handle);
+    };
+  }, [dsRefresh, startDate, endDate, type]);
+
+  const onCancelConfirm = async (): Promise<void> => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      await cancelLeaveRequest(cancelTarget.id);
+      setCancelTarget(null);
+      loadAll();
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to cancel request.');
+      setCancelTarget(null);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   // ── Calendar events: approved + pending + holidays + own leaves ─────
   const calendarEvents: CalendarEvent[] = useMemo(() => {
@@ -356,6 +408,21 @@ export function LeaveTab(): JSX.Element {
                     </ul>
                   </div>
                 )}
+                {dsRefresh && serverPreview && serverPreview.conflictingTeamLeaveIds.length > 0 && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 'var(--space-1)',
+                      paddingTop: 'var(--space-2)',
+                      borderTop: '1px dashed var(--color-status-warning)',
+                      color: 'var(--color-status-warning)',
+                      fontSize: 12,
+                    }}
+                  >
+                    {serverPreview.conflictingTeamLeaveIds.length} teammate
+                    {serverPreview.conflictingTeamLeaveIds.length === 1 ? ' is' : 's are'} also out during this period.
+                  </div>
+                )}
               </div>
             )}
 
@@ -378,16 +445,98 @@ export function LeaveTab(): JSX.Element {
         </SectionCard>
       </div>
 
-      <SectionCard title={`${year} at a glance`}>
-        <Calendar mode="year" month={new Date(year, 0, 1)} events={calendarEvents} />
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-3)', flexWrap: 'wrap', fontSize: 11, color: 'var(--color-text-muted)' }}>
-          <Legend swatch="color-mix(in oklab, var(--color-status-active) 25%, var(--color-surface))" label="Approved" />
-          <Legend swatch="color-mix(in oklab, var(--color-status-warning) 28%, var(--color-surface))" label="Pending" />
-          <Legend swatch="color-mix(in oklab, var(--color-status-info) 18%, var(--color-surface))" label="Public holiday" />
-          <Legend swatch="var(--color-surface-alt)" label="Weekend" />
-        </div>
-      </SectionCard>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <SectionCard title={`${year} at a glance`}>
+          <Calendar mode="year" month={new Date(year, 0, 1)} events={calendarEvents} />
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-3)', flexWrap: 'wrap', fontSize: 11, color: 'var(--color-text-muted)' }}>
+            <Legend swatch="color-mix(in oklab, var(--color-status-active) 25%, var(--color-surface))" label="Approved" />
+            <Legend swatch="color-mix(in oklab, var(--color-status-warning) 28%, var(--color-surface))" label="Pending" />
+            <Legend swatch="color-mix(in oklab, var(--color-status-info) 18%, var(--color-surface))" label="Public holiday" />
+            <Legend swatch="var(--color-surface-alt)" label="Weekend" />
+          </div>
+        </SectionCard>
+
+        {dsRefresh && (
+          <PendingLeaveList
+            requests={data.requests}
+            onCancel={(req) => setCancelTarget(req)}
+          />
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        title="Cancel leave request"
+        message={
+          cancelTarget
+            ? `Cancel your ${LEAVE_TYPE_LABELS[cancelTarget.type] ?? cancelTarget.type} from ${cancelTarget.startDate} to ${cancelTarget.endDate}? The pending balance will be released.`
+            : ''
+        }
+        confirmLabel={cancelling ? 'Cancelling…' : 'Cancel request'}
+        tone="danger"
+        onCancel={() => setCancelTarget(null)}
+        onConfirm={() => {
+          void onCancelConfirm();
+        }}
+      />
     </div>
+  );
+}
+
+interface PendingLeaveListProps {
+  requests: LeaveRequestDto[];
+  onCancel: (req: LeaveRequestDto) => void;
+}
+
+function PendingLeaveList({ requests, onCancel }: PendingLeaveListProps): JSX.Element {
+  const pending = requests.filter((r) => r.status === 'PENDING');
+  return (
+    <SectionCard title={`Pending requests (${pending.length})`}>
+      {pending.length === 0 ? (
+        <EmptyState
+          title="No pending requests"
+          description="When you submit a leave request, it will show here until your manager reviews it. You can cancel it any time before approval."
+        />
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {pending.map((req) => (
+            <li
+              key={req.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-2) var(--space-3)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-control)',
+                background: 'var(--color-surface)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 13 }}>{LEAVE_TYPE_LABELS[req.type] ?? req.type}</strong>
+                  <StatusBadge tone="warning" variant="chip" label="Pending" />
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {req.startDate} → {req.endDate}
+                </span>
+                {req.notes && (
+                  <span style={{ fontSize: 11, color: 'var(--color-text-subtle)' }}>{req.notes}</span>
+                )}
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => onCancel(req)}
+                aria-label={`Cancel leave from ${req.startDate} to ${req.endDate}`}
+              >
+                Cancel
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
   );
 }
 
