@@ -28,6 +28,7 @@ import { GetProjectByIdService } from './application/get-project-by-id.service';
 import { ProjectDashboardQueryService } from './application/project-dashboard-query.service';
 import { ProjectDirectoryQueryService } from './application/project-directory-query.service';
 import { ProjectHealthQueryService } from './application/project-health-query.service';
+import { TimeToFillService } from './application/time-to-fill.service';
 import { UpdateProjectService } from './application/update-project.service';
 import { InMemoryExternalSyncStateRepository } from './infrastructure/repositories/in-memory/in-memory-external-sync-state.repository';
 import { InMemoryProjectExternalLinkRepository } from './infrastructure/repositories/in-memory/in-memory-project-external-link.repository';
@@ -353,6 +354,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     SpcService,
     OrgConfigService,
     PulseReportService,
+    TimeToFillService,
   ],
   exports: [
     ActivateProjectService,
