@@ -5,6 +5,8 @@
  * transition pipeline. Uses lightweight mocks for Prisma so the suite
  * stays in the `unit` bucket and does not touch the real DB.
  */
+import { readFileSync } from 'node:fs';
+
 import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 
 import { OnboardingApprovalGateService } from '@src/modules/assignments/application/onboarding-approval-gate.service';
@@ -237,7 +239,7 @@ describe('LEAN-P4c-1 — ApproveOnboardingService', () => {
 
 describe('LEAN-P4c-1 — source-shape integration', () => {
   it('TransitionProjectAssignmentService accepts OnboardingApprovalGateService and calls assertTransitionAllowed', () => {
-    const src = require('node:fs').readFileSync(
+    const src = readFileSync(
       'src/modules/assignments/application/transition-project-assignment.service.ts',
       'utf-8',
     );
@@ -247,7 +249,7 @@ describe('LEAN-P4c-1 — source-shape integration', () => {
   });
 
   it('assignments controller exposes /:id/onboarding/approve + /:id/onboarding/reject under PROJECT_DELIVERY_ROLES', () => {
-    const src = require('node:fs').readFileSync(
+    const src = readFileSync(
       'src/modules/assignments/presentation/assignments.controller.ts',
       'utf-8',
     );
@@ -261,7 +263,7 @@ describe('LEAN-P4c-1 — source-shape integration', () => {
   });
 
   it('webhook-event-types registers onboarding_approved + onboarding_rejected', () => {
-    const src = require('node:fs').readFileSync(
+    const src = readFileSync(
       'src/shared/events/webhook-event-types.ts',
       'utf-8',
     );
