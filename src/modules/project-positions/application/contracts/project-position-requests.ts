@@ -18,7 +18,7 @@ import { POSITION_FILL_STATUS_VALUES, PositionFillStatusValue } from '../../doma
 
 export class CreateProjectPositionRequestDto {
   @ApiProperty()
-  @IsUUID()
+  @IsUUID('all')
   projectId!: string;
 
   @ApiProperty()
@@ -53,7 +53,7 @@ export class CreateProjectPositionRequestDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('all')
   requestedByPersonId?: string;
 
   @ApiProperty({ required: false, default: false })
@@ -74,7 +74,7 @@ export class TransitionProjectPositionFillRequestDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('all')
   caseId?: string;
 
   @ApiProperty({
@@ -83,7 +83,7 @@ export class TransitionProjectPositionFillRequestDto {
       'Person filling the position. Required for fill-side transitions (PROPOSED/BOOKED/ONBOARDING/ASSIGNED) when activePersonId is not already set.',
   })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('all')
   personId?: string;
 
   @ApiProperty({ required: false })
@@ -107,12 +107,12 @@ export class TransitionProjectPositionFillRequestDto {
 export class ListProjectPositionsQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('all')
   projectId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('all')
   activePersonId?: string;
 
   @ApiProperty({ required: false, enum: POSITION_FILL_STATUS_VALUES, isArray: true })

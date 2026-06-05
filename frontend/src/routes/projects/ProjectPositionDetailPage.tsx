@@ -17,6 +17,7 @@ import {
   type ProjectPosition,
   getPositionCandidates,
   getProjectPositionById,
+  listProjectPositions,
   transitionProjectPositionFill,
 } from '@/lib/api/project-positions';
 
@@ -121,10 +122,26 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setIsLoading(true);
     setError(null);
     try {
-      const pos = await getProjectPositionById(positionId);
+      // Two-pronged lookup so this page works for callers that pass either
+      // a canonical ProjectPosition id OR a legacy ProjectAssignment id.
+      // The staffing-desk's "assignment" rows carry the legacy id; the seed
+      // populates that id on ProjectPosition.legacyAssignmentId. We try the
+      // direct GET first (fast path for canonical ids), then fall back to
+      // a listing filtered by legacyAssignmentId.
+      let pos: ProjectPosition | null = null;
+      try {
+        pos = await getProjectPositionById(positionId);
+      } catch {
+        const { positions } = await listProjectPositions({ take: 500 });
+        pos = positions.find((p) => p.legacyAssignmentId === positionId) ?? null;
+        if (!pos) {
+          throw new Error(`ProjectPosition ${positionId} not found.`);
+        }
+      }
       setPosition(pos);
+      const realId = pos.id;
       if (PROPOSABLE.has(pos.fillStatus)) {
-        const res = await getPositionCandidates(positionId, 5);
+        const res = await getPositionCandidates(realId, 5);
         setCandidates(res.candidates);
         setRequiredSkills(res.requiredSkills);
       } else {
@@ -142,10 +159,12 @@ export function ProjectPositionDetailPage(): JSX.Element {
   }, [load]);
 
   async function confirmPropose(): Promise<void> {
-    if (!proposeFor || !positionId || !position) return;
+    if (!proposeFor || !position) return;
     setBusy(true);
     try {
-      await transitionProjectPositionFill(positionId, {
+      // Use the canonical position.id (resolved through the legacy-id fallback)
+      // rather than the URL :id, which may be a legacyAssignmentId.
+      await transitionProjectPositionFill(position.id, {
         toStatus: 'PROPOSED',
         personId: proposeFor.personId,
         allocationPercent: position.requiredAllocationPercent,
