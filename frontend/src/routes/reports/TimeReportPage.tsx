@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Area,
   AreaChart,
@@ -58,11 +59,36 @@ function getDateRange(period: Period): { from: string; to: string } {
   }
 }
 
+function isValidTimePeriod(s: string | null): s is Period {
+  return s === 'this_week' || s === 'this_month' || s === 'this_quarter' || s === 'custom';
+}
+
 export function TimeReportPage(): JSX.Element {
   const { setActions } = useTitleBarActions();
-  const [period, setPeriod] = useState<Period>('this_month');
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
+
+  // UX Law 5 — filter persistence via URL search params.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const periodParam = searchParams.get('period');
+  const period: Period = isValidTimePeriod(periodParam) ? periodParam : 'this_month';
+  const customFrom = searchParams.get('from') ?? '';
+  const customTo = searchParams.get('to') ?? '';
+
+  const updateParam = (key: string, value: string | null): void => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const setPeriod = (p: Period): void => updateParam('period', p === 'this_month' ? null : p);
+  const setCustomFrom = (v: string): void => updateParam('from', v || null);
+  const setCustomTo = (v: string): void => updateParam('to', v || null);
+
   const [data, setData] = useState<TimeReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
