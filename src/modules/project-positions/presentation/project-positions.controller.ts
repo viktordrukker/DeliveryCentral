@@ -10,7 +10,13 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
@@ -40,6 +46,10 @@ import { GetProjectPositionByIdService } from '../application/get-project-positi
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
 import { ListEnrichedBenchService } from '../application/list-enriched-bench.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
+import {
+  PositionForensicsDto,
+  PositionForensicsService,
+} from '../application/position-forensics.service';
 import { SuggestFillsService } from '../application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from '../application/transition-project-position-fill.service';
 
@@ -69,6 +79,7 @@ export class ProjectPositionsController {
     private readonly listService: ListProjectPositionsService,
     private readonly getService: GetProjectPositionByIdService,
     private readonly suggestFillsService: SuggestFillsService,
+    private readonly forensicsService: PositionForensicsService,
   ) {}
 
   @Get()
@@ -101,6 +112,20 @@ export class ProjectPositionsController {
   ): Promise<ProjectPositionResponseDto> {
     const position = await this.getService.execute(id);
     return ProjectPositionResponseDto.from(position);
+  }
+
+  @Get(':id/forensics')
+  @ApiOperation({
+    summary:
+      'LEAN-P4b-2 — full ProjectPositionFillHistory timeline annotated with per-event dwell-time (OPEN > 7d / PROPOSED > 3d flagged as longDwell).',
+  })
+  @ApiOkResponse({ description: 'Position lifecycle forensics.' })
+  @ApiNotFoundResponse({ description: 'Position not found.' })
+  @RequireRoles(...STAFFING_ROLES)
+  public async forensics(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PositionForensicsDto> {
+    return this.forensicsService.execute(id);
   }
 
   @Get(':id/candidates')

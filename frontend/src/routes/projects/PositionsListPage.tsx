@@ -7,7 +7,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
-import { Pct, Table, type Column } from '@/components/ds';
+import { PositionForensicsDrawer } from '@/components/projects/PositionForensicsDrawer';
+import { Button, Pct, Table, type Column } from '@/components/ds';
 import {
   type ProjectPosition,
   type PositionFillStatus,
@@ -36,43 +37,64 @@ const STATUS_TONE: Record<PositionFillStatus, StatusTone> = {
 
 const NUM: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
-const positionsColumns: Array<Column<ProjectPosition>> = [
-  {
-    key: 'role',
-    title: 'Role',
-    render: (p) => (
-      <Link to={`/projects/${p.projectId}/positions/${p.id}`} style={{ color: 'var(--color-accent)' }}>
-        {p.role}
-      </Link>
-    ),
-  },
-  {
-    key: 'status',
-    title: 'Status',
-    render: (p) => <StatusBadge tone={STATUS_TONE[p.fillStatus]} label={p.fillStatus} />,
-  },
-  {
-    key: 'required',
-    title: 'Required %',
-    align: 'right',
-    render: (p) => <span style={NUM}><Pct value={p.requiredAllocationPercent} /></span>,
-  },
-  {
-    key: 'active-person',
-    title: 'Active person',
-    render: (p) => p.activePersonId ?? '—',
-  },
-  {
-    key: 'active-alloc',
-    title: 'Active %',
-    align: 'right',
-    render: (p) => (
-      p.activeAllocationPercent !== undefined
-        ? <Pct value={p.activeAllocationPercent} fractionDigits={0} />
-        : <span style={NUM}>—</span>
-    ),
-  },
-];
+function buildPositionsColumns(
+  onOpenForensics: (position: ProjectPosition) => void,
+): Array<Column<ProjectPosition>> {
+  return [
+    {
+      key: 'role',
+      title: 'Role',
+      render: (p) => (
+        <Link to={`/projects/${p.projectId}/positions/${p.id}`} style={{ color: 'var(--color-accent)' }}>
+          {p.role}
+        </Link>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      render: (p) => <StatusBadge tone={STATUS_TONE[p.fillStatus]} label={p.fillStatus} />,
+    },
+    {
+      key: 'required',
+      title: 'Required %',
+      align: 'right',
+      render: (p) => <span style={NUM}><Pct value={p.requiredAllocationPercent} /></span>,
+    },
+    {
+      key: 'active-person',
+      title: 'Active person',
+      render: (p) => p.activePersonId ?? '—',
+    },
+    {
+      key: 'active-alloc',
+      title: 'Active %',
+      align: 'right',
+      render: (p) => (
+        p.activeAllocationPercent !== undefined
+          ? <Pct value={p.activeAllocationPercent} fractionDigits={0} />
+          : <span style={NUM}>—</span>
+      ),
+    },
+    {
+      // LEAN-P4b-2 — opens the lifecycle forensics drawer for this position.
+      // Action-data adjacency (UX Law 4) — the drawer renders alongside the row.
+      key: 'forensics',
+      title: '',
+      render: (p) => (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onOpenForensics(p)}
+          data-testid={`position-forensics-open-${p.id}`}
+        >
+          Forensics
+        </Button>
+      ),
+    },
+  ];
+}
 
 export function PositionsListPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
@@ -80,6 +102,7 @@ export function PositionsListPage(): JSX.Element {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [forensicsPosition, setForensicsPosition] = useState<ProjectPosition | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -108,6 +131,8 @@ export function PositionsListPage(): JSX.Element {
     };
   }, [projectId]);
 
+  const columns = buildPositionsColumns(setForensicsPosition);
+
   return (
     <PageContainer testId="positions-list-page">
       <SectionCard
@@ -126,10 +151,15 @@ export function PositionsListPage(): JSX.Element {
             variant="compact"
             getRowKey={(p) => p.id}
             rows={positions}
-            columns={positionsColumns}
+            columns={columns}
           />
         )}
       </SectionCard>
+      <PositionForensicsDrawer
+        positionId={forensicsPosition?.id ?? null}
+        positionRole={forensicsPosition?.role}
+        onClose={() => setForensicsPosition(null)}
+      />
     </PageContainer>
   );
 }

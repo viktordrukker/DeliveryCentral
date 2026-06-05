@@ -5,6 +5,7 @@ import {
   checkBench,
   createProjectPosition,
   fetchPersonSuggestedPositions,
+  fetchPositionForensics,
   fetchProjectPosition,
   fetchProjectPositions,
   getPositionCandidates,
@@ -12,6 +13,7 @@ import {
   listProjectPositions,
   transitionProjectPosition,
   transitionProjectPositionFill,
+  type PositionForensics,
   type ProjectPosition,
   type ProjectPositionFillStatus,
 } from './project-positions';
@@ -249,5 +251,42 @@ describe('checkBench', () => {
       personIds: ['p-1', 'p-2'],
       asOf: '2026-06-01',
     });
+  });
+});
+
+describe('fetchPositionForensics (LEAN-P4b-2)', () => {
+  beforeEach(() => {
+    httpGet.mockReset();
+  });
+
+  it('hits /project-positions/:id/forensics and returns the payload', async () => {
+    const payload: PositionForensics = {
+      positionId: 'pos-1',
+      projectId: 'proj-1',
+      role: 'Engineer',
+      currentStatus: 'OPEN',
+      events: [
+        {
+          id: 'h1',
+          changeType: 'OPENED',
+          previousStatus: 'DRAFT',
+          newStatus: 'OPEN',
+          previousPersonId: null,
+          newPersonId: null,
+          changedByPersonId: 'pm-1',
+          changeReason: null,
+          occurredAt: '2026-06-01T00:00:00.000Z',
+          dwellMs: 432_000_000,
+          longDwell: false,
+        },
+      ],
+      asOf: '2026-06-06T00:00:00.000Z',
+    };
+    httpGet.mockResolvedValueOnce(payload);
+
+    const result = await fetchPositionForensics('pos-1');
+
+    expect(httpGet).toHaveBeenCalledWith('/project-positions/pos-1/forensics');
+    expect(result).toEqual(payload);
   });
 });
