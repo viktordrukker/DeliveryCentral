@@ -258,7 +258,11 @@ const dashboardChildren = [
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/new' },
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/bulk' },
   { element: <Navigate to="/approvals" replace />, path: 'assignments/queue' },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><AssignmentDetailsPlaceholderPage /></RoleGuard>, path: 'assignments/:id' },
+  // Lean canonical: both /assignments/:id and /staffing-requests/:id route
+  // to the unified ProjectPositionDetailPage (positionId == :id). When the
+  // id doesn't resolve as a position, the page surfaces "not found" cleanly.
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'assignments/:id' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'positions/:id' },
   { element: <AccountSettingsPage />, path: 'settings/account' },
   { element: <InboxPage />, path: 'notifications' },
   // /me — Employee Workspace shell. Gated by flag.workspaceMe (default OFF in
@@ -355,8 +359,8 @@ const dashboardChildren = [
   // canonical aggregate directly — no interim ProjectAssignment.
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-requests/new' },
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-desk/positions/new' },
-  // /staffing-requests/:id keeps redirecting — position detail lives at /projects/:projectId/positions/:positionId.
-  { element: <Navigate to="/staffing-desk?view=table" replace />, path: 'staffing-requests/:id' },
+  // Lean canonical: /staffing-requests/:id renders the unified ProjectPositionDetailPage.
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',
