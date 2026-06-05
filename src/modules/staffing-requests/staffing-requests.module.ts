@@ -20,7 +20,9 @@ import {
 import { StaffingSuggestionsService } from './application/staffing-suggestions.service';
 import { InMemoryStaffingRequestService } from './infrastructure/services/in-memory-staffing-request.service';
 import { PrismaStaffingRequestProposalSlateRepository } from './infrastructure/repositories/prisma/prisma-staffing-request-proposal-slate.repository';
+import { ProposalsController } from './presentation/proposals.controller';
 import { StaffingRequestsController } from './presentation/staffing-requests.controller';
+import { UnifiedCandidateQueueService } from './application/unified-candidate-queue.service';
 
 @Module({
   imports: [
@@ -29,13 +31,23 @@ import { StaffingRequestsController } from './presentation/staffing-requests.con
     NotificationsModule,
     PlatformSettingsModule,
   ],
-  controllers: [StaffingRequestsController],
-  exports: [InMemoryStaffingRequestService, DeriveStaffingRequestStatusService, StaffingProposalSlateService],
+  controllers: [StaffingRequestsController, ProposalsController],
+  exports: [
+    InMemoryStaffingRequestService,
+    DeriveStaffingRequestStatusService,
+    StaffingProposalSlateService,
+    UnifiedCandidateQueueService,
+  ],
   providers: [
     InMemoryStaffingRequestService,
     DeriveStaffingRequestStatusService,
     NudgeStaffingRequestService,
     PrismaStaffingRequestProposalSlateRepository,
+    {
+      provide: UnifiedCandidateQueueService,
+      useFactory: (prisma: PrismaService) => new UnifiedCandidateQueueService(prisma),
+      inject: [PrismaService],
+    },
     {
       provide: StaffingSuggestionsService,
       useFactory: (prisma: PrismaService, settings: PlatformSettingsService) =>
