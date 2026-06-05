@@ -15,6 +15,7 @@ import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
 import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDropdown';
 import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
+import { PlannerScenarioPanel } from '@/components/staffing-desk/PlannerScenarioPanel';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
@@ -183,10 +184,17 @@ export function StaffingDeskPage(): JSX.Element {
         <>
           {/* The full swimlane planner is the flagship Planner surface in both
               flag states. dsRefresh ON additionally surfaces the saved-scenario
-              studio beneath it (additive — not a replacement, which previously
-              regressed the ON path to a scenario list only). */}
+              panel + studio beneath it (additive — not a replacement, which
+              previously regressed the ON path to a scenario list only).
+              LEAN-P4a-2 adds the compact PlannerScenarioPanel sidebar with
+              Save / Load / Cancel for the new /api/staffing/scenarios CRUD. */}
           <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
-          {dsRefreshEnabled ? <DistributionStudio canEdit /> : null}
+          {dsRefreshEnabled ? (
+            <>
+              <PlannerScenarioPanel />
+              <DistributionStudio canEdit />
+            </>
+          ) : null}
         </>
       )}
 
