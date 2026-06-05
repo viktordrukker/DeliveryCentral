@@ -1,6 +1,8 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { LeaveRequestType } from '@prisma/client';
 
+import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
+
 import {
   LEAVE_REQUEST_REPOSITORY,
   LeaveRequestRepositoryPort,
@@ -16,6 +18,9 @@ export interface CreateLeaveRequestDto {
   type: 'ANNUAL' | 'SICK' | 'OTHER';
   // F-112 / D-103-write-path round 22 — actor for createdBy/updatedBy.
   actorId?: string;
+  // LEAN-P4-missing-12 — manager to notify on submit. Optional;
+  // controller / caller resolves via ReportingLine when available.
+  managerPersonId?: string;
 }
 
 export interface LeaveRequestDto {
@@ -29,7 +34,7 @@ export interface LeaveRequestDto {
   // Track B.1 — reviewer's justification surfaced in audit / decision drawer.
   reviewComment: string | null;
   startDate: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   type: 'ANNUAL' | 'SICK' | 'OTHER';
 }
 
@@ -62,6 +67,11 @@ export class LeaveRequestsService {
     @Inject(LEAVE_REQUEST_REPOSITORY)
     private readonly repository: LeaveRequestRepositoryPort,
     private readonly balanceService: LeaveBalanceService,
+    // LEAN-P4-missing-12 — optional translator so existing tests (which
+    // instantiate the service with just repo + balance) keep compiling.
+    // Production DI always provides the translator; the dispatch calls
+    // below are no-ops when undefined.
+    private readonly notificationEventTranslator?: NotificationEventTranslatorService,
   ) {}
 
   public async create(dto: CreateLeaveRequestDto): Promise<LeaveRequestDto> {
@@ -97,6 +107,18 @@ export class LeaveRequestsService {
       days,
       actorId,
     );
+
+    // LEAN-P4-missing-12 — fan-out submitted event to translator (manager
+    // notification + outbox). `managerPersonId` is resolved by the
+    // caller when available; absent => no in-app notification (email-only).
+    void this.notificationEventTranslator?.leaveSubmitted({
+      leaveRequestId: record.id,
+      personId: record.personId,
+      startDate: record.startDate.toISOString().slice(0, 10),
+      endDate: record.endDate.toISOString().slice(0, 10),
+      type: record.type,
+      managerPersonId: dto.managerPersonId,
+    });
 
     return this.toDto(record);
   }
@@ -163,6 +185,17 @@ export class LeaveRequestsService {
       reviewerId,
     );
 
+    // LEAN-P4-missing-12 — notify employee of decision.
+    void this.notificationEventTranslator?.leaveApproved({
+      leaveRequestId: updated.id,
+      personId: updated.personId,
+      startDate: updated.startDate.toISOString().slice(0, 10),
+      endDate: updated.endDate.toISOString().slice(0, 10),
+      type: updated.type,
+      reviewerPersonId: reviewerId,
+      reviewComment: updated.reviewComment,
+    });
+
     return this.toDto(updated);
   }
 
@@ -205,6 +238,73 @@ export class LeaveRequestsService {
       reviewerId,
     );
 
+    // LEAN-P4-missing-12 — notify employee of decision.
+    void this.notificationEventTranslator?.leaveRejected({
+      leaveRequestId: updated.id,
+      personId: updated.personId,
+      startDate: updated.startDate.toISOString().slice(0, 10),
+      endDate: updated.endDate.toISOString().slice(0, 10),
+      type: updated.type,
+      reviewerPersonId: reviewerId,
+      reviewComment: updated.reviewComment,
+    });
+
+    return this.toDto(updated);
+  }
+
+  /**
+   * LEAN-P4-missing-12 — employee-initiated cancellation of a pending
+   * leave request. Releases any pending balance and notifies the manager
+   * (if known). HR-initiated decisions go through approve / reject.
+   */
+  public async cancelByEmployee(
+    id: string,
+    employeeId: string,
+    managerPersonId?: string,
+  ): Promise<LeaveRequestDto> {
+    const record = await this.repository.findById(id);
+    if (!record) throw new NotFoundException('Leave request not found');
+    if (record.personId !== employeeId) {
+      throw new ForbiddenException('Only the requesting employee may cancel a leave request');
+    }
+    if (record.status !== 'PENDING') {
+      throw new ForbiddenException('Only pending requests can be cancelled');
+    }
+
+    const updated = await this.repository.updateStatus(id, {
+      reviewedAt: new Date(),
+      reviewedBy: employeeId,
+      status: 'CANCELLED',
+      actorId: employeeId,
+    });
+
+    // Release reserved balance (same shape as reject path).
+    const days = calculateLeaveDaysInclusive(record.startDate, record.endDate);
+    const year = record.startDate.getUTCFullYear();
+    await this.balanceService.ensureBalance(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      0,
+      employeeId,
+    );
+    await this.balanceService.restorePending(
+      record.personId,
+      year,
+      record.type as LeaveRequestType,
+      days,
+      employeeId,
+    );
+
+    void this.notificationEventTranslator?.leaveCancelledByEmployee({
+      leaveRequestId: updated.id,
+      personId: updated.personId,
+      startDate: updated.startDate.toISOString().slice(0, 10),
+      endDate: updated.endDate.toISOString().slice(0, 10),
+      type: updated.type,
+      managerPersonId,
+    });
+
     return this.toDto(updated);
   }
 
@@ -219,7 +319,7 @@ export class LeaveRequestsService {
       reviewedBy: record.reviewedBy,
       reviewComment: record.reviewComment,
       startDate: record.startDate.toISOString().slice(0, 10),
-      status: record.status as 'PENDING' | 'APPROVED' | 'REJECTED',
+      status: record.status as 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED',
       type: record.type as 'ANNUAL' | 'SICK' | 'OTHER',
     };
   }
