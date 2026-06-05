@@ -16,7 +16,7 @@ export class PortfolioFinanceSummaryService {
   public constructor(private readonly prisma: PrismaService) {}
 
   public async summarize(fiscalYear?: number): Promise<PortfolioFinanceSummaryDto> {
-    const year = fiscalYear ?? new Date().getUTCFullYear();
+    const year = fiscalYear ?? (await this.resolveDefaultFiscalYear());
     const rows = await this.prisma.projectBudget.findMany({
       where: { fiscalYear: year },
       select: {
@@ -58,5 +58,22 @@ export class PortfolioFinanceSummaryService {
       cpi,
       overBudgetProjectCount,
     };
+  }
+
+  /**
+   * Default fiscal year picks the most-recent year that has at least one
+   * ProjectBudget row. Previously this defaulted to `new Date().getUTCFullYear()`
+   * which produced empty results in the common case where the current
+   * calendar year is mid-rollover and budgets are still keyed to the
+   * project's start-year (the seed and most real customers behave this way).
+   * If the table is empty we fall back to the current year so the response
+   * shape stays stable.
+   */
+  private async resolveDefaultFiscalYear(): Promise<number> {
+    const latest = await this.prisma.projectBudget.findFirst({
+      orderBy: { fiscalYear: 'desc' },
+      select: { fiscalYear: true },
+    });
+    return latest?.fiscalYear ?? new Date().getUTCFullYear();
   }
 }
