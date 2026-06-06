@@ -59,11 +59,13 @@ describe('RolePermissionAdminPage (F-5.4 / D-159)', () => {
   it('renders one row per preset with default vs overridden badges', async () => {
     renderPage();
     await waitFor(() => expect(mockedFetch).toHaveBeenCalledTimes(1));
-    expect(screen.getByText('EXEC_ROLES')).toBeInTheDocument();
-    expect(screen.getByText('HR_GOVERNANCE_ROLES')).toBeInTheDocument();
+    expect(await screen.findByText('EXEC_ROLES')).toBeInTheDocument();
+    expect(await screen.findByText('HR_GOVERNANCE_ROLES')).toBeInTheDocument();
     // EXEC_ROLES is default; HR is overridden
-    expect(screen.getByTestId('preset-row-EXEC_ROLES')).toHaveTextContent(/default/i);
-    expect(screen.getByTestId('preset-row-HR_GOVERNANCE_ROLES')).toHaveTextContent(/overridden/i);
+    expect(await screen.findByTestId('preset-row-EXEC_ROLES')).toHaveTextContent(/default/i);
+    expect(await screen.findByTestId('preset-row-HR_GOVERNANCE_ROLES')).toHaveTextContent(
+      /overridden/i,
+    );
   });
 
   it('opens the editor, persists an override, and refreshes the row', async () => {
@@ -77,7 +79,7 @@ describe('RolePermissionAdminPage (F-5.4 / D-159)', () => {
     renderPage();
 
     await waitFor(() => expect(mockedFetch).toHaveBeenCalledTimes(1));
-    const execRow = screen.getByTestId('preset-row-EXEC_ROLES');
+    const execRow = await screen.findByTestId('preset-row-EXEC_ROLES');
     await user.click(within(execRow).getByRole('button', { name: /edit/i }));
 
     expect(await screen.findByTestId('role-preset-editor')).toBeInTheDocument();
@@ -101,9 +103,9 @@ describe('RolePermissionAdminPage (F-5.4 / D-159)', () => {
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => expect(mockedFetch).toHaveBeenCalledTimes(1));
-    const execRow = screen.getByTestId('preset-row-EXEC_ROLES');
+    const execRow = await screen.findByTestId('preset-row-EXEC_ROLES');
     await user.click(within(execRow).getByRole('button', { name: /edit/i }));
-    const adminCheckbox = screen.getByLabelText('admin');
+    const adminCheckbox = await screen.findByLabelText('admin');
     expect(adminCheckbox).toBeDisabled();
   });
 
@@ -118,7 +120,7 @@ describe('RolePermissionAdminPage (F-5.4 / D-159)', () => {
     renderPage();
 
     await waitFor(() => expect(mockedFetch).toHaveBeenCalledTimes(1));
-    const hrRow = screen.getByTestId('preset-row-HR_GOVERNANCE_ROLES');
+    const hrRow = await screen.findByTestId('preset-row-HR_GOVERNANCE_ROLES');
     await user.click(within(hrRow).getByRole('button', { name: /reset to default/i }));
     // Confirm dialog
     await user.click(screen.getByRole('button', { name: /^reset$/i }));

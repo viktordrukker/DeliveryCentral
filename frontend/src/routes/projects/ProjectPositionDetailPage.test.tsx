@@ -245,3 +245,65 @@ describe('ProjectPositionDetailPage.AutoMatch (LEAN-P4-missing-3)', () => {
     expect(screen.queryByTestId('auto-match-button')).not.toBeInTheDocument();
   });
 });
+
+// W1-11 — publicId routing.
+//
+// The ProjectPositionDetailPage is the canonical detail surface for three
+// routes: /projects/:projectId/positions/:positionId, /positions/:id,
+// /assignments/:id, and /staffing-requests/:id. Each accepts either a raw
+// ProjectPosition UUID (legacy deep-link) or the opaque `pos_…` publicId.
+// The page must prefer the publicId for all downstream backend calls so the
+// browser back-stack and referer headers never carry raw UUIDs forward.
+describe('ProjectPositionDetailPage — W1-11 publicId routing', () => {
+  const POSITION_WITH_PUBLIC_ID = {
+    id: 'pos-1',
+    publicId: 'pos_abcdefghij',
+    projectId: 'prj-1',
+    role: 'Senior Engineer',
+    requiredAllocationPercent: 80,
+    fillStatus: 'OPEN' as const,
+    version: 1,
+  };
+
+  beforeEach(() => {
+    mockedGet.mockReset();
+    mockedCandidates.mockReset();
+    mockedTransition.mockReset();
+    mockedAutoMatch.mockReset();
+    mockedFlag.mockReset();
+    mockedFlag.mockReturnValue(false);
+  });
+
+  it('uses publicId (not raw uuid) when fetching candidate slate', async () => {
+    mockedGet.mockResolvedValue(POSITION_WITH_PUBLIC_ID);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    // At least one of the candidate calls uses the opaque publicId.
+    const calls = mockedCandidates.mock.calls.map((c) => c[0]);
+    expect(calls).toContain('pos_abcdefghij');
+  });
+
+  it('uses publicId (not raw uuid) when running auto-match', async () => {
+    mockedFlag.mockReturnValue(true);
+    mockedGet.mockResolvedValue(POSITION_WITH_PUBLIC_ID);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+    mockedAutoMatch.mockResolvedValue({ positionId: 'pos-1', created: 1, candidates: [] });
+    const user = userEvent.setup();
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    await user.click(screen.getByTestId('auto-match-button'));
+
+    await waitFor(() =>
+      expect(mockedAutoMatch).toHaveBeenCalledWith('pos_abcdefghij', { topN: 5 }),
+    );
+  });
+
+  // NB: the fallback behavior (no publicId → uses raw id) is already covered
+  // by the older "Propose → confirm → transitions" test, which uses an
+  // OPEN_POSITION fixture with no publicId field.
+});

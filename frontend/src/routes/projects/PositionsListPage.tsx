@@ -45,7 +45,10 @@ function buildPositionsColumns(
       key: 'role',
       title: 'Role',
       render: (p) => (
-        <Link to={`/projects/${p.projectId}/positions/${p.id}`} style={{ color: 'var(--color-accent)' }}>
+        <Link
+          to={`/projects/${p.projectId}/positions/${p.publicId ?? p.id}`}
+          style={{ color: 'var(--color-accent)' }}
+        >
           {p.role}
         </Link>
       ),

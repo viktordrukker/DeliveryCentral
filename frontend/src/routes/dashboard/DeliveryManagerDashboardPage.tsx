@@ -476,7 +476,7 @@ function TeamConflictsTable({ rows }: { rows: TeamConflict[] }): JSX.Element {
                 <span key={p.positionId}>
                   {idx > 0 ? ', ' : ''}
                   <Link
-                    to={`/project-positions/${p.positionId}`}
+                    to={`/positions/${p.positionPublicId ?? p.positionId}`}
                     onClick={(e) => e.stopPropagation()}
                     style={{ color: 'var(--color-accent)' }}
                   >

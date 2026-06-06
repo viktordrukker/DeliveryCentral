@@ -26,6 +26,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 function makeRow(overrides: Partial<StaffingDeskRow> = {}): StaffingDeskRow {
   return {
     id: 'pos-1',
+    positionPublicId: null,
     kind: 'assignment',
     projectId: 'proj-1',
     projectName: 'Project Alpha',

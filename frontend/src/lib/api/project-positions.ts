@@ -32,6 +32,10 @@ export type StaffingRequestPriorityValue = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export interface ProjectPosition {
   id: string;
+  // W1-11 — opaque tenant-scoped identifier (`pos_…`) preferred for URLs and
+  // deep-links. Null for rows that pre-date the W1-07 backfill until the
+  // wizard / admin tool re-runs the backfill on legacy data.
+  publicId?: string | null;
   projectId: string;
   // Optional projection fields — populated when the BE response enriches
   // the row with the parent project's display data.
@@ -234,6 +238,9 @@ export async function getPositionCandidates(
 // Given a person, returns ranked OPEN positions they match (same scoring).
 export interface PersonSuggestedPosition {
   positionId: string;
+  // W1-11 — opaque tenant-scoped identifier (`pos_…`) preferred for URL
+  // emissions. Null until the foundation backfill covers legacy rows.
+  positionPublicId?: string | null;
   projectId: string;
   projectName: string;
   role: string;
