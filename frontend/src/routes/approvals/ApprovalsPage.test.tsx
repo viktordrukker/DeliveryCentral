@@ -88,6 +88,31 @@ describe('ApprovalsPage', () => {
     await waitFor(() => expect(screen.getByText('Inbox zero')).toBeInTheDocument());
   });
 
+  // W2-09 — empty state must offer a forward action per UX Law 2.
+  it('empty-state on the All queue exposes a Back to dashboard link', async () => {
+    fetchUnifiedApprovals.mockResolvedValue(response([]));
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByText('Inbox zero')).toBeInTheDocument());
+    const backLink = screen.getByRole('link', { name: /Back to dashboard/i });
+    expect(backLink.getAttribute('href')).toBe('/dashboard');
+  });
+
+  // W2-09 — empty state on a filtered queue exposes "Clear all filters"
+  // forward action so the user is not stranded.
+  it('empty-state on a filtered queue exposes Clear all filters', async () => {
+    fetchUnifiedApprovals.mockResolvedValue(response([]));
+    const user = userEvent.setup();
+    renderRoute(<ApprovalsPage />, { initialEntries: ['/approvals?source=budget'] });
+    await waitFor(() => expect(screen.getByText('Inbox zero')).toBeInTheDocument());
+    const clearBtn = screen.getByRole('button', { name: /Clear all filters/i });
+    expect(clearBtn).toBeInTheDocument();
+    fetchUnifiedApprovals.mockClear();
+    await user.click(clearBtn);
+    await waitFor(() =>
+      expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: undefined, pageSize: 100 }),
+    );
+  });
+
   it('shows error state when the endpoint fails', async () => {
     fetchUnifiedApprovals.mockRejectedValue(new Error('Boom'));
     renderRoute(<ApprovalsPage />);

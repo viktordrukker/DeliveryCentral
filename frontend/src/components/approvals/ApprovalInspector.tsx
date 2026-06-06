@@ -13,6 +13,16 @@ import {
   type SlaStage,
 } from '@/lib/api/approvals-unified';
 
+// W2-09 — there is no generic POST /api/approvals/:id/escalate endpoint. The
+// only escalation flow that exists is the delivery-manager-specific rejection
+// escalation (POST /api/dm-escalations), which is not the right call here:
+// (a) it requires DM-rejection context the inspector does not have, and
+// (b) it is restricted to DELIVERY_EXEC_ROLES, not the broader approval-queue
+// audience (HR / RM / PM / etc).
+// Per UX Law 2 (no dead-end CTAs) the in-place button is removed; operators
+// who need to escalate can still do so by opening the source page via the
+// "Open source ↗" link, which routes to the source-specific workflow.
+
 interface ApprovalInspectorProps {
   item: ApprovalQueueItemDto;
   onClose: () => void;
@@ -144,13 +154,14 @@ function readString(meta: Record<string, unknown>, key: string): string | null {
  * VarianceBar for over/under deltas), otherwise the inspector falls back to a
  * generic key/value list.
  *
- * Approve/Reject/Escalate buttons in v1 toast a placeholder + invite the user
- * to deep-link into the source page for the canonical action. Wiring the
- * source-specific action endpoints is V2-A.5-followup.
+ * Approve/Reject decisions route through `decideApproval` (V2 §4 PR-1). The
+ * Escalate button was removed in W2-09 — no generic escalate endpoint exists
+ * on the unified approvals API, so we route operators to the source page via
+ * "Open source ↗" rather than leave a dead-end CTA (UX Law 2).
  */
 export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspectorProps): JSX.Element {
   const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState<'approve' | 'reject' | 'escalate' | null>(null);
+  const [submitting, setSubmitting] = useState<'approve' | 'reject' | null>(null);
 
   // Known meta fields that drive richer rendering when present.
   const requestedAmount = readNumber(item.meta, 'requestedAmount') ?? readNumber(item.meta, 'amount');
@@ -181,18 +192,8 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
     : null;
   const effectiveVariancePct = variancePercent ?? computedVariancePct;
 
-  async function handleAction(kind: 'approve' | 'reject' | 'escalate'): Promise<void> {
+  async function handleAction(kind: 'approve' | 'reject'): Promise<void> {
     setSubmitting(kind);
-    if (kind === 'escalate') {
-      // TODO V2-§4-PR2 — escalate routes through a dedicated endpoint (out of
-      // scope for the decision PR). Keep the action discoverable so the
-      // operator knows it exists.
-      toast.info('Escalation is not yet wired — open the source page to escalate manually.', {
-        description: `Open ${SOURCE_LABEL[item.source]} to escalate.`,
-      });
-      setSubmitting(null);
-      return;
-    }
     const decision = kind === 'approve' ? 'APPROVE' : 'REJECT';
     const trimmedComment = comment.trim() === '' ? undefined : comment.trim();
     try {
@@ -363,20 +364,12 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
         />
       </div>
 
-      {/* 3-button footer */}
+      {/* Footer — Open source ↗ deep-link + Reject + Approve. Escalate was
+          removed in W2-09 because no generic /api/approvals/:id/escalate
+          endpoint exists; operators escalate via the source page instead. */}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <Button as={Link} variant="secondary" size="sm" to={item.href} aria-label="Open source page">
           Open source ↗
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          type="button"
-          loading={submitting === 'escalate'}
-          disabled={submitting !== null}
-          onClick={() => handleAction('escalate')}
-        >
-          Escalate
         </Button>
         <Button
           variant="danger"
