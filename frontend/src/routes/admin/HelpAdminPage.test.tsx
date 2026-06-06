@@ -170,8 +170,11 @@ describe('HelpAdminPage', () => {
 
     const editor = within(dialog).getByRole('textbox', { name: /Markdown source/i });
     // userEvent.type interprets `[` as a key spec; use .paste for raw payloads.
+    // Separate the raw HTML script from the markdown link with a blank line so
+    // CommonMark parses the link as inline markdown (not as part of an HTML
+    // block — see MarkdownBody.test.tsx for the same pattern).
     await userEvent.click(editor);
-    await userEvent.paste('<script>alert(1)</script>[click](javascript:alert(1))');
+    await userEvent.paste('<script>alert(1)</script>\n\n[click](javascript:alert(1))');
 
     const preview = within(dialog).getByTestId('help-admin-body-preview');
     await waitFor(() => {
