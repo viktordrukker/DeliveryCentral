@@ -8,7 +8,15 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
-import { Button } from '@/components/ds';
+import {
+  Button,
+  Checkbox,
+  DatePicker,
+  FormField,
+  Input,
+  Select,
+  Textarea,
+} from '@/components/ds';
 import {
   createProjectPosition,
   transitionProjectPositionFill,
@@ -49,13 +57,6 @@ const PRIORITY_OPTIONS = [
   { value: 'MEDIUM', label: 'Medium' },
   { value: 'HIGH', label: 'High' },
   { value: 'URGENT', label: 'Urgent' },
-];
-
-const ALLOCATION_OPTIONS = [
-  { value: '25', label: '25% — quarter-time' },
-  { value: '50', label: '50% — half-time' },
-  { value: '75', label: '75% — three-quarter-time' },
-  { value: '100', label: '100% — full-time' },
 ];
 
 /**
@@ -211,136 +212,134 @@ export function CreatePositionPage(): JSX.Element {
         <form onSubmit={(e) => { void handleSubmit(e); }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {submitError && <ErrorState description={submitError} />}
 
-          <label className="field">
-            <span className="field__label">Project</span>
-            {projectsLoading ? (
-              <LoadingState label="Loading projects…" />
-            ) : projectsError ? (
-              <ErrorState description={projectsError} />
-            ) : (
-              <select
-                className="field__control"
-                value={values.projectId}
-                onChange={(e) => setField('projectId', e.target.value)}
+          <FormField label="Project" required error={errors.projectId}>
+            {(props) =>
+              projectsLoading ? (
+                <LoadingState label="Loading projects…" />
+              ) : projectsError ? (
+                <ErrorState description={projectsError} />
+              ) : (
+                <Select
+                  {...props}
+                  value={values.projectId}
+                  onChange={(e) => setField('projectId', e.target.value)}
+                  disabled={submitting}
+                  invalid={Boolean(errors.projectId)}
+                >
+                  <option value="">Select an active project…</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.projectCode} — {p.name}{p.clientName ? ` (${p.clientName})` : ''}
+                    </option>
+                  ))}
+                </Select>
+              )
+            }
+          </FormField>
+
+          <FormField label="Role" required error={errors.role}>
+            {(props) => (
+              <>
+                <Select
+                  {...props}
+                  value={values.role}
+                  onChange={(e) => setField('role', e.target.value)}
+                  disabled={submitting}
+                  invalid={Boolean(errors.role)}
+                >
+                  <option value="">Select a role…</option>
+                  {COMMON_ROLES.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                  <option value="__custom">Other (specify below)…</option>
+                </Select>
+                {values.role === '__custom' && (
+                  <Input
+                    type="text"
+                    value={values.customRole}
+                    onChange={(e) => setField('customRole', e.target.value)}
+                    placeholder="Custom role title"
+                    disabled={submitting}
+                    style={{ marginTop: 'var(--space-2)' }}
+                  />
+                )}
+              </>
+            )}
+          </FormField>
+
+          <FormField label="Priority">
+            {(props) => (
+              <Select
+                {...props}
+                value={values.priority}
+                onChange={(e) => setField('priority', e.target.value)}
                 disabled={submitting}
-                aria-invalid={Boolean(errors.projectId)}
               >
-                <option value="">Select an active project…</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.projectCode} — {p.name}{p.clientName ? ` (${p.clientName})` : ''}
-                  </option>
+                {PRIORITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
-              </select>
+              </Select>
             )}
-            {errors.projectId && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.projectId}</span>}
-          </label>
-
-          <label className="field">
-            <span className="field__label">Role</span>
-            <select
-              className="field__control"
-              value={values.role}
-              onChange={(e) => setField('role', e.target.value)}
-              disabled={submitting}
-              aria-invalid={Boolean(errors.role)}
-            >
-              <option value="">Select a role…</option>
-              {COMMON_ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-              <option value="__custom">Other (specify below)…</option>
-            </select>
-            {values.role === '__custom' && (
-              <input
-                className="field__control"
-                type="text"
-                value={values.customRole}
-                onChange={(e) => setField('customRole', e.target.value)}
-                placeholder="Custom role title"
-                disabled={submitting}
-                style={{ marginTop: 'var(--space-2)' }}
-              />
-            )}
-            {errors.role && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.role}</span>}
-          </label>
-
-          <label className="field">
-            <span className="field__label">Priority</span>
-            <select
-              className="field__control"
-              value={values.priority}
-              onChange={(e) => setField('priority', e.target.value)}
-              disabled={submitting}
-            >
-              {PRIORITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
+          </FormField>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
-            <label className="field">
-              <span className="field__label">Start date</span>
-              <input
-                className="field__control"
-                type="date"
-                value={values.startDate}
-                onChange={(e) => setField('startDate', e.target.value)}
-                disabled={submitting}
-                aria-invalid={Boolean(errors.startDate)}
-              />
-              {errors.startDate && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.startDate}</span>}
-            </label>
-            <label className="field">
-              <span className="field__label">End date</span>
-              <input
-                className="field__control"
-                type="date"
-                value={values.endDate}
-                onChange={(e) => setField('endDate', e.target.value)}
-                disabled={submitting}
-                aria-invalid={Boolean(errors.endDate)}
-              />
-              {errors.endDate && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.endDate}</span>}
-            </label>
-            <label className="field">
-              <span className="field__label">Allocation %</span>
-              <input
-                className="field__control"
-                type="number"
-                min={1}
-                max={100}
-                value={values.requiredAllocationPercent}
-                onChange={(e) => setField('requiredAllocationPercent', e.target.value)}
-                disabled={submitting}
-                aria-invalid={Boolean(errors.requiredAllocationPercent)}
-              />
-              {errors.requiredAllocationPercent && <span style={{ color: 'var(--color-status-danger)', fontSize: 12 }}>{errors.requiredAllocationPercent}</span>}
-            </label>
+            <FormField label="Start date" required error={errors.startDate}>
+              {(props) => (
+                <DatePicker
+                  {...props}
+                  value={values.startDate}
+                  onValueChange={(next) => setField('startDate', next)}
+                  disabled={submitting}
+                  invalid={Boolean(errors.startDate)}
+                />
+              )}
+            </FormField>
+            <FormField label="End date" required error={errors.endDate}>
+              {(props) => (
+                <DatePicker
+                  {...props}
+                  value={values.endDate}
+                  onValueChange={(next) => setField('endDate', next)}
+                  disabled={submitting}
+                  invalid={Boolean(errors.endDate)}
+                />
+              )}
+            </FormField>
+            <FormField label="Allocation %" required error={errors.requiredAllocationPercent}>
+              {(props) => (
+                <Input
+                  {...props}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={values.requiredAllocationPercent}
+                  onChange={(e) => setField('requiredAllocationPercent', e.target.value)}
+                  disabled={submitting}
+                  invalid={Boolean(errors.requiredAllocationPercent)}
+                />
+              )}
+            </FormField>
           </div>
 
-          <label className="field">
-            <span className="field__label">Summary (optional)</span>
-            <textarea
-              className="field__control"
-              value={values.summary}
-              onChange={(e) => setField('summary', e.target.value)}
-              rows={3}
-              disabled={submitting}
-              placeholder="Brief context for the staffing decision"
-            />
-          </label>
+          <FormField label="Summary (optional)">
+            {(props) => (
+              <Textarea
+                {...props}
+                value={values.summary}
+                onChange={(e) => setField('summary', e.target.value)}
+                rows={3}
+                disabled={submitting}
+                placeholder="Brief context for the staffing decision"
+              />
+            )}
+          </FormField>
 
-          <label style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              checked={values.openImmediately}
-              onChange={(e) => setField('openImmediately', e.target.checked)}
-              disabled={submitting}
-            />
-            <span>Open immediately (skip DRAFT — surface on staffing desk right away)</span>
-          </label>
+          <Checkbox
+            checked={values.openImmediately}
+            onChange={(e) => setField('openImmediately', e.target.checked)}
+            disabled={submitting}
+            label="Open immediately (skip DRAFT — surface on staffing desk right away)"
+          />
 
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
             <Button type="submit" variant="primary" disabled={submitting}>
