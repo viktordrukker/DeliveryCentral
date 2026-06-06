@@ -20,6 +20,7 @@ import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-hea
 import { fetchTeamConflicts, type TeamConflict } from '@/lib/api/dm-team';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
+import { DmEscalationsCard } from '@/components/dashboard/DmEscalationsCard';
 // 20c-15 — KPI strip extracted to its own component (was 3 inline <Link> tiles
 // inside the page render).
 import { DeliveryManagerKpiStrip } from '@/components/dashboard/delivery-manager/DeliveryManagerKpiStrip';
@@ -138,6 +139,9 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
           />
 
           <PendingApprovalsCard />
+
+          {/* LEAN-P4-missing-9 — DM escalations awaiting Director triage. */}
+          {isFeatureEnabled('dsRefresh') ? <DmEscalationsCard /> : null}
 
           {/* ── TABS ── */}
           <div className="tab-bar-sticky">

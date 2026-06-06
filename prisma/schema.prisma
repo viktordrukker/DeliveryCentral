@@ -787,6 +787,9 @@ model Person {
   // LEAN-P4-missing-13 — admin-managed leave policies, actor-audit on author/editor.
   createdLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyCreatedBy")
   updatedLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyUpdatedBy")
+  dmEscalationsCreated                     DmEscalation[]                      @relation("DmEscalationEscalatedBy")
+  dmEscalationsAssigned                    DmEscalation[]                      @relation("DmEscalationEscalatedTo")
+  dmEscalationsResolved                    DmEscalation[]                      @relation("DmEscalationResolvedBy")
   version                                  Int                                 @default(1)
   tenantId                                 String?                             @db.Uuid
   Tenant                                   Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -3770,6 +3773,52 @@ enum PlannerScenarioStatus {
   DRAFT
   SUBMITTED
   APPLIED
+  CANCELLED
+}
+
+// LEAN-P4-missing-9 — DM rejection escalation surface.
+//
+// When a Delivery Manager rejects a downstream artefact (timesheet variance,
+// work-hour overrun, milestone slip, leave outside policy), the rejection
+// escalates to a Director for confirmation or override:
+//   * PENDING   — created by the DM, awaiting Director triage.
+//   * CONFIRMED — Director endorsed the rejection; rejection stands.
+//   * OVERRIDDEN — Director reversed the rejection; DM must re-approve.
+//   * CANCELLED — DM withdrew the escalation before Director action.
+//
+// `sourceKind` + `sourceId` form an opaque pointer to the artefact; we do
+// NOT model FKs here because the upstream surfaces (timesheets, work-hours,
+// milestones) are heterogeneous. Aggregate prefix `dme` on publicId.
+model DmEscalation {
+  id                  String             @id @default(uuid()) @db.Uuid
+  publicId            String?            @unique @db.VarChar(32)
+  sourceKind          String
+  sourceId            String             @db.Uuid
+  escalatedByPersonId String             @db.Uuid
+  escalatedToPersonId String?            @db.Uuid
+  reason              String
+  status              DmEscalationStatus @default(PENDING)
+  resolvedAt          DateTime?          @db.Timestamptz(3)
+  resolvedByPersonId  String?            @db.Uuid
+  resolutionNotes     String?
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+
+  escalatedBy Person  @relation("DmEscalationEscalatedBy", fields: [escalatedByPersonId], references: [id], onDelete: Restrict)
+  escalatedTo Person? @relation("DmEscalationEscalatedTo", fields: [escalatedToPersonId], references: [id], onDelete: SetNull)
+  resolvedBy  Person? @relation("DmEscalationResolvedBy", fields: [resolvedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([escalatedByPersonId, status])
+  @@index([escalatedToPersonId, status])
+  @@index([resolvedByPersonId])
+  @@map("dm_escalations")
+}
+
+enum DmEscalationStatus {
+  PENDING
+  CONFIRMED
+  OVERRIDDEN
   CANCELLED
 }
 

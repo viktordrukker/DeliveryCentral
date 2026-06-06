@@ -15,6 +15,7 @@ import { CaseManagementModule } from './modules/case-management/case-management.
 import { CustomizationMetadataModule } from './modules/customization-metadata/customization-metadata.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DmTeamDetailModule } from './modules/dm-team-detail/dm-team-detail.module';
+import { DeliveryManagerModule } from './modules/delivery-manager/delivery-manager.module';
 import { FinancialGovernanceModule } from './modules/financial-governance/financial-governance.module';
 import { ExceptionsModule } from './modules/exceptions/exceptions.module';
 import { HealthModule } from './modules/health/health.module';
@@ -81,6 +82,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     UndoModule,
     DashboardModule,
     DmTeamDetailModule,
+    DeliveryManagerModule,
     ExceptionsModule,
     IdentityAccessModule,
     AuthModule,

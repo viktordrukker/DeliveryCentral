@@ -34,6 +34,7 @@ export enum AggregateType {
   BudgetApproval = 'ba',
   PlannerScenario = 'psc',
   LeavePolicy = 'lvp',
+  DmEscalation = 'dme',
 }
 
 /**
@@ -52,6 +53,7 @@ export const MODEL_TO_AGGREGATE_TYPE: Readonly<Record<string, AggregateType>> = 
   TimesheetWeek: AggregateType.TimesheetWeek,
   PlannerScenario: AggregateType.PlannerScenario,
   LeavePolicy: AggregateType.LeavePolicy,
+  DmEscalation: AggregateType.DmEscalation,
 });
 
 /** All registered prefixes, for format-shape validation. */
