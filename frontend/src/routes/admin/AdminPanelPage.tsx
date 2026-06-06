@@ -393,6 +393,14 @@ function AdminTabContent({
           <SectionCard title="Dictionaries">
             <DictionariesAdminContent />
           </SectionCard>
+          <SectionCard title="Leave Policies">
+            <p className="admin-section-card__description">
+              Configure per-leave-type accrual, max carry-over, and approval chains.
+            </p>
+            <Link className="admin-panel__deep-link" to="/admin/leave-policies">
+              Manage leave policies →
+            </Link>
+          </SectionCard>
         </div>
       );
     case 'feature-flags':
