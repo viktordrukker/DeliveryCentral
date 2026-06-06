@@ -14,6 +14,7 @@ import { AuditObservabilityModule } from './modules/audit-observability/audit-ob
 import { CaseManagementModule } from './modules/case-management/case-management.module';
 import { CustomizationMetadataModule } from './modules/customization-metadata/customization-metadata.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { DmTeamDetailModule } from './modules/dm-team-detail/dm-team-detail.module';
 import { FinancialGovernanceModule } from './modules/financial-governance/financial-governance.module';
 import { ExceptionsModule } from './modules/exceptions/exceptions.module';
 import { HealthModule } from './modules/health/health.module';
@@ -79,6 +80,7 @@ import { PublicIdModule } from './infrastructure/public-id';
     HelpCenterModule,
     UndoModule,
     DashboardModule,
+    DmTeamDetailModule,
     ExceptionsModule,
     IdentityAccessModule,
     AuthModule,

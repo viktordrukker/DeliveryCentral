@@ -17,6 +17,8 @@ import { formatDate } from '@/lib/format-date';
 import { PortfolioHealthHeatmap } from '@/components/charts/PortfolioHealthHeatmap';
 import { BurnRateTrendPoint, fetchScorecardHistory, ProjectHealthItem, ProjectScorecardHistoryItem, StaffingGapItem, OpenRequestsByProjectItem } from '@/lib/api/dashboard-delivery-manager';
 import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-health';
+import { fetchTeamConflicts, type TeamConflict } from '@/lib/api/dm-team';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 // 20c-15 — KPI strip extracted to its own component (was 3 inline <Link> tiles
 // inside the page render).
@@ -45,6 +47,29 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
   }
 
   const [healthScores, setHealthScores] = useState<Map<string, ProjectHealthDto>>(new Map());
+
+  // LEAN-P4-missing-8 — team-level conflict surface. Gated behind dsRefresh.
+  const teamConflictsEnabled = isFeatureEnabled('dsRefresh');
+  const [teamConflicts, setTeamConflicts] = useState<TeamConflict[]>([]);
+  const [teamConflictsError, setTeamConflictsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!teamConflictsEnabled) return;
+    let active = true;
+    setTeamConflictsError(null);
+    void fetchTeamConflicts(state.asOf)
+      .then((response) => {
+        if (!active) return;
+        setTeamConflicts(response.conflicts);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setTeamConflictsError(err instanceof Error ? err.message : String(err));
+        setTeamConflicts([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [state.asOf, teamConflictsEnabled]);
 
   // Sprint F-0.8 (B-14 / D-88) — batch fetch replaces N parallel requests.
   useEffect(() => {
@@ -176,6 +201,26 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
               {(d.openRequestsByProject ?? []).length > 0 && (
                 <SectionCard title="Open Staffing Requests by Project" collapsible>
                   <OpenRequestsByProjectTable rows={d.openRequestsByProject ?? []} />
+                </SectionCard>
+              )}
+
+              {/* LEAN-P4-missing-8 — Team-level overallocation conflicts. */}
+              {teamConflictsEnabled && (
+                <SectionCard
+                  id="team-conflicts"
+                  title="Team conflicts (next 4 weeks)"
+                  collapsible
+                >
+                  {teamConflictsError ? (
+                    <ErrorState description={teamConflictsError} />
+                  ) : teamConflicts.length === 0 ? (
+                    <EmptyState
+                      title="No overallocation conflicts"
+                      description="No team member in your portfolio is allocated above 100% in the next 4 weeks."
+                    />
+                  ) : (
+                    <TeamConflictsTable rows={teamConflicts} />
+                  )}
                 </SectionCard>
               )}
             </>
@@ -352,6 +397,85 @@ function OpenRequestsByProjectTable({ rows }: { rows: OpenRequestsByProjectItem[
       ] as Column<OpenRequestsByProjectItem>[]}
       rows={rows}
       getRowKey={(row) => row.projectId}
+    />
+  );
+}
+
+function TeamConflictsTable({ rows }: { rows: TeamConflict[] }): JSX.Element {
+  return (
+    <Table
+      testId="team-conflicts-table"
+      variant="compact"
+      columns={[
+        {
+          key: 'person',
+          title: 'Person',
+          getValue: (row) => row.personName,
+          render: (row) => (
+            <Link
+              to={`/people/${row.personId}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: 'var(--color-accent)', fontWeight: 500 }}
+            >
+              {row.personName}
+            </Link>
+          ),
+        },
+        {
+          key: 'weekStart',
+          title: 'Week of',
+          width: 110,
+          getValue: (row) => row.weekStartIso,
+          render: (row) => (
+            <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+              {formatDate(row.weekStartIso)}
+            </span>
+          ),
+        },
+        {
+          key: 'total',
+          title: 'Total %',
+          align: 'right',
+          width: 90,
+          getValue: (row) => row.totalAllocationPct,
+          render: (row) => (
+            <span
+              style={{
+                ...NUM,
+                color:
+                  row.totalAllocationPct >= 150
+                    ? 'var(--color-status-danger)'
+                    : 'var(--color-status-warning)',
+                fontWeight: 600,
+              }}
+            >
+              {row.totalAllocationPct}%
+            </span>
+          ),
+        },
+        {
+          key: 'positions',
+          title: 'Conflicting positions',
+          render: (row) => (
+            <span style={{ fontSize: 11 }}>
+              {row.conflictPositions.map((p, idx) => (
+                <span key={p.positionId}>
+                  {idx > 0 ? ', ' : ''}
+                  <Link
+                    to={`/project-positions/${p.positionId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: 'var(--color-accent)' }}
+                  >
+                    {p.projectCode} ({p.allocationPct}%)
+                  </Link>
+                </span>
+              ))}
+            </span>
+          ),
+        },
+      ] as Column<TeamConflict>[]}
+      rows={rows}
+      getRowKey={(row) => `${row.personId}-${row.weekStartIso}`}
     />
   );
 }
