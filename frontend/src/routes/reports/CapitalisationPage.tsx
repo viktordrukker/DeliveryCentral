@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -191,10 +191,6 @@ export function CapitalisationPage(): JSX.Element {
     exportToXlsx(rows, 'capitalisation_report');
   }
 
-  function handleExportPdf(): void {
-    window.print();
-  }
-
   async function handleLockPeriod(): Promise<void> {
     if (!lockFrom || !lockTo) {
       setLockError('Both from and to dates are required.');
@@ -243,9 +239,6 @@ export function CapitalisationPage(): JSX.Element {
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleExportXlsx} type="button">
             Export XLSX
-          </Button>
-          <Button variant="secondary" onClick={handleExportPdf} type="button">
-            Export PDF
           </Button>
         </div>
       }
@@ -301,42 +294,47 @@ export function CapitalisationPage(): JSX.Element {
         <ErrorState description={error} />
       ) : report ? (
         <>
-          {/* ── KPI STRIP ── */}
+          {/* ── KPI STRIP ── UX Law 9: every KPI links to a filtered drilldown */}
           <div className="kpi-strip" aria-label="Capitalisation summary">
-            <div
+            <Link
               className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-chart-1)' }}
               data-testid="kpi-capex"
+              style={{ borderLeft: '3px solid var(--color-chart-1)' }}
+              to={`/timesheets/approval?status=APPROVED&from=${dateRange.from}&to=${dateRange.to}`}
             >
               <span className="kpi-strip__value">{report.totals.capexHours.toFixed(1)}h</span>
               <span className="kpi-strip__label">CAPEX Hours</span>
-            </div>
-            <div
+            </Link>
+            <Link
               className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-chart-4)' }}
               data-testid="kpi-opex"
+              style={{ borderLeft: '3px solid var(--color-chart-4)' }}
+              to={`/timesheets/approval?status=APPROVED&from=${dateRange.from}&to=${dateRange.to}`}
             >
               <span className="kpi-strip__value">{report.totals.opexHours.toFixed(1)}h</span>
               <span className="kpi-strip__label">OPEX Hours</span>
-            </div>
-            <div
+            </Link>
+            <Link
               className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-status-active)' }}
               data-testid="kpi-total"
+              style={{ borderLeft: '3px solid var(--color-status-active)' }}
+              to={`/timesheets/approval?status=APPROVED&from=${dateRange.from}&to=${dateRange.to}`}
             >
               <span className="kpi-strip__value">{report.totals.totalHours.toFixed(1)}h</span>
               <span className="kpi-strip__label">Total Hours</span>
-            </div>
-            <div
+            </Link>
+            <Link
               className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-status-info)' }}
               data-testid="kpi-capex-pct"
+              style={{ borderLeft: '3px solid var(--color-status-info)' }}
+              to={`/timesheets/approval?status=APPROVED&from=${dateRange.from}&to=${dateRange.to}`}
             >
               <span className="kpi-strip__value"><Pct value={report.totals.capexPercent} /></span>
               <span className="kpi-strip__label">CAPEX %</span>
-            </div>
-            <div
+            </Link>
+            <Link
               className="kpi-strip__item"
+              data-testid="kpi-alerts"
               style={{
                 borderLeft: `3px solid ${
                   report.byProject.some((r) => r.alert)
@@ -344,13 +342,13 @@ export function CapitalisationPage(): JSX.Element {
                     : 'var(--color-status-active)'
                 }`,
               }}
-              data-testid="kpi-alerts"
+              to="/exceptions"
             >
               <span className="kpi-strip__value">
                 {report.byProject.filter((r) => r.alert).length}
               </span>
               <span className="kpi-strip__label">Deviation Alerts</span>
-            </div>
+            </Link>
           </div>
 
           {/* CAPEX/OPEX Breakdown Table (8-2-02) */}
@@ -494,15 +492,6 @@ export function CapitalisationPage(): JSX.Element {
         </SectionCard>
       ) : null}
 
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          .btn { display: none !important; }
-          nav { display: none !important; }
-          aside { display: none !important; }
-          .sidebar { display: none !important; }
-        }
-      `}</style>
     </AnalysisLayout>
   );
 }
