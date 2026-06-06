@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button, Table, type Column } from '@/components/ds';
@@ -159,15 +160,12 @@ export function BenchEnrichedPanel(): JSX.Element {
 
   if (rows.length === 0 || !summary) {
     return (
-      <div className="card" data-testid="bench-empty">
-        <div className="card-header">
-          <h3>Bench</h3>
-        </div>
-        <div className="card-body">
+      <div data-testid="bench-empty">
+        <SectionCard title="Bench">
           <p className="compact muted" style={{ margin: 0 }}>
             All people currently have active project assignments.
           </p>
-        </div>
+        </SectionCard>
       </div>
     );
   }
@@ -276,12 +274,9 @@ export function BenchEnrichedPanel(): JSX.Element {
         }}
       >
       {/* Bench list — compact canvas table */}
-      <div className="card">
-        <div className="card-header">
-          <h3>Bench ({rows.length})</h3>
-          <span className="compact muted">
-            Sorted by days off project, longest first
-          </span>
+      <SectionCard title={`Bench (${rows.length})`}>
+        <div className="compact muted" style={{ marginBottom: 8 }}>
+          Sorted by days off project, longest first
         </div>
         <div style={{ overflow: 'auto' }}>
           {(() => {
@@ -314,12 +309,13 @@ export function BenchEnrichedPanel(): JSX.Element {
                 title: 'Status',
                 getValue: (r) => (r.isOnBench ? 'On bench' : 'Engaged'),
                 render: (r) => {
-                  const tone = daysOnBenchTone(r.daysOnBench);
+                  const rowTone: Tone = r.isOnBench ? daysOnBenchTone(r.daysOnBench) : 'active';
                   return (
-                    <span className={`badge badge-${r.isOnBench ? tone : 'active'}`}>
-                      <span className="dot" />
-                      {r.isOnBench ? 'On bench' : 'Engaged'}
-                    </span>
+                    <StatusBadge
+                      label={r.isOnBench ? 'On bench' : 'Engaged'}
+                      tone={rowTone}
+                      variant="dot"
+                    />
                   );
                 },
               },
@@ -359,10 +355,11 @@ export function BenchEnrichedPanel(): JSX.Element {
                 getValue: (r) => r.suggestedProjectIds.length,
                 render: (r) =>
                   r.suggestedProjectIds.length > 0 ? (
-                    <span className="badge badge-info">
-                      {r.suggestedProjectIds.length} match
-                      {r.suggestedProjectIds.length === 1 ? '' : 'es'}
-                    </span>
+                    <StatusBadge
+                      label={`${r.suggestedProjectIds.length} match${r.suggestedProjectIds.length === 1 ? '' : 'es'}`}
+                      tone="info"
+                      variant="chip"
+                    />
                   ) : (
                     <span className="compact muted">—</span>
                   ),
@@ -441,7 +438,7 @@ export function BenchEnrichedPanel(): JSX.Element {
           </span>
           <span style={{ flex: '1 1 0' }} />
         </div>
-      </div>
+      </SectionCard>
 
       {selectedRow ? (
         <BenchInspector
