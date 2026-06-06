@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Divider,
   TextField,
   Typography,
 } from '@mui/material';
@@ -14,6 +15,7 @@ import {
 import { useAuth } from '@/app/auth-context';
 import { getDashboardPath } from '@/app/role-routing';
 import { httpGet } from '@/lib/api/http-client';
+import { apiClientConfig } from '@/lib/api/config';
 
 interface Providers {
   local: boolean;
@@ -109,16 +111,38 @@ export function LoginPage(): JSX.Element {
             </Alert>
           )}
 
-          {step === 'credentials' && providers.local && (
+          {step === 'credentials' && providers.azureAd && (
+            <Box mb={providers.local || providers.ldap ? 2 : 0}>
+              <Button
+                variant="outlined"
+                fullWidth
+                href={`${apiClientConfig.baseUrl}/auth/oidc/login`}
+                data-testid="sso-azuread-button"
+              >
+                Sign in with Microsoft
+              </Button>
+            </Box>
+          )}
+
+          {step === 'credentials' && providers.azureAd && (providers.local || providers.ldap) && (
+            <Divider sx={{ mb: 2 }}>or</Divider>
+          )}
+
+          {step === 'credentials' && (providers.local || providers.ldap) && (
             <Box component="form" onSubmit={(e) => void handleLogin(e)}>
+              {providers.ldap && !providers.local && (
+                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                  Use your corporate directory credentials.
+                </Typography>
+              )}
               <TextField
-                label="Email"
-                type="email"
+                label={providers.ldap && !providers.local ? 'Username' : 'Email'}
+                type={providers.ldap && !providers.local ? 'text' : 'email'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
                 required
-                autoComplete="email"
+                autoComplete={providers.ldap && !providers.local ? 'username' : 'email'}
                 sx={{ mb: 2 }}
               />
               <TextField
@@ -140,15 +164,17 @@ export function LoginPage(): JSX.Element {
               >
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
-              <Box mt={2} textAlign="center">
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => navigate('/forgot-password')}
-                >
-                  Forgot password?
-                </Button>
-              </Box>
+              {providers.local && (
+                <Box mt={2} textAlign="center">
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    Forgot password?
+                  </Button>
+                </Box>
+              )}
             </Box>
           )}
 
