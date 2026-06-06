@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { AdminTabbedShell } from '@/components/admin/AdminTabbedShell';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
 import { SetupResetSection } from './SetupResetSection';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
   type PlatformSettingsResponse,
@@ -222,14 +221,14 @@ export function SettingsAdminContent(): JSX.Element {
 
 export function SettingsPage(): JSX.Element {
   return (
-    <PageContainer testId="settings-page" viewport>
-      <PageHeader
-        eyebrow="Administration"
-        subtitle="Configure platform-wide behaviour for timesheets, capitalisation, pulse, notifications, and security."
-        title="Platform Settings"
-      />
+    <AdminTabbedShell
+      eyebrow="Administration"
+      subtitle="Configure platform-wide behaviour for timesheets, capitalisation, pulse, notifications, and security."
+      testId="settings-page"
+      title="Platform Settings"
+    >
       <SettingsAdminContent />
-    </PageContainer>
+    </AdminTabbedShell>
   );
 }
 

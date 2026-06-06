@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 
+import { AdminTabbedShell } from '@/components/admin/AdminTabbedShell';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
-import { SectionCard } from '@/components/common/SectionCard';
 import {
   HrisConfig,
   HrisSyncResult,
@@ -72,21 +70,24 @@ export function HrisConfigPage(): JSX.Element {
 
   if (!config) {
     return (
-      <PageContainer viewport>
-        <PageHeader eyebrow="Admin" title="HRIS Integration" subtitle="Configure BambooHR or Workday integration." />
+      <AdminTabbedShell
+        eyebrow="Admin"
+        subtitle="Configure BambooHR or Workday integration."
+        testId="hris-config-page"
+        title="HRIS Integration"
+      >
         {error ? <ErrorState description={error} /> : <LoadingState label="Loading HRIS configuration..." />}
-      </PageContainer>
+      </AdminTabbedShell>
     );
   }
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Configure your HRIS provider (BambooHR or Workday) to sync employee data into DeliveryCentral."
-        title="HRIS Integration"
-      />
-
+    <AdminTabbedShell
+      eyebrow="Admin"
+      subtitle="Configure your HRIS provider (BambooHR or Workday) to sync employee data into DeliveryCentral."
+      testId="hris-config-page"
+      title="HRIS Integration"
+    >
       {error ? <ErrorState description={error} /> : null}
 
       <div style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -223,6 +224,6 @@ export function HrisConfigPage(): JSX.Element {
           </div>
         ) : null}
       </div>
-    </PageContainer>
+    </AdminTabbedShell>
   );
 }
