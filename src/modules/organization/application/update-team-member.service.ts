@@ -9,6 +9,7 @@ interface UpdateTeamMemberCommand {
   action: 'add' | 'remove';
   personId: string;
   teamId: string;
+  actorId?: string | null;
 }
 
 @Injectable()
@@ -35,10 +36,10 @@ export class UpdateTeamMemberService {
         throw new ConflictException('Person is already an active member of this team.');
       }
 
-      await this.teamStore.addMember(command.teamId, command.personId);
+      await this.teamStore.addMember(command.teamId, command.personId, command.actorId ?? null);
       this.auditLogger?.record({
         actionType: 'team.members_changed',
-        actorId: null,
+        actorId: command.actorId ?? null,
         category: 'team',
         changeSummary: `${person.displayName} added to team ${team.name}.`,
         details: {
@@ -56,14 +57,18 @@ export class UpdateTeamMemberService {
       return;
     }
 
-    const removed = await this.teamStore.removeMember(command.teamId, command.personId);
+    const removed = await this.teamStore.removeMember(
+      command.teamId,
+      command.personId,
+      command.actorId ?? null,
+    );
     if (!removed) {
       throw new ConflictException('Person is not an active member of this team.');
     }
 
     this.auditLogger?.record({
       actionType: 'team.members_changed',
-      actorId: null,
+      actorId: command.actorId ?? null,
       category: 'team',
       changeSummary: `${person.displayName} removed from team ${team.name}.`,
       details: {

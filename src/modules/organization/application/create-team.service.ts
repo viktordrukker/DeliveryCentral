@@ -9,6 +9,7 @@ interface CreateTeamCommand {
   description?: string | null;
   name: string;
   orgUnitId?: string | null;
+  actorId?: string | null;
 }
 
 @Injectable()
@@ -45,11 +46,12 @@ export class CreateTeamService {
       description,
       name,
       orgUnitId,
+      actorId: command.actorId ?? null,
     });
 
     this.auditLogger?.record({
       actionType: 'team.created',
-      actorId: null,
+      actorId: command.actorId ?? null,
       category: 'team',
       changeSummary: `Team ${team.name} created.`,
       details: {

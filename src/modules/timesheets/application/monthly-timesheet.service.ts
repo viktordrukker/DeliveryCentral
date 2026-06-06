@@ -393,8 +393,15 @@ export class MonthlyTimesheetService {
               date,
             },
           },
-          create: { timesheetWeekId: week.id, projectId: a.projectId, date, hours: new Prisma.Decimal(hours.toFixed(2)) },
-          update: {},
+          create: {
+            timesheetWeekId: week.id,
+            projectId: a.projectId,
+            date,
+            hours: new Prisma.Decimal(hours.toFixed(2)),
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
+          },
+          update: { updatedByPersonId: personId },
         });
         filledHours += hours;
       }
@@ -502,8 +509,10 @@ export class MonthlyTimesheetService {
             hours: new Prisma.Decimal(hours.toFixed(2)), capex: entry.capex,
             benchCategory: entry.benchCategory,
             workLabel: entry.workLabel,
+            createdByPersonId: personId,
+            updatedByPersonId: personId,
           },
-          update: {},
+          update: { updatedByPersonId: personId },
         });
         copiedHours += hours;
       }

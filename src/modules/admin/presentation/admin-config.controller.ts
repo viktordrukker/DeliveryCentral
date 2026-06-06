@@ -44,6 +44,7 @@ export class AdminConfigController {
   @ApiConflictResponse({ description: 'Account already exists for this person or email.' })
   public async createAccount(
     @Body() body: CreateAccountRequestDto,
+    @Req() req: { principal?: { personId?: string } },
   ): Promise<{ email: string; id: string; personId: string | null; roles: string[] }> {
     try {
       if (body.personId) {
@@ -65,6 +66,7 @@ export class AdminConfigController {
       }
 
       const passwordHash = await bcrypt.hash(body.password, 12);
+      const actorPersonId = req.principal?.personId ?? null;
       const account = await this.prisma.localAccount.create({
         data: {
           backupCodesHash: [],
@@ -73,6 +75,8 @@ export class AdminConfigController {
           passwordHash,
           personId: body.personId ?? null,
           roles: body.roles,
+          createdByPersonId: actorPersonId,
+          updatedByPersonId: actorPersonId,
         },
       });
 
@@ -135,6 +139,7 @@ export class AdminConfigController {
   public async updateAccount(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateAccountDto,
+    @Req() req: { principal?: { personId?: string } },
   ): Promise<{ id: string; email: string; displayName: string; roles: string[]; source: string; isEnabled: boolean }> {
     const existing = await this.prisma.localAccount.findUnique({ where: { id } });
 
@@ -142,7 +147,9 @@ export class AdminConfigController {
       throw new NotFoundException('Account not found.');
     }
 
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = {
+      updatedByPersonId: req.principal?.personId ?? null,
+    };
 
     if (body.roles !== undefined) {
       data.roles = body.roles;

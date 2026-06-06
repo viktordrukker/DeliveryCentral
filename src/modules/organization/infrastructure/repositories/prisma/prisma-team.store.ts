@@ -9,13 +9,19 @@ export class PrismaTeamStore extends TeamStorePort {
     super();
   }
 
-  public async addMember(teamId: string, personId: string): Promise<TeamMembershipRecord> {
+  public async addMember(
+    teamId: string,
+    personId: string,
+    actorId?: string | null,
+  ): Promise<TeamMembershipRecord> {
     const record = await this.prisma.personResourcePoolMembership.create({
       data: {
         id: randomUUID(),
         personId,
         resourcePoolId: teamId,
         validFrom: new Date(),
+        createdByPersonId: actorId ?? null,
+        updatedByPersonId: actorId ?? null,
       },
     });
 
@@ -27,6 +33,7 @@ export class PrismaTeamStore extends TeamStorePort {
     description?: string;
     name: string;
     orgUnitId?: string;
+    actorId?: string | null;
   }): Promise<TeamRecord> {
     const record = await this.prisma.resourcePool.create({
       data: {
@@ -35,6 +42,8 @@ export class PrismaTeamStore extends TeamStorePort {
         id: randomUUID(),
         name: input.name,
         orgUnitId: input.orgUnitId ?? null,
+        createdByPersonId: input.actorId ?? null,
+        updatedByPersonId: input.actorId ?? null,
       },
     });
 
@@ -84,6 +93,7 @@ export class PrismaTeamStore extends TeamStorePort {
   public async removeMember(
     teamId: string,
     personId: string,
+    actorId?: string | null,
   ): Promise<TeamMembershipRecord | null> {
     const activeMembership = await this.findActiveMembership(teamId, personId);
 
@@ -95,6 +105,7 @@ export class PrismaTeamStore extends TeamStorePort {
     const record = await this.prisma.personResourcePoolMembership.update({
       data: {
         validTo: endedAt,
+        updatedByPersonId: actorId ?? null,
       },
       where: {
         id: activeMembership.id,
