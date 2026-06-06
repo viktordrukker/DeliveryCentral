@@ -64,6 +64,25 @@ export class MetadataDictionaryQueryService {
     return { items };
   }
 
+  public async getDictionaryByKey(
+    entityType: string,
+    dictionaryKey: string,
+  ): Promise<MetadataDictionaryDetailsDto | null> {
+    // W1-19 — key-based lookup so FE callers don't have to know the UUID.
+    // Reuses the existing repository natural-key lookup, then delegates
+    // to the id-based path for entry + related-entity hydration.
+    const dictionary = await this.metadataDictionaryRepository.findByDictionaryKey(
+      entityType,
+      dictionaryKey,
+    );
+
+    if (!dictionary) {
+      return null;
+    }
+
+    return this.getDictionaryById(dictionary.id);
+  }
+
   public async getDictionaryById(id: string): Promise<MetadataDictionaryDetailsDto | null> {
     const dictionary = await this.metadataDictionaryRepository.findById(id);
 
