@@ -295,6 +295,18 @@ export async function fetchPositionForensics(positionId: string): Promise<Positi
   return httpGet<PositionForensics>(`/project-positions/${positionId}/forensics`);
 }
 
+// W2-04 — lean lifecycle history for the position detail page. Calls the
+// new `/history` endpoint which returns just the `ProjectPositionFillHistory`
+// rows ordered oldest-first (matches the timeline render order).
+export interface PositionHistoryResponse {
+  positionId: string;
+  history: ProjectPositionFillHistory[];
+}
+
+export async function fetchPositionHistory(positionId: string): Promise<PositionHistoryResponse> {
+  return httpGet<PositionHistoryResponse>(`/project-positions/${positionId}/history`);
+}
+
 // LEAN-P4-missing-1 — PM bulk reassignment.
 export interface BulkReassignPositionsRequest {
   positionIds: string[];

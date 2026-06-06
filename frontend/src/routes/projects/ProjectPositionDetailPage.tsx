@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
 import { STAFFING_DESK_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { AssignmentHistoryTimeline } from '@/components/assignments/AssignmentHistoryTimeline';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -13,9 +14,15 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { Button, DescriptionList, Pct, Table, WorkflowStages, type Column, type WorkflowStage, type WorkflowStageStatus } from '@/components/ds';
 import {
+  type ApprovalQueueItemDto,
+  fetchUnifiedApprovals,
+} from '@/lib/api/approvals-unified';
+import {
   type PositionCandidate,
   type PositionFillStatus,
   type ProjectPosition,
+  type ProjectPositionFillHistory,
+  fetchPositionHistory,
   getPositionCandidates,
   getProjectPositionById,
   listProjectPositions,
@@ -25,6 +32,7 @@ import { autoMatchPosition } from '@/lib/api/staffing-candidates';
 import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
 import { isFeatureEnabled } from '@/lib/feature-flags';
+import { formatDateTime } from '@/lib/format-date';
 
 /**
  * NEW-LGL-7 / action B-02 — lean ProjectPosition detail + Find-Candidates.
@@ -67,6 +75,30 @@ const LIFECYCLE_DESCRIPTIONS: Record<PositionFillStatus, string> = {
   ON_HOLD: 'Position is paused; resume to ASSIGNED when ready.',
   RELEASED: 'Position is closed — person rolled off.',
 };
+
+// W2-04 — match an approval queue item to the current position. The unified
+// queue exposes `meta.positionId` on position-proposal sources; we also fall
+// back to the `href` field which contains `/projects/.../positions/<id>`.
+function isApprovalForPosition(item: ApprovalQueueItemDto, positionId: string): boolean {
+  const meta = item.meta as { positionId?: string } | undefined;
+  if (meta && typeof meta.positionId === 'string' && meta.positionId === positionId) {
+    return true;
+  }
+  return typeof item.href === 'string' && item.href.includes(positionId);
+}
+
+function renderSlaBadge(stage: 'on-track' | 'due-soon' | 'breached' | null): JSX.Element {
+  if (stage === 'breached') {
+    return <StatusBadge tone="danger" label="Breached" variant="chip" />;
+  }
+  if (stage === 'due-soon') {
+    return <StatusBadge tone="warning" label="Due soon" variant="chip" />;
+  }
+  if (stage === 'on-track') {
+    return <StatusBadge tone="active" label="On track" variant="chip" />;
+  }
+  return <StatusBadge tone="neutral" label="—" variant="text" />;
+}
 
 function buildLifecycleStages(current: PositionFillStatus): WorkflowStage[] {
   if (current === 'ON_HOLD' || current === 'RELEASED') {
@@ -129,6 +161,9 @@ export function ProjectPositionDetailPage(): JSX.Element {
   // LEAN-P4-missing-3 — RM auto-match by skill (gated on dsRefresh).
   const [autoMatchBusy, setAutoMatchBusy] = useState(false);
   const [autoMatchMessage, setAutoMatchMessage] = useState<string | null>(null);
+  // W2-04 — lifecycle history + pending approvals for this position.
+  const [history, setHistory] = useState<ProjectPositionFillHistory[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalQueueItemDto[]>([]);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setCurrentLabel } = useDrilldown();
 
@@ -213,6 +248,18 @@ export function ProjectPositionDetailPage(): JSX.Element {
       } else {
         setCandidates([]);
       }
+      // W2-04 — load lean lifecycle history + position-proposal approvals
+      // in parallel; failures degrade gracefully (sections show empty).
+      void Promise.allSettled([
+        fetchPositionHistory(realId).then(
+          (r) => setHistory(r.history),
+          () => setHistory([]),
+        ),
+        fetchUnifiedApprovals({ sources: ['position-proposal'], pageSize: 100 }).then(
+          (r) => setApprovals(r.items.filter((it) => isApprovalForPosition(it, realId))),
+          () => setApprovals([]),
+        ),
+      ]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load position.');
     } finally {
@@ -422,6 +469,55 @@ export function ProjectPositionDetailPage(): JSX.Element {
                 columns={candidateColumns}
               />
             )}
+          </SectionCard>
+
+          <SectionCard title={`Pending approvals${approvals.length > 0 ? ` (${approvals.length})` : ''}`}>
+            {approvals.length === 0 ? (
+              <EmptyState
+                title="No pending approvals"
+                description="This position has no open proposals awaiting a decision."
+              />
+            ) : (
+              <Table<ApprovalQueueItemDto>
+                variant="compact"
+                getRowKey={(a) => a.id}
+                rows={approvals}
+                columns={[
+                  { key: 'title', title: 'Title', render: (a) => a.title },
+                  {
+                    key: 'submittedBy',
+                    title: 'Submitted by',
+                    render: (a) => a.submittedBy?.displayName ?? '—',
+                  },
+                  {
+                    key: 'submittedAt',
+                    title: 'Submitted',
+                    render: (a) => formatDateTime(a.submittedAt),
+                  },
+                  {
+                    key: 'sla',
+                    title: 'SLA',
+                    render: (a) => renderSlaBadge(a.slaStage),
+                  },
+                  {
+                    key: 'action',
+                    title: '',
+                    render: (a) => (
+                      <Link
+                        to={`/approvals?focus=${encodeURIComponent(a.id)}`}
+                        style={{ color: 'var(--color-accent)' }}
+                      >
+                        Review
+                      </Link>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </SectionCard>
+
+          <SectionCard title="Lifecycle history" collapsible>
+            <AssignmentHistoryTimeline items={history} />
           </SectionCard>
         </>
       )}

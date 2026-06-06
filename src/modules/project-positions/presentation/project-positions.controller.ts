@@ -49,6 +49,10 @@ import { CreateProjectPositionService } from '../application/create-project-posi
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
 import { ListEnrichedBenchService } from '../application/list-enriched-bench.service';
+import {
+  ListPositionHistoryService,
+  PositionHistoryResponseDto,
+} from '../application/list-position-history.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
 import {
   PositionForensicsDto,
@@ -84,6 +88,7 @@ export class ProjectPositionsController {
     private readonly getService: GetProjectPositionByIdService,
     private readonly suggestFillsService: SuggestFillsService,
     private readonly forensicsService: PositionForensicsService,
+    private readonly historyService: ListPositionHistoryService,
     private readonly bulkReassignService: BulkReassignPositionsService,
   ) {}
 
@@ -134,6 +139,22 @@ export class ProjectPositionsController {
     @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
   ): Promise<PositionForensicsDto> {
     return this.forensicsService.execute(id);
+  }
+
+  @Get(':id/history')
+  @ApiOperation({
+    summary:
+      'W2-04 — lean ProjectPositionFillHistory ledger ordered oldest-first. ' +
+      'Lighter than `/forensics` (no dwell-time computation); used by the ' +
+      'position detail page lifecycle timeline.',
+  })
+  @ApiOkResponse({ description: 'Position lifecycle history.' })
+  @ApiNotFoundResponse({ description: 'Position not found.' })
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  public async history(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
+  ): Promise<PositionHistoryResponseDto> {
+    return this.historyService.execute(id);
   }
 
   @Get(':id/candidates')
