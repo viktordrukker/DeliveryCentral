@@ -94,6 +94,8 @@ export class CasesController {
   @ApiQuery({ name: 'caseTypeKey', required: false, type: String })
   @ApiQuery({ name: 'ownerPersonId', required: false, type: String })
   @ApiQuery({ name: 'subjectPersonId', required: false, type: String })
+  // W2-02 — projectId filters cases by relatedProjectId for the Project Detail tab.
+  @ApiQuery({ name: 'projectId', required: false, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'pageSize', required: false, type: Number })
   @ApiOkResponse({ type: ListCasesResponseDto })

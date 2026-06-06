@@ -30,6 +30,7 @@ export class InMemoryCaseRecordRepository implements CaseRecordRepositoryPort {
   public async list(query: {
     caseTypeKey?: string;
     ownerPersonId?: string;
+    projectId?: string;
     subjectPersonId?: string;
   }): Promise<CaseRecord[]> {
     return this.items.filter((item) => {
@@ -42,6 +43,11 @@ export class InMemoryCaseRecordRepository implements CaseRecordRepositoryPort {
       }
 
       if (query.subjectPersonId && item.subjectPersonId !== query.subjectPersonId) {
+        return false;
+      }
+
+      // W2-02 — project-scoped filter for the Project Detail Cases tab.
+      if (query.projectId && item.relatedProjectId !== query.projectId) {
         return false;
       }
 

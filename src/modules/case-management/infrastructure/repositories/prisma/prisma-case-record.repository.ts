@@ -42,17 +42,20 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
   public async list(query: {
     caseTypeKey?: string;
     ownerPersonId?: string;
+    projectId?: string;
     subjectPersonId?: string;
   }): Promise<CaseRecord[]> {
     // DM-4-2: CaseType.key is an enum at the DB level. Cast via `as any`
     // to keep the call signature `caseTypeKey?: string` in the domain
     // query while Prisma wants a CaseTypeKey enum value. Invalid values
     // throw a P2009 — same failure mode as before with a tighter type.
+    // W2-02: relatedProjectId filter powers the project-scoped Cases tab.
     const records = await this.prisma.caseRecord.findMany({
       where: {
         caseType: query.caseTypeKey ? { key: query.caseTypeKey as never } : undefined,
         ownerPersonId: query.ownerPersonId,
         subjectPersonId: query.subjectPersonId,
+        relatedProjectId: query.projectId,
       },
       include: CASE_RECORD_MAPPER_INCLUDE,
     });

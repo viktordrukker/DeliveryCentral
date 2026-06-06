@@ -30,6 +30,7 @@ import { LifecycleTab } from './tabs/LifecycleTab';
 import { PulseTab } from './tabs/PulseTab';
 import { PlanTab } from './tabs/PlanTab';
 import { MoneyTab } from './tabs/MoneyTab';
+import { ProjectCasesTab } from './tabs/ProjectCasesTab';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -39,15 +40,19 @@ const BASE_TABS = [
   { id: 'team', label: 'Team & Vendors' },
   { id: 'budget', label: 'Budget' },
   { id: 'lifecycle', label: 'Lifecycle' },
+  // W2-02 — project-scoped Cases tab lists cases where relatedProjectId === id.
+  { id: 'cases', label: 'Cases' },
 ];
 
 // V2-A.1 — 3-tab canvas grammar (Pulse / Plan / Money). The Plan tab stacks
 // milestones + risks + change requests + team as sequential sections; the
 // Money tab keeps the BudgetTab content (already canvas-faithful internally).
+// W2-02 — Cases is added as a 4th canvas tab alongside Pulse/Plan/Money.
 const V2_TABS = [
   { id: 'pulse', label: 'Pulse' },
   { id: 'plan', label: 'Plan' },
   { id: 'money', label: 'Money' },
+  { id: 'cases', label: 'Cases' },
 ];
 
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -279,6 +284,8 @@ export function ProjectDetailPage(): JSX.Element {
             />
           ) : null}
           {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} project={state.data ?? null} /> : null}
+          {/* W2-02 — Cases tab renders in both v2 and legacy grammars. */}
+          {activeTab === 'cases' ? <ProjectCasesTab projectId={id!} /> : null}
 
           {/* Legacy 7-tab grammar when dsRefresh is off */}
           {!dsRefreshEnabled && activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
