@@ -1,0 +1,110 @@
+name: v2-axe-baseline
+
+# Manual-trigger workflow that runs the @axe-core/playwright baseline scan
+# against the v2-staging deployment. Establishes the WCAG-AA baseline for V2
+# pages + DS atoms. See e2e/README.md (V2 axe A11y Baseline) for policy.
+#
+# Trigger: manual only — this scan reaches out to v2-staging, so we don't run
+# it on every PR. Run via the Actions UI or:
+#   gh workflow run v2-axe-baseline.yml
+#   gh workflow run v2-axe-baseline.yml -f target_url=https://my-preview.example
+#
+# Required secrets / vars:
+#   secrets.V2_STAGING_BASE_URL — default base URL of the v2 staging deployment
+#                                 (e.g. https://deliverit-test-v2.agentic.uz).
+#   secrets.V2_STAGING_ADMIN_EMAIL    — admin login email
+#   secrets.V2_STAGING_ADMIN_PASSWORD — admin login password
+#
+# Output: A pass/fail status + the standard Playwright HTML report as a
+# workflow artifact. New violations cause the job to fail and the
+# fingerprints to appear in the run log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Override base URL (defaults to V2_STAGING_BASE_URL secret).'
+        required: false
+        default: ''
+      grep:
+        description: "Optional spec filter (e.g. 'DS atoms' or '/dashboard')."
+        required: false
+        default: ''
+
+concurrency:
+  group: v2-axe-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  axe-baseline:
+    name: Run axe baseline against v2-staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies (root only — frontend not needed since we hit remote)
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright browsers (chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run axe baseline spec
+        env:
+          # Default to the secret, allow override via workflow input.
+          PLAYWRIGHT_BASE_URL: ${{ inputs.target_url != '' && inputs.target_url || secrets.V2_STAGING_BASE_URL }}
+          PLAYWRIGHT_API_BASE: ${{ inputs.target_url != '' && format('{0}/api', inputs.target_url) || format('{0}/api', secrets.V2_STAGING_BASE_URL) }}
+          PLAYWRIGHT_GREP: ${{ inputs.grep }}
+          # V2_STAGING_ADMIN_* override the seed creds baked into auth-state.ts.
+          # Surfaced via env so the spec can use them via process.env lookups
+          # in helpers/auth.ts if the seed creds drift on v2-staging.
+          V2_STAGING_ADMIN_EMAIL: ${{ secrets.V2_STAGING_ADMIN_EMAIL }}
+          V2_STAGING_ADMIN_PASSWORD: ${{ secrets.V2_STAGING_ADMIN_PASSWORD }}
+          # Suppress the webServer launch — we are hitting a remote URL.
+          PLAYWRIGHT_SKIP_WEB_SERVER: '1'
+          CI: '1'
+        run: |
+          # The default playwright.config.ts boots a local backend + frontend
+          # via the `webServer` block. For this workflow we want to point at a
+          # remote URL, so we run the spec with a dedicated config override.
+          node node_modules/playwright/cli.js test \
+            e2e/a11y/axe-baseline.spec.ts \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --reporter=line,html \
+            --workers=2
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: playwright-report-axe-baseline
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Summarize result
+        if: always()
+        run: |
+          echo "Axe baseline run against ${PLAYWRIGHT_BASE_URL:-<unset>}." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Baseline file: \`e2e/a11y/baseline.json\` ($(wc -l < e2e/a11y/baseline.json) lines)." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "To refresh the baseline locally:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo 'node e2e/a11y/scripts/refresh-baseline.cjs --dry  # preview' >> "$GITHUB_STEP_SUMMARY"
+          echo 'node e2e/a11y/scripts/refresh-baseline.cjs        # commit' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
