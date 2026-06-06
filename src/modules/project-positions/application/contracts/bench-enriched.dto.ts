@@ -7,6 +7,12 @@
  */
 export interface BenchEnrichedRowDto {
   personId: string;
+  /**
+   * W1-09 (issue 564) — opaque tenant-scoped identifier (`usr_…`). Prefer this
+   * for URL routing so the raw UUID does not leak into the browser. Null for
+   * legacy rows that have not yet been backfilled.
+   */
+  personPublicId: string | null;
   name: string;
   role: string;
   office: string | null;

@@ -47,6 +47,9 @@ export class ListEnrichedBenchService {
       },
       select: {
         id: true,
+        // W1-09 (issue 564) — emit publicId so FE row links can route to
+        // /people/<publicId> instead of leaking the raw UUID.
+        publicId: true,
         displayName: true,
         role: true,
         location: true,
@@ -85,6 +88,7 @@ export class ListEnrichedBenchService {
       const availabilityHours14d = 80;
       return {
         personId: p.id,
+        personPublicId: p.publicId ?? null,
         name: p.displayName,
         role: p.role ?? '',
         office: p.location,

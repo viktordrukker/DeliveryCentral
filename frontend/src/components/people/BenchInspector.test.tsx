@@ -16,6 +16,7 @@ vi.mock('@/lib/api/project-positions', () => ({
 
 const baseRow: BenchEnrichedRowDto = {
   personId: 'p-1',
+  personPublicId: 'usr_p1',
   name: 'Ada Lovelace',
   role: 'Engineer',
   office: 'London',
@@ -51,7 +52,8 @@ function renderInspector(row: Partial<BenchEnrichedRowDto> = {}, onClose = vi.fn
 beforeEach(() => {
   // Default the fetch to no suggestions; individual tests override.
   fetchSuggestionsMock.mockReset();
-  fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [] });
+  fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1',
+  personPublicId: 'usr_p1', candidates: [] });
 });
 
 describe('BenchInspector', () => {
@@ -66,7 +68,8 @@ describe('BenchInspector', () => {
   });
 
   it('shows empty-state when the suggested-positions endpoint returns no candidates', async () => {
-    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [] });
+    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1',
+  personPublicId: 'usr_p1', candidates: [] });
     renderInspector();
     await waitFor(() =>
       expect(screen.getByText(/No matching open positions found/i)).toBeInTheDocument(),
@@ -77,6 +80,7 @@ describe('BenchInspector', () => {
   it('lists ranked positions (role · project · match%) with deep-links to the position detail', async () => {
     fetchSuggestionsMock.mockResolvedValue({
       personId: 'p-1',
+  personPublicId: 'usr_p1',
       candidates: [
         suggestion({ positionId: 'pos-a', projectId: 'proj-a', projectName: 'Apollo', role: 'Senior Engineer', matchScore: 0.88 }),
         suggestion({ positionId: 'pos-b', projectId: 'proj-b', projectName: 'Atlas', role: 'Tech Lead', matchScore: 0.62 }),
@@ -94,13 +98,15 @@ describe('BenchInspector', () => {
   });
 
   it('disables "Propose to position" when the suggested-positions fetch returns empty', async () => {
-    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [] });
+    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1',
+  personPublicId: 'usr_p1', candidates: [] });
     renderInspector();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Propose to position' })).toBeDisabled());
   });
 
   it('enables "Propose to position" when at least one suggestion exists', async () => {
-    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [suggestion()] });
+    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1',
+  personPublicId: 'usr_p1', candidates: [suggestion()] });
     renderInspector();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Propose to position' })).toBeEnabled());
   });
@@ -112,13 +118,16 @@ describe('BenchInspector', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('links "Open profile" to /people/:id', () => {
-    renderInspector({ personId: 'p-42' });
-    expect(screen.getByRole('link', { name: 'Open profile' })).toHaveAttribute('href', '/people/p-42');
+  it('links "Open profile" to /people/:publicId', () => {
+    // W1-09 — URL now uses the opaque publicId; override both fields so the
+    // fixture stays internally consistent.
+    renderInspector({ personId: 'p-42', personPublicId: 'usr_p-42' });
+    expect(screen.getByRole('link', { name: 'Open profile' })).toHaveAttribute('href', '/people/usr_p-42');
   });
 
   it('soft-navigates on Propose (records return-path in sessionStorage; no hard nav)', async () => {
-    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1', candidates: [suggestion()] });
+    fetchSuggestionsMock.mockResolvedValue({ personId: 'p-1',
+  personPublicId: 'usr_p1', candidates: [suggestion()] });
     const user = userEvent.setup();
     sessionStorage.removeItem('bench:returnTo');
 

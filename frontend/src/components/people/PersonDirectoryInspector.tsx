@@ -210,7 +210,7 @@ export function PersonDirectoryInspector({
       ) : null}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button as={Link} variant="primary" size="sm" to={`/people/${row.id}`}>
+        <Button as={Link} variant="primary" size="sm" to={`/people/${row.publicId ?? row.id}`}>
           Open profile
         </Button>
       </div>

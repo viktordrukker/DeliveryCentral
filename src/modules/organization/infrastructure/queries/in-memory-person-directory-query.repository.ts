@@ -26,7 +26,14 @@ export class InMemoryPersonDirectoryQueryRepository
       pageSize: demoPeople.length,
     });
 
-    return list.items.find((item) => item.id === id) ?? null;
+    // W1-09 — accept either uuid or publicId on lookup. The in-memory fixture
+    // dataset always assigns `publicId: null`, so publicId lookups will never
+    // resolve here in test mode (they only matter against the prisma adapter
+    // against a real seeded DB).
+    return (
+      list.items.find((item) => item.id === id || (item.publicId !== null && item.publicId === id)) ??
+      null
+    );
   }
 
   public async list(query: {
