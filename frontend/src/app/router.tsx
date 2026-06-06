@@ -143,6 +143,7 @@ function AssignmentsNewRedirect(): JSX.Element {
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
 const CreatePositionPage = lazy(() => import('@/routes/staffing-desk/CreatePositionPage').then(m => ({ default: m.CreatePositionPage })));
+const BulkCreatePositionsPage = lazy(() => import('@/routes/staffing-desk/BulkCreatePositionsPage').then(m => ({ default: m.BulkCreatePositionsPage })));
 const ReportsPage = lazy(() => import('@/routes/reports/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const UtilizationPage = lazy(() => import('@/routes/reports/UtilizationPage').then(m => ({ default: m.UtilizationPage })));
 const ReportBuilderPage = lazy(() => import('@/routes/reports/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })));
@@ -423,6 +424,11 @@ const dashboardChildren = [
   // canonical aggregate directly — no interim ProjectAssignment.
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-requests/new' },
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-desk/positions/new' },
+  // W2-05 — bulk "open multiple positions at once" surface. Complements the
+  // single-position CreatePositionPage and the BulkReassignPanel (existing-
+  // position reassignment) shipped in issue 542. PM/RM JTBD: stand up a
+  // whole project team in one pass.
+  { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><BulkCreatePositionsPage /></LazyPage></RoleGuard>, path: 'staffing-requests/bulk' },
   // Lean canonical: /staffing-requests/:id renders the unified ProjectPositionDetailPage.
   // W1-23 — FE/BE alignment: BE `StaffingRequestsController` is guarded by
   // `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin). FE was
