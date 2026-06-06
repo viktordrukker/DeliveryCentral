@@ -7,6 +7,10 @@ import {
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BenchEnrichedRowDto } from './contracts/bench-enriched.dto';
+import { SuggestFillsService } from './suggest-fills.service';
+
+/** Top-N suggested projects per bench person, surfaced inline on /api/people/bench. */
+const SUGGESTED_PROJECT_LIMIT = 5;
 
 /**
  * FE-#261 — Enriched bench listing.
@@ -27,7 +31,10 @@ import { BenchEnrichedRowDto } from './contracts/bench-enriched.dto';
  */
 @Injectable()
 export class ListEnrichedBenchService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly suggestFills: SuggestFillsService,
+  ) {}
 
   public async listBench(args?: { asOf?: Date }): Promise<BenchEnrichedRowDto[]> {
     const asOf = args?.asOf ?? new Date();
@@ -73,6 +80,28 @@ export class ListEnrichedBenchService {
       }
     }
 
+    // W2-06 — populate `suggestedProjectIds` server-side via SuggestFillsService.
+    // Each bench person gets their top-N matched OPEN projects so the bench
+    // list/KPI strip (`suggestedFills` total, "N matches" badge) reflects real
+    // match counts without an N+1 client roundtrip per row. Failures degrade
+    // gracefully — a single match failure leaves that row's list empty rather
+    // than failing the whole endpoint.
+    const suggestionsByPerson = new Map<string, string[]>();
+    await Promise.all(
+      benchPeople.map(async (p) => {
+        try {
+          const res = await this.suggestFills.suggestForPerson(p.id, SUGGESTED_PROJECT_LIMIT, asOf);
+          const projectIds: string[] = [];
+          for (const c of res.candidates) {
+            if (!projectIds.includes(c.projectId)) projectIds.push(c.projectId);
+          }
+          suggestionsByPerson.set(p.id, projectIds);
+        } catch {
+          suggestionsByPerson.set(p.id, []);
+        }
+      }),
+    );
+
     const now = asOf.getTime();
     return benchPeople.map((p) => {
       const lastReleased = lastReleasedByPerson.get(p.id) ?? p.hiredAt ?? asOf;
@@ -92,7 +121,7 @@ export class ListEnrichedBenchService {
         isOnBench: true,
         daysOnBench,
         availabilityHours14d,
-        suggestedProjectIds: [],
+        suggestedProjectIds: suggestionsByPerson.get(p.id) ?? [],
       };
     });
   }

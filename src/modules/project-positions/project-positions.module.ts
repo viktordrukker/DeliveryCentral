@@ -92,14 +92,15 @@ import {
         new ListBenchPeopleService(repo),
     },
     {
-      provide: ListEnrichedBenchService,
-      inject: [PrismaService],
-      useFactory: (prisma: PrismaService) => new ListEnrichedBenchService(prisma),
-    },
-    {
       provide: SuggestFillsService,
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new SuggestFillsService(prisma),
+    },
+    {
+      provide: ListEnrichedBenchService,
+      inject: [PrismaService, SuggestFillsService],
+      useFactory: (prisma: PrismaService, suggestFills: SuggestFillsService) =>
+        new ListEnrichedBenchService(prisma, suggestFills),
     },
     PositionForensicsService,
     {

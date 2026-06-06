@@ -16,6 +16,10 @@ export interface BenchEnrichedRowDto {
   daysOnBench: number;
   /** 80 minus scheduled hours over the next 14 calendar days. */
   availabilityHours14d: number;
-  /** Suggested next projects (empty in v1; populated when matching engine wires in). */
+  /**
+   * Top-N suggested project IDs for this bench person, computed by
+   * SuggestFillsService.suggestForPerson at request time (W2-06). Empty
+   * when no OPEN positions match (or when no project-positions exist).
+   */
   suggestedProjectIds: string[];
 }
