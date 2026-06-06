@@ -32,8 +32,18 @@ export function IntegrationsAdminContent(): JSX.Element {
     ? state.statusByProvider[state.selectedProvider]
     : null;
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
+  // W2-10 — remediation parity: Retry sync + Test connection now apply
+  // to Jira, M365, and RADIUS. Reset sync state remains Jira-only
+  // because only the Jira adapter keeps an in-memory snapshot.
   const showRemediationActions =
-    dsRefreshEnabled && state.selectedProvider === 'jira';
+    dsRefreshEnabled &&
+    (state.selectedProvider === 'jira' ||
+      state.selectedProvider === 'm365' ||
+      state.selectedProvider === 'radius');
+  const supportsResetSync = state.selectedProvider === 'jira';
+  const remediationProviderLabel = state.selectedProvider
+    ? state.selectedProvider.toUpperCase()
+    : '';
 
   return (
     <>
@@ -133,42 +143,52 @@ export function IntegrationsAdminContent(): JSX.Element {
                 )}
               </SectionCard>
 
-              {showRemediationActions ? (
+              {showRemediationActions && state.selectedProvider ? (
                 <SectionCard title="Remediation Actions">
                   <p className="placeholder-block__copy">
-                    Retry the last sync, reset the local last-run snapshot, or probe adapter
-                    reachability without mutating internal data. M365 + RADIUS remediation is
-                    follow-up work.
+                    Retry the last sync or probe adapter reachability without mutating
+                    internal data. Reset sync state is only available for Jira (the
+                    only adapter that keeps an in-memory snapshot).
                   </p>
                   <div
                     className="section-card__actions-row section-card__actions-row--start"
-                    data-testid="jira-remediation-actions"
+                    data-testid={`${state.selectedProvider}-remediation-actions`}
                   >
                     <Button
                       variant="secondary"
                       type="button"
-                      onClick={() => void state.triggerRetrySync('jira')}
+                      onClick={() => void state.triggerRetrySync(state.selectedProvider!)}
                       disabled={state.isSyncing}
                     >
                       Retry sync
                     </Button>
+                    {supportsResetSync ? (
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => void state.triggerResetSync(state.selectedProvider!)}
+                      >
+                        Reset sync state
+                      </Button>
+                    ) : null}
                     <Button
                       variant="secondary"
                       type="button"
-                      onClick={() => void state.triggerResetSync('jira')}
-                    >
-                      Reset sync state
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      type="button"
-                      onClick={() => void state.triggerTestConnection('jira')}
+                      onClick={() => void state.triggerTestConnection(state.selectedProvider!)}
                     >
                       Test connection
                     </Button>
                   </div>
-                  {state.testConnectionResult ? (
-                    <dl className="details-list" data-testid="jira-test-connection-result">
+                  {state.testConnectionResult &&
+                  state.testConnectionResult.provider === state.selectedProvider ? (
+                    <dl
+                      className="details-list"
+                      data-testid={`${state.selectedProvider}-test-connection-result`}
+                    >
+                      <div>
+                        <dt>Provider</dt>
+                        <dd>{remediationProviderLabel}</dd>
+                      </div>
                       <div>
                         <dt>Reachable</dt>
                         <dd>{state.testConnectionResult.reachable ? 'Yes' : 'No'}</dd>

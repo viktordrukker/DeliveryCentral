@@ -141,6 +141,26 @@ export async function triggerAdminM365Sync(): Promise<M365DirectorySyncResponse>
   );
 }
 
+export async function retryAdminM365Sync(): Promise<M365DirectorySyncResponse> {
+  return httpPost<M365DirectorySyncResponse, Record<string, never>>(
+    '/integrations/m365/directory/retry-sync',
+    {},
+  );
+}
+
+export interface IntegrationTestConnectionResponse {
+  reachable: boolean;
+  latencyMs: number;
+  errorMessage?: string;
+}
+
+export async function testAdminM365Connection(): Promise<IntegrationTestConnectionResponse> {
+  return httpPost<IntegrationTestConnectionResponse, Record<string, never>>(
+    '/integrations/m365/directory/test-connection',
+    {},
+  );
+}
+
 export async function fetchAdminM365Reconciliation(params?: {
   category?: 'AMBIGUOUS' | 'MATCHED' | 'STALE_CONFLICT' | 'UNMATCHED';
   query?: string;
@@ -161,6 +181,20 @@ export async function fetchAdminM365Reconciliation(params?: {
 export async function triggerAdminRadiusSync(): Promise<RadiusSyncResponse> {
   return httpPost<RadiusSyncResponse, Record<string, never>>(
     '/integrations/radius/accounts/sync',
+    {},
+  );
+}
+
+export async function retryAdminRadiusSync(): Promise<RadiusSyncResponse> {
+  return httpPost<RadiusSyncResponse, Record<string, never>>(
+    '/integrations/radius/retry-sync',
+    {},
+  );
+}
+
+export async function testAdminRadiusConnection(): Promise<IntegrationTestConnectionResponse> {
+  return httpPost<IntegrationTestConnectionResponse, Record<string, never>>(
+    '/integrations/radius/test-connection',
     {},
   );
 }
