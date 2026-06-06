@@ -171,7 +171,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                 rows: (d.portfolioHealth).map((i) => ({ Project: i.name, Code: i.projectCode, Status: i.status, Staff: String(i.staffingCount), Flags: i.anomalyFlags.join(', ') })),
               }}>
                 {d.portfolioHealth.length === 0 ? (
-                  <EmptyState description="No active projects found for this period." title="No portfolio data" />
+                  <EmptyState description="No active projects found for this period." title="No portfolio data" action={{ href: '/projects', label: 'Open projects' }} />
                 ) : (
                   <Table
                     variant="compact"
@@ -241,7 +241,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
                 />
               </SectionCard>
             ) : (
-              <EmptyState description="No active projects found for this period." title="No scorecard data" />
+              <EmptyState description="No active projects found for this period." title="No scorecard data" action={{ href: '/projects', label: 'Open projects' }} />
             )
           )}
 
@@ -262,6 +262,16 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
 
           />
         </>
+      ) : null}
+
+      {/* W1-03 — fallback when load completes with no data so the page is
+          never a blank canvas (UX Law 2). */}
+      {!state.isLoading && !state.error && !d ? (
+        <EmptyState
+          title="No delivery data yet"
+          description="No portfolio data is available for this period. Try a different range, or jump to projects to start staffing."
+          action={{ href: '/projects', label: 'Open projects' }}
+        />
       ) : null}
     </PageContainer>
   );

@@ -213,6 +213,49 @@ describe('visible-but-forbidden and forbidden-but-visible mismatch detection', (
   });
 });
 
+describe('W1 routing bundle — short-form aliases', () => {
+  const aliasPairs: Array<{ alias: string; canonical: string }> = [
+    // W1-01 — short-form dashboard aliases.
+    { alias: '/dashboard/dm', canonical: '/dashboard/delivery-manager' },
+    { alias: '/dashboard/pm', canonical: '/dashboard/project-manager' },
+    { alias: '/dashboard/rm', canonical: '/dashboard/resource-manager' },
+    // W1-02 — /me/:tab nested routes resolve into the workspace shell.
+    { alias: '/me/overview', canonical: '/me?tab=overview' },
+    { alias: '/me/time', canonical: '/me?tab=time' },
+    { alias: '/me/leave', canonical: '/me?tab=leave' },
+    { alias: '/me/projects', canonical: '/me?tab=projects' },
+    { alias: '/me/skills', canonical: '/me?tab=skills' },
+    { alias: '/me/inbox', canonical: '/me?tab=inbox' },
+    { alias: '/me/profile', canonical: '/me?tab=settings' },
+    { alias: '/me/settings', canonical: '/me?tab=settings' },
+    { alias: '/me/cases', canonical: '/cases' },
+    // W1-04 — /approvals/queue redirect.
+    { alias: '/approvals/queue', canonical: '/approvals' },
+  ];
+
+  it('registers every alias in the manifest', () => {
+    const manifestPaths = new Set(routeManifest.map((r) => r.path));
+    for (const { alias } of aliasPairs) {
+      expect(manifestPaths.has(alias), `manifest missing alias ${alias}`).toBe(true);
+    }
+  });
+
+  it('aliases are reachable by every role', () => {
+    for (const { alias } of aliasPairs) {
+      for (const role of ALL_ROLES) {
+        expect(canAccessRoute(alias, [role]), `${role} should access ${alias}`).toBe(true);
+      }
+    }
+  });
+
+  it('keeps aliases hidden from the sidebar', () => {
+    const navPaths = new Set(appRoutes.map((r) => r.path));
+    for (const { alias } of aliasPairs) {
+      expect(navPaths.has(alias), `${alias} should not be in the sidebar`).toBe(false);
+    }
+  });
+});
+
 describe('hasAnyRole helper', () => {
   it('returns true when user has a matching role', () => {
     expect(hasAnyRole(['admin', 'employee'], ['admin'])).toBe(true);

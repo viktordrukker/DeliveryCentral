@@ -502,7 +502,7 @@ export function DirectorDashboardPage(): JSX.Element {
               <EmptyState
                 description="No active org units yet. Create one to see headcount and bench metrics."
                 title="No org units"
-                action={{ href: '/admin/organization', label: 'Manage organization' }}
+                action={{ href: '/admin/organization-config', label: 'Manage organization' }}
               />
             ) : (
               <div data-testid="director-org-health-section">

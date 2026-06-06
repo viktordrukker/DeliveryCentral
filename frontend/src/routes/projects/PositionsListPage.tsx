@@ -144,6 +144,10 @@ export function PositionsListPage(): JSX.Element {
           <EmptyState
             title="No positions yet"
             description="This project has no positions. Add one to start staffing."
+            action={{
+              label: 'Create position',
+              href: `/staffing-desk/positions/new?projectId=${projectId ?? ''}`,
+            }}
           />
         )}
         {!isLoading && !error && positions.length > 0 && (
