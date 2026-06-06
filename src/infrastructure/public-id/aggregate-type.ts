@@ -35,6 +35,7 @@ export enum AggregateType {
   PlannerScenario = 'psc',
   LeavePolicy = 'lvp',
   DmEscalation = 'dme',
+  ProjectPosition = 'pos',
 }
 
 /**
@@ -54,6 +55,13 @@ export const MODEL_TO_AGGREGATE_TYPE: Readonly<Record<string, AggregateType>> = 
   PlannerScenario: AggregateType.PlannerScenario,
   LeavePolicy: AggregateType.LeavePolicy,
   DmEscalation: AggregateType.DmEscalation,
+  // W1-07/08 publicId foundation — 7 aggregate roots wired for opaque ids.
+  Person: AggregateType.Person,
+  Project: AggregateType.Project,
+  ProjectPosition: AggregateType.ProjectPosition,
+  OrgUnit: AggregateType.OrgUnit,
+  Client: AggregateType.Client,
+  CaseRecord: AggregateType.CaseRecord,
 });
 
 /** All registered prefixes, for format-shape validation. */

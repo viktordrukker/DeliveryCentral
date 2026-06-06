@@ -504,6 +504,7 @@ enum NotificationDeliveryStatus {
 
 model Person {
   id                                       String                              @id @default(uuid()) @db.Uuid
+  publicId                                 String?                             @unique @db.VarChar(32)
   personNumber                             String?                             @unique
   givenName                                String
   familyName                               String
@@ -941,6 +942,7 @@ model RadiusReconciliationRecord {
 
 model OrgUnit {
   id                     String                   @id @default(uuid()) @db.Uuid
+  publicId               String?                  @unique @db.VarChar(32)
   code                   String                   @unique
   name                   String
   description            String?
@@ -1126,6 +1128,7 @@ model PersonResourcePoolMembership {
 // Project is the canonical internal identity. External links remain separate.
 model Project {
   id                    String                      @id @default(uuid()) @db.Uuid
+  publicId              String?                     @unique @db.VarChar(32)
   projectCode           String                      @unique
   name                  String
   description           String?
@@ -1472,6 +1475,7 @@ model CaseType {
 
 model CaseRecord {
   id                      String              @id @default(uuid()) @db.Uuid
+  publicId                String?             @unique @db.VarChar(32)
   caseNumber              String              @unique
   caseTypeId              String              @db.Uuid
   subjectPersonId         String              @db.Uuid
@@ -3039,6 +3043,7 @@ model PublicHoliday {
 
 model Client {
   id                     String     @id @default(uuid()) @db.Uuid
+  publicId               String?    @unique @db.VarChar(32)
   name                   String     @unique
   industry               String?
   accountManagerPersonId String?    @db.Uuid

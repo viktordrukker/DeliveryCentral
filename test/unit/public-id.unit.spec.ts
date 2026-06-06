@@ -136,6 +136,29 @@ describe('MODEL_TO_AGGREGATE_TYPE registry', () => {
       }),
     );
   });
+
+  it('covers the W1-07/W1-08 publicId foundation aggregate roots', () => {
+    expect(MODEL_TO_AGGREGATE_TYPE).toEqual(
+      expect.objectContaining({
+        Person: AggregateType.Person,
+        Project: AggregateType.Project,
+        ProjectPosition: AggregateType.ProjectPosition,
+        OrgUnit: AggregateType.OrgUnit,
+        Client: AggregateType.Client,
+        CaseRecord: AggregateType.CaseRecord,
+      }),
+    );
+  });
+
+  it('generates the expected prefix per W1-07/W1-08 aggregate', () => {
+    const service = new PublicIdService();
+    expect(service.generate(AggregateType.Person)).toMatch(/^usr_/);
+    expect(service.generate(AggregateType.Project)).toMatch(/^prj_/);
+    expect(service.generate(AggregateType.ProjectPosition)).toMatch(/^pos_/);
+    expect(service.generate(AggregateType.OrgUnit)).toMatch(/^org_/);
+    expect(service.generate(AggregateType.Client)).toMatch(/^cli_/);
+    expect(service.generate(AggregateType.CaseRecord)).toMatch(/^case_/);
+  });
 });
 
 describe('ParsePublicId() pipe factory (DM-2.5)', () => {

@@ -28,6 +28,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -62,6 +63,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -155,6 +157,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -189,6 +192,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -345,6 +349,7 @@ export class PrismaPersonDirectoryQueryRepository
                 code: true,
                 id: true,
                 name: true,
+                publicId: true,
               },
             },
           },
@@ -379,6 +384,7 @@ export class PrismaPersonDirectoryQueryRepository
               select: {
                 displayName: true,
                 id: true,
+                publicId: true,
               },
             },
           },
@@ -415,9 +421,10 @@ export class PrismaPersonDirectoryQueryRepository
       grade: string | null;
       hiredAt: Date | null;
       id: string;
+      publicId: string | null;
       orgMemberships: Array<{
         isPrimary: boolean;
-        orgUnit: { code: string; id: string; name: string } | null;
+        orgUnit: { code: string; id: string; name: string; publicId: string | null } | null;
       }>;
       primaryEmail: string | null;
       resourcePoolMemberships: Array<{
@@ -426,7 +433,7 @@ export class PrismaPersonDirectoryQueryRepository
       role: string | null;
       terminatedAt: Date | null;
       subjectReportingLines: Array<{
-        manager: { displayName: string; id: string } | null;
+        manager: { displayName: string; id: string; publicId: string | null } | null;
         relationshipType: 'DOTTED_LINE' | 'FUNCTIONAL' | 'PROJECT' | 'SOLID_LINE';
       }>;
     },
@@ -446,6 +453,7 @@ export class PrismaPersonDirectoryQueryRepository
         ? {
             displayName: solidLine.manager.displayName,
             id: solidLine.manager.id,
+            publicId: solidLine.manager.publicId,
           }
         : null,
       currentOrgUnit: primaryMembership?.orgUnit
@@ -453,6 +461,7 @@ export class PrismaPersonDirectoryQueryRepository
             code: primaryMembership.orgUnit.code,
             id: primaryMembership.orgUnit.id,
             name: primaryMembership.orgUnit.name,
+            publicId: primaryMembership.orgUnit.publicId,
           }
         : null,
       displayName: person.displayName,
@@ -462,9 +471,11 @@ export class PrismaPersonDirectoryQueryRepository
         .map((line) => ({
           displayName: line.manager?.displayName ?? '',
           id: line.manager?.id ?? '',
+          publicId: line.manager?.publicId ?? null,
         }))
         .filter((line) => Boolean(line.id)),
       id: person.id,
+      publicId: person.publicId,
       hiredAt: person.hiredAt?.toISOString() ?? null,
       lifecycleStatus: person.employmentStatus,
       primaryEmail: person.primaryEmail,
