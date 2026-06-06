@@ -784,6 +784,9 @@ model Person {
   projectPositionCandidatesCreated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateCreatedBy")
   projectPositionCandidatesUpdated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateUpdatedBy")
   projectPositionFillHistoryChanges        ProjectPositionFillHistory[]        @relation("ProjectPositionFillHistoryChangedBy")
+  // LEAN-P4-missing-13 — admin-managed leave policies, actor-audit on author/editor.
+  createdLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyCreatedBy")
+  updatedLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyUpdatedBy")
   version                                  Int                                 @default(1)
   tenantId                                 String?                             @db.Uuid
   Tenant                                   Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -2932,6 +2935,35 @@ model LeaveBalance {
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
   @@map("leave_balances")
+}
+
+// LEAN-P4-missing-13 — admin-managed leave policies.
+//
+// Replaces hard-coded constants (default entitlement, max carry-over,
+// approval chain) so tenant admins can tune leave behaviour from
+// /admin without code changes. The set of leave types lives on the
+// `LeaveRequestType` enum; one active policy per leaveType is the
+// invariant the service layer enforces.
+model LeavePolicy {
+  id                String           @id @default(uuid()) @db.Uuid
+  publicId          String?          @unique @db.VarChar(32)
+  name              String
+  leaveType         LeaveRequestType
+  accrualPerYear    Int
+  maxCarryOver      Int
+  approvalChain     String[]
+  active            Boolean          @default(true)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
+  createdByPersonId String?          @db.Uuid
+  updatedByPersonId String?          @db.Uuid
+  createdByPerson   Person?          @relation("LeavePolicyCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?          @relation("LeavePolicyUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([leaveType, active])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
+  @@map("leave_policies")
 }
 
 model PublicHoliday {

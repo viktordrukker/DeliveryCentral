@@ -83,6 +83,7 @@ import { RadiatorThresholdsPage } from '@/routes/admin/RadiatorThresholdsPage';
 import { ResponsibilityMatrixAdminPage } from '@/routes/admin/ResponsibilityMatrixAdminPage';
 import { RateCardsAdminPage } from '@/routes/admin/RateCardsAdminPage';
 import { HelpAdminPage } from '@/routes/admin/HelpAdminPage';
+import { LeavePolicyAdminPage } from '@/routes/admin/LeavePolicyAdminPage';
 import { HelpArticleListPage } from '@/routes/help/HelpArticleListPage';
 import { HelpArticleDetailPage } from '@/routes/help/HelpArticleDetailPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
@@ -205,6 +206,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><RateCardsAdminPage /></RoleGuard>,
     path: 'admin/rate-cards',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><LeavePolicyAdminPage /></RoleGuard>,
+    path: 'admin/leave-policies',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><HelpAdminPage /></RoleGuard>,
