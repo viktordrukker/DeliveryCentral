@@ -330,14 +330,11 @@ export function TimeManagementPage(): JSX.Element {
           subtitle="Approve timesheets and leave, watch compliance, and track overtime across your team."
           breadcrumbs={[{ href: '/', label: 'Home' }, { label: 'Time Management' }]}
           badges={
-            <>
-              <StatusBadge
-                tone={pendingCount > 0 ? 'warning' : 'active'}
-                label={`${pendingCount} awaiting you`}
-                variant="chip"
-              />
-              <StatusBadge tone="info" label="SLA · 24h" variant="chip" />
-            </>
+            <StatusBadge
+              tone={pendingCount > 0 ? 'warning' : 'active'}
+              label={`${pendingCount} awaiting you`}
+              variant="chip"
+            />
           }
         />
       ) : null}
@@ -386,14 +383,9 @@ export function TimeManagementPage(): JSX.Element {
               <span className="kpi-strip__value">{peopleOnLeaveNext7Days}</span>
               <span className="kpi-strip__label">On leave (next 7 d)</span>
             </a>
-            <div
-              className="kpi-strip__item"
-              title="SLA breach data not yet exposed via the approval queue API (tracked in issue 257)."
-              style={{ borderLeft: '3px solid var(--color-border-strong)', opacity: 0.6 }}
-            >
-              <span className="kpi-strip__value">—</span>
-              <span className="kpi-strip__label">SLA breach</span>
-            </div>
+            {/* W4-06 — the per-item breach KPI is hidden until the
+                approval-queue API exposes the underlying field. Showing
+                0 / — here misled approvers into thinking nothing was at risk. */}
           </div>
 
           {/* Secondary row — compliance + overtime + approved-total context.
