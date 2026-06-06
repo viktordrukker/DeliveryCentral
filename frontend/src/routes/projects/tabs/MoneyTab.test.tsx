@@ -37,6 +37,34 @@ describe('V2-A.4 — MoneyTab surface', () => {
   });
 });
 
+describe('W2-07 — MoneyTab BE finance strip', () => {
+  const src = readFileSync('src/routes/projects/tabs/MoneyTab.tsx', 'utf-8');
+
+  it('accepts an optional project prop carrying ProjectDetails', () => {
+    expect(src).toMatch(/project\?:\s*ProjectDetails\s*\|\s*null/);
+  });
+
+  it('reads cpi / budgetStatus / openPositionsCount from project', () => {
+    expect(src).toMatch(/project\?\.cpi/);
+    expect(src).toMatch(/project\?\.budgetStatus/);
+    expect(src).toMatch(/project\?\.openPositionsCount/);
+  });
+
+  it('renders the finance strip with three testIds the QA walk can hit', () => {
+    expect(src).toMatch(/data-testid="money-tab-finance-strip"/);
+    expect(src).toMatch(/data-testid="money-tab-cpi"/);
+    expect(src).toMatch(/data-testid="money-tab-budget-status"/);
+    expect(src).toMatch(/data-testid="money-tab-open-positions"/);
+  });
+
+  it('maps budgetStatus enum to StatusBadge tones (no raw hex)', () => {
+    expect(src).toMatch(/GREEN: 'active'/);
+    expect(src).toMatch(/YELLOW: 'warning'/);
+    expect(src).toMatch(/RED: 'danger'/);
+    expect(src).toMatch(/UNSET: 'neutral'/);
+  });
+});
+
 describe('V2-A.4 — BudgetTab canvasMode prop', () => {
   const src = readFileSync('src/routes/projects/tabs/BudgetTab.tsx', 'utf-8');
 

@@ -278,7 +278,7 @@ export function ProjectDetailPage(): JSX.Element {
               changeRequestAddSignal={crAddSignal}
             />
           ) : null}
-          {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} /> : null}
+          {dsRefreshEnabled && activeTab === 'money' ? <MoneyTab projectId={id!} project={state.data ?? null} /> : null}
 
           {/* Legacy 7-tab grammar when dsRefresh is off */}
           {!dsRefreshEnabled && activeTab === 'radiator' ? <RadiatorTab project={project} projectId={id!} reload={state.reload} /> : null}
