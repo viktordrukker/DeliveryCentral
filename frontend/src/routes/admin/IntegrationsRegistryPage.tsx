@@ -161,16 +161,17 @@ export function IntegrationsRegistryPage(): JSX.Element {
                   );
                 }
                 if (r.provider === 'jsm' || r.provider === 'ldap' || r.provider === 'llm') {
+                  const probeProvider: 'jsm' | 'ldap' | 'llm' = r.provider;
                   return (
                     <Button
                       variant="secondary"
                       size="sm"
                       type="button"
-                      onClick={() => void handleProbe(r.provider)}
-                      disabled={probingProvider === r.provider}
-                      data-testid={`registry-test-${r.provider}`}
+                      onClick={() => void handleProbe(probeProvider)}
+                      disabled={probingProvider === probeProvider}
+                      data-testid={`registry-test-${probeProvider}`}
                     >
-                      {probingProvider === r.provider ? 'Testing…' : 'Test connection'}
+                      {probingProvider === probeProvider ? 'Testing…' : 'Test connection'}
                     </Button>
                   );
                 }
