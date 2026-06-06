@@ -61,6 +61,11 @@ const POLYMORPHIC_FK_WHITELIST = new Set([
   'EmployeeActivityEvent.relatedEntityId',
   'OutboxEvent.aggregateId',
   'UndoAction.entityId',
+  // LEAN-P4-missing-9 — DmEscalation.sourceId points at one of four upstream
+  // surfaces (timesheet | work-hour | milestone | leave); discriminator is
+  // `sourceKind`. Heterogeneous targets so no plain FK; same precedent as
+  // AuditLog.aggregateId.
+  'DmEscalation.sourceId',
 ]);
 
 // Models whose @@map is not required (platform tables where PascalCase is the Postgres name today

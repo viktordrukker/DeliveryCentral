@@ -19,6 +19,7 @@ import { useTitleBarActions } from '@/app/title-bar-context';
 import { PortfolioStaffingHeatmap } from '@/components/dashboard/PortfolioStaffingHeatmap';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
+import { DirectorEscalationsCard } from '@/components/dashboard/DirectorEscalationsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 // 20c-15 — KPI strip extracted to its own component (was 9 inline <Link> tiles
 // inside the page render). Same KPIs, same `data-jtbd` attrs, same threshold
@@ -332,6 +333,9 @@ export function DirectorDashboardPage(): JSX.Element {
           ) : null}
 
           <PendingApprovalsCard />
+
+          {/* LEAN-P4-missing-9 — DM escalations awaiting Director confirmation. */}
+          {isFeatureEnabled('dsRefresh') ? <DirectorEscalationsCard /> : null}
 
           {/* ═══ CHARTS: 3-column grid with chart/table toggles ═══ */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-4)' }}>
