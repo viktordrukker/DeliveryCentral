@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { useDrilldown } from '@/app/drilldown-context';
 import { STAFFING_DESK_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -20,6 +21,8 @@ import {
   listProjectPositions,
   transitionProjectPositionFill,
 } from '@/lib/api/project-positions';
+import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
+import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
 
 /**
  * NEW-LGL-7 / action B-02 — lean ProjectPosition detail + Find-Candidates.
@@ -112,6 +115,17 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [proposeFor, setProposeFor] = useState<PositionCandidate | null>(null);
   const [busy, setBusy] = useState(false);
+  const [activePersonName, setActivePersonName] = useState<string | null>(null);
+  const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
+  const { setCurrentLabel } = useDrilldown();
+
+  // Push a human-readable label into the breadcrumb trail (never raw UUID).
+  useEffect(() => {
+    if (!position) return;
+    const projectLabel = projectMeta ? `${projectMeta.projectCode} — ${projectMeta.name}` : '';
+    const label = projectLabel ? `${position.role} · ${projectLabel}` : position.role;
+    setCurrentLabel(label);
+  }, [position, projectMeta, setCurrentLabel]);
 
   const load = useCallback(async (): Promise<void> => {
     if (!positionId) {
@@ -140,6 +154,22 @@ export function ProjectPositionDetailPage(): JSX.Element {
       }
       setPosition(pos);
       const realId = pos.id;
+      // Resolve active-person + project labels in parallel — never show
+      // raw UUIDs to the user (per feedback-no-uuids-in-browser).
+      void Promise.allSettled([
+        pos.activePersonId
+          ? fetchPersonDirectoryById(pos.activePersonId).then(
+              (p) => setActivePersonName(p.displayName),
+              () => setActivePersonName(null),
+            )
+          : Promise.resolve(setActivePersonName(null)),
+        pos.projectId
+          ? fetchProjectById(pos.projectId).then(
+              (proj) => setProjectMeta(proj),
+              () => setProjectMeta(null),
+            )
+          : Promise.resolve(setProjectMeta(null)),
+      ]);
       if (PROPOSABLE.has(pos.fillStatus)) {
         const res = await getPositionCandidates(realId, 5);
         setCandidates(res.candidates);
@@ -237,12 +267,23 @@ export function ProjectPositionDetailPage(): JSX.Element {
 
       {!isLoading && !error && position && (
         <>
-          <SectionCard title={position.role}>
+          <SectionCard
+            title={
+              projectMeta
+                ? `${position.role} · ${projectMeta.projectCode} ${projectMeta.name}`
+                : position.role
+            }
+          >
             <DescriptionList
               items={[
                 { label: 'Status', value: <StatusBadge tone={STATUS_TONE[position.fillStatus]} label={position.fillStatus} /> },
                 { label: 'Required allocation', value: <Pct value={position.requiredAllocationPercent} fractionDigits={0} /> },
-                { label: 'Active person', value: position.activePersonId ?? '—' },
+                {
+                  label: 'Active person',
+                  value: position.activePersonId
+                    ? activePersonName ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>resolving…</span>
+                    : '—',
+                },
                 {
                   label: 'Active allocation',
                   value:
