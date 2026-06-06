@@ -21,8 +21,10 @@ import {
   listProjectPositions,
   transitionProjectPositionFill,
 } from '@/lib/api/project-positions';
+import { autoMatchPosition } from '@/lib/api/staffing-candidates';
 import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 /**
  * NEW-LGL-7 / action B-02 — lean ProjectPosition detail + Find-Candidates.
@@ -117,6 +119,10 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [activePersonName, setActivePersonName] = useState<string | null>(null);
   const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
+  // LEAN-P4-missing-3 — RM auto-match by skill (gated on dsRefresh).
+  const [autoMatchBusy, setAutoMatchBusy] = useState(false);
+  const [autoMatchMessage, setAutoMatchMessage] = useState<string | null>(null);
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setCurrentLabel } = useDrilldown();
 
   // Push a human-readable label into the breadcrumb trail (never raw UUID).
@@ -187,6 +193,25 @@ export function ProjectPositionDetailPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function runAutoMatch(): Promise<void> {
+    if (!position) return;
+    setAutoMatchBusy(true);
+    setAutoMatchMessage(null);
+    try {
+      const res = await autoMatchPosition(position.id, { topN: 5 });
+      setAutoMatchMessage(
+        res.created === 0
+          ? 'Auto-match found no candidates meeting the 80% skill floor.'
+          : `Auto-matched ${res.created} candidate${res.created === 1 ? '' : 's'} into the slate.`,
+      );
+      await load();
+    } catch (err: unknown) {
+      setAutoMatchMessage(err instanceof Error ? err.message : 'Auto-match failed.');
+    } finally {
+      setAutoMatchBusy(false);
+    }
+  }
 
   async function confirmPropose(): Promise<void> {
     if (!proposeFor || !position) return;
@@ -307,6 +332,45 @@ export function ProjectPositionDetailPage(): JSX.Element {
           </SectionCard>
 
           <SectionCard title={`Suggested candidates${candidates.length > 0 ? ` (${candidates.length})` : ''}`}>
+            {dsRefreshEnabled && canStaff && PROPOSABLE.has(position.fillStatus) ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 'var(--space-3)',
+                  marginBottom: 'var(--space-3)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  Auto-match populates the slate with the top-5 skill-matched + available people. Review and adjust before proposing.
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="button"
+                  onClick={() => void runAutoMatch()}
+                  disabled={autoMatchBusy}
+                  data-testid="auto-match-button"
+                >
+                  {autoMatchBusy ? 'Auto-matching…' : 'Auto-match'}
+                </Button>
+              </div>
+            ) : null}
+            {autoMatchMessage ? (
+              <div
+                role="status"
+                style={{
+                  fontSize: 12,
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 'var(--space-3)',
+                }}
+                data-testid="auto-match-message"
+              >
+                {autoMatchMessage}
+              </div>
+            ) : null}
             {!PROPOSABLE.has(position.fillStatus) ? (
               <EmptyState
                 title="Position not seeking a fill"

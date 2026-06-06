@@ -10,7 +10,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { PlatformSettingsService } from '../platform-settings/application/platform-settings.service';
+import { ProjectPositionsModule } from '../project-positions/project-positions.module';
+import { SuggestFillsService } from '../project-positions/application/suggest-fills.service';
 
+import { AutoMatchCandidatesService } from './application/auto-match-candidates.service';
 import { DeriveStaffingRequestStatusService } from './application/derive-staffing-request-status.service';
 import { NudgeStaffingRequestService } from './application/nudge-staffing-request.service';
 import {
@@ -30,6 +33,7 @@ import { UnifiedCandidateQueueService } from './application/unified-candidate-qu
     AuditObservabilityModule,
     NotificationsModule,
     PlatformSettingsModule,
+    ProjectPositionsModule,
   ],
   controllers: [StaffingRequestsController, ProposalsController],
   exports: [
@@ -37,6 +41,7 @@ import { UnifiedCandidateQueueService } from './application/unified-candidate-qu
     DeriveStaffingRequestStatusService,
     StaffingProposalSlateService,
     UnifiedCandidateQueueService,
+    AutoMatchCandidatesService,
   ],
   providers: [
     InMemoryStaffingRequestService,
@@ -47,6 +52,12 @@ import { UnifiedCandidateQueueService } from './application/unified-candidate-qu
       provide: UnifiedCandidateQueueService,
       useFactory: (prisma: PrismaService) => new UnifiedCandidateQueueService(prisma),
       inject: [PrismaService],
+    },
+    {
+      provide: AutoMatchCandidatesService,
+      useFactory: (prisma: PrismaService, suggestFills: SuggestFillsService) =>
+        new AutoMatchCandidatesService(prisma, suggestFills),
+      inject: [PrismaService, SuggestFillsService],
     },
     {
       provide: StaffingSuggestionsService,
