@@ -45,6 +45,11 @@ export interface ProjectPosition {
   requiredAllocationPercent: number;
   fillStatus: PositionFillStatus;
   activePersonId?: string;
+  // W1-10 — optional displayName projection for the active person. When the
+  // BE DTO enriches with a name join, FE callers (TeamVendorsTab, mapper)
+  // render this instead of resolving via /org/people/:id. Falls back to a
+  // per-id lookup when missing so old responses keep working.
+  activePersonName?: string;
   activeAllocationPercent?: number;
   activeValidFrom?: string;
   activeValidTo?: string;
