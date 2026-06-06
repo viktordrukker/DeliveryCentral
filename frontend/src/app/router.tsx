@@ -55,6 +55,7 @@ import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
 import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
+import { V2SoakChecklistPage } from '@/routes/admin/V2SoakChecklistPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
 import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
 import { CasesPage } from '@/routes/cases/CasesPage';
@@ -472,6 +473,19 @@ const dashboardChildren = [
       </RoleGuard>
     ),
     path: 'admin/access-policies/edit',
+  },
+  {
+    // MANUAL-CLICK-THROUGH-30 — admin V2 soak click-through checklist.
+    // Gated by `dsRefresh` because the matrix only matters during the
+    // staging soak that precedes the C0 cutover flip.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <FeatureGuard flag="dsRefresh">
+          <V2SoakChecklistPage />
+        </FeatureGuard>
+      </RoleGuard>
+    ),
+    path: 'admin/v2-soak-checklist',
   },
 ];
 
