@@ -110,7 +110,7 @@ export class ApplyPlannerScenarioService {
         }
         await tx.plannerScenario.update({
           where: { id: scenarioId },
-          data: { archivedAt: new Date() },
+          data: { archivedAt: new Date(), updatedByPersonId: actorId },
         });
       });
     } catch (err) {

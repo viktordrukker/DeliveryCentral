@@ -38,6 +38,9 @@ export class OrgConfigService {
     const cached = getCached<OrgConfigDto>(CACHE_KEY);
     if (cached) return cached;
 
+    // D-103-exempt: system-bootstrap singleton row. There is no human actor
+    // for the first-read seed; explicit updates stamp `updatedByPersonId` via
+    // `updateConfig()` below.
     const row = await this.prisma.organizationConfig.upsert({
       where: { id: 'default' },
       update: {},

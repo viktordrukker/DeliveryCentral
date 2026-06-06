@@ -55,6 +55,7 @@
     "publicid:check": "node scripts/check-public-id-leak.cjs",
     "publicid:baseline": "node scripts/check-public-id-leak.cjs --write-baseline",
     "rbac:check": "node scripts/check-rbac.cjs",
+    "actor-audit:check": "node scripts/check-actor-audit-coverage.cjs",
     "roles:check": "node scripts/check-role-literals.cjs",
     "roles:baseline": "node scripts/check-role-literals.cjs --update-baseline",
     "fk-indexes:check": "node scripts/check-fk-indexes.cjs",

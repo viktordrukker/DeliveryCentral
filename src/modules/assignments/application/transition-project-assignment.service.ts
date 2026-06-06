@@ -110,7 +110,10 @@ export class TransitionProjectAssignmentService {
    * legacy active-status set after the lean enum collapse documented in
    * `docs/planning/lean-enum-mapping.md`.
    */
-  private async syncParentSrHeadcount(staffingRequestId: string): Promise<void> {
+  private async syncParentSrHeadcount(
+    staffingRequestId: string,
+    actorId: string,
+  ): Promise<void> {
     if (!this.prisma) return;
     const sr = await this.prisma.staffingRequest.findUnique({
       where: { id: staffingRequestId },
@@ -127,7 +130,7 @@ export class TransitionProjectAssignmentService {
     const headcountFulfilled = Math.min(filledCount, cap);
     await this.prisma.staffingRequest.update({
       where: { id: staffingRequestId },
-      data: { headcountFulfilled },
+      data: { headcountFulfilled, updatedByPersonId: actorId },
     });
   }
 
@@ -284,7 +287,7 @@ export class TransitionProjectAssignmentService {
     // SR and the prisma client is wired (test fixtures may not supply it).
     if (assignment.staffingRequestId && this.prisma) {
       try {
-        await this.syncParentSrHeadcount(assignment.staffingRequestId);
+        await this.syncParentSrHeadcount(assignment.staffingRequestId, command.actorId);
       } catch (err) {
         // Counter sync failure must NEVER block the primary transition.
         this.logger.warn(

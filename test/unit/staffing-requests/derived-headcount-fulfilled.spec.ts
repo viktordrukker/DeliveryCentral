@@ -59,7 +59,7 @@ describe('D-95 — derived headcountFulfilled (source-shape)', () => {
       transitionSrc.indexOf('public async execute'),
       transitionSrc.indexOf('pinRateCardOnBooked'),
     );
-    expect(executeSection).toMatch(/syncParentSrHeadcount\(assignment\.staffingRequestId\)/);
+    expect(executeSection).toMatch(/syncParentSrHeadcount\(assignment\.staffingRequestId/);
     // Sync call must come AFTER the primary save so the count includes the
     // freshly-transitioned row.
     const saveIdx = executeSection.indexOf('projectAssignmentRepository.save');
