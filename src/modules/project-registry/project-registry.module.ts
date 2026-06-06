@@ -262,16 +262,19 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
         projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        prisma: PrismaService,
       ) =>
         new ProjectDirectoryQueryService(
           projectRepository,
           projectExternalLinkRepository,
           projectAssignmentRepository,
+          prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
         InMemoryProjectAssignmentRepository,
+        PrismaService,
       ],
     },
     {

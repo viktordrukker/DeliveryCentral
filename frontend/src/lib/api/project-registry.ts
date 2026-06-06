@@ -8,15 +8,29 @@ export interface ProjectExternalLinkSummary {
 export type EngagementModel = 'TIME_AND_MATERIAL' | 'FIXED_PRICE' | 'MANAGED_SERVICE' | 'INTERNAL';
 export type ProjectPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 export type ProjectShape = 'SMALL' | 'STANDARD' | 'ENTERPRISE' | 'PROGRAM';
+export type ProjectBudgetStatus = 'GREEN' | 'YELLOW' | 'RED' | 'UNSET';
 
 export interface ProjectDirectoryItem {
   assignmentCount: number;
+  /**
+   * W2-07 — derived budget health from the latest ProjectBudget row.
+   * Mirrors `financial-service` thresholds: GREEN ≤ 85% of BAC, YELLOW ≤
+   * 100%, RED > 100%, UNSET when no budget is recorded.
+   */
+  budgetStatus?: ProjectBudgetStatus;
   clientName?: string | null;
+  /**
+   * W2-07 — Cost Performance Index (EV / AC). `null` when no budget, no EV
+   * recorded, or AC ≤ 0.
+   */
+  cpi?: number | null;
   engagementModel?: EngagementModel | null;
   externalLinksCount: number;
   externalLinksSummary: ProjectExternalLinkSummary[];
   id: string;
   name: string;
+  /** W2-07 — count of ProjectPosition rows with fillStatus === 'OPEN'. */
+  openPositionsCount?: number;
   priority?: ProjectPriority | null;
   projectCode: string;
   status: string;
