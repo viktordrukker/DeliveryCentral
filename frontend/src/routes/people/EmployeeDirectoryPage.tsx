@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { useTitleBarActions } from '@/app/title-bar-context';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
@@ -16,9 +18,11 @@ import { ViewportTable } from '@/components/layout/ViewportTable';
 import { EmployeeDirectoryTable } from '@/components/people/EmployeeDirectoryTable';
 import { useEmployeeDirectory } from '@/features/people/useEmployeeDirectory';
 import { useFilterParams } from '@/hooks/useFilterParams';
+import { bulkReassignOrgMembership } from '@/lib/api/organization';
+import { fetchOrgChart, OrgChartNode } from '@/lib/api/org-chart';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
-import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Avatar, Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
@@ -35,6 +39,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
+  const canBulkReassign = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   // V2-B.18 — `role` is server-side; `grade`/`groupBy`/`layout` are client-side
   // refinements over the loaded page (same page-local model as `search`).
@@ -55,6 +60,78 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const selectedPersonId = filters.selected || null;
   const setSelectedPersonId = (id: string | null): void => setFilters({ selected: id ?? '' });
   const { setActions } = useTitleBarActions();
+
+  // LEAN-P4-missing-4 — bulk org-structure reassignment (HR/Director/Admin).
+  // Gated by dsRefresh and HR_DIRECTOR_ADMIN_ROLES.
+  const [bulkPanelOpen, setBulkPanelOpen] = useState(false);
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkOrgUnits, setBulkOrgUnits] = useState<Array<{ id: string; name: string }>>([]);
+  const [bulkTargetUnitId, setBulkTargetUnitId] = useState('');
+  const [bulkEffectiveFrom, setBulkEffectiveFrom] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    moved: number;
+    skipped: number;
+    error?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!dsRefreshEnabled || !canBulkReassign || !bulkPanelOpen) return;
+    let active = true;
+    function flatten(nodes: OrgChartNode[]): Array<{ id: string; name: string }> {
+      const out: Array<{ id: string; name: string }> = [];
+      for (const node of nodes) {
+        out.push({ id: node.id, name: node.name });
+        if (node.children?.length) out.push(...flatten(node.children));
+      }
+      return out;
+    }
+    void fetchOrgChart()
+      .then((chart) => {
+        if (active) setBulkOrgUnits(flatten(chart.roots).sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch(() => {
+        if (active) setBulkOrgUnits([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [dsRefreshEnabled, canBulkReassign, bulkPanelOpen]);
+
+  function toggleBulkSelected(id: string): void {
+    setBulkSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkConfirm(reason?: string): Promise<void> {
+    setBulkConfirmOpen(false);
+    setBulkSubmitting(true);
+    setBulkResult(null);
+    try {
+      const res = await bulkReassignOrgMembership({
+        personIds: Array.from(bulkSelectedIds),
+        toOrgUnitId: bulkTargetUnitId,
+        effectiveFrom: bulkEffectiveFrom,
+        reason: reason?.trim() || undefined,
+      });
+      setBulkResult({
+        moved: res.movedPersonIds.length,
+        skipped: res.skippedPersonIds.length,
+      });
+      setBulkSelectedIds(new Set());
+    } catch (err) {
+      setBulkResult({ moved: 0, skipped: 0, error: err instanceof Error ? err.message : 'Bulk reassign failed.' });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     void fetchResourcePools().then((r) => setResourcePools(r.items));
@@ -126,6 +203,17 @@ export function EmployeeDirectoryPage(): JSX.Element {
             Export XLSX
           </Button>
         ) : null}
+        {dsRefreshEnabled && canBulkReassign ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() => setBulkPanelOpen((v) => !v)}
+            data-testid="people-bulk-reassign-toggle"
+          >
+            {bulkPanelOpen ? 'Close bulk reassign' : 'Bulk reassign org unit'}
+          </Button>
+        ) : null}
         {canManagePeople ? (
           <Button variant="primary" size="sm" onClick={() => navigate('/admin/people/new')} type="button">
             Create employee
@@ -136,7 +224,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
       </>
     );
     return () => setActions(null);
-  }, [setActions, canManagePeople, state.data, state.visibleItems, state.isLoading, navigate]);
+  }, [setActions, canManagePeople, canBulkReassign, dsRefreshEnabled, bulkPanelOpen, state.data, state.visibleItems, state.isLoading, navigate]);
 
   // V2-A.8 — canvas 3-tab shell: Directory / Bench / HR Queue. Each pane
   // mounts its own data-fetching panel; the parent owns the tab selection
@@ -235,6 +323,118 @@ export function EmployeeDirectoryPage(): JSX.Element {
       {dsRefreshEnabled && activeView === 'leave-approvals' ? <LeaveApprovalsPanel /> : null}
       {dsRefreshEnabled && activeView !== 'directory' ? null : (
       <>
+      {dsRefreshEnabled && canBulkReassign && bulkPanelOpen ? (
+        <SectionCard title="Bulk reassign org unit">
+          <div data-testid="people-bulk-reassign-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>
+              Select people below, choose the destination org unit and effective date, then confirm. The current membership closes the day before <code>effectiveFrom</code>; a new one opens on it.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+              <label className="field">
+                <span className="field__label">Destination org unit</span>
+                <select
+                  className="field__control"
+                  value={bulkTargetUnitId}
+                  onChange={(e) => setBulkTargetUnitId(e.target.value)}
+                  data-testid="people-bulk-target-unit"
+                >
+                  <option value="">Select unit…</option>
+                  {bulkOrgUnits.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field__label">Effective from</span>
+                <input
+                  className="field__control"
+                  type="date"
+                  value={bulkEffectiveFrom}
+                  onChange={(e) => setBulkEffectiveFrom(e.target.value)}
+                  data-testid="people-bulk-effective-from"
+                />
+              </label>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-2)' }}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="button"
+                  disabled={bulkSelectedIds.size === 0 || !bulkTargetUnitId || !bulkEffectiveFrom || bulkSubmitting}
+                  onClick={() => setBulkConfirmOpen(true)}
+                  data-testid="people-bulk-reassign-submit"
+                >
+                  Reassign {bulkSelectedIds.size} {bulkSelectedIds.size === 1 ? 'person' : 'people'}
+                </Button>
+                {bulkSelectedIds.size > 0 ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    type="button"
+                    onClick={() => setBulkSelectedIds(new Set())}
+                  >
+                    Clear selection
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            {bulkResult ? (
+              bulkResult.error ? (
+                <ErrorState description={bulkResult.error} />
+              ) : (
+                <div
+                  data-testid="people-bulk-reassign-result"
+                  style={{
+                    padding: 'var(--space-2) var(--space-3)',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface-alt)',
+                    borderRadius: 6,
+                    fontSize: 13,
+                  }}
+                >
+                  Moved {bulkResult.moved} · skipped {bulkResult.skipped} (already in destination).
+                </div>
+              )
+            ) : null}
+            <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 6 }}>
+              <ul
+                data-testid="people-bulk-select-list"
+                style={{ listStyle: 'none', margin: 0, padding: 0 }}
+              >
+                {state.visibleItems.map((p) => (
+                  <li
+                    key={p.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-2) var(--space-3)',
+                      borderBottom: '1px solid var(--color-border)',
+                      fontSize: 13,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bulkSelectedIds.has(p.id)}
+                      onChange={() => toggleBulkSelected(p.id)}
+                      aria-label={`Select ${p.displayName}`}
+                      data-testid={`people-bulk-select-${p.id}`}
+                    />
+                    <span style={{ fontWeight: 500, minWidth: 180 }}>{p.displayName}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      {p.currentOrgUnit?.name ?? 'Unassigned'}
+                    </span>
+                  </li>
+                ))}
+                {state.visibleItems.length === 0 ? (
+                  <li style={{ padding: 'var(--space-3)', color: 'var(--color-text-muted)', fontSize: 13 }}>
+                    No people in view. Adjust filters above to select people for reassignment.
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
       <FilterBar>
         <label className="field">
           <span className="field__label">Search</span>
@@ -500,6 +700,15 @@ export function EmployeeDirectoryPage(): JSX.Element {
       </ViewportTable>
       </>
       )}
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        title="Confirm bulk reassign"
+        message={`Reassign ${bulkSelectedIds.size} ${bulkSelectedIds.size === 1 ? 'person' : 'people'} to the selected org unit effective ${bulkEffectiveFrom}?`}
+        confirmLabel="Reassign"
+        requireReason
+        onCancel={() => setBulkConfirmOpen(false)}
+        onConfirm={(reason) => { void handleBulkConfirm(reason); }}
+      />
     </PageContainer>
   );
 }

@@ -17,6 +17,7 @@ import { WorkEvidenceModule } from '../work-evidence/work-evidence.module';
 import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { AppConfig } from '@src/shared/config/app-config';
 import { AssignLineManagerService } from './application/assign-line-manager.service';
+import { BulkReassignOrgMembershipService } from './application/bulk-reassign-org-membership.service';
 import { TerminateReportingLineService } from './application/terminate-reporting-line.service';
 import { CreateTeamService } from './application/create-team.service';
 import { CreateEmployeeService } from './application/create-employee.service';
@@ -45,6 +46,7 @@ import { PrismaReportingLineRepository } from './infrastructure/repositories/pri
 import { PrismaTeamStore } from './infrastructure/repositories/prisma/prisma-team.store';
 import { PrismaPersonDirectoryQueryRepository } from './infrastructure/queries/prisma-person-directory-query.repository';
 import { ManagerScopeController } from './presentation/manager-scope.controller';
+import { OrganizationController } from './presentation/organization.controller';
 import { OrgChartController } from './presentation/org-chart.controller';
 import { PersonDirectoryController } from './presentation/person-directory.controller';
 import { PersonReleaseRequestController } from './presentation/person-release-request.controller';
@@ -63,6 +65,7 @@ import { TeamsController } from './presentation/teams.controller';
     PersonDirectoryController,
     ManagerScopeController,
     OrgChartController,
+    OrganizationController,
     PersonReleaseRequestController,
     ReportingLinesController,
     TeamsController,
@@ -347,6 +350,12 @@ import { TeamsController } from './presentation/teams.controller';
       ],
     },
     EmployeeActivityService,
+    {
+      provide: BulkReassignOrgMembershipService,
+      useFactory: (prisma: PrismaService, auditLogger: AuditLoggerService) =>
+        new BulkReassignOrgMembershipService(prisma, auditLogger),
+      inject: [PrismaService, AuditLoggerService],
+    },
   ],
   exports: [
     AssignLineManagerService,
