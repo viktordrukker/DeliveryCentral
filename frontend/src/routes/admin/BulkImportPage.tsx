@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -11,6 +12,19 @@ import {
   previewBulkImport,
 } from '@/lib/api/bulk-import';
 import { Button, Table, type Column } from '@/components/ds';
+
+function csvEscape(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function buildErrorCsv(failed: { email: string; reason: string }[]): string {
+  const header = 'email,reason';
+  const rows = failed.map((f) => `${csvEscape(f.email)},${csvEscape(f.reason)}`);
+  return [header, ...rows].join('\n');
+}
 
 const CSV_TEMPLATE = `givenName,familyName,email,grade,role
 Jane,Smith,jane.smith@example.com,Senior,engineer
@@ -75,6 +89,17 @@ export function BulkImportPage(): JSX.Element {
     URL.revokeObjectURL(url);
   }
 
+  function handleDownloadErrorCsv(): void {
+    if (!result || result.failed.length === 0) return;
+    const blob = new Blob([buildErrorCsv(result.failed)], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'people-import-errors.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <PageContainer viewport>
       <PageHeader
@@ -108,9 +133,26 @@ export function BulkImportPage(): JSX.Element {
               />
             </div>
           ) : null}
-          <Button variant="secondary" onClick={() => { setResult(null); setCsvText(''); }} style={{ marginTop: '1rem' }} type="button">
-            Import Another File
-          </Button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+            {result.created > 0 ? (
+              <Button as={Link} data-testid="view-imported-people-link" to="/people" variant="primary">
+                View imported people
+              </Button>
+            ) : null}
+            {result.failed.length > 0 ? (
+              <Button
+                data-testid="download-error-csv"
+                onClick={handleDownloadErrorCsv}
+                type="button"
+                variant="secondary"
+              >
+                Download error CSV
+              </Button>
+            ) : null}
+            <Button variant="secondary" onClick={() => { setResult(null); setCsvText(''); }} type="button">
+              Import Another File
+            </Button>
+          </div>
         </SectionCard>
       ) : (
         <>
