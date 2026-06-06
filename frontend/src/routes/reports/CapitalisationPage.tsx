@@ -479,7 +479,7 @@ export function CapitalisationPage(): JSX.Element {
               columns={[
                 { key: 'from', title: 'From', getValue: (l) => l.periodFrom, render: (l) => l.periodFrom },
                 { key: 'to', title: 'To', getValue: (l) => l.periodTo, render: (l) => l.periodTo },
-                { key: 'by', title: 'Locked By', getValue: (l) => l.lockedBy, render: (l) => l.lockedBy },
+                { key: 'by', title: 'Locked By', getValue: (l) => l.lockedByDisplayName ?? '', render: (l) => l.lockedByDisplayName ?? 'Unknown actor' },
                 { key: 'at', title: 'Locked At', getValue: (l) => l.lockedAt, render: (l) => formatDateShort(l.lockedAt) },
                 { key: 'actions', title: 'Actions', render: (l) => (
                   <Button variant="danger" size="sm" onClick={() => void handleUnlock(l.id)} type="button">

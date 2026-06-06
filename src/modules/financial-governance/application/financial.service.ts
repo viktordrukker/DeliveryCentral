@@ -217,14 +217,24 @@ export class FinancialService {
     }
 
     const lock = await this.repo.createPeriodLock({ periodFrom, periodTo, lockedBy });
+    const peopleById = await this.resolvePeopleById([lock.lockedBy]);
 
-    return this.mapLock(lock);
+    return this.mapLock(lock, peopleById);
   }
 
   public async listPeriodLocks(): Promise<PeriodLockDto[]> {
     const locks = await this.repo.findAllPeriodLocks();
+    const peopleById = await this.resolvePeopleById(locks.map((l) => l.lockedBy));
 
-    return locks.map((l) => this.mapLock(l));
+    return locks.map((l) => this.mapLock(l, peopleById));
+  }
+
+  private async resolvePeopleById(
+    ids: string[],
+  ): Promise<Map<string, { displayName: string; publicId: string | null }>> {
+    const uuids = [...new Set(ids.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)))];
+    const people = await this.repo.findPeopleByIds(uuids);
+    return new Map(people.map((p) => [p.id, { displayName: p.displayName, publicId: p.publicId }]));
   }
 
   public async deletePeriodLock(id: string): Promise<void> {
@@ -474,18 +484,24 @@ export class FinancialService {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  private mapLock(lock: {
-    id: string;
-    periodFrom: Date;
-    periodTo: Date;
-    lockedBy: string;
-    lockedAt: Date;
-  }): PeriodLockDto {
+  private mapLock(
+    lock: {
+      id: string;
+      periodFrom: Date;
+      periodTo: Date;
+      lockedBy: string;
+      lockedAt: Date;
+    },
+    peopleById: Map<string, { displayName: string; publicId: string | null }>,
+  ): PeriodLockDto {
+    const person = peopleById.get(lock.lockedBy);
     return {
       id: lock.id,
       periodFrom: toDateStr(lock.periodFrom),
       periodTo: toDateStr(lock.periodTo),
       lockedBy: lock.lockedBy,
+      lockedByDisplayName: person?.displayName ?? null,
+      lockedByPublicId: person?.publicId ?? null,
       lockedAt: lock.lockedAt.toISOString(),
     };
   }

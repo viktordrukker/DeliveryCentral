@@ -60,7 +60,9 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
           render: (item) => (
             <div className="audit-record">
               <div className="audit-record__primary">{item.targetEntityType}</div>
-              <div className="audit-record__secondary">{item.targetEntityId ?? 'No target id'}</div>
+              <div className="audit-record__secondary">
+                {item.targetEntityId ? 'Target ref recorded' : 'No target id'}
+              </div>
             </div>
           ),
         },
@@ -68,7 +70,9 @@ export function BusinessAuditTable({ items }: BusinessAuditTableProps): JSX.Elem
           key: 'actor',
           title: COLUMN_LABELS.actor,
           render: (item) => (
-            <span className="audit-record__primary">{item.actorDisplayName ?? item.actorId ?? 'System / unknown'}</span>
+            <span className="audit-record__primary">
+              {item.actorDisplayName ?? (item.actorId ? 'Unknown actor' : 'System / unknown')}
+            </span>
           ),
         },
         {

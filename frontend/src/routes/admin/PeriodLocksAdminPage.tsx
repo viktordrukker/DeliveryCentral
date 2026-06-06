@@ -109,7 +109,8 @@ export function PeriodLocksAdminPage(): JSX.Element {
     {
       key: 'lockedBy',
       title: 'Locked by',
-      getValue: (lock) => lock.lockedBy,
+      getValue: (lock) => lock.lockedByDisplayName ?? '',
+      render: (lock) => lock.lockedByDisplayName ?? 'Unknown actor',
     },
     {
       key: 'actions',
