@@ -85,6 +85,7 @@ import { ResponsibilityMatrixAdminPage } from '@/routes/admin/ResponsibilityMatr
 import { RateCardsAdminPage } from '@/routes/admin/RateCardsAdminPage';
 import { HelpAdminPage } from '@/routes/admin/HelpAdminPage';
 import { LeavePolicyAdminPage } from '@/routes/admin/LeavePolicyAdminPage';
+import { CustomRoleAdminPage } from '@/routes/admin/CustomRoleAdminPage';
 import { HelpArticleListPage } from '@/routes/help/HelpArticleListPage';
 import { HelpArticleDetailPage } from '@/routes/help/HelpArticleDetailPage';
 import { TeamsPage } from '@/routes/teams/TeamsPage';
@@ -211,6 +212,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><LeavePolicyAdminPage /></RoleGuard>,
     path: 'admin/leave-policies',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><CustomRoleAdminPage /></RoleGuard>,
+    path: 'admin/governance/roles',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><HelpAdminPage /></RoleGuard>,

@@ -787,6 +787,9 @@ model Person {
   // LEAN-P4-missing-13 — admin-managed leave policies, actor-audit on author/editor.
   createdLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyCreatedBy")
   updatedLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyUpdatedBy")
+  // NEW-LGL-3 — admin-managed custom roles (Squad Lead, Tribe Lead, IT Service Owner).
+  createdCustomRoles                       CustomRole[]                        @relation("CustomRoleCreatedBy")
+  updatedCustomRoles                       CustomRole[]                        @relation("CustomRoleUpdatedBy")
   dmEscalationsCreated                     DmEscalation[]                      @relation("DmEscalationEscalatedBy")
   dmEscalationsAssigned                    DmEscalation[]                      @relation("DmEscalationEscalatedTo")
   dmEscalationsResolved                    DmEscalation[]                      @relation("DmEscalationResolvedBy")
@@ -2971,6 +2974,36 @@ model LeavePolicy {
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
   @@map("leave_policies")
+}
+
+// NEW-LGL-3 — tenant-defined custom roles. Bank ops add shapes like
+// "Squad Lead", "Tribe Lead", "IT Service Owner" without code changes.
+// Built-in PlatformRole values (admin, director, hr_manager, …) are NOT
+// represented as rows; they remain compile-time constants. Custom roles
+// carry a slug key, a display name, and a list of inherited PlatformRole
+// values that propagate their effective permissions through the existing
+// @RequireRoles guard. Soft-delete via `deactivatedAt`. `isBuiltIn` is
+// reserved for any future seed presets surfaced as rows.
+model CustomRole {
+  id                String    @id @default(uuid()) @db.Uuid
+  publicId          String?   @unique @db.VarChar(32)
+  roleKey           String    @unique @db.VarChar(64)
+  displayName       String    @db.VarChar(120)
+  description       String?
+  inheritedRoles    String[]
+  isBuiltIn         Boolean   @default(false)
+  deactivatedAt     DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  createdByPersonId String?   @db.Uuid
+  updatedByPersonId String?   @db.Uuid
+  createdByPerson   Person?   @relation("CustomRoleCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?   @relation("CustomRoleUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+
+  @@index([deactivatedAt])
+  @@index([createdByPersonId])
+  @@index([updatedByPersonId])
+  @@map("custom_roles")
 }
 
 model PublicHoliday {
