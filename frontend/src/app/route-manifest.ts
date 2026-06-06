@@ -265,10 +265,11 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/projects/:id/dashboard' },
   // LEAN-P2 exit-gate: legacy /assignments surfaces deleted; entries kept
   // for the route registry (the router redirects them) but hidden from nav.
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/new' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/bulk' },
-  { allowedRoles: ALL_ROLES, navVisible: false, path: '/assignments/queue' },
+  // W1-21: /assignments/new is permanently routed to /staffing-requests/new.
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/new' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/bulk' },
+  { allowedRoles: ALL_ROLES, navVisible: false, obsoleteInV2: true, path: '/assignments/queue' },
   { allowedRoles: ALL_ROLES, path: '/assignments/:id' },
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },

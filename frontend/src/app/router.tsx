@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import {
   ADMIN_ONLY_ROLES,
@@ -123,6 +123,19 @@ function ProjectDashboardRedirect(): JSX.Element {
   const { id } = useParams();
   const tab = isFeatureEnabled('dsRefresh') ? 'pulse' : 'radiator';
   return <Navigate to={`/projects/${id ?? ''}?tab=${tab}`} replace />;
+}
+
+// Wave 1 / W1-21 — legacy `/assignments/new` (interim ProjectAssignment flow)
+// is superseded by the lean ProjectPosition flow at `/staffing-requests/new`.
+// Preserves the `projectId` query param so deep-links from project detail
+// continue to pre-select the project on the create form.
+function AssignmentsNewRedirect(): JSX.Element {
+  const [params] = useSearchParams();
+  const projectId = params.get('projectId');
+  const target = projectId
+    ? `/staffing-requests/new?projectId=${encodeURIComponent(projectId)}`
+    : '/staffing-requests/new';
+  return <Navigate to={target} replace />;
 }
 const TeamDashboardPage = lazy(() => import('@/routes/teams/TeamDashboardPage').then(m => ({ default: m.TeamDashboardPage })));
 const StaffingDeskPage = lazy(() => import('@/routes/staffing-desk/StaffingDeskPage').then(m => ({ default: m.StaffingDeskPage })));
@@ -267,7 +280,10 @@ const dashboardChildren = [
   // redirect to the canonical project-positions surfaces (staffing desk,
   // approvals queue).
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments' },
-  { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/new' },
+  // W1-21 — legacy /assignments/new redirects to the lean ProjectPosition
+  // create form, preserving any projectId query param from project-detail
+  // deep-links.
+  { element: <AssignmentsNewRedirect />, path: 'assignments/new' },
   { element: <Navigate to="/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE" replace />, path: 'assignments/bulk' },
   { element: <Navigate to="/approvals" replace />, path: 'assignments/queue' },
   // Lean canonical: both /assignments/:id and /staffing-requests/:id route
@@ -317,7 +333,14 @@ const dashboardChildren = [
   },
   { element: <MyTimePage />, path: 'my-time' },
   {
-    element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><TimeManagementPage /></RoleGuard>,
+    // W1-22 — legacy /time-management is absorbed into the unified
+    // /approvals queue under dsRefresh. The page still renders pre-flag
+    // so OFF-flag tenants retain the manager timesheet approval surface.
+    element: (
+      <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}>
+        <V2Redirect to="/approvals"><TimeManagementPage /></V2Redirect>
+      </RoleGuard>
+    ),
     path: 'time-management',
   },
   { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
