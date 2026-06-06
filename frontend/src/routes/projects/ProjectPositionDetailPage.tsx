@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
@@ -104,7 +104,14 @@ export function ProjectPositionDetailPage(): JSX.Element {
   // AND /positions/:id AND /staffing-requests/:id AND /assignments/:id (where
   // :id is treated as positionId; if that 404s, we fall back to a legacy id
   // lookup via the parent placeholder pages' redirect).
+  //
+  // W1-11 — :positionId / :id may be either a raw UUID (legacy deep-link) or
+  // an opaque `pos_…` publicId. The backend's ParsePublicIdOrUuid pipe accepts
+  // both shapes. When we resolve a UUID-shaped URL to a position that carries
+  // a publicId, we replace the URL with the publicId form so the back-stack
+  // and refer headers never carry the raw UUID forward.
   const params = useParams<{ projectId?: string; positionId?: string; id?: string }>();
+  const location = useLocation();
   const projectId = params.projectId;
   const positionId = params.positionId ?? params.id;
   const { principal } = useAuth();
@@ -133,6 +140,26 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setCurrentLabel(label);
   }, [position, projectMeta, setCurrentLabel]);
 
+  // W1-11 — replace UUID-shaped URL segments with the resolved publicId so
+  // raw UUIDs never persist in the browser back-stack, history API, or
+  // referer headers. We use the native History API directly (not
+  // react-router's navigate) to avoid unmount + re-render when the route
+  // param changes — local component state (modal, candidate slate) stays
+  // intact through the URL swap. Guard: only act on raw-uuid-shaped params
+  // so the publicId form is already a no-op.
+  useEffect(() => {
+    if (!position?.publicId) return;
+    if (!positionId) return;
+    if (positionId === position.publicId) return;
+    // Only swap when the param actually looks like a raw uuid; otherwise the
+    // URL already carries the publicId form.
+    if (!/^[0-9a-f-]{36}$/i.test(positionId)) return;
+    if (typeof window === 'undefined' || !window.history) return;
+    const nextPath = location.pathname.replace(positionId, position.publicId);
+    if (nextPath === location.pathname) return;
+    window.history.replaceState(null, '', `${nextPath}${location.search}${location.hash}`);
+  }, [position, positionId, location.pathname, location.search, location.hash]);
+
   const load = useCallback(async (): Promise<void> => {
     if (!positionId) {
       setError('No positionId in route.');
@@ -159,7 +186,10 @@ export function ProjectPositionDetailPage(): JSX.Element {
         }
       }
       setPosition(pos);
-      const realId = pos.id;
+      // Prefer publicId for subsequent backend calls (W1-11 — opaque). Falls
+      // back to the canonical position.id for rows that pre-date the W1-07
+      // backfill. The BE pipe accepts either shape.
+      const realId = pos.publicId ?? pos.id;
       // Resolve active-person + project labels in parallel — never show
       // raw UUIDs to the user (per feedback-no-uuids-in-browser).
       void Promise.allSettled([
@@ -199,7 +229,9 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setAutoMatchBusy(true);
     setAutoMatchMessage(null);
     try {
-      const res = await autoMatchPosition(position.id, { topN: 5 });
+      // Prefer publicId — opaque identifier the backend's ParsePublicIdOrUuid
+      // pipe accepts, with raw uuid as fallback for unbackfilled rows.
+      const res = await autoMatchPosition(position.publicId ?? position.id, { topN: 5 });
       setAutoMatchMessage(
         res.created === 0
           ? 'Auto-match found no candidates meeting the 80% skill floor.'
@@ -217,9 +249,10 @@ export function ProjectPositionDetailPage(): JSX.Element {
     if (!proposeFor || !position) return;
     setBusy(true);
     try {
-      // Use the canonical position.id (resolved through the legacy-id fallback)
-      // rather than the URL :id, which may be a legacyAssignmentId.
-      await transitionProjectPositionFill(position.id, {
+      // Use position.publicId when available (W1-11 — opaque). Falls back to
+      // the canonical position.id (resolved through the legacy-id fallback)
+      // for rows that pre-date the W1-07 backfill.
+      await transitionProjectPositionFill(position.publicId ?? position.id, {
         toStatus: 'PROPOSED',
         personId: proposeFor.personId,
         allocationPercent: position.requiredAllocationPercent,

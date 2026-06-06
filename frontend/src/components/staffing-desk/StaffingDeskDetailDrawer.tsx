@@ -108,7 +108,13 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
               </Button>
             )}
             {canViewAssignments && (
-              <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/positions/${row.id}`)}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                style={S_NAV_LINK}
+                onClick={() => goTo(`/positions/${row.positionPublicId ?? row.id}`)}
+              >
                 View Position Details
               </Button>
             )}
@@ -128,7 +134,13 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
         <>
           <div style={SECTION}>Quick Actions</div>
           <div style={S_NAV}>
-            <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/positions/${row.id}`)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              style={S_NAV_LINK}
+              onClick={() => goTo(`/positions/${row.positionPublicId ?? row.id}`)}
+            >
               View Position Details
             </Button>
             <Button type="button" variant="secondary" size="sm" style={S_NAV_LINK} onClick={() => goTo(`/projects/${row.projectId}`)}>

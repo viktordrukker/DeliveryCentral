@@ -218,7 +218,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
                 }}
               >
                 <Link
-                  to={`/projects/${s.projectId}/positions/${s.positionId}`}
+                  to={`/projects/${s.projectId}/positions/${s.positionPublicId ?? s.positionId}`}
                   style={{
                     flex: 1,
                     color: 'var(--color-accent)',

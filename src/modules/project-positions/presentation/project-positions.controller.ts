@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request } from 'express';
 
+import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import {
@@ -108,11 +109,14 @@ export class ProjectPositionsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get a project position by id' })
+  @ApiOperation({ summary: 'Get a project position by id or publicId' })
   @ApiOkResponse({ type: ProjectPositionResponseDto })
   @RequireRoles(...ALL_AUTHENTICATED_ROLES)
   public async getById(
-    @Param('id', ParseUUIDPipe) id: string,
+    // W1-11 transitional pipe — accepts both legacy uuid and `pos_…` publicId
+    // so the FE can flip URLs incrementally. Flip to strict ParsePublicId
+    // once all deep-link emitters have shipped.
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
   ): Promise<ProjectPositionResponseDto> {
     const position = await this.getService.execute(id);
     return ProjectPositionResponseDto.from(position);
@@ -127,7 +131,7 @@ export class ProjectPositionsController {
   @ApiNotFoundResponse({ description: 'Position not found.' })
   @RequireRoles(...STAFFING_ROLES)
   public async forensics(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
   ): Promise<PositionForensicsDto> {
     return this.forensicsService.execute(id);
   }
@@ -140,7 +144,7 @@ export class ProjectPositionsController {
   @ApiOkResponse({ type: PositionCandidatesResponseDto })
   @RequireRoles(...STAFFING_ROLES)
   public async candidates(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
     @Query('limit') limit?: string,
   ): Promise<PositionCandidatesResponseDto> {
     const parsed = limit ? Number.parseInt(limit, 10) : undefined;
@@ -204,7 +208,7 @@ export class ProjectPositionsController {
   @ApiOkResponse({ type: ProjectPositionResponseDto })
   @RequireRoles(...STAFFING_ROLES)
   public async transition(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
     @Body() body: TransitionProjectPositionFillRequestDto,
     @Req() request: RequestWithPrincipal,
   ): Promise<ProjectPositionResponseDto> {

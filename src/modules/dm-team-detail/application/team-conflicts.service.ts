@@ -17,6 +17,7 @@ interface TeamConflictsCommand {
 
 interface PortfolioPositionRow {
   id: string;
+  publicId: string | null;
   projectId: string;
   activePersonId: string | null;
   activeAllocationPercent: number | null;
@@ -78,6 +79,7 @@ export class TeamConflictsService {
       },
       select: {
         id: true,
+        publicId: true,
         projectId: true,
         activePersonId: true,
         activeAllocationPercent: true,
@@ -117,6 +119,7 @@ export class TeamConflictsService {
         bucket.totalAllocationPct += allocationPct;
         bucket.positions.push({
           positionId: row.id,
+          positionPublicId: row.publicId ?? null,
           projectId: row.projectId,
           projectCode: row.project.projectCode,
           allocationPct,

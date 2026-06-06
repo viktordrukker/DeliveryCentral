@@ -82,11 +82,40 @@ export class StaffingDeskService {
       arr.push(a);
     }
 
+    // W1-11 — batch-resolve ProjectPosition.publicId for each desk row so the
+    // frontend can deep-link via the opaque identifier. `legacyAssignmentId`
+    // and `legacyStaffingRequestId` index columns on ProjectPosition map back
+    // to the row.id used by this view.
+    const assignmentIdSet = assignmentRows.map((a) => a.id);
+    const requestIdSet = requestRows.map((r) => r.id);
+    const positionPublicIdByAssignmentId = new Map<string, string | null>();
+    const positionPublicIdByRequestId = new Map<string, string | null>();
+    if (assignmentIdSet.length > 0 || requestIdSet.length > 0) {
+      const positions = await this.prisma.projectPosition.findMany({
+        where: {
+          OR: [
+            assignmentIdSet.length > 0 ? { legacyAssignmentId: { in: assignmentIdSet } } : null,
+            requestIdSet.length > 0 ? { legacyStaffingRequestId: { in: requestIdSet } } : null,
+          ].filter((c): c is NonNullable<typeof c> => c !== null),
+        },
+        select: { publicId: true, legacyAssignmentId: true, legacyStaffingRequestId: true },
+      });
+      for (const p of positions) {
+        if (p.legacyAssignmentId) {
+          positionPublicIdByAssignmentId.set(p.legacyAssignmentId, p.publicId ?? null);
+        }
+        if (p.legacyStaffingRequestId) {
+          positionPublicIdByRequestId.set(p.legacyStaffingRequestId, p.publicId ?? null);
+        }
+      }
+    }
+
     // Map assignments to unified rows
     const assignmentMapped: StaffingDeskRowDto[] = assignmentRows.map((a) => {
       const pm = peopleById.get(a.personId);
       return {
         id: a.id,
+        positionPublicId: positionPublicIdByAssignmentId.get(a.id) ?? null,
         kind: 'assignment' as const,
         projectId: a.projectId,
         projectName: projectsById.get(a.projectId) ?? a.projectId,
@@ -127,6 +156,7 @@ export class StaffingDeskService {
     // Map requests to unified rows
     const requestMapped: StaffingDeskRowDto[] = requestRows.map((r) => ({
       id: r.id,
+      positionPublicId: positionPublicIdByRequestId.get(r.id) ?? null,
       kind: 'request' as const,
       projectId: r.projectId,
       projectName: projectsById.get(r.projectId) ?? r.projectId,

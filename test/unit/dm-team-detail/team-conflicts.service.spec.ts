@@ -5,6 +5,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 interface FakePosition {
   id: string;
+  publicId?: string | null;
   projectId: string;
   projectCode: string;
   deliveryManagerId: string | null;
@@ -33,6 +34,7 @@ function buildPrisma(positions: FakePosition[]): PrismaService {
         .filter((p) => p.activePersonId !== null)
         .map((p) => ({
           id: p.id,
+          publicId: p.publicId ?? null,
           projectId: p.projectId,
           activePersonId: p.activePersonId,
           activeAllocationPercent: p.activeAllocationPercent,
