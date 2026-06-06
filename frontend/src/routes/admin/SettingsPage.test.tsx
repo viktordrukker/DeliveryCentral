@@ -131,14 +131,63 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('settings-section-evidenceManagement')).toBeInTheDocument();
   });
 
-  it('calls updatePlatformSetting when Save is clicked', async () => {
+  it('save button is disabled until a field becomes dirty', async () => {
     mockedFetch.mockResolvedValue(MOCK_SETTINGS);
-    mockedUpdate.mockResolvedValue({
-      key: 'general.platformName',
-      value: 'NewName',
-      updatedAt: new Date().toISOString(),
-    });
+    const user = userEvent.setup();
+    renderPage();
 
+    await screen.findByTestId('settings-section-general');
+
+    const saveBtn = screen.getByTestId('save-section-general') as HTMLButtonElement;
+    const resetBtn = screen.getByTestId('reset-section-general') as HTMLButtonElement;
+    expect(saveBtn).toBeDisabled();
+    expect(resetBtn).toBeDisabled();
+
+    const input = screen.getByTestId('setting-general-platformName') as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, 'NewName');
+
+    expect(saveBtn).not.toBeDisabled();
+    expect(resetBtn).not.toBeDisabled();
+    expect(screen.getByTestId('dirty-indicator-general')).toBeInTheDocument();
+    expect(screen.getByTestId('dirty-general-platformName')).toBeInTheDocument();
+  });
+
+  it('section save persists all dirty fields and clears dirty state', async () => {
+    mockedFetch.mockResolvedValue(MOCK_SETTINGS);
+    mockedUpdate.mockImplementation((key, value) =>
+      Promise.resolve({ key, value, updatedAt: new Date().toISOString() }),
+    );
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByTestId('settings-section-general');
+
+    const nameInput = screen.getByTestId('setting-general-platformName') as HTMLInputElement;
+    await user.clear(nameInput);
+    await user.type(nameInput, 'NewName');
+
+    const tzInput = screen.getByTestId('setting-general-timezone') as HTMLInputElement;
+    await user.clear(tzInput);
+    await user.type(tzInput, 'Europe/London');
+
+    const saveBtn = screen.getByTestId('save-section-general');
+    await user.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockedUpdate).toHaveBeenCalledWith('general.platformName', 'NewName');
+    });
+    expect(mockedUpdate).toHaveBeenCalledWith('general.timezone', 'Europe/London');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('dirty-indicator-general')).not.toBeInTheDocument();
+    });
+    expect((screen.getByTestId('save-section-general') as HTMLButtonElement)).toBeDisabled();
+  });
+
+  it('reset reverts dirty fields to original values', async () => {
+    mockedFetch.mockResolvedValue(MOCK_SETTINGS);
     const user = userEvent.setup();
     renderPage();
 
@@ -146,14 +195,46 @@ describe('SettingsPage', () => {
 
     const input = screen.getByTestId('setting-general-platformName') as HTMLInputElement;
     await user.clear(input);
-    await user.type(input, 'NewName');
+    await user.type(input, 'Changed');
+    expect(input.value).toBe('Changed');
 
-    const saveBtn = screen.getByTestId('save-general-platformName');
-    await user.click(saveBtn);
+    const resetBtn = screen.getByTestId('reset-section-general');
+    await user.click(resetBtn);
 
-    await waitFor(() => {
-      expect(mockedUpdate).toHaveBeenCalledWith('general.platformName', 'NewName');
-    });
+    expect((screen.getByTestId('setting-general-platformName') as HTMLInputElement).value).toBe('DeliveryCentral');
+    expect(screen.queryByTestId('dirty-indicator-general')).not.toBeInTheDocument();
+  });
+
+  it('renders the SSO client secret field as type=password', async () => {
+    mockedFetch.mockResolvedValue(MOCK_SETTINGS);
+    renderPage();
+    await screen.findByTestId('settings-section-sso');
+    const secret = screen.getByTestId('setting-sso-clientSecret') as HTMLInputElement;
+    expect(secret.type).toBe('password');
+  });
+
+  it('enforces min/max validation on number fields and blocks save', async () => {
+    mockedFetch.mockResolvedValue(MOCK_SETTINGS);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByTestId('settings-section-security');
+
+    const input = screen.getByTestId('setting-security-passwordMinLength') as HTMLInputElement;
+    expect(input.min).toBe('6');
+    expect(input.max).toBe('128');
+
+    await user.clear(input);
+    await user.type(input, '3');
+
+    expect(screen.getByTestId('error-security-passwordMinLength')).toBeInTheDocument();
+    expect((screen.getByTestId('save-section-security') as HTMLButtonElement)).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, '12');
+
+    expect(screen.queryByTestId('error-security-passwordMinLength')).not.toBeInTheDocument();
+    expect((screen.getByTestId('save-section-security') as HTMLButtonElement)).not.toBeDisabled();
   });
 
   it('shows error state if load fails', async () => {
