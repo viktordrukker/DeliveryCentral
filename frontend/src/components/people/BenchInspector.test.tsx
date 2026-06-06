@@ -118,9 +118,11 @@ describe('BenchInspector', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('links "Open profile" to /people/:id', () => {
-    renderInspector({ personId: 'p-42' });
-    expect(screen.getByRole('link', { name: 'Open profile' })).toHaveAttribute('href', '/people/p-42');
+  it('links "Open profile" to /people/:publicId', () => {
+    // W1-09 — URL now uses the opaque publicId; override both fields so the
+    // fixture stays internally consistent.
+    renderInspector({ personId: 'p-42', personPublicId: 'usr_p-42' });
+    expect(screen.getByRole('link', { name: 'Open profile' })).toHaveAttribute('href', '/people/usr_p-42');
   });
 
   it('soft-navigates on Propose (records return-path in sessionStorage; no hard nav)', async () => {

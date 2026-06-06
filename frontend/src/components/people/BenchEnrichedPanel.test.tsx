@@ -120,14 +120,15 @@ describe('BenchEnrichedPanel — D4 fidelity', () => {
     await waitFor(() => expect(screen.getByText(/Boom/)).toBeInTheDocument());
   });
 
-  it('Open → links to /people/<personId>', async () => {
+  it('Open → links to /people/<personPublicId>', async () => {
     fetchEnrichedBench.mockResolvedValue([sampleRows[0]]);
     renderRoute(<BenchEnrichedPanel />);
     await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
     // V2-A.7 — Table rows became role="link" (interactive) when onRowClick wired
     // for master-detail. Filter to the actual `<a>` element for this assertion.
+    // W1-09 — URL now uses the opaque publicId instead of the raw UUID.
     const link = screen.getByRole('link', { name: /^Open/ });
-    expect(link.getAttribute('href')).toBe('/people/p1');
+    expect(link.getAttribute('href')).toBe('/people/usr_p1');
   });
 });
 
