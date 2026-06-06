@@ -298,6 +298,7 @@ export class UnifiedApprovalQueueService {
       where: { fillStatus: 'PROPOSED' },
       select: {
         id: true,
+        publicId: true,
         role: true,
         projectId: true,
         activePersonId: true,
@@ -309,10 +310,14 @@ export class UnifiedApprovalQueueService {
     return rows.map((r) => itemFor({
       source: 'position-proposal',
       id: r.id,
+      // W1-12 — ProjectPosition carries `pos_…` publicId; surface it to the FE
+      // so the row "Open" link routes to /positions/<publicId> instead of the
+      // raw UUID. Backend accepts both via the publicId resolver middleware.
+      targetPublicId: r.publicId ?? null,
       title: `Position fill proposed: ${r.role}`,
       submittedAt: r.updatedAt,
       submittedBy: r.updatedByPerson ?? null,
-      href: `/positions/${r.id}`,
+      href: `/positions/${r.publicId ?? r.id}`,
       meta: { projectId: r.projectId, candidatePersonId: r.activePersonId },
     }));
   }
@@ -324,19 +329,44 @@ export class UnifiedApprovalQueueService {
         id: true,
         requestedAt: true,
         requestedByPerson: { select: { id: true, displayName: true } },
-        projectBudget: { select: { projectId: true, fiscalYear: true } },
+        projectBudget: {
+          select: {
+            projectId: true,
+            fiscalYear: true,
+          },
+        },
       },
       take: 100,
     });
-    return rows.map((r) => itemFor({
-      source: 'budget',
-      id: r.id,
-      title: `Budget approval (FY${r.projectBudget.fiscalYear})`,
-      submittedAt: r.requestedAt,
-      submittedBy: r.requestedByPerson ?? null,
-      href: `/projects/${r.projectBudget.projectId}?tab=money&approval=${r.id}`,
-      meta: { projectId: r.projectBudget.projectId, fiscalYear: r.projectBudget.fiscalYear },
-    }));
+    // W1-12 — ProjectBudget has no Project Prisma relation; look up the
+    // project publicId in one batched query so we can route via opaque ids.
+    const projectIds = Array.from(new Set(rows.map((r) => r.projectBudget.projectId)));
+    const projects = projectIds.length
+      ? await this.prisma.project.findMany({
+          where: { id: { in: projectIds } },
+          select: { id: true, publicId: true },
+        })
+      : [];
+    const projectPublicIdById = new Map(projects.map((p) => [p.id, p.publicId ?? null]));
+    return rows.map((r) => {
+      const projectPublicId = projectPublicIdById.get(r.projectBudget.projectId) ?? null;
+      return itemFor({
+        source: 'budget',
+        id: r.id,
+        // W1-12 — BudgetApproval has no publicId of its own; route via the
+        // owning Project publicId so the URL is opaque.
+        targetPublicId: projectPublicId,
+        title: `Budget approval (FY${r.projectBudget.fiscalYear})`,
+        submittedAt: r.requestedAt,
+        submittedBy: r.requestedByPerson ?? null,
+        href: `/projects/${projectPublicId ?? r.projectBudget.projectId}?tab=money&approval=${r.id}`,
+        meta: {
+          projectId: r.projectBudget.projectId,
+          projectPublicId,
+          fiscalYear: r.projectBudget.fiscalYear,
+        },
+      });
+    });
   }
 
   private async loadActivations(): Promise<ApprovalQueueItemDto[]> {
@@ -347,19 +377,25 @@ export class UnifiedApprovalQueueService {
         projectId: true,
         requestedAt: true,
         requestedBy: { select: { id: true, displayName: true } },
-        project: { select: { name: true } },
+        project: { select: { name: true, publicId: true } },
       },
       take: 100,
     });
-    return rows.map((r) => itemFor({
-      source: 'activation',
-      id: r.id,
-      title: `Activate project: ${r.project.name}`,
-      submittedAt: r.requestedAt,
-      submittedBy: r.requestedBy ?? null,
-      href: `/projects/${r.projectId}?activation=${r.id}`,
-      meta: { projectId: r.projectId },
-    }));
+    return rows.map((r) => {
+      const projectPublicId = r.project.publicId ?? null;
+      return itemFor({
+        source: 'activation',
+        id: r.id,
+        // W1-12 — ProjectActivationApproval has no publicId of its own; route
+        // via the owning Project publicId.
+        targetPublicId: projectPublicId,
+        title: `Activate project: ${r.project.name}`,
+        submittedAt: r.requestedAt,
+        submittedBy: r.requestedBy ?? null,
+        href: `/projects/${projectPublicId ?? r.projectId}?activation=${r.id}`,
+        meta: { projectId: r.projectId, projectPublicId },
+      });
+    });
   }
 
   private async loadLeaveRequests(): Promise<ApprovalQueueItemDto[]> {
@@ -367,6 +403,7 @@ export class UnifiedApprovalQueueService {
       where: { status: 'PENDING' },
       select: {
         id: true,
+        publicId: true,
         type: true,
         startDate: true,
         endDate: true,
@@ -378,10 +415,12 @@ export class UnifiedApprovalQueueService {
     return rows.map((r) => itemFor({
       source: 'leave',
       id: r.id,
+      // W1-12 — LeaveRequest carries `lvr_…` publicId.
+      targetPublicId: r.publicId ?? null,
       title: `Leave: ${r.type} ${isoDate(r.startDate)}…${isoDate(r.endDate)}`,
       submittedAt: r.createdAt,
       submittedBy: r.createdByPerson ?? null,
-      href: `/leave-requests/${r.id}`,
+      href: `/leave-requests/${r.publicId ?? r.id}`,
       meta: { type: r.type },
     }));
   }
@@ -391,6 +430,7 @@ export class UnifiedApprovalQueueService {
       where: { status: 'SUBMITTED' },
       select: {
         id: true,
+        publicId: true,
         personId: true,
         weekStart: true,
         submittedAt: true,
@@ -414,10 +454,12 @@ export class UnifiedApprovalQueueService {
       return itemFor({
         source: 'timesheet',
         id: r.id,
+        // W1-12 — TimesheetWeek carries `tsh_…` publicId.
+        targetPublicId: r.publicId ?? null,
         title: `Timesheet week of ${isoDate(r.weekStart)}`,
         submittedAt,
         submittedBy: person ?? null,
-        href: `/approvals/${r.id}?source=timesheet`,
+        href: `/approvals/${r.publicId ?? r.id}?source=timesheet`,
         meta: {
           personId: r.personId,
           weekStart: isoDate(r.weekStart),
@@ -432,6 +474,7 @@ export class UnifiedApprovalQueueService {
       where: { status: 'OPEN' },
       select: {
         id: true,
+        publicId: true,
         caseNumber: true,
         summary: true,
         createdAt: true,
@@ -442,10 +485,12 @@ export class UnifiedApprovalQueueService {
     return rows.map((r) => itemFor({
       source: 'case',
       id: r.id,
+      // W1-12 — CaseRecord carries `case_…` publicId.
+      targetPublicId: r.publicId ?? null,
       title: `Case ${r.caseNumber}: ${r.summary ?? '(no summary)'}`,
       submittedAt: r.createdAt,
       submittedBy: r.ownerPerson ?? null,
-      href: `/cases/${r.id}`,
+      href: `/cases/${r.publicId ?? r.id}`,
       meta: { caseNumber: r.caseNumber },
     }));
   }
@@ -454,6 +499,7 @@ export class UnifiedApprovalQueueService {
 function itemFor(args: {
   source: ApprovalQueueSource;
   id: string;
+  targetPublicId: string | null;
   title: string;
   submittedAt: Date;
   submittedBy: { id: string; displayName: string } | null;
@@ -465,6 +511,7 @@ function itemFor(args: {
   const slaStage: SlaStage | null = null;
   return {
     id: args.id,
+    targetPublicId: args.targetPublicId,
     source: args.source,
     title: args.title,
     submittedBy: args.submittedBy

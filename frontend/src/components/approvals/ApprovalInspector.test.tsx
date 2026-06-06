@@ -30,6 +30,7 @@ vi.mock('@/lib/api/approvals-unified', async (importOriginal) => {
 
 const baseItem: ApprovalQueueItemDto = {
   id: 'a-1',
+  targetPublicId: 'prj_orion',
   source: 'budget',
   title: 'Capex budget increase for Orion',
   submittedBy: { personId: 'p-1', displayName: 'Marie Curie' },
