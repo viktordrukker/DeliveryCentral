@@ -12,7 +12,7 @@ import {
   fetchProjectById,
 } from '@/lib/api/project-registry';
 import { fetchTeams } from '@/lib/api/teams';
-import { fetchPersonDirectory } from '@/lib/api/person-directory';
+import { fetchPersonDirectory, fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { listProjectPositions } from '@/lib/api/project-positions';
 import { fetchWorkEvidence } from '@/lib/api/work-evidence';
 import { fetchProjectHealth } from '@/lib/api/project-health';
@@ -40,6 +40,21 @@ vi.mock('@/app/drilldown-context', () => ({
 
 vi.mock('@/lib/api/person-directory', () => ({
   fetchPersonDirectory: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 200, total: 0 }),
+  // W1-10: TeamVendorsTab uses this to resolve raw activePersonId → displayName
+  // when the mapped row's displayName falls back to the id (no enriched
+  // projection on the DTO). Test mock returns a minimal directory item so the
+  // resolver promise settles instead of throwing.
+  fetchPersonDirectoryById: vi.fn().mockResolvedValue({
+    id: 'person-1',
+    displayName: 'Test Person',
+    primaryEmail: 'test.person@example.com',
+    employmentStatus: 'ACTIVE',
+    employmentType: 'FULLTIME',
+    role: null,
+    orgUnit: null,
+    location: null,
+    grade: null,
+  }),
 }));
 
 vi.mock('@/lib/api/project-registry', async () => {
@@ -159,6 +174,7 @@ const mockedCloseProjectOverride = vi.mocked(closeProjectOverride);
 const mockedAssignTeamToProject = vi.mocked(assignTeamToProject);
 const mockedFetchTeams = vi.mocked(fetchTeams);
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
+const mockedFetchPersonDirectoryById = vi.mocked(fetchPersonDirectoryById);
 const mockedListProjectPositions = vi.mocked(listProjectPositions);
 const mockedFetchWorkEvidence = vi.mocked(fetchWorkEvidence);
 const mockedFetchProjectHealth = vi.mocked(fetchProjectHealth);
@@ -252,6 +268,22 @@ describe('ProjectDetailPage', () => {
       pageSize: 200,
       total: 1,
     });
+    // W1-10: TeamVendorsTab resolver fans out /org/people/:id reads for any
+    // assignment row whose person.displayName equals the personId (i.e. the
+    // mapper fell back without an enriched activePersonName projection).
+    // Re-apply per test because setup.ts calls vi.restoreAllMocks() in
+    // afterEach, which clears the factory-level mockResolvedValue.
+    mockedFetchPersonDirectoryById.mockResolvedValue({
+      id: 'person-1',
+      displayName: 'Test Person',
+      primaryEmail: 'test.person@example.com',
+      employmentStatus: 'ACTIVE',
+      employmentType: 'FULLTIME',
+      role: null,
+      orgUnit: null,
+      location: null,
+      grade: null,
+    } as never);
     window.localStorage.clear();
 
     mockedFetchTeams.mockResolvedValue({
