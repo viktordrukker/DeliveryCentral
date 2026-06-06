@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
@@ -40,7 +41,13 @@ export function HrDashboardPage(): JSX.Element {
   const { principal, isLoading: authLoading } = useAuth();
   const { setActions } = useTitleBarActions();
   const navigate = useNavigate();
-  const effectivePersonId = authLoading ? null : (searchParams.get('personId') ?? principal?.personId ?? undefined);
+  // W1-24 — `?personId=X` overlays a different person's dashboard. Restrict
+  // this to director/admin (line-manager-of-X check happens server-side via
+  // `@AllowSelfScope`). For everyone else the overlay is silently ignored —
+  // they see only their own dashboard. Same gate is applied in PM dashboard.
+  const canOverlayOthers = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
+  const overlayPersonId = canOverlayOthers ? searchParams.get('personId') : null;
+  const effectivePersonId = authLoading ? null : (overlayPersonId ?? principal?.personId ?? undefined);
   const state = useHrManagerDashboard(effectivePersonId);
   const [openCaseSubjects, setOpenCaseSubjects] = useState<string[]>([]);
   const [lastFetch, setLastFetch] = useState(new Date());
@@ -95,6 +102,8 @@ export function HrDashboardPage(): JSX.Element {
   }, [heatmapManagerId, heatmapPoolId]);
 
   function handlePersonChange(value: string): void {
+    // W1-24 — only director/admin can overlay a different person.
+    if (!canOverlayOthers) return;
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set('personId', value);
@@ -106,32 +115,35 @@ export function HrDashboardPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        <label className="field field--inline" style={{ fontSize: 12 }}>
-          <input
-            className="field__control"
-            list="hr-people-list-tb"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Search HR managers..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
-          />
-          <datalist id="hr-people-list-tb">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
+        {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {canOverlayOthers ? (
+          <label className="field field--inline" style={{ fontSize: 12 }}>
+            <input
+              className="field__control"
+              list="hr-people-list-tb"
+              onChange={(event) => {
+                const match = state.people.find((p) => p.displayName === event.target.value);
+                if (match) handlePersonChange(match.id);
+              }}
+              placeholder="Search HR managers..."
+              type="text"
+              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
+              key={state.personId}
+            />
+            <datalist id="hr-people-list-tb">
+              {state.people.map((person) => (
+                <option key={person.id} value={person.displayName} />
+              ))}
+            </datalist>
+          </label>
+        ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/people">Employee directory</Button>
         <Button as={Link} variant="secondary" size="sm" to="/cases">Cases</Button>
         <TipTrigger />
       </>
     );
     return () => setActions(null);
-  }, [setActions, state.people, state.personId, state.asOf]);
+  }, [setActions, state.people, state.personId, state.asOf, canOverlayOthers]);
 
   useEffect(() => {
     if (state.data && !state.isLoading) setLastFetch(new Date());

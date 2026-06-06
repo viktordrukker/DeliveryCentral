@@ -1,6 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useAuth } from '@/app/auth-context';
+import { ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { NotificationOutcomeList } from '@/components/admin/NotificationOutcomeList';
 import { SendTestPanel } from '@/components/admin/SendTestPanel';
 import { TemplateList } from '@/components/admin/TemplateList';
@@ -35,6 +37,11 @@ export function NotificationsPage(): JSX.Element {
   );
   const state = useNotificationTemplates();
   const queue = useNotificationQueue();
+  // W1-26 — director sees a read-only view: the surface is hidden from
+  // navigation for them by the manifest, but if they deep-link in they should
+  // not see Send-test or Requeue write actions. Only admin gets write controls.
+  const { principal } = useAuth();
+  const canEdit = hasAnyRole(principal?.roles, ADMIN_ROLES);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -86,15 +93,18 @@ export function NotificationsPage(): JSX.Element {
 
             <div className="dictionary-editor">
               <TemplatePreview template={state.selectedTemplate} />
-              <SendTestPanel
-                error={state.error}
-                isSubmitting={state.isSubmitting}
-                onChange={handleChange}
-                onSubmit={handleSubmit}
-                result={state.result}
-                template={state.selectedTemplate}
-                values={values}
-              />
+              {/* W1-26 — only admin can send test notifications. Director is read-only. */}
+              {canEdit ? (
+                <SendTestPanel
+                  error={state.error}
+                  isSubmitting={state.isSubmitting}
+                  onChange={handleChange}
+                  onSubmit={handleSubmit}
+                  result={state.result}
+                  template={state.selectedTemplate}
+                  values={values}
+                />
+              ) : null}
               {state.successMessage ? (
                 <div className="success-banner" role="status">
                   {state.successMessage}
@@ -174,7 +184,8 @@ export function NotificationsPage(): JSX.Element {
                     </>
                   ) },
                   { key: 'actions', title: 'Actions', render: (i) => (
-                    i.status === 'FAILED_TERMINAL' ? (
+                    // W1-26 — Requeue is admin-only. Director is read-only.
+                    i.status === 'FAILED_TERMINAL' && canEdit ? (
                       <Button variant="secondary" size="sm" disabled={queue.isLoading} onClick={() => { void queue.handleRequeue(i.id); }} type="button">
                         Requeue
                       </Button>

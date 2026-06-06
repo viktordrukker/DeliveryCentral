@@ -5,6 +5,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ReportsPage } from './ReportsPage';
 
+// W1-26 — ReportsPage filters tabs by role; tests expect all 7 tabs visible,
+// so mock with an admin principal who has access to every report sub-page.
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'admin-1', roles: ['admin'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
 // Stub the heavy embedded pages — we only test the shell composition, not
 // the inner page rendering (which is covered by each page's own tests).
 vi.mock('@/routes/exceptions/ExceptionsPage', () => ({

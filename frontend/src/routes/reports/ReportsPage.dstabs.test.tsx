@@ -36,8 +36,11 @@ describe('V2 Scope §4 item 15 — ReportsPage DS Tabs + dsRefresh gate', () => 
     expect(src).toMatch(/dsRefreshEnabled \? \(\s*<Tabs/);
   });
 
-  it('passes the canonical TABS array (one entry per known section) to DS Tabs', () => {
-    expect(src).toMatch(/<Tabs[\s\S]*?tabs=\{TABS\.map\(\(t\) => \(\{ id: t\.id, label: t\.label \}\)\)\}/);
+  it('passes the role-filtered tabs (one entry per known section visible to the user) to DS Tabs', () => {
+    // W1-26 — tabs are filtered by role before being passed to DS Tabs. The
+    // canonical TABS array still enumerates all 7 sections; `visibleTabs` is
+    // the role-filtered slice driven from the auth principal.
+    expect(src).toMatch(/<Tabs[\s\S]*?tabs=\{visibleTabs\.map\(\(t\) => \(\{ id: t\.id, label: t\.label \}\)\)\}/);
   });
 
   it('drives the DS Tabs active tab from the URL-derived activeTab', () => {
@@ -51,8 +54,9 @@ describe('V2 Scope §4 item 15 — ReportsPage DS Tabs + dsRefresh gate', () => 
   });
 
   it('keeps a non-dsRefresh PageHeader branch with the legacy tabs prop wiring', () => {
-    // The OFF branch still uses PageHeader's built-in TabBar.
-    expect(src).toMatch(/tabs=\{TABS\.map\(\(t\) => \(\{ id: t\.id, label: t\.label \}\)\)\}/);
+    // The OFF branch still uses PageHeader's built-in TabBar — also fed from
+    // the role-filtered `visibleTabs` slice (W1-26).
+    expect(src).toMatch(/tabs=\{visibleTabs\.map\(\(t\) => \(\{ id: t\.id, label: t\.label \}\)\)\}/);
     expect(src).toMatch(/activeTab=\{activeTab\}/);
     expect(src).toMatch(/onTabChange=\{onTabChange\}/);
   });

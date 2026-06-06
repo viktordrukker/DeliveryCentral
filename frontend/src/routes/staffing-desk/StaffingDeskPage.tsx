@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useAuth } from '@/app/auth-context';
+import { hasAnyRole, STAFFING_REQUEST_DETAIL_ROLES } from '@/app/route-manifest';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
 import { DistributionStudio } from './DistributionStudio';
@@ -77,6 +79,13 @@ export function StaffingDeskPage(): JSX.Element {
   const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
+  // W1-23 — DistributionStudio `canEdit` (apply / rename / delete destructive
+  // actions) must match BE proposal RBAC. BE `ProposalsController.autoMatch`
+  // is guarded by `@RequireRoles(...STAFFING_ROLES)`. Mirror that on the FE
+  // so the canEdit gate stops e.g. an employee with /staffing-desk URL access
+  // from seeing destructive actions when role narrowing changes elsewhere.
+  const { principal } = useAuth();
+  const canEditScenarios = hasAnyRole(principal?.roles, STAFFING_REQUEST_DETAIL_ROLES);
   const [selectedRow, setSelectedRow] = useState<StaffingDeskRow | null>(null);
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
@@ -222,7 +231,7 @@ export function StaffingDeskPage(): JSX.Element {
           {dsRefreshEnabled ? (
             <>
               <PlannerScenarioPanel />
-              <DistributionStudio canEdit />
+              <DistributionStudio canEdit={canEditScenarios} />
             </>
           ) : null}
         </>

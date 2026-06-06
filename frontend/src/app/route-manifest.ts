@@ -184,6 +184,20 @@ export const CAPITALISATION_ROLES: AppRole[] = ['delivery_manager', 'director', 
 export const EXPORT_CENTRE_ROLES: AppRole[] = ['hr_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_BOARD_ROLES: AppRole[] = ['resource_manager', 'delivery_manager', 'director', 'admin'];
 export const STAFFING_REQUEST_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-23 — FE/BE alignment: BE `/staffing-requests/:id` is guarded by
+// `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin). The FE route
+// guard now matches the same allowlist instead of `ALL_ROLES`.
+export const STAFFING_REQUEST_DETAIL_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-25 — FE/BE alignment: BE `PeopleBenchController` uses
+// `@RequireRoles(...STAFFING_ROLES)` for the enriched bench listing. FE was
+// previously gated to `RESOURCE_POOL_ROLES` (RM+director+admin) which hid the
+// surface from PM/DM despite the BE accepting them. Aligned now.
+export const BENCH_PAGE_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+// W1-26 — `/admin/notifications` was admin+director already; W1-26 keeps the
+// surface director-readable (no change here, see DIRECTOR_ADMIN_ROLES).
+// W1-26 — `/admin/monitoring` widened from `ADMIN_ONLY_ROLES` to include
+// director so executives can observe platform health without admin role.
+export const MONITORING_ROLES: AppRole[] = ['director', 'admin'];
 export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin'];
 // /approvals merges leave + case approvals (HR-governed) with staffing-side
 // approvals, so HR must be allowed in alongside the staffing roles. Mirrors
@@ -256,7 +270,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/org/managers/:id/scope' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/admin/people/new' },
   { allowedRoles: ALL_ROLES, description: 'People directory and manager visibility.', group: 'people-org', navVisible: true, path: '/people', title: 'People' },
-  { allowedRoles: RESOURCE_POOL_ROLES, description: 'People with no active project assignment — sorted by days off project.', group: 'people-org', navVisible: true, path: '/people/bench', title: 'Bench', titleV2: 'Bench' },
+  { allowedRoles: BENCH_PAGE_ROLES, description: 'People with no active project assignment — sorted by days off project.', group: 'people-org', navVisible: true, path: '/people/bench', title: 'Bench', titleV2: 'Bench' },
   { allowedRoles: HR_ADMIN_ROLES, path: '/people/new' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Unified operational queue for staffing, project, and time-compliance anomalies.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/exceptions', title: 'Exceptions' },
   { allowedRoles: APPROVALS_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
@@ -316,7 +330,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/new' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-desk/positions/new' },
-  { allowedRoles: ALL_ROLES, path: '/staffing-requests/:id' },
+  { allowedRoles: STAFFING_REQUEST_DETAIL_ROLES, path: '/staffing-requests/:id' },
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },
   { allowedRoles: ADMIN_ROLES, description: 'Consolidated operator-facing control surface for configuration and platform settings.', group: 'admin-config', navVisible: true, path: '/admin', title: 'Admin' },
@@ -331,7 +345,7 @@ export const routeManifest: RouteManifestEntry[] = [
   // NEW-LGL-2 — bank-ops self-serve SSO config (provider preset, client id,
   // discovery URL, encrypted secret, auto-provision toggle, test connection).
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Configure single sign-on (OIDC) provider, client credentials, and auto-provisioning. Includes a discovery-document validator.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations/sso', title: 'SSO Configuration' },
-  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
+  { allowedRoles: MONITORING_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/integrations', title: 'Integrations' },
   // F-12.4 / D-101 — widened from ADMIN_ROLES to HR_DIRECTOR_ADMIN_ROLES
   // so HR/Director keep their dictionary-admin access after the legacy

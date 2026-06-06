@@ -1,6 +1,16 @@
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+import { useAuth } from '@/app/auth-context';
+import {
+  type AppRole,
+  CAPITALISATION_ROLES,
+  EXCEPTIONS_ROLES,
+  EVIDENCE_MANAGEMENT_ROLES,
+  EXPORT_CENTRE_ROLES,
+  hasAnyRole,
+  TIMESHEET_MANAGER_ROLES,
+} from '@/app/route-manifest';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -41,16 +51,18 @@ interface ReportsTab {
   id: ReportsSection;
   label: string;
   description: string;
+  /** W1-26 — role allowlist matching the underlying route's @RequireRoles. */
+  allowedRoles: readonly AppRole[];
 }
 
 const TABS: ReportsTab[] = [
-  { id: 'exceptions', label: 'Exceptions', description: 'Unified operational queue' },
-  { id: 'time', label: 'Time', description: 'Time analytics: hours, OT, bench, CAPEX/OPEX' },
-  { id: 'capitalisation', label: 'CAPEX', description: 'Capitalisation breakdown' },
-  { id: 'export', label: 'Export', description: 'XLSX export center' },
-  { id: 'utilization', label: 'Utilization', description: 'Available vs assigned vs actual hours' },
-  { id: 'builder', label: 'Builder', description: 'Custom report builder + saved templates' },
-  { id: 'evidence', label: 'Evidence', description: 'Observed-work records + diagnostics' },
+  { id: 'exceptions', label: 'Exceptions', description: 'Unified operational queue', allowedRoles: EXCEPTIONS_ROLES },
+  { id: 'time', label: 'Time', description: 'Time analytics: hours, OT, bench, CAPEX/OPEX', allowedRoles: TIMESHEET_MANAGER_ROLES },
+  { id: 'capitalisation', label: 'CAPEX', description: 'Capitalisation breakdown', allowedRoles: CAPITALISATION_ROLES },
+  { id: 'export', label: 'Export', description: 'XLSX export center', allowedRoles: EXPORT_CENTRE_ROLES },
+  { id: 'utilization', label: 'Utilization', description: 'Available vs assigned vs actual hours', allowedRoles: EXCEPTIONS_ROLES },
+  { id: 'builder', label: 'Builder', description: 'Custom report builder + saved templates', allowedRoles: EXCEPTIONS_ROLES },
+  { id: 'evidence', label: 'Evidence', description: 'Observed-work records + diagnostics', allowedRoles: EVIDENCE_MANAGEMENT_ROLES },
 ];
 
 function isValidSection(s: string | null): s is ReportsSection {
@@ -77,7 +89,23 @@ function isValidSection(s: string | null): s is ReportsSection {
 export function ReportsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
-  const activeTab: ReportsSection = isValidSection(sectionParam) ? sectionParam : 'exceptions';
+  const { principal } = useAuth();
+
+  // W1-26 — tabs are filtered by role so HR-only tabs are hidden from PM and
+  // PM-/RM-only tabs are hidden from HR. The underlying sub-pages keep their
+  // own role guards, but the umbrella tab strip must also enforce the gate so
+  // the surface is consistent with the in-page RBAC. If the deep-linked
+  // `?section=X` is not visible for this role, fall back to the first visible
+  // tab (or `exceptions` if none — page entry already requires EXCEPTIONS_ROLES).
+  const visibleTabs = useMemo(
+    () => TABS.filter((t) => hasAnyRole(principal?.roles, [...t.allowedRoles])),
+    [principal?.roles],
+  );
+  const requestedTab = isValidSection(sectionParam) ? sectionParam : null;
+  const requestedAllowed = requestedTab && visibleTabs.some((t) => t.id === requestedTab);
+  const activeTab: ReportsSection = requestedAllowed
+    ? (requestedTab as ReportsSection)
+    : (visibleTabs[0]?.id ?? 'exceptions');
   const activeMeta = TABS.find((t) => t.id === activeTab) ?? TABS[0];
 
   // V2 Scope §4 item 15 — when dsRefresh is on, the umbrella shell renders
@@ -113,7 +141,7 @@ export function ReportsPage(): JSX.Element {
           eyebrow="Workspace"
           title="Reports"
           subtitle={activeMeta.description}
-          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          tabs={visibleTabs.map((t) => ({ id: t.id, label: t.label }))}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />
@@ -121,7 +149,7 @@ export function ReportsPage(): JSX.Element {
 
       {dsRefreshEnabled ? (
         <Tabs
-          tabs={TABS.map((t) => ({ id: t.id, label: t.label }))}
+          tabs={visibleTabs.map((t) => ({ id: t.id, label: t.label }))}
           value={activeTab}
           onValueChange={onTabChange}
           ariaLabel="Reports sections"
