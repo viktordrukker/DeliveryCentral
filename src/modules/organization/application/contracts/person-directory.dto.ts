@@ -4,6 +4,9 @@ class PersonSummaryDto {
   @ApiProperty()
   public id!: string;
 
+  @ApiProperty({ nullable: true })
+  public publicId!: string | null;
+
   @ApiProperty()
   public displayName!: string;
 }
@@ -20,6 +23,9 @@ class OrgUnitSummaryDto {
   @ApiProperty()
   public id!: string;
 
+  @ApiProperty({ nullable: true })
+  public publicId!: string | null;
+
   @ApiProperty()
   public code!: string;
 
@@ -30,6 +36,9 @@ class OrgUnitSummaryDto {
 export class PersonDirectoryItemDto {
   @ApiProperty()
   public id!: string;
+
+  @ApiProperty({ nullable: true })
+  public publicId!: string | null;
 
   @ApiProperty()
   public displayName!: string;
