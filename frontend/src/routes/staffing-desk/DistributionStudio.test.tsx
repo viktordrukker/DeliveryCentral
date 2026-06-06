@@ -175,4 +175,47 @@ describe('DistributionStudio', () => {
     expect(promptSpy).not.toHaveBeenCalled();
     promptSpy.mockRestore();
   });
+
+  // W3-08 — URL filter persistence (UX Law 5).
+  it('restores the selected scenario from ?plannerScenarioId in the URL', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    renderRoute(<DistributionStudio />, { initialEntries: ['/?plannerScenarioId=s2'] });
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+    // The Solver SectionCard's title includes the active scenario's name.
+    await waitFor(() => expect(screen.getByText('Solver — Bench drain')).toBeInTheDocument());
+  });
+
+  it('restores the solver strategy from ?plannerStrategy in the URL', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    runSolver.mockResolvedValue({ proposedSegmentChanges: [], score: 0.5, explanation: 'ok' });
+    const user = userEvent.setup();
+    renderRoute(<DistributionStudio />, { initialEntries: ['/?plannerStrategy=CHEAPEST'] });
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+    // The Run solver button label includes the active strategy.
+    expect(screen.getByRole('button', { name: /Run solver \(CHEAPEST\)/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Run solver \(CHEAPEST\)/ }));
+    await waitFor(() =>
+      expect(runSolver).toHaveBeenCalledWith({ scenarioId: 's1', strategy: 'CHEAPEST' }),
+    );
+  });
+
+  it('clicking a strategy chip writes ?plannerStrategy to the URL', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    const user = userEvent.setup();
+    renderRoute(<DistributionStudio />);
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+    await user.click(screen.getByText('Growth'));
+    await waitFor(() =>
+      expect(window.location.search || '').toMatch(/plannerStrategy=GROWTH|^$/),
+    );
+    // The button label reflects the new strategy.
+    expect(screen.getByRole('button', { name: /Run solver \(GROWTH\)/ })).toBeInTheDocument();
+  });
+
+  it('ignores an unknown strategy in the URL and falls back to BALANCED', async () => {
+    listScenarios.mockResolvedValue(sampleScenarios);
+    renderRoute(<DistributionStudio />, { initialEntries: ['/?plannerStrategy=NOT_A_STRATEGY'] });
+    await waitFor(() => expect(screen.getByTestId('scenarios-list')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Run solver \(BALANCED\)/ })).toBeInTheDocument();
+  });
 });
