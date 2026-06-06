@@ -53,6 +53,13 @@ export interface IntegrationRegistryEntry {
   deployment: string | null;
 }
 
+export interface IntegrationTestConnectionResult {
+  provider: IntegrationProvider;
+  reachable: boolean;
+  latencyMs: number | null;
+  errorMessage?: string;
+}
+
 @Injectable()
 export class IntegrationsRegistryService {
   private readonly logger = new Logger(IntegrationsRegistryService.name);
@@ -76,6 +83,57 @@ export class IntegrationsRegistryService {
       this.llmEntry().catch((error) => this.errorEntry('llm', 'Local LLM', error)),
     ]);
     return [jira, m365, radius, jsm, ldap, llm];
+  }
+
+  /**
+   * W2-10 — registry-side reachability probe for JSM / LDAP / LLM.
+   * Jira / M365 / RADIUS have their own per-controller probes; the
+   * registry path covers the three adapters that only live in env
+   * config (no per-provider controller).
+   */
+  public async testConnection(provider: IntegrationProvider): Promise<IntegrationTestConnectionResult> {
+    if (provider === 'jsm') {
+      if (!this.jsmClient) {
+        return { provider, reachable: false, latencyMs: null, errorMessage: 'JSM adapter is not wired in this build.' };
+      }
+      const probe = await this.jsmClient.probe();
+      return {
+        provider,
+        reachable: probe.reachable,
+        latencyMs: probe.latencyMs,
+        errorMessage: probe.error,
+      };
+    }
+    if (provider === 'ldap') {
+      if (!this.ldapClient) {
+        return { provider, reachable: false, latencyMs: null, errorMessage: 'LDAP adapter is not wired in this build.' };
+      }
+      const probe = await this.ldapClient.probe();
+      return {
+        provider,
+        reachable: probe.reachable,
+        latencyMs: probe.latencyMs,
+        errorMessage: probe.error,
+      };
+    }
+    if (provider === 'llm') {
+      if (!this.llmClient) {
+        return { provider, reachable: false, latencyMs: null, errorMessage: 'LLM adapter is not wired in this build.' };
+      }
+      const probe = await this.llmClient.probe();
+      return {
+        provider,
+        reachable: probe.reachable,
+        latencyMs: probe.latencyMs,
+        errorMessage: probe.error,
+      };
+    }
+    return {
+      provider,
+      reachable: false,
+      latencyMs: null,
+      errorMessage: `Provider ${provider} cannot be probed from the registry. Use the legacy controllers for jira/m365/radius.`,
+    };
   }
 
   private async jiraEntry(): Promise<IntegrationRegistryEntry> {

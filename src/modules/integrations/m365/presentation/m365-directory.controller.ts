@@ -4,10 +4,12 @@ import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
+import { InMemoryM365DirectoryAdapter } from '../infrastructure/adapters/in-memory-m365-directory.adapter';
 import { M365DirectoryReconciliationQueryService } from '../application/m365-directory-reconciliation-query.service';
 import { M365DirectoryStatusDto } from '../contracts/m365-directory-status.contract';
 import { M365DirectoryReconciliationReviewDto } from '../contracts/m365-directory-reconciliation.contract';
 import { M365DirectorySyncResponseDto } from '../contracts/m365-directory-sync-response.contract';
+import { M365TestConnectionResponseDto } from '../contracts/m365-test-connection-response.contract';
 import { M365DirectoryStatusService } from '../application/m365-directory-status.service';
 import { M365DirectorySyncService } from '../application/m365-directory-sync.service';
 
@@ -18,6 +20,7 @@ export class M365DirectoryController {
     private readonly m365DirectorySyncService: M365DirectorySyncService,
     private readonly m365DirectoryStatusService: M365DirectoryStatusService,
     private readonly m365DirectoryReconciliationQueryService: M365DirectoryReconciliationQueryService,
+    private readonly m365DirectoryAdapter: InMemoryM365DirectoryAdapter,
     private readonly auditLogger?: AuditLoggerService,
   ) {}
 
@@ -26,67 +29,79 @@ export class M365DirectoryController {
   @ApiOperation({ summary: 'Trigger M365 directory synchronization' })
   @ApiOkResponse({ type: Object })
   public async syncDirectory(): Promise<M365DirectorySyncResponseDto> {
-    const startedAt = new Date().toISOString();
+    return this.runDirectorySync({ initiatedAs: 'manual' });
+  }
 
+  @Post('retry-sync')
+  @RequireRoles('admin')
+  @ApiOperation({
+    summary: 'Retry last M365 directory sync — replays the same end-to-end sync flow tagged as a retry.',
+  })
+  @ApiOkResponse({ type: Object, description: 'M365 directory retry sync executed.' })
+  public async retrySync(): Promise<M365DirectorySyncResponseDto> {
+    return this.runDirectorySync({ initiatedAs: 'retry' });
+  }
+
+  @Post('test-connection')
+  @RequireRoles('admin')
+  @ApiOperation({
+    summary:
+      'Probe the M365 directory adapter reachability without mutating internal data — returns latency and any error.',
+  })
+  @ApiOkResponse({
+    type: M365TestConnectionResponseDto,
+    description: 'M365 directory connection probe result.',
+  })
+  public async testConnection(): Promise<M365TestConnectionResponseDto> {
+    const startedAt = Date.now();
     try {
-      const result = await this.m365DirectorySyncService.syncDirectory();
-      const finishedAt = new Date().toISOString();
+      await this.m365DirectoryAdapter.fetchUsers();
+      const latencyMs = Date.now() - startedAt;
       this.auditLogger?.record({
-        actionType: 'integration.sync_run',
+        actionType: 'integration.test_connection',
         actorId: null,
         category: 'integration',
-        changeSummary: 'M365 directory sync completed.',
+        changeSummary: 'M365 test connection succeeded.',
         details: {
-          finishedAt,
+          latencyMs,
           provider: 'm365',
-          resourceType: 'directory',
-          startedAt,
-          status: 'SUCCEEDED',
+          reachable: true,
         },
         metadata: {
-          employeesCreated: result.employeesCreated,
-          employeesLinked: result.employeesLinked,
-          finishedAt,
-          managerMappingsResolved: result.managerMappingsResolved,
+          latencyMs,
           provider: 'm365',
-          resourceType: 'directory',
-          startedAt,
-          status: 'SUCCEEDED',
-          syncedPersonIds: result.syncedPersonIds,
+          reachable: true,
+          resourceType: 'connection',
         },
-        targetEntityId: 'm365:directory',
-        targetEntityType: 'INTEGRATION_SYNC',
+        targetEntityId: 'm365:connection',
+        targetEntityType: 'INTEGRATION_PROBE',
       });
-
-      return result;
+      return { reachable: true, latencyMs };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'M365 directory sync failed.';
-      const finishedAt = new Date().toISOString();
+      const latencyMs = Date.now() - startedAt;
+      const message = error instanceof Error ? error.message : 'M365 test connection failed.';
       this.auditLogger?.record({
-        actionType: 'integration.sync_run',
+        actionType: 'integration.test_connection',
         actorId: null,
         category: 'integration',
-        changeSummary: 'M365 directory sync failed.',
+        changeSummary: 'M365 test connection failed.',
         details: {
           errorMessage: message,
-          finishedAt,
+          latencyMs,
           provider: 'm365',
-          resourceType: 'directory',
-          startedAt,
-          status: 'FAILED',
+          reachable: false,
         },
         metadata: {
           errorMessage: message,
-          finishedAt,
+          latencyMs,
           provider: 'm365',
-          resourceType: 'directory',
-          startedAt,
-          status: 'FAILED',
+          reachable: false,
+          resourceType: 'connection',
         },
-        targetEntityId: 'm365:directory',
-        targetEntityType: 'INTEGRATION_SYNC',
+        targetEntityId: 'm365:connection',
+        targetEntityType: 'INTEGRATION_PROBE',
       });
-      throw error;
+      return { reachable: false, latencyMs, errorMessage: message };
     }
   }
 
@@ -111,5 +126,80 @@ export class M365DirectoryController {
       category,
       query,
     });
+  }
+
+  private async runDirectorySync(opts: { initiatedAs: 'manual' | 'retry' }): Promise<M365DirectorySyncResponseDto> {
+    const startedAt = new Date().toISOString();
+
+    try {
+      const result = await this.m365DirectorySyncService.syncDirectory();
+      const finishedAt = new Date().toISOString();
+      this.auditLogger?.record({
+        actionType: 'integration.sync_run',
+        actorId: null,
+        category: 'integration',
+        changeSummary:
+          opts.initiatedAs === 'retry'
+            ? 'M365 directory sync completed (retry).'
+            : 'M365 directory sync completed.',
+        details: {
+          finishedAt,
+          initiatedAs: opts.initiatedAs,
+          provider: 'm365',
+          resourceType: 'directory',
+          startedAt,
+          status: 'SUCCEEDED',
+        },
+        metadata: {
+          employeesCreated: result.employeesCreated,
+          employeesLinked: result.employeesLinked,
+          finishedAt,
+          initiatedAs: opts.initiatedAs,
+          managerMappingsResolved: result.managerMappingsResolved,
+          provider: 'm365',
+          resourceType: 'directory',
+          startedAt,
+          status: 'SUCCEEDED',
+          syncedPersonIds: result.syncedPersonIds,
+        },
+        targetEntityId: 'm365:directory',
+        targetEntityType: 'INTEGRATION_SYNC',
+      });
+
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'M365 directory sync failed.';
+      const finishedAt = new Date().toISOString();
+      this.auditLogger?.record({
+        actionType: 'integration.sync_run',
+        actorId: null,
+        category: 'integration',
+        changeSummary:
+          opts.initiatedAs === 'retry'
+            ? 'M365 directory sync failed (retry).'
+            : 'M365 directory sync failed.',
+        details: {
+          errorMessage: message,
+          finishedAt,
+          initiatedAs: opts.initiatedAs,
+          provider: 'm365',
+          resourceType: 'directory',
+          startedAt,
+          status: 'FAILED',
+        },
+        metadata: {
+          errorMessage: message,
+          finishedAt,
+          initiatedAs: opts.initiatedAs,
+          provider: 'm365',
+          resourceType: 'directory',
+          startedAt,
+          status: 'FAILED',
+        },
+        targetEntityId: 'm365:directory',
+        targetEntityType: 'INTEGRATION_SYNC',
+      });
+      throw error;
+    }
   }
 }

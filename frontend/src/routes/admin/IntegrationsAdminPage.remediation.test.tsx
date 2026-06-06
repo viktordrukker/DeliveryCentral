@@ -11,6 +11,10 @@ import {
   fetchAdminM365Reconciliation,
   fetchAdminRadiusReconciliation,
   fetchIntegrationSyncHistory,
+  retryAdminM365Sync,
+  retryAdminRadiusSync,
+  testAdminM365Connection,
+  testAdminRadiusConnection,
   triggerAdminJiraSync,
   triggerAdminM365Sync,
   triggerAdminRadiusSync,
@@ -33,6 +37,10 @@ vi.mock('@/lib/api/integrations-admin', () => ({
   fetchAdminM365Reconciliation: vi.fn(),
   fetchAdminRadiusReconciliation: vi.fn(),
   fetchIntegrationSyncHistory: vi.fn(),
+  retryAdminM365Sync: vi.fn(),
+  retryAdminRadiusSync: vi.fn(),
+  testAdminM365Connection: vi.fn(),
+  testAdminRadiusConnection: vi.fn(),
   triggerAdminJiraSync: vi.fn(),
   triggerAdminM365Sync: vi.fn(),
   triggerAdminRadiusSync: vi.fn(),
@@ -64,6 +72,10 @@ const mockedFetchIntegrationSyncHistory = vi.mocked(fetchIntegrationSyncHistory)
 const mockedRetryJiraSync = vi.mocked(retryJiraSync);
 const mockedResetJiraSync = vi.mocked(resetJiraSync);
 const mockedTestJiraConnection = vi.mocked(testJiraConnection);
+const mockedRetryAdminM365Sync = vi.mocked(retryAdminM365Sync);
+const mockedRetryAdminRadiusSync = vi.mocked(retryAdminRadiusSync);
+const mockedTestAdminM365Connection = vi.mocked(testAdminM365Connection);
+const mockedTestAdminRadiusConnection = vi.mocked(testAdminRadiusConnection);
 
 describe('IntegrationsAdminPage — V2 §4 item 17 remediation actions (Jira)', () => {
   beforeEach(() => {
@@ -182,6 +194,207 @@ describe('IntegrationsAdminPage — V2 §4 item 17 remediation actions (Jira)', 
     expect(
       await screen.findByText('Jira sync state has been reset.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('IntegrationsAdminPage — W2-10 remediation parity (M365 + RADIUS)', () => {
+  beforeEach(() => {
+    mockedFetchAdminIntegrations.mockReset();
+    mockedFetchAdminJiraStatus.mockReset();
+    mockedFetchAdminM365Status.mockReset();
+    mockedFetchAdminRadiusStatus.mockReset();
+    mockedFetchAdminM365Reconciliation.mockReset();
+    mockedFetchAdminRadiusReconciliation.mockReset();
+    mockedFetchIntegrationSyncHistory.mockReset();
+    mockedRetryAdminM365Sync.mockReset();
+    mockedRetryAdminRadiusSync.mockReset();
+    mockedTestAdminM365Connection.mockReset();
+    mockedTestAdminRadiusConnection.mockReset();
+
+    mockedFetchAdminIntegrations.mockResolvedValue({
+      integrations: [
+        {
+          lastSyncAt: '2026-03-31T09:30:00.000Z',
+          lastSyncOutcome: 'succeeded',
+          lastSyncSummary: 'Linked 5 external identities.',
+          linkedIdentityCount: 5,
+          matchStrategy: 'email',
+          provider: 'm365',
+          status: 'configured',
+          supportsDirectorySync: true,
+          supportsManagerSync: true,
+          supportsProjectSync: false,
+          supportsWorkEvidence: false,
+        },
+        {
+          lastSyncAt: '2026-03-31T09:00:00.000Z',
+          lastSyncOutcome: 'failed',
+          lastSyncSummary: 'Timeout while reaching provider.',
+          linkedAccountCount: 7,
+          matchStrategy: 'email',
+          provider: 'radius',
+          status: 'degraded',
+          supportsAccountSync: true,
+          supportsProjectSync: false,
+          supportsWorkEvidence: false,
+          unlinkedAccountCount: 2,
+        },
+      ],
+    });
+    mockedFetchAdminM365Status.mockResolvedValue({
+      defaultOrgUnitId: 'org-default',
+      lastDirectorySyncAt: '2026-03-31T09:30:00.000Z',
+      lastDirectorySyncOutcome: 'succeeded',
+      lastDirectorySyncSummary: 'Linked 5 external identities.',
+      linkedIdentityCount: 5,
+      matchStrategy: 'email',
+      provider: 'm365',
+      status: 'configured',
+      supportsDirectorySync: true,
+      supportsManagerSync: true,
+    });
+    mockedFetchAdminRadiusStatus.mockResolvedValue({
+      lastAccountSyncAt: '2026-03-31T09:00:00.000Z',
+      lastAccountSyncOutcome: 'failed',
+      lastAccountSyncSummary: 'Timeout while reaching provider.',
+      linkedAccountCount: 7,
+      matchStrategy: 'email',
+      provider: 'radius',
+      status: 'degraded',
+      supportsAccountSync: true,
+      unlinkedAccountCount: 2,
+    });
+    mockedFetchAdminM365Reconciliation.mockResolvedValue({
+      items: [],
+      summary: { ambiguous: 0, matched: 0, staleConflict: 0, total: 0, unmatched: 0 },
+    });
+    mockedFetchAdminRadiusReconciliation.mockResolvedValue({
+      items: [],
+      summary: { ambiguous: 0, matched: 0, presenceDrift: 0, total: 0, unmatched: 0 },
+    });
+    mockedFetchIntegrationSyncHistory.mockResolvedValue([]);
+  });
+
+  it('renders Remediation Actions for M365 with Retry + Test buttons (no Reset)', async () => {
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /M365/i }));
+
+    expect(await screen.findByText('Remediation Actions')).toBeInTheDocument();
+    expect(screen.getByTestId('m365-remediation-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset sync state' })).not.toBeInTheDocument();
+  });
+
+  it('calls retryAdminM365Sync and surfaces the M365 success message', async () => {
+    mockedRetryAdminM365Sync.mockResolvedValue({
+      employeesCreated: 2,
+      employeesLinked: 4,
+      managerMappingsResolved: 1,
+      syncedPersonIds: ['p-1', 'p-2'],
+    });
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /M365/i }));
+    await screen.findByText('Remediation Actions');
+    await user.click(screen.getByRole('button', { name: 'Retry sync' }));
+
+    await waitFor(() => {
+      expect(mockedRetryAdminM365Sync).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      await screen.findByText('M365 retry sync completed. Created 2, linked 4.'),
+    ).toBeInTheDocument();
+  });
+
+  it('calls testAdminM365Connection and renders the M365 latency result', async () => {
+    mockedTestAdminM365Connection.mockResolvedValue({ reachable: true, latencyMs: 17 });
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /M365/i }));
+    await screen.findByText('Remediation Actions');
+    await user.click(screen.getByRole('button', { name: 'Test connection' }));
+
+    await waitFor(() => {
+      expect(mockedTestAdminM365Connection).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByTestId('m365-test-connection-result')).toBeInTheDocument();
+    expect(screen.getByText('17 ms')).toBeInTheDocument();
+    expect(await screen.findByText('M365 reachable in 17 ms.')).toBeInTheDocument();
+  });
+
+  it('renders Remediation Actions for RADIUS with Retry + Test buttons (no Reset)', async () => {
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /RADIUS/i }));
+
+    expect(await screen.findByText('Remediation Actions')).toBeInTheDocument();
+    expect(screen.getByTestId('radius-remediation-actions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset sync state' })).not.toBeInTheDocument();
+  });
+
+  it('calls retryAdminRadiusSync and surfaces the RADIUS success message', async () => {
+    mockedRetryAdminRadiusSync.mockResolvedValue({
+      accountsImported: 3,
+      accountsLinked: 2,
+      syncedAccountIds: ['a-1'],
+      unmatchedAccounts: 1,
+    });
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /RADIUS/i }));
+    await screen.findByText('Remediation Actions');
+    await user.click(screen.getByRole('button', { name: 'Retry sync' }));
+
+    await waitFor(() => {
+      expect(mockedRetryAdminRadiusSync).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      await screen.findByText('RADIUS retry sync completed. Imported 3, linked 2.'),
+    ).toBeInTheDocument();
+  });
+
+  it('calls testAdminRadiusConnection and renders the RADIUS latency result', async () => {
+    mockedTestAdminRadiusConnection.mockResolvedValue({ reachable: true, latencyMs: 22 });
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /RADIUS/i }));
+    await screen.findByText('Remediation Actions');
+    await user.click(screen.getByRole('button', { name: 'Test connection' }));
+
+    await waitFor(() => {
+      expect(mockedTestAdminRadiusConnection).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByTestId('radius-test-connection-result')).toBeInTheDocument();
+    expect(screen.getByText('22 ms')).toBeInTheDocument();
+    expect(await screen.findByText('RADIUS reachable in 22 ms.')).toBeInTheDocument();
+  });
+
+  it('drops the dev-only TODO copy about M365 + RADIUS follow-up work', async () => {
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('Integrations');
+    await user.click(await screen.findByRole('button', { name: /M365/i }));
+    await screen.findByText('Remediation Actions');
+    expect(
+      screen.queryByText(/M365 \+ RADIUS remediation is follow-up work/i),
+    ).not.toBeInTheDocument();
   });
 });
 
