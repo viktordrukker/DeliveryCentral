@@ -103,6 +103,32 @@ describe('W1-21 — /assignments/new → /staffing-requests/new', () => {
   });
 });
 
+describe('W3-12 — /timesheets retargets under dsRefresh', () => {
+  it('falls through to legacy /my-time redirect when dsRefresh is OFF', () => {
+    dsRefreshEnabled = false;
+    renderAt(
+      '/timesheets',
+      '/timesheets',
+      <V2Redirect to="/me?tab=time">
+        <Navigate to="/my-time" replace />
+      </V2Redirect>,
+    );
+    expect(screen.getByTestId('location').textContent).toBe('/my-time');
+  });
+
+  it('redirects to /me?tab=time when dsRefresh is ON', () => {
+    dsRefreshEnabled = true;
+    renderAt(
+      '/timesheets',
+      '/timesheets',
+      <V2Redirect to="/me?tab=time">
+        <Navigate to="/my-time" replace />
+      </V2Redirect>,
+    );
+    expect(screen.getByTestId('location').textContent).toBe('/me?tab=time');
+  });
+});
+
 describe('W1-22 — /time-management redirect under dsRefresh', () => {
   it('renders the legacy TimeManagementPage placeholder when dsRefresh is OFF', () => {
     dsRefreshEnabled = false;

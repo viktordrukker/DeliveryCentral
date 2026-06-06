@@ -369,7 +369,9 @@ const dashboardChildren = [
     ),
     path: 'time-management',
   },
-  { element: <Navigate to="/my-time" replace />, path: 'timesheets' },
+  // W3-12 — /timesheets retargets to /me?tab=time when dsRefresh is ON.
+  // Off-flag tenants keep the legacy /my-time redirect.
+  { element: <V2Redirect to="/me?tab=time"><Navigate to="/my-time" replace /></V2Redirect>, path: 'timesheets' },
   { element: <RoleGuard allowedRoles={TIMESHEET_MANAGER_ROLES}><Navigate to="/time-management" replace /></RoleGuard>, path: 'timesheets/approval' },
   { element: <LeaveRequestPage />, path: 'leave' },
   {
