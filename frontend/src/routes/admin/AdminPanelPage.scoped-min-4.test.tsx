@@ -118,10 +118,12 @@ describe('AdminPanelPage — SCOPED-MIN-4 canonical primitives', () => {
     // The four account-form fields wear the ds-form-field shell instead of raw labels.
     expect(document.querySelectorAll('.ds-form-field').length).toBeGreaterThanOrEqual(4);
 
-    // Each input is the DS Input atom, not the legacy `.input` class.
-    const personIdInput = screen.getByPlaceholderText('UUID of the person record');
-    expect(personIdInput).toHaveClass('ds-input');
-    expect(personIdInput).not.toHaveClass('input');
+    // W1-18 — Person field is now a typeahead PersonSelect (DS Select),
+    // not a raw UUID Input. Other text inputs continue to use the DS
+    // Input atom.
+    const personSelect = screen.getByLabelText(/^Person/);
+    expect(personSelect.tagName).toBe('SELECT');
+    expect(personSelect).toHaveClass('ds-select');
 
     const emailInput = screen.getByPlaceholderText('login@example.com');
     expect(emailInput).toHaveClass('ds-input');
@@ -136,7 +138,7 @@ describe('AdminPanelPage — SCOPED-MIN-4 canonical primitives', () => {
     expect(hint).toHaveClass('ds-form-field__hint');
 
     // Form chrome uses the shared entity-form layout, not inline flex styles.
-    const form = personIdInput.closest('form');
+    const form = personSelect.closest('form');
     expect(form).not.toBeNull();
     expect(form).toHaveClass('entity-form');
   });

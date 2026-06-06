@@ -16,6 +16,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/lib/format-date';
@@ -558,17 +559,12 @@ function AdminAccountsSection({
           onSubmit={(e) => { void onCreateAccount(e); }}
           style={{ maxWidth: '480px' }}
         >
-          <FormField label="Person ID" required>
-            {(props) => (
-              <Input
-                {...props}
-                onChange={(e) => { onFormChange((prev) => ({ ...prev, personId: e.target.value })); }}
-                placeholder="UUID of the person record"
-                required
-                value={accountForm.personId}
-              />
-            )}
-          </FormField>
+          <PersonSelect
+            label="Person"
+            required
+            value={accountForm.personId}
+            onChange={(value) => { onFormChange((prev) => ({ ...prev, personId: value })); }}
+          />
           <FormField label="Email" required>
             {(props) => (
               <Input

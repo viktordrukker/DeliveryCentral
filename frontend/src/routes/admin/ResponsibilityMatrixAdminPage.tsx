@@ -7,10 +7,12 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button, FormField, FormModal, Input, Select, Switch, Table, Textarea, type Column } from '@/components/ds';
 import { ALL_ROLES, type AppRole } from '@/app/route-manifest';
+import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import {
   ACTION_KIND_LABELS,
   MODE_LABELS,
@@ -79,6 +81,26 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [archivingRule, setArchivingRule] = useState<ResponsibilityRule | null>(null);
+  // W1-15 — read-back UUID → displayName cache so the Target column renders
+  // the human label for `mode='PERSON'` rows instead of a raw UUID.
+  const [personNameById, setPersonNameById] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    void fetchPersonDirectory({ page: 1, pageSize: 500 })
+      .then((res) => {
+        if (!active) return;
+        const next: Record<string, string> = {};
+        for (const item of res.items) next[item.id] = item.displayName;
+        setPersonNameById(next);
+      })
+      .catch(() => {
+        // silently ignore — column falls back to the UUID
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function reload(): Promise<void> {
     setLoading(true);
@@ -262,13 +284,19 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
       key: 'target',
       title: 'Target',
       width: 220,
-      render: (r) => (
-        <span style={{ color: 'var(--color-text-muted)' }}>
-          {r.mode === 'ROLE' ? r.targetRole ?? '—' : null}
-          {r.mode === 'PERSON' ? r.targetPersonId ?? '—' : null}
-          {r.mode === 'PM_SOLO' || r.mode === 'SKIP' ? '—' : null}
-        </span>
-      ),
+      render: (r) => {
+        const personLabel =
+          r.mode === 'PERSON' && r.targetPersonId
+            ? personNameById[r.targetPersonId] ?? r.targetPersonId
+            : '—';
+        return (
+          <span style={{ color: 'var(--color-text-muted)' }}>
+            {r.mode === 'ROLE' ? r.targetRole ?? '—' : null}
+            {r.mode === 'PERSON' ? personLabel : null}
+            {r.mode === 'PM_SOLO' || r.mode === 'SKIP' ? '—' : null}
+          </span>
+        );
+      },
     },
     {
       key: 'priority',
@@ -448,9 +476,11 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
           </FormField>
         ) : null}
         {form.mode === 'PERSON' ? (
-          <FormField label="Target person id (UUID)">
-            <Input value={form.targetPersonId} onChange={(e) => setForm({ ...form, targetPersonId: e.target.value })} />
-          </FormField>
+          <PersonSelect
+            label="Target person"
+            value={form.targetPersonId}
+            onChange={(value) => setForm({ ...form, targetPersonId: value })}
+          />
         ) : null}
         <FormField label="Priority" hint="Lower number = higher precedence. Tenant defaults sit at 100.">
           <Input
