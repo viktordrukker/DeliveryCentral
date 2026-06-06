@@ -4,7 +4,6 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Post,
   Req,
 } from '@nestjs/common';
