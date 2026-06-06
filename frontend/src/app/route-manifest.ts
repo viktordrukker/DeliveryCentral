@@ -310,6 +310,9 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Notification channel and template management.', group: 'admin-governance', navVisible: true, obsoleteInV2: true, path: '/admin/notifications', title: 'Admin Notifications' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'External provider health and synchronization.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations', title: 'Admin Integrations' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status and last-sync.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations/registry', title: 'Integrations Registry' },
+  // NEW-LGL-2 — bank-ops self-serve SSO config (provider preset, client id,
+  // discovery URL, encrypted secret, auto-provision toggle, test connection).
+  { allowedRoles: ADMIN_ONLY_ROLES, description: 'Configure single sign-on (OIDC) provider, client credentials, and auto-provisioning. Includes a discovery-document validator.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/integrations/sso', title: 'SSO Configuration' },
   { allowedRoles: ADMIN_ONLY_ROLES, description: 'Read-only health, readiness, and diagnostics visibility.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/admin/monitoring', title: 'Admin Monitoring' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'External provider health and synchronization.', group: 'admin-integrations', navVisible: true, obsoleteInV2: true, path: '/integrations', title: 'Integrations' },
   // F-12.4 / D-101 — widened from ADMIN_ROLES to HR_DIRECTOR_ADMIN_ROLES
