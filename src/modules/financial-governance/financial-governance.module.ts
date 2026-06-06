@@ -12,6 +12,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { BudgetApprovalAutoTriggerService } from './application/budget-approval-auto-trigger.service';
 import { DecideBudgetChangeService } from './application/decide-budget-change.service';
 import { EffectiveBillRateResolverService } from './application/effective-bill-rate-resolver.service';
+import { CpiWhatIfService } from './application/cpi-what-if.service';
 import { EvmComputationService } from './application/evm-computation.service';
 import { FinancialService } from './application/financial.service';
 import { FiscalCalendarService } from './application/fiscal-calendar.service';
@@ -128,6 +129,12 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
       useFactory: (prisma: PrismaService) => new EvmComputationService(prisma),
       inject: [PrismaService],
     },
+    {
+      provide: CpiWhatIfService,
+      useFactory: (prisma: PrismaService, evm: EvmComputationService) =>
+        new CpiWhatIfService(prisma, evm),
+      inject: [PrismaService, EvmComputationService],
+    },
   ],
   exports: [
     FinancialService,
@@ -138,6 +145,7 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
     FxRateService,
     FiscalCalendarService,
     EvmComputationService,
+    CpiWhatIfService,
     BudgetApprovalAutoTriggerService,
   ],
 })

@@ -12,10 +12,26 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
-import { EXEC_ROLES } from '@src/shared/auth/role-presets';
+import { EXEC_ROLES, PROJECT_DELIVERY_ROLES } from '@src/shared/auth/role-presets';
 
+import {
+  CpiWhatIfResponse,
+  CpiWhatIfService,
+} from '../application/cpi-what-if.service';
 import {
   EvmComputationService,
   EvmRunSummary,
@@ -24,6 +40,46 @@ import {
 
 interface EvmRunBody {
   fiscalYear?: number;
+}
+
+class CpiWhatIfPersonDto {
+  @IsString()
+  public role!: string;
+
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000)
+  public monthlyRate!: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  public monthsRemaining!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(500)
+  public quantity!: number;
+}
+
+class CpiWhatIfRequestDto {
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => CpiWhatIfPersonDto)
+  public scenarioPeople!: CpiWhatIfPersonDto[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1_000_000)
+  public scenarioAdditionalHours?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
+  public fiscalYear?: number;
 }
 
 /**
@@ -41,7 +97,42 @@ interface EvmRunBody {
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectEvmController {
-  public constructor(private readonly service: EvmComputationService) {}
+  public constructor(
+    private readonly service: EvmComputationService,
+    private readonly cpiWhatIf: CpiWhatIfService,
+  ) {}
+
+  @Post(':id/cpi-what-if')
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'LEAN-P4-missing-7 — project a hypothetical CPI given a proposed delta ' +
+      '(additional people / additional hours). Read-only; never persists.',
+  })
+  @ApiOkResponse({ description: 'CPI what-if projection.' })
+  public async cpiWhatIfProject(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Body() body: CpiWhatIfRequestDto,
+  ): Promise<CpiWhatIfResponse> {
+    const fy = body.fiscalYear ?? new Date().getUTCFullYear();
+    try {
+      return await this.cpiWhatIf.project(projectId, fy, {
+        scenarioPeople: body.scenarioPeople,
+        scenarioAdditionalHours: body.scenarioAdditionalHours,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.constructor.name === 'NotFoundException'
+      ) {
+        throw error;
+      }
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Failed to project CPI.',
+      );
+    }
+  }
 
   @Post(':id/evm/recompute')
   @RequireRoles(...EXEC_ROLES)
