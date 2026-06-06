@@ -48,6 +48,7 @@ import { SettingsPage } from '@/routes/admin/SettingsPage';
 import { DictionariesPage } from '@/routes/admin/DictionariesPage';
 import { IntegrationsAdminPage } from '@/routes/admin/IntegrationsAdminPage';
 import { IntegrationsRegistryPage } from '@/routes/admin/IntegrationsRegistryPage';
+import { SsoAdminPage } from '@/routes/admin/SsoAdminPage';
 import { MonitoringPage } from '@/routes/admin/MonitoringPage';
 import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
@@ -397,6 +398,11 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><IntegrationsRegistryPage /></RoleGuard>,
     path: 'admin/integrations/registry',
+  },
+  {
+    // NEW-LGL-2 — bank-ops self-serve SSO configuration.
+    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><SsoAdminPage /></RoleGuard>,
+    path: 'admin/integrations/sso',
   },
   {
     element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><MonitoringPage /></RoleGuard>,
