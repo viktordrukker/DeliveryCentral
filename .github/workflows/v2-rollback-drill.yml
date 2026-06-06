@@ -1,0 +1,102 @@
+name: v2-rollback-drill
+
+# ROLLBACK-DRILL — automated C0 rollback latency simulator.
+#
+# Runs scripts/rollback-drill.cjs against v2-staging (or any URL passed via
+# `base_url`). The script flips `flag.dsRefresh` (or another boolean
+# PlatformSetting) ON → polls until propagation → flips OFF → measures the
+# rollback round-trip. 5 iterations by default; budget defaults to 30 000 ms
+# per rollback. The workflow exits non-zero if any iteration exceeds the
+# budget, so a failed drill blocks the C0 flip.
+#
+# Trigger: manual only (workflow_dispatch). NEVER schedule this on cron
+# against prod — the drill mutates a feature flag and is only safe on
+# v2-staging or ephemeral environments.
+#
+# Secrets:
+#   V2_STAGING_ADMIN_TOKEN — bearer token for an admin account on the target.
+#   V2_STAGING_BASE_URL    — optional default base URL when `base_url` input
+#                             is left blank.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Target base URL (no trailing slash). Leave blank to use secrets.V2_STAGING_BASE_URL.'
+        required: false
+        default: ''
+      flag_key:
+        description: 'PlatformSetting key to flip (boolean).'
+        required: false
+        default: 'flag.dsRefresh'
+      iterations:
+        description: 'Number of flip/revert iterations.'
+        required: false
+        default: '5'
+      max_rollback_ms:
+        description: 'Per-iteration rollback budget in milliseconds. Drill fails if exceeded.'
+        required: false
+        default: '30000'
+      poll_interval_ms:
+        description: 'Poll interval while waiting for propagation.'
+        required: false
+        default: '500'
+      poll_timeout_ms:
+        description: 'Per-iteration poll budget.'
+        required: false
+        default: '60000'
+
+concurrency:
+  group: v2-rollback-drill-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: Resolve target URL
+        id: target
+        run: |
+          INPUT_URL='${{ inputs.base_url }}'
+          DEFAULT_URL='${{ secrets.V2_STAGING_BASE_URL }}'
+          if [ -n "$INPUT_URL" ]; then
+            echo "url=$INPUT_URL" >> "$GITHUB_OUTPUT"
+          elif [ -n "$DEFAULT_URL" ]; then
+            echo "url=$DEFAULT_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=https://deliverit-test-v2.agentic.uz" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run rollback drill (5×)
+        env:
+          ROLLBACK_DRILL_TARGET: ${{ steps.target.outputs.url }}
+          ROLLBACK_DRILL_ADMIN_TOKEN: ${{ secrets.V2_STAGING_ADMIN_TOKEN }}
+        run: |
+          node scripts/rollback-drill.cjs \
+            --key '${{ inputs.flag_key }}' \
+            --iterations '${{ inputs.iterations }}' \
+            --max-rollback-ms '${{ inputs.max_rollback_ms }}' \
+            --poll-interval-ms '${{ inputs.poll_interval_ms }}' \
+            --poll-timeout-ms '${{ inputs.poll_timeout_ms }}' \
+            --json | tee drill-summary.json
+          node -e "const s=require('./drill-summary.json'); process.exit(s.pass?0:1);"
+
+      - name: Upload drill summary
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: v2-rollback-drill-summary
+          path: drill-summary.json
+          retention-days: 30
+          if-no-files-found: warn

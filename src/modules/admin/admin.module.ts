@@ -18,6 +18,7 @@ import { IntegrationsRegistryAdminController } from './presentation/integrations
 import { LeanMigrationParityController } from './presentation/lean-migration-parity.controller';
 import { RedactPersonAdminController } from './presentation/redact-person-admin.controller';
 import { RolePresetsAdminController } from './presentation/role-presets-admin.controller';
+import { RuntimeFlagDebugController } from './presentation/runtime-flag-debug.controller';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { RolePresetsAdminController } from './presentation/role-presets-admin.co
     LeanMigrationParityController,
     RedactPersonAdminController,
     RolePresetsAdminController,
+    RuntimeFlagDebugController,
   ],
   providers: [
     AdminConfigQueryService,
