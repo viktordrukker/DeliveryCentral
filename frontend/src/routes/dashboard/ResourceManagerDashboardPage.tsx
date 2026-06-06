@@ -282,7 +282,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
                 <EmptyState
                   description="No active assignments found for managed resources. Try adjusting the date range."
                   title="No workload data"
-                  action={{ label: 'Create assignment', href: '/assignments/new' }}
+                  action={{ label: 'Open staffing desk', href: '/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE' }}
                 />
               )}
             </div>
@@ -316,7 +316,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
               </SectionCard>
             ) : (
               <SectionCard title="Demand Pipeline (Next 4 Weeks)" collapsible>
-                <EmptyState description="No future assignments are queued for the next 4 weeks." title="No upcoming demand" />
+                <EmptyState description="No future assignments are queued for the next 4 weeks." title="No upcoming demand" action={{ href: '/staffing-desk?view=board', label: 'Open staffing desk' }} />
               </SectionCard>
             )}
           </div>

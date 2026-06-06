@@ -155,7 +155,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (
           teamAssignments.length === 0 ? (
-            <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+            <EmptyState description="No assignments found for this project." title="No team members" action={{ label: 'Create position', href: `/staffing-desk/positions/new?projectId=${projectId}` }} />
           ) : (
             <Table
               variant="compact"
@@ -184,7 +184,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
         <SectionCard title="Staffing Timeline">
           {teamAssignmentsLoading ? <LoadingState label="Loading timeline..." variant="skeleton" skeletonType="detail" /> : (
             teamAssignments.length === 0 ? (
-              <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${projectId}` }} />
+              <EmptyState description="No assignments with date ranges to visualize." title="No timeline data" action={{ label: 'Create position', href: `/staffing-desk/positions/new?projectId=${projectId}` }} />
             ) : (
               <StaffingSwimLaneGantt assignments={teamAssignments} />
             )

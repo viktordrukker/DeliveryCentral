@@ -245,6 +245,10 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: HR_DASHBOARD_ROLES, description: 'Organization-centric dashboard for headcount, distribution, and people-data quality.', flag: 'dashHr', group: 'dashboard', navVisible: false, path: '/dashboard/hr', title: 'HR Dashboard' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Team delivery dashboard for anomaly drilldown and delivery metrics.', flag: 'dashDeliveryManager', group: 'dashboard', navVisible: false, path: '/dashboard/delivery-manager', title: 'Delivery Dashboard' },
   { allowedRoles: DIRECTOR_ADMIN_ROLES, description: 'Executive dashboard for delivery health, capacity, and portfolio risk.', flag: 'dashDirector', group: 'dashboard', navVisible: false, path: '/dashboard/director', title: 'Director Dashboard' },
+  // W1-01 — short-form dashboard aliases (redirect-only entries).
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/dm' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/pm' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/dashboard/rm' },
   { allowedRoles: DELIVERY_DASHBOARD_ROLES, description: 'Portfolio-wide radiator scores across all projects.', group: 'dashboard', navVisible: true, obsoleteInV2: true, path: '/dashboards/portfolio-radiator', title: 'Portfolio Radiator' },
   { allowedRoles: ADMIN_ROLES, description: 'Configure scoring thresholds for the 16-axis project radiator.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/radiator-thresholds', title: 'Radiator Thresholds' },
   { allowedRoles: ADMIN_ROLES, description: 'Organization-wide reporting cadence, exception thresholds, governance and risk cadence.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/organization-config', title: 'Organization Config' },
@@ -256,6 +260,8 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: HR_ADMIN_ROLES, path: '/people/new' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Unified operational queue for staffing, project, and time-compliance anomalies.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/exceptions', title: 'Exceptions' },
   { allowedRoles: APPROVALS_ROLES, description: 'Unified approvals across position proposals, budgets, activations, leave, cases, and skill reviews.', flag: 'dsRefresh', group: 'staffing', navVisible: true, path: '/approvals', title: 'Approvals' },
+  // W1-04 — legacy /approvals/queue URL kept for redirect (manifest-tracked).
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/approvals/queue' },
   { allowedRoles: ALL_ROLES, description: 'Operational team management distinct from the organization hierarchy.', group: 'people-org', navVisible: true, obsoleteInV2: true, path: '/teams', title: 'Teams' },
   { allowedRoles: ALL_ROLES, path: '/teams/:id/dashboard' },
   { allowedRoles: ALL_ROLES, path: '/people/:id' },
@@ -273,6 +279,17 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ALL_ROLES, path: '/settings/account' },
   { allowedRoles: ALL_ROLES, path: '/notifications' },
   { allowedRoles: ALL_ROLES, description: 'Unified self-service workspace — Overview, Time, Leave, Projects, Inbox, Settings.', flag: 'workspaceMe', group: 'time', navVisible: true, titleV2: 'Home', path: '/me', title: 'My Workspace' },
+  // W1-02 — short-form /me/:tab aliases (redirect-only entries) for deep-link
+  // muscle memory. Each resolves to /me?tab=... inside the workspace shell.
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/overview' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/time' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/leave' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/projects' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/skills' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/inbox' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/profile' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/settings' },
+  { allowedRoles: ALL_ROLES, navVisible: false, path: '/me/cases' },
   { allowedRoles: RESOURCE_POOL_ROLES, description: 'Named pools of people available for staffing allocation.', group: 'staffing', navVisible: true, obsoleteInV2: true, path: '/resource-pools', title: 'Resource Pools' },
   { allowedRoles: RESOURCE_POOL_ROLES, path: '/resource-pools/:id' },
   { allowedRoles: EVIDENCE_MANAGEMENT_ROLES, description: 'Observed-work records, source review, and specialist diagnostics.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/work-evidence', title: 'Evidence Management' },

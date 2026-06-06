@@ -213,7 +213,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             description="Head back to your dashboard or jump to the org chart for the directory view."
             actions={[
               { label: 'Go to my dashboard', href: getDashboardPath(principal?.roles ?? []), variant: 'primary' },
-              { label: 'View org chart', href: '/org-chart', variant: 'secondary' },
+              { label: 'View org chart', href: '/org', variant: 'secondary' },
             ]}
           />
         </SectionCard>
@@ -366,6 +366,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
           <EmptyState
             description={`No employee was found for ${id ?? 'the requested id'}.`}
             title="Employee not found"
+            action={{ href: '/people', label: 'Back to people' }}
           />
         </SectionCard>
       ) : null}
@@ -554,6 +555,10 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                 <EmptyState
                   description="This person has no active assignments at this time."
                   title="No active assignments"
+                  action={{
+                    href: `/staffing-desk?view=table&kind=position&personId=${id ?? ''}`,
+                    label: 'Open staffing desk',
+                  }}
                 />
               ) : (
                 <dl className="details-list">

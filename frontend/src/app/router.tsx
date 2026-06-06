@@ -190,10 +190,17 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
     path: 'dashboard/director',
   },
+  // W1-01 — short-form dashboard aliases for muscle-memory URLs.
+  { element: <Navigate to="/dashboard/delivery-manager" replace />, path: 'dashboard/dm' },
+  { element: <Navigate to="/dashboard/project-manager" replace />, path: 'dashboard/pm' },
+  { element: <Navigate to="/dashboard/resource-manager" replace />, path: 'dashboard/rm' },
   {
     element: <RoleGuard allowedRoles={APPROVALS_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
     path: 'approvals',
   },
+  // W1-04 — /approvals/queue is a legacy URL; redirect to the canonical
+  // unified queue at /approvals.
+  { element: <Navigate to="/approvals" replace />, path: 'approvals/queue' },
   {
     element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/dashboard/director"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
     path: 'dashboards/portfolio-radiator',
@@ -289,6 +296,18 @@ const dashboardChildren = [
     ),
     path: 'me',
   },
+  // W1-02 — short-form /me/:tab aliases redirect into the workspace shell
+  // (?tab=...) so deep-linked URLs from email / docs / chat resolve cleanly.
+  // `/me/cases` resolves outside the shell to the canonical HR queue.
+  { element: <Navigate to="/me?tab=overview" replace />, path: 'me/overview' },
+  { element: <Navigate to="/me?tab=time" replace />, path: 'me/time' },
+  { element: <Navigate to="/me?tab=leave" replace />, path: 'me/leave' },
+  { element: <Navigate to="/me?tab=projects" replace />, path: 'me/projects' },
+  { element: <Navigate to="/me?tab=skills" replace />, path: 'me/skills' },
+  { element: <Navigate to="/me?tab=inbox" replace />, path: 'me/inbox' },
+  { element: <Navigate to="/me?tab=settings" replace />, path: 'me/profile' },
+  { element: <Navigate to="/me?tab=settings" replace />, path: 'me/settings' },
+  { element: <Navigate to="/cases" replace />, path: 'me/cases' },
   {
     element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><ResourcePoolsPage /></RoleGuard>,
     path: 'resource-pools',
