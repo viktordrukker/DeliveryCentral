@@ -140,7 +140,10 @@ export function StaffingDeskPage(): JSX.Element {
 
   const deskActions = useStaffingDeskActions(state.refetch);
 
-  // Title bar: Saved Filters, Export, View switcher, Tip
+  // Title bar: Saved Filters, Export, View switcher, quick-action links, Tip.
+  // W3-03 — adds quick-action navigation buttons (Approvals, Bench, Dashboard)
+  // to match the canonical DashboardPage grammar
+  // (filters + quick-action links + TipTrigger).
   useEffect(() => {
     setActions(
       <>
@@ -156,6 +159,9 @@ export function StaffingDeskPage(): JSX.Element {
           }}
         />
         <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
+        <Button as={Link} variant="secondary" size="sm" to="/approvals">Approvals</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/people/bench">Bench</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
         <TipTrigger />
       </>
     );

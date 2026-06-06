@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button } from '@/components/ds';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -101,6 +103,7 @@ export function ApprovalsPage(): JSX.Element {
   const activeFilter: ApprovalQueueSource | 'all' = isValidSource(sourceParam)
     ? sourceParam
     : 'all';
+  const { setActions } = useTitleBarActions();
   const [items, setItems] = useState<ApprovalQueueItemDto[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +162,63 @@ export function ApprovalsPage(): JSX.Element {
       )
     : {};
 
+  // W3-03 — inject the source filter chips + Refresh + quick-action links into
+  // the page title bar, matching the canonical DashboardPage grammar
+  // (filters + quick-action links + TipTrigger). The inline filter row is
+  // dropped; the chips render in the global title-bar slot.
+  useEffect(() => {
+    setActions(
+      <>
+        <div
+          className="approvals-filters"
+          style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
+          data-testid="approvals-filters"
+        >
+          {SOURCES.map((src) => {
+            const isActive = src.id === activeFilter;
+            const count = counts[src.id] ?? 0;
+            return (
+              <Button
+                key={src.id}
+                size="sm"
+                variant={isActive ? 'primary' : 'secondary'}
+                onClick={() => setFilter(src.id)}
+                aria-pressed={isActive}
+              >
+                <span aria-hidden style={{ marginRight: 5 }}>{SOURCE_ICON[src.id]}</span>
+                {src.label}
+                {count > 0 ? (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontVariantNumeric: 'tabular-nums',
+                      opacity: 0.85,
+                    }}
+                  >
+                    · {count}
+                  </span>
+                ) : null}
+              </Button>
+            );
+          })}
+        </div>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk">Staffing desk</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          type="button"
+          onClick={() => setReloadTick((t) => t + 1)}
+          data-testid="approvals-refresh"
+        >
+          ↻ Refresh
+        </Button>
+        <TipTrigger />
+      </>,
+    );
+    return () => setActions(null);
+  }, [setActions, activeFilter, items]);
+
   return (
     <PageContainer testId="approvals-page">
       <PageHeader
@@ -177,53 +237,7 @@ export function ApprovalsPage(): JSX.Element {
             ) : null}
           </>
         }
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            type="button"
-            onClick={() => setReloadTick((t) => t + 1)}
-            data-testid="approvals-refresh"
-          >
-            ↻ Refresh
-          </Button>
-        }
       />
-
-      {/* Source filter chips */}
-      <div
-        className="approvals-filters"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0 12px' }}
-        data-testid="approvals-filters"
-      >
-        {SOURCES.map((src) => {
-          const isActive = src.id === activeFilter;
-          const count = counts[src.id] ?? 0;
-          return (
-            <Button
-              key={src.id}
-              size="sm"
-              variant={isActive ? 'primary' : 'secondary'}
-              onClick={() => setFilter(src.id)}
-              aria-pressed={isActive}
-            >
-              <span aria-hidden style={{ marginRight: 5 }}>{SOURCE_ICON[src.id]}</span>
-              {src.label}
-              {count > 0 ? (
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontVariantNumeric: 'tabular-nums',
-                    opacity: 0.85,
-                  }}
-                >
-                  · {count}
-                </span>
-              ) : null}
-            </Button>
-          );
-        })}
-      </div>
 
       {loading ? <LoadingState variant="skeleton" skeletonType="cards" /> : null}
       {error ? <ErrorState description={error} onRetry={() => setFilter(activeFilter)} /> : null}
