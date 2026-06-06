@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createProjectPosition } from '@/lib/api/project-positions';
-import { fetchProjectDirectory } from '@/lib/api/project-registry';
+import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { renderRoute } from '@test/render-route';
 import { BulkCreatePositionsPage } from './BulkCreatePositionsPage';
 
@@ -38,14 +38,14 @@ function renderPage() {
   );
 }
 
-const projectFixture = {
+const projectFixture: Omit<ProjectDirectoryItem, 'id' | 'name' | 'projectCode' | 'status'> = {
   assignmentCount: 0,
   clientName: null,
   engagementModel: null,
   externalLinksCount: 0,
   externalLinksSummary: [],
   priority: null,
-} as const;
+};
 
 describe('BulkCreatePositionsPage (W2-05)', () => {
   beforeEach(() => {
