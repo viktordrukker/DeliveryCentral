@@ -6,6 +6,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge, resolveStatusTone, statusToneColor } from '@/components/common/StatusBadge';
 import { formatDateTime } from '@/lib/format-date';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import {
@@ -16,7 +17,6 @@ import { IntegrationCard } from '@/components/integrations/IntegrationCard';
 import { IntegrationSyncHistoryPanel } from '@/components/integrations/IntegrationSyncHistoryPanel';
 import { M365ReconciliationPanel } from '@/components/integrations/M365ReconciliationPanel';
 import { RadiusReconciliationPanel } from '@/components/integrations/RadiusReconciliationPanel';
-import { StatusIndicator } from '@/components/integrations/StatusIndicator';
 import { SyncButton } from '@/components/integrations/SyncButton';
 import { Button } from '@/components/ds';
 
@@ -45,6 +45,19 @@ export function IntegrationsAdminContent(): JSX.Element {
     ? state.selectedProvider.toUpperCase()
     : '';
 
+  const totalProviders = state.integrations.length;
+  const healthyProviders = state.integrations.filter(
+    (i) => resolveStatusTone(i.status) === 'active',
+  ).length;
+  const degradedProviders = state.integrations.filter(
+    (i) => resolveStatusTone(i.status) === 'danger',
+  ).length;
+  const lastSyncedAt = state.integrations
+    .map((i) => i.lastSyncAt ?? i.lastProjectSyncAt)
+    .filter((v): v is string => Boolean(v))
+    .sort()
+    .reverse()[0];
+
   return (
     <>
       {state.isLoading ? <LoadingState label="Loading integration status..." variant="skeleton" skeletonType="page" /> : null}
@@ -64,7 +77,69 @@ export function IntegrationsAdminContent(): JSX.Element {
             />
           </SectionCard>
         ) : (
-          <div className="dictionary-admin-grid">
+          <>
+            <div className="kpi-strip" aria-label="Integration health metrics">
+              <Link
+                className="kpi-strip__item"
+                to="/admin/integrations"
+                style={{ borderLeft: '3px solid var(--color-accent)' }}
+              >
+                <span className="kpi-strip__value">{totalProviders}</span>
+                <span className="kpi-strip__label">Providers</span>
+                <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+                  configured
+                </span>
+              </Link>
+              <Link
+                className="kpi-strip__item"
+                to="/admin/integrations"
+                style={{ borderLeft: `3px solid ${statusToneColor('active')}` }}
+              >
+                <span className="kpi-strip__value">{healthyProviders}</span>
+                <span className="kpi-strip__label">Healthy</span>
+                <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+                  status configured
+                </span>
+              </Link>
+              <Link
+                className="kpi-strip__item"
+                to="/admin/integrations"
+                style={{
+                  borderLeft: `3px solid ${
+                    degradedProviders > 0 ? statusToneColor('danger') : statusToneColor('neutral')
+                  }`,
+                }}
+              >
+                <span className="kpi-strip__value">{degradedProviders}</span>
+                <span className="kpi-strip__label">Degraded</span>
+                <span
+                  className="kpi-strip__context"
+                  style={{
+                    color:
+                      degradedProviders > 0
+                        ? 'var(--color-status-danger)'
+                        : 'var(--color-text-muted)',
+                  }}
+                >
+                  {degradedProviders > 0 ? 'needs attention' : 'all clear'}
+                </span>
+              </Link>
+              <Link
+                className="kpi-strip__item"
+                to="/admin/integrations"
+                style={{ borderLeft: '3px solid var(--color-chart-5)' }}
+              >
+                <span className="kpi-strip__value" style={{ fontSize: 14 }}>
+                  {lastSyncedAt ? formatDateTime(lastSyncedAt) : '—'}
+                </span>
+                <span className="kpi-strip__label">Last sync</span>
+                <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+                  most recent run
+                </span>
+              </Link>
+            </div>
+
+            <div className="dictionary-admin-grid">
             <SectionCard title="Integrations">
               <div className="dictionary-list">
                 {state.integrations.map((integration) => (
@@ -82,30 +157,31 @@ export function IntegrationsAdminContent(): JSX.Element {
               <SectionCard title="Status Overview">
                 {state.selectedIntegration && selectedStatus ? (
                   <>
-                    <div className="kpi-strip">
-                      <div className="section-card metadata-detail__stat">
-                        <span className="metric-card__label">Provider</span>
-                        <strong>{state.selectedIntegration.provider.toUpperCase()}</strong>
-                      </div>
-                      <div className="section-card metadata-detail__stat">
-                        <span className="metric-card__label">Status</span>
-                        <strong>
-                          <StatusIndicator status={selectedStatus.status} />
-                        </strong>
-                      </div>
-                      <div className="section-card metadata-detail__stat">
-                        <span className="metric-card__label">Last Outcome</span>
-                        <strong>{getLastSyncOutcome(selectedStatus) ?? 'No sync yet'}</strong>
-                      </div>
-                      <div className="section-card metadata-detail__stat">
-                        <span className="metric-card__label">Last Sync</span>
-                        <strong>
-                          {formatLastSyncAt(getLastSyncAt(selectedStatus)) ?? 'Not available'}
-                        </strong>
-                      </div>
-                    </div>
-
                     <dl className="details-list">
+                      <div>
+                        <dt>Provider</dt>
+                        <dd>{state.selectedIntegration.provider.toUpperCase()}</dd>
+                      </div>
+                      <div>
+                        <dt>Status</dt>
+                        <dd>
+                          <StatusBadge status={selectedStatus.status} />
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Last outcome</dt>
+                        <dd>
+                          {getLastSyncOutcome(selectedStatus) ? (
+                            <StatusBadge status={getLastSyncOutcome(selectedStatus) as string} />
+                          ) : (
+                            'No sync yet'
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Last sync</dt>
+                        <dd>{formatLastSyncAt(getLastSyncAt(selectedStatus)) ?? 'Not available'}</dd>
+                      </div>
                       {renderStatusDetails(selectedStatus)}
                     </dl>
                   </>
@@ -240,6 +316,7 @@ export function IntegrationsAdminContent(): JSX.Element {
               ) : null}
             </div>
           </div>
+          </>
         )
       ) : null}
     </>

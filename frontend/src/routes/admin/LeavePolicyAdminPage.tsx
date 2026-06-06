@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ALL_ROLES, type AppRole } from '@/app/route-manifest';
@@ -283,6 +284,10 @@ export function LeavePolicyAdminPage(): JSX.Element {
     );
 
   const formOpen = creating || editing !== null;
+  const totalPolicies = policies.length;
+  const activePolicies = policies.filter((p) => p.active).length;
+  const inactivePolicies = totalPolicies - activePolicies;
+  const distinctTypes = new Set(policies.map((p) => p.leaveType)).size;
 
   return (
     <PageContainer testId="leave-policy-admin-page">
@@ -291,6 +296,53 @@ export function LeavePolicyAdminPage(): JSX.Element {
         subtitle="Configure per-leave-type accrual, max carry-over, and approval chains. Replaces hard-coded constants so HR governance can tune leave policy without code changes."
         title="Leave Policies"
       />
+
+      <div className="kpi-strip" aria-label="Leave policy metrics">
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-accent)' }}
+        >
+          <span className="kpi-strip__value">{totalPolicies}</span>
+          <span className="kpi-strip__label">Policies</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            total configured
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-status-active)' }}
+        >
+          <span className="kpi-strip__value">{activePolicies}</span>
+          <span className="kpi-strip__label">Active</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            in force today
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-status-neutral)' }}
+        >
+          <span className="kpi-strip__value">{inactivePolicies}</span>
+          <span className="kpi-strip__label">Inactive</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            retired
+          </span>
+        </Link>
+        <Link
+          className="kpi-strip__item"
+          to="/admin/leave-policies"
+          style={{ borderLeft: '3px solid var(--color-chart-5)' }}
+        >
+          <span className="kpi-strip__value">{distinctTypes}</span>
+          <span className="kpi-strip__label">Leave types</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+            covered
+          </span>
+        </Link>
+      </div>
 
       <div
         style={{
