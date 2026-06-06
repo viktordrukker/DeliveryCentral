@@ -14,6 +14,7 @@ vi.mock('@/lib/api/people-bench', () => ({
 const sampleRows: BenchEnrichedRowDto[] = [
   {
     personId: 'p1',
+    personPublicId: 'usr_p1',
     name: 'Ada Lovelace',
     role: 'Senior Engineer',
     office: 'London',
@@ -25,6 +26,7 @@ const sampleRows: BenchEnrichedRowDto[] = [
   },
   {
     personId: 'p2',
+    personPublicId: 'usr_p2',
     name: 'Grace Hopper',
     role: 'Architect',
     office: null,
@@ -36,6 +38,7 @@ const sampleRows: BenchEnrichedRowDto[] = [
   },
   {
     personId: 'p3',
+    personPublicId: 'usr_p3',
     name: 'Alan Turing',
     role: 'Engineer',
     office: 'Berlin',
@@ -210,6 +213,7 @@ describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
   it('A8: paginates the list at 12/page with a Showing N of M footer', async () => {
     const many: BenchEnrichedRowDto[] = Array.from({ length: 15 }, (_, i) => ({
       personId: `m${i}`,
+      personPublicId: `usr_m${i}`,
       name: `Person ${String(i).padStart(2, '0')}`,
       role: 'Engineer',
       office: 'London',
