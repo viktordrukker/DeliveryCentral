@@ -28,6 +28,8 @@
     "test:cov": "jest --coverage",
     "test:e2e": "node scripts/run-jest-suite.cjs backend-e2e",
     "test:e2e:ui": "node node_modules/playwright/cli.js test",
+    "test:e2e:v2-baseline:smoke": "node scripts/v2-baseline-smoke.cjs",
+    "test:e2e:v2-baseline": "PLAYWRIGHT_V2_BASELINE=true node node_modules/playwright/cli.js test --project=v2-baseline",
     "test:e2e:ui:smoke": "node node_modules/playwright/cli.js test --grep @smoke",
     "test:e2e:ui:critical": "node node_modules/playwright/cli.js test --grep @critical",
     "test:e2e:ui:full": "node node_modules/playwright/cli.js test --grep @full",
