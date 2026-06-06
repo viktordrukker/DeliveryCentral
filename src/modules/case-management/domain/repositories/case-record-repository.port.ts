@@ -6,5 +6,5 @@ import { CaseId } from '../value-objects/case-id';
 export interface CaseRecordRepositoryPort extends RepositoryPort<CaseRecord> {
   count(): Promise<number>;
   findByCaseId(caseId: CaseId): Promise<CaseRecord | null>;
-  list(query: { caseTypeKey?: string; ownerPersonId?: string; subjectPersonId?: string }): Promise<CaseRecord[]>;
+  list(query: { caseTypeKey?: string; ownerPersonId?: string; projectId?: string; subjectPersonId?: string }): Promise<CaseRecord[]>;
 }
