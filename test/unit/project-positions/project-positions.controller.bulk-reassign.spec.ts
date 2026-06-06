@@ -29,6 +29,7 @@ function makeController(
     noop, // getService
     noop, // suggestFillsService
     noop, // forensicsService
+    noop, // historyService
     svc,
   );
   return { controller, svc };

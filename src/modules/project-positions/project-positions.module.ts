@@ -12,6 +12,7 @@ import { CreateProjectPositionService } from './application/create-project-posit
 import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from './application/list-bench-people.service';
 import { ListEnrichedBenchService } from './application/list-enriched-bench.service';
+import { ListPositionHistoryService } from './application/list-position-history.service';
 import { ListProjectPositionsService } from './application/list-project-positions.service';
 import { PositionForensicsService } from './application/position-forensics.service';
 import { ProjectPositionMirrorService } from './application/project-position-mirror.service';
@@ -103,6 +104,7 @@ import {
         new ListEnrichedBenchService(prisma, suggestFills),
     },
     PositionForensicsService,
+    ListPositionHistoryService,
     {
       provide: BulkReassignPositionsService,
       inject: [PrismaService],
@@ -125,6 +127,7 @@ import {
     ListEnrichedBenchService,
     SuggestFillsService,
     PositionForensicsService,
+    ListPositionHistoryService,
     ProjectPositionMirrorService,
     PROJECT_POSITION_REPOSITORY,
   ],
