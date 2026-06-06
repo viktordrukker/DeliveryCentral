@@ -199,6 +199,36 @@ describe('BenchEnrichedPanel — SCOPED-MIN-6 KPI drilldown + aging colors', () 
   });
 });
 
+describe('BenchEnrichedPanel — W3-07 DS conformance', () => {
+  it('wraps the bench list in SectionCard with a section-card class', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(container.querySelector('.section-card')).not.toBeNull();
+  });
+
+  it('renders suggested-fills count via StatusBadge chip', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByText(/2 matches/)).toBeInTheDocument());
+    expect(container.querySelector('.status-badge--chip')).not.toBeNull();
+  });
+
+  it('renders status column via StatusBadge dot', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(container.querySelectorAll('.status-badge--dot').length).toBeGreaterThan(0);
+  });
+
+  it('empty state uses SectionCard wrapper', async () => {
+    fetchEnrichedBench.mockResolvedValue([]);
+    const { container } = renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-empty')).toBeInTheDocument());
+    expect(container.querySelector('.section-card')).not.toBeNull();
+  });
+});
+
 describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
   it('A7: renders page chrome — breadcrumb, idle-total badges, Export CSV', async () => {
     fetchEnrichedBench.mockResolvedValue(sampleRows);

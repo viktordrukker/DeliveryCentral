@@ -103,6 +103,54 @@ describe('ManagerScopePage', () => {
     expect(await screen.findByText('Manager scope not found')).toBeInTheDocument();
   });
 
+  it('renders KPI cards as drillable links (UX Law 9)', async () => {
+    mockedFetchPersonDirectoryById.mockResolvedValue({
+      currentAssignmentCount: 1,
+      currentLineManager: { displayName: 'Ava Rowe', id: 'mgr-top' },
+      currentOrgUnit: { code: 'DEP-APP', id: 'org-1', name: 'Application Engineering' },
+      displayName: 'Sophia Kim',
+      dottedLineManagers: [],
+      grade: null,
+      id: 'mgr-1',
+      publicId: 'usr_sophia',
+      primaryEmail: 'sophia@example.com',
+      lifecycleStatus: 'ACTIVE',
+      resourcePoolIds: ['pool-1'],
+      resourcePools: [],
+      role: null, hiredAt: null, terminatedAt: null,
+    });
+
+    mockedFetchManagerScope.mockResolvedValue({
+      directReports: [],
+      dottedLinePeople: [],
+      managerId: 'mgr-1',
+      page: 1,
+      pageSize: 25,
+      totalDirectReports: 3,
+      totalDottedLinePeople: 2,
+    });
+
+    renderWithRouter('/org/managers/mgr-1/scope');
+
+    await screen.findByText('Sophia Kim Scope');
+
+    const managerKpi = screen.getByTestId('manager-scope-kpi-manager');
+    expect(managerKpi.tagName).toBe('A');
+    expect(managerKpi.getAttribute('href')).toBe('/people/usr_sophia');
+
+    const orgKpi = screen.getByTestId('manager-scope-kpi-orgunit');
+    expect(orgKpi.tagName).toBe('A');
+    expect(orgKpi.getAttribute('href')).toBe('/org');
+
+    const directKpi = screen.getByTestId('manager-scope-kpi-direct');
+    expect(directKpi.tagName).toBe('A');
+    expect(directKpi.getAttribute('href')).toBe('#direct-reports');
+
+    const dottedKpi = screen.getByTestId('manager-scope-kpi-dotted');
+    expect(dottedKpi.tagName).toBe('A');
+    expect(dottedKpi.getAttribute('href')).toBe('#dotted-line');
+  });
+
   it('shows error state', async () => {
     mockedFetchManagerScope.mockRejectedValue(new Error('Manager scope unavailable'));
     mockedFetchPersonDirectoryById.mockResolvedValue({
