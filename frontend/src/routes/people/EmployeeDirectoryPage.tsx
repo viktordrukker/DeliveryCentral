@@ -22,7 +22,7 @@ import { bulkReassignOrgMembership } from '@/lib/api/organization';
 import { fetchOrgChart, OrgChartNode } from '@/lib/api/org-chart';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
-import { HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { HR_ADMIN_ROLES, HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Avatar, Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
@@ -40,6 +40,8 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
   const canBulkReassign = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
+  // W3-05 — only HR/admin see HR-action tabs (HR Queue, Leave Approvals).
+  const canSeeHrActions = hasAnyRole(principal?.roles, HR_ADMIN_ROLES);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   // V2-B.18 — `role` is server-side; `grade`/`groupBy`/`layout` are client-side
   // refinements over the loaded page (same page-local model as `search`).
@@ -48,6 +50,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const [filters, setFilters] = useFilterParams({ departmentId: '', lifecycleStatus: 'ACTIVE', resourcePoolId: '', search: '', view: 'directory', role: '', grade: '', layout: 'list', groupBy: 'flat', selected: '' });
   const [page, setPage] = useState(1);
   const [resourcePools, setResourcePools] = useState<ResourcePool[]>([]);
+  // W3-05 — Department select options (flattened org chart). Replaces the
+  // legacy free-text "Department ID" input with a typed dropdown.
+  const [departmentOptions, setDepartmentOptions] = useState<Array<{ id: string; name: string }>>([]);
   // V2-A.12 — header count badge for people currently on the bench.
   const [benchCount, setBenchCount] = useState<number | null>(null);
   // V2-B.17 — HR-Queue tab count (the directory header already shows bench; do
@@ -135,6 +140,33 @@ export function EmployeeDirectoryPage(): JSX.Element {
 
   useEffect(() => {
     void fetchResourcePools().then((r) => setResourcePools(r.items));
+  }, []);
+
+  // W3-05 — load department options once for the FilterBar select.
+  useEffect(() => {
+    let active = true;
+    function flatten(nodes: OrgChartNode[]): Array<{ id: string; name: string }> {
+      const out: Array<{ id: string; name: string }> = [];
+      for (const node of nodes) {
+        out.push({ id: node.id, name: node.name });
+        if (node.children?.length) out.push(...flatten(node.children));
+      }
+      return out;
+    }
+    void fetchOrgChart()
+      .then((chart) => {
+        if (active) {
+          setDepartmentOptions(
+            flatten(chart.roots).sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setDepartmentOptions([]);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -232,24 +264,32 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2-B.17 — HR-Queue tab carries a live count badge from sidebar-counts.
   // Bench tab count is intentionally omitted: the header already shows
   // "N on bench" (A12) and duplicating it on the tab would double-count.
+  // W3-05 — HR-Queue + Leave Approvals tabs are gated to HR/Admin only. Other
+  // personas (PM, RM, DM, Director, Employee) see only Directory + Bench.
   const peopleTabs: { id: string; label: import('react').ReactNode }[] = [
     { id: 'directory', label: 'Directory' },
     { id: 'bench', label: 'Bench' },
-    {
-      id: 'cases',
-      label:
-        hrQueueCount != null && hrQueueCount > 0 ? (
-          <>
-            HR Queue{' '}
-            <span style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}>
-              ({hrQueueCount})
-            </span>
-          </>
-        ) : (
-          'HR Queue'
-        ),
-    },
-    { id: 'leave-approvals', label: 'Leave Approvals' },
+    ...(canSeeHrActions
+      ? [
+          {
+            id: 'cases',
+            label:
+              hrQueueCount != null && hrQueueCount > 0 ? (
+                <>
+                  HR Queue{' '}
+                  <span
+                    style={{ marginLeft: 4, fontVariantNumeric: 'tabular-nums', opacity: 0.8 }}
+                  >
+                    ({hrQueueCount})
+                  </span>
+                </>
+              ) : (
+                'HR Queue'
+              ),
+          },
+          { id: 'leave-approvals', label: 'Leave Approvals' },
+        ]
+      : []),
   ];
   const activeView = peopleTabs.some((t) => t.id === filters.view) ? filters.view : 'directory';
 
@@ -447,14 +487,18 @@ export function EmployeeDirectoryPage(): JSX.Element {
           />
         </label>
         <label className="field">
-          <span className="field__label">Department ID</span>
-          <input
+          <span className="field__label">Department</span>
+          <select
             className="field__control"
-            onChange={(event) => setFilters({ departmentId: event.target.value })}
-            placeholder="Filter by department"
-            type="text"
+            onChange={(event) => { setFilters({ departmentId: event.target.value }); setPage(1); }}
             value={filters.departmentId}
-          />
+            data-testid="directory-department-filter"
+          >
+            <option value="">All departments</option>
+            {departmentOptions.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
         </label>
         <label className="field">
           <span className="field__label">Resource Pool</span>

@@ -15,6 +15,7 @@ import { TabBar } from '@/components/common/TabBar';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { formatDate, formatDateShort } from '@/lib/format-date';
 import { ReportingLineForm } from '@/components/people/ReportingLineForm';
 import { PersonSkillsTab } from '@/components/people/PersonSkillsTab';
@@ -342,6 +343,28 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             ) : null}
           </>
         }
+        badges={
+          // W3-05 — replaces the legacy 5-up SummaryCard KPI strip with a
+          // single lifecycle StatusBadge per Phase 18 Detail Surface grammar.
+          // Org-unit, line-manager, and assignment counts are surfaced inside
+          // the section cards below (no duplicate KPI tile row).
+          lifecycleStatus || state.data?.lifecycleStatus ? (
+            <StatusBadge
+              tone={(() => {
+                const status = lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE';
+                if (status === 'ACTIVE') return 'active';
+                if (status === 'INACTIVE') return 'warning';
+                if (status === 'TERMINATED') return 'danger';
+                return 'neutral';
+              })()}
+              label={humanizeEnum(
+                lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE',
+                EMPLOYMENT_STATUS_LABELS,
+              )}
+              variant="chip"
+            />
+          ) : null
+        }
         eyebrow="People"
         subtitle="Employee profile foundation for staffing visibility and future portal workflows."
         title={state.data?.displayName ?? 'Employee Details'}
@@ -436,26 +459,10 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
       {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
         <>
-          <div className="kpi-strip">
-            <SummaryCard label="Person" value={state.data.displayName} />
-            <SummaryCard
-              label="Current Org Unit"
-              value={state.data.currentOrgUnit?.name ?? 'Not assigned'}
-            />
-            <SummaryCard
-              label="Line Manager"
-              value={state.data.currentLineManager?.displayName ?? 'No line manager'}
-            />
-            <SummaryCard
-              label="Active Assignments"
-              value={String(state.data.currentAssignmentCount)}
-            />
-            <SummaryCard
-              label="Lifecycle Status"
-              value={humanizeEnum(lifecycleStatus ?? state.data?.lifecycleStatus ?? 'Active', EMPLOYMENT_STATUS_LABELS)}
-            />
-          </div>
-
+          {/* W3-05 — legacy ad-hoc 5-up KPI tile strip removed. Lifecycle is
+              now shown as a single StatusBadge in PageHeader; org-unit /
+              line-manager / assignment-count remain inside SectionCards per
+              Phase 18 Detail Surface grammar. */}
           <div className="dashboard-main-grid">
             <SectionCard title="Employee Summary">
               <dl className="details-list">
@@ -603,18 +610,3 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   );
 }
 
-interface SummaryCardProps {
-  label: string;
-  value: string;
-}
-
-function SummaryCard({ label, value }: SummaryCardProps): JSX.Element {
-  return (
-    <SectionCard>
-      <div className="metric-card">
-        <div className="metric-card__value metric-card__value--compact">{value}</div>
-        <div className="metric-card__label">{label}</div>
-      </div>
-    </SectionCard>
-  );
-}
