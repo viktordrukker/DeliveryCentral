@@ -666,10 +666,10 @@ describe('ProjectDetailPage', () => {
 
     // Click Team tab
     await user.click(screen.getByRole('tab', { name: 'Team & Vendors' }));
-    // Until the BE DTO enriches person.displayName, the mapper surfaces the
-    // personId in its place — the row presence is what we verify here.
-    expect((await screen.findAllByText('person-1')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Lead Engineer').length).toBeGreaterThan(0);
+    // W1-10: mapper now resolves displayName via /org/people/:id resolver
+    // effect; raw personId only appears if resolution fails. Use role as the
+    // unambiguous row-presence assertion (it's not affected by name resolution).
+    expect((await screen.findAllByText('Lead Engineer')).length).toBeGreaterThan(0);
 
     // Click back to Radiator tab
     await user.click(screen.getByRole('tab', { name: 'Radiator' }));
