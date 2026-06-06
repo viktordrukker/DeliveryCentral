@@ -11,6 +11,7 @@ import { AdminConfigQueryService } from './application/admin-config-query.servic
 import { IntegrationsRegistryService } from './application/integrations-registry.service';
 import { LeanMigrationParityService } from './application/lean-migration-parity.service';
 import { RedactPersonAuditService } from './application/redact-person-audit.service';
+import { SoakChecklistService } from './application/soak-checklist.service';
 import { InMemoryWebhookService } from './infrastructure/in-memory-webhook.service';
 import { AdminConfigController } from './presentation/admin-config.controller';
 import { AuditRetentionAdminController } from './presentation/audit-retention-admin.controller';
@@ -19,6 +20,7 @@ import { LeanMigrationParityController } from './presentation/lean-migration-par
 import { RedactPersonAdminController } from './presentation/redact-person-admin.controller';
 import { RolePresetsAdminController } from './presentation/role-presets-admin.controller';
 import { RuntimeFlagDebugController } from './presentation/runtime-flag-debug.controller';
+import { SoakChecklistController } from './presentation/soak-checklist.controller';
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { RuntimeFlagDebugController } from './presentation/runtime-flag-debug.co
     RedactPersonAdminController,
     RolePresetsAdminController,
     RuntimeFlagDebugController,
+    SoakChecklistController,
   ],
   providers: [
     AdminConfigQueryService,
@@ -44,6 +47,7 @@ import { RuntimeFlagDebugController } from './presentation/runtime-flag-debug.co
     PrismaService,
     InMemoryWebhookService,
     RedactPersonAuditService,
+    SoakChecklistService,
   ],
   exports: [
     AdminConfigQueryService,
@@ -51,6 +55,7 @@ import { RuntimeFlagDebugController } from './presentation/runtime-flag-debug.co
     LeanMigrationParityService,
     InMemoryWebhookService,
     RedactPersonAuditService,
+    SoakChecklistService,
   ],
 })
 export class AdminModule {}

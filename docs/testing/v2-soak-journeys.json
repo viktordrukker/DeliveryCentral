@@ -1,0 +1,726 @@
+{
+  "$schema": "./v2-soak-journeys.schema.json",
+  "version": "1.0.0",
+  "generated": "2026-06-06",
+  "description": "MANUAL-CLICK-THROUGH-30 — 30 critical user journeys x 8 roles = 256 PASS/FAIL/NA cells. Drives the QA go/no-go checklist for the C0 flip (dsRefresh + workspaceMe defaults to ON). Each journey has explicit reproduction steps and per-role expected outcomes; cells marked NOT_APPLICABLE are excluded from the gate.",
+  "roles": ["admin", "director", "delivery_manager", "hr_manager", "resource_manager", "project_manager", "employee", "dual_role"],
+  "exitGate": {
+    "minPassRate": 1.0,
+    "blockingOn": "any cell whose expected outcome is PASS but observed is FAIL",
+    "naCellsCountTowardTotal": false
+  },
+  "journeys": [
+    {
+      "id": "J-01",
+      "title": "Employee logs in and sees dashboard",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/login" },
+        { "action": "fillForm", "fields": { "email": "ethan.brooks@itco.local", "password": "EmployeePass1!" } },
+        { "action": "submit" },
+        { "action": "expectRoute", "value": "/dashboard" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-02",
+      "title": "Employee submits a weekly timesheet",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/timesheets" },
+        { "action": "expectVisible", "value": "current-week row" },
+        { "action": "fillCells", "value": "5x8h across Mon-Fri" },
+        { "action": "click", "target": "Submit for approval" },
+        { "action": "expectToast", "value": "Timesheet submitted" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-03",
+      "title": "Employee requests leave",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/leave" },
+        { "action": "click", "target": "Request leave" },
+        { "action": "fillForm", "fields": { "leaveType": "VACATION", "startDate": "+14d", "endDate": "+18d" } },
+        { "action": "submit" },
+        { "action": "expectStatus", "value": "PENDING_APPROVAL" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-04",
+      "title": "Employee cancels their own leave request",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/leave" },
+        { "action": "selectRow", "value": "request from J-03" },
+        { "action": "click", "target": "Cancel" },
+        { "action": "confirmDialog" },
+        { "action": "expectStatus", "value": "CANCELLED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": "J-03",
+      "owner": "QA"
+    },
+    {
+      "id": "J-05",
+      "title": "PM creates a new project position",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk" },
+        { "action": "click", "target": "New position" },
+        { "action": "fillForm", "fields": { "project": "Atlas", "role": "Senior Dev", "fte": 1.0, "startDate": "+7d" } },
+        { "action": "submit" },
+        { "action": "expectRoute", "value": "/staffing-desk/positions/:id" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-06",
+      "title": "PM bulk-reassigns 4 positions",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=board" },
+        { "action": "selectRows", "value": "4 positions" },
+        { "action": "click", "target": "Bulk reassign" },
+        { "action": "selectTarget", "value": "alternate org unit" },
+        { "action": "submit" },
+        { "action": "expectToast", "value": "4 positions reassigned" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-07",
+      "title": "PM approves a submitted timesheet",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/approvals" },
+        { "action": "filterTab", "value": "Timesheets" },
+        { "action": "selectRow", "value": "first pending row" },
+        { "action": "click", "target": "Approve" },
+        { "action": "expectStatus", "value": "APPROVED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "PASS",
+        "employee": "FAIL_EXPECTED",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": "J-02",
+      "owner": "QA"
+    },
+    {
+      "id": "J-08",
+      "title": "PM views project pulse",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/projects" },
+        { "action": "selectRow", "value": "Atlas" },
+        { "action": "expectVisible", "value": "Project pulse card" },
+        { "action": "expectVisible", "value": "Health score" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-09",
+      "title": "RM runs auto-match candidates for a position",
+      "persona": "resource_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=planner" },
+        { "action": "selectRow", "value": "first open position" },
+        { "action": "click", "target": "Auto-match" },
+        { "action": "expectVisible", "value": "candidate ranking" },
+        { "action": "expectMinResults", "value": 1 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-10",
+      "title": "RM proposes a candidate",
+      "persona": "resource_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=planner" },
+        { "action": "selectRow", "value": "candidate from J-09" },
+        { "action": "click", "target": "Propose" },
+        { "action": "expectStatus", "value": "PROPOSED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": "J-09",
+      "owner": "QA"
+    },
+    {
+      "id": "J-11",
+      "title": "RM views the bench",
+      "persona": "resource_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=bench" },
+        { "action": "expectVisible", "value": "Bench KPI strip" },
+        { "action": "expectMinRows", "value": 1 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-12",
+      "title": "HR runs HR action cards",
+      "persona": "hr_manager",
+      "steps": [
+        { "action": "navigate", "target": "/dashboard/hr" },
+        { "action": "expectVisible", "value": "HR action cards" },
+        { "action": "click", "target": "first card CTA" },
+        { "action": "expectRoute", "value": "drilldown URL" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "PASS",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-13",
+      "title": "HR bulk-reassigns 6 people across org units",
+      "persona": "hr_manager",
+      "steps": [
+        { "action": "navigate", "target": "/people" },
+        { "action": "selectRows", "value": "6 people" },
+        { "action": "click", "target": "Bulk reassign" },
+        { "action": "selectTarget", "value": "alternate org unit" },
+        { "action": "submit" },
+        { "action": "expectToast", "value": "6 people reassigned" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "PASS",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-14",
+      "title": "HR configures a leave policy",
+      "persona": "hr_manager",
+      "steps": [
+        { "action": "navigate", "target": "/admin/leave-policies" },
+        { "action": "selectRow", "value": "VACATION" },
+        { "action": "click", "target": "Edit" },
+        { "action": "updateField", "value": "accrualDays" },
+        { "action": "submit" },
+        { "action": "expectToast", "value": "Leave policy updated" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "NOT_APPLICABLE",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "FAIL_EXPECTED",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-15",
+      "title": "Director views portfolio radiator",
+      "persona": "director",
+      "steps": [
+        { "action": "navigate", "target": "/radiator" },
+        { "action": "expectVisible", "value": "16-axis radar" },
+        { "action": "expectMinProjects", "value": 5 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-16",
+      "title": "Director drills from anomaly to underlying positions",
+      "persona": "director",
+      "steps": [
+        { "action": "navigate", "target": "/dashboard/director" },
+        { "action": "click", "target": "first anomaly KPI" },
+        { "action": "expectRoute", "value": "filtered list" },
+        { "action": "expectFilterPersisted", "value": true }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-17",
+      "title": "Director runs CPI what-if scenario",
+      "persona": "director",
+      "steps": [
+        { "action": "navigate", "target": "/forensics" },
+        { "action": "selectTab", "value": "CPI what-if" },
+        { "action": "updateField", "value": "headcount delta = -5" },
+        { "action": "click", "target": "Simulate" },
+        { "action": "expectVisible", "value": "delta chart" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-18",
+      "title": "DM views team conflicts queue",
+      "persona": "delivery_manager",
+      "steps": [
+        { "action": "navigate", "target": "/dashboard/delivery-manager" },
+        { "action": "expectVisible", "value": "Conflicts section" },
+        { "action": "click", "target": "View all conflicts" },
+        { "action": "expectRoute", "value": "/conflicts" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-19",
+      "title": "DM escalates a rejection",
+      "persona": "delivery_manager",
+      "steps": [
+        { "action": "navigate", "target": "/approvals" },
+        { "action": "filterTab", "value": "Rejected" },
+        { "action": "selectRow", "value": "first row" },
+        { "action": "click", "target": "Escalate" },
+        { "action": "fillForm", "fields": { "reason": "Needs director call" } },
+        { "action": "submit" },
+        { "action": "expectStatus", "value": "ESCALATED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-20",
+      "title": "DM confirms an escalation",
+      "persona": "delivery_manager",
+      "steps": [
+        { "action": "navigate", "target": "/approvals?filter=escalated" },
+        { "action": "selectRow", "value": "escalation from J-19" },
+        { "action": "click", "target": "Confirm" },
+        { "action": "expectStatus", "value": "CONFIRMED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": "J-19",
+      "owner": "QA"
+    },
+    {
+      "id": "J-21",
+      "title": "Admin runs the setup wizard",
+      "persona": "admin",
+      "steps": [
+        { "action": "navigate", "target": "/setup" },
+        { "action": "expectVisible", "value": "preflight screen" },
+        { "action": "advanceScreens", "value": 8 },
+        { "action": "expectVisible", "value": "Setup complete" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "NOT_APPLICABLE",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-22",
+      "title": "Admin defines a custom role preset",
+      "persona": "admin",
+      "steps": [
+        { "action": "navigate", "target": "/admin/access-policies/edit" },
+        { "action": "selectRow", "value": "EXEC_ROLES" },
+        { "action": "click", "target": "Edit" },
+        { "action": "updateField", "value": "add resource_manager" },
+        { "action": "submit" },
+        { "action": "expectToast", "value": "Role preset updated" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "NOT_APPLICABLE",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-23",
+      "title": "Admin configures SSO",
+      "persona": "admin",
+      "steps": [
+        { "action": "navigate", "target": "/admin/integrations/registry" },
+        { "action": "selectRow", "value": "Microsoft 365" },
+        { "action": "click", "target": "Configure" },
+        { "action": "fillForm", "fields": { "tenantId": "...", "clientId": "..." } },
+        { "action": "submit" },
+        { "action": "expectStatus", "value": "CONFIGURED" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "NOT_APPLICABLE",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-24",
+      "title": "Admin views the audit log",
+      "persona": "admin",
+      "steps": [
+        { "action": "navigate", "target": "/admin/audit" },
+        { "action": "expectVisible", "value": "audit timeline" },
+        { "action": "filter", "value": "actionType=UPDATE" },
+        { "action": "expectMinRows", "value": 1 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "NOT_APPLICABLE",
+        "hr_manager": "PASS",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "NOT_APPLICABLE",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-25",
+      "title": "Employee uses /me workspace",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/me" },
+        { "action": "expectVisible", "value": "Time + Approvals + Tasks tabs" },
+        { "action": "selectTab", "value": "Tasks" },
+        { "action": "expectMinRows", "value": 0 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-26",
+      "title": "Employee endorses a peer's skill",
+      "persona": "employee",
+      "steps": [
+        { "action": "navigate", "target": "/people" },
+        { "action": "selectRow", "value": "first peer" },
+        { "action": "selectTab", "value": "Skills" },
+        { "action": "click", "target": "Endorse" },
+        { "action": "expectToast", "value": "Skill endorsed" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "PASS",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "PASS",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-27",
+      "title": "PM exports a budget report",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/reports" },
+        { "action": "selectTab", "value": "Budget" },
+        { "action": "click", "target": "Export XLSX" },
+        { "action": "expectDownload", "value": "*.xlsx" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-28",
+      "title": "PM views forensics",
+      "persona": "project_manager",
+      "steps": [
+        { "action": "navigate", "target": "/forensics" },
+        { "action": "expectVisible", "value": "forensics timeline" },
+        { "action": "selectTab", "value": "Variance" },
+        { "action": "expectMinRows", "value": 1 }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "NOT_APPLICABLE",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "NOT_APPLICABLE"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-29",
+      "title": "RM saves a planner scenario",
+      "persona": "resource_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=planner" },
+        { "action": "configureFilters", "value": "role=Dev, fte=1.0" },
+        { "action": "click", "target": "Save scenario" },
+        { "action": "fillForm", "fields": { "name": "Q3 Dev Plan" } },
+        { "action": "submit" },
+        { "action": "expectToast", "value": "Scenario saved" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": null,
+      "owner": "QA"
+    },
+    {
+      "id": "J-30",
+      "title": "RM applies a planner scenario",
+      "persona": "resource_manager",
+      "steps": [
+        { "action": "navigate", "target": "/staffing-desk?view=planner" },
+        { "action": "selectScenario", "value": "Q3 Dev Plan" },
+        { "action": "click", "target": "Apply" },
+        { "action": "confirmDialog" },
+        { "action": "expectToast", "value": "Scenario applied" }
+      ],
+      "expectedOutcome": {
+        "admin": "PASS",
+        "director": "PASS",
+        "delivery_manager": "PASS",
+        "hr_manager": "NOT_APPLICABLE",
+        "resource_manager": "PASS",
+        "project_manager": "PASS",
+        "employee": "NOT_APPLICABLE",
+        "dual_role": "PASS"
+      },
+      "blockedBy": "J-29",
+      "owner": "QA"
+    }
+  ]
+}
