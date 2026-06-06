@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -229,17 +230,24 @@ export function ApprovalsPage(): JSX.Element {
 
       {!loading && !error && items != null ? (
         items.length === 0 ? (
-          <div className="card" data-testid="approvals-empty">
-            <div className="card-header">
-              <h3>Inbox zero</h3>
-            </div>
-            <div className="card-body">
-              <p className="compact muted" style={{ margin: 0 }}>
-                {activeFilter === 'all'
-                  ? 'There are no approvals waiting in the unified queue.'
-                  : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`}
-              </p>
-            </div>
+          // W2-09 — empty state surfaces forward actions per UX Law 2:
+          // - clearing the source filter when one is active (since other
+          //   sources may still have work waiting)
+          // - jumping to the dashboard for next-best work
+          <div data-testid="approvals-empty">
+            <EmptyState
+              title="Inbox zero"
+              description={
+                activeFilter === 'all'
+                  ? 'There are no approvals waiting in the unified queue. Time to ship.'
+                  : `No items in the ${SOURCES.find((s) => s.id === activeFilter)?.label} queue.`
+              }
+              showClearFilters={activeFilter !== 'all'}
+              onClearFilters={() => setFilter('all')}
+              action={
+                activeFilter === 'all' ? { href: '/dashboard', label: 'Back to dashboard' } : undefined
+              }
+            />
           </div>
         ) : (() => {
           const selectedItem = selectedItemKey

@@ -108,15 +108,21 @@ describe('ApprovalInspector', () => {
     expect(screen.getByText(/Q4 surge in vendor labour rates/)).toBeInTheDocument();
   });
 
-  it('renders all 3 decision buttons + Open source link', () => {
+  it('renders the 2 decision buttons + Open source link', () => {
     renderInspector();
-    expect(screen.getByRole('button', { name: 'Escalate' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled();
     expect(screen.getByRole('link', { name: /Open source/i })).toHaveAttribute('href', '/projects/orion?tab=budget');
   });
 
-  it('disables sibling buttons while one is submitting', async () => {
+  // W2-09 — Escalate button removed: no generic /api/approvals/:id/escalate
+  // endpoint exists, so a dead-end CTA would violate UX Law 2.
+  it('does not render an Escalate button', () => {
+    renderInspector();
+    expect(screen.queryByRole('button', { name: 'Escalate' })).not.toBeInTheDocument();
+  });
+
+  it('disables the sibling Reject button while Approve is submitting', async () => {
     // V2 §4 PR-1: decideApproval is now async — hold the promise open so we
     // can observe the in-flight state before it resolves.
     const mod = await import('@/lib/api/approvals-unified');
@@ -129,7 +135,6 @@ describe('ApprovalInspector', () => {
     const user = userEvent.setup();
     renderInspector();
     await user.click(screen.getByRole('button', { name: 'Approve' }));
-    expect(screen.getByRole('button', { name: 'Escalate' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeDisabled();
     resolveFn?.({
       approvalId: 'a-1',
