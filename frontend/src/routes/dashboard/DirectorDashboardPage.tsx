@@ -222,17 +222,16 @@ export function DirectorDashboardPage(): JSX.Element {
 
       {d ? (
         <>
-          {/* V2-B.14 — dsRefresh-gated PageHeader grammar (breadcrumb + title).
-              The period control already lives on the heatmap card, so it is not
-              duplicated here. Legacy header (title-bar actions) stays as-is. */}
-          {isFeatureEnabled('dsRefresh') ? (
-            <PageHeader
-              eyebrow="Portfolio"
-              title="Director Dashboard"
-              subtitle="Portfolio health, utilisation, and the decisions that need you this week."
-              breadcrumbs={[{ href: '/', label: 'Home' }, { label: 'Director' }]}
-            />
-          ) : null}
+          {/* W3-09 — PageHeader grammar (breadcrumb + title) renders
+              unconditionally now that dsRefresh is the canonical path on
+              v2-staging. The period control already lives on the heatmap card,
+              so it is not duplicated here. */}
+          <PageHeader
+            eyebrow="Portfolio"
+            title="Director Dashboard"
+            subtitle="Portfolio health, utilisation, and the decisions that need you this week."
+            breadcrumbs={[{ href: '/', label: 'Home' }, { label: 'Director' }]}
+          />
 
           {/* 20c-15 — KPI strip extracted to DirectorKpiStrip.tsx. */}
           <DirectorKpiStrip
