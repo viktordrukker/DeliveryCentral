@@ -242,7 +242,7 @@ function SoakChecklistMatrix({ observations, onToggle }: MatrixProps): JSX.Eleme
   const columns: Column<SoakJourneyDefinition>[] = [
     {
       key: 'journey',
-      header: 'Journey',
+      title: 'Journey',
       render: (journey) => (
         <div style={{ fontWeight: 500, minWidth: 280 }}>
           <div>{journey.id} — {journey.title}</div>
@@ -255,7 +255,7 @@ function SoakChecklistMatrix({ observations, onToggle }: MatrixProps): JSX.Eleme
     },
     ...SOAK_ROLES.map<Column<SoakJourneyDefinition>>((role) => ({
       key: role,
-      header: role,
+      title: role,
       align: 'center' as const,
       render: (journey) => {
         const expected = journey.expectedOutcome[role];
@@ -276,7 +276,7 @@ function SoakChecklistMatrix({ observations, onToggle }: MatrixProps): JSX.Eleme
     <div data-testid="soak-matrix" style={{ overflowX: 'auto' }}>
       <Table
         columns={columns}
-        rows={SOAK_JOURNEYS}
+        rows={[...SOAK_JOURNEYS]}
         getRowKey={(j) => j.id}
         variant="compact"
       />
