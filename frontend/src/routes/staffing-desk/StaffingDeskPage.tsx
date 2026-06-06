@@ -79,6 +79,16 @@ export function StaffingDeskPage(): JSX.Element {
   const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
+
+  // W3-10 — The legacy `?view=board` (kanban) view was retired in Phase 2;
+  // a prior fix made it a render-alias for `view=table`. Now coerce the URL
+  // itself so back/forward navigation, bookmarks, and deep-links land on the
+  // canonical `?view=table` and the View switcher reflects the selected tab.
+  useEffect(() => {
+    if (filters.view === 'board') {
+      setFilters({ view: 'table' });
+    }
+  }, [filters.view, setFilters]);
   // W1-23 — DistributionStudio `canEdit` (apply / rename / delete destructive
   // actions) must match BE proposal RBAC. BE `ProposalsController.autoMatch`
   // is guarded by `@RequireRoles(...STAFFING_ROLES)`. Mirror that on the FE
@@ -194,7 +204,7 @@ export function StaffingDeskPage(): JSX.Element {
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
-      {!state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
+      {!state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
         <StaffingDeskTable
           items={state.items.filter((row) =>
             !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
@@ -212,7 +222,7 @@ export function StaffingDeskPage(): JSX.Element {
         />
       )}
 
-      {dsRefreshEnabled && !state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
+      {dsRefreshEnabled && !state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
         <BulkReassignPanel
           items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
           onApplied={() => state.refetch()}
