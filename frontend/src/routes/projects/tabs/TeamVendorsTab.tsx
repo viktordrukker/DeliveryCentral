@@ -20,6 +20,7 @@ import { assignTeamToProject } from '@/lib/api/project-registry';
 import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { listProjectPositions } from '@/lib/api/project-positions';
 import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
 import { fetchProjectVendors, type ProjectVendorEngagementDto } from '@/lib/api/vendors';
@@ -43,6 +44,11 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
   const [teamAssignments, setTeamAssignments] = useState<AssignmentDirectoryItem[]>([]);
   const [teamAssignmentsLoading, setTeamAssignmentsLoading] = useState(true);
   const [teamAssignmentsError, setTeamAssignmentsError] = useState<string | null>(null);
+  // W1-10 — id → displayName cache for assignments whose source DTO didn't
+  // carry an enriched `activePersonName` projection. Filled by a follow-up
+  // effect that fans out /org/people/:id reads; deduped per personId so the
+  // burst stays small even on large team lists.
+  const [personNames, setPersonNames] = useState<Map<string, string>>(new Map());
   const [rolePlanEntries, setRolePlanEntries] = useState<RolePlanEntryDto[]>([]);
   const [rolePlanComparison, setRolePlanComparison] = useState<RolePlanComparisonResult | null>(null);
 
@@ -88,6 +94,31 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
 
     return () => { active = false; };
   }, [projectId]);
+
+  // W1-10 — resolve raw activePersonId → displayName when the DTO didn't
+  // carry an enriched name projection. Detects fallback rows by comparing
+  // `person.displayName === person.id` (set by the mapper when no
+  // `activePersonName` is present). Skips rows already resolved.
+  useEffect(() => {
+    let active = true;
+    const unresolved = Array.from(
+      new Set(
+        teamAssignments
+          .filter((a) => a.person.id && a.person.displayName === a.person.id && !personNames.has(a.person.id))
+          .map((a) => a.person.id),
+      ),
+    );
+    if (unresolved.length === 0) return;
+    void Promise.allSettled(unresolved.map((id) => fetchPersonDirectoryById(id))).then((results) => {
+      if (!active) return;
+      const next = new Map(personNames);
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') next.set(unresolved[i], res.value.displayName);
+      });
+      setPersonNames(next);
+    });
+    return () => { active = false; };
+  }, [teamAssignments, personNames]);
 
   // Load teams
   useEffect(() => {
@@ -160,12 +191,17 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
             <Table
               variant="compact"
               columns={[
-                { key: 'person', title: 'Person', getValue: (a) => a.person.displayName, render: (a) => (
-                  <Link to={`/people/${a.person.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Avatar name={a.person.displayName} size="xs" />
-                    <span>{a.person.displayName}</span>
-                  </Link>
-                ) },
+                { key: 'person', title: 'Person', getValue: (a) => personNames.get(a.person.id) ?? a.person.displayName, render: (a) => {
+                  const resolved = personNames.get(a.person.id);
+                  const looksLikeId = a.person.displayName === a.person.id;
+                  const label = resolved ?? (looksLikeId ? 'Resolving…' : a.person.displayName);
+                  return (
+                    <Link to={`/people/${a.person.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Avatar name={label} size="xs" />
+                      <span>{label}</span>
+                    </Link>
+                  );
+                } },
                 { key: 'role', title: 'Role', getValue: (a) => a.staffingRole, render: (a) => a.staffingRole },
                 { key: 'alloc', title: 'Alloc %', align: 'right', getValue: (a) => a.allocationPercent, render: (a) => <span style={NUM}><Pct value={a.allocationPercent} /></span> },
                 { key: 'from', title: 'From', getValue: (a) => a.startDate, render: (a) => formatDateShort(a.startDate) },
