@@ -5,6 +5,10 @@ const frontendPort = Number(process.env['PLAYWRIGHT_FRONTEND_PORT'] ?? 4173);
 const backendHealthPath = process.env['PLAYWRIGHT_BACKEND_HEALTH_PATH'] ?? '/health';
 const smokeOnly = process.env['PLAYWRIGHT_SMOKE_ONLY'] === 'true';
 const configuredWorkers = process.env['PLAYWRIGHT_WORKERS'];
+// V2-staging baseline support: when V2_STAGING_BASE_URL is set, the v2-baseline
+// project targets that origin and does NOT spin up a local webServer.
+const v2StagingBaseUrl = process.env['V2_STAGING_BASE_URL'];
+const isV2Baseline = process.env['PLAYWRIGHT_V2_BASELINE'] === 'true';
 
 export default defineConfig({
   testDir: './e2e',
@@ -22,30 +26,34 @@ export default defineConfig({
   reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   retries: process.env['CI'] ? 2 : 0,
   workers: configuredWorkers ?? (process.env['CI'] ? '50%' : '75%'),
-  webServer: [
-    {
-      command: 'npm run start:dev',
-      reuseExistingServer: !process.env['CI'],
-      timeout: 120_000,
-      url: `http://127.0.0.1:${backendPort}${backendHealthPath}`,
-    },
-    {
-      command: 'npm --prefix frontend run dev -- --host 127.0.0.1 --port 4173',
-      env: {
-        VITE_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
-      },
-      reuseExistingServer: !process.env['CI'],
-      timeout: 120_000,
-      url: `http://127.0.0.1:${frontendPort}`,
-    },
-  ],
+  webServer: isV2Baseline
+    ? undefined
+    : [
+        {
+          command: 'npm run start:dev',
+          reuseExistingServer: !process.env['CI'],
+          timeout: 120_000,
+          url: `http://127.0.0.1:${backendPort}${backendHealthPath}`,
+        },
+        {
+          command: 'npm --prefix frontend run dev -- --host 127.0.0.1 --port 4173',
+          env: {
+            VITE_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
+          },
+          reuseExistingServer: !process.env['CI'],
+          timeout: 120_000,
+          url: `http://127.0.0.1:${frontendPort}`,
+        },
+      ],
   use: {
-    baseURL: process.env['PLAYWRIGHT_BASE_URL'] ?? `http://127.0.0.1:${frontendPort}`,
+    baseURL:
+      v2StagingBaseUrl ?? process.env['PLAYWRIGHT_BASE_URL'] ?? `http://127.0.0.1:${frontendPort}`,
     headless: process.env['PLAYWRIGHT_HEADLESS'] !== 'false',
     screenshot: 'only-on-failure',
     trace: process.env['CI'] ? 'retain-on-failure' : 'on-first-retry',
     video: process.env['CI'] ? 'retain-on-failure' : 'off',
   },
+  snapshotPathTemplate: '{testDir}/v2/snapshots/{arg}{ext}',
   projects: [
     {
       name: 'auth-setup',
@@ -54,7 +62,14 @@ export default defineConfig({
     {
       name: 'chromium',
       dependencies: ['auth-setup'],
-      testIgnore: /auth\.setup\.ts/,
+      testIgnore: /(auth\.setup\.ts|v2\/baseline\.spec\.ts)/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      name: 'v2-baseline',
+      testMatch: /v2\/baseline\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },

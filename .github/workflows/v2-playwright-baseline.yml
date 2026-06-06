@@ -1,0 +1,99 @@
+name: v2-playwright-baseline
+
+# V2 visual-regression baseline.
+#
+# Captures Playwright screenshots of 30 critical pages × 4 viewports = 120 PNG
+# artifacts against v2-staging. Run manually before the C0 flip to establish a
+# golden set, then re-run on subsequent PRs to detect drift.
+#
+# Trigger: manual only (workflow_dispatch). The default V2-staging URL is
+# https://deliverit-test-v2.agentic.uz but can be overridden per-run.
+#
+# Outputs: a single zipped artifact `v2-baseline-snapshots` containing every
+# captured `.png`, the Playwright HTML report, and any diff images. Reviewers
+# download, inspect, and (if the run is the new golden baseline) commit
+# selected snapshots out-of-band.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'V2-staging base URL to snapshot (no trailing slash).'
+        required: false
+        default: 'https://deliverit-test-v2.agentic.uz'
+      api_base:
+        description: 'V2-staging API base URL (used for auth login).'
+        required: false
+        default: 'https://deliverit-test-v2.agentic.uz/api'
+      sample_person_id:
+        description: 'Optional personId used to render /people/:id and similar routes.'
+        required: false
+        default: ''
+      sample_project_id:
+        description: 'Optional projectId used to render /projects/:id and similar routes.'
+        required: false
+        default: ''
+      sample_position_id:
+        description: 'Optional positionId used to render /positions/:id.'
+        required: false
+        default: ''
+      update_snapshots:
+        description: 'Update (overwrite) the golden snapshots committed to the repo. Pass true only on intentional baselines.'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+concurrency:
+  group: v2-playwright-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PLAYWRIGHT_V2_BASELINE: 'true'
+      V2_STAGING_BASE_URL: ${{ inputs.base_url }}
+      PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
+      PLAYWRIGHT_API_BASE: ${{ inputs.api_base }}
+      V2_BASELINE_PERSON_ID: ${{ inputs.sample_person_id }}
+      V2_BASELINE_PROJECT_ID: ${{ inputs.sample_project_id }}
+      V2_BASELINE_POSITION_ID: ${{ inputs.sample_position_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run V2 baseline spec
+        run: |
+          if [ "${{ inputs.update_snapshots }}" = "true" ]; then
+            npx playwright test --project=v2-baseline --update-snapshots
+          else
+            npx playwright test --project=v2-baseline
+          fi
+
+      - name: Upload snapshot artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-baseline-snapshots
+          path: |
+            e2e/v2/snapshots/**
+            playwright-report/**
+            test-results/**
+          retention-days: 30
+          if-no-files-found: warn

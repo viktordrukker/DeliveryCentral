@@ -1,0 +1,41 @@
+{
+  "$comment": "V2 visual-regression baseline routes. 30 critical pages × 4 viewports = 120 snapshots. Sample IDs are placeholders resolved at runtime via SAMPLE_PERSON_ID / SAMPLE_PROJECT_ID / SAMPLE_POSITION_ID env vars or by querying the API.",
+  "viewports": [
+    { "name": "desktop", "width": 1920, "height": 1080 },
+    { "name": "laptop", "width": 1366, "height": 768 },
+    { "name": "tablet", "width": 1024, "height": 768 },
+    { "name": "mobile", "width": 375, "height": 667 }
+  ],
+  "routes": [
+    { "id": "dashboard-workload", "path": "/dashboard", "role": "admin", "waitFor": "[data-testid=\"dashboard-page\"]" },
+    { "id": "dashboard-director", "path": "/dashboard/director", "role": "admin" },
+    { "id": "dashboard-dm", "path": "/dashboard/dm", "role": "admin" },
+    { "id": "dashboard-hr", "path": "/dashboard/hr", "role": "admin" },
+    { "id": "dashboard-rm", "path": "/dashboard/rm", "role": "admin" },
+    { "id": "dashboard-pm", "path": "/dashboard/pm", "role": "admin" },
+    { "id": "dashboard-employee", "path": "/dashboard/employee", "role": "admin" },
+    { "id": "me-overview", "path": "/me", "role": "admin" },
+    { "id": "me-time", "path": "/me?tab=time", "role": "admin" },
+    { "id": "me-assignments", "path": "/me?tab=assignments", "role": "admin" },
+    { "id": "me-leave", "path": "/me?tab=leave", "role": "admin" },
+    { "id": "me-skills", "path": "/me?tab=skills", "role": "admin" },
+    { "id": "me-cases", "path": "/me?tab=cases", "role": "admin" },
+    { "id": "me-profile", "path": "/me?tab=profile", "role": "admin" },
+    { "id": "staffing-desk-table", "path": "/staffing-desk?view=table", "role": "admin" },
+    { "id": "position-detail", "path": "/positions/{positionId}", "role": "admin" },
+    { "id": "staffing-request-new", "path": "/staffing-requests/new", "role": "admin" },
+    { "id": "projects-list", "path": "/projects", "role": "admin" },
+    { "id": "project-detail-pulse", "path": "/projects/{projectId}?tab=pulse", "role": "admin" },
+    { "id": "people-directory", "path": "/people", "role": "admin" },
+    { "id": "person-detail", "path": "/people/{personId}", "role": "admin" },
+    { "id": "approvals", "path": "/approvals", "role": "admin" },
+    { "id": "time-management", "path": "/time-management", "role": "admin" },
+    { "id": "timesheets", "path": "/timesheets", "role": "admin" },
+    { "id": "reports-utilization", "path": "/reports/utilization", "role": "admin" },
+    { "id": "reports-finance", "path": "/reports/finance", "role": "admin" },
+    { "id": "reports-skills", "path": "/reports/skills", "role": "admin" },
+    { "id": "admin-home", "path": "/admin", "role": "admin" },
+    { "id": "admin-leave-policies", "path": "/admin/leave-policies", "role": "admin" },
+    { "id": "setup-wizard", "path": "/setup", "role": "unauthenticated" }
+  ]
+}
