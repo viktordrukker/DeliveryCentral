@@ -28,4 +28,11 @@ describe('V2-A.10/A.11 — TimeManagementPage chrome', () => {
     expect(src).toMatch(/deriveAnomalies\(\{ totalHours: item\.totalHours, overtimeHours: item\.overtimeHours \}\)/);
     expect(src).toMatch(/label="Clean"/);
   });
+
+  // W1-19 — no raw UUID literal may appear in the page source. The rejection
+  // reasons dictionary must be resolved through the key-based metadata API.
+  it('W1-19: contains no UUID-shape literal and uses key-based dictionary lookup', () => {
+    expect(src).not.toMatch(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+    expect(src).toMatch(/fetchMetadataDictionaryByKey\('TimesheetWeek', 'timesheet-rejection-reasons'\)/);
+  });
 });

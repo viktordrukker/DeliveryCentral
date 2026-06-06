@@ -21,7 +21,7 @@ import {
   deriveAnomalies,
   type TimesheetInspectorTarget,
 } from '@/components/time-management/TimesheetInspectorDrawer';
-import { httpGet } from '@/lib/api/http-client';
+import { fetchMetadataDictionaryByKey } from '@/lib/api/metadata';
 import {
   fetchApprovalQueue,
   fetchTeamCalendar,
@@ -157,9 +157,11 @@ export function TimeManagementPage(): JSX.Element {
   const ms = monthStr(year, month);
   const { data: otData } = useOvertimeSummary({ weeks: 4 });
 
-  // Fetch rejection reasons from metadata dictionary
+  // Fetch rejection reasons from metadata dictionary.
+  // W1-19 — resolve by (entityType, dictionaryKey) instead of a hardcoded
+  // UUID so the FE never has to embed a tenant-scoped id literal.
   useEffect(() => {
-    void httpGet<{ entries?: Array<{ entryKey: string; displayName: string; isEnabled: boolean }> }>('/metadata/dictionaries/42222222-0000-0000-0000-000000000201')
+    void fetchMetadataDictionaryByKey('TimesheetWeek', 'timesheet-rejection-reasons')
       .then((d) => {
         const entries = (d.entries ?? []).filter((e) => e.isEnabled).map((e) => ({ key: e.entryKey, label: e.displayName }));
         if (entries.length > 0) setRejectionReasons(entries);
