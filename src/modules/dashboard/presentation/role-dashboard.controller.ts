@@ -22,6 +22,8 @@ import { DirectorSlaSummaryQueryService } from '../application/director-sla-summ
 import { DirectorSlaSummaryDto } from '../application/contracts/director-sla-summary.dto';
 import { EmployeeDashboardQueryService } from '../application/employee-dashboard-query.service';
 import { EmployeeDashboardResponseDto } from '../application/contracts/employee-dashboard.dto';
+import { HeadcountTrendPointDto, HeadcountTrendQueryDto } from '../application/contracts/headcount-trend.dto';
+import { HeadcountTrendService } from '../application/headcount-trend.service';
 import { HrManagerDashboardResponseDto } from '../application/contracts/hr-manager-dashboard.dto';
 import { ProjectManagerDashboardResponseDto } from '../application/contracts/project-manager-dashboard.dto';
 import { HrManagerDashboardQueryService } from '../application/hr-manager-dashboard-query.service';
@@ -46,6 +48,7 @@ export class RoleDashboardController {
     private readonly hrManagerDashboardQueryService: HrManagerDashboardQueryService,
     private readonly pendingActionsQueryService: PendingActionsQueryService,
     private readonly directorSlaSummaryQueryService: DirectorSlaSummaryQueryService,
+    private readonly headcountTrendService: HeadcountTrendService,
   ) {}
 
   @Get('employee/:personId')
@@ -252,6 +255,24 @@ export class RoleDashboardController {
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : 'Pending actions query failed.',
+      );
+    }
+  }
+
+  @Get('headcount/trend')
+  @RequireRoles(...HR_GOVERNANCE_ROLES)
+  @ApiOperation({
+    summary: 'W2-08 — monthly active headcount for the trailing N months (computed from hiredAt / terminatedAt).',
+  })
+  @ApiOkResponse({ type: [HeadcountTrendPointDto] })
+  public async getHeadcountTrend(
+    @Query() query: HeadcountTrendQueryDto,
+  ): Promise<HeadcountTrendPointDto[]> {
+    try {
+      return await this.headcountTrendService.execute({ asOf: query.asOf, months: query.months });
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Headcount trend query failed.',
       );
     }
   }

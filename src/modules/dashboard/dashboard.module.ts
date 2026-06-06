@@ -28,6 +28,7 @@ import { DeliveryManagerDashboardQueryService } from './application/delivery-man
 import { DirectorDashboardQueryService } from './application/director-dashboard-query.service';
 import { DirectorSlaSummaryQueryService } from './application/director-sla-summary-query.service';
 import { EmployeeDashboardQueryService } from './application/employee-dashboard-query.service';
+import { HeadcountTrendService } from './application/headcount-trend.service';
 import { HrManagerDashboardQueryService } from './application/hr-manager-dashboard-query.service';
 import { PendingActionsQueryService } from './application/pending-actions-query.service';
 import { PlannedVsActualQueryService } from './application/planned-vs-actual-query.service';
@@ -163,6 +164,11 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     RoleDashboardQueryService,
     PendingActionsQueryService,
     DirectorSlaSummaryQueryService,
+    {
+      provide: HeadcountTrendService,
+      useFactory: (prisma: PrismaService) => new HeadcountTrendService(prisma),
+      inject: [PrismaService],
+    },
   ],
   exports: [
     DeliveryManagerDashboardQueryService,
@@ -183,6 +189,7 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     MeHomeService,
     SidebarCountsService,
     OrgHealthService,
+    HeadcountTrendService,
   ],
 })
 export class DashboardModule {}

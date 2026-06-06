@@ -16,6 +16,7 @@ import { fetchMoodHeatmap, MoodHeatmapResponse } from '@/lib/api/pulse';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchResourcePools } from '@/lib/api/resource-pools';
 import { fetchCases } from '@/lib/api/cases';
+import { fetchHeadcountTrend, HeadcountTrendPoint } from '@/lib/api/headcount-trend';
 
 import { HrHeadcountTab } from './hr-tabs/HeadcountTab';
 import { HrOrganizationTab } from './hr-tabs/OrganizationTab';
@@ -70,6 +71,18 @@ export function HrDashboardPage(): JSX.Element {
         setOpenCaseSubjects(subjects);
       })
       .catch(() => undefined);
+  }, []);
+
+  // W2-08 — real headcount trend (replaces fabricated identical-value array).
+  // `null` until the request settles; on failure stays `null` so HeadcountTab
+  // renders an EmptyState instead of a fake chart.
+  const [headcountTrend, setHeadcountTrend] = useState<HeadcountTrendPoint[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    void fetchHeadcountTrend(6)
+      .then((data) => { if (active) setHeadcountTrend(data); })
+      .catch(() => { if (active) setHeadcountTrend(null); });
+    return () => { active = false; };
   }, []);
 
   const [heatmapManagerId, setHeatmapManagerId] = useState<string>('');
@@ -157,14 +170,6 @@ export function HrDashboardPage(): JSX.Element {
   const withoutOrgUnit = d?.employeesWithoutOrgUnit.length ?? 0;
   const dataIssues = withoutManager + withoutOrgUnit;
   const atRisk = d?.atRiskEmployees ?? [];
-
-  const headcountTrend = d
-    ? Array.from({ length: 6 }, (_, i) => {
-        const dt = new Date(state.asOf);
-        dt.setMonth(dt.getMonth() - (5 - i));
-        return { count: d.headcountSummary.activeHeadcount, month: dt.toISOString().slice(0, 7) };
-      })
-    : [];
 
   const dataQualityScores = {
     assignmentPct: 100,

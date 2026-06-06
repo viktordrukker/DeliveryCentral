@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/common/EmptyState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { HeadcountTrendLine } from '@/components/charts/HeadcountTrendLine';
@@ -11,7 +12,9 @@ interface Props {
   inactiveHeadcount: number;
   withoutManager: number;
   withoutOrgUnit: number;
-  headcountTrend: Array<{ count: number; month: string }>;
+  // W2-08: `null` while loading or after a failed fetch — render EmptyState
+  // rather than a fabricated trend. `[]` is treated the same.
+  headcountTrend: Array<{ count: number; month: string }> | null;
 }
 
 export function HrHeadcountTab({
@@ -39,8 +42,16 @@ export function HrHeadcountTab({
             <div className="dashboard-hero__subtitle">Active employee count over time</div>
           </div>
         </div>
-        <div className="dashboard-hero__chart">
-          <HeadcountTrendLine data={headcountTrend} />
+        <div className="dashboard-hero__chart" data-testid="hr-headcount-trend-chart">
+          {headcountTrend && headcountTrend.length > 0 ? (
+            <HeadcountTrendLine data={headcountTrend} />
+          ) : (
+            <EmptyState
+              title="Headcount trend unavailable"
+              description="Historical headcount data is not available yet. Check back once people records include hire and termination dates."
+              action={{ href: '/people', label: 'View employee directory' }}
+            />
+          )}
         </div>
       </div>
       <SectionCard
