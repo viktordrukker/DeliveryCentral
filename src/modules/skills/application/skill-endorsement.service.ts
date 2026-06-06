@@ -58,6 +58,9 @@ export class SkillEndorsementService {
       const ageHours = Math.max(0, Math.floor((Date.now() - submittedAt.getTime()) / HOUR_MS));
       return {
         id: r.id,
+        // W1-12 — PersonSkill has no publicId of its own; surface the owning
+        // Skill aggregate's publicId (`skl_…`) so callers can route there.
+        targetPublicId: r.skill.publicId ?? null,
         source: 'skill-review',
         title: `Endorse skill: ${r.skill.name} (proficiency ${r.proficiency})`,
         submittedBy: { personId: r.person.id, displayName: r.person.displayName },

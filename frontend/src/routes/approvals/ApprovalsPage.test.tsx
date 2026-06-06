@@ -15,6 +15,7 @@ vi.mock('@/lib/api/approvals-unified', () => ({
 const sampleItems: ApprovalQueueItemDto[] = [
   {
     id: 'pp-1',
+    targetPublicId: 'pos_apolloSeniorEng',
     source: 'position-proposal',
     title: 'Senior Engineer — Apollo project',
     submittedBy: { personId: 'p1', displayName: 'Ada Lovelace' },
@@ -28,6 +29,7 @@ const sampleItems: ApprovalQueueItemDto[] = [
   },
   {
     id: 'bg-2',
+    targetPublicId: 'prj_atlas',
     source: 'budget',
     title: 'Q3 +$200k for Atlas',
     submittedBy: { personId: 'p2', displayName: 'Grace Hopper' },
@@ -123,6 +125,7 @@ describe('ApprovalsPage', () => {
   it('renders the Timesheets filter chip and refetches with timesheet source', async () => {
     const tsItem: ApprovalQueueItemDto = {
       id: 'tw-1',
+      targetPublicId: 'tsh_w20260525',
       source: 'timesheet',
       title: 'Timesheet week of 2026-05-25',
       submittedBy: { personId: 'p3', displayName: 'Ethan Brooks' },
@@ -161,6 +164,7 @@ describe('ApprovalsPage', () => {
   it('renders leave items and refetches with the leave source when chip clicked', async () => {
     const leaveItem: ApprovalQueueItemDto = {
       id: 'lr-1',
+      targetPublicId: 'lvr_annual1',
       source: 'leave',
       title: 'Leave: ANNUAL 2026-06-15…2026-06-20',
       submittedBy: { personId: 'p9', displayName: 'Ethan Brooks' },
