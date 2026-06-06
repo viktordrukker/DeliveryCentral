@@ -2320,7 +2320,11 @@ model RateCardEntry {
   updatedByPerson   Person?             @relation("RateCardEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   pinnedAssignments ProjectAssignment[] @relation("AssignmentRateCardEntry")
   // Sprint 2 / S2-1 — lean staffing aggregate.
-  pinnedPositions   ProjectPosition[]   @relation("ProjectPositionRateCardEntry")
+  pinnedPositionRelations ProjectPosition[] @relation("ProjectPositionRateCardEntry")
+  // LEAN-P3-1 — provenance snapshot JSONB of the pinned positions at
+  // Phase 3 fixup time (assignmentId/positionId/role/hourlyRate triplets).
+  // See prisma/migrations/20260606_lean_p3_1_data_fixup/migration.sql.
+  pinnedPositions   Json     @default("[]") @db.JsonB
 
   @@unique([rateCardId, staffingRole, grade])
   @@index([rateCardId, isActive])
