@@ -34,6 +34,8 @@ export interface CasesResponse {
 export interface CasesQuery {
   caseTypeKey?: string;
   ownerPersonId?: string;
+  // W2-02 — project-scoped Cases tab on Project Detail filters by relatedProjectId.
+  projectId?: string;
   subjectPersonId?: string;
 }
 
@@ -78,8 +80,17 @@ export async function fetchCases(query: CasesQuery = {}): Promise<CasesResponse>
     params.set('subjectPersonId', query.subjectPersonId);
   }
 
+  if (query.projectId) {
+    params.set('projectId', query.projectId);
+  }
+
   const suffix = params.toString();
   return httpGet<CasesResponse>(`/cases${suffix ? `?${suffix}` : ''}`);
+}
+
+// W2-02 — convenience helper used by the project-scoped Cases tab.
+export async function fetchProjectCases(projectId: string): Promise<CasesResponse> {
+  return fetchCases({ projectId });
 }
 
 export async function fetchCaseById(id: string): Promise<CaseRecord> {

@@ -70,6 +70,37 @@ describe('Case management', () => {
 
     expect(listed).toHaveLength(2);
   });
+
+  // W2-02 — project-scoped Cases tab on Project Detail.
+  it('filters cases by relatedProjectId', async () => {
+    const repository = new InMemoryCaseRecordRepository();
+    const service = new CreateCaseService(repository);
+
+    await service.execute({
+      caseTypeKey: 'ONBOARDING',
+      ownerPersonId: '11111111-1111-1111-1111-111111111006',
+      relatedProjectId: '33333333-3333-3333-3333-333333333001',
+      subjectPersonId: '11111111-1111-1111-1111-111111111012',
+      summary: 'Project A case.',
+    });
+    await service.execute({
+      caseTypeKey: 'ONBOARDING',
+      ownerPersonId: '11111111-1111-1111-1111-111111111007',
+      relatedProjectId: '33333333-3333-3333-3333-333333333002',
+      subjectPersonId: '11111111-1111-1111-1111-111111111011',
+      summary: 'Project B case.',
+    });
+
+    const projectA = await repository.list({ projectId: '33333333-3333-3333-3333-333333333001' });
+    const projectB = await repository.list({ projectId: '33333333-3333-3333-3333-333333333002' });
+    const noMatch = await repository.list({ projectId: '99999999-9999-9999-9999-999999999999' });
+
+    expect(projectA).toHaveLength(1);
+    expect(projectA[0]?.summary).toBe('Project A case.');
+    expect(projectB).toHaveLength(1);
+    expect(projectB[0]?.summary).toBe('Project B case.');
+    expect(noMatch).toHaveLength(0);
+  });
 });
 
 describe('Case management API', () => {

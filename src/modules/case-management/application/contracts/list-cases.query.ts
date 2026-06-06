@@ -12,6 +12,10 @@ export class ListCasesQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsString()
   public subjectPersonId?: string;
 
+  // W2-02 — project-scoped Cases tab on Project Detail filters by relatedProjectId.
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  public projectId?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional() @Type(() => Number) @IsInt()
   public page?: number;

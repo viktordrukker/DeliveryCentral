@@ -8,6 +8,7 @@ interface ListCasesQuery {
   ownerPersonId?: string;
   page?: number;
   pageSize?: number;
+  projectId?: string;
   subjectPersonId?: string;
 }
 
