@@ -312,7 +312,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/new' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-desk/positions/new' },
-  { allowedRoles: ALL_ROLES, path: '/staffing-requests/:id' },
+  { allowedRoles: STAFFING_DESK_ROLES, path: '/staffing-requests/:id' },
   { allowedRoles: CASE_CREATE_ROLES, path: '/cases/new' },
   { allowedRoles: ALL_ROLES, path: '/cases/:id' },
   { allowedRoles: ADMIN_ROLES, description: 'Consolidated operator-facing control surface for configuration and platform settings.', group: 'admin-config', navVisible: true, path: '/admin', title: 'Admin' },

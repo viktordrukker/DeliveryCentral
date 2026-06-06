@@ -270,11 +270,12 @@ describe('persona smoke: full navigation coverage per role', () => {
       mustSee: ['Manager Dashboard', 'Planned vs Actual Time', 'Export Centre', 'Capitalisation', 'Exceptions'],
       mustNotSee: ['Admin', 'Platform Settings', 'Workload Matrix'],
     },
-    // /admin/integrations + /admin/monitoring narrowed to ADMIN_ONLY_ROLES (customer-walk fix #9).
+    // /admin/integrations narrowed to ADMIN_ONLY_ROLES (customer-walk fix #9).
+    // /admin/monitoring widened to MONITORING_ROLES (W1-26): director sees read-only platform health.
     director: {
       minNav: 20,
-      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'Manager Dashboard', 'Admin Notifications', 'Integrations'],
-      mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies', 'Admin Integrations', 'Admin Monitoring'],
+      mustSee: ['Employee Dashboard', 'Exec Dashboard', 'Manager Dashboard', 'Admin Notifications', 'Integrations', 'Admin Monitoring'],
+      mustNotSee: ['Platform Settings', 'Webhooks', 'HRIS Integration', 'Access Policies', 'Admin Integrations'],
     },
     admin: {
       minNav: 25,
