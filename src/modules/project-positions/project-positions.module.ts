@@ -7,6 +7,7 @@ import { NotificationsModule } from '@src/modules/notifications/notifications.mo
 import { PrismaModule } from '@src/shared/persistence/prisma.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { BulkReassignPositionsService } from './application/bulk-reassign-positions.service';
 import { CreateProjectPositionService } from './application/create-project-position.service';
 import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from './application/list-bench-people.service';
@@ -102,6 +103,11 @@ import {
     },
     PositionForensicsService,
     {
+      provide: BulkReassignPositionsService,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) => new BulkReassignPositionsService(prisma),
+    },
+    {
       provide: ProjectPositionMirrorService,
       inject: [PrismaService, DomainEventService],
       useFactory: (prisma: PrismaService, domainEvents: DomainEventService) =>
@@ -109,6 +115,7 @@ import {
     },
   ],
   exports: [
+    BulkReassignPositionsService,
     CreateProjectPositionService,
     TransitionProjectPositionFillService,
     ListProjectPositionsService,

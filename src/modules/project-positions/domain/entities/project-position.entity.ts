@@ -222,6 +222,34 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     this.props.updatedByPersonId = actorId;
   }
 
+  /**
+   * LEAN-P4-missing-1 — move a position to a different project. Used by
+   * the PM bulk-reassign flow. Mutates the projectId in place; the caller
+   * is responsible for bumping `version` (via `bumpVersion()`) once for the
+   * full set of mutations applied to this aggregate before persisting.
+   */
+  public setProjectId(projectId: string): void {
+    this.props.projectId = projectId;
+  }
+
+  /**
+   * LEAN-P4-missing-1 — directly set `activePersonId` (or clear it). Used
+   * by bulk-reassign when the position is already past PROPOSED so we just
+   * swap the person without re-triggering the state machine.
+   */
+  public setActivePersonId(personId: string | undefined): void {
+    this.props.activePersonId = personId;
+  }
+
+  /**
+   * Bump the optimistic-concurrency version once. Mutators that go through
+   * `transitionFill` already bump; setters added for narrow path changes
+   * call this explicitly before persistence.
+   */
+  public bumpVersion(): void {
+    this.props.version = (this.props.version ?? 1) + 1;
+  }
+
   public get updatedByPersonId(): string | undefined {
     return this.props.updatedByPersonId;
   }

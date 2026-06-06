@@ -29,6 +29,8 @@ import {
 
 import {
   BenchCheckRequestDto,
+  BulkReassignPositionsRequestDto,
+  BulkReassignPositionsResponseDto,
   CreateProjectPositionRequestDto,
   ListProjectPositionsQueryDto,
   TransitionProjectPositionFillRequestDto,
@@ -38,6 +40,7 @@ import {
   ListProjectPositionsResponseDto,
   ProjectPositionResponseDto,
 } from '../application/contracts/project-position-responses';
+import { BulkReassignPositionsService } from '../application/bulk-reassign-positions.service';
 import { PositionCandidatesResponseDto } from '../application/contracts/position-candidate.dto';
 import { PersonSuggestedPositionsResponseDto } from '../application/contracts/person-suggested-position.dto';
 import { BenchEnrichedRowDto } from '../application/contracts/bench-enriched.dto';
@@ -80,6 +83,7 @@ export class ProjectPositionsController {
     private readonly getService: GetProjectPositionByIdService,
     private readonly suggestFillsService: SuggestFillsService,
     private readonly forensicsService: PositionForensicsService,
+    private readonly bulkReassignService: BulkReassignPositionsService,
   ) {}
 
   @Get()
@@ -166,6 +170,32 @@ export class ProjectPositionsController {
       openImmediately: body.openImmediately,
     });
     return ProjectPositionResponseDto.from(position);
+  }
+
+  @Post('bulk-reassign')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'LEAN-P4-missing-1 — PM bulk reassign of project positions. Updates ' +
+      'activePersonId and/or projectId for the listed positions inside a ' +
+      'single prisma.$transaction. Any single failure rolls the batch back.',
+  })
+  @ApiOkResponse({ type: BulkReassignPositionsResponseDto })
+  @RequireRoles(...PROJECT_DELIVERY_ROLES)
+  public async bulkReassign(
+    @Body() body: BulkReassignPositionsRequestDto,
+    @Req() request: RequestWithPrincipal,
+  ): Promise<BulkReassignPositionsResponseDto> {
+    const actorId = request.principal?.personId ?? request.principal?.userId ?? '';
+    const actorRoles = request.principal?.roles ?? [];
+    return this.bulkReassignService.execute({
+      positionIds: body.positionIds,
+      toPersonId: body.toPersonId,
+      toProjectId: body.toProjectId,
+      reason: body.reason,
+      actorId,
+      actorRoles,
+    });
   }
 
   @Post(':id/transition')

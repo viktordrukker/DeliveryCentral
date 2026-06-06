@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { isFeatureEnabled } from '@/lib/feature-flags';
+import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
 import { DistributionStudio } from './DistributionStudio';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -177,6 +178,13 @@ export function StaffingDeskPage(): JSX.Element {
           columnWidths={columnWidths}
           onColumnWidthChange={handleColumnWidthChange}
           dsRefresh={dsRefreshEnabled}
+        />
+      )}
+
+      {dsRefreshEnabled && !state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
+        <BulkReassignPanel
+          items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
+          onApplied={() => state.refetch()}
         />
       )}
 

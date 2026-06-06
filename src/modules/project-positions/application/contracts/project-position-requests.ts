@@ -151,3 +151,48 @@ export class BenchCheckRequestDto {
   @IsDateString()
   asOf?: string;
 }
+
+/**
+ * LEAN-P4-missing-1 — payload for POST /project-positions/bulk-reassign.
+ *
+ * Validators use permissive UUID-shape regex to match the rest of this
+ * file (also accepts seed pseudo-UUIDs).
+ */
+export class BulkReassignPositionsRequestDto {
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { each: true, message: '$property entries must be UUID-shaped strings' })
+  positionIds!: string[];
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Person to reassign to. Omit to leave activePersonId unchanged. Pass null to unassign.',
+    nullable: true,
+  })
+  @IsOptional()
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
+  toPersonId?: string | null;
+
+  @ApiProperty({
+    required: false,
+    description: 'Project to move positions to. Omit to leave projectId unchanged.',
+  })
+  @IsOptional()
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
+  toProjectId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+export class BulkReassignPositionsResponseDto {
+  @ApiProperty()
+  reassigned!: number;
+  @ApiProperty({ type: [String] })
+  positionIds!: string[];
+  @ApiProperty({ type: [String] })
+  errors!: string[];
+}
