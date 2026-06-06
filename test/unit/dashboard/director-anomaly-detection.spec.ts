@@ -32,6 +32,7 @@ function buildStub(seed: {
     status: string;
     projectName: string;
   }>;
+  positions?: Array<{ id: string; projectId: string; fillStatus: string }>;
 }): PrismaService {
   const project = {
     findMany: async (q: { where: { id?: { in: string[] }; status?: string } }): Promise<unknown[]> => {
@@ -70,6 +71,17 @@ function buildStub(seed: {
         }));
     },
   };
+  const projectPosition = {
+    findMany: async (q: {
+      where: { projectId: { in: string[] }; fillStatus: { in: string[] } };
+    }): Promise<unknown[]> => {
+      return (seed.positions ?? []).filter(
+        (p) =>
+          q.where.projectId.in.includes(p.projectId)
+          && q.where.fillStatus.in.includes(p.fillStatus),
+      );
+    },
+  };
   void emptyDelegate;
   return {
     project,
@@ -78,6 +90,7 @@ function buildStub(seed: {
     projectActivationApproval,
     projectBudget,
     projectMilestone,
+    projectPosition,
   } as unknown as PrismaService;
 }
 
@@ -187,6 +200,136 @@ describe('DirectorAnomalyDetectionService (FE-#265)', () => {
     expect(slip).toBeDefined();
     expect(slip!.severity).toBe('danger');
     expect(slip!.title).toContain('Cut-over');
+  });
+
+  // ── LEAN-P4-missing-6 — targetPositions hydration ──────────────────────
+
+  it('hydrates targetPositions for project_rag_dropped', async () => {
+    const prisma = buildStub({
+      projects: [{ id: 'pr1', name: 'Atlas', status: 'ACTIVE' }],
+      ragSnapshots: {
+        pr1: [
+          { weekStarting: daysAgo(0), overallRag: 'RED' },
+          { weekStarting: daysAgo(7), overallRag: 'GREEN' },
+        ],
+      },
+      positions: [
+        { id: 'pos-a', projectId: 'pr1', fillStatus: 'OPEN' },
+        { id: 'pos-b', projectId: 'pr1', fillStatus: 'ASSIGNED' },
+        { id: 'pos-c', projectId: 'pr1', fillStatus: 'RELEASED' },
+        { id: 'pos-other', projectId: 'pr-other', fillStatus: 'OPEN' },
+      ],
+    });
+    const svc = new DirectorAnomalyDetectionService(prisma);
+    const out = await svc.detect();
+    const rag = out.find((a) => a.kind === 'project_rag_dropped');
+    expect(rag).toBeDefined();
+    expect(rag!.targetPositions).toEqual(expect.arrayContaining(['pos-a', 'pos-b']));
+    expect(rag!.targetPositions).not.toContain('pos-c'); // RELEASED is excluded
+    expect(rag!.targetPositions).not.toContain('pos-other'); // wrong project
+    expect(rag!.href).toMatch(/\/staffing-desk\?view=table&projectId=pr1&positionIds=/);
+    expect(rag!.href).toMatch(/pos-a/);
+    expect(rag!.href).toMatch(/pos-b/);
+  });
+
+  it('hydrates targetPositions for budget_overrun', async () => {
+    const prisma = buildStub({
+      projects: [{ id: 'pr1', name: 'Atlas', status: 'ACTIVE' }],
+      budgets: [
+        {
+          id: 'b1',
+          projectId: 'pr1',
+          fiscalYear: 2026,
+          capexBudget: 50_000,
+          opexBudget: 50_000,
+          actualCost: 130_000,
+          updatedAt: new Date(),
+        },
+      ],
+      positions: [
+        { id: 'pos-a', projectId: 'pr1', fillStatus: 'PROPOSED' },
+        { id: 'pos-b', projectId: 'pr1', fillStatus: 'ON_HOLD' },
+      ],
+    });
+    const svc = new DirectorAnomalyDetectionService(prisma);
+    const out = await svc.detect();
+    const overrun = out.find((a) => a.kind === 'budget_overrun');
+    expect(overrun).toBeDefined();
+    expect(overrun!.targetPositions).toEqual(expect.arrayContaining(['pos-a', 'pos-b']));
+    expect(overrun!.href).toMatch(/positionIds=/);
+  });
+
+  it('hydrates targetPositions for milestone_slip', async () => {
+    const prisma = buildStub({
+      milestones: [
+        {
+          id: 'm1',
+          name: 'Cut-over',
+          plannedDate: daysAgo(20),
+          projectId: 'pr1',
+          progressPct: 60,
+          status: 'IN_PROGRESS',
+          projectName: 'Atlas',
+        },
+      ],
+      positions: [
+        { id: 'pos-a', projectId: 'pr1', fillStatus: 'OPEN' },
+      ],
+    });
+    const svc = new DirectorAnomalyDetectionService(prisma);
+    const out = await svc.detect();
+    const slip = out.find((a) => a.kind === 'milestone_slip');
+    expect(slip).toBeDefined();
+    expect(slip!.targetPositions).toEqual(['pos-a']);
+    expect(slip!.href).toContain('positionIds=pos-a');
+  });
+
+  it('leaves targetPositions empty for pending_approval_age and other unrelated kinds', async () => {
+    const prisma = buildStub({
+      budgetApprovals: [
+        {
+          id: 'ba1',
+          requestedAt: daysAgo(20),
+          projectBudget: { projectId: 'pr1', fiscalYear: 2026 },
+        },
+      ],
+      positions: [
+        { id: 'pos-a', projectId: 'pr1', fillStatus: 'OPEN' },
+      ],
+    });
+    const svc = new DirectorAnomalyDetectionService(prisma);
+    const out = await svc.detect();
+    const aged = out.find((a) => a.kind === 'pending_approval_age');
+    expect(aged).toBeDefined();
+    expect(aged!.targetPositions).toEqual([]);
+    // href stays on the project budget page — not redirected to staffing-desk
+    expect(aged!.href).not.toContain('/staffing-desk');
+  });
+
+  it('leaves position-bearing anomalies with empty targetPositions and original href when no positions exist', async () => {
+    const prisma = buildStub({
+      projects: [{ id: 'pr1', name: 'Atlas', status: 'ACTIVE' }],
+      budgets: [
+        {
+          id: 'b1',
+          projectId: 'pr1',
+          fiscalYear: 2026,
+          capexBudget: 50_000,
+          opexBudget: 50_000,
+          actualCost: 130_000,
+          updatedAt: new Date(),
+        },
+      ],
+      // No positions for pr1 — only RELEASED ones, which the active-status
+      // filter strips out.
+      positions: [{ id: 'pos-rel', projectId: 'pr1', fillStatus: 'RELEASED' }],
+    });
+    const svc = new DirectorAnomalyDetectionService(prisma);
+    const out = await svc.detect();
+    const overrun = out.find((a) => a.kind === 'budget_overrun');
+    expect(overrun).toBeDefined();
+    expect(overrun!.targetPositions).toEqual([]);
+    expect(overrun!.href).toBe('/projects/pr1?tab=money'); // unchanged
   });
 
   it('sorts by severity then decayRate, respects limit', async () => {

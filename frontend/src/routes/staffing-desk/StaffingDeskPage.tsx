@@ -37,8 +37,14 @@ const FILTER_DEFAULTS = {
   pageSize: '50',
   person: '',
   poolId: '',
+  // LEAN-P4-missing-6 — CSV of ProjectPosition ids the page is filtered to.
+  // Wired in by the Director "What needs you now" anomaly rail (deep-link
+  // from /dashboard/director). Filtering is client-side over `state.items`;
+  // the BE already narrows by `projectId` carried alongside.
+  positionIds: '',
   priority: '',
   project: '',
+  projectId: '',
   role: '',
   skills: '',
   sortBy: '',
@@ -93,6 +99,7 @@ export function StaffingDeskPage(): JSX.Element {
     kind: filters.kind,
     person: filters.person,
     project: filters.project,
+    projectId: filters.projectId,
     poolId: filters.poolId,
     orgUnitId: filters.orgUnitId,
     status: filters.status,
@@ -108,6 +115,18 @@ export function StaffingDeskPage(): JSX.Element {
     page: filters.page,
     pageSize: filters.pageSize,
   });
+
+  // LEAN-P4-missing-6 — when the Director anomaly rail deep-links us with
+  // `?positionIds=<csv>`, filter the desk rows down to that exact set.
+  // ProjectPosition ids appear as `row.id` (lean-aggregate model: each desk
+  // row is the position projected as an assignment/request); rows with no
+  // matching id are excluded. Done client-side because the position id is
+  // not yet a first-class server-side filter on the desk endpoint.
+  const positionIdsSet = useMemo(() => {
+    const csv = filters.positionIds.trim();
+    if (!csv) return null;
+    return new Set(csv.split(',').map((s) => s.trim()).filter((s) => s.length > 0));
+  }, [filters.positionIds]);
 
   const deskActions = useStaffingDeskActions(state.refetch);
 
@@ -167,7 +186,10 @@ export function StaffingDeskPage(): JSX.Element {
 
       {!state.isLoading && !state.error && (filters.view === 'table' || filters.view === 'board' || !filters.view) && (
         <StaffingDeskTable
-          items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
+          items={state.items.filter((row) =>
+            !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
+            && (positionIdsSet === null || positionIdsSet.has(row.id))
+          )}
           onRowClick={setSelectedRow}
           onPersonClick={handlePersonClick}
           activeTab={filters.kind}
