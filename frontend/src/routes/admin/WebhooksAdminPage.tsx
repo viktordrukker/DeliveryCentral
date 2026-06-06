@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import { AdminTabbedShell } from '@/components/admin/AdminTabbedShell';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
-import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import {
   WebhookSubscription,
@@ -117,13 +116,12 @@ export function WebhooksAdminPage(): JSX.Element {
   }
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Manage outbound webhook subscriptions. Events are signed with HMAC-SHA256 in the X-Delivery-Signature header."
-        title="Webhook Subscriptions"
-      />
-
+    <AdminTabbedShell
+      eyebrow="Admin"
+      subtitle="Manage outbound webhook subscriptions. Events are signed with HMAC-SHA256 in the X-Delivery-Signature header."
+      testId="webhooks-admin-page"
+      title="Webhook Subscriptions"
+    >
       {error ? <ErrorState description={error} /> : null}
 
       <div style={{ background: 'var(--color-surface-alt)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '1rem', marginBottom: '1.5rem' }}>
@@ -252,6 +250,6 @@ export function WebhooksAdminPage(): JSX.Element {
         onConfirm={() => { const id = confirmDeleteId; setConfirmDeleteId(null); if (id) void handleDelete(id); }}
         title="Delete webhook?"
       />
-    </PageContainer>
+    </AdminTabbedShell>
   );
 }

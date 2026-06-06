@@ -113,14 +113,25 @@ describe('SettingsPage', () => {
   it('renders the settings page title', async () => {
     mockedFetch.mockResolvedValue(MOCK_SETTINGS);
     renderPage();
-    expect(await screen.findByText('Platform Settings')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Platform Settings' })).toBeInTheDocument();
+  });
+
+  it('renders inside the admin tabbed shell (W3-01)', async () => {
+    mockedFetch.mockResolvedValue(MOCK_SETTINGS);
+    renderPage();
+    expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-settings')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-organization-config')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-hris')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-webhooks')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-settings')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('renders the key setting sections including evidence management', async () => {
     mockedFetch.mockResolvedValue(MOCK_SETTINGS);
     renderPage();
 
-    await screen.findByText('Platform Settings');
+    await screen.findByRole('heading', { name: 'Platform Settings' });
 
     expect(screen.getByTestId('settings-section-general')).toBeInTheDocument();
     expect(screen.getByTestId('settings-section-timesheets')).toBeInTheDocument();
