@@ -56,6 +56,13 @@ export interface CreateCaseRequest {
   summary?: string;
 }
 
+export async function fetchMyCases(): Promise<CasesResponse> {
+  // W2-01 — caller-scoped HR cases. The backend `/api/me/cases` endpoint
+  // filters to cases where the caller is the subject or a participant, so
+  // employees can see HR cases about them without holding HR roles.
+  return httpGet<CasesResponse>('/me/cases');
+}
+
 export async function fetchCases(query: CasesQuery = {}): Promise<CasesResponse> {
   const params = new URLSearchParams();
 
