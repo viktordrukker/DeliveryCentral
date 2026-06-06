@@ -26,7 +26,10 @@ export default defineConfig({
   reporter: process.env['CI'] ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   retries: process.env['CI'] ? 2 : 0,
   workers: configuredWorkers ?? (process.env['CI'] ? '50%' : '75%'),
-  webServer: isV2Baseline
+  // PLAYWRIGHT_SKIP_WEB_SERVER=1 (axe baseline workflow) or isV2Baseline
+  // (v2-playwright-baseline workflow) both target remote staging URLs and
+  // skip the local backend+frontend boot.
+  webServer: isV2Baseline || process.env['PLAYWRIGHT_SKIP_WEB_SERVER'] === '1'
     ? undefined
     : [
         {
