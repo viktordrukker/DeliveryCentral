@@ -63,3 +63,38 @@ export async function createPeriodLock(from: string, to: string): Promise<Period
 export async function deletePeriodLock(id: string): Promise<void> {
   return httpDelete<void>(`/admin/period-locks/${id}`);
 }
+
+// LEAN-P4-missing-7 — CPI what-if projection.
+
+export interface CpiWhatIfPersonRow {
+  role: string;
+  monthlyRate: number;
+  monthsRemaining: number;
+  quantity: number;
+}
+
+export interface CpiWhatIfScenario {
+  scenarioPeople: CpiWhatIfPersonRow[];
+  scenarioAdditionalHours?: number;
+  fiscalYear?: number;
+}
+
+export type CpiWarningThreshold = 'GREEN' | 'AMBER' | 'RED';
+
+export interface CpiWhatIfResponse {
+  baselineCPI: number;
+  projectedCPI: number;
+  deltaACWP: number;
+  warningThreshold: CpiWarningThreshold;
+  explanation: string;
+}
+
+export async function cpiWhatIf(
+  projectId: string,
+  scenario: CpiWhatIfScenario,
+): Promise<CpiWhatIfResponse> {
+  return httpPost<CpiWhatIfResponse, CpiWhatIfScenario>(
+    `/projects/${projectId}/cpi-what-if`,
+    scenario,
+  );
+}

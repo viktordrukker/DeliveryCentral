@@ -5,6 +5,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { fetchProjectBudgetDashboard, type ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
+import { CpiWhatIfCard } from './CpiWhatIfCard';
 import { MoneyPanel } from './MoneyPanel';
 import { BudgetTab } from './BudgetTab';
 
@@ -59,6 +60,8 @@ export function MoneyTab({ projectId }: MoneyTabProps): JSX.Element {
       {!loading && !error && dashboard ? (
         <MoneyPanel dashboard={dashboard} projectId={projectId} />
       ) : null}
+
+      <CpiWhatIfCard projectId={projectId} />
 
       <SectionCard
         title="Budget administration"
