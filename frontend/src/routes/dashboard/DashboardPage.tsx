@@ -136,7 +136,10 @@ export function DashboardPage(): JSX.Element {
       items.push({
         code: project.projectCode,
         entity: project.name,
-        href: `/projects/${project.id}`,
+        // W3-12 — canonical staffing surface is /staffing-desk (not legacy
+        // /staffing-requests). Deep-link the project filter so the user
+        // lands on the board ready to open positions.
+        href: `/staffing-desk?view=board&projectId=${encodeURIComponent(project.id)}`,
         id: `unstaffed-${project.id}`,
         impact: 'No staff assigned — delivery at risk',
         index: items.length + 1,
@@ -144,7 +147,7 @@ export function DashboardPage(): JSX.Element {
         severity: 'High',
         severityTone: 'danger',
         status: 'Open',
-        suggestedAction: 'Create staffing request',
+        suggestedAction: 'Open staffing desk',
         type: 'Unstaffed Project',
       });
     });
