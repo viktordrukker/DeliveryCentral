@@ -33,6 +33,7 @@ function makeController(opts: {
     noop, // getService
     noop, // suggestFillsService
     forensicsService,
+    noop, // bulkReassignService
   );
 
   return { controller, svc: forensicsService };

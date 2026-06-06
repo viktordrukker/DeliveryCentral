@@ -288,6 +288,29 @@ export async function fetchPositionForensics(positionId: string): Promise<Positi
   return httpGet<PositionForensics>(`/project-positions/${positionId}/forensics`);
 }
 
+// LEAN-P4-missing-1 — PM bulk reassignment.
+export interface BulkReassignPositionsRequest {
+  positionIds: string[];
+  toPersonId?: string | null;
+  toProjectId?: string;
+  reason?: string;
+}
+
+export interface BulkReassignPositionsResponse {
+  reassigned: number;
+  positionIds: string[];
+  errors: string[];
+}
+
+export async function bulkReassignPositions(
+  request: BulkReassignPositionsRequest,
+): Promise<BulkReassignPositionsResponse> {
+  return httpPost<BulkReassignPositionsResponse, BulkReassignPositionsRequest>(
+    '/project-positions/bulk-reassign',
+    request,
+  );
+}
+
 // ─── Legacy aliases ────────────────────────────────────────────────────────
 // Phase 2 transitional surface. Consumers still importing the legacy assignment
 // types can switch their import path to '@/lib/api/project-positions' and pick
