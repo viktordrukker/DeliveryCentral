@@ -1,5 +1,34 @@
 import { ListEnrichedBenchService } from '@src/modules/project-positions/application/list-enriched-bench.service';
+import type { SuggestFillsService } from '@src/modules/project-positions/application/suggest-fills.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+interface FakeSuggestion {
+  personId: string;
+  projectIds: string[];
+}
+
+/**
+ * W2-06 stub — SuggestFillsService.suggestForPerson returns a precomputed
+ * set of projectIds per person. Default = empty list. Tests opting into
+ * suggested-fill behaviour pass `suggestions:` to control output.
+ */
+function buildSuggestStub(suggestions: FakeSuggestion[] = []): SuggestFillsService {
+  const byPerson = new Map(suggestions.map((s) => [s.personId, s.projectIds]));
+  return {
+    suggestForPerson: async (personId: string) => ({
+      personId,
+      candidates: (byPerson.get(personId) ?? []).map((projectId, idx) => ({
+        positionId: `pos-${projectId}-${idx}`,
+        projectId,
+        projectName: projectId,
+        role: 'Engineer',
+        matchScore: 0.7,
+        matchedSkills: [],
+        missingSkills: [],
+      })),
+    }),
+  } as unknown as SuggestFillsService;
+}
 
 interface FakePerson {
   id: string;
@@ -67,7 +96,7 @@ function buildStub(seed: {
 
 describe('ListEnrichedBenchService (FE-#261)', () => {
   it('returns empty when no active persons exist', async () => {
-    const svc = new ListEnrichedBenchService(buildStub({}));
+    const svc = new ListEnrichedBenchService(buildStub({}), buildSuggestStub());
     expect(await svc.listBench()).toEqual([]);
   });
 
@@ -81,7 +110,7 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
       filledPersonIds: ['p2'],
     });
     void today;
-    const svc = new ListEnrichedBenchService(prisma);
+    const svc = new ListEnrichedBenchService(prisma, buildSuggestStub());
     const rows = await svc.listBench();
     expect(rows).toHaveLength(1);
     expect(rows[0]!.personId).toBe('p1');
@@ -100,7 +129,7 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
         { previousPersonId: 'p1', occurredAt: new Date('2026-05-14T00:00:00Z') }, // 10d ago
       ],
     });
-    const svc = new ListEnrichedBenchService(prisma);
+    const svc = new ListEnrichedBenchService(prisma, buildSuggestStub());
     const rows = await svc.listBench({ asOf });
     const p1 = rows.find((r) => r.personId === 'p1')!;
     const p2 = rows.find((r) => r.personId === 'p2')!;
@@ -108,14 +137,80 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
     expect(p2.daysOnBench).toBe(20); // 2026-05-04 → 2026-05-24
   });
 
-  it('isOnBench is always true; suggestedProjectIds defaults to []', async () => {
+  it('isOnBench is always true; suggestedProjectIds defaults to [] when SuggestFills returns no matches', async () => {
     const prisma = buildStub({
       people: [{ id: 'p1', displayName: 'Solo', role: 'Eng', location: null, grade: null, hiredAt: null }],
     });
-    const svc = new ListEnrichedBenchService(prisma);
+    const svc = new ListEnrichedBenchService(prisma, buildSuggestStub());
     const rows = await svc.listBench();
     expect(rows[0]!.isOnBench).toBe(true);
     expect(rows[0]!.suggestedProjectIds).toEqual([]);
+  });
+
+  it('W2-06: populates suggestedProjectIds from SuggestFillsService.suggestForPerson', async () => {
+    const prisma = buildStub({
+      people: [
+        { id: 'p1', displayName: 'A', role: 'Eng', location: null, grade: null, hiredAt: null },
+        { id: 'p2', displayName: 'B', role: 'Eng', location: null, grade: null, hiredAt: null },
+      ],
+    });
+    const suggest = buildSuggestStub([
+      { personId: 'p1', projectIds: ['proj-alpha', 'proj-beta'] },
+      { personId: 'p2', projectIds: [] },
+    ]);
+    const svc = new ListEnrichedBenchService(prisma, suggest);
+    const rows = await svc.listBench();
+    const p1 = rows.find((r) => r.personId === 'p1')!;
+    const p2 = rows.find((r) => r.personId === 'p2')!;
+    expect(p1.suggestedProjectIds).toEqual(['proj-alpha', 'proj-beta']);
+    expect(p2.suggestedProjectIds).toEqual([]);
+  });
+
+  it('W2-06: dedupes projectIds when multiple positions point at the same project', async () => {
+    const prisma = buildStub({
+      people: [{ id: 'p1', displayName: 'A', role: 'Eng', location: null, grade: null, hiredAt: null }],
+    });
+    // Two candidates ranking the same projectId — output should keep one.
+    const suggest = buildSuggestStub([
+      { personId: 'p1', projectIds: ['proj-alpha', 'proj-alpha', 'proj-beta'] },
+    ]);
+    const svc = new ListEnrichedBenchService(prisma, suggest);
+    const rows = await svc.listBench();
+    expect(rows[0]!.suggestedProjectIds).toEqual(['proj-alpha', 'proj-beta']);
+  });
+
+  it('W2-06: degrades gracefully when SuggestFills throws for a single person', async () => {
+    const prisma = buildStub({
+      people: [
+        { id: 'p1', displayName: 'A', role: 'Eng', location: null, grade: null, hiredAt: null },
+        { id: 'p2', displayName: 'B', role: 'Eng', location: null, grade: null, hiredAt: null },
+      ],
+    });
+    const flaky: SuggestFillsService = {
+      suggestForPerson: async (personId: string) => {
+        if (personId === 'p1') throw new Error('boom');
+        return {
+          personId,
+          candidates: [
+            {
+              positionId: 'pos-x',
+              projectId: 'proj-gamma',
+              projectName: 'Gamma',
+              role: 'Eng',
+              matchScore: 0.5,
+              matchedSkills: [],
+              missingSkills: [],
+            },
+          ],
+        };
+      },
+    } as unknown as SuggestFillsService;
+    const svc = new ListEnrichedBenchService(prisma, flaky);
+    const rows = await svc.listBench();
+    const p1 = rows.find((r) => r.personId === 'p1')!;
+    const p2 = rows.find((r) => r.personId === 'p2')!;
+    expect(p1.suggestedProjectIds).toEqual([]);
+    expect(p2.suggestedProjectIds).toEqual(['proj-gamma']);
   });
 
   it('row count reconciles with the canonical bench helper', async () => {
@@ -132,7 +227,7 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
       ],
       filledPersonIds: ['p2', 'p4'],
     });
-    const svc = new ListEnrichedBenchService(prisma);
+    const svc = new ListEnrichedBenchService(prisma, buildSuggestStub());
     const rows = await svc.listBench();
     expect(rows).toHaveLength(3);
     expect(rows.map((r) => r.personId).sort()).toEqual(['p1', 'p3', 'p5']);
