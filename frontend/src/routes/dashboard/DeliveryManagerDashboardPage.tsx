@@ -21,7 +21,6 @@ import { fetchTeamConflicts, type TeamConflict } from '@/lib/api/dm-team';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { DmEscalationsCard } from '@/components/dashboard/DmEscalationsCard';
-import { isFeatureEnabled } from '@/lib/feature-flags';
 // 20c-15 — KPI strip extracted to its own component (was 3 inline <Link> tiles
 // inside the page render).
 import { DeliveryManagerKpiStrip } from '@/components/dashboard/delivery-manager/DeliveryManagerKpiStrip';
