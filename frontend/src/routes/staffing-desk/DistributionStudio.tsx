@@ -8,6 +8,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button, FormField, FormModal, Input } from '@/components/ds';
+import { useFilterParams } from '@/hooks/useFilterParams';
 import {
   type PlannerScenarioDto,
   type SolverStrategy,
@@ -26,6 +27,21 @@ const STRATEGIES: { id: SolverStrategy; label: string; hint: string }[] = [
   { id: 'CHEAPEST', label: 'Cheapest', hint: 'Minimize cost rate' },
   { id: 'GROWTH', label: 'Growth', hint: 'Stretch assignments for grade growth' },
 ];
+
+const STRATEGY_IDS: readonly SolverStrategy[] = STRATEGIES.map((s) => s.id);
+
+function parseStrategy(value: string): SolverStrategy {
+  return (STRATEGY_IDS as readonly string[]).includes(value)
+    ? (value as SolverStrategy)
+    : 'BALANCED';
+}
+
+// W3-08 — URL-persisted planner filters (UX Law 5). Defaults match the
+// previous useState defaults so existing visits behave unchanged.
+const PLANNER_FILTER_DEFAULTS: { plannerScenarioId: string; plannerStrategy: string } = {
+  plannerScenarioId: '',
+  plannerStrategy: 'BALANCED',
+};
 
 interface DistributionStudioProps {
   /** When true, surfaces destructive actions (delete / apply). */
@@ -50,12 +66,23 @@ interface DistributionStudioProps {
  * Reference: DS/page-staffing-desk.jsx — Planner view.
  */
 export function DistributionStudio({ canEdit = false }: DistributionStudioProps): JSX.Element {
+  // W3-08 — strategy + selected scenario id persist via URL (UX Law 5).
+  // Filter keys are prefixed (`planner*`) so they don't collide with the
+  // parent StaffingDeskPage filter namespace.
+  const [plannerFilters, setPlannerFilters] = useFilterParams(PLANNER_FILTER_DEFAULTS);
+  const activeId = plannerFilters.plannerScenarioId === '' ? null : plannerFilters.plannerScenarioId;
+  const strategy: SolverStrategy = parseStrategy(plannerFilters.plannerStrategy);
+  const setActiveId = (id: string | null): void => {
+    setPlannerFilters({ plannerScenarioId: id ?? '' });
+  };
+  const setStrategy = (next: SolverStrategy): void => {
+    setPlannerFilters({ plannerStrategy: next });
+  };
+
   const [scenarios, setScenarios] = useState<PlannerScenarioDto[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [strategy, setStrategy] = useState<SolverStrategy>('BALANCED');
   const [solverOutput, setSolverOutput] = useState<{ score: number; explanation: string } | null>(null);
   // V2-C.14 DS-conformance — replaced the browser scenario-name prompt with a DS FormModal.
   const [createOpen, setCreateOpen] = useState(false);
