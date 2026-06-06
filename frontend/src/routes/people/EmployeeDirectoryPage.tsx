@@ -586,7 +586,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
             ) : !dsRefreshEnabled ? (
               <EmployeeDirectoryTable
                 items={state.visibleItems}
-                onRowClick={(item) => navigate(`/people/${item.id}`)}
+                onRowClick={(item) => navigate(`/people/${item.publicId ?? item.id}`)}
               />
             ) : filters.layout === 'grid' ? (
               /* V2-B.19 — grid/card layout */
@@ -602,7 +602,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                       {group.items.map((p) => (
                         <Link
                           key={p.id}
-                          to={`/people/${p.id}`}
+                          to={`/people/${p.publicId ?? p.id}`}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'left',
                             padding: 'var(--space-3)', border: '1px solid var(--color-border)',
@@ -689,7 +689,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                     </h4>
                     <EmployeeDirectoryTable
                       items={group.items}
-                      onRowClick={(item) => navigate(`/people/${item.id}`)}
+                      onRowClick={(item) => navigate(`/people/${item.publicId ?? item.id}`)}
                     />
                   </div>
                 ))}

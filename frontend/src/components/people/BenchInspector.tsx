@@ -249,7 +249,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
       </div>
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Button as={Link} variant="secondary" size="sm" to={`/people/${row.personId}`}>
+        <Button as={Link} variant="secondary" size="sm" to={`/people/${row.personPublicId ?? row.personId}`}>
           Open profile
         </Button>
         <Button

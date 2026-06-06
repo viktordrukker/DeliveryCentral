@@ -15,7 +15,12 @@ export class PrismaPersonDirectoryQueryRepository
   public constructor(private readonly prisma: PrismaService) {}
 
   public async findById(id: string, asOf: Date = new Date()): Promise<PersonDirectoryRecord | null> {
-    if (!PrismaPersonDirectoryQueryRepository.looksLikeUuid(id)) {
+    // W1-09 — accept either a raw UUID (legacy callers) or a `usr_...` publicId
+    // emitted by the publicId foundation (issue 564). Anything else short-circuits
+    // to null without hitting the database.
+    const isUuid = PrismaPersonDirectoryQueryRepository.looksLikeUuid(id);
+    const isPublicId = /^usr_[A-Za-z0-9]{6,32}$/.test(id);
+    if (!isUuid && !isPublicId) {
       return null;
     }
 
@@ -79,7 +84,7 @@ export class PrismaPersonDirectoryQueryRepository
       where: {
         archivedAt: null,
         deletedAt: null,
-        id,
+        ...(isUuid ? { id } : { publicId: id }),
       },
     });
 

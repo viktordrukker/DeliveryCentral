@@ -27,6 +27,7 @@ import { AllowSelfScope } from '@src/modules/identity-access/application/self-sc
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import { ALL_AUTHENTICATED_ROLES, ALL_MANAGER_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { AuditRead } from '@src/shared/http/audit-read.decorator';
+import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 
 import { CreateEmployeeRequestDto } from '../application/contracts/create-employee.request';
 import { EmployeeResponseDto } from '../application/contracts/employee.response';
@@ -152,7 +153,9 @@ export class PersonDirectoryController {
   @ApiOperation({ summary: 'Get a person directory record by id' })
   @ApiOkResponse({ type: PersonDirectoryItemDto })
   @ApiNotFoundResponse({ description: 'Person not found.' })
-  public async getPersonById(@Param('id', ParseUUIDPipe) id: string): Promise<PersonDirectoryItemDto> {
+  public async getPersonById(
+    @Param('id', ParsePublicIdOrUuid(AggregateType.Person)) id: string,
+  ): Promise<PersonDirectoryItemDto> {
     const person = await this.personDirectoryQueryService.getPersonById(id);
 
     if (!person) {
@@ -168,10 +171,21 @@ export class PersonDirectoryController {
   @ApiOperation({ summary: 'Get employee activity feed (lifecycle events)' })
   @ApiOkResponse({ description: 'Activity events for the person.' })
   public async getPersonActivity(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.Person)) id: string,
     @Query('limit') limit?: string,
   ): Promise<EmployeeActivityEventDto[]> {
-    return this.employeeActivityService.listByPerson(id, limit ? parseInt(limit, 10) : 50);
+    // W1-09 — accept either a uuid or `usr_…` publicId on the route. The
+    // activity service issues a Prisma findMany keyed by personId (uuid), so
+    // resolve a publicId to the underlying uuid first via the directory query.
+    let resolvedId = id;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      const person = await this.personDirectoryQueryService.getPersonById(id);
+      if (!person) {
+        throw new NotFoundException('Person not found.');
+      }
+      resolvedId = person.id;
+    }
+    return this.employeeActivityService.listByPerson(resolvedId, limit ? parseInt(limit, 10) : 50);
   }
 
   private mapEmployeeResponse(

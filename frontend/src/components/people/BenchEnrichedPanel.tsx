@@ -374,7 +374,7 @@ export function BenchEnrichedPanel(): JSX.Element {
                 getValue: () => '',
                 render: (r) => (
                   <Link
-                    to={`/people/${r.personId}`}
+                    to={`/people/${r.personPublicId ?? r.personId}`}
                     className="compact"
                     style={{
                       color: 'var(--color-accent)',

@@ -50,7 +50,7 @@ export function ManagerScopeSection({
               </dl>
 
               <div className="scope-card__actions">
-                <Button as={Link} variant="secondary" to={`/people/${item.id}`}>
+                <Button as={Link} variant="secondary" to={`/people/${item.publicId ?? item.id}`}>
                   View person
                 </Button>
                 <Button as={Link} variant="secondary" to={`/assignments?person=${encodeURIComponent(item.displayName)}`}>

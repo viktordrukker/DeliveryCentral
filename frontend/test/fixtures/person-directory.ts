@@ -8,17 +8,19 @@ export function buildPersonDirectoryItem(
 ): PersonDirectoryItem {
   return {
     currentAssignmentCount: 2,
-    currentLineManager: { displayName: 'Sophia Kim', id: 'manager-1' },
+    currentLineManager: { displayName: 'Sophia Kim', id: 'manager-1', publicId: null },
     currentOrgUnit: {
       code: 'DEP-APP',
       id: 'org-application-engineering',
       name: 'Application Engineering',
+      publicId: null,
     },
     displayName: 'Ethan Brooks',
-    dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'manager-2' }],
+    dottedLineManagers: [{ displayName: 'Lucas Reed', id: 'manager-2', publicId: null }],
     grade: null,
     hiredAt: '2025-01-15T00:00:00.000Z',
     id: 'person-ethan-brooks',
+    publicId: null,
     lifecycleStatus: 'ACTIVE',
     primaryEmail: 'ethan.brooks@example.com',
     resourcePoolIds: ['pool-platform-engineering'],
