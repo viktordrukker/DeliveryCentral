@@ -5,14 +5,24 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
-import { HrisConfig, HrisSyncResult, fetchHrisConfig, updateHrisConfig, triggerHrisSync } from '@/lib/api/hris';
+import {
+  HrisConfig,
+  HrisSyncResult,
+  HrisTestConnectionResult,
+  fetchHrisConfig,
+  updateHrisConfig,
+  triggerHrisSync,
+  testHrisConnection,
+} from '@/lib/api/hris';
 import { Button } from '@/components/ds';
 
 export function HrisConfigPage(): JSX.Element {
   const [config, setConfig] = useState<HrisConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [syncResult, setSyncResult] = useState<HrisSyncResult | null>(null);
+  const [testResult, setTestResult] = useState<HrisTestConnectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +54,19 @@ export function HrisConfigPage(): JSX.Element {
       setError(e instanceof Error ? e.message : 'Sync failed.');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleTestConnection(): Promise<void> {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testHrisConnection();
+      setTestResult(result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Test connection failed.');
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -142,14 +165,44 @@ export function HrisConfigPage(): JSX.Element {
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
           <Button variant="primary" disabled={saving} onClick={() => void handleSave()} type="button">
             {saving ? 'Saving…' : 'Save Configuration'}
           </Button>
           <Button variant="secondary" disabled={syncing || config.activeAdapter === 'none'} onClick={() => void handleSync()} type="button">
             {syncing ? 'Syncing…' : 'Run Sync Now'}
           </Button>
+          <Button
+            variant="secondary"
+            disabled={testing || config.activeAdapter === 'none'}
+            onClick={() => void handleTestConnection()}
+            type="button"
+          >
+            {testing ? 'Testing…' : 'Test Connection'}
+          </Button>
         </div>
+
+        {testResult ? (
+          <div
+            data-testid="hris-test-connection-result"
+            style={{
+              background: testResult.reachable ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+              border: `1px solid ${testResult.reachable ? 'var(--color-status-active)' : 'var(--color-status-danger)'}`,
+              borderRadius: 6,
+              padding: '0.75rem',
+              fontSize: '0.8rem',
+            }}
+          >
+            <strong>
+              {testResult.reachable
+                ? `${testResult.adapter} reachable in ${testResult.latencyMs} ms.`
+                : `${testResult.adapter} unreachable (${testResult.latencyMs} ms).`}
+            </strong>
+            {testResult.errorMessage ? (
+              <div style={{ marginTop: 4, color: 'var(--color-status-danger)' }}>{testResult.errorMessage}</div>
+            ) : null}
+          </div>
+        ) : null}
 
         {syncResult ? (
           <div
