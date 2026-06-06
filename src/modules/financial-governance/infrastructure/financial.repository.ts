@@ -94,6 +94,16 @@ export class FinancialRepository {
     return this.prisma.periodLock.findMany({ orderBy: { periodFrom: 'desc' } });
   }
 
+  public async findPeopleByIds(
+    personIds: string[],
+  ): Promise<Array<{ id: string; displayName: string; publicId: string | null }>> {
+    if (personIds.length === 0) return [];
+    return this.prisma.person.findMany({
+      where: { id: { in: personIds } },
+      select: { id: true, displayName: true, publicId: true },
+    });
+  }
+
   public async deletePeriodLock(id: string): Promise<void> {
     await this.prisma.periodLock.delete({ where: { id } });
   }

@@ -75,8 +75,8 @@ export function BusinessAuditAdminContent(): JSX.Element {
                   exportToXlsx(
                     state.data.map((entry) => ({
                       Action: entry.actionType,
-                      Actor: entry.actorId ?? '',
-                      'Entity ID': entry.targetEntityId ?? '',
+                      Actor: entry.actorDisplayName ?? (entry.actorId ? 'Unknown actor' : 'System'),
+                      'Actor Ref': entry.actorPublicId ?? '',
                       'Entity Type': entry.targetEntityType,
                       Timestamp: entry.occurredAt,
                     })),

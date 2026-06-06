@@ -4,13 +4,19 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
+import { exportToXlsx } from '@/lib/export';
 import { BusinessAuditPage } from './BusinessAuditPage';
 
 vi.mock('@/lib/api/business-audit', () => ({
   fetchBusinessAudit: vi.fn(),
 }));
 
+vi.mock('@/lib/export', () => ({
+  exportToXlsx: vi.fn(),
+}));
+
 const mockedFetchBusinessAudit = vi.mocked(fetchBusinessAudit);
+const mockedExportToXlsx = vi.mocked(exportToXlsx);
 
 const baseResponse = {
   page: 1,
@@ -22,22 +28,25 @@ const baseResponse = {
 describe('BusinessAuditPage', () => {
   beforeEach(() => {
     mockedFetchBusinessAudit.mockReset();
+    mockedExportToXlsx.mockReset();
     window.localStorage.clear();
   });
 
-  it('renders business audit records', async () => {
+  it('renders business audit records with displayName (no raw UUIDs)', async () => {
     mockedFetchBusinessAudit.mockResolvedValue({
       ...baseResponse,
       totalCount: 1,
       items: [
         {
           actionType: 'project.closed',
-          actorId: 'director-1',
+          actorId: '11111111-1111-1111-1111-111111111005',
+          actorDisplayName: 'Director Diane',
+          actorPublicId: 'usr_director1',
           changeSummary: 'Closed Atlas ERP Rollout after delivery completion.',
           correlationId: 'corr-1',
           metadata: { totalMandays: 4.5, workspendCaptured: true },
           occurredAt: '2026-04-03T12:30:00.000Z',
-          targetEntityId: 'prj-1',
+          targetEntityId: '22222222-2222-2222-2222-222222222001',
           targetEntityType: 'project',
         },
       ],
@@ -47,10 +56,14 @@ describe('BusinessAuditPage', () => {
 
     expect(await screen.findByText('Business Audit')).toBeInTheDocument();
     expect(screen.getByText('project.closed')).toBeInTheDocument();
-    expect(screen.getByText('director-1')).toBeInTheDocument();
+    expect(screen.getByText('Director Diane')).toBeInTheDocument();
     expect(screen.getByText('Closed Atlas ERP Rollout after delivery completion.')).toBeInTheDocument();
     expect(screen.getByText('totalMandays: 4.5 | workspendCaptured: true')).toBeInTheDocument();
     expect(screen.getByText('Business events only. Technical logs stay in monitoring.')).toBeInTheDocument();
+
+    // W1-13 UUID_LEAK guard — no raw UUID may appear in the rendered table.
+    expect(screen.queryByText('11111111-1111-1111-1111-111111111005')).not.toBeInTheDocument();
+    expect(screen.queryByText('22222222-2222-2222-2222-222222222001')).not.toBeInTheDocument();
   });
 
   it('shows loading then empty state', async () => {
@@ -67,6 +80,43 @@ describe('BusinessAuditPage', () => {
     renderWithRouter();
 
     expect(await screen.findByText('Business audit unavailable')).toBeInTheDocument();
+  });
+
+  it('XLSX export uses displayName + publicId, never raw UUIDs', async () => {
+    mockedFetchBusinessAudit.mockResolvedValue({
+      ...baseResponse,
+      totalCount: 1,
+      items: [
+        {
+          actionType: 'project.closed',
+          actorId: '11111111-1111-1111-1111-111111111005',
+          actorDisplayName: 'Director Diane',
+          actorPublicId: 'usr_director1',
+          changeSummary: 'Closed Atlas ERP Rollout.',
+          correlationId: 'corr-1',
+          metadata: {},
+          occurredAt: '2026-04-03T12:30:00.000Z',
+          targetEntityId: '22222222-2222-2222-2222-222222222001',
+          targetEntityType: 'project',
+        },
+      ],
+    });
+
+    const user = userEvent.setup();
+    renderWithRouter();
+
+    await screen.findByText('project.closed');
+    await user.click(screen.getByRole('button', { name: /Export XLSX/i }));
+
+    expect(mockedExportToXlsx).toHaveBeenCalledTimes(1);
+    const [rows] = mockedExportToXlsx.mock.calls[0]!;
+    const serialized = JSON.stringify(rows);
+
+    // W1-13 XLSX UUID_LEAK guard — exported workbook must not embed raw UUIDs.
+    expect(serialized).not.toContain('11111111-1111-1111-1111-111111111005');
+    expect(serialized).not.toContain('22222222-2222-2222-2222-222222222001');
+    expect(serialized).toContain('Director Diane');
+    expect(serialized).toContain('usr_director1');
   });
 
   it('passes filters and pagination params to the API on submit', async () => {

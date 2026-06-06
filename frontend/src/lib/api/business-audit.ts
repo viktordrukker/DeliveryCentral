@@ -4,6 +4,7 @@ export interface BusinessAuditRecord {
   actionType: string;
   actorId?: string | null;
   actorDisplayName?: string | null;
+  actorPublicId?: string | null;
   changeSummary?: string | null;
   correlationId?: string | null;
   metadata: Record<string, unknown>;

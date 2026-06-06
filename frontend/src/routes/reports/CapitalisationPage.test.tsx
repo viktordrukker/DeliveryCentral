@@ -78,6 +78,8 @@ const mockLocks: PeriodLock[] = [
     periodFrom: '2026-01-01',
     periodTo: '2026-01-31',
     lockedBy: 'admin-1',
+    lockedByDisplayName: 'Admin User',
+    lockedByPublicId: 'usr_admin1',
     lockedAt: '2026-02-01T00:00:00.000Z',
   },
 ];
@@ -99,6 +101,8 @@ describe('CapitalisationPage', () => {
       periodFrom: '2026-02-01',
       periodTo: '2026-02-28',
       lockedBy: 'admin-1',
+      lockedByDisplayName: 'Admin User',
+      lockedByPublicId: 'usr_admin1',
       lockedAt: '2026-03-01T00:00:00.000Z',
     });
     mockedDeleteLock.mockResolvedValue(undefined);
