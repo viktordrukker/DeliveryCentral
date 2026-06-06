@@ -9,6 +9,37 @@ import {
 } from './contracts/director-anomaly.dto';
 
 /**
+ * Internal carrier type — extends the wire DTO with a transient `_projectId`
+ * field used by {@link DirectorAnomalyDetectionService.hydrateTargetPositions}
+ * to look up `ProjectPosition` rows without re-parsing the `href`. The
+ * underscore prefix marks it as non-wire; it is never serialized because
+ * Nest's class-transformer ignores non-decorated extras on plain objects.
+ */
+interface DirectorAnomalyAccumulator extends DirectorAnomalyDto {
+  _projectId?: string;
+}
+
+/** Kinds whose anomaly is rooted in a single Project. */
+const POSITION_BEARING_KINDS: ReadonlySet<DirectorAnomalyKind> = new Set<DirectorAnomalyKind>([
+  'project_rag_dropped',
+  'budget_overrun',
+  'milestone_slip',
+]);
+
+/**
+ * Position statuses that count as "needs attention" for drilldown — the
+ * RELEASED / DRAFT terminals are excluded; everything in flight is included.
+ */
+const POSITION_ACTIVE_STATUSES = [
+  'OPEN',
+  'PROPOSED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+  'ON_HOLD',
+] as const;
+
+/**
  * FE-#265 — Director Dashboard "What needs you now" anomaly detection.
  *
  * Composes 5 cheap parallel detections, scores each into a severity, and
@@ -49,10 +80,57 @@ export class DirectorAnomalyDetectionService {
       if (sa !== sb) return sb - sa;
       return b.decayRate - a.decayRate;
     });
-    return all.slice(0, limit);
+
+    // LEAN-P4-missing-6 — hydrate `targetPositions` for kinds that touch
+    // positions. Kept off the per-detector hot path: one Prisma call for the
+    // union of affected projects, then mapped per anomaly. Unrelated kinds
+    // (pending_approval_age) get an empty array per the DTO contract.
+    const top = all.slice(0, limit);
+    await this.hydrateTargetPositions(top);
+    // Strip the transient `_projectId` carrier so it never leaks onto the wire.
+    return top.map(({ _projectId, ...wire }) => {
+      void _projectId;
+      return wire;
+    });
   }
 
-  private async detectRagDrops(): Promise<DirectorAnomalyDto[]> {
+  private async hydrateTargetPositions(anomalies: DirectorAnomalyAccumulator[]): Promise<void> {
+    const projectIds = new Set<string>();
+    for (const a of anomalies) {
+      if (POSITION_BEARING_KINDS.has(a.kind) && a._projectId) {
+        projectIds.add(a._projectId);
+      }
+    }
+    if (projectIds.size === 0) return;
+
+    const positions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId: { in: [...projectIds] },
+        fillStatus: { in: [...POSITION_ACTIVE_STATUSES] },
+      },
+      select: { id: true, projectId: true },
+      take: 500,
+    });
+    const byProject = new Map<string, string[]>();
+    for (const p of positions) {
+      let arr = byProject.get(p.projectId);
+      if (!arr) {
+        arr = [];
+        byProject.set(p.projectId, arr);
+      }
+      arr.push(p.id);
+    }
+    for (const a of anomalies) {
+      if (!POSITION_BEARING_KINDS.has(a.kind) || !a._projectId) continue;
+      const ids = byProject.get(a._projectId) ?? [];
+      a.targetPositions = ids;
+      if (ids.length > 0) {
+        a.href = `/staffing-desk?view=table&projectId=${encodeURIComponent(a._projectId)}&positionIds=${ids.join(',')}`;
+      }
+    }
+  }
+
+  private async detectRagDrops(): Promise<DirectorAnomalyAccumulator[]> {
     // Look at every project's two most-recent ProjectRagSnapshot rows and flag
     // a drop from GREEN/BLUE → AMBER/RED in the latest snapshot.
     const projects = await this.prisma.project.findMany({
@@ -61,7 +139,7 @@ export class DirectorAnomalyDetectionService {
       take: 200,
     });
 
-    const out: DirectorAnomalyDto[] = [];
+    const out: DirectorAnomalyAccumulator[] = [];
     for (const p of projects) {
       const snaps = await this.prisma.projectRagSnapshot.findMany({
         where: { projectId: p.id },
@@ -85,12 +163,14 @@ export class DirectorAnomalyDetectionService {
         href: `/projects/${p.id}?tab=pulse`,
         decayRate: decayRateFor(latest.weekStarting, 14),
         detectedAt: latest.weekStarting.toISOString(),
+        targetPositions: [],
+        _projectId: p.id,
       });
     }
     return out;
   }
 
-  private async detectOldApprovals(): Promise<DirectorAnomalyDto[]> {
+  private async detectOldApprovals(): Promise<DirectorAnomalyAccumulator[]> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const [budgetPending, activationPending] = await Promise.all([
@@ -114,7 +194,7 @@ export class DirectorAnomalyDetectionService {
       }),
     ]);
 
-    const out: DirectorAnomalyDto[] = [];
+    const out: DirectorAnomalyAccumulator[] = [];
     for (const b of budgetPending) {
       const ageDays = daysSince(b.requestedAt);
       out.push({
@@ -125,6 +205,7 @@ export class DirectorAnomalyDetectionService {
         href: `/projects/${b.projectBudget.projectId}?tab=money&approval=${b.id}`,
         decayRate: decayRateFor(b.requestedAt, 30),
         detectedAt: b.requestedAt.toISOString(),
+        targetPositions: [],
       });
     }
     for (const a of activationPending) {
@@ -137,12 +218,13 @@ export class DirectorAnomalyDetectionService {
         href: `/projects/${a.projectId}?activation=${a.id}`,
         decayRate: decayRateFor(a.requestedAt, 30),
         detectedAt: a.requestedAt.toISOString(),
+        targetPositions: [],
       });
     }
     return out;
   }
 
-  private async detectBudgetOverruns(): Promise<DirectorAnomalyDto[]> {
+  private async detectBudgetOverruns(): Promise<DirectorAnomalyAccumulator[]> {
     const budgets = await this.prisma.projectBudget.findMany({
       where: { actualCost: { not: null } },
       select: {
@@ -166,7 +248,7 @@ export class DirectorAnomalyDetectionService {
     });
     const activeIndex = new Map(activeProjects.map((p) => [p.id, p.name]));
 
-    const out: DirectorAnomalyDto[] = [];
+    const out: DirectorAnomalyAccumulator[] = [];
     for (const b of budgets) {
       const name = activeIndex.get(b.projectId);
       if (!name) continue; // not ACTIVE
@@ -185,12 +267,14 @@ export class DirectorAnomalyDetectionService {
         href: `/projects/${b.projectId}?tab=money`,
         decayRate: decayRateFor(b.updatedAt, 14),
         detectedAt: b.updatedAt.toISOString(),
+        targetPositions: [],
+        _projectId: b.projectId,
       });
     }
     return out;
   }
 
-  private async detectMilestoneSlips(): Promise<DirectorAnomalyDto[]> {
+  private async detectMilestoneSlips(): Promise<DirectorAnomalyAccumulator[]> {
     const today = stripTime(new Date());
     const slips = await this.prisma.projectMilestone.findMany({
       where: {
@@ -211,7 +295,7 @@ export class DirectorAnomalyDetectionService {
       const daysLate = daysSince(m.plannedDate);
       const severity: DirectorAnomalySeverity =
         daysLate >= 30 ? 'critical' : daysLate >= 14 ? 'danger' : 'warning';
-      return {
+      const row: DirectorAnomalyAccumulator = {
         kind: 'milestone_slip' as DirectorAnomalyKind,
         severity,
         title: `${m.project.name}: '${m.name}' ${daysLate}d late`,
@@ -219,7 +303,10 @@ export class DirectorAnomalyDetectionService {
         href: `/projects/${m.projectId}?tab=plan&milestone=${m.id}`,
         decayRate: decayRateFor(m.plannedDate, 60),
         detectedAt: m.plannedDate.toISOString(),
+        targetPositions: [],
+        _projectId: m.projectId,
       };
+      return row;
     });
   }
 }

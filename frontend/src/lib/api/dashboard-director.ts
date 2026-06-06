@@ -19,6 +19,13 @@ export interface DirectorAnomalyDto {
   href: string;
   decayRate: number;
   detectedAt: string;
+  /**
+   * LEAN-P4-missing-6 — ProjectPosition ids touched by this anomaly.
+   * Populated for `project_rag_dropped`, `budget_overrun`, `milestone_slip`;
+   * empty otherwise. Drives the `/staffing-desk?view=table&positionIds=...`
+   * deep-link the BE already encodes in `href`.
+   */
+  targetPositions: string[];
 }
 
 export async function fetchDirectorAnomalies(limit = 5): Promise<DirectorAnomalyDto[]> {

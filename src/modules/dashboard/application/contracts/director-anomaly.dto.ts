@@ -21,4 +21,11 @@ export interface DirectorAnomalyDto {
   decayRate: number;
   /** When the anomaly was first detected. ISO-8601. */
   detectedAt: string;
+  /**
+   * LEAN-P4-missing-6 — ProjectPosition ids the anomaly touches.
+   * Populated for `project_rag_dropped`, `budget_overrun`, `milestone_slip`;
+   * empty for unrelated kinds. Used to deep-link into a filtered
+   * /staffing-desk?view=table&positionIds=... view.
+   */
+  targetPositions: string[];
 }

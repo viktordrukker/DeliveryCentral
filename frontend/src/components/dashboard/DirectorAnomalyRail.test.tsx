@@ -20,6 +20,7 @@ const sampleItems: DirectorAnomalyDto[] = [
     href: '/projects/apollo?tab=budget',
     decayRate: 0.9,
     detectedAt: '2026-05-22T08:00:00Z',
+    targetPositions: [],
   },
   {
     kind: 'milestone_slip',
@@ -29,6 +30,7 @@ const sampleItems: DirectorAnomalyDto[] = [
     href: '/projects/atlas?tab=milestones',
     decayRate: 0.5,
     detectedAt: '2026-05-23T11:30:00Z',
+    targetPositions: [],
   },
 ];
 
