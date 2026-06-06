@@ -58,6 +58,8 @@
     "fk-indexes:check": "node scripts/check-fk-indexes.cjs",
     "jtbd:summary": "node scripts/ci-jtbd-summary.cjs",
     "jtbd:gate": "node scripts/ci-jtbd-summary.cjs --gate",
+    "bundle-size:check": "node scripts/check-bundle-size.cjs",
+    "bundle-size:baseline": "node scripts/refresh-bundle-size-baseline.cjs",
     "test:all": "npm run test:fast && npm run test:db && npm run test:slow && npm --prefix frontend run test",
     "verify:pr": "npm run lint && npm run architecture:check && npm run contracts:validate && npm run tokens:check && npm run schema:check && npm run migrations:check && npm run enum:check && npm run publicid:check && npm run rbac:check && npm run roles:check && npm run fk-indexes:check && npm run test:fast && npm --prefix frontend run test",
     "verify:full": "npm run verify:pr && npm run test:db && npm run test:slow && npm run test:e2e:ui",

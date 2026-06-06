@@ -1,0 +1,68 @@
+name: bundle-size-check
+
+# Bundle-size gate (BUNDLE-SIZE-GATE) — fails the PR if the frontend Vite build
+# grows total gzipped JS by more than the tolerance percent (default 15%) vs
+# `scripts/bundle-size-baseline.json`.
+#
+# Why not piggyback on `ci.yml`'s "Frontend quality" job:
+#   - Frontend quality runs typecheck + vitest, neither of which produces
+#     `frontend/dist`. Adding a Vite build there would slow that gate for every
+#     frontend change. Keeping bundle-size in its own job lets each gate fail
+#     independently and gives a clean "this PR breached the budget" signal.
+#   - It is still fast (<60s wall-clock): cached npm install + Vite production
+#     build + a node script that gzips ~40 files.
+#
+# Baseline refresh procedure (when an intentional regression is approved):
+#   1. `npm --prefix frontend run build`
+#   2. `node scripts/refresh-bundle-size-baseline.cjs`
+#   3. commit `scripts/bundle-size-baseline.json`
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: bundle-size-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-size:
+    name: Bundle size gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend (production)
+        working-directory: frontend
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Check bundle size vs baseline
+        run: node scripts/check-bundle-size.cjs
+
+      - name: Upload bundle size report
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: bundle-size-report
+          path: |
+            frontend/dist/assets/*.js
+            scripts/bundle-size-baseline.json
+          retention-days: 7
+          if-no-files-found: warn
