@@ -15,12 +15,21 @@ import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
 import { InboxPage } from '@/routes/notifications/InboxPage';
 
 import { LeaveTab } from './LeaveTab';
+import { MeCasesTab } from './MeCasesTab';
 import { OverviewTab } from './OverviewTab';
 import { ProjectsTab } from './ProjectsTab';
 import { SkillsTab } from './SkillsTab';
 import { TimeTab } from './TimeTab';
 
-export type WorkspaceTab = 'overview' | 'time' | 'leave' | 'projects' | 'skills' | 'inbox' | 'settings';
+export type WorkspaceTab =
+  | 'overview'
+  | 'time'
+  | 'leave'
+  | 'projects'
+  | 'skills'
+  | 'cases'
+  | 'inbox'
+  | 'settings';
 
 const TABS: { id: WorkspaceTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -28,6 +37,7 @@ const TABS: { id: WorkspaceTab; label: string }[] = [
   { id: 'leave', label: 'Leave' },
   { id: 'projects', label: 'Projects' },
   { id: 'skills', label: 'Skills' },
+  { id: 'cases', label: 'Cases' },
   { id: 'inbox', label: 'Inbox' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -193,6 +203,7 @@ export function WorkspaceShellPage(): JSX.Element {
         {activeTab === 'leave' && <LeaveTab />}
         {activeTab === 'projects' && <ProjectsTab />}
         {activeTab === 'skills' && <SkillsTab />}
+        {activeTab === 'cases' && <MeCasesTab />}
         {activeTab === 'inbox' && <InboxPage />}
         {activeTab === 'settings' && <AccountSettingsPage />}
       </div>
