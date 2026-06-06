@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { BusinessAuditFilters } from '@/components/admin/BusinessAuditFilters';
 import { exportToXlsx } from '@/lib/export';
 import { BusinessAuditTable } from '@/components/admin/BusinessAuditTable';
-import { AuthTokenField } from '@/components/common/AuthTokenField';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -11,7 +10,6 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useBusinessAudit } from '@/features/admin/useBusinessAudit';
-import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
 import { Button } from '@/components/ds';
 
 /**
@@ -21,24 +19,15 @@ import { Button } from '@/components/ds';
  */
 export function BusinessAuditAdminContent(): JSX.Element {
   const state = useBusinessAudit();
-  const tokenState = useStoredApiToken();
 
   const pageSize = Number(state.limit) || 50;
   const totalPages = Math.max(1, Math.ceil(state.totalCount / pageSize));
 
+  // W1-27 — AuthTokenField removed. The httpClient already sends the session
+  // cookie (`credentials: 'include'`); no manual token paste is needed for
+  // admins on /admin/audit.
   return (
     <>
-      {!tokenState.hasToken ? (
-        <SectionCard title="Authentication">
-          <AuthTokenField
-            hasToken={tokenState.hasToken}
-            onClear={tokenState.clearToken}
-            onSave={tokenState.saveToken}
-            token={tokenState.token}
-          />
-        </SectionCard>
-      ) : null}
-
       <SectionCard title="Investigation Filters">
         <BusinessAuditFilters
           isLoading={state.isLoading}

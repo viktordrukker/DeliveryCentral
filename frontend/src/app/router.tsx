@@ -6,6 +6,7 @@ import {
   ALL_ROLES,
   ADMIN_ROLES,
   appRoutes,
+  BENCH_PAGE_ROLES,
   CAPITALISATION_ROLES,
   CASE_CREATE_ROLES,
   DELIVERY_DASHBOARD_ROLES,
@@ -18,11 +19,13 @@ import {
   HR_DASHBOARD_ROLES,
   HR_DIRECTOR_ADMIN_ROLES,
   MANAGEMENT_ROLES,
+  MONITORING_ROLES,
   PM_DASHBOARD_ROLES,
   PROJECT_CREATE_ROLES,
-  RESOURCE_POOL_ROLES,
   RM_DASHBOARD_ROLES,
+  RESOURCE_POOL_ROLES,
   STAFFING_DESK_ROLES,
+  STAFFING_REQUEST_DETAIL_ROLES,
   APPROVALS_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
@@ -235,7 +238,11 @@ const dashboardChildren = [
     path: 'admin/organization-config',
   },
   { element: <LazyPage><OrgPage /></LazyPage>, path: 'org' },
-  { element: <ManagerScopePage />, path: 'org/managers/:id/scope' },
+  // W1-27 — wrap in RoleGuard. BE `ManagerScopeController` is guarded by
+  // `@RequireRoles(...ALL_MANAGER_ROLES)` + `@AllowSelfScope({ param: 'id' })`
+  // so employees can hit their own scope; FE keeps `ALL_ROLES` so a self-scope
+  // call by an employee isn't blocked at the FE before the BE self-scope check.
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><ManagerScopePage /></RoleGuard>, path: 'org/managers/:id/scope' },
   {
     // F-11.1 / D-86 — `/admin/people/new` is a legacy alias of `/people/new`.
     // Both rendered the same `EmployeeLifecycleAdminPage`; consolidating
@@ -354,7 +361,10 @@ const dashboardChildren = [
   // Sprint 2 / S2-8 — lean staffing aggregate skeleton pages.
   { element: <RoleGuard allowedRoles={ALL_ROLES}><PositionsListPage /></RoleGuard>, path: 'projects/:projectId/positions' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'projects/:projectId/positions/:positionId' },
-  { element: <RoleGuard allowedRoles={RESOURCE_POOL_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
+  // W1-25 — FE/BE alignment: BE `/people/bench` is guarded by STAFFING_ROLES
+  // (PM+RM+DM+director+admin). FE was RESOURCE_POOL_ROLES (RM+director+admin)
+  // which hid the surface from PM/DM despite BE accepting them.
+  { element: <RoleGuard allowedRoles={BENCH_PAGE_ROLES}><BenchPage /></RoleGuard>, path: 'people/bench' },
   // LEAN-P2 exit-gate: /staffing-board is now a redirect-only path. RBAC is
   // enforced at the canonical /staffing-desk destination — keep this entry
   // permissive (matches manifest ALL_ROLES) so redirects always resolve.
@@ -372,7 +382,10 @@ const dashboardChildren = [
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-requests/new' },
   { element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><CreatePositionPage /></LazyPage></RoleGuard>, path: 'staffing-desk/positions/new' },
   // Lean canonical: /staffing-requests/:id renders the unified ProjectPositionDetailPage.
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'staffing-requests/:id' },
+  // W1-23 — FE/BE alignment: BE `StaffingRequestsController` is guarded by
+  // `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin). FE was
+  // permissive (`ALL_ROLES`) which let employees hit a forbidden surface.
+  { element: <RoleGuard allowedRoles={STAFFING_REQUEST_DETAIL_ROLES}><ProjectPositionDetailPage /></RoleGuard>, path: 'staffing-requests/:id' },
   {
     element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CreateCasePage /></RoleGuard>,
     path: 'cases/new',
@@ -411,7 +424,9 @@ const dashboardChildren = [
     path: 'admin/integrations/sso',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ONLY_ROLES}><MonitoringPage /></RoleGuard>,
+    // W1-26 — widen to director so executives can observe platform health.
+    // Page is read-only — no write actions, no credentials exposed.
+    element: <RoleGuard allowedRoles={MONITORING_ROLES}><MonitoringPage /></RoleGuard>,
     path: 'admin/monitoring',
   },
   {

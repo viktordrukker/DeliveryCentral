@@ -16,6 +16,15 @@ vi.mock('@/lib/api/notifications', () => ({
   sendNotificationTest: vi.fn(),
 }));
 
+// W1-26 — NotificationsPage now reads `useAuth` to gate write actions to admins.
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'admin-1', roles: ['admin'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
 const mockedFetchNotificationTemplates = vi.mocked(fetchNotificationTemplates);
 const mockedFetchNotificationOutcomes = vi.mocked(fetchNotificationOutcomes);
 const mockedSendNotificationTest = vi.mocked(sendNotificationTest);

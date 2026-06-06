@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { DateRangePreset } from '@/components/common/DateRangePreset';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
@@ -35,7 +36,11 @@ export function ProjectManagerDashboardPage(): JSX.Element {
   const { principal, isLoading: authLoading } = useAuth();
   const { setActions } = useTitleBarActions();
   const navigate = useNavigate();
-  const effectivePersonId = authLoading ? null : (searchParams.get('personId') ?? principal?.personId ?? undefined);
+  // W1-24 — `?personId=X` overlays a different person's dashboard. Restrict
+  // to director/admin only. Everyone else sees only their own dashboard.
+  const canOverlayOthers = hasAnyRole(principal?.roles, DIRECTOR_ADMIN_ROLES);
+  const overlayPersonId = canOverlayOthers ? searchParams.get('personId') : null;
+  const effectivePersonId = authLoading ? null : (overlayPersonId ?? principal?.personId ?? undefined);
   const state = useProjectManagerDashboard(effectivePersonId);
   const [lastFetch, setLastFetch] = useState(new Date());
 
@@ -49,6 +54,8 @@ export function ProjectManagerDashboardPage(): JSX.Element {
   }
 
   function handlePersonChange(value: string): void {
+    // W1-24 — only director/admin can overlay a different person.
+    if (!canOverlayOthers) return;
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set('personId', value);
@@ -65,31 +72,34 @@ export function ProjectManagerDashboardPage(): JSX.Element {
           value={{ from: state.asOf.slice(0, 10), to: '' }}
           onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
         />
-        <label className="field field--inline" style={{ fontSize: 12 }}>
-          <input
-            className="field__control"
-            list="pm-people-list-tb"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Project manager..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
-          />
-          <datalist id="pm-people-list-tb">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
+        {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {canOverlayOthers ? (
+          <label className="field field--inline" style={{ fontSize: 12 }}>
+            <input
+              className="field__control"
+              list="pm-people-list-tb"
+              onChange={(event) => {
+                const match = state.people.find((p) => p.displayName === event.target.value);
+                if (match) handlePersonChange(match.id);
+              }}
+              placeholder="Project manager..."
+              type="text"
+              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
+              key={state.personId}
+            />
+            <datalist id="pm-people-list-tb">
+              {state.people.map((person) => (
+                <option key={person.id} value={person.displayName} />
+              ))}
+            </datalist>
+          </label>
+        ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <TipTrigger />
       </>
     );
     return () => setActions(null);
-  }, [setActions, state.asOf, state.personId, state.people]);
+  }, [setActions, state.asOf, state.personId, state.people, canOverlayOthers]);
 
   useEffect(() => {
     if (state.data && !state.isLoading) setLastFetch(new Date());
