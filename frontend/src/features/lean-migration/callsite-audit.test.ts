@@ -120,8 +120,8 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
   },
   {
     file: 'frontend/src/routes/projects/tabs/TeamVendorsTab.tsx',
-    disposition: 'read-deferred',
-    note: 'Read by projectId — clean swap candidate for LEAN-P2-9 follow-up.',
+    disposition: 'read-via-mapper',
+    note: 'W3-11: table columns bound directly to ProjectPosition. Mapper is only used to feed the shared StaffingSwimLaneGantt, which still consumes the legacy directory shape.',
   },
   {
     file: 'frontend/src/components/common/CommandPalette.tsx',
@@ -365,11 +365,13 @@ describe('LEAN-P2-8 callsite audit lock', () => {
     expect(STAFFING_REQUESTS_CALLSITES.length).toBe(12);
   });
 
-  it('records exactly one read-via-mapper migration (LEAN-P2-8 scope: ExportCentrePage)', () => {
+  it('records the read-via-mapper migrations (LEAN-P2-8: ExportCentrePage, W3-11: TeamVendorsTab)', () => {
     const migrated = ASSIGNMENTS_CALLSITES.filter(
       (e) => e.disposition === 'read-via-mapper',
     );
-    expect(migrated).toHaveLength(1);
-    expect(migrated[0].file).toBe('frontend/src/routes/reports/ExportCentrePage.tsx');
+    expect(migrated.map((e) => e.file).sort()).toEqual([
+      'frontend/src/routes/projects/tabs/TeamVendorsTab.tsx',
+      'frontend/src/routes/reports/ExportCentrePage.tsx',
+    ]);
   });
 });
