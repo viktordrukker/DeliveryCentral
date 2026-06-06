@@ -10,6 +10,13 @@ export interface HrisSyncResult {
   syncedAt: string;
 }
 
+export interface HrisTestConnectionResult {
+  adapter: string;
+  reachable: boolean;
+  latencyMs: number;
+  errorMessage?: string;
+}
+
 export interface HrisConfig {
   activeAdapter: 'bamboohr' | 'workday' | 'none';
   bamboohr: { apiKey: string; subdomain: string };
@@ -42,6 +49,41 @@ export class HrisSyncService {
     this.config = { ...this.config, ...partial };
     this.adapter = null; // reset adapter on config change
     return this.getConfig();
+  }
+
+  public async testConnection(): Promise<HrisTestConnectionResult> {
+    const startedAt = Date.now();
+    const result: HrisTestConnectionResult = {
+      adapter: this.config.activeAdapter,
+      reachable: false,
+      latencyMs: 0,
+    };
+
+    if (this.config.activeAdapter === 'none') {
+      result.errorMessage = 'No active HRIS adapter configured.';
+      result.latencyMs = Date.now() - startedAt;
+      return result;
+    }
+
+    const adapter = await this.resolveAdapter();
+    if (!adapter) {
+      result.errorMessage = 'Could not resolve HRIS adapter.';
+      result.latencyMs = Date.now() - startedAt;
+      return result;
+    }
+
+    try {
+      await adapter.listEmployees();
+      result.reachable = true;
+      result.latencyMs = Date.now() - startedAt;
+      this.logger.log(`HRIS test connection succeeded for ${adapter.adapterName} in ${result.latencyMs} ms.`);
+    } catch (err) {
+      result.errorMessage = err instanceof Error ? err.message : 'HRIS test connection failed.';
+      result.latencyMs = Date.now() - startedAt;
+      this.logger.warn(`HRIS test connection failed for ${adapter.adapterName}: ${result.errorMessage}`);
+    }
+
+    return result;
   }
 
   public async runSync(): Promise<HrisSyncResult> {

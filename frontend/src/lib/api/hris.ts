@@ -15,6 +15,13 @@ export interface HrisSyncResult {
   syncedAt: string;
 }
 
+export interface HrisTestConnectionResult {
+  adapter: string;
+  reachable: boolean;
+  latencyMs: number;
+  errorMessage?: string;
+}
+
 export async function fetchHrisConfig(): Promise<HrisConfig> {
   return httpGet<HrisConfig>('/admin/hris/config');
 }
@@ -25,4 +32,8 @@ export async function updateHrisConfig(config: Partial<HrisConfig>): Promise<Hri
 
 export async function triggerHrisSync(): Promise<HrisSyncResult> {
   return httpPost<HrisSyncResult, Record<string, never>>('/admin/hris/sync', {});
+}
+
+export async function testHrisConnection(): Promise<HrisTestConnectionResult> {
+  return httpPost<HrisTestConnectionResult, Record<string, never>>('/admin/hris/test', {});
 }
