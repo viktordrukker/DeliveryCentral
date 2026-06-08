@@ -1,1 +1,22 @@
-[]
+{
+  "_comment": [
+    "Raw-color baseline for `npm run tokens:check` (see scripts/check-design-tokens.cjs).",
+    "Each entry in `entries` is a tolerated raw-color violation of the form",
+    "  `<file>|<matches comma-joined>|<line text>`",
+    "and represents an exception that the guardrail will allow. New violations not",
+    "in this list fail CI. Keep `entries` as small as possible; prefer adding",
+    "tokens to `frontend/src/styles/design-tokens.ts` over baselining.",
+    "",
+    "SetupWizard MUI-island carve-out (W5-08):",
+    "  `frontend/src/routes/setup/**` (SetupWizardPage, screens/*, components/*)",
+    "  intentionally renders via raw `@mui/material` primitives — the wizard is",
+    "  an isolated MUI island, not a DS surface. MUI's own theme handles color,",
+    "  so today the wizard does not leak hex/rgba literals into the .tsx files",
+    "  and `entries` remains empty. If a future change forces raw color literals",
+    "  inside the wizard (e.g. a sx-prop hex), the path `frontend/src/routes/setup/...`",
+    "  is the allowed scope to baseline here under this carve-out. The wizard's",
+    "  full DS re-skin is tracked separately (V2-A.11a / MASTER_TRACKER) and will",
+    "  remove this carve-out entirely. See docs/planning/phase18-refactor-standards.md §1."
+  ],
+  "entries": []
+}
