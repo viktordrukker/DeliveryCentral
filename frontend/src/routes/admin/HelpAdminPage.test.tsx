@@ -131,4 +131,60 @@ describe('HelpAdminPage', () => {
       expect(mockedArchive).toHaveBeenCalledWith('a-1');
     });
   });
+
+  it('renders a live Markdown preview alongside the body editor and updates as you type', async () => {
+    mockedList.mockResolvedValue([]);
+    mockedCreate.mockResolvedValue({ ...draft });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/No articles/)).toBeInTheDocument());
+    // Open the create modal.
+    await userEvent.click(screen.getAllByRole('button', { name: /Create article/i })[0]);
+    const dialog = await screen.findByRole('dialog');
+
+    // Empty-state placeholder is visible before any keystrokes.
+    expect(
+      within(dialog).getByText(/Preview appears here as you type Markdown on the left\./i),
+    ).toBeInTheDocument();
+
+    // Type Markdown into the editor; preview renders semantic HTML.
+    const editor = within(dialog).getByRole('textbox', { name: /Markdown source/i });
+    await userEvent.type(editor, '# Hello{enter}{enter}**bold** text');
+
+    const preview = within(dialog).getByTestId('help-admin-body-preview');
+    await waitFor(() => {
+      // Heading element rendered (not raw `#`).
+      expect(within(preview).getByRole('heading', { level: 1, name: 'Hello' })).toBeInTheDocument();
+    });
+    // Inline strong rendered.
+    expect(within(preview).getByText('bold').tagName).toBe('STRONG');
+  });
+
+  it('preview drops script tags and javascript: links via the safe-by-default renderer', async () => {
+    mockedList.mockResolvedValue([]);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/No articles/)).toBeInTheDocument());
+    await userEvent.click(screen.getAllByRole('button', { name: /Create article/i })[0]);
+    const dialog = await screen.findByRole('dialog');
+
+    const editor = within(dialog).getByRole('textbox', { name: /Markdown source/i });
+    // userEvent.type interprets `[` as a key spec; use .paste for raw payloads.
+    // Separate the raw HTML script from the markdown link with a blank line so
+    // CommonMark parses the link as inline markdown (not as part of an HTML
+    // block — see MarkdownBody.test.tsx for the same pattern).
+    await userEvent.click(editor);
+    await userEvent.paste('<script>alert(1)</script>\n\n[click](javascript:alert(1))');
+
+    const preview = within(dialog).getByTestId('help-admin-body-preview');
+    await waitFor(() => {
+      // Link text renders but href is stripped to empty string by urlTransform.
+      expect(within(preview).getByText('click')).toBeInTheDocument();
+    });
+    // No <script> tag survives.
+    expect(preview.querySelector('script')).toBeNull();
+    // Anchor href is empty (no javascript: URI executes).
+    const anchor = preview.querySelector('a');
+    expect(anchor?.getAttribute('href') ?? '').toBe('');
+  });
 });
