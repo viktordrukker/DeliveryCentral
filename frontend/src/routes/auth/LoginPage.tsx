@@ -106,7 +106,7 @@ export function LoginPage(): JSX.Element {
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}

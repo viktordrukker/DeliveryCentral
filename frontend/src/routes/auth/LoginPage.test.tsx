@@ -1,10 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { LoginPage } from './LoginPage';
 
 const httpGetMock = vi.fn();
+const loginMock = vi.fn();
 
 vi.mock('@/lib/api/http-client', () => ({
   httpGet: (...args: unknown[]) => httpGetMock(...args),
@@ -18,7 +20,7 @@ vi.mock('@/app/auth-context', async (importOriginal) => {
       isAuthenticated: false,
       isLoading: false,
       principal: null,
-      login: vi.fn(),
+      login: loginMock,
       completeTwoFactor: vi.fn(),
       logout: vi.fn(),
     }),
@@ -36,6 +38,7 @@ function renderLogin(): ReturnType<typeof render> {
 describe('LoginPage — W2-17 SSO/LDAP buttons', () => {
   beforeEach(() => {
     httpGetMock.mockReset();
+    loginMock.mockReset();
   });
 
   it('renders only the email/password form when only local is enabled', async () => {
@@ -93,5 +96,27 @@ describe('LoginPage — W2-17 SSO/LDAP buttons', () => {
 
     expect(screen.queryByTestId('sso-azuread-button')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /forgot password/i })).toBeInTheDocument();
+  });
+});
+
+describe('LoginPage — W5-05 error alert a11y', () => {
+  beforeEach(() => {
+    httpGetMock.mockReset();
+    loginMock.mockReset();
+  });
+
+  it('announces the login error via role="alert" for screen readers', async () => {
+    httpGetMock.mockResolvedValueOnce({ local: true, ldap: false, azureAd: false });
+    loginMock.mockResolvedValueOnce({ status: 'error', message: 'Invalid credentials' });
+
+    renderLogin();
+    await waitFor(() => expect(screen.getByLabelText(/email/i)).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'foo@example.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/invalid credentials/i);
   });
 });
