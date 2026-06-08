@@ -93,7 +93,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
       <>
         <PeriodSelector onAsOfChange={state.setAsOf} value={state.asOf} />
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk?view=table">Assignments</Button>
         <TipTrigger />
       </>
     );
@@ -389,7 +389,7 @@ function StaffingGapsTable({ gaps }: { gaps: StaffingGapItem[] }): JSX.Element {
       variant="compact"
       columns={[
         { key: 'project', title: 'Project', getValue: (gap) => `${gap.projectCode} — ${gap.projectName}`, render: (gap) => <span style={{ fontWeight: 500 }}>{gap.projectCode} — {gap.projectName}</span> },
-        { key: 'person', title: 'Person', width: 90, getValue: (gap) => gap.personId, render: (gap) => <Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personId.slice(0, 8)}...</Link> },
+        { key: 'person', title: 'Person', width: 140, getValue: (gap) => gap.personName, render: (gap) => <Link to={`/people/${gap.personId}`} style={{ fontSize: 11, color: 'var(--color-accent)' }}>{gap.personName}</Link> },
         { key: 'endDate', title: 'End Date', width: 90, getValue: (gap) => gap.endDate, render: (gap) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{gap.endDate}</span> },
         { key: 'daysLeft', title: 'Days Left', align: 'right', getValue: (gap) => gap.daysUntilEnd, render: (gap) => <span style={{ ...NUM, color: gap.daysUntilEnd <= 7 ? 'var(--color-status-danger)' : gap.daysUntilEnd <= 14 ? 'var(--color-status-warning)' : 'var(--color-status-active)', fontWeight: 600 }}>{gap.daysUntilEnd}d</span> },
       ] as Column<StaffingGapItem>[]}

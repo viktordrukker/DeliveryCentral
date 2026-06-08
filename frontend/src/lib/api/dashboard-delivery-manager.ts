@@ -39,6 +39,7 @@ export interface StaffingGapItem {
   daysUntilEnd: number;
   endDate: string;
   personId: string;
+  personName: string;
   projectCode: string;
   projectId: string;
   projectName: string;
