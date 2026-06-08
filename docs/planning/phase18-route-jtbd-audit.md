@@ -21,7 +21,7 @@
 | `/people/:id` | Person Detail | HR, RM | Understand person operationally | Click from people list | Edit profile, manage lifecycle, view skills | `EmployeeDetailsPlaceholderPage.tsx` | Detail Surface |
 | `/people/new` | Create Person | HR | Onboard new employee | Button from people list | Fill form, submit | `EmployeeLifecycleAdminPage.tsx` | Create/Edit Form |
 | `/people/bench` | Bench | PM, RM, DM, Director | People with no active project assignment — sorted by days off project | Sidebar nav | Match candidate to open position | `BenchPage.tsx` | List-Detail Workflow |
-| `/org` | Org Chart | all | View organization structure | Sidebar nav | Drill into department, view manager scope | `OrgPage.tsx` | Structural Overview |
+| `/org` | ~~Org Chart~~ | — | **Obsolete in v2** — `obsoleteInV2: true` in `route-manifest.ts`. Org-structure visibility folds into the `/people` people-org canvas (sidebar group `people-org` → v2 group `workforce`). `OrgPage.tsx` stays mounted as a deep-link target until v2 hard-cutover; sidebar hides it under `dsRefresh`. No new investment. | — | — | `OrgPage.tsx` (deep-link only) | — |
 | `/org/managers/:id/scope` | Manager Scope | HR, Director | See reporting scope of a manager | Click from org chart | Review reports, reassign | `ManagerScopePage.tsx` | Detail Surface |
 | `/teams` | Teams | all | View operational delivery teams | Sidebar nav | View team dashboard | `TeamsPage.tsx` | List-Detail Workflow |
 | `/teams/:id/dashboard` | Team Dashboard | RM, DM | Assess team staffing and spread | Click from teams list | Reassign, review allocation | `TeamDashboardPage.tsx` | Decision Dashboard |
