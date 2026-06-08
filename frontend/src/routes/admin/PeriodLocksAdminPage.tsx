@@ -175,8 +175,15 @@ export function PeriodLocksAdminPage(): JSX.Element {
       <ConfirmDialog
         open={confirmDeleteId !== null}
         title="Unlock period"
-        message="Once unlocked, the period becomes editable again. Are you sure?"
+        message={(() => {
+          const lock = locks.find((l) => l.id === confirmDeleteId);
+          if (!lock) {
+            return 'Once unlocked, the period becomes editable again. Are you sure?';
+          }
+          return `Unlock ${formatDate(lock.periodFrom)} → ${formatDate(lock.periodTo)}? Timesheets, expenses, and capitalisation rows in this range will become editable again.`;
+        })()}
         confirmLabel="Unlock"
+        tone="danger"
         onCancel={() => setConfirmDeleteId(null)}
         onConfirm={() => void handleDelete()}
       />
