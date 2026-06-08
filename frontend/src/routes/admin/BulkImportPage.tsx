@@ -79,16 +79,6 @@ export function BulkImportPage(): JSX.Element {
     }
   }
 
-  function handleDownloadTemplate(): void {
-    const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'people-import-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   function handleDownloadErrorCsv(): void {
     if (!result || result.failed.length === 0) return;
     const blob = new Blob([buildErrorCsv(result.failed)], { type: 'text/csv' });
@@ -161,7 +151,13 @@ export function BulkImportPage(): JSX.Element {
               Required columns: <code>givenName</code>, <code>familyName</code>, <code>email</code>. Optional: <code>grade</code>, <code>role</code>.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <Button variant="secondary" onClick={handleDownloadTemplate} type="button">
+              <Button
+                as="a"
+                data-testid="download-template-link"
+                download="bulk-import-template.csv"
+                href="/bulk-import-template.csv"
+                variant="secondary"
+              >
                 Download Template
               </Button>
               <Button variant="secondary" onClick={() => fileRef.current?.click()} type="button">
