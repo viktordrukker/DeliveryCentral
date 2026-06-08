@@ -18,6 +18,7 @@ import { Tabs } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
 import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
+import { FeatureGuard } from '@/routes/FeatureGuard';
 import { WorkEvidencePage } from '@/routes/work-evidence/WorkEvidencePage';
 
 const TimeReportPage = lazy(() =>
@@ -167,7 +168,11 @@ export function ReportsPage(): JSX.Element {
           {activeTab === 'export' ? <ExportCentrePage /> : null}
           {activeTab === 'utilization' ? <UtilizationPage /> : null}
           {activeTab === 'builder' ? <ReportBuilderPage /> : null}
-          {activeTab === 'evidence' ? <WorkEvidencePage /> : null}
+          {activeTab === 'evidence' ? (
+            <FeatureGuard feature="evidenceManagement">
+              <WorkEvidencePage />
+            </FeatureGuard>
+          ) : null}
         </Suspense>
       </div>
     </PageContainer>
