@@ -64,7 +64,9 @@ import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/Assignmen
 import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
-import { DashboardPage } from '@/routes/dashboard/DashboardPage';
+// W4-03 — DashboardPage is now code-split inside HomeRedirect (the only
+// consumer); the legacy Workload Overview bundle is fetched lazily under the
+// dsRefresh-OFF branch and never loads under dsRefresh ON.
 import { DashboardRedirect } from '@/routes/DashboardRedirect';
 import { HomeRedirect } from '@/routes/HomeRedirect';
 import { V2Redirect } from '@/routes/V2Redirect';

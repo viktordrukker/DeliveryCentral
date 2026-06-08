@@ -49,11 +49,16 @@ function renderHome(): ReturnType<typeof render> {
 }
 
 describe('HomeRedirect — Phase E1', () => {
-  it('renders the legacy DashboardPage when dsRefresh is OFF', () => {
+  it('renders the legacy DashboardPage when dsRefresh is OFF', async () => {
     dsRefreshEnabled = false;
     currentRoles = ['employee'];
     renderHome();
-    expect(screen.getByTestId('legacy-dashboard-page')).toBeInTheDocument();
+    // W4-03 — DashboardPage is now code-split via React.lazy + Suspense, so
+    // the very first render shows the Suspense fallback ("Loading...") while
+    // the chunk resolves. Awaiting findByTestId covers both the fallback and
+    // the resolved lazy module.
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(await screen.findByTestId('legacy-dashboard-page')).toBeInTheDocument();
   });
 
   it('redirects employee to /me when dsRefresh is ON', () => {
