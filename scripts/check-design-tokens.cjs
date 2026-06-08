@@ -18,9 +18,31 @@ const allowedDirectories = [
 const rawColorPattern = /#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g;
 const violations = [];
 const shouldWriteBaseline = process.argv.includes('--write-baseline');
-const baseline = fs.existsSync(baselineFile)
-  ? new Set(JSON.parse(fs.readFileSync(baselineFile, 'utf8')))
-  : new Set();
+
+// Baseline accepts two shapes:
+//   1. Legacy array form:           ["file|matches|line", ...]
+//   2. Documented-object form:      { "_comment": "...", "entries": [...] }
+//
+// The object form lets us attach human-readable carve-out commentary
+// (e.g., the SetupWizard MUI-island exception — see W5-08 / phase18
+// refactor standards §1 carve-out). `--write-baseline` always emits the
+// legacy array form to keep diffs minimal; if a comment is desired,
+// re-wrap manually after writing.
+function readBaseline() {
+  if (!fs.existsSync(baselineFile)) {
+    return new Set();
+  }
+  const parsed = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
+  if (Array.isArray(parsed)) {
+    return new Set(parsed);
+  }
+  if (parsed && Array.isArray(parsed.entries)) {
+    return new Set(parsed.entries);
+  }
+  return new Set();
+}
+
+const baseline = readBaseline();
 
 function serializeViolation(filePath, matches, line) {
   return `${filePath}|${matches.join(',')}|${line}`;
