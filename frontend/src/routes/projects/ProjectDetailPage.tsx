@@ -31,6 +31,7 @@ import { PulseTab } from './tabs/PulseTab';
 import { PlanTab } from './tabs/PlanTab';
 import { MoneyTab } from './tabs/MoneyTab';
 import { ProjectCasesTab } from './tabs/ProjectCasesTab';
+import { ManagePositionsDrawer } from '@/components/projects/ManagePositionsDrawer';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -102,6 +103,9 @@ export function ProjectDetailPage(): JSX.Element {
   // V2-B.7 — header-driven add signals for the Plan sub-tabs (open their create forms).
   const [milestoneAddSignal, setMilestoneAddSignal] = useState(0);
   const [crAddSignal, setCrAddSignal] = useState(0);
+  // W4-05 — Manage-positions opens an inline Drawer instead of routing to
+  // the standalone positions list (UX Law 3 — no context loss).
+  const [managePositionsOpen, setManagePositionsOpen] = useState(false);
 
   // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
   // overall band were computed from different signals and could disagree on
@@ -242,13 +246,14 @@ export function ProjectDetailPage(): JSX.Element {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {/* V2-B.7 — tab-scoped header actions (dsRefresh, Plan tab only).
                 Add-milestone / Add-change-request open the matching sub-tab's
-                create form via a signal; Manage-positions links to the existing
-                positions list (no per-position create route exists). */}
+                create form via a signal; W4-05 Manage-positions opens an
+                inline Drawer hosting the positions list (the standalone
+                /projects/:id/positions route remains for deep links). */}
             {dsRefreshEnabled && activeTab === 'plan' ? (
               <>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setMilestoneAddSignal((n) => n + 1)}>Add milestone</Button>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setCrAddSignal((n) => n + 1)}>Add change request</Button>
-                <Button as={Link} variant="secondary" size="sm" to={`/projects/${id}/positions`}>Manage positions</Button>
+                <Button variant="secondary" size="sm" type="button" data-testid="manage-positions-open" onClick={() => setManagePositionsOpen(true)}>Manage positions</Button>
               </>
             ) : null}
             {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
@@ -306,6 +311,15 @@ export function ProjectDetailPage(): JSX.Element {
           <div className="print-footer print-only">
             {project.projectCode} {'·'} Printed {new Date().toLocaleDateString()}
           </div>
+
+          {/* W4-05 — inline Manage Positions drawer. */}
+          {id ? (
+            <ManagePositionsDrawer
+              open={managePositionsOpen}
+              projectId={id}
+              onClose={() => setManagePositionsOpen(false)}
+            />
+          ) : null}
         </>
       ) : null}
     </DetailLayout>
