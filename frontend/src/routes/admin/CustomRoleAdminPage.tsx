@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -9,7 +10,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { Button, FormField, FormModal, Input, Table, type Column } from '@/components/ds';
+import { Button, FormField, FormModal, Input, Table, Tabs, type Column } from '@/components/ds';
 import {
   createCustomRole,
   deactivateCustomRole,
@@ -23,6 +24,8 @@ import {
   type PlatformRole,
   type UpdateCustomRoleRequest,
 } from '@/lib/api/custom-role';
+import { AccessPoliciesContent } from './AccessPoliciesPage';
+import { ResponsibilityMatrixAdminContent } from './ResponsibilityMatrixAdminPage';
 
 /**
  * NEW-LGL-3 — admin surface for tenant-defined custom roles.
@@ -456,15 +459,67 @@ export function CustomRoleAdminContent(): JSX.Element {
   );
 }
 
+/**
+ * W4-11 — consolidated governance shell.
+ *
+ * Three tabs under `/admin/governance/roles`:
+ *  - `roles`                 → Custom Roles (built-in + tenant-defined)
+ *  - `access-policies`       → ABAC policy registry
+ *  - `responsibility-matrix` → Who-approves-what rule matrix
+ *
+ * Tab selection is URL-driven (`?tab=...`) so deep-links survive Back/Forward
+ * and the v2 redirects from the legacy `/admin/access-policies` /
+ * `/admin/responsibility-matrix` URLs land directly on the right tab.
+ */
+type GovernanceTab = 'roles' | 'access-policies' | 'responsibility-matrix';
+
+const GOVERNANCE_TABS: { id: GovernanceTab; label: string }[] = [
+  { id: 'roles', label: 'Roles' },
+  { id: 'access-policies', label: 'Access Policies' },
+  { id: 'responsibility-matrix', label: 'Responsibility Matrix' },
+];
+
+const TAB_IDS: ReadonlyArray<GovernanceTab> = ['roles', 'access-policies', 'responsibility-matrix'];
+
 export function CustomRoleAdminPage(): JSX.Element {
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab');
+  const activeTab: GovernanceTab = (TAB_IDS as readonly string[]).includes(requested ?? '')
+    ? (requested as GovernanceTab)
+    : 'roles';
+
+  function selectTab(id: GovernanceTab): void {
+    const next = new URLSearchParams(params);
+    next.set('tab', id);
+    setParams(next, { replace: false });
+  }
+
   return (
     <PageContainer testId="custom-role-admin-page">
       <PageHeader
         eyebrow="Admin · Governance"
-        subtitle="Tenant-defined role shapes (Squad Lead, Tribe Lead, IT Service Owner). Built-in PlatformRole values are listed read-only; only custom roles can be edited or deactivated."
-        title="Custom Roles"
+        subtitle="Roles, access policies, and the responsibility matrix — the three surfaces that decide who can do what across the tenant."
+        title="Governance"
       />
-      <CustomRoleAdminContent />
+      <Tabs
+        tabs={GOVERNANCE_TABS}
+        value={activeTab}
+        onValueChange={(id) => selectTab(id as GovernanceTab)}
+        ariaLabel="Governance tabs"
+        idPrefix="governance-tab"
+        testId="governance-tabs"
+      />
+      <div
+        role="tabpanel"
+        id={`governance-tabpanel-${activeTab}`}
+        aria-labelledby={`governance-tab-${activeTab}`}
+        data-testid={`governance-tabpanel-${activeTab}`}
+        style={{ paddingTop: 'var(--space-4)' }}
+      >
+        {activeTab === 'roles' && <CustomRoleAdminContent />}
+        {activeTab === 'access-policies' && <AccessPoliciesContent headerless />}
+        {activeTab === 'responsibility-matrix' && <ResponsibilityMatrixAdminContent headerless />}
+      </div>
     </PageContainer>
   );
 }
