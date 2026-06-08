@@ -1,7 +1,8 @@
 # Phase 18 — Route-to-JTBD Audit Table
 
 **Created:** 2026-04-14  
-**Source:** `frontend/src/app/route-manifest.ts` + `docs/testing/EXHAUSTIVE_JTBD_LIST.md`
+**Last refreshed:** 2026-06-08 (W4-10 — added staffing-desk positions, bulk staffing, V2 soak checklist, SSO config, custom roles governance, /me workspace, approvals, portfolio radiator; flipped legacy /assignments + /staffing-requests + /staffing-board + /timesheets entries to redirect rows reflecting current router behaviour)  
+**Source:** `frontend/src/app/route-manifest.ts` + `frontend/src/app/router.tsx` + `docs/testing/EXHAUSTIVE_JTBD_LIST.md`
 
 ## Route Audit
 
@@ -15,9 +16,11 @@
 | `/dashboard/hr` | HR Dashboard | HR | Monitor org health and data quality | Login redirect | Investigate risk employee, fix data gap | `HrDashboardPage.tsx` | Decision Dashboard |
 | `/dashboard/delivery-manager` | Delivery Dashboard | DM | Track delivery health and evidence coverage | Login redirect | Escalate portfolio risk, review staffing gap | `DeliveryManagerDashboardPage.tsx` | Decision Dashboard |
 | `/dashboard/director` | Director Dashboard | Director | Executive scan of org health | Login redirect | Drill into unit, project, or staffing issue | `DirectorDashboardPage.tsx` | Decision Dashboard |
+| `/dashboards/portfolio-radiator` | Portfolio Radiator | DM, Director | Portfolio-wide radiator scores across all projects | Sidebar nav | Drill into worst-scoring project | `PortfolioRadiatorPage.tsx` | Decision Dashboard |
 | `/people` | People | HR, RM | Find and manage people records | Sidebar nav | View person detail, create employee | `PeoplePage.tsx` | List-Detail Workflow |
 | `/people/:id` | Person Detail | HR, RM | Understand person operationally | Click from people list | Edit profile, manage lifecycle, view skills | `EmployeeDetailsPlaceholderPage.tsx` | Detail Surface |
 | `/people/new` | Create Person | HR | Onboard new employee | Button from people list | Fill form, submit | `EmployeeLifecycleAdminPage.tsx` | Create/Edit Form |
+| `/people/bench` | Bench | PM, RM, DM, Director | People with no active project assignment — sorted by days off project | Sidebar nav | Match candidate to open position | `BenchPage.tsx` | List-Detail Workflow |
 | `/org` | Org Chart | all | View organization structure | Sidebar nav | Drill into department, view manager scope | `OrgPage.tsx` | Structural Overview |
 | `/org/managers/:id/scope` | Manager Scope | HR, Director | See reporting scope of a manager | Click from org chart | Review reports, reassign | `ManagerScopePage.tsx` | Detail Surface |
 | `/teams` | Teams | all | View operational delivery teams | Sidebar nav | View team dashboard | `TeamsPage.tsx` | List-Detail Workflow |
@@ -26,15 +29,15 @@
 | `/projects/new` | Create Project | PM, DM | Register a new project | Button from projects list | Fill form, submit | `CreateProjectPage.tsx` | Create/Edit Form |
 | `/projects/:id` | Project Detail | PM | Understand project state and act | Click from projects list | Activate, close, staff, review budget | `ProjectDetailsPlaceholderPage.tsx` | Detail Surface |
 | `/projects/:id/dashboard` | Project Dashboard | PM, DM | Operational cockpit for one project | Link from project detail | Review evidence, allocation, anomalies | `ProjectDashboardPage.tsx` | Decision Dashboard |
-| `/assignments` | Assignments | PM, RM | Browse authoritative staffing truth | Sidebar nav | View assignment detail, create assignment | `AssignmentsPage.tsx` | List-Detail Workflow |
-| `/assignments/new` | Create Assignment | PM, RM | Staff a person to a project | Button from assignments list | Fill form, submit | `CreateAssignmentPage.tsx` | Create/Edit Form |
-| `/assignments/bulk` | Bulk Assign | PM, RM | Staff multiple people at once | Button from assignments list | Fill batch form, submit | `BulkAssignmentPage.tsx` | Create/Edit Form |
-| `/assignments/:id` | Assignment Detail | PM, RM | Review assignment state and history | Click from assignments list | Approve, reject, end, extend | `AssignmentDetailsPlaceholderPage.tsx` | Detail Surface |
+| `/assignments` | ~~Assignments~~ | — | **Redirect → `/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE`** (LEAN-P2 exit-gate) | — | — | — | — |
+| `/assignments/new` | ~~Create Assignment~~ | — | **Redirect → `/staffing-requests/new`** (W1-21) | — | — | — | — |
+| `/assignments/bulk` | ~~Bulk Assign~~ | — | **Redirect → `/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE`** (LEAN-P2 exit-gate) | — | — | — | — |
+| `/assignments/:id` | Assignment Detail | PM, RM | Review assignment state and history | Click from staffing-desk table | Approve, reject, end, extend | `AssignmentDetailsPlaceholderPage.tsx` | Detail Surface |
 | `/resource-pools` | Resource Pools | RM | Manage pools of available people | Sidebar nav | View pool detail, create pool | `ResourcePoolsPage.tsx` | List-Detail Workflow |
 | `/resource-pools/:id` | Pool Detail | RM | Assess pool capacity and members | Click from pools list | Add/remove member | `ResourcePoolDetailPage.tsx` | Detail Surface |
 | `/work-evidence` | Work Evidence | all | Browse observed work evidence | Sidebar nav | Filter, export, review anomalies | `WorkEvidencePage.tsx` | List-Detail Workflow |
-| `/workload` | Workload Matrix | RM, Director | See person × project allocation | Sidebar nav | Identify over/under allocation | `WorkloadMatrixPage.tsx` | Operational Queue |
-| `/workload/planning` | Workload Planning | RM, Director | 12-week forward staffing timeline | Sidebar nav | Plan future assignments | `WorkloadPlanningPage.tsx` | Operational Queue |
+| `/workload` | ~~Workload Matrix~~ | — | **Redirect → `/staffing-desk?view=table&kind=assignment&status=APPROVED,ACTIVE`** (LEAN-P2) | — | — | — | — |
+| `/workload/planning` | ~~Workload Planning~~ | — | **Redirect → `/staffing-desk?view=timeline`** (LEAN-P2) | — | — | — | — |
 | `/my-time` | My Time | all | Monthly timesheet, leave, gaps, bench time | Sidebar nav | Enter hours, submit, request leave | `MyTimePage.tsx` | Create/Edit Form |
 | `/time-management` | Time Management | PM, RM, HR, DM | Approve timesheets/leave, compliance, overtime | Sidebar nav | Approve, reject, review compliance | `TimeManagementPage.tsx` | Operational Queue |
 | `/timesheets` | ~~My Timesheet~~ | — | **Redirect → `/my-time`** | — | — | — | — |
@@ -48,10 +51,14 @@
 | `/cases` | Cases | all | Browse onboarding/operational cases | Sidebar nav | View case detail, create case | `CasesPage.tsx` | Operational Queue |
 | `/cases/new` | Create Case | HR | Initiate a new case | Button from cases list | Fill form, submit | `CreateCasePage.tsx` | Create/Edit Form |
 | `/cases/:id` | Case Detail | HR | Progress case through steps | Click from cases list | Advance step, add note, close | `CaseDetailsPage.tsx` | Detail Surface |
-| `/staffing-requests` | Staffing Requests | PM, RM | Post and track staffing demand | Sidebar nav | View detail, create request | `StaffingRequestsPage.tsx` | Operational Queue |
-| `/staffing-requests/new` | Create Request | PM, RM, DM | Capture staffing demand | Button from requests list | Fill form, submit | `CreateStaffingRequestPage.tsx` | Create/Edit Form |
-| `/staffing-requests/:id` | Request Detail | RM | Evaluate candidates and fulfill | Click from requests list | Propose candidate, fulfill, cancel | `StaffingRequestDetailPage.tsx` | Detail Surface |
-| `/staffing-board` | Staffing Board | RM, DM | Drag-and-drop assignment management | Sidebar nav | Move assignments, resolve conflicts | `StaffingBoardPage.tsx` | Operational Queue |
+| `/staffing-requests` | ~~Staffing Requests~~ | — | **Redirect → `/staffing-desk?view=board`** (LEAN-P2 exit-gate) | — | — | — | — |
+| `/staffing-requests/new` | Create Position | PM, RM, DM | Capture staffing demand for one position | Button from staffing-desk | Fill form, submit | `CreatePositionPage.tsx` | Create/Edit Form |
+| `/staffing-desk/positions/new` | Create Position (canonical) | PM, RM, DM | Capture staffing demand for one position | Button from staffing-desk | Fill form, submit | `CreatePositionPage.tsx` | Create/Edit Form |
+| `/staffing-requests/bulk` | Bulk Create Positions | PM, RM | Open multiple staffing positions at once (W2-05) | Button from staffing-desk | Fill batch form, submit | `BulkCreatePositionsPage.tsx` | Create/Edit Form |
+| `/staffing-requests/:id` | Position Detail | RM | Evaluate candidates and fulfill | Click from staffing-desk board | Propose candidate, fulfill, cancel | `StaffingRequestDetailPage.tsx` | Detail Surface |
+| `/staffing-board` | ~~Staffing Board~~ | — | **Redirect → `/staffing-desk?view=board`** (LEAN-P2 exit-gate) | — | — | — | — |
+| `/staffing-desk` | Staffing Desk | RM, PM, DM, Director | Unified staffing operations console — Board / Distribution Studio / Table / Timeline views | Sidebar nav | Match candidates, balance workload, drag-drop | `StaffingDeskPage.tsx` | Operational Queue |
+| `/approvals` | Approvals | PM, RM, DM, HR, Director | Unified approval queue across positions, budgets, activations, leave, cases, skill reviews | Sidebar nav | Approve, reject, request changes | `ApprovalsPage.tsx` | Operational Queue |
 | `/exceptions` | Exceptions | PM, RM, HR, DM | Triage operational anomalies | Sidebar nav | Resolve, suppress, escalate | `ExceptionsPage.tsx` | Operational Queue |
 | `/integrations` | Integrations | Director | External provider health | Sidebar nav | Check sync status, escalate | `IntegrationsPage.tsx` | Admin Control |
 | `/admin` | Admin | admin | Consolidated operator controls | Sidebar nav | Navigate to sub-section | `AdminPanelPage.tsx` | Admin Control |
@@ -59,14 +66,19 @@
 | `/admin/audit` | Business Audit | HR, Director | Audit trail review | Admin nav | Search, filter, investigate | `BusinessAuditPage.tsx` | Admin Control |
 | `/admin/notifications` | Notifications Admin | Director | Channel/template management | Admin nav | Configure channels | `NotificationsPage.tsx` | Admin Control |
 | `/admin/integrations` | Integrations Admin | Director | Provider config and sync | Admin nav | Configure, trigger sync | `IntegrationsAdminPage.tsx` | Admin Control |
+| `/admin/integrations/registry` | Integrations Registry | admin | Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status + last-sync | Admin → Integrations | Inspect adapter, review last-sync | `IntegrationsRegistryPage.tsx` | Admin Control |
+| `/admin/integrations/sso` | SSO Configuration | admin | Configure OIDC SSO provider, client credentials, auto-provisioning (NEW-LGL-2) | Admin → Integrations | Configure, test connection, save | `SsoConfigPage.tsx` | Admin Control |
 | `/admin/monitoring` | Monitoring | Director | Health and diagnostics | Admin nav | Check readiness, investigate | `MonitoringPage.tsx` | Admin Control |
 | `/admin/settings` | Platform Settings | admin | Configure platform behavior | Admin nav | Edit settings, save | `SettingsPage.tsx` | Admin Control |
 | `/admin/people/import` | Bulk Import | HR, Director | CSV people import | Admin nav | Upload, review, confirm | `BulkImportPage.tsx` | Create/Edit Form |
 | `/admin/webhooks` | Webhooks | admin | Webhook subscription management | Admin nav | Create, edit, delete | `WebhooksAdminPage.tsx` | Admin Control |
 | `/admin/hris` | HRIS Integration | admin | HRIS provider config | Admin nav | Configure, test connection | `HrisConfigPage.tsx` | Admin Control |
 | `/admin/access-policies` | Access Policies | admin | ABAC policy management | Admin nav | View, edit policies | `AccessPoliciesPage.tsx` | Admin Control |
+| `/admin/governance/roles` | Custom Roles | admin | Tenant-defined custom roles (Squad Lead, Tribe Lead, IT Service Owner) over read-only built-in PlatformRole values (NEW-LGL-3) | Admin → Governance | Add/edit custom role, scope permissions | `CustomRolesPage.tsx` | Admin Control |
+| `/admin/v2-soak-checklist` | V2 Soak Checklist | admin | Admin matrix of 30 V2 journeys × 8 roles for staging soak signoff (MANUAL-CLICK-THROUGH-30) | Admin → Governance | Fill PASS/FAIL cells, gate C0 flip | `V2SoakChecklistPage.tsx` | Admin Control |
 | `/metadata-admin` | Metadata Admin | admin | Validation and config | Admin nav | Manage metadata | `MetadataAdminPage.tsx` | Admin Control |
 | `/settings/account` | Account Settings | all | Password/preferences | User menu | Change password, update prefs | `AccountSettingsPage.tsx` | Create/Edit Form |
+| `/me` | My Workspace | all | Unified self-service workspace — Overview, Time, Leave, Projects, Inbox, Settings (flag `workspaceMe`) | v2 sidebar (Home) | Enter hours, request leave, browse my projects | `WorkspacePage.tsx` | Decision Dashboard |
 | `/notifications` | Inbox | all | View notifications | Bell icon | Read, act on notification | `InboxPage.tsx` | List-Detail Workflow |
 | `/login` | Login | unauthenticated | Authenticate | Direct URL | Enter credentials, submit | `LoginPage.tsx` | Auth Form |
 | `/forgot-password` | Forgot Password | unauthenticated | Reset password | Login page link | Enter email, submit | `ForgotPasswordPage.tsx` | Auth Form |
