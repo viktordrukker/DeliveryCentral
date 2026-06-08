@@ -152,10 +152,15 @@ describe('HelpAdminPage', () => {
     await userEvent.type(editor, '# Hello{enter}{enter}**bold** text');
 
     const preview = within(dialog).getByTestId('help-admin-body-preview');
-    await waitFor(() => {
-      // Heading element rendered (not raw `#`).
-      expect(within(preview).getByRole('heading', { level: 1, name: 'Hello' })).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        // Heading element rendered (not raw `#`).
+        expect(within(preview).getByRole('heading', { level: 1, name: 'Hello' })).toBeInTheDocument();
+      },
+      // CI runners are slower: userEvent.type + react-markdown parse can take >1s,
+      // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
+      { timeout: 5000 },
+    );
     // Inline strong rendered.
     expect(within(preview).getByText('bold').tagName).toBe('STRONG');
   });
@@ -177,10 +182,15 @@ describe('HelpAdminPage', () => {
     await userEvent.paste('<script>alert(1)</script>\n\n[click](javascript:alert(1))');
 
     const preview = within(dialog).getByTestId('help-admin-body-preview');
-    await waitFor(() => {
-      // Link text renders but href is stripped to empty string by urlTransform.
-      expect(within(preview).getByText('click')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        // Link text renders but href is stripped to empty string by urlTransform.
+        expect(within(preview).getByText('click')).toBeInTheDocument();
+      },
+      // CI runners are slower: userEvent.paste + react-markdown parse can take >1s,
+      // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
+      { timeout: 5000 },
+    );
     // No <script> tag survives.
     expect(preview.querySelector('script')).toBeNull();
     // Anchor href is empty (no javascript: URI executes).
