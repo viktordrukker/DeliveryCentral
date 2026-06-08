@@ -31,7 +31,12 @@ const ACTION_TONE: Record<string, StatusTone> = {
 const SOP_DOC_HREF =
   'https://github.com/viktordrukker/DeliveryCentral/blob/main/docs/runbooks/ACCESS_POLICIES_EDIT_SOP.md';
 
-export function AccessPoliciesPage(): JSX.Element {
+/**
+ * W4-11 — exported headerless content for embedding under the consolidated
+ * `/admin/governance/roles` tabbed shell. Renders the page header inline so
+ * the tab host can compose without duplicating the action affordance.
+ */
+export function AccessPoliciesContent({ headerless = false }: { headerless?: boolean } = {}): JSX.Element {
   const [policies, setPolicies] = useState<AbacPolicySummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,40 +66,62 @@ export function AccessPoliciesPage(): JSX.Element {
   });
 
   return (
-    <PageContainer viewport>
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions."
-        title="Access Policies"
-        actions={
-          adminRoleUiOn
-            ? [
-                <Button
-                  key="edit-presets"
-                  as={Link}
-                  to="/admin/access-policies/edit"
-                  size="sm"
-                  variant="secondary"
-                >
-                  Edit role presets
-                </Button>,
-              ]
-            : [
-                <Button
-                  key="edit-runbook"
-                  as="a"
-                  href={SOP_DOC_HREF}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  size="sm"
-                  variant="secondary"
-                  data-testid="edit-via-runbook-cta"
-                >
-                  Edit access policies via the admin runbook
-                </Button>,
-              ]
-        }
-      />
+    <>
+      {headerless ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          {adminRoleUiOn ? (
+            <Button as={Link} to="/admin/access-policies/edit" size="sm" variant="secondary">
+              Edit role presets
+            </Button>
+          ) : (
+            <Button
+              as="a"
+              href={SOP_DOC_HREF}
+              target="_blank"
+              rel="noreferrer noopener"
+              size="sm"
+              variant="secondary"
+              data-testid="edit-via-runbook-cta"
+            >
+              Edit access policies via the admin runbook
+            </Button>
+          )}
+        </div>
+      ) : (
+        <PageHeader
+          eyebrow="Admin"
+          subtitle="Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions."
+          title="Access Policies"
+          actions={
+            adminRoleUiOn
+              ? [
+                  <Button
+                    key="edit-presets"
+                    as={Link}
+                    to="/admin/access-policies/edit"
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Edit role presets
+                  </Button>,
+                ]
+              : [
+                  <Button
+                    key="edit-runbook"
+                    as="a"
+                    href={SOP_DOC_HREF}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    size="sm"
+                    variant="secondary"
+                    data-testid="edit-via-runbook-cta"
+                  >
+                    Edit access policies via the admin runbook
+                  </Button>,
+                ]
+          }
+        />
+      )}
 
       {isLoading ? <LoadingState label="Loading access policies..." /> : null}
       {error ? <ErrorState description={error} /> : null}
@@ -164,6 +191,14 @@ export function AccessPoliciesPage(): JSX.Element {
           </SectionCard>
         </>
       ) : null}
+    </>
+  );
+}
+
+export function AccessPoliciesPage(): JSX.Element {
+  return (
+    <PageContainer viewport>
+      <AccessPoliciesContent />
     </PageContainer>
   );
 }
