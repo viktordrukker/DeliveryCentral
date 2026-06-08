@@ -196,9 +196,12 @@ export function StaffingDeskPage(): JSX.Element {
           Create Staffing Request → Slate → Pick → Assignment lifecycle.
           The legacy "Make Assignment" direct-create CTA is removed in v1
           (route gated by `staffingMakeAssignment` flag, default OFF). */}
+      {/* W4-06 — button copy clarified per audit. The primary CTA explicitly
+          says "Quick" so users know which surface they're about to open; the
+          secondary CTA points to the full-page workflow for slate/pick details. */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ Create Staffing Request</Button>
-        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">Open full create page</Button>
+        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Staffing Request (Quick)</Button>
+        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">New Staffing Request (Full page)</Button>
       </div>
       <StaffingRequestDrawer
         open={requestDrawerOpen}

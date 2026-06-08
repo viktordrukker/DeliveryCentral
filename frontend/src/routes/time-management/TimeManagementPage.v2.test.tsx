@@ -16,11 +16,18 @@ describe('V2-A.10/A.11 — TimeManagementPage chrome', () => {
     expect(src).toMatch(/const dsRefreshEnabled = isFeatureEnabled\('dsRefresh'\)/);
   });
 
-  it('A10: renders a dsRefresh-gated PageHeader with breadcrumb + awaiting + SLA badges', () => {
+  it('A10: renders a dsRefresh-gated PageHeader with breadcrumb + awaiting badge', () => {
     expect(src).toMatch(/dsRefreshEnabled \? \(\s*<PageHeader/);
     expect(src).toMatch(/breadcrumbs=\{\[\{ href: '\/', label: 'Home' \}, \{ label: 'Time Management' \}\]\}/);
     expect(src).toMatch(/label=\{`\$\{pendingCount\} awaiting you`\}/);
-    expect(src).toMatch(/label="SLA · 24h"/);
+  });
+
+  // W4-06 — SLA breach KPI / badge are removed until the backend ships
+  // the underlying field. Rendering 0 / — / "SLA · 24h" misled approvers
+  // into thinking SLA was being tracked when in fact it was a placeholder.
+  it('W4-06: hides SLA breach KPI tile and SLA chip until backend ships the data', () => {
+    expect(src).not.toMatch(/SLA breach/);
+    expect(src).not.toMatch(/label="SLA · 24h"/);
   });
 
   it('A11: inserts a dsRefresh-gated anomaly column reusing deriveAnomalies', () => {
