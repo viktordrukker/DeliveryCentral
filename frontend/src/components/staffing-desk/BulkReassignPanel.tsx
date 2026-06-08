@@ -16,6 +16,7 @@ interface Props {
 function columns(
   selected: Set<string>,
   toggle: (id: string) => void,
+  indexById: Map<string, number>,
 ): Array<Column<StaffingDeskRow>> {
   return [
     {
@@ -28,7 +29,9 @@ function columns(
           aria-label={`Select ${row.role} on ${row.projectName}`}
           checked={selected.has(row.id)}
           onChange={() => toggle(row.id)}
-          data-testid={`bulk-reassign-row-${row.id}`}
+          // W5-06 — data-testid uses a stable row index (not the raw position
+          // UUID) so internal identifiers never leak into the rendered DOM.
+          data-testid={`bulk-reassign-row-${indexById.get(row.id) ?? 0}`}
         />
       ),
     },
@@ -78,6 +81,12 @@ export function BulkReassignPanel({ items, onApplied }: Props): JSX.Element | nu
     () => items.filter((row) => row.kind === 'assignment' && row.status?.toUpperCase() !== 'RELEASED'),
     [items],
   );
+
+  const indexById = useMemo(() => {
+    const map = new Map<string, number>();
+    eligible.forEach((row, idx) => map.set(row.id, idx));
+    return map;
+  }, [eligible]);
 
   if (eligible.length === 0) return null;
 
@@ -147,7 +156,7 @@ export function BulkReassignPanel({ items, onApplied }: Props): JSX.Element | nu
           variant="compact"
           getRowKey={(row) => row.id}
           rows={eligible}
-          columns={columns(selected, toggle)}
+          columns={columns(selected, toggle, indexById)}
         />
       </div>
 
