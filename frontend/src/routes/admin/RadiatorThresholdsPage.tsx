@@ -251,19 +251,12 @@ export function RadiatorThresholdsPage(): JSX.Element {
         title="Radiator Threshold Configuration"
       />
 
-      <div
-        aria-live="polite"
-        style={{
-          background: 'var(--color-surface-alt)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 6,
-          color: 'var(--color-text-muted)',
-          fontSize: 12,
-          marginBottom: 'var(--space-4)',
-          padding: 'var(--space-3)',
-        }}
-      >
-        Changes invalidate the scoring cache and apply to all projects on next compute.
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <SectionCard compact>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 12, margin: 0 }}>
+            Changes invalidate the scoring cache and apply to all projects on next compute.
+          </p>
+        </SectionCard>
       </div>
 
       {rows.length === 0 ? (

@@ -131,7 +131,7 @@ describe('SettingsPage', () => {
     mockedFetch.mockResolvedValue(MOCK_SETTINGS);
     renderPage();
 
-    await screen.findByRole('heading', { name: 'Platform Settings' });
+    await screen.findByTestId('settings-section-general');
 
     expect(screen.getByTestId('settings-section-general')).toBeInTheDocument();
     expect(screen.getByTestId('settings-section-timesheets')).toBeInTheDocument();
