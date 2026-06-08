@@ -1,8 +1,16 @@
+import { lazy, Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { DashboardPage } from '@/routes/dashboard/DashboardPage';
+import { LoadingState } from '@/components/common/LoadingState';
 import { isFeatureEnabled } from '@/lib/feature-flags';
+
+// W4-03 — code-split the legacy Workload Overview behind the dsRefresh-OFF
+// branch so the heavy charts/data hooks only load when the operator actually
+// lands on the pre-flag home. Under dsRefresh ON the bundle is never fetched.
+const DashboardPage = lazy(() =>
+  import('@/routes/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
 
 /**
  * Phase E1 — role-aware `/` Home redirect (DS canvas "Home").
@@ -20,7 +28,11 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
  */
 export function HomeRedirect(): JSX.Element {
   if (!isFeatureEnabled('dsRefresh')) {
-    return <DashboardPage />;
+    return (
+      <Suspense fallback={<LoadingState label="Loading..." />}>
+        <DashboardPage />
+      </Suspense>
+    );
   }
   const { principal } = useAuth();
   const roles = principal?.roles ?? [];
