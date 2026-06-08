@@ -23,6 +23,7 @@ import { PmTimelineTab } from './pm-tabs/TimelineTab';
 import { PmStaffingTab, type OverallocatedPerson } from './pm-tabs/StaffingTab';
 import { PmVarianceTab } from './pm-tabs/VarianceTab';
 import { Button } from '@/components/ds';
+import { PersonSelect } from '@/components/common/PersonSelect';
 
 const PM_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -72,27 +73,17 @@ export function ProjectManagerDashboardPage(): JSX.Element {
           value={{ from: state.asOf.slice(0, 10), to: '' }}
           onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
         />
-        {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {/* W1-24 — only director/admin see the person-overlay search box.
+            W4-01 — switched from raw <input>+<datalist> to DS PersonSelect
+            (passes state.people through to preserve the pm role filter
+            the dashboard hook applies). */}
         {canOverlayOthers ? (
-          <label className="field field--inline" style={{ fontSize: 12 }}>
-            <input
-              className="field__control"
-              list="pm-people-list-tb"
-              onChange={(event) => {
-                const match = state.people.find((p) => p.displayName === event.target.value);
-                if (match) handlePersonChange(match.id);
-              }}
-              placeholder="Project manager..."
-              type="text"
-              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-              key={state.personId}
-            />
-            <datalist id="pm-people-list-tb">
-              {state.people.map((person) => (
-                <option key={person.id} value={person.displayName} />
-              ))}
-            </datalist>
-          </label>
+          <PersonSelect
+            label="Project manager"
+            onChange={handlePersonChange}
+            people={state.people}
+            value={state.personId}
+          />
         ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <TipTrigger />

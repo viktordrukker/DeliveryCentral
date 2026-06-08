@@ -25,6 +25,7 @@ import { HrRolesTab } from './hr-tabs/RolesTab';
 import { HrLifecycleTab } from './hr-tabs/LifecycleTab';
 import { HrWellbeingTab } from './hr-tabs/WellbeingTab';
 import { Button } from '@/components/ds';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { HrActionCardsPanel } from '@/components/hr/HrActionCardsPanel';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
@@ -128,27 +129,17 @@ export function HrDashboardPage(): JSX.Element {
   useEffect(() => {
     setActions(
       <>
-        {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {/* W1-24 — only director/admin see the person-overlay search box.
+            W4-01 — switched from raw <input>+<datalist> to DS PersonSelect
+            (passes state.people through to preserve the hr_manager role
+            filter the dashboard hook applies). */}
         {canOverlayOthers ? (
-          <label className="field field--inline" style={{ fontSize: 12 }}>
-            <input
-              className="field__control"
-              list="hr-people-list-tb"
-              onChange={(event) => {
-                const match = state.people.find((p) => p.displayName === event.target.value);
-                if (match) handlePersonChange(match.id);
-              }}
-              placeholder="Search HR managers..."
-              type="text"
-              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-              key={state.personId}
-            />
-            <datalist id="hr-people-list-tb">
-              {state.people.map((person) => (
-                <option key={person.id} value={person.displayName} />
-              ))}
-            </datalist>
-          </label>
+          <PersonSelect
+            label="HR manager"
+            onChange={handlePersonChange}
+            people={state.people}
+            value={state.personId}
+          />
         ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/people">Employee directory</Button>
         <Button as={Link} variant="secondary" size="sm" to="/cases">Cases</Button>
