@@ -19,6 +19,22 @@ import {
 } from '@/lib/api/role-presets';
 
 /**
+ * Short, human-readable descriptions for each platform role. Used as the
+ * `aria-describedby` target for the role checkboxes in the preset editor so
+ * screen readers convey not just the role identifier but also what scope it
+ * grants. Sourced from `route-manifest.ts` role taxonomy.
+ */
+const ROLE_DESCRIPTIONS: Record<PlatformRole, string> = {
+  employee: 'Standard employee — own timesheets, requests, and dashboards.',
+  project_manager: 'Owns project plans, staffing requests, and PvA.',
+  resource_manager: 'Manages bench, assignments, and team capacity.',
+  hr_manager: 'HR governance — people, org structure, cases, payroll signals.',
+  delivery_manager: 'Cross-project delivery oversight, escalations, anomalies.',
+  director: 'Executive view — portfolio health, finance, approvals.',
+  admin: 'Platform admin — required for every preset, cannot be removed.',
+};
+
+/**
  * F-5.4 / D-159 — RolePermissionAdminPage.
  *
  * Tenant admin surface for overriding the role list behind any named
@@ -231,24 +247,35 @@ export function RolePermissionAdminContent(): JSX.Element {
             {ALL_PLATFORM_ROLES.map((role) => {
               const selected = draftRoles.includes(role);
               const isAdmin = role === 'admin';
+              const descriptionId = `role-preset-role-desc-${role}`;
               return (
                 <label
                   key={role}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: 'var(--space-1)',
                     cursor: isAdmin ? 'not-allowed' : 'pointer',
                     opacity: isAdmin ? 0.7 : 1,
                   }}
                 >
                   <input
+                    aria-describedby={descriptionId}
+                    aria-label={role}
                     checked={selected}
                     disabled={isAdmin}
                     onChange={() => toggleRole(role)}
                     type="checkbox"
                   />
-                  <span>{role}</span>
+                  <span style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span>{role}</span>
+                    <span
+                      id={descriptionId}
+                      style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}
+                    >
+                      {ROLE_DESCRIPTIONS[role]}
+                    </span>
+                  </span>
                 </label>
               );
             })}
