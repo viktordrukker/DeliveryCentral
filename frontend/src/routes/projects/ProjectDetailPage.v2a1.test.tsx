@@ -56,13 +56,15 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/badges={titleBadges}/);
   });
 
-  it('B7: gated per-tab Plan actions + signal threading; Manage-positions uses the list route', () => {
+  it('B7: gated per-tab Plan actions + signal threading; W4-05 Manage-positions opens inline Drawer', () => {
     // Plan-tab-only, dsRefresh-gated header actions
     expect(src).toMatch(/dsRefreshEnabled && activeTab === 'plan' \?/);
     expect(src).toMatch(/setMilestoneAddSignal\(\(n\) => n \+ 1\)/);
     expect(src).toMatch(/setCrAddSignal\(\(n\) => n \+ 1\)/);
-    // Manage positions → existing list route, NOT the non-existent /positions/new
-    expect(src).toMatch(/to={`\/projects\/\$\{id\}\/positions`}/);
+    // W4-05 — Manage positions is now an inline Drawer trigger, not a Link
+    expect(src).toMatch(/setManagePositionsOpen\(true\)/);
+    expect(src).toMatch(/<ManagePositionsDrawer/);
+    // Sanity — the now-removed /positions/new pseudo-route still must not appear
     expect(src).not.toMatch(/positions\/new/);
     // signals passed into PlanTab
     expect(src).toMatch(/milestoneAddSignal={milestoneAddSignal}/);
