@@ -267,6 +267,13 @@ export class PortfolioDashboardService {
       .sort((a, b) => a.currentAllocation - b.currentAllocation);
   }
 
+  /**
+   * W4-02 — Director dashboard bench/available count must equal the result of
+   * the `/dashboard/portfolio/available-pool` endpoint for the same dataset.
+   * Both surfaces MUST share this helper so a future refactor cannot fork the
+   * definition. Regression contract pinned in
+   * `test/unit/dashboard/portfolio-dashboard-bench-reconcile.spec.ts`.
+   */
   private async getAvailablePoolCount(): Promise<number> {
     const pool = await this.getAvailablePool();
     return pool.length;
