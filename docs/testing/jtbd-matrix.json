@@ -1,17 +1,17 @@
 {
   "$schema": "Machine-readable JTBD matrix mapped to API, UI, and e2e assertions",
-  "version": "1.1.0",
-  "updatedAt": "2026-06-08",
+  "version": "1.1.1",
+  "updatedAt": "2026-06-09",
   "personas": {
     "employee": {
       "account": "ethan.brooks@itco.local",
       "role": "employee",
       "criticalJtbds": [
-        { "id": "E-01", "jtbd": "See own assignments", "route": "/dashboard/employee", "api": "GET /api/dashboard/role/employee", "e2eTag": "@critical", "unitTest": "EmployeeDashboardPage.test.tsx" },
+        { "id": "E-01", "jtbd": "See own assignments", "route": "/dashboard/employee", "api": "GET /api/dashboard/employee/:personId", "e2eTag": "@critical", "unitTest": "EmployeeDashboardPage.test.tsx" },
         { "id": "E-09", "jtbd": "See current week timesheet", "route": "/my-time", "api": "GET /api/timesheets", "e2eTag": "@critical", "unitTest": "MyTimePage.test.tsx" },
-        { "id": "E-16", "jtbd": "Submit timesheet", "route": "/my-time", "api": "POST /api/timesheets/:id/submit", "e2eTag": "@critical", "unitTest": "MyTimePage.test.tsx" },
+        { "id": "E-16", "jtbd": "Submit timesheet", "route": "/my-time", "api": "POST /api/timesheets/my/:weekStart/submit", "e2eTag": "@critical", "unitTest": "MyTimePage.test.tsx" },
         { "id": "E-19", "jtbd": "Open unified self-service workspace", "route": "/me", "api": "GET /api/workspace/me", "e2eTag": "@smoke", "unitTest": "WorkspacePage.test.tsx" },
-        { "id": "E-22", "jtbd": "View people directory", "route": "/people", "api": "GET /api/person-directory", "e2eTag": "@smoke", "unitTest": "PeoplePage.test.tsx" },
+        { "id": "E-22", "jtbd": "View people directory", "route": "/people", "api": "GET /api/org/people", "e2eTag": "@smoke", "unitTest": "PeoplePage.test.tsx" },
         { "id": "E-25", "jtbd": "Cannot access admin", "route": "/admin", "api": null, "e2eTag": "@smoke", "unitTest": "route-manifest.test.tsx" }
       ]
     },
@@ -19,7 +19,7 @@
       "account": "lucas.reed@itco.local",
       "role": "project_manager",
       "criticalJtbds": [
-        { "id": "PM-01", "jtbd": "See PM dashboard", "route": "/dashboard/project-manager", "api": "GET /api/dashboard/role/project_manager", "e2eTag": "@critical", "unitTest": "ProjectManagerDashboardPage.test.tsx" },
+        { "id": "PM-01", "jtbd": "See PM dashboard", "route": "/dashboard/project-manager", "api": "GET /api/dashboard/project-manager/:personId", "e2eTag": "@critical", "unitTest": "ProjectManagerDashboardPage.test.tsx" },
         { "id": "PM-06", "jtbd": "Create project", "route": "/projects/new", "api": "POST /api/project-registry", "e2eTag": "@critical", "unitTest": null },
         { "id": "PM-13", "jtbd": "Open one staffing position", "route": "/staffing-desk/positions/new", "api": "POST /api/staffing-requests", "e2eTag": "@critical", "unitTest": "CreatePositionPage.test.tsx" },
         { "id": "PM-14", "jtbd": "Open multiple staffing positions in bulk", "route": "/staffing-requests/bulk", "api": "POST /api/staffing-requests/bulk", "e2eTag": "@critical", "unitTest": "BulkCreatePositionsPage.test.tsx" },
@@ -32,7 +32,7 @@
       "account": "sophia.kim@itco.local",
       "role": "resource_manager",
       "criticalJtbds": [
-        { "id": "RM-01", "jtbd": "See RM dashboard", "route": "/dashboard/resource-manager", "api": "GET /api/dashboard/role/resource_manager", "e2eTag": "@critical", "unitTest": "ResourceManagerDashboardPage.test.tsx" },
+        { "id": "RM-01", "jtbd": "See RM dashboard", "route": "/dashboard/resource-manager", "api": "GET /api/dashboard/resource-manager/:personId", "e2eTag": "@critical", "unitTest": "ResourceManagerDashboardPage.test.tsx" },
         { "id": "RM-05", "jtbd": "View workload via staffing-desk timeline", "route": "/staffing-desk?view=timeline", "api": "GET /api/workload", "e2eTag": "@critical", "unitTest": null },
         { "id": "RM-08", "jtbd": "View staffing-desk board", "route": "/staffing-desk?view=board", "api": "GET /api/staffing-requests", "e2eTag": "@smoke", "unitTest": "StaffingDeskPage.test.tsx" },
         { "id": "RM-09", "jtbd": "Run Distribution Studio planner", "route": "/staffing-desk?view=planner", "api": "POST /api/planner-scenario/autoMatch", "e2eTag": "@critical", "unitTest": null },
@@ -44,9 +44,9 @@
       "account": "diana.walsh@itco.local",
       "role": "hr_manager",
       "criticalJtbds": [
-        { "id": "HR-01", "jtbd": "See HR dashboard", "route": "/dashboard/hr", "api": "GET /api/dashboard/role/hr_manager", "e2eTag": "@critical", "unitTest": "HrDashboardPage.test.tsx" },
-        { "id": "HR-05", "jtbd": "Create employee", "route": "/admin/people/new", "api": "POST /api/person-directory", "e2eTag": "@critical", "unitTest": null },
-        { "id": "HR-09", "jtbd": "View dictionaries", "route": "/metadata-admin", "api": "GET /api/metadata", "e2eTag": "@smoke", "unitTest": null },
+        { "id": "HR-01", "jtbd": "See HR dashboard", "route": "/dashboard/hr", "api": "GET /api/dashboard/hr/:personId", "e2eTag": "@critical", "unitTest": "HrDashboardPage.test.tsx" },
+        { "id": "HR-05", "jtbd": "Create employee", "route": "/admin/people/new", "api": "POST /api/org/people", "e2eTag": "@critical", "unitTest": null },
+        { "id": "HR-09", "jtbd": "View dictionaries", "route": "/metadata-admin", "api": "GET /api/metadata/dictionaries", "e2eTag": "@smoke", "unitTest": null },
         { "id": "HR-12", "jtbd": "Approve leave / case items in unified queue", "route": "/approvals", "api": "GET /api/approvals/queue", "e2eTag": "@critical", "unitTest": "ApprovalsPage.test.tsx" }
       ]
     },
@@ -54,8 +54,8 @@
       "account": "carlos.vega@itco.local",
       "role": "delivery_manager",
       "criticalJtbds": [
-        { "id": "DM-01", "jtbd": "See DM dashboard", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/role/delivery_manager", "e2eTag": "@critical", "unitTest": "DeliveryManagerDashboardPage.test.tsx" },
-        { "id": "DM-04", "jtbd": "View portfolio health", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/role/delivery_manager", "e2eTag": "@critical", "unitTest": null },
+        { "id": "DM-01", "jtbd": "See DM dashboard", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/delivery-manager/:personId", "e2eTag": "@critical", "unitTest": "DeliveryManagerDashboardPage.test.tsx" },
+        { "id": "DM-04", "jtbd": "View portfolio health", "route": "/dashboard/delivery-manager", "api": "GET /api/dashboard/delivery-manager/:personId", "e2eTag": "@critical", "unitTest": null },
         { "id": "DM-07", "jtbd": "Scan portfolio radiator", "route": "/dashboards/portfolio-radiator", "api": "GET /api/dashboards/portfolio-radiator", "e2eTag": "@smoke", "unitTest": "PortfolioRadiatorPage.test.tsx" }
       ]
     },
@@ -63,8 +63,8 @@
       "account": "noah.bennett@itco.local",
       "role": "director",
       "criticalJtbds": [
-        { "id": "DIR-01", "jtbd": "See director dashboard", "route": "/dashboard/director", "api": "GET /api/dashboard/role/director", "e2eTag": "@critical", "unitTest": "DirectorDashboardPage.test.tsx" },
-        { "id": "DIR-02", "jtbd": "View unit utilisation", "route": "/dashboard/director", "api": "GET /api/dashboard/role/director", "e2eTag": "@critical", "unitTest": null }
+        { "id": "DIR-01", "jtbd": "See director dashboard", "route": "/dashboard/director", "api": "GET /api/dashboard/director/:personId", "e2eTag": "@critical", "unitTest": "DirectorDashboardPage.test.tsx" },
+        { "id": "DIR-02", "jtbd": "View unit utilisation", "route": "/dashboard/director", "api": "GET /api/dashboard/director/:personId", "e2eTag": "@critical", "unitTest": null }
       ]
     },
     "admin": {
@@ -72,8 +72,8 @@
       "role": "admin",
       "criticalJtbds": [
         { "id": "ADM-01", "jtbd": "Access admin panel", "route": "/admin", "api": null, "e2eTag": "@smoke", "unitTest": "route-manifest.test.tsx" },
-        { "id": "ADM-03", "jtbd": "Impersonate user", "route": "/admin", "api": "POST /api/auth/impersonate", "e2eTag": "@critical", "unitTest": null },
-        { "id": "ADM-07", "jtbd": "View platform settings", "route": "/admin/settings", "api": "GET /api/platform-settings", "e2eTag": "@smoke", "unitTest": null },
+        { "id": "ADM-03", "jtbd": "Impersonate user", "route": "/admin", "api": null, "e2eTag": "@critical", "unitTest": null, "notes": "FE-only feature: impersonation is a frontend overlay on AuthContext; no backend endpoint." },
+        { "id": "ADM-07", "jtbd": "View platform settings", "route": "/admin/settings", "api": "GET /api/admin/platform-settings", "e2eTag": "@smoke", "unitTest": null },
         { "id": "ADM-10", "jtbd": "Configure SSO (OIDC)", "route": "/admin/integrations/sso", "api": "POST /api/admin/sso/config", "e2eTag": "@smoke", "unitTest": "SsoConfigPage.test.tsx" },
         { "id": "ADM-11", "jtbd": "Manage tenant custom roles", "route": "/admin/governance/roles", "api": "GET /api/admin/governance/roles", "e2eTag": "@smoke", "unitTest": "CustomRolesPage.test.tsx" },
         { "id": "ADM-12", "jtbd": "Fill V2 soak checklist for staging signoff", "route": "/admin/v2-soak-checklist", "api": "GET /api/admin/v2-soak-checklist", "e2eTag": "@smoke", "unitTest": "V2SoakChecklistPage.test.tsx" }
@@ -82,10 +82,10 @@
   },
   "coverage": {
     "totalJtbds": 142,
-    "criticalJtbds": 36,
-    "smokeTagged": 18,
-    "criticalTagged": 20,
-    "withUnitTests": 21,
-    "withE2eTests": 36
+    "criticalJtbds": 34,
+    "smokeTagged": 13,
+    "criticalTagged": 21,
+    "withUnitTests": 22,
+    "withE2eTests": 34
   }
 }
