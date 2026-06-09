@@ -83,28 +83,33 @@ export class ApplyPlannerScenarioService {
     try {
       await this.prisma.$transaction(async (tx) => {
         for (const p of proposed) {
-          const pos = positionIndex.get(p.positionId)!;
-          const created = await tx.projectAssignment.create({
+          const startDate = new Date(p.startDate);
+          const endDate = new Date(p.endDate);
+          const allocation = new Prisma.Decimal(p.allocationPercent);
+          // SoT PR 16b — canonical-only write to ProjectPosition. The
+          // scenario's `positionId` is the canonical aggregate id; we
+          // book the active fill in-place rather than spawning a paired
+          // legacy ProjectAssignment row.
+          const updated = await tx.projectPosition.update({
+            where: { id: p.positionId },
             data: {
-              projectId: pos.projectId,
-              personId: p.personId,
-              staffingRole: pos.role,
-              allocationPercent: new Prisma.Decimal(p.allocationPercent),
-              validFrom: new Date(p.startDate),
-              validTo: new Date(p.endDate),
-              status: 'BOOKED',
-              requestedByPersonId: actorId,
-              createdByPersonId: actorId,
+              fillStatus: 'BOOKED',
+              activePersonId: p.personId,
+              activeAllocationPercent: allocation,
+              activeValidFrom: startDate,
+              activeValidTo: endDate,
               updatedByPersonId: actorId,
             },
           });
-          await tx.assignmentHistory.create({
+          await tx.projectPositionFillHistory.create({
             data: {
-              assignmentId: created.id,
+              positionId: p.positionId,
+              changeType: 'ASSIGNED',
               changedByPersonId: actorId,
-              changeType: 'APPLIED_FROM_SCENARIO',
               changeReason: `planner_scenario_applied:${scenarioId}`,
-              newSnapshot: created as unknown as Prisma.JsonObject,
+              newPersonId: p.personId,
+              newStatus: 'BOOKED',
+              newSnapshot: updated as unknown as Prisma.JsonObject,
             },
           });
         }

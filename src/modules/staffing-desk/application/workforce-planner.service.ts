@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { AssignmentStatus as PrismaAssignmentStatus, Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
-import {
-  mapAssignmentStatusToFillStatus,
-  mapStaffingRequestStatusToFillStatus,
-} from '@src/shared/lean-migration/enum-mappings';
 import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
@@ -1463,48 +1459,24 @@ export class WorkforcePlannerService {
     };
   }
 
-  /* ── Apply: bulk-create assignments + staffing requests ── */
+  /* ── Apply: bulk-create positions ── */
 
   public async applyPlan(request: PlannerApplyRequestDto): Promise<PlannerApplyResponseDto> {
     const errors: string[] = [];
     let assignmentsCreated = 0;
     let staffingRequestsCreated = 0;
 
-    // LEAN foundation dual-write — every planner-applied write now lands on
-    // the canonical `ProjectPosition` aggregate alongside the legacy row in
-    // the same `$transaction`, matching the pattern shipped in
-    // `CreateProjectAssignmentService.writeCanonicalProjectPosition`
-    // (PR #491) and `TransitionProjectAssignmentService.mirrorTransitionToProjectPosition`
-    // (PR #488). Per-item try/catch wrapper preserves the existing
-    // partial-success semantics (good items continue, bad items recorded
-    // in `errors`); each individual item is its own transaction.
+    // SoT PR 16b — canonical-only writes. Legacy `ProjectAssignment` +
+    // `StaffingRequest` tables have been dropped; every planner-applied
+    // change lands on `ProjectPosition` (+ `ProjectPositionFillHistory`)
+    // exclusively. Per-item try/catch preserves the partial-success
+    // semantics (good items continue, bad items recorded in `errors`);
+    // each item is its own transaction.
 
-    // Create assignments for dispatches
     for (const d of request.dispatches) {
       try {
         await this.prisma.$transaction(async (tx) => {
-          // Lean canonical write FIRST so the `legacyAssignmentId` link is
-          // pinned before the legacy row exists. The legacy create below
-          // populates the same id slot via Prisma's `connect`-style FK.
-          const assignment = await tx.projectAssignment.create({
-            data: {
-              personId: d.personId,
-              projectId: d.projectId,
-              staffingRole: d.staffingRole,
-              allocationPercent: d.allocationPercent,
-              validFrom: new Date(d.startDate),
-              status: 'PROPOSED',
-              requestedAt: new Date(),
-              notes: d.note ?? null,
-              // F-129 / D-103-write-path round 39 — planner-applied dispatch:
-              // the planner-execution actor is the canonical creator/editor.
-              createdByPersonId: request.actorId,
-              updatedByPersonId: request.actorId,
-            },
-            select: { id: true, validFrom: true, allocationPercent: true },
-          });
-
-          await this.writeCanonicalDispatchPosition(tx, assignment.id, d, request.actorId);
+          await this.writeCanonicalDispatchPosition(tx, d, request.actorId);
         });
         assignmentsCreated++;
       } catch (e: unknown) {
@@ -1512,30 +1484,10 @@ export class WorkforcePlannerService {
       }
     }
 
-    // Create staffing requests for hires
     for (const h of request.hireRequests) {
       try {
         await this.prisma.$transaction(async (tx) => {
-          const sr = await tx.staffingRequest.create({
-            data: {
-              projectId: h.projectId,
-              requestedByPersonId: request.actorId,
-              role: h.role,
-              skills: h.skills,
-              allocationPercent: h.allocationPercent,
-              headcountRequired: h.headcount,
-              priority: h.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-              startDate: new Date(h.startDate),
-              endDate: new Date(h.endDate),
-              status: 'OPEN',
-              // F-128 / D-103-write-path round 38 — planner-applied actor.
-              createdByPersonId: request.actorId,
-              updatedByPersonId: request.actorId,
-            },
-            select: { id: true },
-          });
-
-          await this.writeCanonicalHirePositions(tx, sr.id, h, request.actorId);
+          await this.writeCanonicalHirePositions(tx, h, request.actorId);
         });
         staffingRequestsCreated++;
       } catch (e: unknown) {
@@ -1543,12 +1495,20 @@ export class WorkforcePlannerService {
       }
     }
 
-    // Apply extensions
+    // Extensions now key on `ProjectPosition.id` (the legacy
+    // `assignmentId` field on the DTO is retained but resolved against
+    // the position table — every paired position carries the value as
+    // `legacyAssignmentId` so historical ids still resolve).
     let extensionsUpdated = 0;
     for (const ext of request.extensions ?? []) {
       try {
-        const existing = await this.prisma.projectAssignment.findUnique({
-          where: { id: ext.assignmentId },
+        const existing = await this.prisma.projectPosition.findFirst({
+          where: {
+            OR: [
+              { id: ext.assignmentId },
+              { legacyAssignmentId: ext.assignmentId },
+            ],
+          },
           select: { id: true, notes: true },
         });
         if (!existing) {
@@ -1558,30 +1518,14 @@ export class WorkforcePlannerService {
         const mergedNote = [existing.notes, ext.note].filter(Boolean).join('\n');
         const newValidTo = new Date(ext.newValidTo);
 
-        await this.prisma.$transaction(async (tx) => {
-          await tx.projectAssignment.update({
-            where: { id: ext.assignmentId },
-            data: {
-              validTo: newValidTo,
-              notes: mergedNote.trim().length > 0 ? mergedNote : null,
-              // F-129 / D-103-write-path round 39 — track extension editor.
-              updatedByPersonId: request.actorId,
-            },
-          });
-
-          // Mirror the extension onto the paired canonical position. The
-          // active-window's upper bound (`activeValidTo`) is the same value
-          // the legacy `validTo` got. Best-effort within the tx: a missing
-          // paired position (pre-backfill row) is silently skipped — the
-          // inverted mirror (PR #480) handles those long-tail cases.
-          await tx.projectPosition.updateMany({
-            where: { legacyAssignmentId: ext.assignmentId },
-            data: {
-              activeValidTo: newValidTo,
-              endDate: newValidTo,
-              updatedByPersonId: request.actorId,
-            },
-          });
+        await this.prisma.projectPosition.update({
+          where: { id: existing.id },
+          data: {
+            activeValidTo: newValidTo,
+            endDate: newValidTo,
+            notes: mergedNote.trim().length > 0 ? mergedNote : null,
+            updatedByPersonId: request.actorId,
+          },
         });
         extensionsUpdated++;
       } catch (e: unknown) {
@@ -1599,37 +1543,20 @@ export class WorkforcePlannerService {
   }
 
   /**
-   * LEAN foundation dual-write — create the canonical `ProjectPosition`
-   * row paired to a planner dispatch. Same shape as the canonical writer
-   * in `CreateProjectAssignmentService.writeCanonicalProjectPosition`.
-   *
-   * `fillStatus` is computed via `mapAssignmentStatusToFillStatus` from
-   * the lean enum mapper (Phase 0 `enum-mappings.ts`). Planner dispatches
-   * always start at `PROPOSED` so the active-window slots are unpopulated
-   * until the assignment transitions to BOOKED.
-   *
-   * `legacyAssignmentId` carries the just-written legacy id so the
-   * inverted mirror (PR #480) can keep the legacy row in sync on
-   * subsequent transitions.
+   * SoT PR 16b — canonical-only writer for a planner dispatch.
+   * Planner dispatches always start at `PROPOSED`, so the active-window
+   * slots stay unpopulated until the position transitions to BOOKED.
    */
   private async writeCanonicalDispatchPosition(
     tx: Prisma.TransactionClient,
-    legacyAssignmentId: string,
     dispatch: PlannerDispatchInput,
     actorId: string,
   ): Promise<void> {
-    const fillStatus = mapAssignmentStatusToFillStatus(
-      'PROPOSED' as PrismaAssignmentStatus,
-    );
-    const isActive =
-      fillStatus === 'BOOKED' ||
-      fillStatus === 'ONBOARDING' ||
-      fillStatus === 'ASSIGNED' ||
-      fillStatus === 'ON_HOLD';
+    const fillStatus = 'PROPOSED' as const;
 
     const startDate = new Date(dispatch.startDate);
     // ProjectPosition.endDate is required; planner dispatches don't carry an
-    // explicit end so we use the same 365-day window the create-assignment
+    // explicit end so we use the same 365-day window the create-position
     // service and Sprint-2 backfill use.
     const endDate = new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
     const allocation = dispatch.allocationPercent.toString();
@@ -1641,14 +1568,13 @@ export class WorkforcePlannerService {
       startDate,
       endDate,
       fillStatus,
-      activePersonId: isActive ? dispatch.personId : null,
-      activeAllocationPercent: isActive ? allocation : null,
-      activeValidFrom: isActive ? startDate : null,
+      activePersonId: null,
+      activeAllocationPercent: null,
+      activeValidFrom: null,
       activeValidTo: null,
       notes: dispatch.note ?? null,
       createdByPersonId: actorId,
       updatedByPersonId: actorId,
-      legacyAssignmentId,
     };
 
     const position = await tx.projectPosition.create({
@@ -1676,20 +1602,15 @@ export class WorkforcePlannerService {
   }
 
   /**
-   * LEAN foundation dual-write — create N canonical `ProjectPosition` rows
-   * (one per requested headcount) paired to a planner hire request.
-   *
-   * `fillStatus` is OPEN (mapped from `StaffingRequestStatus.OPEN` via
-   * `mapStaffingRequestStatusToFillStatus`). Each row carries the same
-   * `legacyStaffingRequestId` so reads can re-group siblings.
+   * SoT PR 16b — canonical-only writer for N positions (one per
+   * requested headcount). Each row starts at `fillStatus=OPEN`.
    */
   private async writeCanonicalHirePositions(
     tx: Prisma.TransactionClient,
-    legacyStaffingRequestId: string,
     hire: PlannerApplyRequestDto['hireRequests'][number],
     actorId: string,
   ): Promise<void> {
-    const fillStatus = mapStaffingRequestStatusToFillStatus('OPEN');
+    const fillStatus = 'OPEN' as const;
     const allocation = hire.allocationPercent.toString();
     const startDate = new Date(hire.startDate);
     const endDate = new Date(hire.endDate);
@@ -1711,7 +1632,6 @@ export class WorkforcePlannerService {
         requestedByPersonId: actorId,
         createdByPersonId: actorId,
         updatedByPersonId: actorId,
-        legacyStaffingRequestId,
       };
 
       const position = await tx.projectPosition.create({
@@ -1742,54 +1662,68 @@ export class WorkforcePlannerService {
   /* ── Extension validation ── */
 
   public async validateExtension(request: ExtensionValidateRequestDto): Promise<ExtensionValidateResponseDto> {
-    // LEAN-P1-1 — `assignmentId` flows through `applyPlan` extensions and is
-    // still a legacy `ProjectAssignment.id` (write paths unchanged in P1).
-    // The lookup itself remains on the legacy table for matching ID flow; the
-    // over-allocation check below is the read that moved to `ProjectPosition`.
-    const assignment = await this.prisma.projectAssignment.findUnique({
-      where: { id: request.assignmentId },
+    // SoT PR 16b — resolve the extension target on `ProjectPosition`.
+    // `assignmentId` from the DTO is either a ProjectPosition.id (post-
+    // cutover) or a historical legacy id (`legacyAssignmentId`).
+    const position = await this.prisma.projectPosition.findFirst({
+      where: {
+        OR: [
+          { id: request.assignmentId },
+          { legacyAssignmentId: request.assignmentId },
+        ],
+      },
       select: {
-        id: true, personId: true, projectId: true, validFrom: true, validTo: true, allocationPercent: true, status: true,
-        person: { select: { id: true, displayName: true, employmentStatus: true, terminatedAt: true } },
+        id: true,
+        activePersonId: true,
+        projectId: true,
+        activeValidFrom: true,
+        activeValidTo: true,
+        startDate: true,
+        endDate: true,
+        activeAllocationPercent: true,
+        requiredAllocationPercent: true,
+        fillStatus: true,
+        activePerson: { select: { id: true, displayName: true, employmentStatus: true, terminatedAt: true } },
         project: { select: { id: true, name: true, endsOn: true } },
       },
     });
 
-    if (!assignment) {
+    if (!position || !position.activePerson) {
       throw new Error(`Assignment ${request.assignmentId} not found`);
     }
 
-    const currentValidToDate = assignment.validTo ?? assignment.validFrom;
+    const person = position.activePerson;
+    const currentValidToDate = position.activeValidTo ?? position.activeValidFrom ?? position.startDate;
     const newValidToDate = new Date(request.newValidTo);
     const conflicts: ExtensionConflict[] = [];
 
     // Hard: person employment not active
-    if (assignment.person.employmentStatus !== 'ACTIVE') {
+    if (person.employmentStatus !== 'ACTIVE') {
       conflicts.push({
         kind: 'employment-inactive',
         severity: 'danger',
         blocking: true,
-        message: `${assignment.person.displayName} is ${assignment.person.employmentStatus.toLowerCase()} — cannot extend`,
+        message: `${person.displayName} is ${person.employmentStatus.toLowerCase()} — cannot extend`,
       });
     }
 
     // Hard: termination before new validTo
-    if (assignment.person.terminatedAt && assignment.person.terminatedAt < newValidToDate) {
+    if (person.terminatedAt && person.terminatedAt < newValidToDate) {
       conflicts.push({
         kind: 'termination-conflict',
         severity: 'danger',
         blocking: true,
-        message: `${assignment.person.displayName} terminates ${assignment.person.terminatedAt.toISOString().slice(0, 10)} — before proposed end`,
+        message: `${person.displayName} terminates ${person.terminatedAt.toISOString().slice(0, 10)} — before proposed end`,
       });
     }
 
     // Hard: project closes before new validTo
-    if (assignment.project.endsOn && assignment.project.endsOn < newValidToDate) {
+    if (position.project.endsOn && position.project.endsOn < newValidToDate) {
       conflicts.push({
         kind: 'project-end-overrun',
         severity: 'danger',
         blocking: true,
-        message: `Project ${assignment.project.name} closes ${assignment.project.endsOn.toISOString().slice(0, 10)} — before proposed end`,
+        message: `Project ${position.project.name} closes ${position.project.endsOn.toISOString().slice(0, 10)} — before proposed end`,
       });
     }
 
@@ -1797,7 +1731,7 @@ export class WorkforcePlannerService {
     if (newValidToDate > currentValidToDate) {
       const overlappingLeaves = await this.prisma.leaveRequest.findMany({
         where: {
-          personId: assignment.person.id,
+          personId: person.id,
           status: 'APPROVED',
           startDate: { lte: newValidToDate },
           endDate: { gte: currentValidToDate },
@@ -1815,15 +1749,14 @@ export class WorkforcePlannerService {
       }
 
       // Anomaly (non-blocking): over-allocation on any day in the extension window
-      const allocShare = assignment.allocationPercent?.toNumber() ?? 0;
+      const allocShare = decimalToNumber(position.activeAllocationPercent ?? position.requiredAllocationPercent);
       if (allocShare > 0) {
-        // LEAN-P1-1 — read overlap candidates from `ProjectPosition`. The
-        // current assignment is excluded via `legacyAssignmentId` since the
-        // mirrored position carries that provenance link.
+        // SoT PR 16b — read overlap candidates from `ProjectPosition`;
+        // exclude the current position.
         const others = await this.prisma.projectPosition.findMany({
           where: {
-            activePersonId: assignment.person.id,
-            legacyAssignmentId: { not: assignment.id },
+            activePersonId: person.id,
+            id: { not: position.id },
             fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
             activeValidFrom: { lte: newValidToDate },
             OR: [{ activeValidTo: { gte: currentValidToDate } }, { activeValidTo: null }],
@@ -1836,7 +1769,7 @@ export class WorkforcePlannerService {
           },
         });
         for (const o of others) {
-          const oAlloc = o.activeAllocationPercent?.toNumber() ?? 0;
+          const oAlloc = o.activeAllocationPercent ? decimalToNumber(o.activeAllocationPercent) : 0;
           if (oAlloc + allocShare > 100) {
             conflicts.push({
               kind: 'over-allocation',
@@ -1852,12 +1785,12 @@ export class WorkforcePlannerService {
     const hasBlocking = conflicts.some((c) => c.blocking);
 
     return {
-      assignmentId: assignment.id,
-      personId: assignment.person.id,
-      personName: assignment.person.displayName,
-      projectId: assignment.project.id,
-      projectName: assignment.project.name,
-      currentValidTo: assignment.validTo ? assignment.validTo.toISOString().slice(0, 10) : null,
+      assignmentId: position.id,
+      personId: person.id,
+      personName: person.displayName,
+      projectId: position.project.id,
+      projectName: position.project.name,
+      currentValidTo: position.activeValidTo ? position.activeValidTo.toISOString().slice(0, 10) : null,
       newValidTo: request.newValidTo,
       valid: !hasBlocking,
       conflicts,

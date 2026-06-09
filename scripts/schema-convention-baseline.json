@@ -69,6 +69,8 @@
   "ProjectChangeRequest.workstreamId|fk-missing-relation",
   "ProjectExternalLink.project|relation-ondelete-missing",
   "ProjectMilestone.project|relation-ondelete-missing",
+  "ProjectPosition.legacyAssignmentId|fk-missing-relation",
+  "ProjectPosition.legacyStaffingRequestId|fk-missing-relation",
   "ProjectPosition.onHoldCaseId|fk-missing-relation",
   "ProjectPosition.workstreamId|fk-missing-relation",
   "ProjectPositionCandidate.legacyCandidateId|fk-missing-relation",

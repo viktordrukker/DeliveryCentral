@@ -39,9 +39,6 @@
 --
 -- Also dropped:
 --   * `AssignmentStatus` enum (no longer referenced after table drop).
---   * `ProjectPosition.legacyStaffingRequestId` provenance column.
---   * `ProjectPosition.legacyAssignmentId` provenance column.
---   * The two associated indexes on the legacy provenance columns.
 --   * `CaseRecord.relatedAssignmentId` column (already nulled in P3-1).
 --   * `timesheet_entries.assignmentId` column (positionId is canonical).
 --   * `AggregateType` enum values `ProjectAssignment` + `StaffingRequest`
@@ -167,24 +164,15 @@ EXCEPTION WHEN undefined_table THEN
 END $$;
 
 -- =====================================================================
--- 4. Drop ProjectPosition legacy provenance columns + indexes.
+-- 4. ProjectPosition legacy provenance columns RETAINED as historical
+--    join keys (PR 16b). The columns were FK-bound to ProjectAssignment +
+--    StaffingRequest in the LEAN-P0-foundation expand; with those tables
+--    gone (step 5 below) the FK constraints fall away via CASCADE, leaving
+--    the values as standalone uuid columns used by staffing-desk
+--    `getPlan` / planner `whyNot` to thread historical aggregate ids
+--    through the read model. Drop-out is deferred to a future PR once the
+--    last reader migrates to ProjectPosition.id / publicId exclusively.
 -- =====================================================================
-DROP INDEX IF EXISTS "ProjectPosition_legacyStaffingRequestId_idx";
-DROP INDEX IF EXISTS "ProjectPosition_legacyAssignmentId_idx";
-
-DO $$
-BEGIN
-  ALTER TABLE "ProjectPosition" DROP COLUMN IF EXISTS "legacyStaffingRequestId";
-EXCEPTION WHEN undefined_table THEN
-  NULL;
-END $$;
-
-DO $$
-BEGIN
-  ALTER TABLE "ProjectPosition" DROP COLUMN IF EXISTS "legacyAssignmentId";
-EXCEPTION WHEN undefined_table THEN
-  NULL;
-END $$;
 
 -- =====================================================================
 -- 5. Drop the 9 legacy tables in FK-safe order.

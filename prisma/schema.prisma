@@ -3788,6 +3788,13 @@ model ProjectPosition {
   createdByPersonId            String?                      @db.Uuid
   updatedByPersonId            String?                      @db.Uuid
   archivedAt                   DateTime?                    @db.Timestamptz(3)
+  // SoT PR 16b — historical provenance pointers retained after the legacy
+  // ProjectAssignment / StaffingRequest tables were dropped. No @relation
+  // because the source tables no longer exist; these are soft pointers
+  // used by staffing-desk / planner read paths to thread historical
+  // aggregate ids through the read model.
+  legacyAssignmentId           String?                      @db.Uuid
+  legacyStaffingRequestId      String?                      @db.Uuid
   // Tenant.
   tenantId                     String?                      @db.Uuid
   Tenant                       Tenant?                      @relation("ProjectPositionTenant", fields: [tenantId], references: [id], onDelete: Restrict)
@@ -3814,6 +3821,8 @@ model ProjectPosition {
   @@index([requestedByPersonId])
   @@index([appliedRateCardEntryId])
   @@index([onboardingApprovedByPersonId], map: "ProjectPosition_onboardingApprovedByPerson_idx")
+  @@index([legacyAssignmentId])
+  @@index([legacyStaffingRequestId])
   @@map("ProjectPosition")
 }
 

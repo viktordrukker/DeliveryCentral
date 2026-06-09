@@ -5,7 +5,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 import { ResponsibilityResolverService } from '@src/modules/identity-access/application/responsibility-resolver.service';
 
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
@@ -40,7 +39,6 @@ import { PrismaExternalSyncStateRepository } from './infrastructure/repositories
 import { PrismaProjectExternalLinkRepository } from './infrastructure/repositories/prisma/prisma-project-external-link.repository';
 import { PrismaProjectRepository } from './infrastructure/repositories/prisma/prisma-project.repository';
 import { ClientService } from './application/client.service';
-import { GenerateStaffingRequestsFromPlanService } from './application/generate-staffing-requests-from-plan.service';
 import { PortfolioRadiatorService } from './application/portfolio-radiator.service';
 import { PortfolioRadiatorSummaryService } from './application/portfolio-radiator-summary.service';
 import { ProjectChangeRequestService } from './application/project-change-request.service';
@@ -87,7 +85,6 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
   imports: [
     forwardRef(() => OrganizationModule),
     WorkEvidenceModule,
-    forwardRef(() => AssignmentsModule),
     ProjectPositionsModule,
     NotificationsModule,
     PulseModule,
@@ -339,7 +336,6 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     ClientService,
     VendorService,
     ProjectRolePlanService,
-    GenerateStaffingRequestsFromPlanService,
     ProjectClosureReadinessService,
     ProjectRagService,
     ProjectRiskService,

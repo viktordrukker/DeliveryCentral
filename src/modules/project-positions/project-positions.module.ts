@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { AuditObservabilityModule } from '@src/modules/audit-observability/audit-observability.module';
-import { DomainEventService } from '@src/modules/audit-observability/application/domain-event.service';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PrismaModule } from '@src/shared/persistence/prisma.module';
@@ -15,7 +14,6 @@ import { ListEnrichedBenchService } from './application/list-enriched-bench.serv
 import { ListPositionHistoryService } from './application/list-position-history.service';
 import { ListProjectPositionsService } from './application/list-project-positions.service';
 import { PositionForensicsService } from './application/position-forensics.service';
-import { ProjectPositionMirrorService } from './application/project-position-mirror.service';
 import { SuggestFillsService } from './application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
 import { PROJECT_POSITION_REPOSITORY } from './application/tokens';
@@ -110,12 +108,6 @@ import {
       inject: [PrismaService],
       useFactory: (prisma: PrismaService) => new BulkReassignPositionsService(prisma),
     },
-    {
-      provide: ProjectPositionMirrorService,
-      inject: [PrismaService, DomainEventService],
-      useFactory: (prisma: PrismaService, domainEvents: DomainEventService) =>
-        new ProjectPositionMirrorService(prisma, domainEvents),
-    },
   ],
   exports: [
     BulkReassignPositionsService,
@@ -128,7 +120,6 @@ import {
     SuggestFillsService,
     PositionForensicsService,
     ListPositionHistoryService,
-    ProjectPositionMirrorService,
     PROJECT_POSITION_REPOSITORY,
   ],
 })

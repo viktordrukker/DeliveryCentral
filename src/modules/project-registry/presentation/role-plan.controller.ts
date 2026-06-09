@@ -5,14 +5,12 @@ import { RequireRoles } from '@src/modules/identity-access/application/roles.dec
 
 import { PROJECT_DELIVERY_ROLES, STAFFING_ROLES } from '@src/shared/auth/role-presets';
 import { ProjectRolePlanService, UpsertRolePlanEntryDto } from '../application/project-role-plan.service';
-import { GenerateStaffingRequestsFromPlanService } from '../application/generate-staffing-requests-from-plan.service';
 
 @ApiTags('project-role-plan')
 @Controller('projects')
 export class ProjectRolePlanController {
   public constructor(
     private readonly rolePlanService: ProjectRolePlanService,
-    private readonly generateService: GenerateStaffingRequestsFromPlanService,
   ) {}
 
   @Get(':id/role-plan')
@@ -66,18 +64,5 @@ export class ProjectRolePlanController {
   @RequireRoles(...STAFFING_ROLES)
   public async getStaffingSummary(@Param('id', ParseUUIDPipe) projectId: string) {
     return this.rolePlanService.getStaffingSummary(projectId);
-  }
-
-  @Post(':id/role-plan/generate-requests')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Generate staffing requests from unfilled role plan entries' })
-  @ApiOkResponse({ description: 'Generated request IDs.' })
-  @RequireRoles(...PROJECT_DELIVERY_ROLES)
-  public async generateRequests(
-    @Param('id', ParseUUIDPipe) projectId: string,
-    @Req() httpRequest: { principal?: { personId?: string } },
-  ) {
-    const actorId = httpRequest.principal?.personId ?? 'unknown';
-    return this.generateService.execute(projectId, actorId);
   }
 }
