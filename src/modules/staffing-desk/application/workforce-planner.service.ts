@@ -627,20 +627,33 @@ export class WorkforcePlannerService {
     }
 
     // Bench: <20% allocation
-    // LEAN-P1-1 — last-ended-assignment lookup remains on the legacy
-    // `ProjectAssignment` table for now. The structurally correct lean source
-    // is `ProjectPositionFillHistory`, but no code populates that table yet
-    // (the inverted mirror nulls `activePersonId`/`activeValidTo` on release,
-    // so `ProjectPosition` itself can't answer "who was last on this position").
-    // Migration of this site is deferred until the fill-history writer ships.
-    const endedAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['COMPLETED', 'CANCELLED'] }, validTo: { not: null, lt: now } },
-      select: { personId: true, validTo: true },
-      orderBy: { validTo: 'desc' },
-    });
+    // SoT PR 14 — last-ended source is the lean `ProjectPositionFillHistory`
+    // (RELEASED transitions) merged with closeout-lag positions whose
+    // `activeValidTo` is in the past but the fill has not yet been moved to
+    // RELEASED. Mirrors the canonical pattern in
+    // `BenchManagementService.getBench()` and `ListEnrichedBenchService`.
+    const [closeoutLagPositions, releaseHistory] = await Promise.all([
+      this.prisma.projectPosition.findMany({
+        where: { activeValidTo: { not: null, lt: now } },
+        select: { activePersonId: true, activeValidTo: true },
+        orderBy: { activeValidTo: 'desc' },
+      }),
+      this.prisma.projectPositionFillHistory.findMany({
+        where: { changeType: 'RELEASED' },
+        select: { previousPersonId: true, occurredAt: true },
+        orderBy: { occurredAt: 'desc' },
+      }),
+    ]);
     const lastEndByPerson = new Map<string, Date>();
-    for (const a of endedAssignments) {
-      if (!lastEndByPerson.has(a.personId) && a.validTo) lastEndByPerson.set(a.personId, a.validTo);
+    for (const p of closeoutLagPositions) {
+      if (!p.activePersonId || !p.activeValidTo) continue;
+      const existing = lastEndByPerson.get(p.activePersonId);
+      if (!existing || p.activeValidTo > existing) lastEndByPerson.set(p.activePersonId, p.activeValidTo);
+    }
+    for (const h of releaseHistory) {
+      if (!h.previousPersonId) continue;
+      const existing = lastEndByPerson.get(h.previousPersonId);
+      if (!existing || h.occurredAt > existing) lastEndByPerson.set(h.previousPersonId, h.occurredAt);
     }
 
     const benchPeople: PlannerBenchPerson[] = [];
@@ -1055,18 +1068,32 @@ export class WorkforcePlannerService {
     const costByPerson = new Map<string, number>();
     for (const r of costRates) costByPerson.set(r.personId, Math.round(r.hourlyRate.toNumber() * 160));
 
-    // LEAN-P1-1 — bench daysOnBench source unchanged: legacy `ProjectAssignment`
-    // still answers "who was last on a project and when did it end" until the
-    // `ProjectPositionFillHistory` writer ships (see comment on the matching
-    // query in `getPlan`).
-    const endedAssignments = await this.prisma.projectAssignment.findMany({
-      where: { status: { in: ['COMPLETED', 'CANCELLED'] }, validTo: { not: null, lt: now }, personId: { in: benchIds } },
-      select: { personId: true, validTo: true },
-      orderBy: { validTo: 'desc' },
-    });
+    // SoT PR 14 — bench daysOnBench sources from the lean
+    // `ProjectPositionFillHistory` (RELEASED transitions) merged with
+    // closeout-lag positions whose `activeValidTo` is past but the fill has
+    // not yet been moved to RELEASED. Same pattern as `getPlan` above.
+    const [closeoutLagPositions, releaseHistory] = await Promise.all([
+      this.prisma.projectPosition.findMany({
+        where: { activePersonId: { in: benchIds }, activeValidTo: { not: null, lt: now } },
+        select: { activePersonId: true, activeValidTo: true },
+        orderBy: { activeValidTo: 'desc' },
+      }),
+      this.prisma.projectPositionFillHistory.findMany({
+        where: { changeType: 'RELEASED', previousPersonId: { in: benchIds } },
+        select: { previousPersonId: true, occurredAt: true },
+        orderBy: { occurredAt: 'desc' },
+      }),
+    ]);
     const lastEndByPerson = new Map<string, Date>();
-    for (const a of endedAssignments) {
-      if (!lastEndByPerson.has(a.personId) && a.validTo) lastEndByPerson.set(a.personId, a.validTo);
+    for (const p of closeoutLagPositions) {
+      if (!p.activePersonId || !p.activeValidTo) continue;
+      const existing = lastEndByPerson.get(p.activePersonId);
+      if (!existing || p.activeValidTo > existing) lastEndByPerson.set(p.activePersonId, p.activeValidTo);
+    }
+    for (const h of releaseHistory) {
+      if (!h.previousPersonId) continue;
+      const existing = lastEndByPerson.get(h.previousPersonId);
+      if (!existing || h.occurredAt > existing) lastEndByPerson.set(h.previousPersonId, h.occurredAt);
     }
     const daysOnBenchByPerson = new Map<string, number>();
     for (const p of benchPeople) {
@@ -1842,17 +1869,27 @@ export class WorkforcePlannerService {
   public async whyNot(request: WhyNotRequestDto): Promise<WhyNotResponseDto> {
     const topN = request.topN ?? 5;
 
-    // Resolve demand from either StaffingRequest or ProjectRolePlan
-    // LEAN-P1-1 — `demandId` flowing in here is the legacy
-    // `StaffingRequest.id` returned by `getPlan` (preserved via
-    // `legacyStaffingRequestId` reconstruction), so the lookup itself stays
-    // on the legacy table until the API contract migrates in a later phase.
-    const asRequest = await this.prisma.staffingRequest.findUnique({
-      where: { id: request.demandId },
-      select: {
-        id: true, projectId: true, role: true, skills: true, allocationPercent: true, startDate: true, endDate: true,
-      },
-    });
+    // SoT PR 14 — resolve demand from `ProjectPosition` (lean canonical) first.
+    // `demandId` from `getPlan` is either a position id (RolePlan-derived /
+    // post-cutover demand) or a `legacyStaffingRequestId` carried on a group
+    // of sibling positions. Both shapes resolve to a `ProjectPosition` row.
+    // Falls back to `ProjectRolePlan` for plan-only demand that never got a
+    // position row.
+    const asPosition =
+      (await this.prisma.projectPosition.findUnique({
+        where: { id: request.demandId },
+        select: {
+          id: true, projectId: true, role: true, skills: true, requiredAllocationPercent: true,
+          startDate: true, endDate: true,
+        },
+      })) ??
+      (await this.prisma.projectPosition.findFirst({
+        where: { legacyStaffingRequestId: request.demandId },
+        select: {
+          id: true, projectId: true, role: true, skills: true, requiredAllocationPercent: true,
+          startDate: true, endDate: true,
+        },
+      }));
 
     let demandRole: string;
     let demandSkills: string[];
@@ -1861,13 +1898,13 @@ export class WorkforcePlannerService {
     let demandStart: Date;
     let demandEnd: Date;
 
-    if (asRequest) {
-      demandRole = asRequest.role;
-      demandSkills = asRequest.skills;
-      demandAlloc = decimalToNumber(asRequest.allocationPercent);
-      demandProjectId = asRequest.projectId;
-      demandStart = asRequest.startDate;
-      demandEnd = asRequest.endDate;
+    if (asPosition) {
+      demandRole = asPosition.role;
+      demandSkills = asPosition.skills;
+      demandAlloc = decimalToNumber(asPosition.requiredAllocationPercent);
+      demandProjectId = asPosition.projectId;
+      demandStart = asPosition.startDate;
+      demandEnd = asPosition.endDate;
     } else {
       const asPlan = await this.prisma.projectRolePlan.findUnique({
         where: { id: request.demandId },

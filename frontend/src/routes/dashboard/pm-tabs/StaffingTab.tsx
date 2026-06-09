@@ -8,7 +8,7 @@ import { formatChangeType } from '@/lib/labels';
 import { formatDate } from '@/lib/format-date';
 import { Table, type Column } from '@/components/ds';
 import type {
-  OpenStaffingRequestSummary,
+  OpenPositionSummary,
   ProjectDashboardAttentionItem,
   RecentlyChangedAssignmentItem,
 } from '@/lib/api/dashboard-project-manager';
@@ -24,11 +24,11 @@ export interface OverallocatedPerson {
 interface Props {
   overallocated: OverallocatedPerson[];
   projectsWithStaffingGaps: ProjectDashboardAttentionItem[];
-  openRequests: OpenStaffingRequestSummary[];
+  openRequests: OpenPositionSummary[];
   recentChanges: RecentlyChangedAssignmentItem[];
   onPersonClick: (personId: string) => void;
   onProjectClick: (projectId: string) => void;
-  onRequestClick: (request: OpenStaffingRequestSummary) => void;
+  onRequestClick: (request: OpenPositionSummary) => void;
 }
 
 interface IssueRow {
@@ -103,7 +103,7 @@ export function PmStaffingTab({
     ) },
   ];
 
-  const requestColumns: Column<OpenStaffingRequestSummary>[] = [
+  const requestColumns: Column<OpenPositionSummary>[] = [
     { key: 'role', title: 'Role', getValue: (r) => r.role, render: (r) => <span style={{ fontWeight: 500 }}>{r.role}</span> },
     { key: 'priority', title: 'Priority', width: 80, getValue: (r) => r.priority, render: (r) => <PriorityBadge priority={r.priority} /> },
     { key: 'start', title: 'Start', width: 90, getValue: (r) => r.startDate, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{r.startDate}</span> },
