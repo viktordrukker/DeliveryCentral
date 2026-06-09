@@ -38,7 +38,10 @@ export class CaseManagementPrismaMapper {
             participant.id,
           ),
         ),
-        relatedAssignmentId: record.relatedAssignmentId ?? undefined,
+        // LEAN PR 16a/2 — `relatedAssignmentId` column is dropped by PR 16b
+        // (LEAN-P3-2). The entity property remains for FE/spec compatibility
+        // but the Prisma read no longer hydrates it from a dropped column.
+        relatedAssignmentId: undefined,
         relatedProjectId: record.relatedProjectId ?? undefined,
         status: record.status as CaseStatus,
         subjectPersonId: record.subjectPersonId,

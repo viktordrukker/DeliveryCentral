@@ -98,7 +98,10 @@ export class PlannedVsActualQueryService {
       where: entryWhere,
       select: {
         id: true,
-        assignmentId: true,
+        // LEAN PR 16a/2 — read canonical `positionId`. The downstream
+        // ActualGroup shape preserves `assignmentId` field name for
+        // compatibility with the FE response shape.
+        positionId: true,
         projectId: true,
         date: true,
         hours: true,
@@ -188,7 +191,10 @@ export class PlannedVsActualQueryService {
       const status = entry.timesheetWeek.status;
 
       const current = actualsByKey.get(key) ?? {
-        assignmentId: entry.assignmentId ?? null,
+        // LEAN PR 16a/2 — `positionId` is the canonical FK on TimesheetEntry.
+        // The `assignmentId` field name is preserved in the group shape for
+        // backwards compat with the FE response shape.
+        assignmentId: entry.positionId ?? null,
         entryIds: [],
         effortHours: 0,
         approvedHours: 0,
@@ -199,7 +205,7 @@ export class PlannedVsActualQueryService {
         personId,
         projectId: entry.projectId,
       };
-      current.assignmentId = current.assignmentId ?? entry.assignmentId ?? null;
+      current.assignmentId = current.assignmentId ?? entry.positionId ?? null;
       current.entryIds.push(entry.id);
       current.effortHours += hours;
       if (status === 'APPROVED') current.approvedHours += hours;

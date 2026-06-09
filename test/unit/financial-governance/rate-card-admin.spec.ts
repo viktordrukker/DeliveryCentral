@@ -73,7 +73,11 @@ function buildPrismaStub(initialCards: FakeCard[] = [], initialEntries: FakeEntr
           client: r.clientId ? { name: `Client-${r.clientId}` } : null,
           entries: entries
             .filter((e) => e.rateCardId === r.id)
-            .map((e) => ({ ...e, _count: { pinnedAssignments: 0 } })),
+            // LEAN PR 16a/2 — the relation count is now via
+            // `pinnedPositionRelations` (the canonical ProjectPosition[]
+            // relation); `pinnedAssignments` drops with the legacy model
+            // in PR 16b.
+            .map((e) => ({ ...e, _count: { pinnedPositionRelations: 0 } })),
           _count: { entries: entries.filter((e) => e.rateCardId === r.id).length },
         };
       }
