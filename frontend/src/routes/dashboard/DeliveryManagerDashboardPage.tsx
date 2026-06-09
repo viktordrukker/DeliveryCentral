@@ -330,7 +330,7 @@ function ProjectHealthScorecardTable({ asOf, healthScores, projects }: ProjectHe
           } },
           { key: 'staff', title: 'Staff', width: 60, render: (item) => {
             const h = healthScores.get(item.projectId);
-            return h ? <Link style={{ textDecoration: 'none' }} to={`/assignments?projectId=${item.projectId}&status=active`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.staffingScore)}</Link> : '—';
+            return h ? <Link style={{ textDecoration: 'none' }} to={`/staffing-desk?projectId=${item.projectId}&status=active`} onClick={(e) => e.stopPropagation()}>{scoreIndicator(h.staffingScore)}</Link> : '—';
           } },
           { key: 'time', title: 'Time', width: 60, render: (item) => {
             const h = healthScores.get(item.projectId);

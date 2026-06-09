@@ -259,7 +259,7 @@ export function ProjectDetailPage(): JSX.Element {
             {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
                 "Quick assign" direct-create CTA removed; all staffing goes
                 through Create Position → Slate → Pick. */}
-            <Button as={Link} variant="primary" size="sm" to={`/staffing-requests/new?projectId=${id}`}>Create Position</Button>
+            <Button as={Link} variant="primary" size="sm" to={`/projects/${id}?openCreatePosition=true`}>Create Position</Button>
           </div>
         ) : null
       }

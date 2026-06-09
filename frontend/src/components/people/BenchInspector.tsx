@@ -266,7 +266,7 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
             } catch {
               // sessionStorage may throw in private-browsing contexts; ignore.
             }
-            navigate(`/staffing-requests/new?candidatePersonId=${row.personId}`);
+            navigate(`/staffing-desk?openCreatePosition=true&candidatePersonId=${row.personId}`);
           }}
         >
           Propose to position

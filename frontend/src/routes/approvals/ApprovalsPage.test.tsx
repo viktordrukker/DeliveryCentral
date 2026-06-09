@@ -24,7 +24,7 @@ const sampleItems: ApprovalQueueItemDto[] = [
     slaBreachedAt: null,
     slaStage: 'on-track',
     ageHours: 96,
-    href: '/staffing-requests/pp-1',
+    href: '/projects/apollo?position=pp-1',
     meta: {},
   },
   {
@@ -127,7 +127,7 @@ describe('ApprovalsPage', () => {
     await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
     const links = screen.getAllByRole('link', { name: /Open/ });
     expect(links).toHaveLength(2);
-    expect(links[0].getAttribute('href')).toBe('/staffing-requests/pp-1');
+    expect(links[0].getAttribute('href')).toBe('/projects/apollo?position=pp-1');
   });
 
   it('respects ?source= URL param on initial load', async () => {

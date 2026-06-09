@@ -35,7 +35,7 @@ export function DeliveryManagerKpiStrip({
 
       <Link
         className="kpi-strip__item"
-        to="/assignments?status=active"
+        to="/staffing-desk?status=active"
         style={{ borderLeft: '3px solid var(--color-chart-5)' }}
       >
         <TipBalloon tip="People currently assigned to active projects." arrow="left" />

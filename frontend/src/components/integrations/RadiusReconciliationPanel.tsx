@@ -145,7 +145,7 @@ export function RadiusReconciliationPanel({
                   <dd>
                     <Link to="/people">People</Link>
                     {' • '}
-                    <Link to="/assignments">Positions</Link>
+                    <Link to="/staffing-desk">Positions</Link>
                     {' • '}
                     <Link to="/admin/audit">Business audit</Link>
                   </dd>

@@ -35,7 +35,7 @@ export function DemandPipelineChart({ data }: DemandPipelineChartProps): JSX.Ele
   function handleClick(entry: unknown): void {
     const e = entry as { activePayload?: Array<{ payload: { week: string } }> } | null;
     const week = e?.activePayload?.[0]?.payload?.week;
-    if (week) void navigate(`/assignments?weekStart=${week}`);
+    if (week) void navigate(`/staffing-desk?weekStart=${week}`);
   }
 
   return (

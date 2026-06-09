@@ -201,7 +201,7 @@ export function StaffingDeskPage(): JSX.Element {
           secondary CTA points to the full-page workflow for slate/pick details. */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
         <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
-        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">New Position (Full page)</Button>
+        <Button as={Link} variant="ghost" size="sm" to="/staffing-desk?openCreatePosition=true">New Position (Full page)</Button>
       </div>
       <StaffingRequestDrawer
         open={requestDrawerOpen}

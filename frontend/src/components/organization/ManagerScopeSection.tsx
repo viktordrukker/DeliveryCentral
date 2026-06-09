@@ -53,8 +53,8 @@ export function ManagerScopeSection({
                 <Button as={Link} variant="secondary" to={`/people/${item.publicId ?? item.id}`}>
                   View person
                 </Button>
-                <Button as={Link} variant="secondary" to={`/assignments?person=${encodeURIComponent(item.displayName)}`}>
-                  View assignments
+                <Button as={Link} variant="secondary" to={`/staffing-desk?person=${encodeURIComponent(item.displayName)}`}>
+                  View positions
                 </Button>
               </div>
             </article>

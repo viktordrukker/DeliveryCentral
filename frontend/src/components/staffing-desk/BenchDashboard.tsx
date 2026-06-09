@@ -47,7 +47,7 @@ export function BenchDashboard({ poolId, orgUnitId }: Props): JSX.Element {
 
   const propose = useCallback((personId: string, personName: string, requestId: string | null) => {
     setSelectedPerson(null);
-    setTimeout(() => navigate(`/assignments/new${requestId ? `?personId=${personId}` : ''}`), 50);
+    setTimeout(() => navigate(`/staffing-desk?openCreatePosition=true${requestId ? `&personId=${personId}` : ''}`), 50);
   }, [navigate]);
 
   if (loading) return <LoadingState variant="skeleton" skeletonType="page" />;
