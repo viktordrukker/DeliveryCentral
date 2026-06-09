@@ -12,7 +12,6 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
-import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
 import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
@@ -21,7 +20,9 @@ import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
 import { PlannerScenarioPanel } from '@/components/staffing-desk/PlannerScenarioPanel';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
+import { StaffingDeskTabStrip, type StaffingTab } from '@/components/staffing-desk/StaffingDeskTabStrip';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
+import { JqlQueryBar } from '@/components/staffing-desk/JqlQueryBar';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
 import { useStaffingDeskActions } from '@/features/staffing-desk/useStaffingDeskActions';
@@ -34,6 +35,8 @@ const FILTER_DEFAULTS = {
   allocMin: '',
   colWidths: '',
   from: '',
+  // SoT PR 6 — collapsed legacy `kind: 'request' | 'assignment'` filter.
+  // ProjectPosition is the canonical entity; Supply vs Demand is UI-only.
   kind: '',
   orgUnitId: '',
   page: '1',
@@ -53,6 +56,8 @@ const FILTER_DEFAULTS = {
   sortBy: '',
   sortDir: '',
   status: '',
+  // SoT PR 6 — `tab` is the saved-tab id (UX Law 5: filters persist in URL).
+  tab: 'mine',
   to: '',
   view: 'table',
 };
@@ -77,6 +82,7 @@ function serializeColWidths(widths: Record<string, number>): string {
 
 export function StaffingDeskPage(): JSX.Element {
   const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
+  void resetFilters;
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
 
@@ -100,7 +106,6 @@ export function StaffingDeskPage(): JSX.Element {
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
-  const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [timelinePopup, setTimelinePopup] = useState<{ personId: string; personName: string } | null>(null);
 
@@ -150,15 +155,88 @@ export function StaffingDeskPage(): JSX.Element {
 
   const deskActions = useStaffingDeskActions(state.refetch);
 
-  // Title bar: Saved Filters, Export, View switcher, quick-action links, Tip.
-  // W3-03 — adds quick-action navigation buttons (Approvals, Bench, Dashboard)
-  // to match the canonical DashboardPage grammar
-  // (filters + quick-action links + TipTrigger).
+  // Filter-row counts for the PageHeader badges.
+  const openCount = useMemo(
+    () => state.items.filter((r) => r.status?.toUpperCase() === 'OPEN').length,
+    [state.items],
+  );
+  const benchCount = state.supplyDemand?.benchCount ?? 0;
+
+  // Tab strip: applying a saved tab swaps the query portion of the URL.
+  const handleSelectTab = useCallback((tab: StaffingTab) => {
+    setFilters({ ...tab.query, tab: tab.id, view: 'table', page: '1' });
+  }, [setFilters]);
+
+  const handleOpenPlanner = useCallback(() => {
+    setFilters({ view: 'planner' });
+  }, [setFilters]);
+
+  // Title bar — view switcher + quick-action links + TipTrigger. The "Columns",
+  // "Saved filters", and "Export" controls moved to the page-level bulk action
+  // bar per DS canvas (SoT §9.1 step 5).
   useEffect(() => {
     setActions(
       <>
+        <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
+        <Button as={Link} variant="secondary" size="sm" to="/approvals">Approvals</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/people/bench">Bench</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
+        <TipTrigger />
+      </>
+    );
+    return () => setActions(null);
+  }, [setActions, filters.view, setFilters]);
+
+  const handlePersonClick = useCallback((personId: string, personName: string) => {
+    setTimelinePopup({ personId, personName });
+  }, []);
+
+  return (
+    <PageContainer testId="staffing-desk-page">
+      {/* Section 1 — PageHeader badges (open positions count + bench count). */}
+      <div className="page-meta-badges" aria-label="Staffing summary">
+        <span className="badge">{openCount} open</span>
+        <span className="badge">{benchCount} bench</span>
+      </div>
+
+      {/* Section 2 — Saved tab strip (6 default tabs + CRUD). */}
+      <StaffingDeskTabStrip
+        activeTabId={filters.tab || 'mine'}
+        currentFilters={filters}
+        onSelectTab={handleSelectTab}
+        onOpenPlanner={handleOpenPlanner}
+        plannerActive={filters.view === 'planner'}
+      />
+
+      {/* Section 3 — JqlBar with view switcher inline. */}
+      <div className="sd-jql-row">
+        <div className="sd-jql-row__jql">
+          <JqlQueryBar
+            visible
+            filters={filters as Record<string, string>}
+            onApplyFilters={(parsed) => setFilters({ ...parsed, page: '1' })}
+          />
+        </div>
+        <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
+      </div>
+
+      {/* Section 4 — KPI strip (6 tiles). */}
+      <StaffingDeskKpiStrip
+        kpis={state.kpis}
+        supplyDemand={state.supplyDemand}
+        onSupplyClick={() => setSupplyOpen(true)}
+        onDemandClick={() => setDemandOpen(true)}
+      />
+
+      {/* Section 5 — Supply/Demand toggle lives inside the table toolbar; the
+          page-level bulk bar carries Saved filters · Columns · Export XLSX. */}
+      <div className="sd-bulk-bar" role="toolbar" aria-label="Bulk actions">
+        <span className="sd-bulk-bar__spacer" />
+        <SavedFiltersDropdown
+          currentFilters={filters}
+          onApply={(f) => setFilters(f as Partial<typeof filters>)}
+        />
         <Button variant="secondary" size="sm" onClick={() => setColumnsOpen(true)} type="button">Columns</Button>
-        <SavedFiltersDropdown currentFilters={filters} onApply={(f) => setFilters(f as Partial<typeof filters>)} />
         <StaffingDeskExportButton
           disabled={state.isLoading || state.totalCount === 0}
           query={{
@@ -168,51 +246,12 @@ export function StaffingDeskPage(): JSX.Element {
             poolId: filters.poolId, orgUnitId: filters.orgUnitId,
           }}
         />
-        <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
-        <Button as={Link} variant="secondary" size="sm" to="/approvals">Approvals</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/people/bench">Bench</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
-        <TipTrigger />
-      </>
-    );
-    return () => setActions(null);
-  }, [setActions, filters, state.isLoading, state.totalCount, setFilters]);
-
-  const handlePersonClick = useCallback((personId: string, personName: string) => {
-    setTimelinePopup({ personId, personName });
-  }, []);
-
-  return (
-    <PageContainer testId="staffing-desk-page">
-      <StaffingDeskKpiStrip
-        kpis={state.kpis}
-        supplyDemand={state.supplyDemand}
-        onSupplyClick={() => setSupplyOpen(true)}
-        onDemandClick={() => setDemandOpen(true)}
-      />
-
-      {/* Action buttons below KPIs.
-          Sprint F-0.10 (Decision-10) — single canonical staffing flow:
-          Create Position → Slate → Pick → Position lifecycle.
-          The legacy "Make Assignment" direct-create CTA is removed in v1
-          (route gated by `staffingMakeAssignment` flag, default OFF). */}
-      {/* W4-06 — button copy clarified per audit. The primary CTA explicitly
-          says "Quick" so users know which surface they're about to open; the
-          secondary CTA points to the full-page workflow for slate/pick details. */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
-        <Button as={Link} variant="ghost" size="sm" to="/staffing-requests/new">New Position (Full page)</Button>
       </div>
-      <StaffingRequestDrawer
-        open={requestDrawerOpen}
-        onClose={() => setRequestDrawerOpen(false)}
-        onSubmitted={() => state.refetch()}
-        initialValues={filters.project ? { projectId: filters.project } : undefined}
-      />
 
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
+      {/* Section 6 — Master table (kind filter collapsed; Supply/Demand is UI). */}
       {!state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
         <StaffingDeskTable
           items={state.items.filter((row) =>
@@ -221,8 +260,6 @@ export function StaffingDeskPage(): JSX.Element {
           )}
           onRowClick={setSelectedRow}
           onPersonClick={handlePersonClick}
-          activeTab={filters.kind}
-          onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
           columnsOpen={columnsOpen}
           onColumnsClose={() => setColumnsOpen(false)}
           columnWidths={columnWidths}
@@ -256,7 +293,7 @@ export function StaffingDeskPage(): JSX.Element {
         </>
       )}
 
-      {/* Pagination — includes "X of Y records" */}
+      {/* Section 7 — Pagination footer + lifecycle legend. */}
       {!state.isLoading && !state.error && state.totalCount > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
@@ -276,6 +313,26 @@ export function StaffingDeskPage(): JSX.Element {
               {[25, 50, 100].map((n) => <option key={n} value={String(n)}>{n}/page</option>)}
             </select>
           </span>
+        </div>
+      )}
+
+      {(filters.view === 'table' || !filters.view) && (
+        <div className="sd-lifecycle-legend" aria-label="Position lifecycle legend">
+          <span className="sd-lifecycle-legend__label">Lifecycle</span>
+          {[
+            { key: 'open', label: 'Open' },
+            { key: 'proposed', label: 'Proposed' },
+            { key: 'booked', label: 'Booked' },
+            { key: 'onboarding', label: 'Onboarding' },
+            { key: 'assigned', label: 'Assigned' },
+            { key: 'hold', label: 'On hold' },
+            { key: 'released', label: 'Released' },
+          ].map((l) => (
+            <span key={l.key} className="sd-lifecycle-legend__item">
+              <span className={`sd-lifecycle-legend__swatch sd-lifecycle-legend__swatch--${l.key}`} aria-hidden />
+              <span>{l.label}</span>
+            </span>
+          ))}
         </div>
       )}
 
