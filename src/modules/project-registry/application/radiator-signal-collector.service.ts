@@ -200,19 +200,21 @@ export class RadiatorSignalCollectorService {
     });
     const actualHours = Number(actualAgg._sum?.hours ?? 0);
 
-    const activeAssignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — sourced from canonical `ProjectPosition`. `activeAllocationPercent`
+    // replaces legacy `ProjectAssignment.allocationPercent` for filled rows.
+    const activePositions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { allocationPercent: true },
+      select: { activeAllocationPercent: true },
     });
 
-    // Each active assignment contributes allocationPercent% × 40h/week × 4 weeks of planned effort.
-    const plannedHours = activeAssignments.reduce((sum, a) => {
-      const alloc = a.allocationPercent !== null ? Number(a.allocationPercent) : 100;
+    // Each active position contributes allocationPercent% × 40h/week × 4 weeks of planned effort.
+    const plannedHours = activePositions.reduce((sum, p) => {
+      const alloc = p.activeAllocationPercent !== null ? Number(p.activeAllocationPercent) : 100;
       return sum + (alloc / 100) * 40 * 4;
     }, 0);
 
@@ -321,17 +323,25 @@ export class RadiatorSignalCollectorService {
     const now = new Date();
     const since = new Date(now.getTime() - 28 * MS_PER_DAY);
 
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — sourced from canonical `ProjectPosition`.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true },
+      select: { activePersonId: true },
     });
 
-    const personIds = Array.from(new Set(assignments.map((a) => a.personId)));
+    const personIds = Array.from(
+      new Set(
+        positions
+          .map((p) => p.activePersonId)
+          .filter((id): id is string => id !== null),
+      ),
+    );
     if (personIds.length === 0) {
       return NO_DATA('No active team members.');
     }
@@ -355,35 +365,46 @@ export class RadiatorSignalCollectorService {
 
   private async collectOverAllocationRate(projectId: string): Promise<CollectedSignal> {
     const now = new Date();
-    const teamAssignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — sourced from canonical `ProjectPosition`.
+    const teamPositions = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true },
+      select: { activePersonId: true },
     });
 
-    const teamIds = Array.from(new Set(teamAssignments.map((a) => a.personId)));
+    const teamIds = Array.from(
+      new Set(
+        teamPositions
+          .map((p) => p.activePersonId)
+          .filter((id): id is string => id !== null),
+      ),
+    );
     if (teamIds.length === 0) {
       return NO_DATA('No active team members.');
     }
 
-    const allAssignments = await this.prisma.projectAssignment.findMany({
+    // Cross-project allocations for over-allocation check — also sourced from
+    // canonical `ProjectPosition`.
+    const allPositions = await this.prisma.projectPosition.findMany({
       where: {
-        personId: { in: teamIds },
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        activePersonId: { in: teamIds },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true, allocationPercent: true },
+      select: { activePersonId: true, activeAllocationPercent: true },
     });
 
     const totals = new Map<string, number>();
-    for (const a of allAssignments) {
-      const alloc = a.allocationPercent !== null ? Number(a.allocationPercent) : 100;
-      totals.set(a.personId, (totals.get(a.personId) ?? 0) + alloc);
+    for (const p of allPositions) {
+      if (!p.activePersonId) continue;
+      const alloc = p.activeAllocationPercent !== null ? Number(p.activeAllocationPercent) : 100;
+      totals.set(p.activePersonId, (totals.get(p.activePersonId) ?? 0) + alloc);
     }
 
     const overCount = Array.from(totals.values()).filter((t) => t > 100).length;
@@ -409,16 +430,24 @@ export class RadiatorSignalCollectorService {
     }
 
     const now = new Date();
-    const team = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — sourced from canonical `ProjectPosition`.
+    const team = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true },
+      select: { activePersonId: true },
     });
-    const teamIds = Array.from(new Set(team.map((a) => a.personId)));
+    const teamIds = Array.from(
+      new Set(
+        team
+          .map((p) => p.activePersonId)
+          .filter((id): id is string => id !== null),
+      ),
+    );
 
     if (teamIds.length === 0) {
       return {

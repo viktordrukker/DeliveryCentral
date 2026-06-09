@@ -65,16 +65,20 @@ export class GenerateStaffingRequestsFromPlanService {
       );
       if (!planEntry) { skippedCount++; continue; }
 
-      // Check if an open staffing request already exists for this role on this project
-      const existingRequest = await this.prisma.staffingRequest.findFirst({
+      // SoT PR 14b — dedupe check now sources from canonical `ProjectPosition`
+      // (`fillStatus in DRAFT/OPEN/PROPOSED`) instead of the legacy
+      // `StaffingRequest` table. `OPEN/PROPOSED` map 1:1 from the legacy
+      // `DRAFT/OPEN/IN_REVIEW` set per `mapStaffingRequestStatusToFillStatus`
+      // (DRAFT collapses onto DRAFT, OPEN onto OPEN, IN_REVIEW onto PROPOSED).
+      const existingPosition = await this.prisma.projectPosition.findFirst({
         where: {
           projectId,
           role: row.roleName,
-          status: { in: ['DRAFT', 'OPEN', 'IN_REVIEW'] },
+          fillStatus: { in: ['DRAFT', 'OPEN', 'PROPOSED'] },
         },
       });
 
-      if (existingRequest) {
+      if (existingPosition) {
         skippedCount++;
         continue;
       }

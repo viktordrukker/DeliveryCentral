@@ -164,16 +164,26 @@ export class ProjectPulseService {
   }
 
   private async getActiveTeamPersonIds(projectId: string): Promise<string[]> {
+    // SoT PR 14b — sourced from canonical `ProjectPosition` (`activePersonId`/
+    // `activeValidFrom`/`activeValidTo` replace legacy ProjectAssignment fields).
     const now = new Date();
-    const rows = await this.prisma.projectAssignment.findMany({
+    const rows = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        validFrom: { lte: now },
-        OR: [{ validTo: null }, { validTo: { gte: now } }],
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+        activeValidFrom: { lte: now },
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
-      select: { personId: true },
+      select: { activePersonId: true },
     });
-    return Array.from(new Set(rows.map((r) => r.personId)));
+    return Array.from(
+      new Set(
+        rows
+          .map((r) => r.activePersonId)
+          .filter((id): id is string => id !== null),
+      ),
+    );
   }
 
   private async collectActivity(projectId: string): Promise<PulseActivityItem[]> {
