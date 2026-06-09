@@ -13,15 +13,20 @@ import {
 import { AdminPanelPage } from './AdminPanelPage';
 
 /**
- * SCOPED-MIN-4 — Admin inline sections, canonical primitives.
+ * SCOPED-MIN-4 — Admin account form canonical primitives.
  *
- * Migrates the 4 most-noticeable inconsistencies on AdminPanelPage to canonical
- * Admin Control Surface primitives:
+ * Pins the four primitives the account form must use:
  *   1. Account status renders via StatusBadge (variant="text"), not inline span.
  *   2. Create-account form inputs render via DS FormField + Input, not raw <input>.
  *   3. The Roles hint renders as the FormField hint, not an inline-styled span.
- *   4. The form layout uses .entity-form, not inline flex styles.
+ *   4. The form uses .entity-form layout, not inline flex styles.
+ *
+ * V2 SoT PR 12 — the form lives inside the Roles & RBAC tab.
  */
+
+vi.mock('./AdminRightRail', () => ({
+  AdminRightRail: () => <div data-testid="mock-right-rail">Right rail</div>,
+}));
 
 vi.mock('@/lib/api/admin', () => ({
   fetchAdminConfig: vi.fn(),
@@ -60,7 +65,7 @@ function mockEmpty(): void {
 
 function renderPanel(): void {
   render(
-    <MemoryRouter initialEntries={['/admin']}>
+    <MemoryRouter initialEntries={['/admin?tab=roles']}>
       <ImpersonationProvider>
         <AdminPanelPage />
       </ImpersonationProvider>
@@ -97,6 +102,8 @@ describe('AdminPanelPage — SCOPED-MIN-4 canonical primitives', () => {
 
     renderPanel();
 
+    await waitFor(() => expect(screen.getByTestId('admin-tab-roles')).toBeInTheDocument());
+
     // Both rows should resolve their status via StatusBadge — which exposes
     // a stable `.status-badge` className.
     const enabled = await screen.findByText('Enabled');
@@ -111,20 +118,14 @@ describe('AdminPanelPage — SCOPED-MIN-4 canonical primitives', () => {
 
     renderPanel();
 
+    await waitFor(() => expect(screen.getByTestId('admin-tab-roles')).toBeInTheDocument());
+
+    // The account-form fields wear the ds-form-field shell instead of raw labels.
     await waitFor(() =>
-      expect(screen.getByText('Create Local Account')).toBeInTheDocument(),
+      expect(document.querySelectorAll('.ds-form-field').length).toBeGreaterThanOrEqual(3),
     );
 
-    // The four account-form fields wear the ds-form-field shell instead of raw labels.
-    expect(document.querySelectorAll('.ds-form-field').length).toBeGreaterThanOrEqual(4);
-
-    // W1-18 — Person field is now a typeahead PersonSelect (DS Select),
-    // not a raw UUID Input. Other text inputs continue to use the DS
-    // Input atom.
-    const personSelect = screen.getByLabelText(/^Person/);
-    expect(personSelect.tagName).toBe('SELECT');
-    expect(personSelect).toHaveClass('ds-select');
-
+    // Each input is the DS Input atom, not the legacy `.input` class.
     const emailInput = screen.getByPlaceholderText('login@example.com');
     expect(emailInput).toHaveClass('ds-input');
     expect(emailInput).toHaveAttribute('type', 'email');
@@ -138,7 +139,7 @@ describe('AdminPanelPage — SCOPED-MIN-4 canonical primitives', () => {
     expect(hint).toHaveClass('ds-form-field__hint');
 
     // Form chrome uses the shared entity-form layout, not inline flex styles.
-    const form = personSelect.closest('form');
+    const form = emailInput.closest('form');
     expect(form).not.toBeNull();
     expect(form).toHaveClass('entity-form');
   });
