@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
 import { fetchProjectBudgetDashboard, type ProjectBudgetDashboard } from '@/lib/api/project-budget';
 import type { ProjectBudgetStatus, ProjectDetails } from '@/lib/api/project-registry';
 
 import { CpiWhatIfCard } from './CpiWhatIfCard';
 import { MoneyPanel } from './MoneyPanel';
-import { BudgetTab } from './BudgetTab';
 
 interface MoneyTabProps {
   projectId: string;
@@ -37,11 +35,10 @@ const BUDGET_STATUS_LABEL: Record<ProjectBudgetStatus, string> = {
 };
 
 /**
- * V2-A.4 — Money tab promoted as a top-level surface in the 3-tab canvas
- * grammar. The canvas-faithful `MoneyPanel` renders as the primary view;
- * the legacy budget-administration UI (set-budget form, change requests,
- * SPC burn-down) lives below inside a collapsible "Budget administration"
- * section so PMs can still edit budgets without leaving the tab.
+ * SoT PR 5 — Money tab. The canvas-faithful `MoneyPanel` is the only
+ * primary surface; the legacy "Budget administration" collapsible was
+ * removed per DS canvas (DS/page-pulse.jsx has no collapsible). Budget
+ * administration moved to the dedicated /budget admin surface.
  *
  * Reference: DS/page-plan-money.jsx ProjectMoney section.
  */
@@ -175,15 +172,6 @@ export function MoneyTab({ projectId, project }: MoneyTabProps): JSX.Element {
       ) : null}
 
       <CpiWhatIfCard projectId={projectId} />
-
-      <SectionCard
-        title="Budget administration"
-        collapsible
-        defaultCollapsed
-        data-testid="money-tab-admin"
-      >
-        <BudgetTab projectId={projectId} canvasMode />
-      </SectionCard>
     </div>
   );
 }
