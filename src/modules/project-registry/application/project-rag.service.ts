@@ -185,12 +185,19 @@ export class ProjectRagService {
   private async computeBusinessRag(
     projectId: string,
   ): Promise<{ rag: RagRating; explanation: string; avgMood: number | null }> {
-    // Get person IDs assigned to this project
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: { projectId, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-      select: { personId: true },
+    // SoT PR 14b — source assigned team from canonical `ProjectPosition`
+    // (`activePersonId` is the lean equivalent of legacy `ProjectAssignment.personId`).
+    const filledPositions = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId,
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activePersonId: { not: null },
+      },
+      select: { activePersonId: true },
     });
-    const personIds = assignments.map((a) => a.personId);
+    const personIds = filledPositions
+      .map((p) => p.activePersonId)
+      .filter((id): id is string => id !== null);
 
     if (personIds.length === 0) {
       return { rag: 'GREEN', explanation: 'No assigned team — no pulse data.', avgMood: null };
@@ -330,21 +337,24 @@ export class ProjectRagService {
       }
     }
 
-    // Check for assignments ending soon with no replacement
-    const endingSoon = await this.prisma.projectAssignment.findMany({
+    // Check for assignments ending soon with no replacement — SoT PR 14b:
+    // sourced from canonical `ProjectPosition` (`activeValidTo` is the lean
+    // equivalent of legacy `ProjectAssignment.validTo`).
+    const endingSoon = await this.prisma.projectPosition.findMany({
       where: {
         projectId,
-        status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        validTo: { lte: twoWeeksFromNow, gte: now },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+        activeValidTo: { lte: twoWeeksFromNow, gte: now },
       },
-      include: { person: { select: { displayName: true } } },
+      include: { activePerson: { select: { displayName: true } } },
     });
 
-    for (const a of endingSoon) {
+    for (const p of endingSoon) {
+      const name = p.activePerson?.displayName ?? 'Team member';
       alerts.push({
         severity: 'MEDIUM',
-        message: `${a.person.displayName} (${a.staffingRole}) rolling off ${a.validTo?.toISOString().slice(0, 10)}.`,
-        actionLink: `/assignments/${a.id}`,
+        message: `${name} (${p.role}) rolling off ${p.activeValidTo?.toISOString().slice(0, 10)}.`,
+        actionLink: `/positions/${p.id}`,
       });
     }
 
