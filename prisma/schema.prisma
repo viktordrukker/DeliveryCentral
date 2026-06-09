@@ -129,67 +129,6 @@ enum ReleaseApprovalDecision {
   REJECTED
 }
 
-model PersonReleaseRequest {
-  id                    String                  @id @default(uuid()) @db.Uuid
-  personId              String                  @db.Uuid
-  initiatedByPersonId   String                  @db.Uuid
-  reason                String // free-text explanation
-  reasonCode            String?                 @db.VarChar(60) // optional dictionary key (release-reasons)
-  targetTerminationDate DateTime                @db.Date
-  status                PersonReleaseStatus     @default(PENDING_APPROVAL)
-  cancelledAt           DateTime?               @db.Timestamptz(3)
-  completedAt           DateTime?               @db.Timestamptz(3)
-  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
-  createdByPersonId     String?                 @db.Uuid
-  updatedByPersonId     String?                 @db.Uuid
-  version               Int                     @default(1)
-  person                Person                  @relation("PersonReleaseRequestSubject", fields: [personId], references: [id], onDelete: Restrict)
-  initiatedBy           Person                  @relation("PersonReleaseRequestInitiator", fields: [initiatedByPersonId], references: [id], onDelete: Restrict)
-  createdByPerson       Person?                 @relation("PersonReleaseRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson       Person?                 @relation("PersonReleaseRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  approvals             PersonReleaseApproval[]
-  tenantId              String?                 @db.Uuid
-  Tenant                Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-
-  @@index([personId, status])
-  @@index([status, targetTerminationDate])
-  @@index([tenantId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@index([initiatedByPersonId])
-  @@map("person_release_requests")
-}
-
-model PersonReleaseApproval {
-  id                String                  @id @default(uuid()) @db.Uuid
-  requestId         String                  @db.Uuid
-  // Role that gave this approval (`hr_manager` or `director`). The
-  // @@unique below keeps a single role from voting twice on the same
-  // request; the service layer enforces the role-set membership.
-  role              String                  @db.VarChar(40)
-  actorPersonId     String                  @db.Uuid
-  decision          ReleaseApprovalDecision
-  reason            String?
-  decidedAt         DateTime                @default(now()) @db.Timestamptz(3)
-  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime                @default(now()) @updatedAt @db.Timestamptz(3)
-  // F-64 / D-103 round 22 — actor-audit columns.
-  createdByPersonId String?                 @db.Uuid
-  updatedByPersonId String?                 @db.Uuid
-  createdByPerson   Person?                 @relation("PersonReleaseApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson   Person?                 @relation("PersonReleaseApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  request           PersonReleaseRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  actor             Person                  @relation("PersonReleaseApprovalActor", fields: [actorPersonId], references: [id], onDelete: Restrict)
-
-  @@unique([requestId, role])
-  @@index([requestId])
-  @@index([actorPersonId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("person_release_approvals")
-}
-
 model ProjectActivationApproval {
   id                String                     @id @default(uuid()) @db.Uuid
   projectId         String                     @db.Uuid
@@ -354,20 +293,6 @@ enum RolePlanSource {
   EITHER
 }
 
-enum AssignmentStatus {
-  DRAFT
-  CREATED
-  PROPOSED
-  IN_REVIEW
-  REJECTED
-  BOOKED
-  ONBOARDING
-  ASSIGNED
-  ON_HOLD
-  COMPLETED
-  CANCELLED
-}
-
 enum AssignmentSlaStage {
   PROPOSAL
   REVIEW
@@ -375,18 +300,14 @@ enum AssignmentSlaStage {
   RM_FINALIZE
 }
 
-enum StaffingRequestProposalSlateStatus {
-  OPEN
-  DECIDED
-  EXPIRED
-  WITHDRAWN
-}
-
-enum StaffingRequestProposalCandidateDecision {
-  PENDING
-  PICKED
-  DECLINED
-  AUTO_DECLINED
+// Retained after LEAN-P3-2 drop: still used by ProjectPosition.priority.
+// (The StaffingRequest table that originally defined this enum was
+// dropped in LEAN-P3-2; the enum survives because ProjectPosition reuses it.)
+enum StaffingRequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum ApprovalDecision {
@@ -503,300 +424,273 @@ enum NotificationDeliveryStatus {
 }
 
 model Person {
-  id                                       String                              @id @default(uuid()) @db.Uuid
-  publicId                                 String?                             @unique @db.VarChar(32)
-  personNumber                             String?                             @unique
-  givenName                                String
-  familyName                               String
-  displayName                              String
-  primaryEmail                             String?                             @unique
-  grade                                    String?
-  role                                     String?
-  location                                 String?
-  timezone                                 String?
-  skillsets                                String[]                            @default([])
-  employmentStatus                         PersonEmploymentStatus              @default(ACTIVE)
-  hiredAt                                  DateTime?                           @db.Timestamptz(3)
-  terminatedAt                             DateTime?                           @db.Timestamptz(3)
+  id                                     String                              @id @default(uuid()) @db.Uuid
+  publicId                               String?                             @unique @db.VarChar(32)
+  personNumber                           String?                             @unique
+  givenName                              String
+  familyName                             String
+  displayName                            String
+  primaryEmail                           String?                             @unique
+  grade                                  String?
+  role                                   String?
+  location                               String?
+  timezone                               String?
+  skillsets                              String[]                            @default([])
+  employmentStatus                       PersonEmploymentStatus              @default(ACTIVE)
+  hiredAt                                DateTime?                           @db.Timestamptz(3)
+  terminatedAt                           DateTime?                           @db.Timestamptz(3)
   // FE-#263 — HR action-cards source fields. All nullable; default NULL.
-  probationEndsAt                          DateTime?                           @db.Date
-  contractEndsAt                           DateTime?                           @db.Date
-  lastHrReviewAt                           DateTime?                           @db.Date
-  createdAt                                DateTime                            @default(now()) @db.Timestamptz(3)
-  updatedAt                                DateTime                            @updatedAt @db.Timestamptz(3)
-  archivedAt                               DateTime?                           @db.Timestamptz(3)
-  deletedAt                                DateTime?                           @db.Timestamptz(3)
-  positionsHeld                            Position[]                          @relation("PositionOccupant")
-  orgMemberships                           PersonOrgMembership[]
-  managerReportingLines                    ReportingLine[]                     @relation("ReportingLineManager")
-  subjectReportingLines                    ReportingLine[]                     @relation("ReportingLineSubject")
-  resourcePoolMemberships                  PersonResourcePoolMembership[]
-  personSkills                             PersonSkill[]
+  probationEndsAt                        DateTime?                           @db.Date
+  contractEndsAt                         DateTime?                           @db.Date
+  lastHrReviewAt                         DateTime?                           @db.Date
+  createdAt                              DateTime                            @default(now()) @db.Timestamptz(3)
+  updatedAt                              DateTime                            @updatedAt @db.Timestamptz(3)
+  archivedAt                             DateTime?                           @db.Timestamptz(3)
+  deletedAt                              DateTime?                           @db.Timestamptz(3)
+  positionsHeld                          Position[]                          @relation("PositionOccupant")
+  orgMemberships                         PersonOrgMembership[]
+  managerReportingLines                  ReportingLine[]                     @relation("ReportingLineManager")
+  subjectReportingLines                  ReportingLine[]                     @relation("ReportingLineSubject")
+  resourcePoolMemberships                PersonResourcePoolMembership[]
+  personSkills                           PersonSkill[]
   // LEAN-P4c-4 — back-relation: skills this person endorsed for others.
-  endorsedPersonSkills                     PersonSkill[]                       @relation("PersonSkillEndorsedBy")
-  requestedAssignments                     ProjectAssignment[]                 @relation("AssignmentRequestedBy")
-  projectAssignments                       ProjectAssignment[]                 @relation("AssignmentPerson")
-  assignmentApprovalsMade                  AssignmentApproval[]                @relation("AssignmentApprovalDecidedBy")
-  assignmentHistoryEntries                 AssignmentHistory[]                 @relation("AssignmentHistoryChangedBy")
-  staffingRequestProposalSlatesProposed    StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateProposedBy")
-  staffingRequestProposalCandidacies       StaffingRequestProposalCandidate[]  @relation("StaffingRequestProposalCandidatePerson")
-  workEvidenceRecords                      WorkEvidence[]
-  caseRecords                              CaseRecord[]                        @relation("CaseSubjectPerson")
-  ownedCaseRecords                         CaseRecord[]                        @relation("CaseOwnerPerson")
-  caseStepsAssigned                        CaseStep[]                          @relation("CaseStepAssignedTo")
-  caseParticipants                         CaseParticipant[]
-  managedOrgUnits                          OrgUnit[]                           @relation("OrgUnitManager")
-  managedProjects                          Project[]                           @relation("ProjectManager")
-  deliveryManagedProjects                  Project[]                           @relation("DeliveryManager")
-  createdProjects                          Project[]                           @relation("ProjectCreatedBy")
-  updatedProjects                          Project[]                           @relation("ProjectUpdatedBy")
-  createdProjectAssignments                ProjectAssignment[]                 @relation("ProjectAssignmentCreatedBy")
-  updatedProjectAssignments                ProjectAssignment[]                 @relation("ProjectAssignmentUpdatedBy")
-  createdCaseRecords                       CaseRecord[]                        @relation("CaseRecordCreatedBy")
-  updatedCaseRecords                       CaseRecord[]                        @relation("CaseRecordUpdatedBy")
-  createdPersonReleaseRequests             PersonReleaseRequest[]              @relation("PersonReleaseRequestCreatedBy")
-  updatedPersonReleaseRequests             PersonReleaseRequest[]              @relation("PersonReleaseRequestUpdatedBy")
+  endorsedPersonSkills                   PersonSkill[]                       @relation("PersonSkillEndorsedBy")
+  workEvidenceRecords                    WorkEvidence[]
+  caseRecords                            CaseRecord[]                        @relation("CaseSubjectPerson")
+  ownedCaseRecords                       CaseRecord[]                        @relation("CaseOwnerPerson")
+  caseStepsAssigned                      CaseStep[]                          @relation("CaseStepAssignedTo")
+  caseParticipants                       CaseParticipant[]
+  managedOrgUnits                        OrgUnit[]                           @relation("OrgUnitManager")
+  managedProjects                        Project[]                           @relation("ProjectManager")
+  deliveryManagedProjects                Project[]                           @relation("DeliveryManager")
+  createdProjects                        Project[]                           @relation("ProjectCreatedBy")
+  updatedProjects                        Project[]                           @relation("ProjectUpdatedBy")
+  createdCaseRecords                     CaseRecord[]                        @relation("CaseRecordCreatedBy")
+  updatedCaseRecords                     CaseRecord[]                        @relation("CaseRecordUpdatedBy")
   // F-26 / D-103 + DM-5-5 round 3
-  createdLeaveRequests                     LeaveRequest[]                      @relation("LeaveRequestCreatedBy")
-  updatedLeaveRequests                     LeaveRequest[]                      @relation("LeaveRequestUpdatedBy")
-  createdAssignmentApprovals               AssignmentApproval[]                @relation("AssignmentApprovalCreatedBy")
-  updatedAssignmentApprovals               AssignmentApproval[]                @relation("AssignmentApprovalUpdatedBy")
+  createdLeaveRequests                   LeaveRequest[]                      @relation("LeaveRequestCreatedBy")
+  updatedLeaveRequests                   LeaveRequest[]                      @relation("LeaveRequestUpdatedBy")
   // F-29 / D-103 + DM-5-5 round 4
-  createdTimesheetWeeks                    TimesheetWeek[]                     @relation("TimesheetWeekCreatedBy")
-  updatedTimesheetWeeks                    TimesheetWeek[]                     @relation("TimesheetWeekUpdatedBy")
-  createdProjectRisks                      ProjectRisk[]                       @relation("ProjectRiskCreatedBy")
-  updatedProjectRisks                      ProjectRisk[]                       @relation("ProjectRiskUpdatedBy")
+  createdTimesheetWeeks                  TimesheetWeek[]                     @relation("TimesheetWeekCreatedBy")
+  updatedTimesheetWeeks                  TimesheetWeek[]                     @relation("TimesheetWeekUpdatedBy")
+  createdProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskCreatedBy")
+  updatedProjectRisks                    ProjectRisk[]                       @relation("ProjectRiskUpdatedBy")
   // F-30 / D-103 + DM-5-5 round 5
-  createdProjectMilestones                 ProjectMilestone[]                  @relation("ProjectMilestoneCreatedBy")
-  updatedProjectMilestones                 ProjectMilestone[]                  @relation("ProjectMilestoneUpdatedBy")
-  createdBudgetApprovals                   BudgetApproval[]                    @relation("BudgetApprovalCreatedBy")
-  updatedBudgetApprovals                   BudgetApproval[]                    @relation("BudgetApprovalUpdatedBy")
+  createdProjectMilestones               ProjectMilestone[]                  @relation("ProjectMilestoneCreatedBy")
+  updatedProjectMilestones               ProjectMilestone[]                  @relation("ProjectMilestoneUpdatedBy")
+  createdBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalCreatedBy")
+  updatedBudgetApprovals                 BudgetApproval[]                    @relation("BudgetApprovalUpdatedBy")
   // F-32 / D-103 + DM-5-5 round 6
-  createdOrgUnits                          OrgUnit[]                           @relation("OrgUnitCreatedBy")
-  updatedOrgUnits                          OrgUnit[]                           @relation("OrgUnitUpdatedBy")
-  createdProposalSlates                    StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateCreatedBy")
-  updatedProposalSlates                    StaffingRequestProposalSlate[]      @relation("StaffingRequestProposalSlateUpdatedBy")
+  createdOrgUnits                        OrgUnit[]                           @relation("OrgUnitCreatedBy")
+  updatedOrgUnits                        OrgUnit[]                           @relation("OrgUnitUpdatedBy")
   // F-34 / D-103 + DM-5-5 round 7
-  createdResourcePools                     ResourcePool[]                      @relation("ResourcePoolCreatedBy")
-  updatedResourcePools                     ResourcePool[]                      @relation("ResourcePoolUpdatedBy")
-  createdPositions                         Position[]                          @relation("PositionCreatedBy")
-  updatedPositions                         Position[]                          @relation("PositionUpdatedBy")
+  createdResourcePools                   ResourcePool[]                      @relation("ResourcePoolCreatedBy")
+  updatedResourcePools                   ResourcePool[]                      @relation("ResourcePoolUpdatedBy")
+  createdPositions                       Position[]                          @relation("PositionCreatedBy")
+  updatedPositions                       Position[]                          @relation("PositionUpdatedBy")
   // F-36 / D-103 + DM-5-5 round 8
-  createdProjectBudgets                    ProjectBudget[]                     @relation("ProjectBudgetCreatedBy")
-  updatedProjectBudgets                    ProjectBudget[]                     @relation("ProjectBudgetUpdatedBy")
-  createdRateCards                         RateCard[]                          @relation("RateCardCreatedBy")
-  updatedRateCards                         RateCard[]                          @relation("RateCardUpdatedBy")
+  createdProjectBudgets                  ProjectBudget[]                     @relation("ProjectBudgetCreatedBy")
+  updatedProjectBudgets                  ProjectBudget[]                     @relation("ProjectBudgetUpdatedBy")
+  createdRateCards                       RateCard[]                          @relation("RateCardCreatedBy")
+  updatedRateCards                       RateCard[]                          @relation("RateCardUpdatedBy")
   // F-38 / D-103 + DM-5-5 round 9
-  createdNotificationTemplates             NotificationTemplate[]              @relation("NotificationTemplateCreatedBy")
-  updatedNotificationTemplates             NotificationTemplate[]              @relation("NotificationTemplateUpdatedBy")
-  createdResponsibilityRules               ResponsibilityRule[]                @relation("ResponsibilityRuleCreatedBy")
-  updatedResponsibilityRules               ResponsibilityRule[]                @relation("ResponsibilityRuleUpdatedBy")
+  createdNotificationTemplates           NotificationTemplate[]              @relation("NotificationTemplateCreatedBy")
+  updatedNotificationTemplates           NotificationTemplate[]              @relation("NotificationTemplateUpdatedBy")
+  createdResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleCreatedBy")
+  updatedResponsibilityRules             ResponsibilityRule[]                @relation("ResponsibilityRuleUpdatedBy")
   // F-40 / D-103 + DM-5-5 round 10
-  createdOvertimePolicies                  OvertimePolicy[]                    @relation("OvertimePolicyCreatedBy")
-  updatedOvertimePolicies                  OvertimePolicy[]                    @relation("OvertimePolicyUpdatedBy")
-  createdPlatformSettings                  PlatformSetting[]                   @relation("PlatformSettingCreatedBy")
-  updatedPlatformSettings                  PlatformSetting[]                   @relation("PlatformSettingUpdatedBy")
+  createdOvertimePolicies                OvertimePolicy[]                    @relation("OvertimePolicyCreatedBy")
+  updatedOvertimePolicies                OvertimePolicy[]                    @relation("OvertimePolicyUpdatedBy")
+  createdPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingCreatedBy")
+  updatedPlatformSettings                PlatformSetting[]                   @relation("PlatformSettingUpdatedBy")
   // F-42 / D-103 + DM-5-5 round 11
-  createdClients                           Client[]                            @relation("ClientCreatedBy")
-  updatedClients                           Client[]                            @relation("ClientUpdatedBy")
-  createdVendors                           Vendor[]                            @relation("VendorCreatedBy")
-  updatedVendors                           Vendor[]                            @relation("VendorUpdatedBy")
+  createdClients                         Client[]                            @relation("ClientCreatedBy")
+  updatedClients                         Client[]                            @relation("ClientUpdatedBy")
+  createdVendors                         Vendor[]                            @relation("VendorCreatedBy")
+  updatedVendors                         Vendor[]                            @relation("VendorUpdatedBy")
   // F-44 / D-103 + DM-5-5 round 12
-  createdProjectChangeRequests             ProjectChangeRequest[]              @relation("ProjectChangeRequestCreatedBy")
-  updatedProjectChangeRequests             ProjectChangeRequest[]              @relation("ProjectChangeRequestUpdatedBy")
-  createdProjectActivationApprovals        ProjectActivationApproval[]         @relation("ProjectActivationApprovalCreatedBy")
-  updatedProjectActivationApprovals        ProjectActivationApproval[]         @relation("ProjectActivationApprovalUpdatedBy")
+  createdProjectChangeRequests           ProjectChangeRequest[]              @relation("ProjectChangeRequestCreatedBy")
+  updatedProjectChangeRequests           ProjectChangeRequest[]              @relation("ProjectChangeRequestUpdatedBy")
+  createdProjectActivationApprovals      ProjectActivationApproval[]         @relation("ProjectActivationApprovalCreatedBy")
+  updatedProjectActivationApprovals      ProjectActivationApproval[]         @relation("ProjectActivationApprovalUpdatedBy")
   // F-46 / D-103 + DM-5-5 round 13
-  createdHelpArticles                      HelpArticle[]                       @relation("HelpArticleCreatedBy")
-  updatedHelpArticles                      HelpArticle[]                       @relation("HelpArticleUpdatedBy")
-  createdProjectVendorEngagements          ProjectVendorEngagement[]           @relation("ProjectVendorEngagementCreatedBy")
-  updatedProjectVendorEngagements          ProjectVendorEngagement[]           @relation("ProjectVendorEngagementUpdatedBy")
+  createdHelpArticles                    HelpArticle[]                       @relation("HelpArticleCreatedBy")
+  updatedHelpArticles                    HelpArticle[]                       @relation("HelpArticleUpdatedBy")
+  createdProjectVendorEngagements        ProjectVendorEngagement[]           @relation("ProjectVendorEngagementCreatedBy")
+  updatedProjectVendorEngagements        ProjectVendorEngagement[]           @relation("ProjectVendorEngagementUpdatedBy")
   // F-48 / D-103 + DM-5-5 round 14
-  createdProjectWorkstreams                ProjectWorkstream[]                 @relation("ProjectWorkstreamCreatedBy")
-  updatedProjectWorkstreams                ProjectWorkstream[]                 @relation("ProjectWorkstreamUpdatedBy")
-  createdWorkflowDefinitions               WorkflowDefinition[]                @relation("WorkflowDefinitionCreatedBy")
-  updatedWorkflowDefinitions               WorkflowDefinition[]                @relation("WorkflowDefinitionUpdatedBy")
+  createdProjectWorkstreams              ProjectWorkstream[]                 @relation("ProjectWorkstreamCreatedBy")
+  updatedProjectWorkstreams              ProjectWorkstream[]                 @relation("ProjectWorkstreamUpdatedBy")
+  createdWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionCreatedBy")
+  updatedWorkflowDefinitions             WorkflowDefinition[]                @relation("WorkflowDefinitionUpdatedBy")
   // F-50 / D-103 + DM-5-5 round 15
-  createdProjectRetrospectives             ProjectRetrospective[]              @relation("ProjectRetrospectiveCreatedBy")
-  updatedProjectRetrospectives             ProjectRetrospective[]              @relation("ProjectRetrospectiveUpdatedBy")
-  createdProjectRolePlans                  ProjectRolePlan[]                   @relation("ProjectRolePlanCreatedBy")
-  updatedProjectRolePlans                  ProjectRolePlan[]                   @relation("ProjectRolePlanUpdatedBy")
+  createdProjectRetrospectives           ProjectRetrospective[]              @relation("ProjectRetrospectiveCreatedBy")
+  updatedProjectRetrospectives           ProjectRetrospective[]              @relation("ProjectRetrospectiveUpdatedBy")
+  createdProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanCreatedBy")
+  updatedProjectRolePlans                ProjectRolePlan[]                   @relation("ProjectRolePlanUpdatedBy")
   // F-52 / D-103 + DM-5-5 round 16
-  createdRateCardEntries                   RateCardEntry[]                     @relation("RateCardEntryCreatedBy")
-  updatedRateCardEntries                   RateCardEntry[]                     @relation("RateCardEntryUpdatedBy")
-  createdLeaveBalances                     LeaveBalance[]                      @relation("LeaveBalanceCreatedBy")
-  updatedLeaveBalances                     LeaveBalance[]                      @relation("LeaveBalanceUpdatedBy")
+  createdRateCardEntries                 RateCardEntry[]                     @relation("RateCardEntryCreatedBy")
+  updatedRateCardEntries                 RateCardEntry[]                     @relation("RateCardEntryUpdatedBy")
+  createdLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceCreatedBy")
+  updatedLeaveBalances                   LeaveBalance[]                      @relation("LeaveBalanceUpdatedBy")
   // F-54 / D-103 + DM-5-5 round 17
-  createdMetadataDictionaries              MetadataDictionary[]                @relation("MetadataDictionaryCreatedBy")
-  updatedMetadataDictionaries              MetadataDictionary[]                @relation("MetadataDictionaryUpdatedBy")
-  createdCustomFieldDefinitions            CustomFieldDefinition[]             @relation("CustomFieldDefinitionCreatedBy")
-  updatedCustomFieldDefinitions            CustomFieldDefinition[]             @relation("CustomFieldDefinitionUpdatedBy")
+  createdMetadataDictionaries            MetadataDictionary[]                @relation("MetadataDictionaryCreatedBy")
+  updatedMetadataDictionaries            MetadataDictionary[]                @relation("MetadataDictionaryUpdatedBy")
+  createdCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionCreatedBy")
+  updatedCustomFieldDefinitions          CustomFieldDefinition[]             @relation("CustomFieldDefinitionUpdatedBy")
   // F-56 / D-103 + DM-5-5 round 18
-  createdOvertimeExceptions                OvertimeException[]                 @relation("OvertimeExceptionCreatedBy")
-  updatedOvertimeExceptions                OvertimeException[]                 @relation("OvertimeExceptionUpdatedBy")
-  createdProjectExternalLinks              ProjectExternalLink[]               @relation("ProjectExternalLinkCreatedBy")
-  updatedProjectExternalLinks              ProjectExternalLink[]               @relation("ProjectExternalLinkUpdatedBy")
+  createdOvertimeExceptions              OvertimeException[]                 @relation("OvertimeExceptionCreatedBy")
+  updatedOvertimeExceptions              OvertimeException[]                 @relation("OvertimeExceptionUpdatedBy")
+  createdProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkCreatedBy")
+  updatedProjectExternalLinks            ProjectExternalLink[]               @relation("ProjectExternalLinkUpdatedBy")
   // F-58 / D-103 + DM-5-5 round 19
-  createdCaseTypes                         CaseType[]                          @relation("CaseTypeCreatedBy")
-  updatedCaseTypes                         CaseType[]                          @relation("CaseTypeUpdatedBy")
-  createdContacts                          Contact[]                           @relation("ContactCreatedBy")
-  updatedContacts                          Contact[]                           @relation("ContactUpdatedBy")
+  createdCaseTypes                       CaseType[]                          @relation("CaseTypeCreatedBy")
+  updatedCaseTypes                       CaseType[]                          @relation("CaseTypeUpdatedBy")
+  createdContacts                        Contact[]                           @relation("ContactCreatedBy")
+  updatedContacts                        Contact[]                           @relation("ContactUpdatedBy")
   // F-60 / D-103 + DM-5-5 round 20
-  createdCustomFieldValues                 CustomFieldValue[]                  @relation("CustomFieldValueCreatedBy")
-  updatedCustomFieldValues                 CustomFieldValue[]                  @relation("CustomFieldValueUpdatedBy")
-  createdStaffingRequestProposalCandidates StaffingRequestProposalCandidate[]  @relation("StaffingRequestProposalCandidateCreatedBy")
-  updatedStaffingRequestProposalCandidates StaffingRequestProposalCandidate[]  @relation("StaffingRequestProposalCandidateUpdatedBy")
+  createdCustomFieldValues               CustomFieldValue[]                  @relation("CustomFieldValueCreatedBy")
+  updatedCustomFieldValues               CustomFieldValue[]                  @relation("CustomFieldValueUpdatedBy")
   // F-62 / D-103 + DM-5-5 round 21
-  createdWorkflowStateDefinitions          WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionCreatedBy")
-  updatedWorkflowStateDefinitions          WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionUpdatedBy")
-  createdTimesheetEntries                  TimesheetEntry[]                    @relation("TimesheetEntryCreatedBy")
-  updatedTimesheetEntries                  TimesheetEntry[]                    @relation("TimesheetEntryUpdatedBy")
+  createdWorkflowStateDefinitions        WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionCreatedBy")
+  updatedWorkflowStateDefinitions        WorkflowStateDefinition[]           @relation("WorkflowStateDefinitionUpdatedBy")
+  createdTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryCreatedBy")
+  updatedTimesheetEntries                TimesheetEntry[]                    @relation("TimesheetEntryUpdatedBy")
   // LEAN-P0-5 — denormalised owner of a timesheet entry (mirrors timesheetWeek.personId).
-  ownedTimesheetEntries                    TimesheetEntry[]                    @relation("TimesheetEntryPerson")
-  // F-64 / D-103 + DM-5-5 round 22
-  createdPersonReleaseApprovals            PersonReleaseApproval[]             @relation("PersonReleaseApprovalCreatedBy")
-  updatedPersonReleaseApprovals            PersonReleaseApproval[]             @relation("PersonReleaseApprovalUpdatedBy")
-  createdStaffingRequestFulfilments        StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentCreatedBy")
-  updatedStaffingRequestFulfilments        StaffingRequestFulfilment[]         @relation("StaffingRequestFulfilmentUpdatedBy")
+  ownedTimesheetEntries                  TimesheetEntry[]                    @relation("TimesheetEntryPerson")
   // F-66 / D-103 + DM-5-5 round 23
-  createdRadiatorThresholdConfigs          RadiatorThresholdConfig[]           @relation("RadiatorThresholdConfigCreatedBy")
-  createdSkills                            Skill[]                             @relation("SkillCreatedBy")
-  updatedSkills                            Skill[]                             @relation("SkillUpdatedBy")
-  // F-68 / D-103 + DM-5-5 round 24
-  createdStaffingRequests                  StaffingRequest[]                   @relation("StaffingRequestCreatedBy")
-  updatedStaffingRequests                  StaffingRequest[]                   @relation("StaffingRequestUpdatedBy")
+  createdRadiatorThresholdConfigs        RadiatorThresholdConfig[]           @relation("RadiatorThresholdConfigCreatedBy")
+  createdSkills                          Skill[]                             @relation("SkillCreatedBy")
+  updatedSkills                          Skill[]                             @relation("SkillUpdatedBy")
   // F-70 / D-103 + DM-5-5 round 25
-  createdPersonOrgMemberships              PersonOrgMembership[]               @relation("PersonOrgMembershipCreatedBy")
-  updatedPersonOrgMemberships              PersonOrgMembership[]               @relation("PersonOrgMembershipUpdatedBy")
-  createdReportingLines                    ReportingLine[]                     @relation("ReportingLineCreatedBy")
-  updatedReportingLines                    ReportingLine[]                     @relation("ReportingLineUpdatedBy")
+  createdPersonOrgMemberships            PersonOrgMembership[]               @relation("PersonOrgMembershipCreatedBy")
+  updatedPersonOrgMemberships            PersonOrgMembership[]               @relation("PersonOrgMembershipUpdatedBy")
+  createdReportingLines                  ReportingLine[]                     @relation("ReportingLineCreatedBy")
+  updatedReportingLines                  ReportingLine[]                     @relation("ReportingLineUpdatedBy")
   // F-72 / D-103 + DM-5-5 round 26
-  createdPersonResourcePoolMemberships     PersonResourcePoolMembership[]      @relation("PersonResourcePoolMembershipCreatedBy")
-  updatedPersonResourcePoolMemberships     PersonResourcePoolMembership[]      @relation("PersonResourcePoolMembershipUpdatedBy")
-  createdMetadataEntries                   MetadataEntry[]                     @relation("MetadataEntryCreatedBy")
-  updatedMetadataEntries                   MetadataEntry[]                     @relation("MetadataEntryUpdatedBy")
+  createdPersonResourcePoolMemberships   PersonResourcePoolMembership[]      @relation("PersonResourcePoolMembershipCreatedBy")
+  updatedPersonResourcePoolMemberships   PersonResourcePoolMembership[]      @relation("PersonResourcePoolMembershipUpdatedBy")
+  createdMetadataEntries                 MetadataEntry[]                     @relation("MetadataEntryCreatedBy")
+  updatedMetadataEntries                 MetadataEntry[]                     @relation("MetadataEntryUpdatedBy")
   // F-74 / D-103 + DM-5-5 round 27
-  createdPulseReports                      PulseReport[]                       @relation("PulseReportCreatedBy")
-  updatedPulseReports                      PulseReport[]                       @relation("PulseReportUpdatedBy")
-  createdIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateCreatedBy")
-  updatedIntegrationSyncStates             IntegrationSyncState[]              @relation("IntegrationSyncStateUpdatedBy")
+  createdPulseReports                    PulseReport[]                       @relation("PulseReportCreatedBy")
+  updatedPulseReports                    PulseReport[]                       @relation("PulseReportUpdatedBy")
+  createdIntegrationSyncStates           IntegrationSyncState[]              @relation("IntegrationSyncStateCreatedBy")
+  updatedIntegrationSyncStates           IntegrationSyncState[]              @relation("IntegrationSyncStateUpdatedBy")
   // F-76 / D-103 + DM-5-5 round 28
-  createdLocalAccounts                     LocalAccount[]                      @relation("LocalAccountCreatedBy")
-  updatedLocalAccounts                     LocalAccount[]                      @relation("LocalAccountUpdatedBy")
-  createdWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceCreatedBy")
-  updatedWorkEvidence                      WorkEvidence[]                      @relation("WorkEvidenceUpdatedBy")
+  createdLocalAccounts                   LocalAccount[]                      @relation("LocalAccountCreatedBy")
+  updatedLocalAccounts                   LocalAccount[]                      @relation("LocalAccountUpdatedBy")
+  createdWorkEvidence                    WorkEvidence[]                      @relation("WorkEvidenceCreatedBy")
+  updatedWorkEvidence                    WorkEvidence[]                      @relation("WorkEvidenceUpdatedBy")
   // F-78 / D-103 + DM-5-5 round 29
-  createdEntityLayoutDefinitions           EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionCreatedBy")
-  updatedEntityLayoutDefinitions           EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionUpdatedBy")
-  createdHelpTips                          HelpTip[]                           @relation("HelpTipCreatedBy")
-  updatedHelpTips                          HelpTip[]                           @relation("HelpTipUpdatedBy")
+  createdEntityLayoutDefinitions         EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionCreatedBy")
+  updatedEntityLayoutDefinitions         EntityLayoutDefinition[]            @relation("EntityLayoutDefinitionUpdatedBy")
+  createdHelpTips                        HelpTip[]                           @relation("HelpTipCreatedBy")
+  updatedHelpTips                        HelpTip[]                           @relation("HelpTipUpdatedBy")
   // F-80 / D-103 + DM-5-5 round 30
-  createdNotificationRequests              NotificationRequest[]               @relation("NotificationRequestCreatedBy")
-  updatedNotificationRequests              NotificationRequest[]               @relation("NotificationRequestUpdatedBy")
-  createdNotificationChannels              NotificationChannel[]               @relation("NotificationChannelCreatedBy")
-  updatedNotificationChannels              NotificationChannel[]               @relation("NotificationChannelUpdatedBy")
+  createdNotificationRequests            NotificationRequest[]               @relation("NotificationRequestCreatedBy")
+  updatedNotificationRequests            NotificationRequest[]               @relation("NotificationRequestUpdatedBy")
+  createdNotificationChannels            NotificationChannel[]               @relation("NotificationChannelCreatedBy")
+  updatedNotificationChannels            NotificationChannel[]               @relation("NotificationChannelUpdatedBy")
   // F-82 / D-103 + DM-5-5 round 31
-  createdOnboardingTourProgress            OnboardingTourProgress[]            @relation("OnboardingTourProgressCreatedBy")
-  updatedOnboardingTourProgress            OnboardingTourProgress[]            @relation("OnboardingTourProgressUpdatedBy")
-  createdWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceCreatedBy")
-  updatedWorkEvidenceSources               WorkEvidenceSource[]                @relation("WorkEvidenceSourceUpdatedBy")
+  createdOnboardingTourProgress          OnboardingTourProgress[]            @relation("OnboardingTourProgressCreatedBy")
+  updatedOnboardingTourProgress          OnboardingTourProgress[]            @relation("OnboardingTourProgressUpdatedBy")
+  createdWorkEvidenceSources             WorkEvidenceSource[]                @relation("WorkEvidenceSourceCreatedBy")
+  updatedWorkEvidenceSources             WorkEvidenceSource[]                @relation("WorkEvidenceSourceUpdatedBy")
   // F-83 / D-103 + DM-5-5 round 32
-  createdProjectRagSnapshots               ProjectRagSnapshot[]                @relation("ProjectRagSnapshotCreatedBy")
-  updatedProjectRagSnapshots               ProjectRagSnapshot[]                @relation("ProjectRagSnapshotUpdatedBy")
-  createdCaseSteps                         CaseStep[]                          @relation("CaseStepCreatedBy")
-  updatedCaseSteps                         CaseStep[]                          @relation("CaseStepUpdatedBy")
+  createdProjectRagSnapshots             ProjectRagSnapshot[]                @relation("ProjectRagSnapshotCreatedBy")
+  updatedProjectRagSnapshots             ProjectRagSnapshot[]                @relation("ProjectRagSnapshotUpdatedBy")
+  createdCaseSteps                       CaseStep[]                          @relation("CaseStepCreatedBy")
+  updatedCaseSteps                       CaseStep[]                          @relation("CaseStepUpdatedBy")
   // F-84 / D-103 + DM-5-5 round 33
-  createdNotificationDeliveries            NotificationDelivery[]              @relation("NotificationDeliveryCreatedBy")
-  updatedNotificationDeliveries            NotificationDelivery[]              @relation("NotificationDeliveryUpdatedBy")
-  createdFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarCreatedBy")
-  updatedFiscalCalendars                   FiscalCalendar[]                    @relation("FiscalCalendarUpdatedBy")
+  createdNotificationDeliveries          NotificationDelivery[]              @relation("NotificationDeliveryCreatedBy")
+  updatedNotificationDeliveries          NotificationDelivery[]              @relation("NotificationDeliveryUpdatedBy")
+  createdFiscalCalendars                 FiscalCalendar[]                    @relation("FiscalCalendarCreatedBy")
+  updatedFiscalCalendars                 FiscalCalendar[]                    @relation("FiscalCalendarUpdatedBy")
   // F-85 / D-103 + DM-5-5 round 34
-  createdPersonExternalIdentityLinks       PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkCreatedBy")
-  updatedPersonExternalIdentityLinks       PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkUpdatedBy")
-  createdTenants                           Tenant[]                            @relation("TenantCreatedBy")
-  updatedTenants                           Tenant[]                            @relation("TenantUpdatedBy")
+  createdPersonExternalIdentityLinks     PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkCreatedBy")
+  updatedPersonExternalIdentityLinks     PersonExternalIdentityLink[]        @relation("PersonExternalIdentityLinkUpdatedBy")
+  createdTenants                         Tenant[]                            @relation("TenantCreatedBy")
+  updatedTenants                         Tenant[]                            @relation("TenantUpdatedBy")
   // F-86 / D-103 + DM-5-5 round 35
-  createdM365ReconciliationRecords         M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordCreatedBy")
-  updatedM365ReconciliationRecords         M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordUpdatedBy")
-  createdRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordCreatedBy")
-  updatedRadiusReconciliationRecords       RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordUpdatedBy")
+  createdM365ReconciliationRecords       M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordCreatedBy")
+  updatedM365ReconciliationRecords       M365DirectoryReconciliationRecord[] @relation("M365DirectoryReconciliationRecordUpdatedBy")
+  createdRadiusReconciliationRecords     RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordCreatedBy")
+  updatedRadiusReconciliationRecords     RadiusReconciliationRecord[]        @relation("RadiusReconciliationRecordUpdatedBy")
   // F-87 / D-103 + DM-5-5 round 36 — createdByPersonId-only bundle (immutable rows)
-  createdPersonCostRates                   PersonCostRate[]                    @relation("PersonCostRateCreatedBy")
-  createdPublicHolidays                    PublicHoliday[]                     @relation("PublicHolidayCreatedBy")
-  createdCurrencies                        Currency[]                          @relation("CurrencyCreatedBy")
-  createdFxRates                           FxRate[]                            @relation("FxRateCreatedBy")
-  createdVendorSkillAreas                  VendorSkillArea[]                   @relation("VendorSkillAreaCreatedBy")
+  createdPersonCostRates                 PersonCostRate[]                    @relation("PersonCostRateCreatedBy")
+  createdPublicHolidays                  PublicHoliday[]                     @relation("PublicHolidayCreatedBy")
+  createdCurrencies                      Currency[]                          @relation("CurrencyCreatedBy")
+  createdFxRates                         FxRate[]                            @relation("FxRateCreatedBy")
+  createdVendorSkillAreas                VendorSkillArea[]                   @relation("VendorSkillAreaCreatedBy")
   // F-88 / D-103 + DM-5-5 round 37 — second createdByPersonId-only bundle
-  createdCaseParticipants                  CaseParticipant[]                   @relation("CaseParticipantCreatedBy")
-  createdOutboxEvents                      OutboxEvent[]                       @relation("OutboxEventCreatedBy")
-  createdWorkEvidenceLinks                 WorkEvidenceLink[]                  @relation("WorkEvidenceLinkCreatedBy")
-  createdInAppNotifications                InAppNotification[]                 @relation("InAppNotificationCreatedBy")
-  createdFiscalPeriods                     FiscalPeriod[]                      @relation("FiscalPeriodCreatedBy")
+  createdCaseParticipants                CaseParticipant[]                   @relation("CaseParticipantCreatedBy")
+  createdOutboxEvents                    OutboxEvent[]                       @relation("OutboxEventCreatedBy")
+  createdWorkEvidenceLinks               WorkEvidenceLink[]                  @relation("WorkEvidenceLinkCreatedBy")
+  createdInAppNotifications              InAppNotification[]                 @relation("InAppNotificationCreatedBy")
+  createdFiscalPeriods                   FiscalPeriod[]                      @relation("FiscalPeriodCreatedBy")
   // F-89 / D-103 + DM-5-5 round 38 — OrganizationConfig final closure
-  createdOrganizationConfigs               OrganizationConfig[]                @relation("OrganizationConfigCreatedBy")
-  managedClientAccounts                    Client[]                            @relation("ClientAccountManager")
-  releaseRequestsAsSubject                 PersonReleaseRequest[]              @relation("PersonReleaseRequestSubject")
-  releaseRequestsAsInitiator               PersonReleaseRequest[]              @relation("PersonReleaseRequestInitiator")
-  releaseApprovalsGiven                    PersonReleaseApproval[]             @relation("PersonReleaseApprovalActor")
-  responsibilityRulesAsTarget              ResponsibilityRule[]                @relation("ResponsibilityRuleTargetPerson")
-  helpArticlesAuthored                     HelpArticle[]                       @relation("HelpArticleAuthor")
-  helpFeedback                             HelpFeedback[]                      @relation("HelpFeedbackActor")
-  onboardingTourProgress                   OnboardingTourProgress[]            @relation("OnboardingTourPerson")
-  externalIdentityLinks                    PersonExternalIdentityLink[]
-  externalAccountLinks                     ExternalAccountLink[]
-  activityEvents                           EmployeeActivityEvent[]
-  overtimePoliciesSet                      OvertimePolicy[]                    @relation("OvertimePolicySetBy")
-  overtimeExceptions                       OvertimeException[]
-  leaveBalances                            LeaveBalance[]
-  auditLogsAsActor                         AuditLog[]                          @relation("AuditLogActor")
-  activityEventsAsActor                    EmployeeActivityEvent[]             @relation("EmployeeActivityEventActor")
-  localAccount                             LocalAccount?
-  m365ReconciliationRecordsAsSubject       M365DirectoryReconciliationRecord[] @relation("M365ReconciliationSubject")
-  m365ReconciliationRecordsAsManager       M365DirectoryReconciliationRecord[] @relation("M365ReconciliationResolvedManager")
-  externalIdentityLinksAsResolvedManager   PersonExternalIdentityLink[]        @relation("PersonExternalIdentityResolvedManager")
-  projectChangeRequestsRequested           ProjectChangeRequest[]              @relation("ProjectChangeRequestRequester")
-  projectChangeRequestsDecided             ProjectChangeRequest[]              @relation("ProjectChangeRequestDecider")
-  radiatorOverridesMade                    ProjectRadiatorOverride[]
-  ragSnapshotsRecorded                     ProjectRagSnapshot[]
-  risksOwned                               ProjectRisk[]                       @relation("ProjectRiskOwner")
-  risksAssigned                            ProjectRisk[]                       @relation("ProjectRiskAssignee")
-  radiatorThresholdUpdates                 RadiatorThresholdConfig[]
-  radiusReconciliationRecords              RadiusReconciliationRecord[]
-  plannerScenarios                         PlannerScenario[]                   @relation("PlannerScenarioCreator")
-  plannerScenariosUpdated                  PlannerScenario[]                   @relation("PlannerScenarioUpdater")
-  notificationPreferences                  PersonNotificationPreference[]
-  notificationDigest                       PersonNotificationDigest?
-  undoActionsRegistered                    UndoAction[]                        @relation("UndoActionActor")
-  budgetApprovalsRequested                 BudgetApproval[]                    @relation("BudgetApproval_requestedBy")
-  budgetApprovalsDecided                   BudgetApproval[]                    @relation("BudgetApproval_decidedBy")
-  projectActivationApprovalsRequested      ProjectActivationApproval[]         @relation("ProjectActivationApproval_requestedBy")
-  projectActivationApprovalsDecided        ProjectActivationApproval[]         @relation("ProjectActivationApproval_decidedBy")
-  contacts                                 Contact[]
-  employmentEvents                         EmploymentEvent[]                   @relation("EmploymentEvent_person")
-  employmentEventsRecorded                 EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
-  projectRetrospectivesFacilitated         ProjectRetrospective[]
+  createdOrganizationConfigs             OrganizationConfig[]                @relation("OrganizationConfigCreatedBy")
+  managedClientAccounts                  Client[]                            @relation("ClientAccountManager")
+  responsibilityRulesAsTarget            ResponsibilityRule[]                @relation("ResponsibilityRuleTargetPerson")
+  helpArticlesAuthored                   HelpArticle[]                       @relation("HelpArticleAuthor")
+  helpFeedback                           HelpFeedback[]                      @relation("HelpFeedbackActor")
+  onboardingTourProgress                 OnboardingTourProgress[]            @relation("OnboardingTourPerson")
+  externalIdentityLinks                  PersonExternalIdentityLink[]
+  externalAccountLinks                   ExternalAccountLink[]
+  activityEvents                         EmployeeActivityEvent[]
+  overtimePoliciesSet                    OvertimePolicy[]                    @relation("OvertimePolicySetBy")
+  overtimeExceptions                     OvertimeException[]
+  leaveBalances                          LeaveBalance[]
+  auditLogsAsActor                       AuditLog[]                          @relation("AuditLogActor")
+  activityEventsAsActor                  EmployeeActivityEvent[]             @relation("EmployeeActivityEventActor")
+  localAccount                           LocalAccount?
+  m365ReconciliationRecordsAsSubject     M365DirectoryReconciliationRecord[] @relation("M365ReconciliationSubject")
+  m365ReconciliationRecordsAsManager     M365DirectoryReconciliationRecord[] @relation("M365ReconciliationResolvedManager")
+  externalIdentityLinksAsResolvedManager PersonExternalIdentityLink[]        @relation("PersonExternalIdentityResolvedManager")
+  projectChangeRequestsRequested         ProjectChangeRequest[]              @relation("ProjectChangeRequestRequester")
+  projectChangeRequestsDecided           ProjectChangeRequest[]              @relation("ProjectChangeRequestDecider")
+  radiatorOverridesMade                  ProjectRadiatorOverride[]
+  ragSnapshotsRecorded                   ProjectRagSnapshot[]
+  risksOwned                             ProjectRisk[]                       @relation("ProjectRiskOwner")
+  risksAssigned                          ProjectRisk[]                       @relation("ProjectRiskAssignee")
+  radiatorThresholdUpdates               RadiatorThresholdConfig[]
+  radiusReconciliationRecords            RadiusReconciliationRecord[]
+  plannerScenarios                       PlannerScenario[]                   @relation("PlannerScenarioCreator")
+  plannerScenariosUpdated                PlannerScenario[]                   @relation("PlannerScenarioUpdater")
+  notificationPreferences                PersonNotificationPreference[]
+  notificationDigest                     PersonNotificationDigest?
+  undoActionsRegistered                  UndoAction[]                        @relation("UndoActionActor")
+  budgetApprovalsRequested               BudgetApproval[]                    @relation("BudgetApproval_requestedBy")
+  budgetApprovalsDecided                 BudgetApproval[]                    @relation("BudgetApproval_decidedBy")
+  projectActivationApprovalsRequested    ProjectActivationApproval[]         @relation("ProjectActivationApproval_requestedBy")
+  projectActivationApprovalsDecided      ProjectActivationApproval[]         @relation("ProjectActivationApproval_decidedBy")
+  contacts                               Contact[]
+  employmentEvents                       EmploymentEvent[]                   @relation("EmploymentEvent_person")
+  employmentEventsRecorded               EmploymentEvent[]                   @relation("EmploymentEvent_recordedBy")
+  projectRetrospectivesFacilitated       ProjectRetrospective[]
   // Sprint 2 / S2-1 — lean staffing aggregate inverse relations.
-  projectPositionsActive                   ProjectPosition[]                   @relation("ProjectPositionActivePerson")
-  projectPositionsRequested                ProjectPosition[]                   @relation("ProjectPositionRequestedBy")
-  projectPositionsCreated                  ProjectPosition[]                   @relation("ProjectPositionCreatedBy")
-  projectPositionsUpdated                  ProjectPosition[]                   @relation("ProjectPositionUpdatedBy")
-  projectPositionsOnboardingApproved       ProjectPosition[]                   @relation("ProjectPositionOnboardingApprovedBy")
-  projectPositionCandidates                ProjectPositionCandidate[]          @relation("ProjectPositionCandidatePerson")
-  projectPositionCandidatesCreated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateCreatedBy")
-  projectPositionCandidatesUpdated         ProjectPositionCandidate[]          @relation("ProjectPositionCandidateUpdatedBy")
-  projectPositionFillHistoryChanges        ProjectPositionFillHistory[]        @relation("ProjectPositionFillHistoryChangedBy")
+  projectPositionsActive                 ProjectPosition[]                   @relation("ProjectPositionActivePerson")
+  projectPositionsRequested              ProjectPosition[]                   @relation("ProjectPositionRequestedBy")
+  projectPositionsCreated                ProjectPosition[]                   @relation("ProjectPositionCreatedBy")
+  projectPositionsUpdated                ProjectPosition[]                   @relation("ProjectPositionUpdatedBy")
+  projectPositionsOnboardingApproved     ProjectPosition[]                   @relation("ProjectPositionOnboardingApprovedBy")
+  projectPositionCandidates              ProjectPositionCandidate[]          @relation("ProjectPositionCandidatePerson")
+  projectPositionCandidatesCreated       ProjectPositionCandidate[]          @relation("ProjectPositionCandidateCreatedBy")
+  projectPositionCandidatesUpdated       ProjectPositionCandidate[]          @relation("ProjectPositionCandidateUpdatedBy")
+  projectPositionFillHistoryChanges      ProjectPositionFillHistory[]        @relation("ProjectPositionFillHistoryChangedBy")
   // LEAN-P4-missing-13 — admin-managed leave policies, actor-audit on author/editor.
-  createdLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyCreatedBy")
-  updatedLeavePolicies                     LeavePolicy[]                       @relation("LeavePolicyUpdatedBy")
+  createdLeavePolicies                   LeavePolicy[]                       @relation("LeavePolicyCreatedBy")
+  updatedLeavePolicies                   LeavePolicy[]                       @relation("LeavePolicyUpdatedBy")
   // NEW-LGL-3 — admin-managed custom roles (Squad Lead, Tribe Lead, IT Service Owner).
-  createdCustomRoles                       CustomRole[]                        @relation("CustomRoleCreatedBy")
-  updatedCustomRoles                       CustomRole[]                        @relation("CustomRoleUpdatedBy")
-  dmEscalationsCreated                     DmEscalation[]                      @relation("DmEscalationEscalatedBy")
-  dmEscalationsAssigned                    DmEscalation[]                      @relation("DmEscalationEscalatedTo")
-  dmEscalationsResolved                    DmEscalation[]                      @relation("DmEscalationResolvedBy")
-  version                                  Int                                 @default(1)
-  tenantId                                 String?                             @db.Uuid
-  Tenant                                   Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdCustomRoles                     CustomRole[]                        @relation("CustomRoleCreatedBy")
+  updatedCustomRoles                     CustomRole[]                        @relation("CustomRoleUpdatedBy")
+  dmEscalationsCreated                   DmEscalation[]                      @relation("DmEscalationEscalatedBy")
+  dmEscalationsAssigned                  DmEscalation[]                      @relation("DmEscalationEscalatedTo")
+  dmEscalationsResolved                  DmEscalation[]                      @relation("DmEscalationResolvedBy")
+  version                                Int                                 @default(1)
+  tenantId                               String?                             @db.Uuid
+  Tenant                                 Tenant?                             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([employmentStatus, archivedAt])
   @@index([familyName, givenName])
@@ -1173,7 +1067,6 @@ model Project {
   client                Client?                     @relation(fields: [clientId], references: [id])
   externalLinks         ProjectExternalLink[]
   activationApprovals   ProjectActivationApproval[]
-  assignments           ProjectAssignment[]
   workEvidenceRecords   WorkEvidence[]
   caseRecords           CaseRecord[]
   rolePlans             ProjectRolePlan[]
@@ -1245,123 +1138,6 @@ model ExternalSyncState {
   projectExternalLink    ProjectExternalLink @relation(fields: [projectExternalLinkId], references: [id], onDelete: Cascade)
 
   @@map("ExternalSyncState")
-}
-
-// Assignment is planned staffing truth and intentionally independent from work evidence.
-model ProjectAssignment {
-  id                       String               @id @default(uuid()) @db.Uuid
-  personId                 String               @db.Uuid
-  projectId                String               @db.Uuid
-  workstreamId             String?              @db.Uuid
-  staffingRequestId        String?
-  requestedByPersonId      String?              @db.Uuid
-  assignmentCode           String?              @unique
-  staffingRole             String
-  status                   AssignmentStatus     @default(CREATED)
-  allocationPercent        Decimal?             @db.Decimal(5, 2)
-  requestedAt              DateTime             @default(now()) @db.Timestamptz(3)
-  approvedAt               DateTime?            @db.Timestamptz(3)
-  validFrom                DateTime             @db.Timestamptz(3)
-  validTo                  DateTime?            @db.Timestamptz(3)
-  onboardingDate           DateTime?            @db.Timestamptz(3)
-  notes                    String?
-  rejectionReason          String?
-  rejectionReasonCode      String?
-  cancellationReason       String?
-  onHoldReason             String?
-  onHoldCaseId             String?              @db.Uuid
-  requiresDirectorApproval Boolean              @default(false)
-  slaStage                 AssignmentSlaStage?
-  slaDueAt                 DateTime?            @db.Timestamptz(3)
-  slaBreachedAt            DateTime?            @db.Timestamptz(3)
-  // HD-10 — pre-breach warning timestamps. Each is set exactly once
-  // when the SLA elapsed-fraction crosses 50% or 75% so the sweep
-  // can deduplicate notifications across ticks.
-  slaWarnedAt50pct         DateTime?            @db.Timestamptz(3)
-  slaWarnedAt75pct         DateTime?            @db.Timestamptz(3)
-  // HD-3 — bill-rate pinning. When the resolver picks a rate card
-  // entry at BOOKED transition, both the entry id and the resolved
-  // hourly rate get written here so margin math can read a stable
-  // value even if the underlying card later mutates.
-  appliedRateCardEntryId   String?              @db.Uuid
-  appliedRateCardEntry     RateCardEntry?       @relation("AssignmentRateCardEntry", fields: [appliedRateCardEntryId], references: [id], onDelete: SetNull)
-  effectiveBillRate        Decimal?             @db.Decimal(10, 2)
-  effectiveBillCurrency    String?              @db.VarChar(3)
-  version                  Int                  @default(1)
-  createdAt                DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
-  createdByPersonId        String?              @db.Uuid
-  updatedByPersonId        String?              @db.Uuid
-  archivedAt               DateTime?            @db.Timestamptz(3)
-  person                   Person               @relation("AssignmentPerson", fields: [personId], references: [id])
-  createdByPerson          Person?              @relation("ProjectAssignmentCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson          Person?              @relation("ProjectAssignmentUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  project                  Project              @relation(fields: [projectId], references: [id])
-  staffingRequest          StaffingRequest?     @relation("StaffingRequestAssignments", fields: [staffingRequestId], references: [id], onDelete: SetNull)
-  requestedBy              Person?              @relation("AssignmentRequestedBy", fields: [requestedByPersonId], references: [id])
-  approvals                AssignmentApproval[]
-  historyEntries           AssignmentHistory[]
-  caseRecords              CaseRecord[]
-  tenantId                 String?              @db.Uuid
-  Tenant                   Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-
-  @@unique([personId, projectId, validFrom])
-  @@index([personId, status, validFrom, validTo])
-  @@index([projectId, status, validFrom, validTo])
-  @@index([staffingRequestId])
-  @@index([requestedByPersonId])
-  @@index([slaStage, slaDueAt])
-  @@index([status, slaDueAt])
-  @@index([tenantId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@index([appliedRateCardEntryId])
-  @@map("ProjectAssignment")
-}
-
-model AssignmentApproval {
-  id                String            @id @default(uuid()) @db.Uuid
-  assignmentId      String            @db.Uuid
-  decidedByPersonId String?           @db.Uuid
-  sequenceNumber    Int               @default(1)
-  decision          ApprovalDecision  @default(PENDING)
-  decisionReason    String?
-  decisionAt        DateTime?         @db.Timestamptz(3)
-  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
-  // F-26 / D-103 + DM-5-5 round 3 — actor-audit columns. The
-  // `decidedByPersonId` captures who decided the approval; these
-  // capture who initiated and who last touched the row.
-  createdByPersonId String?           @db.Uuid
-  updatedByPersonId String?           @db.Uuid
-  assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  decidedBy         Person?           @relation("AssignmentApprovalDecidedBy", fields: [decidedByPersonId], references: [id])
-  createdByPerson   Person?           @relation("AssignmentApprovalCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson   Person?           @relation("AssignmentApprovalUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-
-  @@unique([assignmentId, sequenceNumber])
-  @@index([assignmentId, decision])
-  @@index([decidedByPersonId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("AssignmentApproval")
-}
-
-model AssignmentHistory {
-  id                String            @id @default(uuid()) @db.Uuid
-  assignmentId      String            @db.Uuid
-  changedByPersonId String?           @db.Uuid
-  changeType        String
-  changeReason      String?
-  previousSnapshot  Json?
-  newSnapshot       Json?
-  occurredAt        DateTime          @default(now()) @db.Timestamptz(3)
-  assignment        ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  changedBy         Person?           @relation("AssignmentHistoryChangedBy", fields: [changedByPersonId], references: [id])
-
-  @@index([assignmentId, occurredAt])
-  @@index([changedByPersonId])
-  @@map("AssignmentHistory")
 }
 
 model WorkEvidenceSource {
@@ -1481,7 +1257,6 @@ model CaseRecord {
   subjectPersonId         String              @db.Uuid
   ownerPersonId           String              @db.Uuid
   relatedProjectId        String?             @db.Uuid
-  relatedAssignmentId     String?             @db.Uuid
   status                  CaseStatus          @default(OPEN)
   openedAt                DateTime            @default(now()) @db.Timestamptz(3)
   dueAt                   DateTime?           @db.Timestamptz(3)
@@ -1499,7 +1274,6 @@ model CaseRecord {
   createdByPerson         Person?             @relation("CaseRecordCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
   updatedByPerson         Person?             @relation("CaseRecordUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   relatedProject          Project?            @relation(fields: [relatedProjectId], references: [id])
-  relatedAssignment       ProjectAssignment?  @relation(fields: [relatedAssignmentId], references: [id])
   steps                   CaseStep[]
   participants            CaseParticipant[]
   overtimeExceptions      OvertimeException[]
@@ -1513,7 +1287,6 @@ model CaseRecord {
   @@index([subjectPersonId, status])
   @@index([ownerPersonId, status])
   @@index([relatedProjectId])
-  @@index([relatedAssignmentId])
   @@index([tenantId])
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
@@ -2062,35 +1835,34 @@ model TimesheetWeek {
 }
 
 model TimesheetEntry {
-  id                String        @id @default(uuid())
-  idNew             String        @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  id                String           @id @default(uuid())
+  idNew             String           @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
   timesheetWeekId   String
-  timesheetWeek     TimesheetWeek @relation(fields: [timesheetWeekId], references: [id], onDelete: Cascade)
+  timesheetWeek     TimesheetWeek    @relation(fields: [timesheetWeekId], references: [id], onDelete: Cascade)
   projectId         String
-  assignmentId      String?
-  // LEAN-P0-5 — lean-aware lineage. `positionId` replaces `assignmentId`
-  // when Phase 3 drops `ProjectAssignment`; `personId` denormalises
-  // `timesheetWeek.personId` so reports can index without a join.
-  positionId        String?         @db.Uuid
-  personId          String?         @db.Uuid
+  // LEAN-P0-5 — lean-aware lineage. `positionId` is the canonical
+  // join (LEAN-P3-2 dropped the legacy assignmentId column). `personId`
+  // denormalises `timesheetWeek.personId` so reports can index without a join.
+  positionId        String?          @db.Uuid
+  personId          String?          @db.Uuid
   position          ProjectPosition? @relation("TimesheetEntryPosition", fields: [positionId], references: [id], onDelete: SetNull)
-  person            Person?         @relation("TimesheetEntryPerson", fields: [personId], references: [id], onDelete: SetNull)
-  date              DateTime      @db.Date
-  hours             Decimal       @db.Decimal(5, 2)
-  capex             Boolean       @default(false)
+  person            Person?          @relation("TimesheetEntryPerson", fields: [personId], references: [id], onDelete: SetNull)
+  date              DateTime         @db.Date
+  hours             Decimal          @db.Decimal(5, 2)
+  capex             Boolean          @default(false)
   // Empty string '' is the sentinel for "not set" so the composite unique key works without
   // partial-index gymnastics around Postgres NULLS-DISTINCT semantics.
-  benchCategory     String        @default("")
-  workLabel         String        @default("")
+  benchCategory     String           @default("")
+  workLabel         String           @default("")
   workItemId        String?
   description       String?
-  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(3)
   // F-62 / D-103 round 21 — actor-audit columns.
-  createdByPersonId String?       @db.Uuid
-  updatedByPersonId String?       @db.Uuid
-  createdByPerson   Person?       @relation("TimesheetEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson   Person?       @relation("TimesheetEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  createdByPersonId String?          @db.Uuid
+  updatedByPersonId String?          @db.Uuid
+  createdByPerson   Person?          @relation("TimesheetEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson   Person?          @relation("TimesheetEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([timesheetWeekId, projectId, benchCategory, workLabel, date])
   @@index([createdByPersonId])
@@ -2303,35 +2075,34 @@ model RateCard {
 }
 
 model RateCardEntry {
-  id                String              @id @default(uuid()) @db.Uuid
-  rateCardId        String              @db.Uuid
-  rateCard          RateCard            @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+  id                      String            @id @default(uuid()) @db.Uuid
+  rateCardId              String            @db.Uuid
+  rateCard                RateCard          @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
   // Match keys. `staffingRole` is required, `grade` is required (matches
   // tenant `MetadataDictionary{key:'grade'}` per J8), `requiredSkills`
   // is an optional positive-match list — the assignment's person must
   // hold ALL listed skills for the entry to apply.
-  staffingRole      String
-  grade             String
-  requiredSkills    String[]            @default([])
+  staffingRole            String
+  grade                   String
+  requiredSkills          String[]          @default([])
   // Hourly bill rate in the parent card's currency.
-  hourlyRate        Decimal             @db.Decimal(10, 2)
-  notes             String?
-  isActive          Boolean             @default(true)
-  createdAt         DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
-  archivedAt        DateTime?           @db.Timestamptz(3)
+  hourlyRate              Decimal           @db.Decimal(10, 2)
+  notes                   String?
+  isActive                Boolean           @default(true)
+  createdAt               DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime          @updatedAt @db.Timestamptz(3)
+  archivedAt              DateTime?         @db.Timestamptz(3)
   // F-52 / D-103 round 16 — actor-audit columns.
-  createdByPersonId String?             @db.Uuid
-  updatedByPersonId String?             @db.Uuid
-  createdByPerson   Person?             @relation("RateCardEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson   Person?             @relation("RateCardEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  pinnedAssignments ProjectAssignment[] @relation("AssignmentRateCardEntry")
+  createdByPersonId       String?           @db.Uuid
+  updatedByPersonId       String?           @db.Uuid
+  createdByPerson         Person?           @relation("RateCardEntryCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson         Person?           @relation("RateCardEntryUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
   // Sprint 2 / S2-1 — lean staffing aggregate.
   pinnedPositionRelations ProjectPosition[] @relation("ProjectPositionRateCardEntry")
   // LEAN-P3-1 — provenance snapshot JSONB of the pinned positions at
   // Phase 3 fixup time (assignmentId/positionId/role/hourlyRate triplets).
   // See prisma/migrations/20260606_lean_p3_1_data_fixup/migration.sql.
-  pinnedPositions   Json     @default("[]") @db.JsonB
+  pinnedPositions         Json              @default("[]") @db.JsonB
 
   @@unique([rateCardId, staffingRole, grade])
   @@index([rateCardId, isActive])
@@ -2627,176 +2398,32 @@ model Skill {
 }
 
 model PersonSkill {
-  id          String   @id @default(uuid())
-  idNew       String   @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  personId    String   @db.Uuid
-  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-  skillId     String
-  skill       Skill    @relation(fields: [skillId], references: [id])
-  proficiency Int
-  certified   Boolean  @default(false)
+  id                     String    @id @default(uuid())
+  idNew                  String    @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
+  personId               String    @db.Uuid
+  person                 Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  skillId                String
+  skill                  Skill     @relation(fields: [skillId], references: [id])
+  proficiency            Int
+  certified              Boolean   @default(false)
   // FE-#263 — drives "certification_stale" HR action-cards. NULL = no expiry.
   certificationExpiresAt DateTime? @db.Date
   // LEAN-P4d-4 — TRUE when the employee added the row from /me/skills
   // (no HR review). HR dashboards surface this pool as "unverified".
-  selfEndorsed Boolean @default(false)
+  selfEndorsed           Boolean   @default(false)
   // LEAN-P4c-4 — manager-approval audit columns. NULL while the row is
   // still pending HR review; populated on the APPROVE path. A reject
   // deletes the row outright (no soft-delete flag).
-  endorsedByPersonId String?  @db.Uuid
-  endorsedByPerson   Person?  @relation("PersonSkillEndorsedBy", fields: [endorsedByPersonId], references: [id], onDelete: SetNull)
-  endorsedAt         DateTime? @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  endorsedByPersonId     String?   @db.Uuid
+  endorsedByPerson       Person?   @relation("PersonSkillEndorsedBy", fields: [endorsedByPersonId], references: [id], onDelete: SetNull)
+  endorsedAt             DateTime? @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([personId, skillId])
   @@index([personId])
   @@index([skillId])
   @@index([endorsedByPersonId], map: "person_skills_endorsedByPerson_idx")
   @@map("person_skills")
-}
-
-// =============================================================================
-// Supply & Demand — Staffing Requests (Phase 13)
-// =============================================================================
-
-enum StaffingRequestStatus {
-  DRAFT
-  OPEN
-  IN_REVIEW
-  FULFILLED
-  CANCELLED
-}
-
-enum StaffingRequestPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-model StaffingRequest {
-  id                  String                        @id @default(uuid())
-  idNew               String                        @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  publicId            String?                       @unique @db.VarChar(32)
-  projectId           String
-  requestedByPersonId String
-  role                String
-  skills              String[]
-  summary             String?
-  allocationPercent   Decimal                       @db.Decimal(5, 2)
-  headcountRequired   Int                           @default(1)
-  headcountFulfilled  Int                           @default(0)
-  candidatePersonId   String?                       @db.Uuid
-  priority            StaffingRequestPriority       @default(MEDIUM)
-  status              StaffingRequestStatus         @default(DRAFT)
-  startDate           DateTime                      @db.Date
-  endDate             DateTime                      @db.Date
-  cancelledAt         DateTime?                     @db.Timestamptz(3)
-  createdAt           DateTime                      @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                      @updatedAt @db.Timestamptz(3)
-  // F-68 / D-103 round 24 — actor-audit columns. Distinct from
-  // `requestedByPersonId` (the requester) — the canonical pair captures
-  // "who created/last-edited this row" without conflating the two roles.
-  createdByPersonId   String?                       @db.Uuid
-  updatedByPersonId   String?                       @db.Uuid
-  createdByPerson     Person?                       @relation("StaffingRequestCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson     Person?                       @relation("StaffingRequestUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  fulfilments         StaffingRequestFulfilment[]
-  assignments         ProjectAssignment[]           @relation("StaffingRequestAssignments")
-  proposalSlate       StaffingRequestProposalSlate?
-  version             Int                           @default(1)
-  tenantId            String?                       @db.Uuid
-  Tenant              Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-
-  @@index([projectId, status])
-  @@index([requestedByPersonId, status])
-  @@index([status, priority, startDate])
-  @@index([tenantId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("staffing_requests")
-}
-
-model StaffingRequestProposalSlate {
-  id                 String                             @id @default(uuid()) @db.Uuid
-  staffingRequestId  String                             @unique
-  proposedByPersonId String                             @db.Uuid
-  status             StaffingRequestProposalSlateStatus @default(OPEN)
-  proposedAt         DateTime                           @default(now()) @db.Timestamptz(3)
-  expiresAt          DateTime?                          @db.Timestamptz(3)
-  decidedAt          DateTime?                          @db.Timestamptz(3)
-  createdAt          DateTime                           @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                           @updatedAt @db.Timestamptz(3)
-  // F-32 / D-103 + DM-5-5 round 6 — actor-audit columns. The existing
-  // `proposedByPersonId` captures the creator; the canonical pair
-  // brings this aggregate into uniform shape.
-  createdByPersonId  String?                            @db.Uuid
-  updatedByPersonId  String?                            @db.Uuid
-  staffingRequest    StaffingRequest                    @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
-  proposedBy         Person                             @relation("StaffingRequestProposalSlateProposedBy", fields: [proposedByPersonId], references: [id], onDelete: Restrict)
-  createdByPerson    Person?                            @relation("StaffingRequestProposalSlateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson    Person?                            @relation("StaffingRequestProposalSlateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  candidates         StaffingRequestProposalCandidate[]
-
-  @@index([staffingRequestId])
-  @@index([status, proposedAt])
-  @@index([proposedByPersonId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("StaffingRequestProposalSlate")
-}
-
-model StaffingRequestProposalCandidate {
-  id                  String                                   @id @default(uuid()) @db.Uuid
-  slateId             String                                   @db.Uuid
-  candidatePersonId   String                                   @db.Uuid
-  rank                Int
-  matchScore          Decimal                                  @db.Decimal(6, 3)
-  availabilityPercent Decimal?                                 @db.Decimal(5, 2)
-  mismatchedSkills    String[]
-  rationale           String?
-  decision            StaffingRequestProposalCandidateDecision @default(PENDING)
-  decidedAt           DateTime?                                @db.Timestamptz(3)
-  createdAt           DateTime                                 @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                                 @updatedAt @db.Timestamptz(3)
-  // F-60 / D-103 round 20 — actor-audit columns.
-  createdByPersonId   String?                                  @db.Uuid
-  updatedByPersonId   String?                                  @db.Uuid
-  createdByPerson     Person?                                  @relation("StaffingRequestProposalCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson     Person?                                  @relation("StaffingRequestProposalCandidateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  slate               StaffingRequestProposalSlate             @relation(fields: [slateId], references: [id], onDelete: Cascade)
-  candidate           Person                                   @relation("StaffingRequestProposalCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
-
-  @@unique([slateId, candidatePersonId])
-  @@index([slateId, rank])
-  @@index([candidatePersonId])
-  @@index([slateId, decision])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("StaffingRequestProposalCandidate")
-}
-
-model StaffingRequestFulfilment {
-  id                 String          @id @default(uuid())
-  idNew              String          @default(dbgenerated("gen_random_uuid()")) @map("id_new") @db.Uuid
-  requestId          String
-  assignedPersonId   String
-  proposedByPersonId String
-  fulfilledAt        DateTime        @default(now()) @db.Timestamptz(3)
-  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
-  // F-64 / D-103 round 22 — actor-audit columns.
-  createdByPersonId  String?         @db.Uuid
-  updatedByPersonId  String?         @db.Uuid
-  createdByPerson    Person?         @relation("StaffingRequestFulfilmentCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson    Person?         @relation("StaffingRequestFulfilmentUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  request            StaffingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-
-  @@index([requestId])
-  @@index([assignedPersonId])
-  @@index([createdByPersonId])
-  @@index([updatedByPersonId])
-  @@map("staffing_request_fulfilments")
 }
 
 enum LeaveRequestType {
@@ -3780,25 +3407,25 @@ model ProjectRisk {
 // =============================================================================
 
 model PlannerScenario {
-  id                  String                @id @default(uuid()) @db.Uuid
-  publicId            String?               @unique @db.VarChar(32)
-  tenantId            String?               @db.Uuid
-  name                String
-  description         String?
-  status              PlannerScenarioStatus @default(DRAFT)
-  createdByPersonId   String                @db.Uuid
-  updatedByPersonId   String?               @db.Uuid
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
-  archivedAt          DateTime?             @db.Timestamptz(3)
-  state               Json
-  summaryAssignments  Int                   @default(0)
-  summaryHires        Int                   @default(0)
-  summaryReleases     Int                   @default(0)
-  summaryExtensions   Int                   @default(0)
-  summaryAnomalies    Int                   @default(0)
-  horizonFrom         DateTime?             @db.Date
-  horizonWeeks        Int?
+  id                 String                @id @default(uuid()) @db.Uuid
+  publicId           String?               @unique @db.VarChar(32)
+  tenantId           String?               @db.Uuid
+  name               String
+  description        String?
+  status             PlannerScenarioStatus @default(DRAFT)
+  createdByPersonId  String                @db.Uuid
+  updatedByPersonId  String?               @db.Uuid
+  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
+  archivedAt         DateTime?             @db.Timestamptz(3)
+  state              Json
+  summaryAssignments Int                   @default(0)
+  summaryHires       Int                   @default(0)
+  summaryReleases    Int                   @default(0)
+  summaryExtensions  Int                   @default(0)
+  summaryAnomalies   Int                   @default(0)
+  horizonFrom        DateTime?             @db.Date
+  horizonWeeks       Int?
 
   createdBy Person  @relation("PlannerScenarioCreator", fields: [createdByPersonId], references: [id], onDelete: Restrict)
   updatedBy Person? @relation("PlannerScenarioUpdater", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
@@ -3926,23 +3553,23 @@ model UndoAction {
 // ── V2-0 Foundation: Workstreams (stub — unused in v2 UI), OrganizationConfig ──
 
 model ProjectWorkstream {
-  id                 String    @id @default(uuid()) @db.Uuid
-  projectId          String    @db.Uuid
+  id                 String             @id @default(uuid()) @db.Uuid
+  projectId          String             @db.Uuid
   name               String
-  streamLeadPersonId String?   @db.Uuid
-  budgetShare        Decimal?  @db.Decimal(5, 4)
-  startDate          DateTime  @db.Date
-  endDate            DateTime? @db.Date
-  status             String    @default("ACTIVE")
-  displayOrder       Int       @default(0)
-  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+  streamLeadPersonId String?            @db.Uuid
+  budgetShare        Decimal?           @db.Decimal(5, 4)
+  startDate          DateTime           @db.Date
+  endDate            DateTime?          @db.Date
+  status             String             @default("ACTIVE")
+  displayOrder       Int                @default(0)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
   // F-48 / D-103 round 14 — actor-audit columns.
-  createdByPersonId  String?   @db.Uuid
-  updatedByPersonId  String?   @db.Uuid
-  createdByPerson    Person?   @relation("ProjectWorkstreamCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson    Person?   @relation("ProjectWorkstreamUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  project            Project   @relation(fields: [projectId], references: [id])
+  createdByPersonId  String?            @db.Uuid
+  updatedByPersonId  String?            @db.Uuid
+  createdByPerson    Person?            @relation("ProjectWorkstreamCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson    Person?            @relation("ProjectWorkstreamUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  project            Project            @relation(fields: [projectId], references: [id])
   // FE-#260 — inverse of ProjectMilestone.workstream.
   milestones         ProjectMilestone[]
 
@@ -4026,8 +3653,6 @@ enum AggregateType {
   Vendor
   OrgUnit
   ResourcePool
-  ProjectAssignment
-  StaffingRequest
   CaseRecord
   TimesheetWeek
   LeaveRequest
@@ -4073,8 +3698,6 @@ model Tenant {
   Person                    Person[]
   Project                   Project[]
   ProjectActivationApproval ProjectActivationApproval[]
-  PersonReleaseRequest      PersonReleaseRequest[]
-  ProjectAssignment         ProjectAssignment[]
   RateCard                  RateCard[]
   ResponsibilityRule        ResponsibilityRule[]
   HelpArticle               HelpArticle[]
@@ -4086,13 +3709,12 @@ model Tenant {
   InAppNotification         InAppNotification[]
   LeaveRequest              LeaveRequest[]
   Skill                     Skill[]
-  StaffingRequest           StaffingRequest[]
   TimesheetWeek             TimesheetWeek[]
   Vendor                    Vendor[]
   // Sprint 2 / S2-1 — lean staffing aggregate.
-  ProjectPosition           ProjectPosition[]        @relation("ProjectPositionTenant")
+  ProjectPosition           ProjectPosition[]           @relation("ProjectPositionTenant")
   // LEAN-P4a-1 — Distribution Studio scenario tenancy.
-  PlannerScenario           PlannerScenario[]        @relation("PlannerScenarioTenant")
+  PlannerScenario           PlannerScenario[]           @relation("PlannerScenarioTenant")
 
   @@index([createdByPersonId])
   @@index([updatedByPersonId])
@@ -4111,79 +3733,75 @@ model Tenant {
 ///
 /// See docs/planning/claude-design/lean-simplification-initiative.md §2.
 model ProjectPosition {
-  id                       String                       @id @default(uuid()) @db.Uuid
-  publicId                 String?                      @unique @db.VarChar(32)
-  projectId                String                       @db.Uuid
-  workstreamId             String?                      @db.Uuid
+  id                           String                       @id @default(uuid()) @db.Uuid
+  publicId                     String?                      @unique @db.VarChar(32)
+  projectId                    String                       @db.Uuid
+  workstreamId                 String?                      @db.Uuid
   // Demand definition (was: StaffingRequest fields).
-  role                     String
-  skills                   String[]                     @default([])
-  summary                  String?
-  requiredAllocationPercent Decimal                     @db.Decimal(5, 2)
-  startDate                DateTime                     @db.Date
-  endDate                  DateTime                     @db.Date
-  priority                 StaffingRequestPriority      @default(MEDIUM)
-  requestedByPersonId      String?                      @db.Uuid
+  role                         String
+  skills                       String[]                     @default([])
+  summary                      String?
+  requiredAllocationPercent    Decimal                      @db.Decimal(5, 2)
+  startDate                    DateTime                     @db.Date
+  endDate                      DateTime                     @db.Date
+  priority                     StaffingRequestPriority      @default(MEDIUM)
+  requestedByPersonId          String?                      @db.Uuid
   // Active fill (was: the row in ProjectAssignment with status in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD).
-  fillStatus               ProjectPositionFillStatus    @default(DRAFT)
-  activePersonId           String?                      @db.Uuid
-  activeAllocationPercent  Decimal?                     @db.Decimal(5, 2)
-  activeValidFrom          DateTime?                    @db.Timestamptz(3)
-  activeValidTo            DateTime?                    @db.Timestamptz(3)
-  onboardingDate           DateTime?                    @db.Timestamptz(3)
+  fillStatus                   ProjectPositionFillStatus    @default(DRAFT)
+  activePersonId               String?                      @db.Uuid
+  activeAllocationPercent      Decimal?                     @db.Decimal(5, 2)
+  activeValidFrom              DateTime?                    @db.Timestamptz(3)
+  activeValidTo                DateTime?                    @db.Timestamptz(3)
+  onboardingDate               DateTime?                    @db.Timestamptz(3)
   // LEAN-P4c-1 — onboarding-stage approval gate. When `requiresOnboardingApproval`
   // is TRUE, the paired ProjectAssignment cannot transition ONBOARDING → ASSIGNED
   // until `onboardingApprovedAt` is populated (set by `ApproveOnboardingService`).
   // PM-only approval; defaults to FALSE so positions without a gate keep the
   // existing direct-to-ASSIGNED behaviour.
-  requiresOnboardingApproval Boolean                    @default(false)
-  onboardingApprovedAt       DateTime?                  @db.Timestamptz(3)
-  onboardingApprovedByPersonId String?                  @db.Uuid
-  notes                    String?
+  requiresOnboardingApproval   Boolean                      @default(false)
+  onboardingApprovedAt         DateTime?                    @db.Timestamptz(3)
+  onboardingApprovedByPersonId String?                      @db.Uuid
+  notes                        String?
   // SLA tracking (was: ProjectAssignment SLA fields).
-  requiresDirectorApproval Boolean                      @default(false)
-  slaStage                 AssignmentSlaStage?
-  slaDueAt                 DateTime?                    @db.Timestamptz(3)
-  slaBreachedAt            DateTime?                    @db.Timestamptz(3)
-  slaWarnedAt50pct         DateTime?                    @db.Timestamptz(3)
-  slaWarnedAt75pct         DateTime?                    @db.Timestamptz(3)
+  requiresDirectorApproval     Boolean                      @default(false)
+  slaStage                     AssignmentSlaStage?
+  slaDueAt                     DateTime?                    @db.Timestamptz(3)
+  slaBreachedAt                DateTime?                    @db.Timestamptz(3)
+  slaWarnedAt50pct             DateTime?                    @db.Timestamptz(3)
+  slaWarnedAt75pct             DateTime?                    @db.Timestamptz(3)
   // Billing rate pinning (was: ProjectAssignment rate fields).
-  appliedRateCardEntryId   String?                      @db.Uuid
-  appliedRateCardEntry     RateCardEntry?               @relation("ProjectPositionRateCardEntry", fields: [appliedRateCardEntryId], references: [id], onDelete: SetNull)
-  effectiveBillRate        Decimal?                     @db.Decimal(10, 2)
-  effectiveBillCurrency    String?                      @db.VarChar(3)
+  appliedRateCardEntryId       String?                      @db.Uuid
+  appliedRateCardEntry         RateCardEntry?               @relation("ProjectPositionRateCardEntry", fields: [appliedRateCardEntryId], references: [id], onDelete: SetNull)
+  effectiveBillRate            Decimal?                     @db.Decimal(10, 2)
+  effectiveBillCurrency        String?                      @db.VarChar(3)
   // Reason text preserved across transitions.
-  rejectionReason          String?
-  rejectionReasonCode      String?
-  cancellationReason       String?
-  onHoldReason             String?
-  onHoldCaseId             String?                      @db.Uuid
-  releaseReason            String?
+  rejectionReason              String?
+  rejectionReasonCode          String?
+  cancellationReason           String?
+  onHoldReason                 String?
+  onHoldCaseId                 String?                      @db.Uuid
+  releaseReason                String?
   // Concurrency + audit.
-  version                  Int                          @default(1)
-  createdAt                DateTime                     @default(now()) @db.Timestamptz(3)
-  updatedAt                DateTime                     @updatedAt @db.Timestamptz(3)
-  createdByPersonId        String?                      @db.Uuid
-  updatedByPersonId        String?                      @db.Uuid
-  archivedAt               DateTime?                    @db.Timestamptz(3)
+  version                      Int                          @default(1)
+  createdAt                    DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime                     @updatedAt @db.Timestamptz(3)
+  createdByPersonId            String?                      @db.Uuid
+  updatedByPersonId            String?                      @db.Uuid
+  archivedAt                   DateTime?                    @db.Timestamptz(3)
   // Tenant.
-  tenantId                 String?                      @db.Uuid
-  Tenant                   Tenant?                      @relation("ProjectPositionTenant", fields: [tenantId], references: [id], onDelete: Restrict)
-  // Migration provenance — populated by the Sprint-2 backfill so the
-  // Sprint-5 contract migration can confirm clean backfill before dropping legacy.
-  legacyStaffingRequestId  String?                      @db.Uuid
-  legacyAssignmentId       String?                      @db.Uuid
+  tenantId                     String?                      @db.Uuid
+  Tenant                       Tenant?                      @relation("ProjectPositionTenant", fields: [tenantId], references: [id], onDelete: Restrict)
   // Relations.
-  project                  Project                      @relation("ProjectPositions", fields: [projectId], references: [id], onDelete: Restrict)
-  activePerson             Person?                      @relation("ProjectPositionActivePerson", fields: [activePersonId], references: [id], onDelete: SetNull)
-  requestedByPerson        Person?                      @relation("ProjectPositionRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: SetNull)
-  createdByPerson          Person?                      @relation("ProjectPositionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson          Person?                      @relation("ProjectPositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
-  onboardingApprovedByPerson Person?                    @relation("ProjectPositionOnboardingApprovedBy", fields: [onboardingApprovedByPersonId], references: [id], onDelete: SetNull)
-  candidates               ProjectPositionCandidate[]
-  fillHistory              ProjectPositionFillHistory[]
+  project                      Project                      @relation("ProjectPositions", fields: [projectId], references: [id], onDelete: Restrict)
+  activePerson                 Person?                      @relation("ProjectPositionActivePerson", fields: [activePersonId], references: [id], onDelete: SetNull)
+  requestedByPerson            Person?                      @relation("ProjectPositionRequestedBy", fields: [requestedByPersonId], references: [id], onDelete: SetNull)
+  createdByPerson              Person?                      @relation("ProjectPositionCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson              Person?                      @relation("ProjectPositionUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  onboardingApprovedByPerson   Person?                      @relation("ProjectPositionOnboardingApprovedBy", fields: [onboardingApprovedByPersonId], references: [id], onDelete: SetNull)
+  candidates                   ProjectPositionCandidate[]
+  fillHistory                  ProjectPositionFillHistory[]
   // LEAN-P0-5 — back-relation for TimesheetEntry.positionId.
-  timesheetEntries         TimesheetEntry[]             @relation("TimesheetEntryPosition")
+  timesheetEntries             TimesheetEntry[]             @relation("TimesheetEntryPosition")
 
   @@index([projectId, fillStatus])
   @@index([activePersonId, fillStatus, activeValidFrom, activeValidTo], map: "ProjectPosition_activePerson_window_idx")
@@ -4195,35 +3813,33 @@ model ProjectPosition {
   @@index([updatedByPersonId])
   @@index([requestedByPersonId])
   @@index([appliedRateCardEntryId])
-  @@index([legacyStaffingRequestId])
-  @@index([legacyAssignmentId])
   @@index([onboardingApprovedByPersonId], map: "ProjectPosition_onboardingApprovedByPerson_idx")
   @@map("ProjectPosition")
 }
 
 model ProjectPositionCandidate {
-  id                  String                            @id @default(uuid()) @db.Uuid
-  positionId          String                            @db.Uuid
-  candidatePersonId   String                            @db.Uuid
+  id                  String                           @id @default(uuid()) @db.Uuid
+  positionId          String                           @db.Uuid
+  candidatePersonId   String                           @db.Uuid
   rank                Int
-  matchScore          Decimal                           @db.Decimal(6, 3)
-  availabilityPercent Decimal?                          @db.Decimal(5, 2)
-  mismatchedSkills    String[]                          @default([])
+  matchScore          Decimal                          @db.Decimal(6, 3)
+  availabilityPercent Decimal?                         @db.Decimal(5, 2)
+  mismatchedSkills    String[]                         @default([])
   rationale           String?
-  decision            ProjectPositionCandidateDecision  @default(PENDING)
-  decidedAt           DateTime?                         @db.Timestamptz(3)
-  createdAt           DateTime                          @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                          @updatedAt @db.Timestamptz(3)
-  createdByPersonId   String?                           @db.Uuid
-  updatedByPersonId   String?                           @db.Uuid
+  decision            ProjectPositionCandidateDecision @default(PENDING)
+  decidedAt           DateTime?                        @db.Timestamptz(3)
+  createdAt           DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                         @updatedAt @db.Timestamptz(3)
+  createdByPersonId   String?                          @db.Uuid
+  updatedByPersonId   String?                          @db.Uuid
   // LEAN-P0-5 — backfill provenance pointer at
   // StaffingRequestProposalCandidate.id. No @relation because the source
   // table drops in Phase 3; this is a soft pointer for forensic queries.
-  legacyCandidateId   String?                           @db.Uuid
-  position            ProjectPosition                   @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  candidate           Person                            @relation("ProjectPositionCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
-  createdByPerson     Person?                           @relation("ProjectPositionCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
-  updatedByPerson     Person?                           @relation("ProjectPositionCandidateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
+  legacyCandidateId   String?                          @db.Uuid
+  position            ProjectPosition                  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  candidate           Person                           @relation("ProjectPositionCandidatePerson", fields: [candidatePersonId], references: [id], onDelete: Restrict)
+  createdByPerson     Person?                          @relation("ProjectPositionCandidateCreatedBy", fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  updatedByPerson     Person?                          @relation("ProjectPositionCandidateUpdatedBy", fields: [updatedByPersonId], references: [id], onDelete: SetNull)
 
   @@unique([positionId, candidatePersonId])
   @@index([positionId, rank])
@@ -4236,20 +3852,20 @@ model ProjectPositionCandidate {
 }
 
 model ProjectPositionFillHistory {
-  id                String                          @id @default(uuid()) @db.Uuid
-  positionId        String                          @db.Uuid
+  id                String                        @id @default(uuid()) @db.Uuid
+  positionId        String                        @db.Uuid
   changeType        ProjectPositionFillChangeType
-  changedByPersonId String?                         @db.Uuid
+  changedByPersonId String?                       @db.Uuid
   changeReason      String?
-  previousPersonId  String?                         @db.Uuid
-  newPersonId       String?                         @db.Uuid
+  previousPersonId  String?                       @db.Uuid
+  newPersonId       String?                       @db.Uuid
   previousStatus    ProjectPositionFillStatus?
   newStatus         ProjectPositionFillStatus?
   previousSnapshot  Json?
   newSnapshot       Json?
-  occurredAt        DateTime                        @default(now()) @db.Timestamptz(3)
-  position          ProjectPosition                 @relation(fields: [positionId], references: [id], onDelete: Restrict)
-  changedBy         Person?                         @relation("ProjectPositionFillHistoryChangedBy", fields: [changedByPersonId], references: [id], onDelete: NoAction)
+  occurredAt        DateTime                      @default(now()) @db.Timestamptz(3)
+  position          ProjectPosition               @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  changedBy         Person?                       @relation("ProjectPositionFillHistoryChangedBy", fields: [changedByPersonId], references: [id], onDelete: NoAction)
 
   @@index([positionId, occurredAt])
   @@index([changedByPersonId])
