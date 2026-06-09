@@ -86,16 +86,9 @@ describe('V2-A.1 — PlanTab aggregator', () => {
     expect(src).toMatch(/data-testid="plan-tab"/);
   });
 
-  it('B5: renders a Plan KPI strip from staffing-summary + milestones', () => {
-    expect(src).toMatch(/data-testid="plan-kpi-strip"/);
-    // sourced from the legacy role-plan staffing summary (lean positions shelved)
-    expect(src).toMatch(/fetchStaffingSummary\(projectId\)/);
-    expect(src).toMatch(/fetchMilestones\(projectId\)/);
-    // filled-rate donut + roles/gap/milestone tiles
-    expect(src).toMatch(/<Donut/);
-    expect(src).toMatch(/Roles planned/);
-    expect(src).toMatch(/Open gap/);
-    expect(src).toMatch(/Milestones hit/);
+  it('SoT PR 5: Plan tab does NOT render an internal KPI strip (KPI strip is Pulse-only)', () => {
+    expect(src).not.toMatch(/data-testid="plan-kpi-strip"/);
+    expect(src).not.toMatch(/fetchStaffingSummary/);
   });
 
   it('B7: forwards the header add-signals into the milestone + change-request sub-tabs', () => {

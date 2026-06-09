@@ -1,15 +1,14 @@
 /**
- * V2-A.4 — MoneyTab promotion.
+ * SoT PR 5 — MoneyTab DS canvas conformance.
  *
- * Source-string assertions verifying that MoneyPanel is the primary
- * surface and BudgetTab is subordinated into a collapsible admin
- * section. Runtime test stays light to avoid pulling in the whole
- * budget-dashboard fetch graph.
+ * The legacy "Budget administration" collapsible was removed per DS canvas
+ * (DS/page-pulse.jsx has no collapsible). MoneyPanel is the only primary
+ * surface; CpiWhatIfCard renders below it.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-describe('V2-A.4 — MoneyTab surface', () => {
+describe('SoT PR 5 — MoneyTab surface', () => {
   const src = readFileSync('src/routes/projects/tabs/MoneyTab.tsx', 'utf-8');
 
   it('fetches the project budget dashboard on mount', () => {
@@ -20,11 +19,9 @@ describe('V2-A.4 — MoneyTab surface', () => {
     expect(src).toMatch(/<MoneyPanel dashboard=\{dashboard\} projectId=\{projectId\} \/>/);
   });
 
-  it('subordinates BudgetTab to a collapsible "Budget administration" SectionCard', () => {
-    expect(src).toMatch(/title="Budget administration"/);
-    expect(src).toMatch(/collapsible/);
-    expect(src).toMatch(/defaultCollapsed/);
-    expect(src).toMatch(/<BudgetTab projectId=\{projectId\} canvasMode \/>/);
+  it('does NOT render the legacy "Budget administration" collapsible', () => {
+    expect(src).not.toMatch(/title="Budget administration"/);
+    expect(src).not.toMatch(/<BudgetTab/);
   });
 
   it('exposes a money-tab testId', () => {
@@ -62,18 +59,5 @@ describe('W2-07 — MoneyTab BE finance strip', () => {
     expect(src).toMatch(/YELLOW: 'warning'/);
     expect(src).toMatch(/RED: 'danger'/);
     expect(src).toMatch(/UNSET: 'neutral'/);
-  });
-});
-
-describe('V2-A.4 — BudgetTab canvasMode prop', () => {
-  const src = readFileSync('src/routes/projects/tabs/BudgetTab.tsx', 'utf-8');
-
-  it('accepts a canvasMode prop with default false', () => {
-    expect(src).toMatch(/canvasMode\?: boolean/);
-    expect(src).toMatch(/canvasMode = false/);
-  });
-
-  it('suppresses its own MoneyPanel render when canvasMode is true', () => {
-    expect(src).toMatch(/!canvasMode && dsRefreshEnabled && dashboard \? <MoneyPanel/);
   });
 });
