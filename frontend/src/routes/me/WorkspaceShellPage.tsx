@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { PageContainer } from '@/components/common/PageContainer';
@@ -10,9 +10,6 @@ import { fetchInbox } from '@/lib/api/inbox';
 import { fetchMyLeaveRequests } from '@/lib/api/leaveRequests';
 import { listProjectPositions } from '@/lib/api/project-positions';
 import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
-
-import { AccountSettingsPage } from '@/routes/settings/AccountSettingsPage';
-import { InboxPage } from '@/routes/notifications/InboxPage';
 
 import { LeaveTab } from './LeaveTab';
 import { MeCasesTab } from './MeCasesTab';
@@ -204,8 +201,56 @@ export function WorkspaceShellPage(): JSX.Element {
         {activeTab === 'projects' && <ProjectsTab />}
         {activeTab === 'skills' && <SkillsTab />}
         {activeTab === 'cases' && <MeCasesTab />}
-        {activeTab === 'inbox' && <InboxPage />}
-        {activeTab === 'settings' && <AccountSettingsPage />}
+        {activeTab === 'inbox' && (
+          <SectionCard title="Inbox">
+            <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
+              All in-app notifications for your account — approvals, mentions, and assignment changes.
+            </p>
+            <Link
+              to="/notifications"
+              data-testid="me-inbox-link"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                padding: 'var(--space-2) var(--space-3)',
+                borderRadius: 'var(--radius-control)',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface-alt)',
+                color: 'var(--color-accent)',
+                textDecoration: 'none',
+                fontWeight: 500,
+              }}
+            >
+              Open inbox →
+            </Link>
+          </SectionCard>
+        )}
+        {activeTab === 'settings' && (
+          <SectionCard title="Account settings">
+            <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
+              Manage your account credentials, notification preferences, locale, and password.
+            </p>
+            <Link
+              to="/settings/account"
+              data-testid="me-settings-link"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                padding: 'var(--space-2) var(--space-3)',
+                borderRadius: 'var(--radius-control)',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface-alt)',
+                color: 'var(--color-accent)',
+                textDecoration: 'none',
+                fontWeight: 500,
+              }}
+            >
+              Open account settings →
+            </Link>
+          </SectionCard>
+        )}
       </div>
     </PageContainer>
   );

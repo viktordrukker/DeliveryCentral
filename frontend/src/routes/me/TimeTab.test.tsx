@@ -1,25 +1,24 @@
 /**
- * TimeTab dsRefresh-gated weekly grid (editable cells + submit-week).
+ * TimeTab weekly grid (editable cells + submit-week).
+ *
+ * SoT PR 13: monthly fallback removed; weekly grid is the only view.
  *
  * Verifies:
- *   - When `dsRefresh` is ON, /me?tab=time renders the new project×day
- *     weekly grid (table data-testid="me-time-weekly-grid") with daily
- *     totals + week status, sourced from MonthlyTimesheetResponse.
+ *   - /me?tab=time renders the project×day weekly grid (table
+ *     data-testid="me-time-weekly-grid") with daily totals + week status,
+ *     sourced from MonthlyTimesheetResponse.
  *   - Cells are click-to-edit; commit fires `upsertTimesheetEntry` and the
  *     UI optimistically reflects the new value (verified by the recomputed
  *     Daily-total cell).
  *   - On upsert failure the cell value reverts to its server-truth value.
  *   - The Submit-week button calls `submitTimesheetWeek` and is disabled when
  *     the selected week is not DRAFT/REJECTED.
- *   - When `dsRefresh` is OFF, the legacy Timeline strip renders (no grid,
- *     no Submit-week button).
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const fetchMonthlyTimesheetMock = vi.fn();
-const isFeatureEnabledMock = vi.fn();
 const upsertTimesheetEntryMock = vi.fn();
 const submitTimesheetWeekMock = vi.fn();
 const toastErrorMock = vi.fn();
@@ -34,10 +33,6 @@ vi.mock('@/lib/api/timesheets', () => ({
   submitTimesheetWeek: (...args: unknown[]) => submitTimesheetWeekMock(...args),
 }));
 
-vi.mock('@/lib/feature-flags', () => ({
-  isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
-}));
-
 vi.mock('sonner', () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
@@ -45,10 +40,6 @@ vi.mock('sonner', () => ({
     info: vi.fn(),
     warning: vi.fn(),
   },
-}));
-
-vi.mock('@/routes/my-time/MyTimePage', () => ({
-  MyTimePage: () => <div data-testid="legacy-my-time-page" />,
 }));
 
 import { TimeTab } from './TimeTab';
@@ -107,19 +98,17 @@ function buildResponse(weekStatus: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTE
   };
 }
 
-describe('TimeTab weekly grid (dsRefresh)', () => {
+describe('TimeTab weekly grid', () => {
   beforeEach(() => {
     fetchMonthlyTimesheetMock.mockReset();
     upsertTimesheetEntryMock.mockReset();
     submitTimesheetWeekMock.mockReset();
     toastErrorMock.mockReset();
     toastSuccessMock.mockReset();
-    isFeatureEnabledMock.mockReset();
     fetchMonthlyTimesheetMock.mockResolvedValue(buildResponse());
   });
 
-  it('renders the project×day grid + daily totals when dsRefresh is ON', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
+  it('renders the project×day grid + daily totals', async () => {
     render(<TimeTab />);
 
     const grid = await screen.findByTestId('me-time-weekly-grid');
@@ -140,21 +129,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
     expect(screen.getByText('DRAFT')).toBeInTheDocument();
   });
 
-  it('renders the legacy Timeline strip (no grid) when dsRefresh is OFF', async () => {
-    isFeatureEnabledMock.mockReturnValue(false);
-    render(<TimeTab />);
-
-    // Wait for data to load — the "This week ·" SectionCard title pattern.
-    await screen.findByText(/This week ·/);
-    expect(screen.queryByTestId('me-time-weekly-grid')).toBeNull();
-    expect(screen.queryByTestId('me-time-submit-week')).toBeNull();
-
-    // Legacy MyTimePage still mounts below either path.
-    expect(screen.getByTestId('legacy-my-time-page')).toBeInTheDocument();
-  });
-
   it('edits a cell + optimistically updates the Daily-total when commit succeeds', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     upsertTimesheetEntryMock.mockResolvedValue({});
     const user = userEvent.setup();
     const { container } = render(<TimeTab />);
@@ -188,7 +163,6 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   });
 
   it('reverts the cell value when upsertTimesheetEntry rejects', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     upsertTimesheetEntryMock.mockRejectedValue(new Error('boom'));
     const user = userEvent.setup();
     const { container } = render(<TimeTab />);
@@ -216,7 +190,6 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   });
 
   it('Submit-week calls submitTimesheetWeek and shows success toast', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     submitTimesheetWeekMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<TimeTab />);
@@ -232,7 +205,6 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   });
 
   it('disables Submit-week + cell edits when the selected week is SUBMITTED', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     fetchMonthlyTimesheetMock.mockResolvedValue(buildResponse('SUBMITTED'));
     const { container } = render(<TimeTab />);
 
@@ -244,7 +216,6 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   });
 
   it('shows SUBMITTED status badge alongside the Submit button', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     fetchMonthlyTimesheetMock.mockResolvedValue(buildResponse('SUBMITTED'));
     render(<TimeTab />);
 
@@ -254,7 +225,6 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   });
 
   it('blocks a cell commit + shows an inline error when hours exceed 24/day', async () => {
-    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     const user = userEvent.setup();
     const { container } = render(<TimeTab />);
 
