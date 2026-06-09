@@ -328,10 +328,10 @@ export function ApprovalsPage(): JSX.Element {
                         }}
                         aria-pressed={isActive}
                       >
-                        <span
-                          className={`tone-dot tone-${tone}`}
-                          style={{ flexShrink: 0 }}
-                          aria-hidden="true"
+                        <StatusBadge
+                          tone={tone === 'critical' ? 'danger' : tone}
+                          variant="dot"
+                          label=""
                         />
                         <span
                           className="compact muted"
@@ -362,13 +362,11 @@ export function ApprovalsPage(): JSX.Element {
                           </div>
                         </div>
                         {item.slaStage ? (
-                          <span
-                            className={`badge badge-${SLA_TONE[item.slaStage]}`}
-                            style={{ whiteSpace: 'nowrap' }}
-                          >
-                            <span className="dot" />
-                            {SLA_LABEL[item.slaStage]}
-                          </span>
+                          <StatusBadge
+                            tone={SLA_TONE[item.slaStage]}
+                            label={SLA_LABEL[item.slaStage]}
+                            variant="chip"
+                          />
                         ) : (
                           <span className="compact muted" style={{ whiteSpace: 'nowrap' }}>
                             no SLA
