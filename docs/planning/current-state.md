@@ -2,9 +2,9 @@
 
 This document summarizes the platform as it exists in code today, oriented to the **bank-IT supply/demand application** framing locked on 2026-05-10.
 
-**Roadmap source-of-truth:** [`MASTER_TRACKER.md`](MASTER_TRACKER.md) (live execution tracker) + [`/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`](/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md) (bank-IT pivot strategic plan, Cat-1/Cat-2/Cat-3). For the thematic index, [`synthesis-themes.md`](synthesis-themes.md) (24 themes). For doc topology, [`README.md`](README.md). Superseded pre-pivot roadmaps (`NEXT_ITERATION_PLAN.md`, `ULTIMATE_ANALYSIS_AND_PLAN.md`, `master-plan.md`) moved to `docs/archive/2026-05-23/`.
+**Roadmap source-of-truth:** [`MASTER_TRACKER.md`](MASTER_TRACKER.md) (live execution tracker) + [`/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md`](/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md) (V2 lean-flow SoT — 20-PR shrink plan, supersedes all prior `v2-*` and `lean-*` plans). For the thematic index, [`synthesis-themes.md`](synthesis-themes.md) (24 themes). For doc topology, [`README.md`](README.md). Superseded pre-pivot roadmaps (`NEXT_ITERATION_PLAN.md`, `ULTIMATE_ANALYSIS_AND_PLAN.md`, `master-plan.md`) moved to `docs/archive/2026-05-23/`. Post-C0 strategic roadmap: `/home/drukker/.claude/plans/it-block-lifecycle-coverage-2026-06-02.md` (orthogonal).
 
-_Last updated: 2026-05-23 (doc cleanup pass — pointer fix to remove stale "master plan" reference; cumulative sprint state: F-2..F-11 closed per MASTER_TRACKER status table; Cat-1 stack shipped end-to-end through F-8; F-9 hardening + F-10/F-11 obsolete sweep + customization L1 closed 2026-05-16; F-12+ D-103-write-path + dictionary migrations in flight per memory)._
+_Last updated: 2026-06-09 (SoT PR 18 doc sweep — `ProjectPosition` confirmed as canonical staffing aggregate; legacy `ProjectAssignment`/`StaffingRequest` tables dropped via SoT PR 16 forward-only migration; account references switched to `*@itco.local`; jtbd-matrix counts corrected; superseded v2/lean plans archived under `/home/drukker/.claude/plans/archive/`)._
 
 ---
 
@@ -14,7 +14,7 @@ _Last updated: 2026-05-23 (doc cleanup pass — pointer fix to remove stale "mas
 
 - **Backend:** NestJS modular monolith. 36 modules under `src/modules/`. Global API prefix `/api`. Structured JSON logging. Swagger at `/api/docs`. Operator endpoints: `/api/health`, `/api/readiness`, `/api/health/deep` (12-aggregate probe), `/api/diagnostics`, `/metrics` (HD-11 prom-client).
 - **Frontend:** React + Vite + React Router. 30 route trees under `frontend/src/routes/`. Local entry `http://localhost:5173`. Vite dev proxy forwards `/api` to backend. Production build served from container.
-- **Database:** PostgreSQL 16. Prisma migrations at `prisma/migrations/`. 53+ schema models. CHECK constraints (DM-4-1: 33 across 14 tables). Hash-chained AuditLog.
+- **Database:** PostgreSQL 16. Prisma migrations at `prisma/migrations/`. 104 schema models (was 113 prior to SoT PR 16; 9 legacy staffing tables dropped 2026-06-09). CHECK constraints (DM-4-1: 33 across 14 tables). Hash-chained AuditLog.
 - **Local environment:** Docker-only. PostgreSQL 512MB, backend 2GB (raised from 1GB on 2026-04-18), frontend 1GB. Single seed profile `it-company` (200 people, 40 projects, 5-year history).
 
 ### Tenant posture
@@ -47,13 +47,13 @@ _Last updated: 2026-05-23 (doc cleanup pass — pointer fix to remove stale "mas
 
 - **Project lifecycle:** ACTIVE → CLOSED workflow shipped; `CloseProjectService` + `RestoreProjectService` (HD-8 chunk 8.4a). `ProjectClosureReadinessService` checks budget variance + work hours.
 - **Project Radiator v1:** 16-axis PMBOK radar; per-axis PM override with audit; portfolio rollup; PDF/PPTX export; 60s scoring cache.
-- **Project assignments:** state machine DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED. CHECK constraints prevent overlap > 100% (allocationPercent 0..100). Undo seam (HD-8 chunk 8.4a/b) for cancel/close/deactivate.
+- **Project positions (canonical):** `ProjectPosition` is the canonical staffing aggregate as of SoT PR 16 (2026-06-09). State machine DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED on `ProjectPosition.activeFill`. CHECK constraints prevent overlap > 100% (allocationPercent 0..100). Undo seam (HD-8 chunk 8.4a/b) for cancel/close/deactivate. Legacy interim entities (`ProjectAssignment`, `StaffingRequest`, `AssignmentApproval`, `AssignmentHistory`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`) dropped via forward-only migration `20260*lean_p3_2_drop_legacy_tables` after a 7-day green parity soak.
 - **Jira PPM connector:** ❌ stub-shaped today (Cat-1.2 NEW C1-JIRA-PPM promotes to first-class).
 
 ### 2.3 Staffing + workforce
 
-- **Workforce Planner "Distribution Studio":** 3-tier solver (chain/qualified/fallback), 5 strategies, multi-week coverageWeeks, server-persisted PlannerScenario, HC-diagnostics.
-- **Staffing Desk:** approval queue, slate-based proposal flow, drag-and-drop placement (`@dnd-kit/core`).
+- **Workforce Planner "Distribution Studio":** 3-tier solver (chain/qualified/fallback), 5 strategies, multi-week coverageWeeks, server-persisted PlannerScenario, HC-diagnostics. Reads/writes `ProjectPosition` exclusively after SoT PRs 14/15.
+- **Staffing Desk:** unified position queue (no separate "Staffing Request" vs "Assignment" surfaces post-SoT PR 1), drag-and-drop placement (`@dnd-kit/core`).
 - **Manager Dashboard — Pending Approvals tile:** ✅ KPI tile + embedded approval-queue strip on `/dashboard/manager` (WO-4.14/WO-5.5 — Sprint F-3.2 / PR #33).
 - **Exec/Director Dashboard — SLA breach + Time-to-fill tiles:** ✅ Director-approvals-waiting + 24h SLA breach count + Time-to-fill sparkline on `/dashboard/exec` (WO-4.15/WO-5.6 — Sprint F-3.3 / PR #34).
 - **Portfolio Radiator KPI:** ✅ Green/Warning/Critical counts now show correctly (D-115 — Sprint F-3.5 / PR #36).
