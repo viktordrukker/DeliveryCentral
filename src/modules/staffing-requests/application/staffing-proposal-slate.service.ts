@@ -195,11 +195,27 @@ export class StaffingProposalSlateService {
       candidate.bindToSlate(slate.id);
     }
 
-    // HD-0.2 Phase 2b: slate.save and the staffing-request status flip share
-    // a single $transaction so a slate can never persist without its
-    // matching IN_REVIEW status, and a status flip can never persist without
-    // its slate. The slate repo's `save` joins the outer tx when supplied.
+    // SoT PR 15 — canonical write order: lean ProjectPositionCandidate
+    // child rows FIRST (canonical), then legacy slate + SR status flip
+    // (mirror). All three writes share a single $transaction so a failure
+    // on any side rolls back the whole set — strong consistency between
+    // canonical and mirror sides.
     await this.prisma.$transaction(async (tx) => {
+      // LEAN-P1-8 — write the canonical lean candidates first so the
+      // ProjectPosition aggregate is the source of truth from the very
+      // start of the slate's life. The mirror upsert is idempotent on
+      // (positionId, candidatePersonId) so retry-safe.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATES_ADDED,
+        input.actorId,
+      );
+
+      // Legacy slate + parent SR status flip — kept until PR 16 drops
+      // the legacy slate table. After PR 15 these are mirror writes;
+      // the canonical ProjectPositionCandidate rows above own truth.
       await this.slateRepository.save(slate, tx);
       if (request.status !== 'IN_REVIEW') {
         await tx.staffingRequest.update({
@@ -212,17 +228,6 @@ export class StaffingProposalSlateService {
           },
         });
       }
-
-      // LEAN-P1-8 — dual-write the new slate's candidates onto the lean
-      // ProjectPositionCandidate child table so Phase 2 can swap reads
-      // without a stale-data window.
-      await this.mirrorSlateToProjectPositions(
-        tx,
-        slate,
-        request.id,
-        ProjectPositionFillChangeType.CANDIDATES_ADDED,
-        input.actorId,
-      );
     });
 
     this.auditLogger?.record({
@@ -367,7 +372,21 @@ export class StaffingProposalSlateService {
     });
     const newHeadcount = Math.min(liveFilled, request.headcountRequired);
     const nextStatus = newHeadcount >= request.headcountRequired ? 'FULFILLED' : request.status;
+    // SoT PR 15 — canonical write order: lean ProjectPositionCandidate
+    // FIRST, legacy slate + SR update SECOND (mirror).
     await this.prisma.$transaction(async (tx) => {
+      // LEAN-P1-8 — write the canonical pick decision (and the auto-declines
+      // applied to the losers) onto the lean ProjectPositionCandidate child
+      // table FIRST.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATE_PICKED,
+        input.actorId,
+      );
+
+      // Legacy slate + SR mirror writes — kept until PR 16.
       await this.slateRepository.save(slate, tx);
       await tx.staffingRequest.update({
         where: { id: request.id },
@@ -378,17 +397,6 @@ export class StaffingProposalSlateService {
           updatedByPersonId: input.actorId,
         },
       });
-
-      // LEAN-P1-8 — dual-write the pick decision (and the auto-declines
-      // applied to the losers) onto the lean ProjectPositionCandidate child
-      // table.
-      await this.mirrorSlateToProjectPositions(
-        tx,
-        slate,
-        request.id,
-        ProjectPositionFillChangeType.CANDIDATE_PICKED,
-        input.actorId,
-      );
     });
 
     this.auditLogger?.record({
@@ -445,9 +453,22 @@ export class StaffingProposalSlateService {
 
     const nextRequestStatus: 'OPEN' | 'CANCELLED' = input.sendBack ? 'OPEN' : 'CANCELLED';
 
-    // HD-0.2 Phase 2b: slate rejection and the request-status flip share a
-    // single $transaction so the rollback path on either failure is clean.
+    // SoT PR 15 — canonical write order: lean ProjectPositionCandidate
+    // decline FIRST, legacy slate + SR update SECOND (mirror). All three
+    // share a single $transaction so a failure on any side rolls back the
+    // whole set.
     await this.prisma.$transaction(async (tx) => {
+      // LEAN-P1-8 — write the canonical bulk decline decisions onto the
+      // lean ProjectPositionCandidate child table FIRST.
+      await this.mirrorSlateToProjectPositions(
+        tx,
+        slate,
+        request.id,
+        ProjectPositionFillChangeType.CANDIDATE_DECLINED,
+        input.actorId,
+      );
+
+      // Legacy slate + SR mirror writes — kept until PR 16.
       await this.slateRepository.save(slate, tx);
       await tx.staffingRequest.update({
         where: { id: request.id },
@@ -458,16 +479,6 @@ export class StaffingProposalSlateService {
           updatedByPersonId: input.actorId,
         },
       });
-
-      // LEAN-P1-8 — dual-write the bulk decline decisions onto the lean
-      // ProjectPositionCandidate child table.
-      await this.mirrorSlateToProjectPositions(
-        tx,
-        slate,
-        request.id,
-        ProjectPositionFillChangeType.CANDIDATE_DECLINED,
-        input.actorId,
-      );
     });
 
     this.auditLogger?.record({
@@ -552,24 +563,25 @@ export class StaffingProposalSlateService {
   }
 
   /**
-   * LEAN-P1-8 — dual-write the slate's candidates onto the lean
-   * ProjectPositionCandidate child table and record a single
-   * ProjectPositionFillHistory entry per affected ProjectPosition.
+   * SoT PR 15 (was LEAN-P1-8) — write the canonical
+   * ProjectPositionCandidate child rows + matching ProjectPositionFillHistory
+   * entry for each candidate decision. Post-PR-15 this is the **canonical**
+   * write path; the legacy `StaffingRequestProposalSlate` +
+   * `StaffingRequestProposalCandidate` writes that follow in the caller's
+   * $transaction are the mirror side, kept until PR 16 drops them.
    *
-   * Phase 1 strategy: legacy is canonical, reads still come from legacy. This
-   * mirror keeps the lean side current so Phase 2 can swap consumer reads
-   * without a stale-data window. Lookup is via
-   * `ProjectPosition.legacyStaffingRequestId`; if no position has been backfilled
-   * (or none has been created yet for a brand-new SR), the mirror is a no-op
-   * and the inverted mirror (P0-4) is the secondary safety net.
+   * Lookup is via `ProjectPosition.legacyStaffingRequestId`; if no position
+   * has been backfilled (or none has been created yet for a brand-new SR),
+   * the canonical write is a no-op and parity reports the divergence so
+   * operators can reconcile via the daily soak snapshot.
    *
    * Candidate identity uses `ProjectPositionCandidate.legacyCandidateId`
    * (populated by the P0-5 backfill). New candidates created by `submit()`
    * have no lean row yet, so the helper upserts by `(positionId,
    * candidatePersonId)` and stamps `legacyCandidateId` on create.
    *
-   * Runs inside the caller's `$transaction` so a mirror failure rolls back
-   * the matching legacy write — strong consistency in Phase 1.
+   * Runs inside the caller's `$transaction` so a canonical-write failure
+   * rolls back the legacy mirror — strong consistency.
    */
   private async mirrorSlateToProjectPositions(
     tx: Prisma.TransactionClient,

@@ -227,17 +227,18 @@ export class CreateProjectAssignmentService {
         : undefined;
 
     await this.prisma.$transaction(async (tx) => {
-      // LEAN-P1-6 — canonical write order: ProjectPosition + FillHistory
-      // first (when a real Prisma client is wired), then the legacy
-      // ProjectAssignment row keyed back to it via `legacyAssignmentId`.
-      // The inverted mirror service (LEAN-P0-4) keeps the legacy row in
-      // sync on subsequent transitions; here on first create we own both
-      // writes inside the same atomic unit so consumers see a consistent
-      // pair from the start.
+      // SoT PR 15 (was LEAN-P1-6) — canonical write order: ProjectPosition
+      // + FillHistory FIRST (when a real Prisma client is wired), then the
+      // legacy ProjectAssignment row keyed back to it via
+      // `legacyAssignmentId`. Post-PR-15 the lean position is the canonical
+      // source of truth; the legacy ProjectAssignment writes below + the
+      // inverted ProjectPositionMirrorService keep the legacy table in
+      // lockstep until PR 16 drops it.
       if (this.hasRealPrisma) {
         await this.writeCanonicalProjectPosition(assignment, command.actorId, tx);
       }
 
+      // Legacy ProjectAssignment mirror writes — kept until PR 16.
       await this.projectAssignmentRepository.save(assignment, tx);
       await this.projectAssignmentRepository.appendApproval(initialApproval, tx);
       await this.projectAssignmentRepository.appendHistory(historyEntry, tx);

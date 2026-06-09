@@ -135,13 +135,17 @@ export class TransitionProjectAssignmentService {
   }
 
   /**
-   * LEAN-P1-7 — re-point the canonical fill-status onto `ProjectPosition`
-   * after a legacy transition lands. The paired position is located via
-   * `legacyAssignmentId` (populated by the Sprint-2 backfill). The lean
-   * enum is derived from the legacy status via the canonical helper in
-   * `enum-mappings.ts` so REJECTED/COMPLETED/CANCELLED all collapse onto
-   * `RELEASED` while their reason text is preserved on the dedicated
-   * columns.
+   * SoT PR 15 (was LEAN-P1-7) — write the canonical fill-status onto
+   * `ProjectPosition` for the transition. After PR 15 the position write
+   * is the **canonical** side; the legacy ProjectAssignment save that
+   * follows in this method is the mirror.
+   *
+   * The paired position is located via `legacyAssignmentId` (populated
+   * by the Sprint-2 backfill or by `CreateProjectAssignmentService` for
+   * post-Phase-1 rows). The lean enum is derived from the legacy status
+   * via the canonical helper in `enum-mappings.ts` so REJECTED /
+   * COMPLETED / CANCELLED all collapse onto `RELEASED` while their
+   * reason text is preserved on the dedicated columns.
    *
    * Active-window fields (activePersonId / activeAllocationPercent /
    * activeValidFrom / activeValidTo / onboardingDate) are refreshed when
@@ -150,12 +154,14 @@ export class TransitionProjectAssignmentService {
    * still booked to a released position. D-103 actor-audit threads
    * `updatedByPersonId` on every write.
    *
-   * Best-effort: any failure here must NEVER roll back the canonical
-   * legacy transition. The legacy follower (ProjectPositionMirrorService)
-   * runs against the paired row; positions without a Sprint-2 backfilled
-   * pair are skipped.
+   * Best-effort wrapping is retained at the caller (try/catch) so the
+   * pre-Phase-1 in-memory test fixtures that supply no `projectPosition`
+   * delegate keep passing. In production DI every transition has a
+   * paired position from Sprint-2 backfill + the CreateProjectAssignmentService
+   * canonical-write path, so the wrapped block is a defence-in-depth
+   * rather than the primary safety net.
    */
-  private async mirrorTransitionToProjectPosition(
+  private async writeCanonicalProjectPosition(
     assignment: ProjectAssignment,
     actorId: string,
   ): Promise<void> {
@@ -262,22 +268,26 @@ export class TransitionProjectAssignmentService {
 
     // F-118 / D-103-write-path round 28 — actor-audit on every transition.
     assignment.setUpdatedBy(command.actorId);
-    await this.projectAssignmentRepository.save(assignment);
-    await this.projectAssignmentRepository.appendHistory(history);
 
-    // LEAN-P1-7: re-point the canonical fill-status onto `ProjectPosition`.
-    // The legacy assignment write above remains the legacy source of truth
-    // for non-migrated consumers; the lean follower (the inverted
-    // ProjectPositionMirrorService) handles the opposite direction when
-    // lean-only writers run. Best-effort — mirror failure must not block.
+    // SoT PR 15 — write the canonical `ProjectPosition` fill-status BEFORE
+    // the legacy `ProjectAssignment` save. The legacy save below is now
+    // the **mirror** write (follower); ProjectPosition is canonical. The
+    // try/catch keeps the pre-Phase-1 in-memory test fixtures green
+    // when no `projectPosition` delegate is wired on the prisma stub.
     try {
-      await this.mirrorTransitionToProjectPosition(assignment, command.actorId);
+      await this.writeCanonicalProjectPosition(assignment, command.actorId);
     } catch (err) {
       this.logger.warn(
-        `ProjectPosition mirror failed for assignment ${assignment.assignmentId.value}: ` +
+        `ProjectPosition canonical write failed for assignment ${assignment.assignmentId.value}: ` +
           `${(err as Error).message}`,
       );
     }
+
+    // Legacy `ProjectAssignment` mirror write — kept until PR 16 drops the
+    // table forward-only. The PrismaProjectAssignmentRepository writes
+    // only the legacy table; that table is the mirror side after PR 15.
+    await this.projectAssignmentRepository.save(assignment);
+    await this.projectAssignmentRepository.appendHistory(history);
 
     // D-95 — keep the parent SR's `headcountFulfilled` cached column in sync
     // with the live assignment count. The cached counter previously only

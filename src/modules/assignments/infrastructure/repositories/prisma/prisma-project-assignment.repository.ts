@@ -32,6 +32,16 @@ interface TxClientWithAssignmentTables {
   assignmentHistory?: AssignmentHistoryGateway;
 }
 
+/**
+ * SoT PR 15 — legacy `ProjectAssignment` mirror writer.
+ *
+ * Post-PR-15 every create/save/delete here is a **mirror** write — the
+ * canonical write target is `ProjectPosition`, owned by
+ * `CreateProjectAssignmentService.writeCanonicalProjectPosition` and
+ * `TransitionProjectAssignmentService.writeCanonicalProjectPosition`.
+ * This repository keeps the legacy table in lockstep until PR 16 drops
+ * it forward-only.
+ */
 export class PrismaProjectAssignmentRepository implements ProjectAssignmentRepositoryPort {
   public constructor(
     private readonly gateway: AssignmentGateway,

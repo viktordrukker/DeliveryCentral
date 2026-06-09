@@ -47,6 +47,12 @@ describe('D-103 write-path — StaffingRequest createdByPersonId', () => {
         findUnique: async () => null,
         update: async () => ({}),
       },
+      // SoT PR 15 — canonical ProjectPosition write happens BEFORE the
+      // legacy staffingRequest.create. Stub returns a positionId so the
+      // service can pin legacyStaffingRequestId.
+      projectPosition: {
+        create: async () => ({ id: 'pos-canonical-1' }),
+      },
       project: {
         findUnique: async () => ({ status: 'ACTIVE', archivedAt: null, name: 'Test Project' }),
       },
