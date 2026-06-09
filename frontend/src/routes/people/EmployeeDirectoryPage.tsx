@@ -10,7 +10,6 @@ import { FilterBar } from '@/components/common/FilterBar';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
@@ -28,7 +27,6 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
 import { BenchEnrichedPanel } from '@/components/people/BenchEnrichedPanel';
 import { CasesPanel } from '@/components/cases/CasesPanel';
-import { LeaveApprovalsPanel } from '@/components/people/LeaveApprovalsPanel';
 import { PersonDirectoryInspector } from '@/components/people/PersonDirectoryInspector';
 import { fetchEnrichedBench } from '@/lib/api/people-bench';
 import { fetchSidebarCounts } from '@/lib/api/sidebar-counts';
@@ -40,7 +38,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
   const canBulkReassign = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
-  // W3-05 — only HR/admin see HR-action tabs (HR Queue, Leave Approvals).
+  // W3-05 — only HR/admin see HR Queue (leave approvals fold in as a sub-tab).
   const canSeeHrActions = hasAnyRole(principal?.roles, HR_ADMIN_ROLES);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   // V2-B.18 — `role` is server-side; `grade`/`groupBy`/`layout` are client-side
@@ -264,8 +262,8 @@ export function EmployeeDirectoryPage(): JSX.Element {
   // V2-B.17 — HR-Queue tab carries a live count badge from sidebar-counts.
   // Bench tab count is intentionally omitted: the header already shows
   // "N on bench" (A12) and duplicating it on the tab would double-count.
-  // W3-05 — HR-Queue + Leave Approvals tabs are gated to HR/Admin only. Other
-  // personas (PM, RM, DM, Director, Employee) see only Directory + Bench.
+  // SoT PR 9 — HR Queue tab is gated to HR/Admin. Leave approvals were folded
+  // into HR Queue (DS canvas has Leave as a sub-tab inside HR Queue).
   const peopleTabs: { id: string; label: import('react').ReactNode }[] = [
     { id: 'directory', label: 'Directory' },
     { id: 'bench', label: 'Bench' },
@@ -287,7 +285,6 @@ export function EmployeeDirectoryPage(): JSX.Element {
                 'HR Queue'
               ),
           },
-          { id: 'leave-approvals', label: 'Leave Approvals' },
         ]
       : []),
   ];
@@ -360,12 +357,21 @@ export function EmployeeDirectoryPage(): JSX.Element {
       ) : null}
       {dsRefreshEnabled && activeView === 'bench' ? <BenchEnrichedPanel /> : null}
       {dsRefreshEnabled && activeView === 'cases' ? <CasesPanel /> : null}
-      {dsRefreshEnabled && activeView === 'leave-approvals' ? <LeaveApprovalsPanel /> : null}
       {dsRefreshEnabled && activeView !== 'directory' ? null : (
       <>
       {dsRefreshEnabled && canBulkReassign && bulkPanelOpen ? (
-        <SectionCard title="Bulk reassign org unit">
-          <div data-testid="people-bulk-reassign-panel" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div
+          data-testid="people-bulk-reassign-panel"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-3)',
+            padding: 'var(--space-3) var(--space-4)',
+            background: 'var(--color-accent-soft)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--radius-card)',
+          }}
+        >
             <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>
               Select people below, choose the destination org unit and effective date, then confirm. The current membership closes the day before <code>effectiveFrom</code>; a new one opens on it.
             </p>
@@ -472,8 +478,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
                 ) : null}
               </ul>
             </div>
-          </div>
-        </SectionCard>
+        </div>
       ) : null}
       <FilterBar>
         <label className="field">
