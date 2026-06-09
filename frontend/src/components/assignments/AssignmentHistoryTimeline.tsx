@@ -4,7 +4,7 @@ import { formatDateTime } from '@/lib/format-date';
 
 /**
  * W2-04 — unified lifecycle timeline. Renders either:
- *  - Legacy `AssignmentHistoryItem[]` (used by AssignmentDetailsPlaceholderPage)
+ *  - Legacy `AssignmentHistoryItem[]`
  *  - Lean `ProjectPositionFillHistory[]` (used by ProjectPositionDetailPage)
  *
  * The component reads only the union of fields present on both shapes, so it

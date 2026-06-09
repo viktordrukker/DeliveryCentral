@@ -155,11 +155,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     note: 'Calls createAssignment — needs LEAN-P2-10 write bridge.',
   },
   {
-    file: 'frontend/src/routes/assignments/AssignmentDetailsPlaceholderPage.tsx',
-    disposition: 'write-deferred',
-    note: 'Calls directorApproveAssignment — needs LEAN-P2-10 write bridge.',
-  },
-  {
     file: 'frontend/src/components/assignments/CreateAssignmentModal.tsx',
     disposition: 'write-deferred',
     note: 'Calls createAssignment — needs LEAN-P2-10 write bridge.',
@@ -256,11 +251,6 @@ const ASSIGNMENTS_CALLSITES: CallsiteDisposition[] = [
     disposition: 'type-only',
     note: 'Test mocks legacy `fetchAssignments` consumed by useCreateCasePage.',
   },
-  {
-    file: 'frontend/src/routes/assignments/AssignmentDetailsPage.test.tsx',
-    disposition: 'type-only',
-    note: 'Test mocks legacy `directorApproveAssignment` write call.',
-  },
 ];
 
 const STAFFING_REQUESTS_CALLSITES: CallsiteDisposition[] = [
@@ -269,11 +259,6 @@ const STAFFING_REQUESTS_CALLSITES: CallsiteDisposition[] = [
     file: 'frontend/src/features/staffing-desk/useStaffingDeskActions.ts',
     disposition: 'hook-already-migrated',
     note: 'Hook layer re-pointed in LEAN-P2-2 batch (issue 206).',
-  },
-  {
-    file: 'frontend/src/components/staffing/StaffingRequestStatusBadge.tsx',
-    disposition: 'type-only',
-    note: 'Imports StaffingRequestStatus type for badge dispatch.',
   },
   {
     file: 'frontend/src/components/staffing-requests/StaffingRequestDrawer.tsx',
@@ -361,8 +346,8 @@ describe('LEAN-P2-8 callsite audit lock', () => {
   // when files are added or removed from the audit set — the mismatch is
   // intentional drift detection.
   it('locks audit counts (update when callsites are added or removed)', () => {
-    expect(ASSIGNMENTS_CALLSITES.length).toBe(41);
-    expect(STAFFING_REQUESTS_CALLSITES.length).toBe(12);
+    expect(ASSIGNMENTS_CALLSITES.length).toBe(39);
+    expect(STAFFING_REQUESTS_CALLSITES.length).toBe(11);
   });
 
   it('records the read-via-mapper migrations (LEAN-P2-8: ExportCentrePage, W3-11: TeamVendorsTab)', () => {
