@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { TipBalloon } from '@/components/common/TipBalloon';
 import { Pct } from '@/components/ds/Pct';
 import { SparklineDs, type SparklineTone } from '@/components/ds';
-import type { PortfolioSummaryResponse } from '@/lib/api/portfolio-dashboard';
 
 function tc(val: number, warn: number, danger: number, higherIsBad = true): string {
   if (higherIsBad) {
@@ -16,25 +15,10 @@ function tc(val: number, warn: number, danger: number, higherIsBad = true): stri
   return 'var(--color-status-active)';
 }
 
-function tone(val: number, warn: number, danger: number, higherIsBad = true): SparklineTone {
-  if (higherIsBad) {
-    if (val >= danger) return 'danger';
-    if (val >= warn) return 'warning';
-    return 'active';
-  }
-  if (val <= danger) return 'danger';
-  if (val <= warn) return 'warning';
+function utilTone(val: number): SparklineTone {
+  if (val <= 40) return 'danger';
+  if (val <= 60) return 'warning';
   return 'active';
-}
-
-interface DirectorSummary {
-  activeProjectCount: number;
-  staffingUtilisationRate: number;
-  unstaffedActivePersonCount: number;
-}
-
-interface DirectorWeeklyTrendPoint {
-  staffingUtilisationRate: number;
 }
 
 interface DirectorSlaSummary {
@@ -44,170 +28,129 @@ interface DirectorSlaSummary {
 }
 
 interface DirectorKpiStripProps {
-  summary: DirectorSummary;
-  weeklyTrend: ReadonlyArray<DirectorWeeklyTrendPoint>;
-  portfolioSummary: PortfolioSummaryResponse | null;
+  /** Active project count (drives "Active projects" tile). */
+  projectCount: number;
+  /** Amber + red project count (drives "At-risk projects" tile). */
+  atRiskCount: number;
+  /** Signed budget variance vs. plan, in percent. Negative = over budget. */
+  budgetVariancePct: number;
+  /** Org utilisation, in percent (0-100). */
+  utilisationPct: number;
+  /** Weekly utilisation series for the sparkline. */
+  utilSeries: number[];
+  /** Open positions (totalOpenGaps from portfolio summary). */
+  openPositions: number;
+  /** SLA summary, kept for the "Time to Fill" sparkline tone but no longer
+   * rendered as its own KPI tile (DS canvas only allows 5 tiles). */
   slaSummary: DirectorSlaSummary | null;
 }
 
 /**
- * 20c-15 — extracted from `DirectorDashboardPage.tsx` (was 9 inline `<Link>`
- * tiles bloating the main render). Same KPIs, same `data-jtbd` attributes,
- * same threshold colors — just moved to a dedicated file so the page render
- * + this strip can evolve independently.
+ * DS canvas-conformant 5-tile KPI strip for the Director dashboard.
  *
- * UX laws preserved: every tile is a `<Link>` drilldown (Law 9), every tile
- * declares its `data-jtbd` question, threshold-driven left-border color via
- * `tc(value, warn, danger)`.
+ * Tiles (in order): Active projects · At-risk projects · Budget variance ·
+ * Utilisation · Open positions. Each tile is a `<Link>` (UX Law 9).
+ *
+ * Reference: DS/page-director.jsx section 3.
  */
 export function DirectorKpiStrip({
-  summary,
-  weeklyTrend,
-  portfolioSummary,
+  atRiskCount,
+  budgetVariancePct,
+  openPositions,
+  projectCount,
   slaSummary,
+  utilSeries,
+  utilisationPct,
 }: DirectorKpiStripProps): JSX.Element {
   return (
-    <div className="kpi-strip" aria-label="Portfolio health">
+    <div aria-label="Portfolio health" className="kpi-strip">
       <Link
         className="kpi-strip__item"
         data-jtbd="How many active projects do we have?"
-        to="/projects"
         style={{ borderLeft: '3px solid var(--color-accent)' }}
+        to="/projects?status=ACTIVE"
       >
-        <TipBalloon tip="Total active projects across the organization." arrow="left" />
-        <span className="kpi-strip__value">{summary.activeProjectCount}</span>
-        <span className="kpi-strip__label">Active Projects</span>
+        <TipBalloon arrow="left" tip="Total active projects across the portfolio." />
+        <span className="kpi-strip__value">{projectCount}</span>
+        <span className="kpi-strip__label">Active projects</span>
+      </Link>
+
+      <Link
+        className="kpi-strip__item"
+        data-jtbd="Which projects are at risk?"
+        style={{ borderLeft: `3px solid ${tc(atRiskCount, 1, 3)}` }}
+        to="/projects?rag=AMBER,RED"
+      >
+        <TipBalloon arrow="left" tip="Projects whose latest RAG is amber or red." />
+        <span className="kpi-strip__value">{atRiskCount}</span>
+        <span className="kpi-strip__label">At-risk projects</span>
+      </Link>
+
+      <Link
+        className="kpi-strip__item"
+        data-jtbd="What's our portfolio budget variance?"
+        style={{
+          borderLeft: `3px solid ${budgetVariancePct < -2
+            ? 'var(--color-status-danger)'
+            : budgetVariancePct < 0
+              ? 'var(--color-status-warning)'
+              : 'var(--color-status-active)'}`,
+        }}
+        to="/projects?budgetStatus=over"
+      >
+        <TipBalloon
+          arrow="left"
+          tip="Portfolio-wide budget variance vs plan. Negative = over budget."
+        />
+        <span className="kpi-strip__value">
+          <Pct sign value={budgetVariancePct} />
+        </span>
+        <span className="kpi-strip__label">Budget variance · portfolio</span>
       </Link>
 
       <Link
         className="kpi-strip__item"
         data-jtbd="What's our org-wide utilisation?"
+        style={{ borderLeft: `3px solid ${tc(utilisationPct, 60, 40, false)}` }}
         to="/people"
-        style={{
-          borderLeft: `3px solid ${tc(Math.round(summary.staffingUtilisationRate), 60, 40, false)}`,
-        }}
       >
         <TipBalloon
-          tip="Percentage of active people currently assigned to at least one project."
           arrow="left"
+          tip="Percentage of active people currently assigned to at least one project."
         />
-        <span className="kpi-strip__value"><Pct value={Math.round(summary.staffingUtilisationRate)} /></span>
+        <span className="kpi-strip__value"><Pct value={utilisationPct} /></span>
         <span className="kpi-strip__label">Utilisation</span>
-        <SparklineDs
-          data={weeklyTrend.map((w) => w.staffingUtilisationRate)}
-          height={20}
-          width={60}
-          tone={tone(Math.round(summary.staffingUtilisationRate), 60, 40, false)}
-        />
+        {utilSeries.length > 0 ? (
+          <SparklineDs
+            data={utilSeries}
+            height={20}
+            tone={utilTone(utilisationPct)}
+            width={60}
+          />
+        ) : null}
       </Link>
 
       <Link
         className="kpi-strip__item"
-        data-jtbd="How many people are on the bench?"
-        to="/people?filter=unassigned"
-        style={{ borderLeft: `3px solid ${tc(summary.unstaffedActivePersonCount, 3, 8)}` }}
+        data-jtbd="How many positions still need filling?"
+        style={{ borderLeft: `3px solid ${tc(openPositions, 3, 8)}` }}
+        to="/projects?hasOpenGaps=true"
       >
-        <TipBalloon tip="Active people with no current assignment (bench)." arrow="left" />
-        <span className="kpi-strip__value">{summary.unstaffedActivePersonCount}</span>
-        <span className="kpi-strip__label">On Bench</span>
+        <TipBalloon
+          arrow="left"
+          tip="Open positions across all project role plans. Click to filter projects with open gaps."
+        />
+        <span className="kpi-strip__value">{openPositions}</span>
+        <span className="kpi-strip__label">Open positions</span>
+        {slaSummary && slaSummary.timeToFillSeries.some((v) => v > 0) ? (
+          <SparklineDs
+            data={slaSummary.timeToFillSeries}
+            height={20}
+            tone="info"
+            width={60}
+          />
+        ) : null}
       </Link>
-
-      {portfolioSummary ? (
-        <>
-          <Link
-            className="kpi-strip__item"
-            data-jtbd="How many roles still need filling?"
-            to="/projects?hasOpenGaps=true"
-            style={{ borderLeft: `3px solid ${tc(portfolioSummary.totalOpenGaps, 3, 8)}` }}
-          >
-            <TipBalloon tip="Total unfilled positions across all project role plans. Click to filter projects with open gaps." arrow="left" />
-            <span className="kpi-strip__value">{portfolioSummary.totalOpenGaps}</span>
-            <span className="kpi-strip__label">Open Gaps</span>
-          </Link>
-
-          <Link
-            className="kpi-strip__item"
-            data-jtbd="How well-staffed are projects overall?"
-            to="/projects?status=ACTIVE"
-            style={{
-              borderLeft: `3px solid ${tc(portfolioSummary.overallFillRate, 60, 40, false)}`,
-            }}
-          >
-            <TipBalloon
-              tip="Organization-wide staffing fill rate across all projects with role plans. Click to view all active projects."
-              arrow="left"
-            />
-            <span className="kpi-strip__value"><Pct value={portfolioSummary.overallFillRate} /></span>
-            <span className="kpi-strip__label">Fill Rate</span>
-          </Link>
-
-          <Link
-            className="kpi-strip__item"
-            data-jtbd="What's the green / amber / red split across the portfolio?"
-            to="/projects?status=ACTIVE"
-            style={{ borderLeft: '3px solid var(--color-chart-5)' }}
-          >
-            <TipBalloon
-              tip="Portfolio health split. Click to view all active projects with RAG signals."
-              arrow="left"
-            />
-            <span className="kpi-strip__value">
-              <span style={{ color: 'var(--color-status-active)' }}>{portfolioSummary.byRag.green}</span>
-              {' / '}
-              <span style={{ color: 'var(--color-status-warning)' }}>{portfolioSummary.byRag.amber}</span>
-              {' / '}
-              <span style={{ color: 'var(--color-status-danger)' }}>{portfolioSummary.byRag.red}</span>
-            </span>
-            <span className="kpi-strip__label">G / A / R</span>
-          </Link>
-        </>
-      ) : null}
-
-      {slaSummary ? (
-        <>
-          <Link
-            className="kpi-strip__item"
-            data-jtbd="What's at risk?"
-            to="/staffing-desk?filter=sla"
-            style={{
-              borderLeft: `3px solid ${slaSummary.slaBreaches24h > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}`,
-            }}
-          >
-            <TipBalloon
-              tip="Assignments whose SLA due-date is within ±24h and have not yet been marked breached. Red when any are pending."
-              arrow="left"
-            />
-            <span className="kpi-strip__value">{slaSummary.slaBreaches24h}</span>
-            <span className="kpi-strip__label">24h SLA Breach</span>
-          </Link>
-
-          <Link
-            className="kpi-strip__item"
-            data-jtbd="How fast are we filling roles?"
-            to="/staffing-desk?status=FULFILLED"
-            style={{ borderLeft: '3px solid var(--color-chart-2)' }}
-          >
-            <TipBalloon
-              tip="Rolling 4-week median time-to-fill (days) per filled position. Sparkline shows per-week trend."
-              arrow="left"
-            />
-            <span className="kpi-strip__value">
-              {slaSummary.timeToFillMedianDays !== null
-                ? `${Math.round(slaSummary.timeToFillMedianDays)}d`
-                : '—'}
-            </span>
-            <span className="kpi-strip__label">Time to Fill (4w)</span>
-            {slaSummary.timeToFillSeries.some((v) => v > 0) ? (
-              <SparklineDs
-                data={slaSummary.timeToFillSeries}
-                height={20}
-                width={60}
-                tone="info"
-              />
-            ) : null}
-          </Link>
-        </>
-      ) : null}
     </div>
   );
 }

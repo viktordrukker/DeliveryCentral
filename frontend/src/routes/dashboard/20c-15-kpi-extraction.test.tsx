@@ -34,10 +34,11 @@ describe('20c-15 — dashboard KPI strip extraction (source-shape)', () => {
     expect(directorPageSrc).toMatch(/<DirectorKpiStrip\b/);
   });
 
-  it('DirectorKpiStrip exposes the 8 portfolio KPI tiles with data-jtbd', () => {
-    // 3 always-on KPIs from `d.summary`, 3 from portfolioSummary, 2 from slaSummary = 8 jtbds.
+  it('DirectorKpiStrip exposes the 5 portfolio KPI tiles with data-jtbd', () => {
+    // SoT PR 4 — DS canvas (page-director.jsx) collapses the strip to 5 tiles:
+    // Active projects · At-risk projects · Budget variance · Utilisation · Open positions.
     const jtbdMatches = directorKpiSrc.match(/data-jtbd="/g);
-    expect(jtbdMatches?.length).toBe(8);
+    expect(jtbdMatches?.length).toBe(5);
   });
 
   it('DeliveryManagerDashboardPage imports + renders DeliveryManagerKpiStrip', () => {
