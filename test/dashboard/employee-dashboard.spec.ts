@@ -5,7 +5,6 @@ import { TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from '@src/app.module';
-import { ListAssignmentsService } from '@src/modules/assignments/application/list-assignments.service';
 import { EmployeeDashboardQueryService } from '@src/modules/dashboard/application/employee-dashboard-query.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { TimesheetsService } from '@src/modules/timesheets/application/timesheets.service';
@@ -14,7 +13,7 @@ import {
   PersonDirectoryQueryRepositoryPort,
   PersonDirectoryRecord,
 } from '@src/modules/organization/application/ports/person-directory-query.repository.port';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { createAppPrismaClient } from '../helpers/db/create-app-prisma-client';
 import { resetPersistenceTestDatabase } from '../helpers/db/reset-persistence-test-database';
 import { seedDemoAssignmentRuntimeData } from '../helpers/db/seed-demo-assignment-runtime-data';
@@ -123,6 +122,7 @@ describe('Employee dashboard query', () => {
             code: 'DEP-APP',
             id: '22222222-2222-2222-2222-222222222005',
             name: 'Application Engineering',
+            publicId: null,
           },
           displayName: 'Bench User',
           dottedLineManagers: [],
@@ -138,15 +138,21 @@ describe('Employee dashboard query', () => {
         },
       ]),
     );
-    const assignmentRepository = new InMemoryProjectAssignmentRepository();
-    const prisma = {} as any;
+    // SoT PR 14b — the dashboard now sources assignments from
+    // ProjectPosition directly; the legacy ListAssignmentsService is no
+    // longer threaded through the constructor.
+    const prismaStub = {
+      projectPosition: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as PrismaService;
     const timesheetsService = {
       getMyHistory: jest.fn().mockResolvedValue([]),
     } as unknown as TimesheetsService;
     const isolatedService = new EmployeeDashboardQueryService(
       personDirectoryService,
-      new ListAssignmentsService(assignmentRepository, prisma),
       timesheetsService,
+      prismaStub,
     );
 
     const result = await isolatedService.execute({

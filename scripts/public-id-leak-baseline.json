@@ -7,6 +7,8 @@
   "src/modules/dashboard/application/contracts/hr-manager-dashboard.dto.ts|HrManagerDashboardPersonSummaryDto|controller-uuid-leak",
   "src/modules/dashboard/application/contracts/planned-vs-actual.dto.ts|ComparisonPersonSummaryDto|controller-uuid-leak",
   "src/modules/dashboard/application/contracts/planned-vs-actual.dto.ts|ComparisonProjectSummaryDto|controller-uuid-leak",
+  "src/modules/dashboard/application/contracts/position-directory-item.dto.ts|PositionDirectoryItemDto|controller-uuid-leak",
+  "src/modules/dashboard/application/contracts/position-directory-item.dto.ts|PositionDirectoryPartySummaryDto|controller-uuid-leak",
   "src/modules/dashboard/application/contracts/project-manager-dashboard.dto.ts|ManagedProjectDashboardItemDto|controller-uuid-leak",
   "src/modules/dashboard/application/contracts/project-manager-dashboard.dto.ts|OpenStaffingRequestSummaryDto|controller-uuid-leak",
   "src/modules/dashboard/application/contracts/project-manager-dashboard.dto.ts|ProjectManagerDashboardPersonSummaryDto|controller-uuid-leak",

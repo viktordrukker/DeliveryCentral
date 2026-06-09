@@ -90,18 +90,25 @@ export class PortfolioDashboardService {
     let greenCount = 0, amberCount = 0, redCount = 0;
     let totalPlannedHC = 0, totalFilledHC = 0;
 
-    // Batch fetch all assignments for all active projects in a single query (eliminates N+1)
+    // Batch fetch all active position fills for all active projects in a single
+    // query (eliminates N+1). Reads from ProjectPosition (canonical) instead of
+    // legacy ProjectAssignment: the `activeValidTo` column on the position is
+    // the lean equivalent of the legacy assignment's `validTo`.
     const projectIds = activeProjects.map((p) => p.id);
-    const allAssignments = projectIds.length > 0
-      ? await this.prisma.projectAssignment.findMany({
-          where: { projectId: { in: projectIds }, status: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] } },
-          select: { projectId: true, validTo: true },
+    const allPositionFills = projectIds.length > 0
+      ? await this.prisma.projectPosition.findMany({
+          where: {
+            projectId: { in: projectIds },
+            fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+            activePersonId: { not: null },
+          },
+          select: { projectId: true, activeValidTo: true },
         })
       : [];
     const assignmentsByProject = new Map<string, Array<{ validTo: Date | null }>>();
-    for (const a of allAssignments) {
+    for (const a of allPositionFills) {
       const list = assignmentsByProject.get(a.projectId) ?? [];
-      list.push({ validTo: a.validTo });
+      list.push({ validTo: a.activeValidTo });
       assignmentsByProject.set(a.projectId, list);
     }
 

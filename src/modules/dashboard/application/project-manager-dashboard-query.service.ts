@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
@@ -13,12 +13,13 @@ interface ProjectManagerDashboardQuery {
   personId: string;
 }
 
+// SoT PR 14b — PM dashboard sources active fills + recent changes from
+// canonical `ProjectPosition` + `ProjectPositionFillHistory`.
 @Injectable()
 export class ProjectManagerDashboardQueryService {
   public constructor(
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
     private readonly platformSettingsService: PlatformSettingsService,
     private readonly prisma: PrismaService,
@@ -48,7 +49,7 @@ export class ProjectManagerDashboardQueryService {
       .sort((left, right) => left.projectCode.localeCompare(right.projectCode));
     const managedProjectIds = new Set(managedProjects.map((project) => project.projectId.value));
 
-    const assignments = await this.projectAssignmentRepository.findAll();
+    const assignments = await loadAllPositionAssignmentViews(this.prisma);
     const activeAssignments = assignments.filter(
       (assignment) => managedProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
@@ -104,29 +105,40 @@ export class ProjectManagerDashboardQueryService {
     );
 
     const managedAssignments = assignments.filter((assignment) => managedProjectIds.has(assignment.projectId));
-    const recentlyChangedAssignments = (
-      await Promise.all(
-        managedAssignments.map(async (assignment) => {
-          const history = await this.projectAssignmentRepository.findHistoryByAssignmentId(
-            assignment.assignmentId,
-          );
-
-          return history.map((item) => ({
-            assignmentId: assignment.assignmentId.value,
-            changedAt: item.occurredAt.toISOString(),
-            changeType: item.changeType,
-            personDisplayName:
-              peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
-            personId: assignment.personId,
-            projectId: assignment.projectId,
-            projectName:
-              managedProjectMap.get(assignment.projectId)?.name ?? assignment.projectId,
-          }));
-        }),
-      )
-    )
-      .flat()
-      .sort((left, right) => right.changedAt.localeCompare(left.changedAt))
+    // SoT PR 14b — recently-changed source is canonical
+    // `ProjectPositionFillHistory`. Batch-fetch the most recent 5 history
+    // rows per managed position id (avoiding N+1).
+    const managedPositionIds = managedAssignments.map((a) => a.id);
+    const historyRows = managedPositionIds.length > 0
+      ? await this.prisma.projectPositionFillHistory.findMany({
+          where: { positionId: { in: managedPositionIds } },
+          select: {
+            positionId: true,
+            occurredAt: true,
+            changeType: true,
+          },
+          orderBy: { occurredAt: 'desc' },
+          take: 50,
+        })
+      : [];
+    const managedById = new Map(managedAssignments.map((a) => [a.id, a]));
+    const recentlyChangedAssignments = historyRows
+      .map((item) => {
+        const assignment = managedById.get(item.positionId);
+        if (!assignment) return null;
+        return {
+          assignmentId: assignment.id,
+          changedAt: item.occurredAt.toISOString(),
+          changeType: item.changeType,
+          personDisplayName:
+            peopleById.get(assignment.personId)?.displayName ?? assignment.personId,
+          personId: assignment.personId,
+          projectId: assignment.projectId,
+          projectName:
+            managedProjectMap.get(assignment.projectId)?.name ?? assignment.projectId,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
       .slice(0, 5);
 
     const attentionProjects = this.groupProjectAttentionItems([

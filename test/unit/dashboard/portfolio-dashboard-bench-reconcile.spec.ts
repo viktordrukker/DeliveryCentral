@@ -35,13 +35,12 @@ function buildPrismaStub(args: {
     person: {
       findMany: async (_q: unknown) => args.people,
     },
+    // SoT PR 14b — portfolio heatmap AND available-pool both now read from
+    // the canonical ProjectPosition aggregate, not legacy ProjectAssignment.
     projectPosition: {
       findMany: async (_q: unknown) => args.positions,
     },
     project: {
-      findMany: async (_q: unknown) => [],
-    },
-    projectAssignment: {
       findMany: async (_q: unknown) => [],
     },
     projectVendorEngagement: {

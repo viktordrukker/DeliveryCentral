@@ -27,7 +27,9 @@ function buildStub(personId: string, costRate: number | null): PrismaService {
   return {
     person,
     personCostRate,
-    projectAssignment: { findMany: empty },
+    // SoT PR 14b — person-profile assignments now read from the canonical
+    // ProjectPosition aggregate, not legacy ProjectAssignment.
+    projectPosition: { findMany: empty },
     timesheetWeek: { findMany: empty },
     leaveRequest: { findMany: empty },
     leaveBalance: { findMany: empty },

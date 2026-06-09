@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { ListCasesService } from '@src/modules/case-management/application/list-cases.service';
 import { PersonDirectoryQueryService } from '@src/modules/organization/application/person-directory-query.service';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { HrManagerDashboardResponseDto } from './contracts/hr-manager-dashboard.dto';
@@ -28,7 +28,6 @@ export class HrManagerDashboardQueryService {
     private readonly personRepository: InMemoryPersonRepository,
     private readonly auditLoggerService: AuditLoggerService,
     private readonly listCasesService: ListCasesService,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -145,11 +144,12 @@ export class HrManagerDashboardQueryService {
       }));
 
     // At-risk employees: over-allocated (>100%) OR has an open case (13-B15)
-    const allAssignments = await this.projectAssignmentRepository.findAll();
+    // SoT PR 14b — sum allocations from canonical ProjectPosition fills.
+    const allAssignments = await loadAllPositionAssignmentViews(this.prisma);
     const allocationByPerson = new Map<string, number>();
     for (const a of allAssignments.filter((a) => a.isActiveAt(asOf))) {
       const prev = allocationByPerson.get(a.personId) ?? 0;
-      allocationByPerson.set(a.personId, prev + (a.allocationPercent?.value ?? 0));
+      allocationByPerson.set(a.personId, prev + a.allocationPercent);
     }
 
     // F-49 / 20c-11 — `CaseRecord` exposes `status` + `subjectPersonId` as

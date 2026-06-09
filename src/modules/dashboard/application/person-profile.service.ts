@@ -95,30 +95,37 @@ export class PersonProfileService {
   }
 
   private async loadAssignments(personId: string): Promise<PersonProfileAssignmentItemDto[]> {
-    const rows = await this.prisma.projectAssignment.findMany({
-      where: { personId },
+    // SoT PR 14b — re-point onto ProjectPosition (canonical staffing aggregate).
+    // The person-profile "assignments" list now shows the lean equivalent: the
+    // person's active and historical position-fills. We filter on
+    // `activePersonId` and pull only positions that ever carried this person
+    // in their active-fill slot. Positions where this person is no longer the
+    // active fill but were once held (RELEASED with the same activePersonId)
+    // are still surfaced — the timeline ordering follows `activeValidFrom`.
+    const rows = await this.prisma.projectPosition.findMany({
+      where: { activePersonId: personId },
       select: {
         id: true,
         projectId: true,
-        staffingRole: true,
-        status: true,
-        allocationPercent: true,
-        validFrom: true,
-        validTo: true,
+        role: true,
+        fillStatus: true,
+        activeAllocationPercent: true,
+        activeValidFrom: true,
+        activeValidTo: true,
         project: { select: { name: true } },
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { activeValidFrom: 'desc' },
       take: 50,
     });
     return rows.map((r) => ({
       id: r.id,
       projectId: r.projectId,
       projectName: r.project.name,
-      staffingRole: r.staffingRole,
-      status: r.status,
-      allocationPercent: r.allocationPercent === null ? 0 : Number(r.allocationPercent),
-      validFrom: r.validFrom.toISOString().slice(0, 10),
-      validTo: r.validTo ? r.validTo.toISOString().slice(0, 10) : null,
+      staffingRole: r.role,
+      status: r.fillStatus,
+      allocationPercent: r.activeAllocationPercent === null ? 0 : Number(r.activeAllocationPercent),
+      validFrom: r.activeValidFrom ? r.activeValidFrom.toISOString().slice(0, 10) : '',
+      validTo: r.activeValidTo ? r.activeValidTo.toISOString().slice(0, 10) : null,
     }));
   }
 

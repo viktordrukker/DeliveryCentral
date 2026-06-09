@@ -1,11 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { InMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { getCached, setCache } from '@src/shared/cache/simple-cache';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 
 import {
   DashboardPersonSummaryDto,
@@ -17,12 +18,17 @@ interface WorkloadDashboardQuery {
   asOf?: string;
 }
 
+// SoT PR 14b — re-point onto the canonical `ProjectPosition` aggregate via
+// the shared `loadAllPositionAssignmentViews` helper. The view shape mirrors
+// the legacy `ProjectAssignment` domain accessors used downstream
+// (`personId`, `projectId`, `isActiveAt(asOf)`), so the rest of this
+// service stays unchanged.
 @Injectable()
 export class WorkloadDashboardQueryService {
   public constructor(
     private readonly personRepository: InMemoryPersonRepository,
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    private readonly prisma: PrismaService,
     private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
     private readonly platformSettingsService: PlatformSettingsService,
   ) {}
@@ -50,7 +56,7 @@ export class WorkloadDashboardQueryService {
     const [allPeople, allProjects, allAssignments, recentEvidence] = await Promise.all([
       this.personRepository.listAll(),
       this.projectRepository.findAll(),
-      this.projectAssignmentRepository.findAll(),
+      loadAllPositionAssignmentViews(this.prisma),
       this.workEvidenceRepository.list({ dateTo: asOf }),
     ]);
 
