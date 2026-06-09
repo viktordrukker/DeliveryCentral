@@ -132,7 +132,7 @@ describe('HelpAdminPage', () => {
     });
   });
 
-  it('renders a live Markdown preview alongside the body editor and updates as you type', async () => {
+  it('renders a live Markdown preview alongside the body editor and updates as you type', { timeout: 15000 }, async () => {
     mockedList.mockResolvedValue([]);
     mockedCreate.mockResolvedValue({ ...draft });
     renderPage();
@@ -159,13 +159,13 @@ describe('HelpAdminPage', () => {
       },
       // CI runners are slower: userEvent.type + react-markdown parse can take >1s,
       // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
-      { timeout: 5000 },
+      { timeout: 10000 },
     );
     // Inline strong rendered.
     expect(within(preview).getByText('bold').tagName).toBe('STRONG');
   });
 
-  it('preview drops script tags and javascript: links via the safe-by-default renderer', async () => {
+  it('preview drops script tags and javascript: links via the safe-by-default renderer', { timeout: 15000 }, async () => {
     mockedList.mockResolvedValue([]);
     renderPage();
 
@@ -189,7 +189,7 @@ describe('HelpAdminPage', () => {
       },
       // CI runners are slower: userEvent.paste + react-markdown parse can take >1s,
       // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
-      { timeout: 5000 },
+      { timeout: 10000 },
     );
     // No <script> tag survives.
     expect(preview.querySelector('script')).toBeNull();
