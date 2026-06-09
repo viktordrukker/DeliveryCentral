@@ -86,7 +86,9 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
             role: participant.role,
           })),
         },
-        relatedAssignmentId: aggregate.relatedAssignmentId ?? null,
+        // LEAN PR 16a/2 — `relatedAssignmentId` column is dropped by PR 16b.
+        // The entity property remains for FE/spec compatibility but the
+        // Prisma write no longer persists it to a dropped column.
         relatedProjectId: aggregate.relatedProjectId ?? null,
         status: aggregate.status,
         subjectPersonId: aggregate.subjectPersonId,
@@ -115,7 +117,7 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
             skipDuplicates: true,
           },
         },
-        relatedAssignmentId: aggregate.relatedAssignmentId ?? null,
+        // LEAN PR 16a/2 — `relatedAssignmentId` column dropped by PR 16b.
         relatedProjectId: aggregate.relatedProjectId ?? null,
         status: aggregate.status,
         subjectPersonId: aggregate.subjectPersonId,

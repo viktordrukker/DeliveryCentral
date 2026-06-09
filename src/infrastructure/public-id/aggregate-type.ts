@@ -16,6 +16,9 @@ export enum AggregateType {
   Vendor = 'vnd',
   OrgUnit = 'org',
   ResourcePool = 'pool',
+  // LEAN PR 16a/2 — deprecated. Dropped by PR 16b (LEAN-P3-2 forward-only
+  // drop migration) along with the underlying Prisma models. Kept here for
+  // one merge cycle so legacy publicIds in audit history can still resolve.
   ProjectAssignment = 'asn',
   StaffingRequest = 'stf',
   CaseRecord = 'case',

@@ -45,12 +45,12 @@ const AGGREGATE_TYPE_ALIASES: Record<string, $Enums.AggregateType> = {
   PROJECT_MILESTONE: $Enums.AggregateType.ProjectMilestone,
   BUDGET_APPROVAL: $Enums.AggregateType.BudgetApproval,
 
-  // Assignment-flavored
-  ASSIGNMENT: $Enums.AggregateType.ProjectAssignment,
-  PROJECT_ASSIGNMENT: $Enums.AggregateType.ProjectAssignment,
-
-  // Staffing
-  STAFFING_REQUEST: $Enums.AggregateType.StaffingRequest,
+  // LEAN PR 16a/2 — ProjectAssignment + StaffingRequest aggregate types
+  // are dropped from the AggregateType enum by PR 16b (LEAN-P3-2 forward-
+  // only drop). Writers still emitting ASSIGNMENT / PROJECT_ASSIGNMENT /
+  // STAFFING_REQUEST fall through to DomainEvent — these writers all live
+  // in src/modules/assignments/ + src/modules/staffing-requests/ which PR
+  // 16b deletes wholesale.
 
   // Cases
   CASE: $Enums.AggregateType.CaseRecord,
