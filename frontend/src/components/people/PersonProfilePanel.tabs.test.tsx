@@ -14,10 +14,10 @@ import { describe, expect, it } from 'vitest';
 describe('V2 §4.7 — PersonProfilePanel 5-tab grammar', () => {
   const src = readFileSync('src/components/people/PersonProfilePanel.tsx', 'utf-8');
 
-  it('exposes the canonical Identity / Assignments / Skills / Leave / Activity tab list', () => {
+  it('exposes the canonical Identity / Positions / Skills / Leave / Activity tab list', () => {
     expect(src).toMatch(/const V2_TABS\s*:\s*TabItem\[\]\s*=\s*\[/);
     expect(src).toMatch(/{ id: 'identity', label: 'Identity' }/);
-    expect(src).toMatch(/{ id: 'assignments', label: 'Assignments' }/);
+    expect(src).toMatch(/{ id: 'assignments', label: 'Positions' }/);
     expect(src).toMatch(/{ id: 'skills', label: 'Skills' }/);
     expect(src).toMatch(/{ id: 'leave', label: 'Leave' }/);
     expect(src).toMatch(/{ id: 'activity', label: 'Activity' }/);

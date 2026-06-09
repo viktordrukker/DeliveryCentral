@@ -18,7 +18,7 @@ const COLUMN_LABELS: Record<string, string> = {
   orgUnit: 'Org Unit',
   lineManager: 'Line Manager',
   dottedLine: 'Dotted-Line Summary',
-  assignmentCount: 'Active Assignments',
+  assignmentCount: 'Active Positions',
   status: 'Status',
 };
 
@@ -58,7 +58,7 @@ export function EmployeeDirectoryTable({
         {
           key: 'assignmentCount',
           render: (item: PersonDirectoryItem) => item.currentAssignmentCount,
-          title: 'Active Assignments',
+          title: 'Active Positions',
         },
         {
           key: 'status',

@@ -135,7 +135,7 @@ export function buildNextStep(inputs: NextStepInputs): NextStep {
     case 'IN_REVIEW':
       return {
         title: 'Legacy workflow assignment',
-        body: 'Pre-slate stages no longer apply in the new model. New work should start from a Staffing Request — see the banner above.',
+        body: 'Pre-slate stages no longer apply in the new model. New work should start from a Position — see the banner above.',
         who: '—',
       };
     case 'BOOKED':
@@ -174,7 +174,7 @@ export function buildNextStep(inputs: NextStepInputs): NextStep {
     case 'REJECTED':
       return {
         title: 'Rejected',
-        body: 'This assignment was rejected. To restart staffing, open a new Staffing Request.',
+        body: 'This assignment was rejected. To restart staffing, open a new Position.',
         who: '—',
       };
     case 'COMPLETED':

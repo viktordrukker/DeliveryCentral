@@ -30,7 +30,7 @@ interface PersonProfilePanelProps {
  */
 const V2_TABS: TabItem[] = [
   { id: 'identity', label: 'Identity' },
-  { id: 'assignments', label: 'Assignments' },
+  { id: 'assignments', label: 'Positions' },
   { id: 'skills', label: 'Skills' },
   { id: 'leave', label: 'Leave' },
   { id: 'activity', label: 'Activity' },

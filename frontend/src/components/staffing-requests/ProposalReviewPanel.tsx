@@ -208,7 +208,7 @@ export function ProposalReviewPanel({
         title="Pick this candidate?"
         message={
           selectedCandidate
-            ? `This will create an Assignment at BOOKED for ${selectedName} (rank #${selectedCandidate.rank}). The other candidates in the slate will be marked as not picked.`
+            ? `This will create a Position at BOOKED for ${selectedName} (rank #${selectedCandidate.rank}). The other candidates in the slate will be marked as not picked.`
             : 'No candidate selected.'
         }
         confirmLabel="Pick candidate"

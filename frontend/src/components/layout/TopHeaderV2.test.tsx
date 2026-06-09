@@ -77,7 +77,7 @@ describe('TopHeaderV2', () => {
     await userEvent.click(screen.getByRole('button', { name: '+ New' }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'New project' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'New staffing request' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'New position' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'New leave request' })).toBeInTheDocument();
   });
 

@@ -141,7 +141,7 @@ export function PlannedVsActualPage(): JSX.Element {
           <span className="field__label">As of</span>
           <input className="field__control" onChange={(e) => setAsOf(e.target.value)} type="datetime-local" value={asOf.slice(0, 16)} />
         </label>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/assignments">Positions</Button>
         <Button as={Link} variant="secondary" size="sm" to="/time-management">Time Management</Button>
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <Button as={Link} variant="secondary" size="sm" to="/reports/time">Time Analytics</Button>
@@ -314,10 +314,10 @@ export function PlannedVsActualPage(): JSX.Element {
 
   const detailQuickActions: Record<DetailTab, RowAction<unknown>[]> = useMemo(() => ({
     matched: [{ key: 'view', label: 'View', onSelect: (item: unknown) => nav(`/assignments/${(item as MatchedRecordItem).assignmentId}`) }],
-    noEvidence: [{ key: 'review', label: 'Review Assignment', onSelect: (item: unknown) => nav(`/assignments?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
+    noEvidence: [{ key: 'review', label: 'Review Position', onSelect: (item: unknown) => nav(`/assignments?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
     noAssignment: [{
       key: 'create',
-      label: 'Create Assignment',
+      label: 'Create Position',
       onSelect: (item: unknown) => {
         const e = item as EvidenceButNoApprovedAssignmentItem;
         openAssignModal({ personId: e.person.id, person: e.person.displayName, projectId: e.project.id, project: e.project.name, hours: e.effortHours, activityDate: e.activityDate });
@@ -395,7 +395,7 @@ export function PlannedVsActualPage(): JSX.Element {
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>draft + submitted</span>
             </a>
             <a className="kpi-strip__item" href="#staffing-section" onClick={(e) => { e.preventDefault(); document.getElementById('staffing-section')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ borderLeft: `3px solid ${tc(kpis.staffingGaps, 1, 5)}` }}>
-              <TipBalloon tip="Total unfilled headcount from open staffing requests." arrow="left" />
+              <TipBalloon tip="Total unfilled headcount from open positions." arrow="left" />
               <span className="kpi-strip__value">{kpis.staffingGaps}</span>
               <span className="kpi-strip__label">Staffing Gaps</span>
               <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>unfilled headcount</span>

@@ -171,7 +171,7 @@ export function DirectorDashboardPage(): JSX.Element {
     const s = state.data.summary;
     exportToXlsx([
       { Metric: 'Active Projects', Value: s.activeProjectCount },
-      { Metric: 'Active Assignments', Value: s.activeAssignmentCount },
+      { Metric: 'Active Positions', Value: s.activeAssignmentCount },
       { Metric: 'Staffed People', Value: s.staffedPersonCount },
       { Metric: 'Unstaffed', Value: s.unstaffedActivePersonCount },
       { Metric: 'Utilisation Rate', Value: `${Math.round(s.staffingUtilisationRate)}%` },

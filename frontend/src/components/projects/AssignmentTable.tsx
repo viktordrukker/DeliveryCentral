@@ -37,13 +37,13 @@ export function AssignmentTable({ items }: AssignmentTableProps): JSX.Element {
             item.endDate
               ? `${item.startDate} to ${item.endDate}`
               : `${item.startDate} onward`,
-          title: 'Assignment Window',
+          title: 'Position Window',
         },
       ]}
       emptyState={
         <EmptyState
           description="No people are currently assigned to this project."
-          title="No assignments"
+          title="No positions"
         />
       }
       getRowKey={(item) => item.id}

@@ -151,7 +151,7 @@ export function M365ReconciliationPanel({
                 <div>
                   <dt>Project and staffing follow-up</dt>
                   <dd>
-                    <Link to="/assignments">Assignments</Link>
+                    <Link to="/assignments">Positions</Link>
                     {' • '}
                     <Link to="/teams">Teams</Link>
                     {' • '}

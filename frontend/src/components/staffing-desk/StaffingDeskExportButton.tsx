@@ -11,7 +11,7 @@ interface Props {
 
 function mapRow(row: StaffingDeskRow): Record<string, unknown> {
   return {
-    Type: row.kind === 'assignment' ? 'Assignment' : 'Request',
+    Type: 'Position',
     Person: row.personName ?? '',
     Project: row.projectName,
     Role: row.role,

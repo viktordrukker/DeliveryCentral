@@ -40,7 +40,7 @@ export function DeliveryManagerKpiStrip({
       >
         <TipBalloon tip="People currently assigned to active projects." arrow="left" />
         <span className="kpi-strip__value">{activeAssignments}</span>
-        <span className="kpi-strip__label">Active Assignments</span>
+        <span className="kpi-strip__label">Active Positions</span>
       </Link>
 
       <Link

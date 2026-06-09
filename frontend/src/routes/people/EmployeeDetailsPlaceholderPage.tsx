@@ -557,11 +557,11 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               />
             </SectionCard>
 
-            <SectionCard title="Active Assignments Summary">
+            <SectionCard title="Active Positions Summary">
               {state.data.currentAssignmentCount === 0 ? (
                 <EmptyState
-                  description="This person has no active assignments at this time."
-                  title="No active assignments"
+                  description="This person has no active positions at this time."
+                  title="No active positions"
                   action={{
                     href: `/staffing-desk?view=table&kind=position&personId=${id ?? ''}`,
                     label: 'Open staffing desk',
@@ -570,7 +570,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               ) : (
                 <dl className="details-list">
                   <div>
-                    <dt>Active assignments</dt>
+                    <dt>Active positions</dt>
                     <dd>{state.data.currentAssignmentCount}</dd>
                   </div>
                 </dl>

@@ -26,8 +26,8 @@ import {
  */
 const ROLE_DESCRIPTIONS: Record<PlatformRole, string> = {
   employee: 'Standard employee — own timesheets, requests, and dashboards.',
-  project_manager: 'Owns project plans, staffing requests, and PvA.',
-  resource_manager: 'Manages bench, assignments, and team capacity.',
+  project_manager: 'Owns project plans, positions, and PvA.',
+  resource_manager: 'Manages bench, positions, and team capacity.',
   hr_manager: 'HR governance — people, org structure, cases, payroll signals.',
   delivery_manager: 'Cross-project delivery oversight, escalations, anomalies.',
   director: 'Executive view — portfolio health, finance, approvals.',

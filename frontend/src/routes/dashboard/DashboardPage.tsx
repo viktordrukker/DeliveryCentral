@@ -73,7 +73,7 @@ export function DashboardPage(): JSX.Element {
           onChange={(r) => { setRangeFrom(r.from); setRangeTo(r.to); }}
         />
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/assignments">Positions</Button>
         <Button as={Link} variant="secondary" size="sm" to="/dashboard/planned-vs-actual">Planned vs actual</Button>
         <TipTrigger />
       </>
@@ -312,7 +312,7 @@ export function DashboardPage(): JSX.Element {
             <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to projects. The sparkline shows the 12-week trend." arrow="left" />
               <span className="kpi-strip__value">{activeAssignments}</span>
-              <span className="kpi-strip__label">Active Assignments</span>
+              <span className="kpi-strip__label">Active Positions</span>
               {assignmentSpark.length > 3 && <div className="kpi-strip__sparkline"><SparklineDs data={assignmentSpark} height={24} width={72} tone="accent" /></div>}
             </Link>
 
