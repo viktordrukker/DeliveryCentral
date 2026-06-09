@@ -194,7 +194,7 @@ export class ProjectPulseService {
         aggregateType: {
           in: [
             'Project',
-            'ProjectAssignment',
+            'ProjectPosition',
             'ProjectRisk',
             'ProjectChangeRequest',
             'ProjectMilestone',

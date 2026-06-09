@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectExternalLinkRepositoryPort } from '../domain/repositories/project-external-link-repository.port';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
@@ -12,7 +11,6 @@ export class GetProjectByIdService {
   public constructor(
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly projectExternalLinkRepository: ProjectExternalLinkRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     private readonly prisma?: PrismaService,
   ) {}
 
@@ -23,31 +21,42 @@ export class GetProjectByIdService {
       return null;
     }
 
-    const [projectLinks, assignments, prismaProject, latestBudget, openPositionsCount] = await Promise.all([
-      this.projectExternalLinkRepository.findByProjectId(project.projectId),
-      this.projectAssignmentRepository.findAll(),
-      this.prisma
-        ? this.prisma.project.findUnique({ where: { id: project.id }, select: { shape: true, hasLiveSpcRates: true } })
-        : Promise.resolve(null),
-      this.prisma
-        ? this.prisma.projectBudget.findFirst({
-            where: { projectId: project.id },
-            orderBy: { fiscalYear: 'desc' },
-            select: {
-              capexBudget: true,
-              opexBudget: true,
-              earnedValue: true,
-              actualCost: true,
-              eac: true,
-            },
-          })
-        : Promise.resolve(null),
-      this.prisma
-        ? this.prisma.projectPosition.count({
-            where: { projectId: project.id, fillStatus: 'OPEN' },
-          })
-        : Promise.resolve(0),
-    ]);
+    const [projectLinks, prismaProject, latestBudget, openPositionsCount, assignmentCount] =
+      await Promise.all([
+        this.projectExternalLinkRepository.findByProjectId(project.projectId),
+        this.prisma
+          ? this.prisma.project.findUnique({ where: { id: project.id }, select: { shape: true, hasLiveSpcRates: true } })
+          : Promise.resolve(null),
+        this.prisma
+          ? this.prisma.projectBudget.findFirst({
+              where: { projectId: project.id },
+              orderBy: { fiscalYear: 'desc' },
+              select: {
+                capexBudget: true,
+                opexBudget: true,
+                earnedValue: true,
+                actualCost: true,
+                eac: true,
+              },
+            })
+          : Promise.resolve(null),
+        this.prisma
+          ? this.prisma.projectPosition.count({
+              where: { projectId: project.id, fillStatus: 'OPEN' },
+            })
+          : Promise.resolve(0),
+        // SoT PR 16a/1 — sourced from canonical ProjectPosition rows. Counts
+        // positions in any non-OPEN, non-DRAFT, non-RELEASED state (i.e. an
+        // actual fill).
+        this.prisma
+          ? this.prisma.projectPosition.count({
+              where: {
+                projectId: project.id,
+                fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+              },
+            })
+          : Promise.resolve(0),
+      ]);
 
     let cpi: number | null = null;
     let budgetStatus: ProjectBudgetStatus = 'UNSET';
@@ -82,7 +91,7 @@ export class GetProjectByIdService {
     }));
 
     return {
-      assignmentCount: assignments.filter((assignment) => assignment.projectId === project.id).length,
+      assignmentCount,
       budgetStatus,
       cpi,
       description: project.description ?? null,

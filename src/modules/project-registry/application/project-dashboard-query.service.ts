@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
 
 import { InMemoryProjectRepository } from '../infrastructure/repositories/in-memory/in-memory-project.repository';
 
@@ -48,11 +50,19 @@ export interface ProjectDashboardResponseDto {
   asOf: string;
 }
 
+const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
+type ActiveFillStatus = typeof ACTIVE_FILL_STATUSES[number];
+
+function isActiveFillStatus(value: string): value is ActiveFillStatus {
+  return (ACTIVE_FILL_STATUSES as readonly string[]).includes(value);
+}
+
 @Injectable()
 export class ProjectDashboardQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
     private readonly workEvidenceRepository: InMemoryWorkEvidenceRepository,
     private readonly prisma: PrismaService,
   ) {}
@@ -75,14 +85,25 @@ export class ProjectDashboardQueryService {
     const dbPeople = await this.prisma.person.findMany({ select: { id: true, displayName: true } });
     const allPeopleById = new Map(dbPeople.map((p) => [p.id, p]));
 
-    const allAssignments = await this.projectAssignmentRepository.findAll();
-    const projectAssignments = allAssignments.filter(
-      (assignment) => assignment.projectId === query.projectId,
+    // SoT PR 16a/1 — sourced from canonical ProjectPosition rows. Positions
+    // with `activePersonId === null` represent unfilled demand and are
+    // omitted from the assignments list (the legacy DTO had no concept of
+    // "unfilled assignment" so this matches existing FE expectations).
+    const projectPositions = await this.projectPositionRepository.findByQuery({
+      projectId: query.projectId,
+    });
+    const positionsWithFill = projectPositions.filter(
+      (position) => position.activePersonId !== undefined,
     );
 
-    const activeAssignments = projectAssignments.filter(
-      (assignment) => assignment.isActiveAt(asOf),
-    );
+    const activePositions = positionsWithFill.filter((position) => {
+      if (!isActiveFillStatus(position.fillStatus.value)) return false;
+      const validFrom = position.activeValidFrom;
+      const validTo = position.activeValidTo;
+      if (validFrom && validFrom > asOf) return false;
+      if (validTo && validTo < asOf) return false;
+      return true;
+    });
 
     const allEvidence = await this.workEvidenceRepository.list({ projectId: query.projectId, dateTo: asOf });
 
@@ -96,18 +117,19 @@ export class ProjectDashboardQueryService {
       .filter((item) => (item.occurredOn ?? item.recordedAt) >= cutoff30d)
       .reduce((sum, item) => sum + (item.durationMinutes ?? 0) / 60, 0);
 
-    // Allocation by person (from active assignments)
+    // Allocation by person (from active positions)
     const allocationByPersonMap = new Map<string, { displayName: string; allocationPercent: number }>();
-    for (const assignment of activeAssignments) {
-      const existing = allocationByPersonMap.get(assignment.personId);
-      const person = allPeopleById.get(assignment.personId);
-      const percent = assignment.allocationPercent?.value ?? 0;
+    for (const position of activePositions) {
+      const personId = position.activePersonId!;
+      const existing = allocationByPersonMap.get(personId);
+      const person = allPeopleById.get(personId);
+      const percent = position.activeAllocationPercent ?? 0;
       if (existing) {
         existing.allocationPercent += percent;
       } else {
-        allocationByPersonMap.set(assignment.personId, {
+        allocationByPersonMap.set(personId, {
           allocationPercent: percent,
-          displayName: person?.displayName ?? assignment.personId,
+          displayName: person?.displayName ?? personId,
         });
       }
     }
@@ -119,17 +141,18 @@ export class ProjectDashboardQueryService {
     return {
       allocationByPerson,
       asOf: asOf.toISOString(),
-      assignments: projectAssignments.map((assignment) => {
-        const person = allPeopleById.get(assignment.personId);
+      assignments: positionsWithFill.map((position) => {
+        const personId = position.activePersonId!;
+        const person = allPeopleById.get(personId);
         return {
-          allocationPercent: assignment.allocationPercent?.value ?? 0,
-          id: assignment.assignmentId.value,
-          personDisplayName: person?.displayName ?? assignment.personId,
-          personId: assignment.personId,
-          staffingRole: assignment.staffingRole,
-          status: assignment.status.value,
-          validFrom: assignment.validFrom.toISOString(),
-          validTo: assignment.validTo?.toISOString() ?? null,
+          allocationPercent: position.activeAllocationPercent ?? 0,
+          id: position.positionId.value,
+          personDisplayName: person?.displayName ?? personId,
+          personId,
+          staffingRole: position.role,
+          status: position.fillStatus.value,
+          validFrom: (position.activeValidFrom ?? position.startDate).toISOString(),
+          validTo: position.activeValidTo?.toISOString() ?? null,
         };
       }),
       evidenceByWeek,
@@ -144,8 +167,8 @@ export class ProjectDashboardQueryService {
         status: project.status,
       },
       staffingSummary: {
-        activeAssignmentCount: activeAssignments.length,
-        totalAssignments: projectAssignments.length,
+        activeAssignmentCount: activePositions.length,
+        totalAssignments: positionsWithFill.length,
         totalEvidenceHoursLast30d: Number(totalEvidenceHoursLast30d.toFixed(2)),
       },
     };

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
 
 import { InMemoryProjectRepository } from '../infrastructure/repositories/in-memory/in-memory-project.repository';
 
@@ -14,11 +15,16 @@ export interface ProjectHealthDto {
   timelineScore: number;
 }
 
+// Position fill statuses representing an active (approved) staffing record.
+// Mirrors the legacy assignment status filter (BOOKED/ONBOARDING/ASSIGNED/ON_HOLD).
+const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
+
 @Injectable()
 export class ProjectHealthQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -32,20 +38,14 @@ export class ProjectHealthQueryService {
     const now = new Date();
 
     // Staffing score (33 pts max)
-    const allAssignments = await this.projectAssignmentRepository.findAll();
-    const approvedAssignments = allAssignments.filter(
-      (a) =>
-        a.projectId === projectId &&
-        ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value),
-    );
-    const assignmentCount = approvedAssignments.length;
-    let staffingScore = 0;
-    if (assignmentCount > 0) {
-      const avgAllocation =
-        approvedAssignments.reduce((sum, a) => sum + (a.allocationPercent?.value ?? 0), 0) /
-        assignmentCount;
-      staffingScore = avgAllocation >= 80 ? 33 : 33;
-    }
+    // SoT PR 16a/1 — counts canonical ProjectPosition rows in active fill
+    // statuses (replaces the legacy ProjectAssignment count).
+    const activePositions = await this.projectPositionRepository.findByQuery({
+      projectId,
+      fillStatuses: ACTIVE_FILL_STATUSES,
+    });
+    const assignmentCount = activePositions.length;
+    const staffingScore = assignmentCount > 0 ? 33 : 0;
 
     // Time score (33 pts max) based on approved timesheet activity in the last 30 days.
     const cutoff30d = new Date(now);
@@ -108,18 +108,18 @@ export class ProjectHealthQueryService {
 
     const now = new Date();
 
-    // 2. ALL approved-state assignments for the requested projects in ONE call.
-    const allAssignments = await this.projectAssignmentRepository.findAll();
+    // 2. ALL active positions for the requested projects in ONE call.
+    const activePositions = await this.prisma.projectPosition.groupBy({
+      by: ['projectId'],
+      where: {
+        projectId: { in: [...presentIds] },
+        fillStatus: { in: ACTIVE_FILL_STATUSES as unknown as Array<'BOOKED' | 'ONBOARDING' | 'ASSIGNED' | 'ON_HOLD'> },
+      },
+      _count: { _all: true },
+    });
     const approvedByProject = new Map<string, number>();
-    const allocationSumByProject = new Map<string, number>();
-    for (const a of allAssignments) {
-      if (!presentIds.has(a.projectId)) continue;
-      if (!['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(a.status.value)) continue;
-      approvedByProject.set(a.projectId, (approvedByProject.get(a.projectId) ?? 0) + 1);
-      allocationSumByProject.set(
-        a.projectId,
-        (allocationSumByProject.get(a.projectId) ?? 0) + (a.allocationPercent?.value ?? 0),
-      );
+    for (const row of activePositions) {
+      approvedByProject.set(row.projectId, row._count._all);
     }
 
     // 3. Approved-timesheet counts grouped by projectId in ONE call.

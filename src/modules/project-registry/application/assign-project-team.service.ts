@@ -1,13 +1,15 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { CreateProjectAssignmentService } from '@src/modules/assignments/application/create-project-assignment.service';
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { OrgUnitRepositoryPort } from '@src/modules/organization/domain/repositories/org-unit-repository.port';
 import { PersonOrgMembershipRepositoryPort } from '@src/modules/organization/domain/repositories/person-org-membership-repository.port';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { OrgUnitId } from '@src/modules/organization/domain/value-objects/org-unit-id';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { CreateProjectPositionService } from '@src/modules/project-positions/application/create-project-position.service';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 import { ProjectId } from '../domain/value-objects/project-id';
@@ -52,6 +54,8 @@ export interface AssignProjectTeamResult {
 const DUPLICATE_ASSIGNMENT_REASON =
   'Overlapping assignment for the same person and project already exists.';
 
+const ACTIVE_FILL_STATUSES = ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
+
 @Injectable()
 export class AssignProjectTeamService {
   public constructor(
@@ -59,8 +63,10 @@ export class AssignProjectTeamService {
     private readonly orgUnitRepository: OrgUnitRepositoryPort,
     private readonly personRepository: PersonRepositoryPort,
     private readonly personOrgMembershipRepository: PersonOrgMembershipRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
-    private readonly createProjectAssignmentService: CreateProjectAssignmentService,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
+    private readonly createProjectPositionService: CreateProjectPositionService,
+    private readonly transitionProjectPositionFillService: TransitionProjectPositionFillService,
     private readonly auditLogger?: AuditLoggerService,
   ) {}
 
@@ -113,13 +119,21 @@ export class AssignProjectTeamService {
     const skippedDuplicates: TeamAssignmentSkippedItem[] = [];
     const membersToCreate: Array<{ personId: string; personName: string }> = [];
 
+    // SoT PR 16a/1 — overlap check sourced from canonical ProjectPosition rows.
+    const projectPositions = await this.projectPositionRepository.findByQuery({
+      projectId: command.projectId,
+      fillStatuses: ACTIVE_FILL_STATUSES,
+    });
+
     for (const member of teamMembers) {
-      const overlaps = await this.projectAssignmentRepository.findOverlappingByPersonAndProject(
-        member.personId,
-        command.projectId,
-        startDate,
-        endDate,
-      );
+      const overlaps = projectPositions.filter((position) => {
+        if (position.activePersonId !== member.personId) return false;
+        const positionStart = position.activeValidFrom ?? position.startDate;
+        const positionEnd = position.activeValidTo ?? position.endDate;
+        // [positionStart, positionEnd] overlaps [startDate, endDate ?? +Infinity]
+        const upperBound = endDate ?? new Date(8640000000000000);
+        return positionStart <= upperBound && positionEnd >= startDate;
+      });
 
       if (overlaps.length > 0) {
         skippedDuplicates.push({
@@ -146,21 +160,38 @@ export class AssignProjectTeamService {
         );
       }
 
-      const assignment = await this.createProjectAssignmentService.execute({
+      const position = await this.createProjectPositionService.execute({
         actorId: command.actorId,
-        allocationPercent: command.allocationPercent,
-        endDate: command.endDate,
-        note: command.note,
-        personId: member.personId,
         projectId: command.projectId,
-        projectValidated: true,
-        personValidated: true,
-        staffingRole: command.staffingRole,
+        role: command.staffingRole,
+        requiredAllocationPercent: command.allocationPercent,
         startDate: command.startDate,
+        endDate: command.endDate ?? command.startDate,
+        openImmediately: true,
+        requestedByPersonId: command.actorId,
+      });
+
+      // Move the new position to BOOKED with the team member as the active fill.
+      await this.transitionProjectPositionFillService.execute({
+        positionId: position.positionId.value,
+        toStatus: 'PROPOSED',
+        actorId: command.actorId,
+        actorRoles: ['admin'],
+        personId: member.personId,
+        allocationPercent: command.allocationPercent,
+        validFrom: command.startDate,
+        validTo: command.endDate,
+      });
+
+      await this.transitionProjectPositionFillService.execute({
+        positionId: position.positionId.value,
+        toStatus: 'BOOKED',
+        actorId: command.actorId,
+        actorRoles: ['admin'],
       });
 
       createdAssignments.push({
-        assignmentId: assignment.assignmentId.value,
+        assignmentId: position.positionId.value,
         personId: member.personId,
         personName: member.personName,
       });
