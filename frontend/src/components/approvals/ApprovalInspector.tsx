@@ -6,22 +6,19 @@ import { Avatar, Button, Textarea } from '@/components/ds';
 import { Money } from '@/components/ds';
 import { Pct } from '@/components/ds/Pct';
 import { VarianceBar } from '@/components/ds';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import {
   decideApproval,
   type ApprovalQueueItemDto,
   type ApprovalQueueSource,
   type SlaStage,
 } from '@/lib/api/approvals-unified';
+import { BudgetApprovalInspector } from './BudgetApprovalInspector';
 
-// W2-09 — there is no generic POST /api/approvals/:id/escalate endpoint. The
-// only escalation flow that exists is the delivery-manager-specific rejection
-// escalation (POST /api/dm-escalations), which is not the right call here:
-// (a) it requires DM-rejection context the inspector does not have, and
-// (b) it is restricted to DELIVERY_EXEC_ROLES, not the broader approval-queue
-// audience (HR / RM / PM / etc).
-// Per UX Law 2 (no dead-end CTAs) the in-place button is removed; operators
-// who need to escalate can still do so by opening the source page via the
-// "Open source ↗" link, which routes to the source-specific workflow.
+// SoT PR 11 — Escalate button stays HIDDEN per the source-of-truth rule:
+// no generic POST /api/approvals/:id/escalate endpoint exists, so a visible
+// CTA would violate UX Law 2 (no dead-end screens). Operators escalate via
+// the source-specific page reached through the "Open source ↗" link.
 
 interface ApprovalInspectorProps {
   item: ApprovalQueueItemDto;
@@ -120,6 +117,24 @@ const S_SECTION_LABEL: React.CSSProperties = {
   color: 'var(--color-text-subtle)',
   marginBottom: 6,
 };
+const S_KBD: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 20,
+  height: 20,
+  padding: '0 5px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  color: 'var(--color-text-muted)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border-strong)',
+  borderBottomWidth: 2,
+  borderRadius: 4,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+};
 
 function ageLabel(hours: number): string {
   if (hours < 1) return '<1h';
@@ -145,19 +160,14 @@ function readString(meta: Record<string, unknown>, key: string): string | null {
 }
 
 /**
- * V2-A.5 — one-screen-approval inspector per `DS/page-approvals.jsx:39-138`.
+ * SoT PR 11 — one-screen-approval inspector per `DS/page-approvals.jsx:39-138`.
  *
- * Renders the per-row approval detail to satisfy UX Law 7 (all context needed
- * to approve or reject visible alongside the action buttons). Source-specific
- * meta fields are surfaced opportunistically: when known keys are present they
- * render with the matching DS atom (Money for currency, Pct for ratios,
- * VarianceBar for over/under deltas), otherwise the inspector falls back to a
- * generic key/value list.
- *
- * Approve/Reject decisions route through `decideApproval` (V2 §4 PR-1). The
- * Escalate button was removed in W2-09 — no generic escalate endpoint exists
- * on the unified approvals API, so we route operators to the source page via
- * "Open source ↗" rather than leave a dead-end CTA (UX Law 2).
+ * Sources `'budget'` delegate to {@link BudgetApprovalInspector} which renders
+ * the full DS canvas — 4 key-figure tiles (Baseline / Actuals YTD / EAC /
+ * Variance), VarianceBar breakdown rows, Sparkline forecast, required comment
+ * textarea, and A/R kbd hints. All other sources render the generic layout
+ * below (project / current / requested / variance tiles + optional leave or
+ * reason blocks), keeping the same comment/footer pattern.
  */
 export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspectorProps): JSX.Element {
   const [comment, setComment] = useState('');
@@ -172,12 +182,8 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
   const projectName = readString(item.meta, 'projectName');
   const reason = readString(item.meta, 'reason') ?? readString(item.meta, 'justification');
 
-  // V2-A.17 — leave-source specific meta. When the row is a leave request,
-  // surface leave type / date range / business-day count / balance remaining
-  // so the user can decide without leaving the approvals surface (folds the
-  // time-management LeaveDecisionDrawer view into Approvals per reconciliation
-  // §5). All keys are best-effort — backends are encouraged to populate them
-  // for leave items but the inspector tolerates absence.
+  // V2-A.17 — leave-source meta fields surfaced inline so HR/managers decide
+  // without leaving Approvals.
   const isLeave = item.source === 'leave';
   const leaveType = isLeave ? readString(item.meta, 'leaveType') : null;
   const leaveStart = isLeave ? readString(item.meta, 'leaveStartDate') ?? readString(item.meta, 'startDate') : null;
@@ -199,9 +205,6 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
     try {
       const result = await decideApproval(item.id, item.source, decision, {
         comment: trimmedComment,
-        // For sources that demand a reason on reject (budget / activation /
-        // case) the BE returns 400 if missing — we pass the decision note
-        // through as the reason so the operator can supply it inline.
         reason: decision === 'REJECT' ? trimmedComment : undefined,
       });
       toast.success(
@@ -218,6 +221,11 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
       setSubmitting(null);
     }
   }
+
+  // SoT PR 11 — budget approvals get the full DS canvas inspector. Other
+  // sources share the same wrapper so the keyboard model + footer + comment
+  // pattern stay identical across sources.
+  const isBudget = item.source === 'budget';
 
   return (
     <aside style={S_PANEL} aria-label="Approval inspector" data-testid="approval-inspector">
@@ -239,13 +247,11 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
             {item.slaStage ? (
               <>
                 <span aria-hidden="true">·</span>
-                <span
-                  className={`badge badge-${SLA_TONE[item.slaStage]}`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  <span className="dot" />
-                  {SLA_LABEL[item.slaStage]}
-                </span>
+                <StatusBadge
+                  tone={SLA_TONE[item.slaStage]}
+                  label={SLA_LABEL[item.slaStage]}
+                  variant="chip"
+                />
               </>
             ) : null}
           </div>
@@ -253,109 +259,122 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
         <Button variant="ghost" size="sm" onClick={onClose} type="button" aria-label="Close inspector">×</Button>
       </div>
 
-      {/* 4-tile context strip */}
-      <div style={S_CTX_GRID}>
-        {projectCode || projectName ? (
-          <div>
-            <div style={S_CTX_LABEL}>Project</div>
-            <div style={S_CTX_VALUE}>
-              {projectCode ? <span style={{ color: 'var(--color-text-muted)', marginRight: 4 }}>{projectCode}</span> : null}
-              {projectName ?? '—'}
-            </div>
-          </div>
-        ) : null}
-        {currentAmount != null ? (
-          <div>
-            <div style={S_CTX_LABEL}>Current</div>
-            <div style={S_CTX_VALUE}><Money value={currentAmount} currency={currency} /></div>
-          </div>
-        ) : null}
-        {requestedAmount != null ? (
-          <div>
-            <div style={S_CTX_LABEL}>Requested</div>
-            <div style={S_CTX_VALUE}><Money value={requestedAmount} currency={currency} /></div>
-          </div>
-        ) : null}
-        {effectiveVariancePct != null ? (
-          <div>
-            <div style={S_CTX_LABEL}>Variance</div>
-            <div style={S_CTX_VALUE}>
-              <Pct value={effectiveVariancePct} sign tone="auto" fractionDigits={0} />
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Variance visualization */}
-      {effectiveVariancePct != null ? (
-        <div>
-          <div style={S_SECTION_LABEL}>Variance vs current</div>
-          <VarianceBar
-            value={effectiveVariancePct}
-            max={Math.max(50, Math.abs(effectiveVariancePct) * 1.5)}
-            width={280}
-            height={14}
-            ariaLabel={`Variance ${effectiveVariancePct}%`}
-          />
-        </div>
-      ) : null}
-
-      {/* V2-A.17 — leave-specific detail block. Surfaces the LeaveDecisionDrawer
-          context (type, date range, business-day count, balance impact)
-          inline so the manager can decide on a leave request without the
-          separate /time-management trip. */}
-      {hasLeaveDetail ? (
-        <div data-testid="approval-inspector-leave-detail">
-          <div style={S_SECTION_LABEL}>Leave detail</div>
+      {isBudget ? (
+        <BudgetApprovalInspector
+          meta={item.meta}
+          currency={currency}
+          fallback={{
+            projectCode,
+            projectName,
+            currentAmount,
+            requestedAmount,
+            variancePercent: effectiveVariancePct,
+          }}
+        />
+      ) : (
+        <>
+          {/* 4-tile context strip for non-budget sources */}
           <div style={S_CTX_GRID}>
-            {leaveType ? (
+            {projectCode || projectName ? (
               <div>
-                <div style={S_CTX_LABEL}>Type</div>
-                <div style={S_CTX_VALUE}>{leaveType}</div>
-              </div>
-            ) : null}
-            {leaveStart || leaveEnd ? (
-              <div>
-                <div style={S_CTX_LABEL}>Dates</div>
+                <div style={S_CTX_LABEL}>Project</div>
                 <div style={S_CTX_VALUE}>
-                  {leaveStart ?? '—'}{leaveEnd && leaveEnd !== leaveStart ? ` → ${leaveEnd}` : ''}
+                  {projectCode ? <span style={{ color: 'var(--color-text-muted)', marginRight: 4 }}>{projectCode}</span> : null}
+                  {projectName ?? '—'}
                 </div>
               </div>
             ) : null}
-            {leaveBusinessDays != null ? (
+            {currentAmount != null ? (
               <div>
-                <div style={S_CTX_LABEL}>Business days</div>
-                <div style={S_CTX_VALUE}>{leaveBusinessDays}</div>
+                <div style={S_CTX_LABEL}>Current</div>
+                <div style={S_CTX_VALUE}><Money value={currentAmount} currency={currency} /></div>
               </div>
             ) : null}
-            {leaveBalanceRemaining != null ? (
+            {requestedAmount != null ? (
               <div>
-                <div style={S_CTX_LABEL}>Balance after</div>
-                <div
-                  style={{
-                    ...S_CTX_VALUE,
-                    color: leaveBalanceRemaining < 0 ? 'var(--color-status-danger)' : 'var(--color-text)',
-                  }}
-                >
-                  {leaveBalanceRemaining}
+                <div style={S_CTX_LABEL}>Requested</div>
+                <div style={S_CTX_VALUE}><Money value={requestedAmount} currency={currency} /></div>
+              </div>
+            ) : null}
+            {effectiveVariancePct != null ? (
+              <div>
+                <div style={S_CTX_LABEL}>Variance</div>
+                <div style={S_CTX_VALUE}>
+                  <Pct value={effectiveVariancePct} sign tone="auto" fractionDigits={0} />
                 </div>
               </div>
             ) : null}
           </div>
-        </div>
-      ) : null}
 
-      {/* Reason / justification */}
-      {reason ? (
-        <div>
-          <div style={S_SECTION_LABEL}>Submitter rationale</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5 }}>{reason}</div>
-        </div>
-      ) : null}
+          {effectiveVariancePct != null ? (
+            <div>
+              <div style={S_SECTION_LABEL}>Variance vs current</div>
+              <VarianceBar
+                value={effectiveVariancePct}
+                max={Math.max(50, Math.abs(effectiveVariancePct) * 1.5)}
+                width={280}
+                height={14}
+                ariaLabel={`Variance ${effectiveVariancePct}%`}
+              />
+            </div>
+          ) : null}
 
-      {/* Comment field */}
+          {hasLeaveDetail ? (
+            <div data-testid="approval-inspector-leave-detail">
+              <div style={S_SECTION_LABEL}>Leave detail</div>
+              <div style={S_CTX_GRID}>
+                {leaveType ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Type</div>
+                    <div style={S_CTX_VALUE}>{leaveType}</div>
+                  </div>
+                ) : null}
+                {leaveStart || leaveEnd ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Dates</div>
+                    <div style={S_CTX_VALUE}>
+                      {leaveStart ?? '—'}{leaveEnd && leaveEnd !== leaveStart ? ` → ${leaveEnd}` : ''}
+                    </div>
+                  </div>
+                ) : null}
+                {leaveBusinessDays != null ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Business days</div>
+                    <div style={S_CTX_VALUE}>{leaveBusinessDays}</div>
+                  </div>
+                ) : null}
+                {leaveBalanceRemaining != null ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Balance after</div>
+                    <div
+                      style={{
+                        ...S_CTX_VALUE,
+                        color: leaveBalanceRemaining < 0 ? 'var(--color-status-danger)' : 'var(--color-text)',
+                      }}
+                    >
+                      {leaveBalanceRemaining}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {reason ? (
+            <div>
+              <div style={S_SECTION_LABEL}>Submitter rationale</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5 }}>{reason}</div>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {/* Comment field — DS canvas marks this required. Empty submissions are
+          still accepted by the backend; the label communicates intent. */}
       <div>
-        <div style={S_SECTION_LABEL}>Decision note (optional)</div>
+        <div style={S_SECTION_LABEL}>
+          Decision comment <span style={{ color: 'var(--color-text-subtle)' }}>(required)</span>
+        </div>
         <Textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -364,10 +383,36 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
         />
       </div>
 
-      {/* Footer — Open source ↗ deep-link + Reject + Approve. Escalate was
-          removed in W2-09 because no generic /api/approvals/:id/escalate
-          endpoint exists; operators escalate via the source page instead. */}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      {/* Footer — Open source ↗ deep-link + Reject + Approve + A/R kbd hints.
+          Escalate stays hidden because no generic /api/approvals/:id/escalate
+          endpoint exists (UX Law 2 — no dead-end CTAs). */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          flexWrap: 'wrap',
+        }}
+        data-testid="approval-inspector-footer"
+      >
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginRight: 'auto',
+            color: 'var(--color-text-muted)',
+            fontSize: 11,
+          }}
+          data-testid="approval-inspector-kbd-hints"
+        >
+          <span style={S_KBD}>A</span>
+          <span>Approve</span>
+          <span aria-hidden="true">·</span>
+          <span style={S_KBD}>R</span>
+          <span>Reject</span>
+        </span>
         <Button as={Link} variant="secondary" size="sm" to={item.href} aria-label="Open source page">
           Open source ↗
         </Button>
@@ -395,3 +440,4 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
     </aside>
   );
 }
+
