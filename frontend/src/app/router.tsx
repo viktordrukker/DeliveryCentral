@@ -178,9 +178,13 @@ const dashboardChildren = [
     path: 'dashboard/manager',
   },
   {
+    // SoT PR 3 — /dashboard/exec was redirecting to /dashboard/director under
+    // dsRefresh, which leaked a flag-gated (dashDirector default-off) surface.
+    // V2 users now land on the unified /me workspace; legacy users still get
+    // the ExecDashboardPage when dsRefresh is off.
     element: (
       <RoleGuard allowedRoles={['director', 'admin', 'hr_manager', 'project_manager', 'resource_manager', 'delivery_manager']}>
-        <V2Redirect to="/dashboard/director"><LazyPage><ExecDashboardPage /></LazyPage></V2Redirect>
+        <V2Redirect to="/me"><LazyPage><ExecDashboardPage /></LazyPage></V2Redirect>
       </RoleGuard>
     ),
     path: 'dashboard/exec',
@@ -189,24 +193,27 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={EMPLOYEE_DASHBOARD_ROLES}><V2Redirect to="/me"><LazyPage><EmployeeDashboardPage /></LazyPage></V2Redirect></RoleGuard>,
     path: 'dashboard/employee',
   },
+  // SoT PR 3 — per-role dashboards are flag-gated (navVisible:false in the
+  // manifest). Wrap each in FeatureGuard so direct-URL access also enforces
+  // the flag — otherwise the surfaces are reachable despite being hidden.
   {
-    element: <RoleGuard allowedRoles={PM_DASHBOARD_ROLES}><LazyPage><ProjectManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={PM_DASHBOARD_ROLES}><FeatureGuard flag="dashProjectManager"><LazyPage><ProjectManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/project-manager',
   },
   {
-    element: <RoleGuard allowedRoles={RM_DASHBOARD_ROLES}><LazyPage><ResourceManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={RM_DASHBOARD_ROLES}><FeatureGuard flag="dashResourceManager"><LazyPage><ResourceManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/resource-manager',
   },
   {
-    element: <RoleGuard allowedRoles={HR_DASHBOARD_ROLES}><LazyPage><HrDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={HR_DASHBOARD_ROLES}><FeatureGuard flag="dashHr"><LazyPage><HrDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/hr',
   },
   {
-    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><LazyPage><DeliveryManagerDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><FeatureGuard flag="dashDeliveryManager"><LazyPage><DeliveryManagerDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/delivery-manager',
   },
   {
-    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><LazyPage><DirectorDashboardPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={DIRECTOR_ADMIN_ROLES}><FeatureGuard flag="dashDirector"><LazyPage><DirectorDashboardPage /></LazyPage></FeatureGuard></RoleGuard>,
     path: 'dashboard/director',
   },
   // W1-01 — short-form dashboard aliases for muscle-memory URLs.
@@ -221,7 +228,10 @@ const dashboardChildren = [
   // unified queue at /approvals.
   { element: <Navigate to="/approvals" replace />, path: 'approvals/queue' },
   {
-    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/dashboard/director"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
+    // SoT PR 3 — was redirecting to /dashboard/director under dsRefresh,
+    // which leaked the flag-gated (dashDirector default-off) surface. Route
+    // V2 users to /me instead.
+    element: <RoleGuard allowedRoles={DELIVERY_DASHBOARD_ROLES}><V2Redirect to="/me"><PortfolioRadiatorPage /></V2Redirect></RoleGuard>,
     path: 'dashboards/portfolio-radiator',
   },
   {

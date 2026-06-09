@@ -200,9 +200,10 @@ export function ProjectTimeline({ filters }: Props): JSX.Element {
               <span style={{ fontSize: 10, color: 'var(--color-status-warning)', fontWeight: 600 }}>
                 {simulations.length} move{simulations.length > 1 ? 's' : ''}
               </span>
-              <Button variant="primary" size="sm" type="button" style={{ fontSize: 10 }} onClick={() => { /* TODO: apply simulations as real assignments */ }}>
-                Apply
-              </Button>
+              {/* SoT PR 3 — Apply button removed: no BE endpoint exists to
+                  promote simulations into real assignments yet (UX Law 2 —
+                  no dead-end CTA). Discard remains so operators can clear
+                  the local simulation buffer. */}
               <Button variant="secondary" size="sm" type="button" style={{ fontSize: 10 }} onClick={discardSimulations}>
                 Discard
               </Button>
