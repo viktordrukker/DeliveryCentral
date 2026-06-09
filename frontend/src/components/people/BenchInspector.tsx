@@ -266,6 +266,9 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
             } catch {
               // sessionStorage may throw in private-browsing contexts; ignore.
             }
+            // SoT PR 8 — open the embedded CreatePositionDrawer on /staffing-desk
+            // (no full-page form). Bench has no project context, so we deep-link
+            // to the staffing desk and let the PM pick the project in the drawer.
             navigate(`/staffing-desk?openCreatePosition=true&candidatePersonId=${row.personId}`);
           }}
         >

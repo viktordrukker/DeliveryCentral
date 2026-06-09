@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
@@ -10,6 +10,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
+import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
 import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
@@ -90,6 +91,25 @@ export function StaffingDeskPage(): JSX.Element {
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
   const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
+  // SoT PR 8 — embedded CreatePositionDrawer driven by `?openCreatePosition=true`.
+  // Same query-param contract as ProjectDetailPage so BenchInspector deep-links
+  // and other callers behave consistently.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createPositionOpen = searchParams.get('openCreatePosition') === 'true';
+  const closeCreatePosition = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('openCreatePosition');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const openCreatePosition = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('openCreatePosition', 'true');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [timelinePopup, setTimelinePopup] = useState<{ personId: string; personName: string } | null>(null);
 
@@ -189,9 +209,20 @@ export function StaffingDeskPage(): JSX.Element {
           says "Quick" so users know which surface they're about to open; the
           secondary CTA points to the full-page workflow for slate/pick details. */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        <Button variant="primary" size="sm" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
-        <Button as={Link} variant="ghost" size="sm" to="/staffing-desk?openCreatePosition=true">New Position (Full page)</Button>
+        {/* SoT PR 8 — embedded CreatePositionDrawer (V2-done criterion 6).
+            Replaces the legacy "(Full page)" link to /staffing-requests/new. */}
+        <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>+ New Position</Button>
+        <Button variant="ghost" size="sm" type="button" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
       </div>
+      <CreatePositionDrawer
+        open={createPositionOpen}
+        initialProjectId={filters.project || filters.projectId || undefined}
+        onClose={closeCreatePosition}
+        onCreated={() => {
+          closeCreatePosition();
+          state.refetch();
+        }}
+      />
       <StaffingRequestDrawer
         open={requestDrawerOpen}
         onClose={() => setRequestDrawerOpen(false)}
