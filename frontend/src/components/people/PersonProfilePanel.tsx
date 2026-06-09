@@ -6,36 +6,42 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
+import { Donut } from '@/components/ds/Donut';
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
-import { Tabs, Timeline, Table, type Column, type TabItem, type TimelineSegment } from '@/components/ds';
+import { Button, Tabs, Timeline, Table, type Column, type TabItem, type TimelineSegment } from '@/components/ds';
 import { PersonActivityFeed } from './PersonActivityFeed';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import {
   type PersonProfileDto,
   fetchPersonProfile,
 } from '@/lib/api/person-profile';
+import {
+  fetchPersonSuggestedPositions,
+  type PersonSuggestedPosition,
+} from '@/lib/api/project-positions';
 
 interface PersonProfilePanelProps {
   personId: string;
 }
 
 /**
- * V2 Scope §4 item 7 — 5-tab grammar (gated behind `dsRefresh`).
+ * SoT PR 9 — 6-tab grammar (gated behind `dsRefresh`).
  *
- * Identity / Assignments / Skills / Leave / Activity. HR endorsers, leave
- * admins, and RM drill-downs each have a 1-click target instead of a 1000px
- * scroll. Tab state lives in `?tab=…` so deep-links + back-button restore
- * the right pane. Legacy flat-canvas path is preserved when the flag is OFF.
+ * Overview / Positions / Skills / Cost rates / Time & leave / Activity, matching
+ * DS/page-profile.jsx. Tab state lives in `?tab=…` so deep-links + back-button
+ * restore the right pane. Legacy flat-canvas path is preserved when the flag is
+ * OFF.
  */
 const V2_TABS: TabItem[] = [
-  { id: 'identity', label: 'Identity' },
-  { id: 'assignments', label: 'Positions' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'positions', label: 'Positions' },
   { id: 'skills', label: 'Skills' },
-  { id: 'leave', label: 'Leave' },
+  { id: 'cost', label: 'Cost rates' },
+  { id: 'time', label: 'Time & leave' },
   { id: 'activity', label: 'Activity' },
 ];
-type V2TabId = 'identity' | 'assignments' | 'skills' | 'leave' | 'activity';
+type V2TabId = 'overview' | 'positions' | 'skills' | 'cost' | 'time' | 'activity';
 
 const KPI: React.CSSProperties = {
   display: 'flex',
@@ -63,7 +69,10 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
   const [loading, setLoading] = useState(true);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as V2TabId | null) ?? 'identity';
+  const activeTab = (searchParams.get('tab') as V2TabId | null) ?? 'overview';
+  // SoT PR 9 — right-rail suggested next positions are sourced from the same
+  // endpoint as the bench inspector, restricted to 3 rows per DS canvas.
+  const [suggestedPositions, setSuggestedPositions] = useState<PersonSuggestedPosition[]>([]);
 
   function setTab(tab: V2TabId): void {
     setSearchParams((prev) => {
@@ -96,6 +105,22 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
       active = false;
     };
   }, [personId]);
+
+  // SoT PR 9 — fetch 3 suggested next positions for the right rail.
+  useEffect(() => {
+    if (!personId || !dsRefreshEnabled) return;
+    let active = true;
+    void fetchPersonSuggestedPositions(personId, 3)
+      .then((res) => {
+        if (active) setSuggestedPositions(res.candidates);
+      })
+      .catch(() => {
+        if (active) setSuggestedPositions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [personId, dsRefreshEnabled]);
 
   if (loading) return <LoadingState variant="skeleton" skeletonType="page" />;
   if (error) return <ErrorState description={error} />;
@@ -419,12 +444,155 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
     </SectionCard>
   );
 
-  // V2 Scope §4 item 7 — dsRefresh-gated tab grammar. 5 tabs, URL-driven.
-  // Each tab's content is gated on `activeTab === <id>` so deep-links to
-  // ?tab=skills land an HR endorser directly on the skills pane without
-  // scrolling past identity + assignments. Legacy flat-canvas layout below
-  // stays bit-identical when the flag is OFF.
+  // SoT PR 9 — dsRefresh-gated 6-tab grammar with 320px right rail.
+  // Tabs: Overview / Positions / Skills / Cost rates / Time & leave / Activity.
+  // Right rail (per DS/page-profile.jsx): Quick actions, Suggested next positions,
+  // Activity timeline. Legacy flat-canvas layout below stays bit-identical when
+  // the flag is OFF.
   if (dsRefreshEnabled) {
+    const overviewCard = (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+        {managerChainCard}
+        {poolsCard}
+      </div>
+    );
+    const costRatesCard = (
+      <SectionCard title="Cost rates">
+        {costRate != null ? (
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-text)' }}>
+            Current rate: <Money value={costRate} compact />
+            <span style={{ color: 'var(--color-text-muted)', marginLeft: 8, fontSize: 12 }}>
+              / day
+            </span>
+          </p>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+            No cost rate visible at your role.
+          </p>
+        )}
+      </SectionCard>
+    );
+    const timeAndLeaveCard = (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+        <SectionCard title="Timesheet · last 4 weeks">
+          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, fontSize: 13 }}>
+            <dt style={{ color: 'var(--color-text-muted)' }}>Logged hours</dt>
+            <dd style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {timesheetSummary.last4WeeksHours}h
+            </dd>
+            <dt style={{ color: 'var(--color-text-muted)' }}>Overtime</dt>
+            <dd
+              style={{
+                fontVariantNumeric: 'tabular-nums',
+                fontWeight: 600,
+                color: timesheetSummary.overtimeHours > 8 ? 'var(--color-status-warning)' : 'var(--color-text)',
+              }}
+            >
+              {timesheetSummary.overtimeHours}h
+            </dd>
+            <dt style={{ color: 'var(--color-text-muted)' }}>Leave hours</dt>
+            <dd style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+              {timesheetSummary.leaveHours}h
+            </dd>
+          </dl>
+        </SectionCard>
+        {leaveCard}
+      </div>
+    );
+    const quickActionsCard = (
+      <SectionCard title="Quick actions">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} data-testid="person-profile-quick-actions">
+          <Button
+            as={Link}
+            variant="secondary"
+            size="md"
+            to={`/staffing-desk?view=board&personId=${personId}`}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Propose to open position
+          </Button>
+          <Button
+            as={Link}
+            variant="secondary"
+            size="md"
+            to={`/people/${personId}?tab=skills`}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Edit skills
+          </Button>
+          <Button
+            as={Link}
+            variant="secondary"
+            size="md"
+            to={`/org?personId=${personId}`}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Move org unit
+          </Button>
+          <Button
+            as={Link}
+            variant="secondary"
+            size="md"
+            to={`/me?tab=leave`}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            Plan leave
+          </Button>
+          <Button
+            as={Link}
+            variant="secondary"
+            size="md"
+            to={`/people/${personId}?tab=activity`}
+            style={{ justifyContent: 'flex-start' }}
+          >
+            View activity
+          </Button>
+        </div>
+      </SectionCard>
+    );
+    const suggestedNextCard = (
+      <SectionCard title="Suggested next positions">
+        {suggestedPositions.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: 0 }}>
+            No matching open positions right now.
+          </p>
+        ) : (
+          <ul
+            data-testid="person-profile-suggested-positions"
+            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            {suggestedPositions.map((s) => (
+              <li
+                key={s.positionId}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}
+              >
+                <Donut value={Math.round(s.matchScore * 100)} size={32} thickness={4} tone="info" />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Link
+                    to={`/projects/${s.projectId}/positions/${s.positionPublicId ?? s.positionId}`}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: 'var(--color-text)',
+                      textDecoration: 'none',
+                      display: 'block',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {s.role}
+                  </Link>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    {s.projectName}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
+    );
     return (
       <div data-testid="person-profile-panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {identityCard}
@@ -437,16 +605,27 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
           idPrefix="person-profile-tab"
           testId="person-profile-tabs"
         />
-        {activeTab === 'identity' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-            {managerChainCard}
-            {poolsCard}
+        <div
+          data-testid="person-profile-body"
+          style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 16, alignItems: 'flex-start' }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            {activeTab === 'overview' ? overviewCard : null}
+            {activeTab === 'positions' ? assignmentsCard : null}
+            {activeTab === 'skills' ? skillsCard : null}
+            {activeTab === 'cost' ? costRatesCard : null}
+            {activeTab === 'time' ? timeAndLeaveCard : null}
+            {activeTab === 'activity' ? activityCard : null}
           </div>
-        ) : null}
-        {activeTab === 'assignments' ? assignmentsCard : null}
-        {activeTab === 'skills' ? skillsCard : null}
-        {activeTab === 'leave' ? leaveCard : null}
-        {activeTab === 'activity' ? activityCard : null}
+          <aside
+            data-testid="person-profile-right-rail"
+            style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16 }}
+          >
+            {quickActionsCard}
+            {suggestedNextCard}
+            {activityCard}
+          </aside>
+        </div>
       </div>
     );
   }

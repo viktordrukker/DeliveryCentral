@@ -597,12 +597,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               />
             </SectionCard>
 
-            <SectionCard title="Future Workload and History">
-              <EmptyState
-                description="Future allocations, org history, and employee activity history are not yet available."
-                title="No history data"
-              />
-            </SectionCard>
           </div>
         </>
       ) : null}
