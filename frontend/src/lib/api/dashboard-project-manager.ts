@@ -35,7 +35,9 @@ export interface RecentlyChangedAssignmentItem {
   projectName: string;
 }
 
-export interface OpenStaffingRequestSummary {
+// SoT PR 14 — position-based DTO. Each row is one `ProjectPosition` whose
+// `fillStatus` is OPEN or PROPOSED (the lean canonical for unfilled demand).
+export interface OpenPositionSummary {
   headcountFulfilled: number;
   headcountRequired: number;
   id: string;
@@ -51,7 +53,7 @@ export interface ProjectManagerDashboardResponse {
   dataSources: string[];
   managedProjects: ManagedProjectDashboardItem[];
   openRequestCount: number;
-  openRequests: OpenStaffingRequestSummary[];
+  openRequests: OpenPositionSummary[];
   person: ProjectManagerDashboardPersonSummary;
   projectsWithTimeVariance: ProjectDashboardAttentionItem[];
   projectsWithStaffingGaps: ProjectDashboardAttentionItem[];
