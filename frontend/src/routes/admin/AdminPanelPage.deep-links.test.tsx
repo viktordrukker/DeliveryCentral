@@ -6,11 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { ImpersonationProvider } from '@/app/impersonation-context';
 import { AdminPanelPage } from './AdminPanelPage';
 
-// V2 W2-03 — /admin under dsRefresh surfaces deep-link cards for every
-// admin sub-page so users land at /admin and reach every admin surface
-// without leaving the consolidated control surface. Existing /admin/*
-// routes remain deep-linkable; these tests assert each card renders the
-// correct anchor with the correct href.
+// V2 SoT PR 12 — /admin DS canvas conformance carries the deep-link cards
+// forward from W2-03. Each tab exposes anchors to its sub-page routes so
+// users land at /admin and reach every admin surface without leaving the
+// consolidated control surface.
 
 vi.mock('./SettingsPage', () => ({
   SettingsAdminContent: () => <div data-testid="mock-settings-content">Settings</div>,
@@ -40,6 +39,9 @@ vi.mock('./DictionariesPage', () => ({
   DictionariesAdminContent: () => <div data-testid="mock-dictionaries-content">Dictionaries</div>,
   DictionariesPage: () => <div />,
 }));
+vi.mock('./AdminRightRail', () => ({
+  AdminRightRail: () => <div data-testid="mock-right-rail">Right rail</div>,
+}));
 
 vi.mock('@/lib/api/admin', () => ({
   fetchAdminConfig: vi.fn(async () => ({
@@ -53,14 +55,6 @@ vi.mock('@/lib/api/admin', () => ({
   deleteAdminAccount: vi.fn(),
   updateAdminAccount: vi.fn(),
 }));
-
-vi.mock('@/lib/feature-flags', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
-  return {
-    ...actual,
-    isFeatureEnabled: (id: string) => id === 'dsRefresh',
-  };
-});
 
 function renderTabbed(initialEntries: string[] = ['/admin']): void {
   render(
@@ -78,11 +72,11 @@ function expectDeepLink(href: string): HTMLAnchorElement {
   return anchor as HTMLAnchorElement;
 }
 
-describe('AdminPanelPage — W2-03 deep-link cards', () => {
-  it('General tab exposes deep-links to period-locks, rate-cards, setup, help', async () => {
+describe('AdminPanelPage — V2 SoT PR 12 deep-link cards', () => {
+  it('Platform tab exposes deep-links to period-locks, rate-cards, setup, help', async () => {
     renderTabbed();
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-general')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-platform')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('admin-deep-links')).toBeInTheDocument();
     expectDeepLink('/admin/period-locks');
@@ -106,13 +100,13 @@ describe('AdminPanelPage — W2-03 deep-link cards', () => {
     expectDeepLink('/admin/monitoring');
   });
 
-  it('Governance tab exposes deep-links to access-policies, responsibility-matrix, custom roles, V2 soak, notifications', async () => {
+  it('Roles & RBAC tab exposes deep-links to access-policies, responsibility-matrix, custom roles, V2 soak, notifications', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: /Governance/i }));
+    await user.click(screen.getByRole('tab', { name: /Roles & RBAC/i }));
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-governance')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-roles')).toBeInTheDocument(),
     );
     expectDeepLink('/admin/access-policies');
     expectDeepLink('/admin/responsibility-matrix');
@@ -121,13 +115,13 @@ describe('AdminPanelPage — W2-03 deep-link cards', () => {
     expectDeepLink('/admin/notifications');
   });
 
-  it('People Config tab exposes deep-links to leave-policies, bulk import, vendors, radiator thresholds', async () => {
+  it('Dictionaries tab exposes deep-links to leave-policies, bulk import, vendors, radiator thresholds', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: /People Config/i }));
+    await user.click(screen.getByRole('tab', { name: /Dictionaries/i }));
     await waitFor(() =>
-      expect(screen.getByTestId('admin-tab-people-config')).toBeInTheDocument(),
+      expect(screen.getByTestId('admin-tab-dicts')).toBeInTheDocument(),
     );
     expectDeepLink('/admin/leave-policies');
     expectDeepLink('/admin/people/import');
