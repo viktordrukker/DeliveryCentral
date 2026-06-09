@@ -32,8 +32,13 @@ export class PendingActionsQueryService {
     const reportPersonIds = reportingLines.map((r) => r.subjectPersonId);
 
     const [staffingRows, budgetRows, leaveRows, timesheetRows] = await Promise.all([
-      this.prisma.staffingRequest.findMany({
-        where: { requestedByPersonId: personId, status: { in: ['OPEN', 'IN_REVIEW'] } },
+      // SoT PR 14b — re-point onto canonical ProjectPosition. The lean
+      // equivalent of "open/in-review staffing request" is a position whose
+      // `fillStatus` is `OPEN` or `PROPOSED` (i.e. demand created but not yet
+      // booked). Public-facing CTAs now deep-link to the project page with
+      // the position pre-selected (V2 routing).
+      this.prisma.projectPosition.findMany({
+        where: { requestedByPersonId: personId, fillStatus: { in: ['OPEN', 'PROPOSED'] } },
         orderBy: { createdAt: 'asc' },
         take: MAX_ITEMS,
         select: { id: true, publicId: true, role: true, projectId: true, createdAt: true },
@@ -132,7 +137,9 @@ export class PendingActionsQueryService {
         contextLabel: proj?.projectCode ?? null,
         ageHours,
         severity: severity(ageHours),
-        ctaUrl: `/staffing-requests/${sr.publicId ?? sr.id}`,
+        // SoT PR 14b — V2 routing: deep-link to the project page with the
+        // canonical position pre-selected, not the legacy SR detail page.
+        ctaUrl: `/projects/${sr.projectId}?position=${sr.publicId ?? sr.id}`,
       });
     }
 

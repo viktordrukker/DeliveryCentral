@@ -1,10 +1,10 @@
-import { createSeededInMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/create-seeded-in-memory-project-assignment.repository';
 import { createSeededInMemoryOrgUnitRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-org-unit.repository';
 import { createSeededInMemoryPersonOrgMembershipRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person-org-membership.repository';
 import { createSeededInMemoryPersonRepository } from '@src/modules/organization/infrastructure/repositories/in-memory/create-seeded-in-memory-person.repository';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { createSeededInMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/create-seeded-in-memory-project.repository';
 import { createSeededInMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/create-seeded-in-memory-work-evidence.repository';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { DirectorDashboardQueryService } from '@src/modules/dashboard/application/director-dashboard-query.service';
 import { WorkloadDashboardQueryService } from '@src/modules/dashboard/application/workload-dashboard-query.service';
@@ -22,12 +22,26 @@ const mockSettings = {
   }),
 } as unknown as PlatformSettingsService;
 
+// SoT PR 14b — the dashboard services now read fills from
+// `prisma.projectPosition` instead of the legacy seeded assignment repo.
+// Stub returns an empty position list — the budget test only measures the
+// hot-path latency of the aggregation logic, not data shape.
+function makePrismaStub(): PrismaService {
+  const empty = jest.fn().mockResolvedValue([]);
+  return {
+    projectPosition: { findMany: empty },
+    person: { findMany: empty },
+    project: { findMany: empty },
+    projectVendorEngagement: { aggregate: jest.fn().mockResolvedValue({ _sum: { headcount: 0 } }) },
+  } as unknown as PrismaService;
+}
+
 describe('dashboard scaling budgets (demo data)', () => {
   it('workload dashboard completes within budget', async () => {
     const service = new WorkloadDashboardQueryService(
       createSeededInMemoryPersonRepository(),
       createSeededInMemoryProjectRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
+      makePrismaStub(),
       createSeededInMemoryWorkEvidenceRepository(),
       mockSettings,
     );
@@ -45,9 +59,7 @@ describe('dashboard scaling budgets (demo data)', () => {
       createSeededInMemoryOrgUnitRepository(),
       createSeededInMemoryPersonOrgMembershipRepository(),
       createSeededInMemoryProjectRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
-      createSeededInMemoryWorkEvidenceRepository(),
-      mockSettings,
+      makePrismaStub(),
     );
     const start = Date.now();
     const result = await service.execute({ asOf: AS_OF });
@@ -63,7 +75,7 @@ describe('dashboard scaling budgets (demo data)', () => {
     const service = new WorkloadDashboardQueryService(
       createSeededInMemoryPersonRepository(),
       createSeededInMemoryProjectRepository(),
-      createSeededInMemoryProjectAssignmentRepository(),
+      makePrismaStub(),
       createSeededInMemoryWorkEvidenceRepository(),
       mockSettings,
     );

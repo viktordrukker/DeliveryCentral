@@ -1,10 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
+import { loadAllPositionAssignmentViews } from '@src/shared/persistence/position-assignment-view';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
-
-import { InMemoryStaffingRequestService } from '@src/modules/staffing-requests/infrastructure/services/in-memory-staffing-request.service';
 
 import { PlannedVsActualQueryService } from './planned-vs-actual-query.service';
 import { DeliveryManagerDashboardResponseDto, ProjectScorecardHistoryItemDto } from './contracts/delivery-manager-dashboard.dto';
@@ -13,13 +11,16 @@ interface DeliveryManagerDashboardQuery {
   asOf?: string;
 }
 
+// SoT PR 14b — re-point onto the canonical `ProjectPosition` aggregate.
+// Both reads previously sourced from legacy tables:
+//   - `projectAssignmentRepository.findAll()` → `loadAllPositionAssignmentViews(prisma)`
+//   - `staffingRequestService.list({ status: 'OPEN' })` → `prisma.projectPosition`
+//     where `fillStatus` ∈ (`OPEN`, `PROPOSED`).
 @Injectable()
 export class DeliveryManagerDashboardQueryService {
   public constructor(
     private readonly projectRepository: InMemoryProjectRepository,
-    private readonly projectAssignmentRepository: InMemoryProjectAssignmentRepository,
     private readonly plannedVsActualQueryService: PlannedVsActualQueryService,
-    private readonly staffingRequestService: InMemoryStaffingRequestService,
     private readonly platformSettingsService: PlatformSettingsService,
     private readonly prisma: PrismaService,
   ) {}
@@ -38,7 +39,7 @@ export class DeliveryManagerDashboardQueryService {
     const activeProjects = allProjects.filter((project) => project.status === 'ACTIVE');
     const activeProjectIds = new Set(activeProjects.map((project) => project.projectId.value));
 
-    const allAssignments = await this.projectAssignmentRepository.findAll();
+    const allAssignments = await loadAllPositionAssignmentViews(this.prisma);
     const activeAssignments = allAssignments.filter(
       (assignment) => activeProjectIds.has(assignment.projectId) && assignment.isActiveAt(asOf),
     );
@@ -152,7 +153,9 @@ export class DeliveryManagerDashboardQueryService {
         const endDate = assignment.validTo!;
         const daysUntilEnd = Math.round((endDate.getTime() - asOf.getTime()) / 86400000);
         return {
-          assignmentId: assignment.assignmentId.value,
+          // SoT PR 14b — `assignmentId` field name kept for FE consumers; value
+          // is now the canonical ProjectPosition id (1:1 mapping post-migration).
+          assignmentId: assignment.id,
           daysUntilEnd,
           endDate: endDate.toISOString().slice(0, 10),
           personId: assignment.personId,
@@ -164,15 +167,24 @@ export class DeliveryManagerDashboardQueryService {
       })
       .sort((left, right) => left.daysUntilEnd - right.daysUntilEnd);
 
-    const openRequests = await this.staffingRequestService.list({ status: 'OPEN' });
+    // SoT PR 14b — Open demand sourced from canonical ProjectPosition rows
+    // with `fillStatus` OPEN/PROPOSED. Each position is one headcount; the
+    // legacy `headcountRequired` / `headcountFulfilled` aggregation becomes
+    // count-by-projectId with fulfilled=1 when `activePersonId` is set.
+    const openPositionRows = await this.prisma.projectPosition.findMany({
+      where: {
+        projectId: { in: [...activeProjectIds] },
+        fillStatus: { in: ['OPEN', 'PROPOSED'] },
+      },
+      select: { projectId: true, activePersonId: true },
+    });
     const requestsByProjectMap = new Map<string, { count: number; required: number; fulfilled: number }>();
-    for (const request of openRequests) {
-      if (!activeProjectIds.has(request.projectId)) continue;
-      const existing = requestsByProjectMap.get(request.projectId) ?? { count: 0, required: 0, fulfilled: 0 };
+    for (const row of openPositionRows) {
+      const existing = requestsByProjectMap.get(row.projectId) ?? { count: 0, required: 0, fulfilled: 0 };
       existing.count++;
-      existing.required += request.headcountRequired;
-      existing.fulfilled += request.headcountFulfilled;
-      requestsByProjectMap.set(request.projectId, existing);
+      existing.required += 1;
+      existing.fulfilled += row.activePersonId !== null ? 1 : 0;
+      requestsByProjectMap.set(row.projectId, existing);
     }
     const openRequestsByProject = Array.from(requestsByProjectMap.entries()).map(([projectId, data]) => {
       const project = activeProjectMap.get(projectId);
@@ -191,7 +203,7 @@ export class DeliveryManagerDashboardQueryService {
     return {
       asOf: asOf.toISOString(),
       burnRateTrend,
-      dataSources: ['projects', 'assignments', 'timesheets', 'planned_vs_actual', 'staffing_requests'],
+      dataSources: ['projects', 'project_positions', 'timesheets', 'planned_vs_actual'],
       openRequestsByProject,
       portfolioHealth,
       projectsMissingApprovedTime,
@@ -338,7 +350,7 @@ export class DeliveryManagerDashboardQueryService {
       ? activeProjects.filter((project) => project.projectId.value === query.projectId)
       : activeProjects;
 
-    const allAssignments = await this.projectAssignmentRepository.findAll();
+    const allAssignments = await loadAllPositionAssignmentViews(this.prisma);
 
     const weekBoundaries: Array<{ weekStart: Date; weekEnd: Date }> = [];
     for (let index = weekCount - 1; index >= 0; index--) {

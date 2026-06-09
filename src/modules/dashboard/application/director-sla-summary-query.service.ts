@@ -8,10 +8,14 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const MIN_SAMPLE = 3;
 
-// F-63 / 20c-11 — 3rd `PrismaShape` hand-rolled gateway interface deleted.
-// Same pattern as F-55 (pending-actions-query) + F-57 (nudge-staffing-request).
-// Prisma exposes typed `projectAssignment` + `staffingRequestFulfilment`
-// delegates directly.
+// SoT PR 14b — re-point both legacy reads onto the canonical staffing
+// aggregate. SLA-breach count now reads ProjectPosition.slaDueAt /
+// slaBreachedAt (the lean equivalent of the legacy ProjectAssignment SLA
+// columns). Time-to-fill (TTF) now derives from ProjectPositionFillHistory
+// rows with `changeType === 'BOOKED'`: the position's `createdAt` is the
+// demand-creation timestamp (lean equivalent of legacy StaffingRequest.
+// createdAt) and the fill-history `occurredAt` is the fulfilment timestamp
+// (lean equivalent of legacy StaffingRequestFulfilment.fulfilledAt).
 
 function median(xs: number[]): number | null {
   if (xs.length === 0) return null;
@@ -32,23 +36,26 @@ export class DirectorSlaSummaryQueryService {
     const ttfWindowStart = new Date(now - 4 * WEEK_MS);
 
     const [slaBreaches24h, fulfilments] = await Promise.all([
-      this.prisma.projectAssignment.count({
+      this.prisma.projectPosition.count({
         where: {
           slaDueAt: { gte: slaWindowStart, lte: slaWindowEnd },
           slaBreachedAt: null,
         },
       }),
-      this.prisma.staffingRequestFulfilment.findMany({
-        where: { fulfilledAt: { gte: ttfWindowStart } },
+      this.prisma.projectPositionFillHistory.findMany({
+        where: {
+          changeType: 'BOOKED',
+          occurredAt: { gte: ttfWindowStart },
+        },
         select: {
-          fulfilledAt: true,
-          request: { select: { createdAt: true } },
+          occurredAt: true,
+          position: { select: { createdAt: true } },
         },
       }),
     ]);
 
     const ttfDaysAll = fulfilments.map(
-      (f) => (f.fulfilledAt.getTime() - f.request.createdAt.getTime()) / DAY_MS,
+      (f) => (f.occurredAt.getTime() - f.position.createdAt.getTime()) / DAY_MS,
     );
 
     // Bucket by week-of-fulfilment (4 buckets, oldest first).
@@ -56,9 +63,9 @@ export class DirectorSlaSummaryQueryService {
     for (const f of fulfilments) {
       const weekIndex = Math.min(
         3,
-        Math.max(0, Math.floor((f.fulfilledAt.getTime() - ttfWindowStart.getTime()) / WEEK_MS)),
+        Math.max(0, Math.floor((f.occurredAt.getTime() - ttfWindowStart.getTime()) / WEEK_MS)),
       );
-      const days = (f.fulfilledAt.getTime() - f.request.createdAt.getTime()) / DAY_MS;
+      const days = (f.occurredAt.getTime() - f.position.createdAt.getTime()) / DAY_MS;
       buckets[weekIndex].push(days);
     }
     const timeToFillSeries = buckets.map((b) => median(b) ?? 0);

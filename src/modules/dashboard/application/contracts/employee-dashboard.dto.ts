@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-import { AssignmentDirectoryItemDto } from '@src/modules/assignments/application/contracts/assignment-directory.dto';
+// SoT PR 14b — assignment-directory item is now sourced from the canonical
+// `ProjectPosition` aggregate and lives in the dashboard module.
+import { PositionDirectoryItemDto } from './position-directory-item.dto';
 
 class EmployeeDashboardPersonSummaryDto {
   @ApiProperty()
@@ -92,11 +94,11 @@ export class EmployeeDashboardResponseDto {
   @ApiProperty({ type: () => EmployeeDashboardPersonSummaryDto })
   public person!: EmployeeDashboardPersonSummaryDto;
 
-  @ApiProperty({ type: () => [AssignmentDirectoryItemDto] })
-  public currentAssignments!: AssignmentDirectoryItemDto[];
+  @ApiProperty({ type: () => [PositionDirectoryItemDto] })
+  public currentAssignments!: PositionDirectoryItemDto[];
 
-  @ApiProperty({ type: () => [AssignmentDirectoryItemDto] })
-  public futureAssignments!: AssignmentDirectoryItemDto[];
+  @ApiProperty({ type: () => [PositionDirectoryItemDto] })
+  public futureAssignments!: PositionDirectoryItemDto[];
 
   @ApiProperty({ type: () => EmployeeCurrentWorkloadSummaryDto })
   public currentWorkloadSummary!: EmployeeCurrentWorkloadSummaryDto;

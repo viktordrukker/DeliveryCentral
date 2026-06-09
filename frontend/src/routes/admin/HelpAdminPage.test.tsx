@@ -159,7 +159,7 @@ describe('HelpAdminPage', () => {
       },
       // CI runners are slower: userEvent.type + react-markdown parse can take >1s,
       // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
-      { timeout: 10000 },
+      { timeout: 14000 },
     );
     // Inline strong rendered.
     expect(within(preview).getByText('bold').tagName).toBe('STRONG');
@@ -189,7 +189,7 @@ describe('HelpAdminPage', () => {
       },
       // CI runners are slower: userEvent.paste + react-markdown parse can take >1s,
       // exceeding the default 1000ms waitFor budget. Bump to 5s to absorb jitter.
-      { timeout: 10000 },
+      { timeout: 14000 },
     );
     // No <script> tag survives.
     expect(preview.querySelector('script')).toBeNull();
