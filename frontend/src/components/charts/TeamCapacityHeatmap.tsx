@@ -36,7 +36,7 @@ export function TeamCapacityHeatmap({ people, weeks }: TeamCapacityHeatmapProps)
         const isClickable = Boolean(p.personId);
         return (
           <span
-            onClick={isClickable ? () => navigate(`/assignments?personId=${p.personId}&weekStart=${w}`) : undefined}
+            onClick={isClickable ? () => navigate(`/staffing-desk?personId=${p.personId}&weekStart=${w}`) : undefined}
             style={{
               backgroundColor: cellColor(pct),
               borderRadius: '3px',

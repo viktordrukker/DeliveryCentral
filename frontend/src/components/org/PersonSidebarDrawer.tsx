@@ -231,8 +231,8 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
         <Button variant="primary" onClick={() => navigate(`/people/${person.id}`)} type="button" style={{ width: '100%' }}>
           View Profile
         </Button>
-        <Button as={Link} variant="secondary" to={`/assignments?personId=${person.id}`} style={{ width: '100%', textAlign: 'center' }}>
-          View Assignments
+        <Button as={Link} variant="secondary" to={`/staffing-desk?personId=${person.id}`} style={{ width: '100%', textAlign: 'center' }}>
+          View Positions
         </Button>
         {person.primaryEmail && (
           <Button as="a" variant="secondary" href={`mailto:${person.primaryEmail}`} style={{ width: '100%', textAlign: 'center' }}>

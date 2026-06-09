@@ -235,7 +235,7 @@ export function ResourcePoolDetailPage(): JSX.Element {
                 <dt>Positions</dt>
                 <dd>
                   {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow. */}
-                  <Button as={Link} variant="secondary" to="/staffing-requests/new">
+                  <Button as={Link} variant="secondary" to="/staffing-desk?openCreatePosition=true">
                     Create position
                   </Button>
                 </dd>

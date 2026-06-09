@@ -184,7 +184,7 @@ export function DirectorKpiStrip({
           <Link
             className="kpi-strip__item"
             data-jtbd="How fast are we filling roles?"
-            to="/staffing-requests?status=FULFILLED"
+            to="/staffing-desk?status=FULFILLED"
             style={{ borderLeft: '3px solid var(--color-chart-2)' }}
           >
             <TipBalloon

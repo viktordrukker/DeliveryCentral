@@ -32,7 +32,7 @@ export function TeamDashboardPage(): JSX.Element {
           id ? (
             <>
               <Button as={Link} variant="secondary" size="sm" to="/teams">Back to teams</Button>
-              <Button as={Link} variant="secondary" size="sm" to="/assignments">Positions</Button>
+              <Button as={Link} variant="secondary" size="sm" to="/staffing-desk">Positions</Button>
             </>
           ) : null
         }
@@ -56,7 +56,7 @@ export function TeamDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Members</span>
             </Link>
 
-            <Link className="kpi-strip__item" to="/assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+            <Link className="kpi-strip__item" to="/staffing-desk" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <span className="kpi-strip__value">{d.activeAssignmentsCount}</span>
               <span className="kpi-strip__label">Active Positions</span>
             </Link>

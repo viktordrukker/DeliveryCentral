@@ -76,9 +76,9 @@ export function ExceptionDetailPanel({
             Open project
           </Button>
         ) : null}
-        {item.assignmentId ? (
-          <Button as={Link} variant="secondary" to={`/assignments/${item.assignmentId}`}>
-            Open assignment
+        {item.assignmentId && item.projectId ? (
+          <Button as={Link} variant="secondary" to={`/projects/${item.projectId}?position=${item.assignmentId}`}>
+            Open position
           </Button>
         ) : null}
       </div>

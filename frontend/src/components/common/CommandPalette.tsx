@@ -160,7 +160,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       label: 'Create Position',
       sublabel: 'Create a new project position',
       onSelect: () => {
-        navigate('/assignments/new');
+        navigate('/staffing-desk?openCreatePosition=true');
         onClose();
       },
     },
@@ -180,7 +180,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       label: 'Approve Requests',
       sublabel: 'Review pending positions',
       onSelect: () => {
-        navigate('/staffing-requests');
+        navigate('/staffing-desk');
         onClose();
       },
     },
@@ -200,7 +200,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
       label: 'Create Position',
       sublabel: 'Create a new project position',
       onSelect: () => {
-        navigate('/staffing-requests/new');
+        navigate('/staffing-desk?openCreatePosition=true');
         onClose();
       },
     },
@@ -247,7 +247,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     label: `${assignment.person.displayName} · ${assignment.project.displayName}`,
     sublabel: `${assignment.staffingRole} · ${assignment.allocationPercent}%`,
     onSelect: () => {
-      navigate(`/assignments/${assignment.id}`);
+      navigate(`/projects/${assignment.project.id}?position=${assignment.id}`);
       onClose();
     },
   }));

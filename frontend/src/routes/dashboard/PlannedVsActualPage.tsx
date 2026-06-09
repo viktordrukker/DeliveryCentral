@@ -141,7 +141,7 @@ export function PlannedVsActualPage(): JSX.Element {
           <span className="field__label">As of</span>
           <input className="field__control" onChange={(e) => setAsOf(e.target.value)} type="datetime-local" value={asOf.slice(0, 16)} />
         </label>
-        <Button as={Link} variant="secondary" size="sm" to="/assignments">Positions</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk">Positions</Button>
         <Button as={Link} variant="secondary" size="sm" to="/time-management">Time Management</Button>
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <Button as={Link} variant="secondary" size="sm" to="/reports/time">Time Analytics</Button>
@@ -247,7 +247,7 @@ export function PlannedVsActualPage(): JSX.Element {
       onSelect: (item) => {
         if (item.projectId) nav(`/projects/${item.projectId}?tab=budget`);
         else if (item.personId) nav(`/people/${item.personId}`);
-        else nav('/assignments');
+        else nav('/staffing-desk');
       },
     },
     {
@@ -313,8 +313,8 @@ export function PlannedVsActualPage(): JSX.Element {
   ], []);
 
   const detailQuickActions: Record<DetailTab, RowAction<unknown>[]> = useMemo(() => ({
-    matched: [{ key: 'view', label: 'View', onSelect: (item: unknown) => nav(`/assignments/${(item as MatchedRecordItem).assignmentId}`) }],
-    noEvidence: [{ key: 'review', label: 'Review Position', onSelect: (item: unknown) => nav(`/assignments?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
+    matched: [{ key: 'view', label: 'View', onSelect: (item: unknown) => { const m = item as MatchedRecordItem; nav(`/projects/${m.project.id}?position=${m.assignmentId}`); } }],
+    noEvidence: [{ key: 'review', label: 'Review Position', onSelect: (item: unknown) => nav(`/staffing-desk?personId=${(item as AssignedButNoEvidenceItem).person.id}`) }],
     noAssignment: [{
       key: 'create',
       label: 'Create Position',
@@ -516,7 +516,7 @@ export function PlannedVsActualPage(): JSX.Element {
             {/* Staffing Coverage */}
             <SectionCard title="Staffing Coverage" id="staffing-section">
               {staffingGaps.length > 0 ? (
-                <DataView columns={staffingCols} getRowKey={(item) => item.projectId} rows={staffingGaps} variant="compact" onRowClick={(item) => nav(`/staffing-requests?projectId=${item.projectId}`)} pageSizeOptions={[1000]} />
+                <DataView columns={staffingCols} getRowKey={(item) => item.projectId} rows={staffingGaps} variant="compact" onRowClick={(item) => nav(`/projects/${item.projectId}?openCreatePosition=true`)} pageSizeOptions={[1000]} />
               ) : (
                 <EmptyState description="All projects are fully staffed." title="All staffed" />
               )}
@@ -782,7 +782,7 @@ export function PlannedVsActualPage(): JSX.Element {
                     columns={matchedCols}
                     rows={state.data.matchedRecords}
                     getRowKey={(item) => `${item.assignmentId}-${item.workEvidenceId}`}
-                    onRowClick={(item) => nav(`/assignments/${item.assignmentId}`)}
+                    onRowClick={(item) => nav(`/projects/${item.project.id}?position=${item.assignmentId}`)}
                     rowActions={detailQuickActions.matched as RowAction<MatchedRecordItem>[]}
                     pageSizeOptions={[25, 50, 100]}
                     variant="compact"
@@ -794,7 +794,7 @@ export function PlannedVsActualPage(): JSX.Element {
                     columns={noEvidenceCols}
                     rows={state.data.assignedButNoEvidence}
                     getRowKey={(item) => item.assignmentId}
-                    onRowClick={(item) => nav(`/assignments?personId=${item.person.id}`)}
+                    onRowClick={(item) => nav(`/staffing-desk?personId=${item.person.id}`)}
                     rowActions={detailQuickActions.noEvidence as RowAction<AssignedButNoEvidenceItem>[]}
                     pageSizeOptions={[25, 50, 100]}
                     variant="compact"

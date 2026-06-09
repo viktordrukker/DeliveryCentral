@@ -111,7 +111,7 @@ export function RmKpiStrip({
       <Link
         className="kpi-strip__item"
         data-jtbd="Who is overallocated and needs rebalancing?"
-        to="/assignments"
+        to="/staffing-desk"
         style={{
           borderLeft: `3px solid ${
             overallocatedCount > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'

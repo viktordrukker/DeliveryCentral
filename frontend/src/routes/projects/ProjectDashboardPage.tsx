@@ -62,7 +62,7 @@ export function ProjectDashboardPage(): JSX.Element {
             {canManage && (
               <>
                 {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow. */}
-                <Button as={Link} variant="primary" size="sm" to={`/staffing-requests/new?projectId=${id ?? ''}`}>Create Position</Button>
+                <Button as={Link} variant="primary" size="sm" to={`/projects/${id ?? ''}?openCreatePosition=true`}>Create Position</Button>
               </>
             )}
           </div>
@@ -87,7 +87,7 @@ export function ProjectDashboardPage(): JSX.Element {
               <span className="kpi-strip__label">Status</span>
             </Link>
 
-            <Link className="kpi-strip__item" to={`/assignments?project=${id ?? ''}`} style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+            <Link className="kpi-strip__item" to={`/staffing-desk?project=${id ?? ''}`} style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="People currently assigned to this project." arrow="left" />
               <span className="kpi-strip__value">{d.dashboard.staffingSummary.activeAssignmentCount}</span>
               <span className="kpi-strip__label">Active Staff</span>
@@ -159,7 +159,7 @@ export function ProjectDashboardPage(): JSX.Element {
             rows: d.dashboard.assignments.map((a) => ({ Person: a.personDisplayName, Role: a.staffingRole, Allocation: `${a.allocationPercent}%`, Status: a.status, From: a.validFrom.slice(0, 10), To: a.validTo?.slice(0, 10) ?? 'open' })),
           }}>
             {d.dashboard.assignments.length === 0 ? (
-              <EmptyState description="No assignments found for this project." title="No assignments" action={{ label: 'Create assignment', href: `/assignments/new?projectId=${id ?? ''}` }} />
+              <EmptyState description="No positions found for this project." title="No positions" action={{ label: 'Create position', href: `/projects/${id ?? ''}?openCreatePosition=true` }} />
             ) : (
               <Table
                 variant="compact"

@@ -66,7 +66,7 @@ describe('CaseDetailsPage', () => {
     expect(screen.getByText('Follow up on onboarding access approvals.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'subject-1' })).toHaveAttribute('href', '/people/subject-1');
     expect(screen.getByRole('link', { name: 'prj-1' })).toHaveAttribute('href', '/projects/prj-1');
-    expect(screen.getByRole('link', { name: 'asn-1' })).toHaveAttribute('href', '/assignments/asn-1');
+    expect(screen.getByRole('link', { name: 'asn-1' })).toHaveAttribute('href', '/projects/prj-1?position=asn-1');
     expect(screen.getByText('OWNER')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open person' })).toHaveAttribute('href', '/people/owner-1');
   });
@@ -88,7 +88,6 @@ function renderWithRouter(initialEntry: string): void {
         <Route element={<CaseDetailsPage />} path="/cases/:id" />
         <Route element={<div>Person Details</div>} path="/people/:id" />
         <Route element={<div>Project Details</div>} path="/projects/:id" />
-        <Route element={<div>Assignment Details</div>} path="/assignments/:id" />
         <Route element={<div>Cases</div>} path="/cases" />
       </Routes>
     </MemoryRouter>,

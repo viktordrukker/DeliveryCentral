@@ -194,7 +194,7 @@ export function TopHeaderV2({ onToggleSidebar }: TopHeaderV2Props): JSX.Element 
               >
                 {[
                   { label: 'New project', href: '/projects/new' },
-                  { label: 'New position', href: '/staffing-requests/new' },
+                  { label: 'New position', href: '/staffing-desk?openCreatePosition=true' },
                   { label: 'New leave request', href: '/leave/new' },
                 ].map((item) => (
                   <button

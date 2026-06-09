@@ -110,7 +110,7 @@ export function RmActionItems({
       detail: <span style={{ fontSize: 11 }}>{item.projectName}</span> as React.ReactNode,
       alloc: <span style={NUM}>{'—'}</span> as React.ReactNode,
       action: 'Review & approve',
-      linkTo: `/assignments/${item.assignmentId}`,
+      linkTo: `/projects/${item.projectId}?position=${item.assignmentId}`,
       ageHours: hoursSince(item.requestedAt),
     })),
     ...incomingRequests.map((req, i) => ({
@@ -132,7 +132,7 @@ export function RmActionItems({
         </span>
       ) as React.ReactNode,
       action: 'Review & fill',
-      linkTo: `/staffing-requests/${req.id}`,
+      linkTo: `/projects/${req.projectId}?position=${req.id}`,
       ageHours: null, // DTO doesn't ship createdAt yet
     })),
   ];

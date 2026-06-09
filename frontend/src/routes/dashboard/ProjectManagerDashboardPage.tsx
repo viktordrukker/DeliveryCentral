@@ -178,7 +178,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
             <Link
               className="kpi-strip__item"
               data-jtbd="Where am I short on people?"
-              to="/staffing-requests"
+              to="/staffing-desk"
               style={{ borderLeft: `3px solid ${staffingGaps > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)'}` }}
             >
               <TipBalloon tip="Projects missing required staffing roles. Red means immediate action needed." arrow="left" />
@@ -251,7 +251,7 @@ export function ProjectManagerDashboardPage(): JSX.Element {
               recentChanges={recentChanges}
               onPersonClick={(id) => navigate(`/people/${id}`)}
               onProjectClick={(id) => navigate(`/projects/${id}/dashboard`)}
-              onRequestClick={(id) => navigate(`/staffing-requests/${id}`)}
+              onRequestClick={(req) => navigate(`/projects/${req.projectId}?position=${req.id}`)}
             />
           )}
 

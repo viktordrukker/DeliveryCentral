@@ -28,7 +28,7 @@ interface Props {
   recentChanges: RecentlyChangedAssignmentItem[];
   onPersonClick: (personId: string) => void;
   onProjectClick: (projectId: string) => void;
-  onRequestClick: (requestId: string) => void;
+  onRequestClick: (request: OpenStaffingRequestSummary) => void;
 }
 
 interface IssueRow {
@@ -79,7 +79,7 @@ export function PmStaffingTab({
       category: 'Staffing Gap',
       entity: g.projectName,
       detail: `${g.reason} · ${g.detail}`,
-      linkTo: `/assignments/new?projectId=${g.projectId}`,
+      linkTo: `/projects/${g.projectId}?openCreatePosition=true`,
       linkLabel: 'Fill',
       clickTarget: g.projectId,
     })),
@@ -109,7 +109,7 @@ export function PmStaffingTab({
     { key: 'start', title: 'Start', width: 90, getValue: (r) => r.startDate, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{r.startDate}</span> },
     { key: 'hc', title: 'Headcount', align: 'right', getValue: (r) => r.headcountFulfilled, render: (r) => <span style={NUM}>{r.headcountFulfilled}/{r.headcountRequired}</span> },
     { key: 'go', title: '', width: 40, render: (r) => (
-      <Link to={`/staffing-requests/${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>
+      <Link to={`/projects/${r.projectId}?position=${r.id}`} onClick={(e) => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-accent)' }}>
         View
       </Link>
     ) },
@@ -149,10 +149,10 @@ export function PmStaffingTab({
             columns={requestColumns}
             rows={openRequests}
             getRowKey={(r) => r.id}
-            onRowClick={(r) => onRequestClick(r.id)}
+            onRowClick={(r) => onRequestClick(r)}
           />
           <div style={{ marginTop: 8 }}>
-            <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-requests">
+            <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-desk">
               View all positions
             </Link>
           </div>
