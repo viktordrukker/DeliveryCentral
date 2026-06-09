@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useAuth } from '@/app/auth-context';
-import { hasAnyRole, STAFFING_REQUEST_DETAIL_ROLES } from '@/app/route-manifest';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
 import { DistributionStudio } from './DistributionStudio';
@@ -14,11 +12,9 @@ import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
 import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
-import { WorkforcePlanner } from '@/components/staffing-desk/WorkforcePlanner';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
 import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDropdown';
 import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
-import { PlannerScenarioPanel } from '@/components/staffing-desk/PlannerScenarioPanel';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
@@ -89,13 +85,6 @@ export function StaffingDeskPage(): JSX.Element {
       setFilters({ view: 'table' });
     }
   }, [filters.view, setFilters]);
-  // W1-23 — DistributionStudio `canEdit` (apply / rename / delete destructive
-  // actions) must match BE proposal RBAC. BE `ProposalsController.autoMatch`
-  // is guarded by `@RequireRoles(...STAFFING_ROLES)`. Mirror that on the FE
-  // so the canEdit gate stops e.g. an employee with /staffing-desk URL access
-  // from seeing destructive actions when role narrowing changes elsewhere.
-  const { principal } = useAuth();
-  const canEditScenarios = hasAnyRole(principal?.roles, STAFFING_REQUEST_DETAIL_ROLES);
   const [selectedRow, setSelectedRow] = useState<StaffingDeskRow | null>(null);
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
@@ -239,21 +228,12 @@ export function StaffingDeskPage(): JSX.Element {
       )}
 
       {filters.view === 'planner' && (
-        <>
-          {/* The full swimlane planner is the flagship Planner surface in both
-              flag states. dsRefresh ON additionally surfaces the saved-scenario
-              panel + studio beneath it (additive — not a replacement, which
-              previously regressed the ON path to a scenario list only).
-              LEAN-P4a-2 adds the compact PlannerScenarioPanel sidebar with
-              Save / Load / Cancel for the new /api/staffing/scenarios CRUD. */}
-          <WorkforcePlanner poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
-          {dsRefreshEnabled ? (
-            <>
-              <PlannerScenarioPanel />
-              <DistributionStudio canEdit={canEditScenarios} />
-            </>
-          ) : null}
-        </>
+        /* SoT PR 7 — single canonical Distribution Studio (DS canvas Planner
+           view): JqlBar → 240px BenchSidebar + PlannerGrid + AnomalyDrawer.
+           Scenario CRUD lives inside the planner toolbar (PlannerScenariosMenu);
+           the standalone PlannerScenarioPanel + scenarios-only DistributionStudio
+           were retired. */
+        <DistributionStudio poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
       )}
 
       {/* Pagination — includes "X of Y records" */}
