@@ -46,8 +46,8 @@ const SECTIONS: SectionDef[] = [
     description:
       'Either threshold tripping requires a Director sign-off. Set a threshold to a high value (or its bound) to effectively disable it.',
     fields: [
-      { key: 'assignment.directorApproval.allocationPercentMin', label: 'Allocation threshold (%)', helper: 'Assignments at or above this allocation require Director approval.', kind: 'int', min: 0, max: 100, defaultDisplay: '80' },
-      { key: 'assignment.directorApproval.durationMonthsMin', label: 'Duration threshold (months)', helper: 'Assignments lasting at least this long require Director approval.', kind: 'int', min: 0, max: 60, defaultDisplay: '12' },
+      { key: 'assignment.directorApproval.allocationPercentMin', label: 'Allocation threshold (%)', helper: 'Positions at or above this allocation require Director approval.', kind: 'int', min: 0, max: 100, defaultDisplay: '80' },
+      { key: 'assignment.directorApproval.durationMonthsMin', label: 'Duration threshold (months)', helper: 'Positions lasting at least this long require Director approval.', kind: 'int', min: 0, max: 60, defaultDisplay: '12' },
     ],
   },
   {

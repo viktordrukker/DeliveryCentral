@@ -44,7 +44,7 @@ export function ProjectRegistryTable({
       {
         key: 'assignmentCount',
         render: (item: ProjectDirectoryItem) => item.assignmentCount,
-        title: 'Assignments',
+        title: 'Positions',
       },
     ],
     [],

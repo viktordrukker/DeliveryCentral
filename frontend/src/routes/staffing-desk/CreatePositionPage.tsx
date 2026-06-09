@@ -206,7 +206,7 @@ export function CreatePositionPage(): JSX.Element {
       <PageHeader
         eyebrow="Staffing"
         title="Open a new position"
-        subtitle="Lean flow — creates a ProjectPosition directly. No interim staffing request."
+        subtitle="Lean flow — creates a ProjectPosition directly. Position created directly."
       />
       <SectionCard title="Position details">
         <form onSubmit={(e) => { void handleSubmit(e); }} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

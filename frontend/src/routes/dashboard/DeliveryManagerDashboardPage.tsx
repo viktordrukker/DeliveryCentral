@@ -93,7 +93,7 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
       <>
         <PeriodSelector onAsOfChange={state.setAsOf} value={state.asOf} />
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk?view=table">Assignments</Button>
+        <Button as={Link} variant="secondary" size="sm" to="/staffing-desk?view=table">Positions</Button>
         <TipTrigger />
       </>
     );
@@ -197,13 +197,13 @@ export function DeliveryManagerDashboardPage(): JSX.Element {
               </SectionCard>
 
               {(d.staffingGaps ?? []).length > 0 && (
-                <SectionCard id="unstaffed-projects" title="Staffing Gaps — Assignments Ending Soon" collapsible>
+                <SectionCard id="unstaffed-projects" title="Staffing Gaps — Positions Ending Soon" collapsible>
                   <StaffingGapsTable gaps={d.staffingGaps ?? []} />
                 </SectionCard>
               )}
 
               {(d.openRequestsByProject ?? []).length > 0 && (
-                <SectionCard title="Open Staffing Requests by Project" collapsible>
+                <SectionCard title="Open Positions by Project" collapsible>
                   <OpenRequestsByProjectTable rows={d.openRequestsByProject ?? []} />
                 </SectionCard>
               )}

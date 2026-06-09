@@ -97,7 +97,7 @@ const adminSections: AdminSectionDefinition[] = [
   {
     description: 'SLA budgets, Director-approval thresholds, slate bounds, SLOs, matching weights, sweep cadence.',
     key: 'assignment-workflow',
-    title: 'Assignment Workflow',
+    title: 'Position Workflow',
   },
 ];
 
@@ -413,7 +413,7 @@ function AdminTabContent({
       return (
         <div className="admin-panel__cards" data-testid="admin-tab-general">
           <SettingsAdminContent />
-          <SectionCard title="Assignment Workflow">
+          <SectionCard title="Position Workflow">
             <AssignmentWorkflowSettings />
           </SectionCard>
           <AdminDeepLinkCards links={GENERAL_DEEP_LINKS} />

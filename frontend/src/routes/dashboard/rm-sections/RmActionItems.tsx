@@ -119,7 +119,7 @@ export function RmActionItems({
       index: overallocated.length + pendingApprovals.length + i + 1,
       severityLabel: 'Info',
       severityColor: 'var(--color-status-info)',
-      category: 'Staffing Request',
+      category: 'Position',
       entity: req.role,
       detail: (
         <span style={{ fontSize: 11 }}>
@@ -140,7 +140,7 @@ export function RmActionItems({
   return (
     <div className="dash-action-section" style={{ position: 'relative' }}>
       <TipBalloon
-        tip="Items needing attention — overallocations, pending approvals, and incoming staffing requests. Click any row to act."
+        tip="Items needing attention — overallocations, pending approvals, and incoming positions. Click any row to act."
         arrow="left"
       />
       <div className="dash-action-section__header">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 /**
- * Timeline visualization for a demand (staffing request) row.
+ * Timeline visualization for a position demand row.
  * Shows the demand period as a colored bar across a -3m / +9m window,
  * with allocation height, priority-based color, and today marker.
  * Mirrors WorkloadTimeline visual language but for unfilled demand.

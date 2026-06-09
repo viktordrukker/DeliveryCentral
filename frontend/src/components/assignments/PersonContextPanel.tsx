@@ -49,7 +49,7 @@ export function PersonContextPanel({ person, planned }: PersonContextPanelProps)
             <dd style={{ margin: 0 }}>{person.resourcePools.map((rp) => rp.name).join(', ')}</dd>
           </>
         ) : null}
-        <dt style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>Assignments</dt>
+        <dt style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>Positions</dt>
         <dd style={{ margin: 0, fontVariantNumeric: 'tabular-nums' }}>{person.currentAssignmentCount} active</dd>
       </dl>
 

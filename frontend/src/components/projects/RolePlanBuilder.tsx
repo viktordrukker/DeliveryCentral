@@ -75,7 +75,7 @@ export function RolePlanBuilder({ projectId, entries, onUpdate }: RolePlanBuilde
     try {
       const result = await generateRequestsFromPlan(projectId);
       if (result.createdRequestIds.length > 0) {
-        toast.success(`Created ${result.createdRequestIds.length} staffing request(s)`);
+        toast.success(`Created ${result.createdRequestIds.length} position(s)`);
       } else if (result.totalGaps === 0) {
         toast.info('No gaps found — all roles are filled');
       } else {

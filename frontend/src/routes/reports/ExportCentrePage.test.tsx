@@ -43,7 +43,7 @@ describe('ExportCentrePage', () => {
 
     expect(screen.getByText('Export Centre')).toBeInTheDocument();
     expect(screen.getByText('Headcount Report')).toBeInTheDocument();
-    expect(screen.getByText('Assignment Overview')).toBeInTheDocument();
+    expect(screen.getByText('Position Overview')).toBeInTheDocument();
     expect(screen.getByText('Timesheet Summary')).toBeInTheDocument();
     expect(screen.getByText('CAPEX/OPEX by Project')).toBeInTheDocument();
     expect(screen.getByText('Workload Matrix')).toBeInTheDocument();

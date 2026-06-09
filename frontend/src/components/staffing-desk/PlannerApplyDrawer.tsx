@@ -170,7 +170,7 @@ export function PlannerApplyDrawer({ onApply, onClose, open, simulation, budgetD
       {simulation.hireIntents.length > 0 && (
         <div style={{ marginBottom: 'var(--space-3)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-chart-5)', marginBottom: 'var(--space-1)' }}>
-            Staffing Requests to Create ({checkedHires.size}/{simulation.hireIntents.length})
+            Positions to Create ({checkedHires.size}/{simulation.hireIntents.length})
           </div>
           {simulation.hireIntents.map((h) => (
             <label key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '4px 0', fontSize: 11, cursor: 'pointer' }}>

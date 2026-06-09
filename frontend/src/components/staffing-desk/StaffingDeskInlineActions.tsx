@@ -93,8 +93,8 @@ export function StaffingDeskInlineActions({ actions, row }: Props): JSX.Element 
         )}
         <ConfirmDialog
           open={confirmAction === 'cancel'}
-          title="Cancel Staffing Request"
-          message="This request will be marked as cancelled. This cannot be undone."
+          title="Cancel Position"
+          message="This position will be marked as cancelled. This cannot be undone."
           onCancel={() => setConfirmAction(null)}
           onConfirm={handleConfirm}
         />

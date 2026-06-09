@@ -232,11 +232,11 @@ export function ResourcePoolDetailPage(): JSX.Element {
           <SectionCard title="Quick Actions">
             <div className="details-list">
               <div>
-                <dt>Assignments</dt>
+                <dt>Positions</dt>
                 <dd>
                   {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow. */}
                   <Button as={Link} variant="secondary" to="/staffing-requests/new">
-                    Create staffing request
+                    Create position
                   </Button>
                 </dd>
               </div>

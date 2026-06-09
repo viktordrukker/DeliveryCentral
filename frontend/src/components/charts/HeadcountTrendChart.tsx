@@ -18,7 +18,7 @@ export function HeadcountTrendChart({ data }: HeadcountTrendChartProps): JSX.Ele
     <>
       <SrOnlyTable
         caption="Headcount trend over time"
-        headers={['Week', 'Active Assignments']}
+        headers={['Week', 'Active Positions']}
         rows={data.map((d) => [d.week, d.count])}
       />
       <div style={{ minHeight: 250, width: '100%' }}>
@@ -36,7 +36,7 @@ export function HeadcountTrendChart({ data }: HeadcountTrendChartProps): JSX.Ele
         <Area
           dataKey="count"
           fill="url(#headcountGradient)"
-          name="Active Assignments"
+          name="Active Positions"
           stroke="var(--color-chart-1)"
           strokeWidth={2}
           type="monotone"

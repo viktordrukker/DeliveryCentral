@@ -71,7 +71,7 @@ export function StaffingDeskDetailDrawer({ actions, onClose, row }: Props): JSX.
   const canViewAssignments = hasAnyRole(roles, [...ASSIGNMENT_CREATE_ROLES]);
   const canViewTimesheets = hasAnyRole(roles, [...TIMESHEET_MANAGER_ROLES]);
 
-  const eyebrow = row.kind === 'assignment' ? 'Position' : 'Staffing Request';
+  const eyebrow = 'Position';
   const title = row.personName ?? row.role;
 
   return (

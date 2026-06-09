@@ -117,9 +117,9 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
       open={open}
       onCancel={onCancel}
       onSubmit={handleSubmit}
-      title="Batch Create Assignments"
-      description={`This will create ${items.length} assignment${items.length !== 1 ? 's' : ''} in one operation.`}
-      submitLabel={`Create ${items.length} Assignment${items.length !== 1 ? 's' : ''}`}
+      title="Batch Create Positions"
+      description={`This will create ${items.length} position${items.length !== 1 ? 's' : ''} in one operation.`}
+      submitLabel={`Create ${items.length} Position${items.length !== 1 ? 's' : ''}`}
       submitDisabled={submitDisabled}
       dirty={isDirty}
       size="md"

@@ -36,7 +36,7 @@ const EVENT_LABELS: Record<string, string> = {
   PROJECT_CLOSE_OVERRIDE: 'Override Close',
   PROJECT_UPDATED: 'Updated',
   BUDGET_UPSERTED: 'Budget Set',
-  ASSIGNMENT_CREATED: 'Assignment',
+  ASSIGNMENT_CREATED: 'Position',
   ASSIGNMENT_APPROVED: 'Approved',
   TEAM_ASSIGNED: 'Team Staffed',
 };

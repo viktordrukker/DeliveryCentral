@@ -143,7 +143,7 @@ export function PmStaffingTab({
       )}
 
       {openRequests.length > 0 && (
-        <SectionCard title={`Open Staffing Requests (${openRequests.length})`} collapsible>
+        <SectionCard title={`Open Positions (${openRequests.length})`} collapsible>
           <Table
             variant="compact"
             columns={requestColumns}
@@ -153,14 +153,14 @@ export function PmStaffingTab({
           />
           <div style={{ marginTop: 8 }}>
             <Link style={{ fontSize: 11, color: 'var(--color-text-muted)' }} to="/staffing-requests">
-              View all staffing requests
+              View all positions
             </Link>
           </div>
         </SectionCard>
       )}
 
       <SectionCard
-        title="Recently Changed Assignments"
+        title="Recently Changed Positions"
         collapsible
         chartExport={{
           headers: ['Project', 'Person', 'Change', 'Date'],

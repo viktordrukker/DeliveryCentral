@@ -22,7 +22,7 @@ function MockKpiStrip(): JSX.Element {
       </div>
       <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
         <span className="kpi-strip__value">120</span>
-        <span className="kpi-strip__label">Active Assignments</span>
+        <span className="kpi-strip__label">Active Positions</span>
       </div>
       <div className="kpi-strip__item" style={{ borderLeft: '3px solid var(--color-status-warning)' }}>
         <span className="kpi-strip__value">3</span>

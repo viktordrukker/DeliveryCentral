@@ -188,7 +188,7 @@ export function DirectorKpiStrip({
             style={{ borderLeft: '3px solid var(--color-chart-2)' }}
           >
             <TipBalloon
-              tip="Rolling 4-week median time-to-fill (days) per filled staffing request. Sparkline shows per-week trend."
+              tip="Rolling 4-week median time-to-fill (days) per filled position. Sparkline shows per-week trend."
               arrow="left"
             />
             <span className="kpi-strip__value">
