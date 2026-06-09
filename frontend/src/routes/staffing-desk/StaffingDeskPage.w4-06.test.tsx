@@ -1,11 +1,18 @@
 /**
- * W4-06 — Staffing Desk button copy.
+ * W4-06 → SoT PR 6 → SoT PR 8 — Staffing Desk button copy evolution.
  *
- * Original W4-06 audit clarified two adjacent Create-Position CTAs that opened
- * different surfaces (drawer vs full page). SoT PR 8 retires the full-page
- * surface entirely (V2-done criterion 6 — "no separate full-page
- * CreatePositionPage"); the secondary CTA now opens the embedded
- * CreatePositionDrawer, and the legacy "(Full page)" link is gone.
+ * W4-06 introduced clarifying labels ("+ New Position (Quick)" / "New Position
+ * (Full page)") on the two Create-Position CTAs. SoT PR 6 added DS canvas
+ * conformance (PageHeader + saved tabs + JqlBar + Supply/Demand toggle).
+ * SoT PR 8 retired the legacy full-page surface (V2-done criterion 6 — "no
+ * separate full-page CreatePositionPage"); the primary CTA now opens the
+ * embedded CreatePositionDrawer via `?openCreatePosition=true`, and the
+ * legacy "(Full page)" link is gone.
+ *
+ * This test locks in the post-PR-8 invariants:
+ *   1. Primary "+ New Position" CTA opens the embedded CreatePositionDrawer.
+ *   2. The legacy "(Full page)" link to /staffing-requests/new is gone.
+ *   3. The ambiguous "Open full create page" copy is gone.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
