@@ -10,7 +10,6 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { MetadataDictionaryList } from '@/components/metadata/MetadataDictionaryList';
 import { MetadataEntryPanel } from '@/components/metadata/MetadataEntryPanel';
 import { useMetadataAdmin } from '@/features/metadata/useMetadataAdmin';
-import { Button } from '@/components/ds';
 
 export function MetadataAdminPage(): JSX.Element {
   const [search, setSearch] = useState('');
@@ -68,11 +67,9 @@ export function MetadataAdminPage(): JSX.Element {
         ) : (
           <div className="metadata-admin-grid">
             <SectionCard title="Dictionaries">
-              <div className="section-card__actions-row section-card__actions-row--start">
-                <Button variant="secondary" disabled type="button">
-                  Add dictionary (coming soon)
-                </Button>
-              </div>
+              {/* SoT PR 3 — three disabled placeholder buttons removed
+                  (UX Law 2 — no dead-end CTAs). Re-introduce them when the
+                  metadata write APIs are wired. */}
               <MetadataDictionaryList
                 items={state.dictionaries}
                 onSelect={state.selectDictionary}
@@ -81,15 +78,6 @@ export function MetadataAdminPage(): JSX.Element {
             </SectionCard>
 
             <SectionCard title={selectedSummary ? selectedSummary.displayName : 'Dictionary Details'}>
-              <div className="section-card__actions-row section-card__actions-row--start">
-                <Button variant="secondary" disabled type="button">
-                  Edit dictionary (coming soon)
-                </Button>
-                <Button variant="secondary" disabled type="button">
-                  Manage entries (coming soon)
-                </Button>
-              </div>
-
               {state.isLoadingDetails ? <LoadingState label="Loading dictionary details..." variant="skeleton" skeletonType="table" /> : null}
 
               {!state.isLoadingDetails && state.selectedDictionary ? (
