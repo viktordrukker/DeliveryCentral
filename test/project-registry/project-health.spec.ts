@@ -4,8 +4,10 @@ function makeProjectRepo(project: object | null) {
   return { findById: jest.fn().mockResolvedValue(project) };
 }
 
-function makeAssignmentRepo(assignments: object[] = []) {
-  return { findAll: jest.fn().mockResolvedValue(assignments) };
+function makePositionRepo(positions: object[] = []) {
+  return {
+    findByQuery: jest.fn().mockResolvedValue(positions),
+  };
 }
 
 function makePrisma(approvedEntryCount = 0) {
@@ -18,12 +20,12 @@ function makePrisma(approvedEntryCount = 0) {
 
 function buildSvc(
   project: object | null,
-  assignments: object[] = [],
+  positions: object[] = [],
   approvedEntryCount = 0,
 ): ProjectHealthQueryService {
   return new ProjectHealthQueryService(
     makeProjectRepo(project) as any,
-    makeAssignmentRepo(assignments) as any,
+    makePositionRepo(positions) as any,
     makePrisma(approvedEntryCount) as any,
   );
 }
@@ -35,11 +37,11 @@ function makeProject(endsOn: Date | null = FUTURE) {
   return { id: 'proj-1', endsOn };
 }
 
-function makeAssignment(allocationPercent = 100) {
+function makePosition(allocationPercent = 100) {
   return {
     projectId: 'proj-1',
-    status: { value: 'APPROVED' },
-    allocationPercent: { value: allocationPercent },
+    fillStatus: { value: 'ASSIGNED' },
+    activeAllocationPercent: allocationPercent,
   };
 }
 
@@ -52,7 +54,7 @@ describe('ProjectHealthQueryService', () => {
   it('gives green grade (≥70) for staffed + approved time + future end date', async () => {
     const svc = buildSvc(
       makeProject(FUTURE),
-      [makeAssignment(100)],
+      [makePosition(100)],
       6,
     );
     const result = await svc.execute('proj-1');
@@ -66,19 +68,19 @@ describe('ProjectHealthQueryService', () => {
   });
 
   it('timeline score = 0 when project end date is in the past', async () => {
-    const svc = buildSvc(makeProject(PAST), [makeAssignment(100)], 6);
+    const svc = buildSvc(makeProject(PAST), [makePosition(100)], 6);
     const result = await svc.execute('proj-1');
     expect(result!.timelineScore).toBe(0);
   });
 
   it('timeline score = 17 when project has no end date', async () => {
-    const svc = buildSvc(makeProject(null), [makeAssignment(100)], 6);
+    const svc = buildSvc(makeProject(null), [makePosition(100)], 6);
     const result = await svc.execute('proj-1');
     expect(result!.timelineScore).toBe(17);
   });
 
   it('time score = 16 (partial) when assignments exist but no approved time exists yet', async () => {
-    const svc = buildSvc(makeProject(FUTURE), [makeAssignment(100)], 0);
+    const svc = buildSvc(makeProject(FUTURE), [makePosition(100)], 0);
     const result = await svc.execute('proj-1');
     expect(result!.timeScore).toBe(16);
   });
@@ -97,7 +99,7 @@ describe('ProjectHealthQueryService', () => {
 
   it('gives yellow grade for mid-range score (40–69)', async () => {
     // staffing=33, time=16, timeline=0 (past) → 49
-    const svc = buildSvc(makeProject(PAST), [makeAssignment(100)], 0);
+    const svc = buildSvc(makeProject(PAST), [makePosition(100)], 0);
     const result = await svc.execute('proj-1');
     expect(result!.score).toBe(49);
     expect(result!.grade).toBe('yellow');

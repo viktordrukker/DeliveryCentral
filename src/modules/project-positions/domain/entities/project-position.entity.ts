@@ -106,6 +106,22 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     return this.props.activeAllocationPercent;
   }
 
+  public get activeValidFrom(): Date | undefined {
+    return this.props.activeValidFrom;
+  }
+
+  public get activeValidTo(): Date | undefined {
+    return this.props.activeValidTo;
+  }
+
+  public get startDate(): Date {
+    return this.props.startDate;
+  }
+
+  public get endDate(): Date {
+    return this.props.endDate;
+  }
+
   public get releaseReason(): string | undefined {
     return this.props.releaseReason;
   }

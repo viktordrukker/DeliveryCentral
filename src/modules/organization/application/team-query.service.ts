@@ -1,8 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
 
-import {
-  InMemoryProjectAssignmentRepository,
-} from '@src/modules/assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import { InMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { InMemoryWorkEvidenceRepository } from '@src/modules/work-evidence/infrastructure/repositories/in-memory/in-memory-work-evidence.repository';
 import { AppConfig } from '@src/shared/config/app-config';
@@ -24,7 +23,9 @@ export class TeamQueryService {
     private readonly personDirectoryQueryService: PersonDirectoryQueryService,
     private readonly teamStore: TeamStorePort = getDefaultInMemoryTeamStore(),
     private readonly orgUnitRepository?: OrgUnitRepositoryPort,
-    private readonly projectAssignmentRepository?: InMemoryProjectAssignmentRepository,
+    @Optional()
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository?: ProjectPositionRepositoryPort,
     private readonly projectRepository?: InMemoryProjectRepository,
     private readonly workEvidenceRepository?: InMemoryWorkEvidenceRepository,
     private readonly appConfig?: AppConfig,
@@ -89,19 +90,32 @@ export class TeamQueryService {
     }
 
     const memberIds = members.items.map((item) => item.id);
-    const assignments = await this.projectAssignmentRepository?.findAll();
     const projects = await this.projectRepository?.findAll();
     const workEvidence = await this.workEvidenceRepository?.list({ dateTo: asOf });
 
-    const allAssignmentsForMembers =
-      assignments?.filter((assignment) => memberIds.includes(assignment.personId)) ?? [];
-    const activeAssignments =
-      assignments?.filter(
-        (assignment) => memberIds.includes(assignment.personId) && assignment.isActiveAt(asOf),
-      ) ?? [];
+    // SoT PR 16a/1 — sourced from canonical ProjectPosition rows. Collect all
+    // positions held by any member of the team across their lifecycle, then
+    // derive the "active at asOf" subset.
+    const positionsPerMember = this.projectPositionRepository
+      ? await Promise.all(
+          memberIds.map((personId) =>
+            this.projectPositionRepository!.findByQuery({ activePersonId: personId }),
+          ),
+        )
+      : [];
+    const allPositionsForMembers = positionsPerMember.flat();
+
+    const activePositions = allPositionsForMembers.filter((position) => {
+      if (!['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'].includes(position.fillStatus.value)) {
+        return false;
+      }
+      if (position.activeValidFrom && position.activeValidFrom > asOf) return false;
+      if (position.activeValidTo && position.activeValidTo < asOf) return false;
+      return true;
+    });
 
     const projectsById = new Map((projects ?? []).map((project) => [project.id, project]));
-    const projectsInvolved = Array.from(new Set(activeAssignments.map((item) => item.projectId)))
+    const projectsInvolved = Array.from(new Set(activePositions.map((item) => item.projectId)))
       .map((projectId) => projectsById.get(projectId))
       .filter(Boolean)
       .map((project) => ({
@@ -110,11 +124,12 @@ export class TeamQueryService {
       }));
     const activeProjectIdsByMember = new Map<string, Set<string>>();
 
-    for (const assignment of activeAssignments) {
+    for (const position of activePositions) {
+      if (!position.activePersonId) continue;
       const projectIdsForMember =
-        activeProjectIdsByMember.get(assignment.personId) ?? new Set<string>();
-      projectIdsForMember.add(assignment.projectId);
-      activeProjectIdsByMember.set(assignment.personId, projectIdsForMember);
+        activeProjectIdsByMember.get(position.activePersonId) ?? new Set<string>();
+      projectIdsForMember.add(position.projectId);
+      activeProjectIdsByMember.set(position.activePersonId, projectIdsForMember);
     }
 
     const membersById = new Map(members.items.map((member) => [member.id, member]));
@@ -126,10 +141,13 @@ export class TeamQueryService {
         id: personId,
       }))
       .sort((left, right) => right.activeProjectCount - left.activeProjectCount);
-    const assignmentWithoutEvidence = activeAssignments.filter(
-      (assignment) =>
+
+    const assignmentWithoutEvidence = activePositions.filter(
+      (position) =>
+        position.activePersonId &&
         !(workEvidence ?? []).some(
-          (item) => item.personId === assignment.personId && item.projectId === assignment.projectId,
+          (item) =>
+            item.personId === position.activePersonId && item.projectId === position.projectId,
         ),
     );
     const evidenceWithoutAssignment = (workEvidence ?? []).filter(
@@ -137,9 +155,10 @@ export class TeamQueryService {
         evidence.personId &&
         memberIds.includes(evidence.personId) &&
         evidence.projectId &&
-        !activeAssignments.some(
-          (assignment) =>
-            assignment.personId === evidence.personId && assignment.projectId === evidence.projectId,
+        !activePositions.some(
+          (position) =>
+            position.activePersonId === evidence.personId &&
+            position.projectId === evidence.projectId,
         ),
     );
     const evidenceAfterAssignmentEnd = (workEvidence ?? []).filter((evidence) => {
@@ -147,17 +166,23 @@ export class TeamQueryService {
         return false;
       }
 
-      return allAssignmentsForMembers.some(
-        (assignment) =>
-          assignment.personId === evidence.personId &&
-          assignment.projectId === evidence.projectId &&
-          Boolean(assignment.validTo && evidence.recordedAt > assignment.validTo),
+      return allPositionsForMembers.some(
+        (position) =>
+          position.activePersonId === evidence.personId &&
+          position.projectId === evidence.projectId &&
+          Boolean(position.activeValidTo && evidence.recordedAt > position.activeValidTo),
       );
     });
-    const staleApprovalCount = allAssignmentsForMembers.filter(
-      (assignment) =>
-        assignment.status.value === 'PROPOSED' &&
-        this.isOlderThanConfiguredThreshold(assignment.requestedAt, asOf),
+    // PROPOSED positions awaiting decision longer than the threshold count as
+    // "stale approvals". The position aggregate doesn't carry a separate
+    // requestedAt — we use activeValidFrom as a proxy for the requested-on
+    // moment (the staff request would have set this when the candidate was
+    // proposed).
+    const staleApprovalCount = allPositionsForMembers.filter(
+      (position) =>
+        position.fillStatus.value === 'PROPOSED' &&
+        position.activeValidFrom &&
+        this.isOlderThanConfiguredThreshold(position.activeValidFrom, asOf),
     ).length;
     const projectClosureConflictCount = projectsInvolved.filter((project) => {
       const persistedProject = projectsById.get(project.id);
@@ -180,7 +205,7 @@ export class TeamQueryService {
       projectClosureConflictCount;
 
     return {
-      activeAssignmentsCount: activeAssignments.length,
+      activeAssignmentsCount: activePositions.length,
       anomalySummary: {
         assignmentWithoutEvidenceCount: assignmentWithoutEvidence.length,
         evidenceAfterAssignmentEndCount: evidenceAfterAssignmentEnd.length,

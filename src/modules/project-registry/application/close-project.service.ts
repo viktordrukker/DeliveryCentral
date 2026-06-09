@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { NotificationEventTranslatorService } from '@src/modules/notifications/application/notification-event-translator.service';
 import { PersonRepositoryPort } from '@src/modules/organization/domain/repositories/person-repository.port';
 import { PersonId } from '@src/modules/organization/domain/value-objects/person-id';
+import { PROJECT_POSITION_REPOSITORY } from '@src/modules/project-positions/application/tokens';
+import { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import { UndoService } from '@src/modules/undo/application/undo.service';
 import { WorkEvidence } from '@src/modules/work-evidence/domain/entities/work-evidence.entity';
 import { WorkEvidenceRepositoryPort } from '@src/modules/work-evidence/domain/repositories/work-evidence-repository.port';
@@ -14,6 +15,8 @@ import { Project } from '../domain/entities/project.entity';
 import { ProjectRepositoryPort } from '../domain/repositories/project-repository.port';
 import { ProjectId } from '../domain/value-objects/project-id';
 import { ProjectLifecycleConflictError } from './project-lifecycle-conflict.error';
+
+const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
 
 interface WorkspendBucket {
   key: string;
@@ -47,7 +50,8 @@ export class CloseProjectService {
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly workEvidenceRepository: WorkEvidenceRepositoryPort,
     private readonly personRepository: PersonRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
+    @Inject(PROJECT_POSITION_REPOSITORY)
+    private readonly projectPositionRepository: ProjectPositionRepositoryPort,
     private readonly appConfig: AppConfig,
     private readonly auditLogger?: AuditLoggerService,
     private readonly notificationEventTranslator?: NotificationEventTranslatorService,
@@ -72,9 +76,16 @@ export class CloseProjectService {
     }
 
     if (project.status === 'ACTIVE') {
-      const activeAssignments = await this.projectAssignmentRepository.findActiveByProjectId(
+      // SoT PR 16a/1 — sourced from canonical ProjectPosition rows (active
+      // fill statuses with activePersonId set and validity covering "now").
+      const now = new Date();
+      const activePositions = await this.projectPositionRepository.findByQuery({
         projectId,
-        new Date(),
+        fillStatuses: ACTIVE_FILL_STATUSES,
+        asOf: now,
+      });
+      const activeAssignments = activePositions.filter(
+        (position) => position.activePersonId !== undefined,
       );
 
       if (activeAssignments.length > 0 && !options.allowActiveAssignmentOverride) {

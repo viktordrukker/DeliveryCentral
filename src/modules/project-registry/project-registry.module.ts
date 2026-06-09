@@ -9,8 +9,11 @@ import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
-import { CreateProjectAssignmentService } from '../assignments/application/create-project-assignment.service';
-import { InMemoryProjectAssignmentRepository } from '../assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PROJECT_POSITION_REPOSITORY } from '../project-positions/application/tokens';
+import { CreateProjectPositionService } from '../project-positions/application/create-project-position.service';
+import { TransitionProjectPositionFillService } from '../project-positions/application/transition-project-position-fill.service';
+import { ProjectPositionRepositoryPort } from '../project-positions/domain/repositories/project-position-repository.port';
+import { ProjectPositionsModule } from '../project-positions/project-positions.module';
 import { InMemoryPersonRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person.repository';
 import { InMemoryOrgUnitRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-org-unit.repository';
 import { InMemoryPersonOrgMembershipRepository } from '../organization/infrastructure/repositories/in-memory/in-memory-person-org-membership.repository';
@@ -85,6 +88,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
     forwardRef(() => OrganizationModule),
     WorkEvidenceModule,
     forwardRef(() => AssignmentsModule),
+    ProjectPositionsModule,
     NotificationsModule,
     PulseModule,
     InAppNotificationsModule,
@@ -135,8 +139,9 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         orgUnitRepository: InMemoryOrgUnitRepository,
         personRepository: InMemoryPersonRepository,
         personOrgMembershipRepository: InMemoryPersonOrgMembershipRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-        createProjectAssignmentService: CreateProjectAssignmentService,
+        projectPositionRepository: ProjectPositionRepositoryPort,
+        createProjectPositionService: CreateProjectPositionService,
+        transitionProjectPositionFillService: TransitionProjectPositionFillService,
         auditLogger: AuditLoggerService,
       ) =>
         new AssignProjectTeamService(
@@ -144,8 +149,9 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
           orgUnitRepository,
           personRepository,
           personOrgMembershipRepository,
-          projectAssignmentRepository,
-          createProjectAssignmentService,
+          projectPositionRepository,
+          createProjectPositionService,
+          transitionProjectPositionFillService,
           auditLogger,
         ),
       inject: [
@@ -153,8 +159,9 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         InMemoryOrgUnitRepository,
         InMemoryPersonRepository,
         InMemoryPersonOrgMembershipRepository,
-        InMemoryProjectAssignmentRepository,
-        CreateProjectAssignmentService,
+        PROJECT_POSITION_REPOSITORY,
+        CreateProjectPositionService,
+        TransitionProjectPositionFillService,
         AuditLoggerService,
       ],
     },
@@ -221,7 +228,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         projectRepository: InMemoryProjectRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         personRepository: InMemoryPersonRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        projectPositionRepository: ProjectPositionRepositoryPort,
         appConfig: AppConfig,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
@@ -231,7 +238,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
           projectRepository,
           workEvidenceRepository,
           personRepository,
-          projectAssignmentRepository,
+          projectPositionRepository,
           appConfig,
           auditLogger,
           notificationEventTranslator,
@@ -241,7 +248,7 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
         InMemoryProjectRepository,
         InMemoryWorkEvidenceRepository,
         InMemoryPersonRepository,
-        InMemoryProjectAssignmentRepository,
+        PROJECT_POSITION_REPOSITORY,
         AppConfig,
         AuditLoggerService,
         NotificationEventTranslatorService,
@@ -261,19 +268,16 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       useFactory: (
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         prisma: PrismaService,
       ) =>
         new ProjectDirectoryQueryService(
           projectRepository,
           projectExternalLinkRepository,
-          projectAssignmentRepository,
           prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
-        InMemoryProjectAssignmentRepository,
         PrismaService,
       ],
     },
@@ -282,19 +286,16 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       useFactory: (
         projectRepository: InMemoryProjectRepository,
         projectExternalLinkRepository: InMemoryProjectExternalLinkRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
         prisma: PrismaService,
       ) =>
         new GetProjectByIdService(
           projectRepository,
           projectExternalLinkRepository,
-          projectAssignmentRepository,
           prisma,
         ),
       inject: [
         InMemoryProjectRepository,
         InMemoryProjectExternalLinkRepository,
-        InMemoryProjectAssignmentRepository,
         PrismaService,
       ],
     },
@@ -311,11 +312,11 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       provide: ProjectDashboardQueryService,
       useFactory: (
         projectRepository: InMemoryProjectRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        projectPositionRepository: ProjectPositionRepositoryPort,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         prisma: PrismaService,
-      ) => new ProjectDashboardQueryService(projectRepository, projectAssignmentRepository, workEvidenceRepository, prisma),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, InMemoryWorkEvidenceRepository, PrismaService],
+      ) => new ProjectDashboardQueryService(projectRepository, projectPositionRepository, workEvidenceRepository, prisma),
+      inject: [InMemoryProjectRepository, PROJECT_POSITION_REPOSITORY, InMemoryWorkEvidenceRepository, PrismaService],
     },
     {
       provide: UpdateProjectService,
@@ -330,10 +331,10 @@ import { InMemoryWorkEvidenceRepository } from '../work-evidence/infrastructure/
       provide: ProjectHealthQueryService,
       useFactory: (
         projectRepository: InMemoryProjectRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        projectPositionRepository: ProjectPositionRepositoryPort,
         prisma: PrismaService,
-      ) => new ProjectHealthQueryService(projectRepository, projectAssignmentRepository, prisma),
-      inject: [InMemoryProjectRepository, InMemoryProjectAssignmentRepository, PrismaService],
+      ) => new ProjectHealthQueryService(projectRepository, projectPositionRepository, prisma),
+      inject: [InMemoryProjectRepository, PROJECT_POSITION_REPOSITORY, PrismaService],
     },
     ClientService,
     VendorService,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ProjectPositionFillStatus as PrismaProjectPositionFillStatus } from '@prisma/client';
 
-import { ProjectAssignmentRepositoryPort } from '@src/modules/assignments/domain/repositories/project-assignment-repository.port';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { ProjectBudgetStatus, ProjectDirectoryItemDto } from './contracts/project-directory.dto';
@@ -17,14 +17,24 @@ interface ProjectFinanceFields {
   cpi: number | null;
   budgetStatus: ProjectBudgetStatus;
   openPositionsCount: number;
+  assignmentCount: number;
 }
+
+// Position fill statuses that count as a "filled assignment" for the directory
+// `assignmentCount` field. DRAFT/OPEN/RELEASED are intentionally excluded.
+const ASSIGNMENT_FILL_STATUSES: PrismaProjectPositionFillStatus[] = [
+  'PROPOSED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+  'ON_HOLD',
+];
 
 @Injectable()
 export class ProjectDirectoryQueryService {
   public constructor(
     private readonly projectRepository: ProjectRepositoryPort,
     private readonly projectExternalLinkRepository: ProjectExternalLinkRepositoryPort,
-    private readonly projectAssignmentRepository: ProjectAssignmentRepositoryPort,
     // Optional so in-memory unit tests that construct the service with
     // repository fakes still compile and run. Prisma is only required to
     // populate the W2-07 finance fields (cpi / budgetStatus /
@@ -37,15 +47,10 @@ export class ProjectDirectoryQueryService {
     query: ProjectDirectoryQuery,
   ): Promise<{ items: ProjectDirectoryItemDto[]; totalCount: number }> {
     const source = query.source?.trim().toUpperCase();
-    const [projects, assignments, externalLinks] = await Promise.all([
+    const [projects, externalLinks] = await Promise.all([
       this.projectRepository.findAll(),
-      this.projectAssignmentRepository.findAll(),
       this.projectExternalLinkRepository.findAll(),
     ]);
-    const assignmentCountsByProjectId = assignments.reduce<Map<string, number>>((counts, assignment) => {
-      counts.set(assignment.projectId, (counts.get(assignment.projectId) ?? 0) + 1);
-      return counts;
-    }, new Map());
     const externalLinksByProjectId = externalLinks.reduce<Map<string, typeof externalLinks>>(
       (grouped, link) => {
         const existing = grouped.get(link.projectId.value) ?? [];
@@ -82,10 +87,11 @@ export class ProjectDirectoryQueryService {
         cpi: null,
         budgetStatus: 'UNSET' as ProjectBudgetStatus,
         openPositionsCount: 0,
+        assignmentCount: 0,
       };
 
       items.push({
-        assignmentCount: assignmentCountsByProjectId.get(project.id) ?? 0,
+        assignmentCount: finance.assignmentCount,
         budgetStatus: finance.budgetStatus,
         clientName: (project as any).clientName ?? null,
         cpi: finance.cpi,
@@ -136,7 +142,7 @@ export class ProjectDirectoryQueryService {
       return result;
     }
 
-    const [budgets, openCounts] = await Promise.all([
+    const [budgets, openCounts, assignmentCounts] = await Promise.all([
       this.prisma.projectBudget.findMany({
         where: { projectId: { in: projectIds as string[] } },
         select: {
@@ -155,6 +161,16 @@ export class ProjectDirectoryQueryService {
         where: { projectId: { in: projectIds as string[] }, fillStatus: 'OPEN' },
         _count: { _all: true },
       }),
+      // SoT PR 16a/1 — assignmentCount is now sourced from non-OPEN, non-DRAFT,
+      // non-RELEASED positions (i.e. positions that represent a real fill).
+      this.prisma.projectPosition.groupBy({
+        by: ['projectId'],
+        where: {
+          projectId: { in: projectIds as string[] },
+          fillStatus: { in: ASSIGNMENT_FILL_STATUSES },
+        },
+        _count: { _all: true },
+      }),
     ]);
 
     // Pick the latest fiscal-year budget per project (orderBy above puts the
@@ -169,6 +185,11 @@ export class ProjectDirectoryQueryService {
     const openByProjectId = new Map<string, number>();
     for (const row of openCounts) {
       openByProjectId.set(row.projectId, row._count._all);
+    }
+
+    const assignmentCountByProjectId = new Map<string, number>();
+    for (const row of assignmentCounts) {
+      assignmentCountByProjectId.set(row.projectId, row._count._all);
     }
 
     for (const projectId of projectIds) {
@@ -201,6 +222,7 @@ export class ProjectDirectoryQueryService {
         budgetStatus,
         cpi,
         openPositionsCount: openByProjectId.get(projectId) ?? 0,
+        assignmentCount: assignmentCountByProjectId.get(projectId) ?? 0,
       });
     }
 

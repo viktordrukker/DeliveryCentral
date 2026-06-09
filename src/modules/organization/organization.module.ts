@@ -9,8 +9,10 @@ import { ResponsibilityResolverService } from '../identity-access/application/re
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { EndProjectAssignmentService } from '../assignments/application/end-project-assignment.service';
-import { InMemoryProjectAssignmentRepository } from '../assignments/infrastructure/repositories/in-memory/in-memory-project-assignment.repository';
+import { PROJECT_POSITION_REPOSITORY } from '../project-positions/application/tokens';
+import { TransitionProjectPositionFillService } from '../project-positions/application/transition-project-position-fill.service';
+import { ProjectPositionRepositoryPort } from '../project-positions/domain/repositories/project-position-repository.port';
+import { ProjectPositionsModule } from '../project-positions/project-positions.module';
 import { ProjectRegistryModule } from '../project-registry/project-registry.module';
 import { InMemoryProjectRepository } from '../project-registry/infrastructure/repositories/in-memory/in-memory-project.repository';
 import { WorkEvidenceModule } from '../work-evidence/work-evidence.module';
@@ -57,6 +59,7 @@ import { TeamsController } from './presentation/teams.controller';
   imports: [
     forwardRef(() => AssignmentsModule),
     forwardRef(() => ProjectRegistryModule),
+    ProjectPositionsModule,
     WorkEvidenceModule,
     NotificationsModule,
     CaseManagementModule,
@@ -137,7 +140,7 @@ import { TeamsController } from './presentation/teams.controller';
         personDirectoryQueryService: PersonDirectoryQueryService,
         teamStore: TeamStorePort,
         orgUnitRepository: InMemoryOrgUnitRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
+        projectPositionRepository: ProjectPositionRepositoryPort,
         projectRepository: InMemoryProjectRepository,
         workEvidenceRepository: InMemoryWorkEvidenceRepository,
         appConfig: AppConfig,
@@ -146,7 +149,7 @@ import { TeamsController } from './presentation/teams.controller';
           personDirectoryQueryService,
           teamStore,
           orgUnitRepository,
-          projectAssignmentRepository,
+          projectPositionRepository,
           projectRepository,
           workEvidenceRepository,
           appConfig,
@@ -155,7 +158,7 @@ import { TeamsController } from './presentation/teams.controller';
         PersonDirectoryQueryService,
         TeamStorePort,
         InMemoryOrgUnitRepository,
-        InMemoryProjectAssignmentRepository,
+        PROJECT_POSITION_REPOSITORY,
         InMemoryProjectRepository,
         InMemoryWorkEvidenceRepository,
         AppConfig,
@@ -261,16 +264,16 @@ import { TeamsController } from './presentation/teams.controller';
       provide: TerminateEmployeeService,
       useFactory: (
         personRepository: InMemoryPersonRepository,
-        projectAssignmentRepository: InMemoryProjectAssignmentRepository,
-        endProjectAssignmentService: EndProjectAssignmentService,
+        projectPositionRepository: ProjectPositionRepositoryPort,
+        transitionProjectPositionFillService: TransitionProjectPositionFillService,
         auditLogger: AuditLoggerService,
         notificationEventTranslator: NotificationEventTranslatorService,
         employeeActivityService: EmployeeActivityService,
       ) =>
         new TerminateEmployeeService(
           personRepository,
-          projectAssignmentRepository,
-          endProjectAssignmentService,
+          projectPositionRepository,
+          transitionProjectPositionFillService,
           auditLogger,
           notificationEventTranslator,
           // Sprint F-0.4 — wired so TERMINATED activity events fire (was silent).
@@ -278,8 +281,8 @@ import { TeamsController } from './presentation/teams.controller';
         ),
       inject: [
         InMemoryPersonRepository,
-        InMemoryProjectAssignmentRepository,
-        EndProjectAssignmentService,
+        PROJECT_POSITION_REPOSITORY,
+        TransitionProjectPositionFillService,
         AuditLoggerService,
         NotificationEventTranslatorService,
         EmployeeActivityService,

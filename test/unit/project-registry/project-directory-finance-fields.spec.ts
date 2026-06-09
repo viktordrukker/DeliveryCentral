@@ -9,7 +9,6 @@
 import { Prisma } from '@prisma/client';
 
 import { ProjectDirectoryQueryService } from '@src/modules/project-registry/application/project-directory-query.service';
-import { createSeededInMemoryProjectAssignmentRepository } from '@src/modules/assignments/infrastructure/repositories/in-memory/create-seeded-in-memory-project-assignment.repository';
 import { createSeededInMemoryProjectRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/create-seeded-in-memory-project.repository';
 import { InMemoryProjectExternalLinkRepository } from '@src/modules/project-registry/infrastructure/repositories/in-memory/in-memory-project-external-link.repository';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -29,9 +28,15 @@ interface FakeOpenPositionCount {
   count: number;
 }
 
+interface FakeAssignmentCount {
+  projectId: string;
+  count: number;
+}
+
 function buildPrismaStub(seed: {
   budgets?: FakeBudget[];
   openPositions?: FakeOpenPositionCount[];
+  assignmentCounts?: FakeAssignmentCount[];
 }): PrismaService {
   const projectBudget = {
     findMany: async (q: {
@@ -49,13 +54,19 @@ function buildPrismaStub(seed: {
     },
   };
   const projectPosition = {
+    // SoT PR 16a/1 — the service issues two distinct groupBy calls: one for
+    // openPositionsCount (fillStatus = OPEN) and one for assignmentCount
+    // (fillStatus ∈ active statuses). We discriminate via the `where.fillStatus`
+    // shape.
     groupBy: async (q: {
       by: ['projectId'];
-      where: { projectId: { in: string[] }; fillStatus: 'OPEN' };
+      where: { projectId: { in: string[] }; fillStatus: 'OPEN' | { in: string[] } };
       _count: { _all: true };
     }): Promise<Array<{ projectId: string; _count: { _all: number } }>> => {
       const requested = new Set(q.where.projectId.in);
-      return (seed.openPositions ?? [])
+      const isOpenGroup = q.where.fillStatus === 'OPEN';
+      const source = isOpenGroup ? (seed.openPositions ?? []) : (seed.assignmentCounts ?? []);
+      return source
         .filter((row) => requested.has(row.projectId))
         .map((row) => ({ projectId: row.projectId, _count: { _all: row.count } }));
     },
@@ -67,7 +78,6 @@ function buildService(prisma: PrismaService): ProjectDirectoryQueryService {
   return new ProjectDirectoryQueryService(
     createSeededInMemoryProjectRepository(),
     new InMemoryProjectExternalLinkRepository([]),
-    createSeededInMemoryProjectAssignmentRepository(),
     prisma,
   );
 }
@@ -199,7 +209,6 @@ describe('W2-07 — ProjectDirectoryQueryService finance fields', () => {
     const service = new ProjectDirectoryQueryService(
       createSeededInMemoryProjectRepository(),
       new InMemoryProjectExternalLinkRepository([]),
-      createSeededInMemoryProjectAssignmentRepository(),
       // no prisma
     );
     const result = await service.execute({});
