@@ -8,6 +8,7 @@ import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
 import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
@@ -18,7 +19,9 @@ import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDro
 import { SupplyDrillDown } from '@/components/staffing-desk/SupplyDrillDown';
 import { StaffingDeskKpiStrip } from '@/components/staffing-desk/StaffingDeskKpiStrip';
 import { StaffingDeskTable } from '@/components/staffing-desk/StaffingDeskTable';
+import { StaffingDeskTabStrip, type StaffingTab } from '@/components/staffing-desk/StaffingDeskTabStrip';
 import { StaffingDeskViewSwitcher } from '@/components/staffing-desk/StaffingDeskViewSwitcher';
+import { JqlQueryBar } from '@/components/staffing-desk/JqlQueryBar';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { useStaffingDesk } from '@/features/staffing-desk/useStaffingDesk';
 import { useStaffingDeskActions } from '@/features/staffing-desk/useStaffingDeskActions';
@@ -31,6 +34,11 @@ const FILTER_DEFAULTS = {
   allocMin: '',
   colWidths: '',
   from: '',
+  // SoT PR 6 — `kind` is the Supply/Demand segmented toggle. Both segments are
+  // ProjectPosition rows; `kind` distinguishes filled-supply (assignment) from
+  // open-demand (request) for UI grouping only. The legacy `kind=request|assignment`
+  // entity discriminator has been retired by PR 1 in favour of "Position" as the
+  // canonical entity name.
   kind: '',
   orgUnitId: '',
   page: '1',
@@ -50,6 +58,9 @@ const FILTER_DEFAULTS = {
   sortBy: '',
   sortDir: '',
   status: '',
+  // SoT PR 6 — currently-active saved tab id. Persists tab selection through
+  // back/forward navigation (UX Law 5).
+  tab: 'mine',
   to: '',
   view: 'table',
 };
@@ -72,8 +83,18 @@ function serializeColWidths(widths: Record<string, number>): string {
     .join(',');
 }
 
+const LIFECYCLE_LEGEND: ReadonlyArray<{ key: string; label: string }> = [
+  { key: 'open',       label: 'Open' },
+  { key: 'proposed',   label: 'Proposed' },
+  { key: 'booked',     label: 'Booked' },
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'assigned',   label: 'Assigned' },
+  { key: 'hold',       label: 'On hold' },
+  { key: 'released',   label: 'Released' },
+];
+
 export function StaffingDeskPage(): JSX.Element {
-  const [filters, setFilters, resetFilters] = useFilterParams(FILTER_DEFAULTS);
+  const [filters, setFilters] = useFilterParams(FILTER_DEFAULTS);
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setActions } = useTitleBarActions();
 
@@ -159,10 +180,10 @@ export function StaffingDeskPage(): JSX.Element {
 
   const deskActions = useStaffingDeskActions(state.refetch);
 
-  // Title bar: Saved Filters, Export, View switcher, quick-action links, Tip.
-  // W3-03 — adds quick-action navigation buttons (Approvals, Bench, Dashboard)
-  // to match the canonical DashboardPage grammar
-  // (filters + quick-action links + TipTrigger).
+  // SoT PR 6 — saved-tab strip + JqlBar are the page chrome that replaces the
+  // legacy inline CTA cluster. The title-bar slot keeps the export/columns
+  // /view-switcher actions plus the page-level quick-action links
+  // (UX Law 9 — every dashboard exposes its companions).
   useEffect(() => {
     setActions(
       <>
@@ -191,8 +212,87 @@ export function StaffingDeskPage(): JSX.Element {
     setTimelinePopup({ personId, personName });
   }, []);
 
+  // SoT PR 6 — dirty indicator: any filter that is not the empty default
+  // (excluding page/pageSize/tab/view/colWidths) counts as "unsaved moves"
+  // relative to the active saved tab.
+  const dirty = useMemo(() => {
+    return Object.entries(filters).some(([k, v]) => {
+      if (k === 'page' || k === 'pageSize' || k === 'tab' || k === 'view' || k === 'colWidths') return false;
+      if (k === 'positionIds') return false;
+      return v && v !== (FILTER_DEFAULTS as Record<string, string>)[k];
+    });
+  }, [filters]);
+
+  const onSelectTab = useCallback((tab: StaffingTab) => {
+    // Apply the tab's query to URL params, reset paging, switch off planner.
+    const reset: Record<string, string> = {};
+    for (const k of Object.keys(FILTER_DEFAULTS)) {
+      if (k === 'colWidths' || k === 'pageSize') continue;
+      reset[k] = '';
+    }
+    setFilters({ ...reset, ...tab.query, tab: tab.id, page: '1', view: 'table' });
+  }, [setFilters]);
+
+  const onOpenPlanner = useCallback(() => {
+    setFilters({ view: 'planner' });
+  }, [setFilters]);
+
+  const handleJqlApply = useCallback((nextFilters: Partial<Record<string, string>>) => {
+    // Reset all kind/person/project/etc keys touched by the parser; keep colWidths/tab/view.
+    const cleared: Record<string, string> = {};
+    for (const [k, v] of Object.entries(nextFilters)) cleared[k] = v ?? '';
+    setFilters({ ...cleared, page: '1' });
+  }, [setFilters]);
+
+  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+
   return (
     <PageContainer testId="staffing-desk-page">
+      {/* Section 1 — PageHeader with badges (open positions / bench / dirty). */}
+      <PageHeader
+        title="Staffing Desk"
+        breadcrumbs={[{ label: 'Workforce' }, { label: 'Staffing Desk' }]}
+        badges={
+          <>
+            <span className="badge badge-outline" data-testid="sd-badge-open">
+              {state.supplyDemand.headcountOpen} open
+            </span>
+            <span className="badge badge-outline" data-testid="sd-badge-bench">
+              {state.supplyDemand.benchCount} bench
+            </span>
+            {dirty && (
+              <span className="sd-tab__dirty" aria-live="polite" data-testid="sd-badge-dirty">
+                unsaved moves
+              </span>
+            )}
+          </>
+        }
+      />
+
+      {/* Section 2 — Saved tab strip (6 tabs Mine/Public + Distribution Studio + add). */}
+      <StaffingDeskTabStrip
+        activeTabId={filters.tab}
+        currentFilters={filters}
+        onSelectTab={onSelectTab}
+        dirty={dirty}
+        onOpenPlanner={onOpenPlanner}
+        plannerActive={filters.view === 'planner'}
+      />
+
+      {/* Section 3 — JqlBar (visible when planner not active). */}
+      {filters.view !== 'planner' && (
+        <div className="sd-jql-row">
+          <div className="sd-jql-row__jql">
+            <JqlQueryBar
+              filters={filters}
+              onApplyFilters={handleJqlApply}
+              visible
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Section 4 — KPI strip (6 tiles). */}
       <StaffingDeskKpiStrip
         kpis={state.kpis}
         supplyDemand={state.supplyDemand}
@@ -200,7 +300,39 @@ export function StaffingDeskPage(): JSX.Element {
         onDemandClick={() => setDemandOpen(true)}
       />
 
-      {/* Action buttons below KPIs.
+      {/* Section 5 — Supply/Demand segmented toggle (SoT PR 6).
+          Chrome (Columns/SavedFilters/Export) lives in the title-bar slot
+          and is not duplicated here. */}
+      {filters.view !== 'planner' && (
+        <div className="sd-bulk-bar">
+          <div className="sd-bulk-bar__supply-toggle" role="tablist" aria-label="Supply / Demand">
+            <Button
+              role="tab"
+              aria-selected={filters.kind !== 'request'}
+              variant={filters.kind !== 'request' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setFilters({ kind: 'assignment', page: '1' })}
+              type="button"
+              style={{ borderRadius: 0 }}
+            >
+              Supply
+            </Button>
+            <Button
+              role="tab"
+              aria-selected={filters.kind === 'request'}
+              variant={filters.kind === 'request' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setFilters({ kind: 'request', page: '1' })}
+              type="button"
+              style={{ borderRadius: 0 }}
+            >
+              Demand
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons below segmented toggle.
           Sprint F-0.10 (Decision-10) — single canonical staffing flow:
           Create Position → Slate → Pick → Position lifecycle.
           The legacy "Make Assignment" direct-create CTA is removed in v1
@@ -233,29 +365,41 @@ export function StaffingDeskPage(): JSX.Element {
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}
       {state.error && <ErrorState description={state.error} />}
 
+      {/* Section 6 — Master DataTable with filter row + util column + lifecycle legend. */}
       {!state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
-        <StaffingDeskTable
-          items={state.items.filter((row) =>
-            !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
-            && (positionIdsSet === null || positionIdsSet.has(row.id))
+        <>
+          <StaffingDeskTable
+            items={state.items.filter((row) =>
+              !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? '')
+              && (positionIdsSet === null || positionIdsSet.has(row.id))
+            )}
+            onRowClick={setSelectedRow}
+            onPersonClick={handlePersonClick}
+            activeTab={filters.kind}
+            onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
+            columnsOpen={columnsOpen}
+            onColumnsClose={() => setColumnsOpen(false)}
+            columnWidths={columnWidths}
+            onColumnWidthChange={handleColumnWidthChange}
+            dsRefresh={dsRefreshEnabled}
+          />
+          {dsRefreshEnabled && (
+            <BulkReassignPanel
+              items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
+              onApplied={() => state.refetch()}
+            />
           )}
-          onRowClick={setSelectedRow}
-          onPersonClick={handlePersonClick}
-          activeTab={filters.kind}
-          onTabChange={(tab) => setFilters({ kind: tab === 'supply' ? 'assignment' : 'request', page: '1' })}
-          columnsOpen={columnsOpen}
-          onColumnsClose={() => setColumnsOpen(false)}
-          columnWidths={columnWidths}
-          onColumnWidthChange={handleColumnWidthChange}
-          dsRefresh={dsRefreshEnabled}
-        />
-      )}
-
-      {dsRefreshEnabled && !state.isLoading && !state.error && (filters.view === 'table' || !filters.view) && (
-        <BulkReassignPanel
-          items={state.items.filter((row) => !HIDDEN_STATUSES.has(row.status?.toUpperCase() ?? ''))}
-          onApplied={() => state.refetch()}
-        />
+          {/* Lifecycle legend — readable but unobtrusive (DS canvas L393-413). */}
+          <div className="sd-lifecycle-legend" aria-label="Position lifecycle legend">
+            <span className="sd-lifecycle-legend__label">Timeline legend</span>
+            {LIFECYCLE_LEGEND.map((l) => (
+              <span key={l.key} className="sd-lifecycle-legend__item">
+                <span className={`sd-lifecycle-legend__swatch sd-lifecycle-legend__swatch--${l.key}`} aria-hidden />
+                <span>{l.label}</span>
+              </span>
+            ))}
+          </div>
+        </>
       )}
 
       {filters.view === 'planner' && (
@@ -267,7 +411,7 @@ export function StaffingDeskPage(): JSX.Element {
         <DistributionStudio poolId={filters.poolId} orgUnitId={filters.orgUnitId} />
       )}
 
-      {/* Pagination — includes "X of Y records" */}
+      {/* Section 7 — Pagination footer. */}
       {!state.isLoading && !state.error && state.totalCount > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
@@ -279,8 +423,8 @@ export function StaffingDeskPage(): JSX.Element {
           </span>
           <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', fontVariantNumeric: 'tabular-nums' }}>
             <Button variant="secondary" size="sm" disabled={state.page <= 1} onClick={() => setFilters({ page: String(state.page - 1) })} type="button">&larr;</Button>
-            <span style={{ minWidth: 80, textAlign: 'center' }}>Page {state.page} of {Math.max(1, Math.ceil(state.totalCount / state.pageSize))}</span>
-            <Button variant="secondary" size="sm" disabled={state.page >= Math.ceil(state.totalCount / state.pageSize)} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</Button>
+            <span style={{ minWidth: 80, textAlign: 'center' }}>Page {state.page} of {totalPages}</span>
+            <Button variant="secondary" size="sm" disabled={state.page >= totalPages} onClick={() => setFilters({ page: String(state.page + 1) })} type="button">&rarr;</Button>
           </div>
           <span style={{ flex: '1 1 0', textAlign: 'right' }}>
             <select className="field__control" style={{ fontSize: 11, padding: '2px 6px', width: 'auto', display: 'inline', minWidth: 0 }} value={filters.pageSize} onChange={(e) => setFilters({ pageSize: e.target.value, page: '1' })}>
