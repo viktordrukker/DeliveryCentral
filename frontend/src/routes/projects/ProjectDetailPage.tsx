@@ -32,6 +32,7 @@ import { PlanTab } from './tabs/PlanTab';
 import { MoneyTab } from './tabs/MoneyTab';
 import { ProjectCasesTab } from './tabs/ProjectCasesTab';
 import { ManagePositionsDrawer } from '@/components/projects/ManagePositionsDrawer';
+import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
 
 const BASE_TABS = [
   { id: 'radiator', label: 'Radiator' },
@@ -106,6 +107,24 @@ export function ProjectDetailPage(): JSX.Element {
   // W4-05 — Manage-positions opens an inline Drawer instead of routing to
   // the standalone positions list (UX Law 3 — no context loss).
   const [managePositionsOpen, setManagePositionsOpen] = useState(false);
+  // SoT PR 8 — Create-position opens an embedded drawer (V2-done criterion 6).
+  // Driven by `?openCreatePosition=true` so deep-links from /staffing-desk,
+  // BenchInspector, and the legacy /staffing-requests/new redirect all land here.
+  const createPositionOpen = searchParams.get('openCreatePosition') === 'true';
+  function closeCreatePosition(): void {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('openCreatePosition');
+      return next;
+    });
+  }
+  function openCreatePosition(): void {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('openCreatePosition', 'true');
+      return next;
+    });
+  }
 
   // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
   // overall band were computed from different signals and could disagree on
@@ -256,10 +275,11 @@ export function ProjectDetailPage(): JSX.Element {
                 <Button variant="secondary" size="sm" type="button" data-testid="manage-positions-open" onClick={() => setManagePositionsOpen(true)}>Manage positions</Button>
               </>
             ) : null}
-            {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
-                "Quick assign" direct-create CTA removed; all staffing goes
-                through Create Position → Slate → Pick. */}
-            <Button as={Link} variant="primary" size="sm" to={`/projects/${id}?openCreatePosition=true`}>Create Position</Button>
+            {/* SoT PR 8 — Create-position opens the embedded drawer (no
+                full-page form). UX Law 3 — no context loss.
+                Sprint F-0.10 (Decision-10) — single canonical staffing flow;
+                all staffing goes through Create Position → Slate → Pick. */}
+            <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>Create Position</Button>
           </div>
         ) : null
       }
@@ -318,6 +338,20 @@ export function ProjectDetailPage(): JSX.Element {
               open={managePositionsOpen}
               projectId={id}
               onClose={() => setManagePositionsOpen(false)}
+            />
+          ) : null}
+
+          {/* SoT PR 8 — embedded Create Position drawer (replaces full-page
+              /staffing-requests/new). */}
+          {id ? (
+            <CreatePositionDrawer
+              open={createPositionOpen}
+              initialProjectId={id}
+              onClose={closeCreatePosition}
+              onCreated={() => {
+                closeCreatePosition();
+                state.reload();
+              }}
             />
           ) : null}
         </>
