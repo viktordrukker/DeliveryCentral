@@ -81,43 +81,70 @@ export class ProjectTimelineService {
       personScope = new Set(memberships.map((m: { personId: string }) => m.personId));
     }
 
-    // Fetch assignments overlapping the window
-    const assignmentWhere: Record<string, unknown> = {
-      status: { in: ['CREATED', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-      validFrom: { lte: endDate },
+    // SoT PR 14b — canonical reads from ProjectPosition.
+    // Active-fill positions (replaces legacy ProjectAssignment window read).
+    const activeWhere: Record<string, unknown> = {
+      fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
+      activePersonId: { not: null },
+      activeValidFrom: { lte: endDate },
       OR: [
-        { validTo: { gte: new Date(from) } },
-        { validTo: null },
+        { activeValidTo: { gte: new Date(from) } },
+        { activeValidTo: null },
       ],
     };
-    if (projectId) assignmentWhere.projectId = projectId;
-    if (personScope) assignmentWhere.personId = { in: [...personScope] };
+    if (projectId) activeWhere.projectId = projectId;
+    if (personScope) activeWhere.activePersonId = { in: [...personScope] };
 
-    const assignments = await this.prisma.projectAssignment.findMany({
-      where: assignmentWhere,
+    const activePositions = await this.prisma.projectPosition.findMany({
+      where: activeWhere,
       select: {
-        id: true, personId: true, projectId: true,
-        allocationPercent: true, validFrom: true, validTo: true, status: true,
+        id: true, activePersonId: true, projectId: true,
+        activeAllocationPercent: true, activeValidFrom: true, activeValidTo: true, fillStatus: true,
       },
     });
 
-    // Fetch open staffing requests overlapping the window
-    const requestWhere: Record<string, unknown> = {
-      status: { in: ['OPEN', 'IN_REVIEW'] },
+    // Open-demand positions (replaces legacy StaffingRequest window read).
+    const openWhere: Record<string, unknown> = {
+      fillStatus: { in: ['OPEN', 'PROPOSED'] },
       startDate: { lte: endDate },
       endDate: { gte: new Date(from) },
     };
-    if (projectId) requestWhere.projectId = projectId;
+    if (projectId) openWhere.projectId = projectId;
 
-    const requests = await this.prisma.staffingRequest.findMany({
-      where: requestWhere,
+    const openDemand = await this.prisma.projectPosition.findMany({
+      where: openWhere,
       select: {
         id: true, projectId: true, role: true,
-        allocationPercent: true, priority: true,
-        headcountRequired: true, headcountFulfilled: true,
+        requiredAllocationPercent: true, priority: true,
         startDate: true, endDate: true,
       },
     });
+
+    // Adapt to the legacy shape so the rest of this method (below) is unchanged.
+    const assignments = activePositions
+      .filter((p): p is typeof p & { activePersonId: string; activeValidFrom: Date } =>
+        p.activePersonId !== null && p.activeValidFrom !== null,
+      )
+      .map((p) => ({
+        id: p.id,
+        personId: p.activePersonId,
+        projectId: p.projectId,
+        allocationPercent: p.activeAllocationPercent,
+        validFrom: p.activeValidFrom,
+        validTo: p.activeValidTo,
+        status: p.fillStatus as string,
+      }));
+    const requests = openDemand.map((p) => ({
+      id: p.id,
+      projectId: p.projectId,
+      role: p.role,
+      allocationPercent: p.requiredAllocationPercent,
+      priority: p.priority,
+      headcountRequired: 1,
+      headcountFulfilled: 0,
+      startDate: p.startDate,
+      endDate: p.endDate,
+    }));
 
     // Lookup names
     const allPersonIds = [...new Set(assignments.map((a) => a.personId))];
