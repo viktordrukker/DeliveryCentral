@@ -312,27 +312,31 @@ export class PrismaPersonDirectoryQueryRepository
       return new Map();
     }
 
-    const assignments = await this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — canonical read from ProjectPosition.activePersonId.
+    // BOOKED/ONBOARDING/ASSIGNED/ON_HOLD map to fillStatuses with an active fill.
+    const positions = await this.prisma.projectPosition.findMany({
       select: {
-        personId: true,
+        activePersonId: true,
       },
       where: {
         archivedAt: null,
-        personId: {
+        activePersonId: {
           in: personIds,
         },
-        status: {
+        fillStatus: {
           in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'],
         },
-        validFrom: {
+        activeValidFrom: {
           lte: asOf,
         },
-        OR: [{ validTo: null }, { validTo: { gte: asOf } }],
+        OR: [{ activeValidTo: null }, { activeValidTo: { gte: asOf } }],
       },
     });
 
-    return assignments.reduce<Map<string, number>>((counts, assignment) => {
-      counts.set(assignment.personId, (counts.get(assignment.personId) ?? 0) + 1);
+    return positions.reduce<Map<string, number>>((counts, position) => {
+      const pid = position.activePersonId;
+      if (!pid) return counts;
+      counts.set(pid, (counts.get(pid) ?? 0) + 1);
       return counts;
     }, new Map());
   }

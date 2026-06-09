@@ -68,14 +68,20 @@ export class FinancialRepository {
   ): Promise<
     Array<{ projectId: string; allocationPercent: Prisma.Decimal | null }>
   > {
-    return this.prisma.projectAssignment.findMany({
+    // SoT PR 14b — canonical read from ProjectPosition.
+    // status=BOOKED + validTo=null on legacy = fillStatus=BOOKED + activeValidTo=null on canonical.
+    const positions = await this.prisma.projectPosition.findMany({
       where: {
         projectId: { in: projectIds },
-        status: 'BOOKED',
-        validTo: null,
+        fillStatus: 'BOOKED',
+        activeValidTo: null,
       },
-      select: { projectId: true, allocationPercent: true },
+      select: { projectId: true, activeAllocationPercent: true },
     });
+    return positions.map((p) => ({
+      projectId: p.projectId,
+      allocationPercent: p.activeAllocationPercent,
+    }));
   }
 
   // ─── Period Locks ─────────────────────────────────────────────────────────
@@ -267,13 +273,22 @@ export class FinancialRepository {
   public async findApprovedAssignmentRolesForProject(
     projectId: string,
   ): Promise<Array<{ personId: string; staffingRole: string; allocationPercent: Prisma.Decimal | null }>> {
-    return this.prisma.projectAssignment.findMany({
-      where: { projectId, status: 'BOOKED' },
+    // SoT PR 14b — canonical read from ProjectPosition.
+    // status=BOOKED on legacy => fillStatus=BOOKED on canonical (active person assigned).
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { projectId, fillStatus: 'BOOKED', activePersonId: { not: null } },
       select: {
-        personId: true,
-        staffingRole: true,
-        allocationPercent: true,
+        activePersonId: true,
+        role: true,
+        activeAllocationPercent: true,
       },
     });
+    return positions
+      .filter((p): p is typeof p & { activePersonId: string } => p.activePersonId !== null)
+      .map((p) => ({
+        personId: p.activePersonId,
+        staffingRole: p.role ?? '',
+        allocationPercent: p.activeAllocationPercent,
+      }));
   }
 }
