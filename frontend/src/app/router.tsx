@@ -60,7 +60,6 @@ import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
 import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
 import { V2SoakChecklistPage } from '@/routes/admin/V2SoakChecklistPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
-import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/AssignmentDetailsPlaceholderPage';
 import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
