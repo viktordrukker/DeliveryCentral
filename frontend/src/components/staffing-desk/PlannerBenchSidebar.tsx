@@ -28,7 +28,7 @@ const STRATEGY_OPTIONS: Array<{ value: AutoMatchStrategy; label: string; hint: s
 ];
 
 const S_SIDEBAR: React.CSSProperties = {
-  width: 220, minWidth: 220, borderRight: '1px solid var(--color-border)',
+  width: 240, minWidth: 240, borderRight: '1px solid var(--color-border)',
   background: 'var(--color-surface)', overflowY: 'auto', display: 'flex', flexDirection: 'column',
   fontSize: 11,
 };
