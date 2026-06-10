@@ -2,7 +2,7 @@ name: v2-playwright-baseline
 
 # V2 visual-regression baseline.
 #
-# Captures Playwright screenshots of 30 critical pages × 4 viewports = 120 PNG
+# Captures Playwright screenshots of 27 critical pages × 4 viewports = 108 PNG
 # artifacts against v2-staging. Run manually before the C0 flip to establish a
 # golden set, then re-run on subsequent PRs to detect drift.
 #

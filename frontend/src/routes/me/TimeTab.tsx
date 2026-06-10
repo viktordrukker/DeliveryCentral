@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ErrorState } from '@/components/common/ErrorState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button, EditableCell, Table, type Column } from '@/components/ds';
@@ -27,9 +28,11 @@ export function TimeTab(): JSX.Element {
   const [overrides, setOverrides] = useState<Map<string, number>>(() => new Map());
   const [submitting, setSubmitting] = useState(false);
   const [refetchTick, setRefetchTick] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    setLoadError(null);
     fetchMonthlyTimesheet(monthKey)
       .then((res) => {
         if (active) {
@@ -37,8 +40,10 @@ export function TimeTab(): JSX.Element {
           setOverrides(new Map());
         }
       })
-      .catch(() => {
-        // grid has its own empty state; failure is non-fatal
+      .catch((err: unknown) => {
+        if (active) {
+          setLoadError(err instanceof Error ? err.message : 'Failed to load your timesheet.');
+        }
       });
     return () => {
       active = false;
@@ -275,6 +280,18 @@ export function TimeTab(): JSX.Element {
     const total: GridRow = { kind: 'total', days: dailyTotals };
     return [...projects, total];
   }, [projectRows, dailyTotals]);
+
+  if (loadError && !data) {
+    return (
+      <SectionCard title="Weekly grid">
+        <ErrorState
+          variant="card"
+          description={loadError}
+          onRetry={() => setRefetchTick((t) => t + 1)}
+        />
+      </SectionCard>
+    );
+  }
 
   if (weekDays.length !== 7) {
     return (

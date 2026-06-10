@@ -32,11 +32,11 @@ PLAYWRIGHT_SMOKE_ONLY=true npx playwright test
 
 ## V2 Playwright Baseline
 
-Visual-regression net for the C0 cutover. Captures 30 critical pages × 4 viewports = 120 PNG snapshots against the v2-staging deployment.
+Visual-regression net for the C0 cutover. Captures 27 critical pages × 4 viewports = 108 PNG snapshots against the v2-staging deployment.
 
 ### Files
 
-- `e2e/v2/routes.json` — manifest of 30 routes + 4 viewports
+- `e2e/v2/routes.json` — manifest of 27 routes + 4 viewports
 - `e2e/v2/baseline.spec.ts` — single spec that iterates the manifest
 - `e2e/v2/snapshots/` — snapshot artefacts directory. `.png` files are gitignored; the workflow uploads them as a CI artefact.
 - `.github/workflows/v2-playwright-baseline.yml` — manual `workflow_dispatch` trigger

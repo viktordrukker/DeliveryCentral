@@ -112,6 +112,26 @@ export function ApprovalsPage(): JSX.Element {
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
   // B24 — header Refresh re-triggers the load effect.
   const [reloadTick, setReloadTick] = useState(0);
+  // ?focus=<id> deep-links (e.g. from ProjectPositionDetailPage pending
+  // approvals) open the matching item's inspector once the queue loads.
+  const focusParam = searchParams.get('focus');
+  const [focusApplied, setFocusApplied] = useState(false);
+
+  useEffect(() => {
+    if (!focusParam || focusApplied || items == null) return;
+    const match = items.find((it) => it.id === focusParam);
+    if (match) {
+      const key = `${match.source}-${match.id}`;
+      setSelectedItemKey(key);
+      requestAnimationFrame(() => {
+        const row = Array.from(document.querySelectorAll('[data-approval-key]')).find(
+          (el) => el.getAttribute('data-approval-key') === key,
+        );
+        row?.scrollIntoView?.({ block: 'center' });
+      });
+    }
+    setFocusApplied(true);
+  }, [focusParam, focusApplied, items]);
 
   useEffect(() => {
     let active = true;
@@ -240,7 +260,7 @@ export function ApprovalsPage(): JSX.Element {
       />
 
       {loading ? <LoadingState variant="skeleton" skeletonType="cards" /> : null}
-      {error ? <ErrorState description={error} onRetry={() => setFilter(activeFilter)} /> : null}
+      {error ? <ErrorState description={error} onRetry={() => setReloadTick((t) => t + 1)} /> : null}
 
       {!loading && !error && items != null ? (
         items.length === 0 ? (
@@ -307,6 +327,7 @@ export function ApprovalsPage(): JSX.Element {
                     return (
                       <div
                         key={key}
+                        data-approval-key={key}
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelectedItemKey(isActive ? null : key)}
