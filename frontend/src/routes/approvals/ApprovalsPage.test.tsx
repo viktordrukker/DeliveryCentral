@@ -72,7 +72,7 @@ describe('ApprovalsPage', () => {
     renderRoute(<ApprovalsPage />);
     await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
     fetchUnifiedApprovals.mockClear();
-    await user.click(screen.getByRole('button', { name: /Budget · 1/ }));
+    await user.click(await screen.findByRole('button', { name: /Budget · 1/ }));
     await waitFor(() =>
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['budget'], pageSize: 100 }),
     );
@@ -168,7 +168,7 @@ describe('ApprovalsPage', () => {
     await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
     expect(screen.getByText('Timesheet week of 2026-05-25')).toBeInTheDocument();
     fetchUnifiedApprovals.mockClear();
-    await user.click(screen.getByRole('button', { name: /Timesheets · 1/ }));
+    await user.click(await screen.findByRole('button', { name: /Timesheets · 1/ }));
     await waitFor(() =>
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['timesheet'], pageSize: 100 }),
     );
@@ -209,7 +209,7 @@ describe('ApprovalsPage', () => {
     const openLink = screen.getByRole('link', { name: /Open/ });
     expect(openLink.getAttribute('href')).toBe('/leave-requests/lr-1');
     fetchUnifiedApprovals.mockClear();
-    await user.click(screen.getByRole('button', { name: /Leave · 1/ }));
+    await user.click(await screen.findByRole('button', { name: /Leave · 1/ }));
     await waitFor(() =>
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['leave'], pageSize: 100 }),
     );
