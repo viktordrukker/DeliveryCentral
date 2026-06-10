@@ -301,7 +301,7 @@ export function CaseDetailsPage(): JSX.Element {
           </Button>
         }
         eyebrow="Cases"
-        subtitle="Review linked people and optional staffing context without collapsing case workflow into assignment workflow."
+        subtitle="Review linked people and optional staffing context without collapsing case workflow into position workflow."
         title={displayCase?.caseNumber ?? 'Case Detail'}
       />
 

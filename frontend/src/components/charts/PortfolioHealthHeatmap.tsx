@@ -42,7 +42,7 @@ function StatusPill({ status }: { status: 'green' | 'red' | 'yellow' }): JSX.Ele
 export function PortfolioHealthHeatmap({ projects }: PortfolioHealthHeatmapProps): JSX.Element {
   const columns: Column<PortfolioProject>[] = [
     { key: 'name', title: 'Project', getValue: (p) => p.name, render: (p) => p.name },
-    { key: 'staffing', title: <span title="Active assignments covering the project">Staffing</span>, align: 'center', render: (p) => <StatusPill status={p.staffing} /> },
+    { key: 'staffing', title: <span title="Active positions covering the project">Staffing</span>, align: 'center', render: (p) => <StatusPill status={p.staffing} /> },
     { key: 'time', title: <span title="Approved time submitted against the project">Time</span>, align: 'center', render: (p) => <StatusPill status={p.time} /> },
     { key: 'timeline', title: <span title="Project timeline relative to planned end date">Timeline</span>, align: 'center', render: (p) => <StatusPill status={p.timeline} /> },
   ];

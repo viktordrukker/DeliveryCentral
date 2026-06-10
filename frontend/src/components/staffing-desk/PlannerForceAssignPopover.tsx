@@ -104,7 +104,7 @@ export function PlannerForceAssignPopover({ pending, onCancel, onConfirm }: Prop
         </div>
       )}
 
-      <FormField label="Reason (saved on assignment)">
+      <FormField label="Reason (saved on position)">
         {(props) => (
           <Select
             value={type}

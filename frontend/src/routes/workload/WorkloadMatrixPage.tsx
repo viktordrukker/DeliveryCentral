@@ -263,7 +263,7 @@ export function WorkloadMatrixPage(): JSX.Element {
     <PageContainer viewport>
       <PageHeader
         eyebrow="Workload"
-        subtitle="Allocation matrix showing each person's current active assignments across projects."
+        subtitle="Allocation matrix showing each person's current active positions across projects."
         title="Workload Matrix"
       />
 
