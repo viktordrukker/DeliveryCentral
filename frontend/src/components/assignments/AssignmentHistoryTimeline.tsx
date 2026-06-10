@@ -1,21 +1,13 @@
-import type { AssignmentHistoryItem } from '@/lib/api/assignments';
 import type { ProjectPositionFillHistory } from '@/lib/api/project-positions';
 import { formatDateTime } from '@/lib/format-date';
 
 /**
- * W2-04 — unified lifecycle timeline. Renders either:
- *  - Legacy `AssignmentHistoryItem[]`
- *  - Lean `ProjectPositionFillHistory[]` (used by ProjectPositionDetailPage)
- *
- * The component reads only the union of fields present on both shapes, so it
- * is safe against future BE additions on either side. Lean rows carry status
- * transitions explicitly (`previousStatus` → `newStatus`); legacy rows carry
- * snapshots (`previousSnapshot` / `newSnapshot`). The render adapts.
+ * W2-04 — position lifecycle timeline. Renders `ProjectPositionFillHistory[]`
+ * rows from the lean `/project-positions/:id/history` endpoint. Lean rows
+ * carry status transitions explicitly (`previousStatus` → `newStatus`).
  */
-type TimelineItem = AssignmentHistoryItem | ProjectPositionFillHistory;
-
 interface AssignmentHistoryTimelineProps {
-  items: TimelineItem[];
+  items: ProjectPositionFillHistory[];
 }
 
 export function AssignmentHistoryTimeline({
@@ -55,57 +47,31 @@ export function AssignmentHistoryTimeline({
   );
 }
 
-function renderTransition(item: TimelineItem): JSX.Element | null {
-  // Lean-shape path — explicit status / person transition fields.
-  if (isLeanFillHistory(item)) {
-    const rows: Array<[string, string]> = [];
-    if (item.previousStatus || item.newStatus) {
-      rows.push([
-        'Status',
-        `${item.previousStatus ?? '—'} → ${item.newStatus ?? '—'}`,
-      ]);
-    }
-    if (item.previousPersonId || item.newPersonId) {
-      rows.push([
-        'Person',
-        `${item.previousPersonId ?? '—'} → ${item.newPersonId ?? '—'}`,
-      ]);
-    }
-    if (rows.length === 0) return null;
-    return (
-      <dl className="history-timeline__snapshot">
-        {rows.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-    );
+function renderTransition(item: ProjectPositionFillHistory): JSX.Element | null {
+  const rows: Array<[string, string]> = [];
+  if (item.previousStatus || item.newStatus) {
+    rows.push([
+      'Status',
+      `${item.previousStatus ?? '—'} → ${item.newStatus ?? '—'}`,
+    ]);
   }
-
-  // Legacy snapshot path.
-  if (!item.previousSnapshot && !item.newSnapshot) return null;
+  if (item.previousPersonId || item.newPersonId) {
+    rows.push([
+      'Person',
+      `${item.previousPersonId ?? '—'} → ${item.newPersonId ?? '—'}`,
+    ]);
+  }
+  if (rows.length === 0) return null;
   return (
     <dl className="history-timeline__snapshot">
-      {item.previousSnapshot ? (
-        <div>
-          <dt>Previous</dt>
-          <dd>{formatSnapshot(item.previousSnapshot)}</dd>
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
         </div>
-      ) : null}
-      {item.newSnapshot ? (
-        <div>
-          <dt>New</dt>
-          <dd>{formatSnapshot(item.newSnapshot)}</dd>
-        </div>
-      ) : null}
+      ))}
     </dl>
   );
-}
-
-function isLeanFillHistory(item: TimelineItem): item is ProjectPositionFillHistory {
-  return 'positionId' in item;
 }
 
 function formatChangeType(changeType: string): string {
@@ -114,10 +80,4 @@ function formatChangeType(changeType: string): string {
     .split('_')
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ');
-}
-
-function formatSnapshot(snapshot: Record<string, unknown>): string {
-  return Object.entries(snapshot)
-    .map(([key, value]) => `${key}: ${String(value ?? 'n/a')}`)
-    .join(' · ');
 }

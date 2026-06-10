@@ -141,22 +141,27 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
         </div>
         {sidebar.isLoading ? (
           <div className="person-drawer__empty">Loading...</div>
-        ) : sidebar.assignments.length > 0 ? (
+        ) : sidebar.positions.length > 0 ? (
           <ul className="person-drawer__assignment-list">
-            {sidebar.assignments.map((a) => (
-              <li key={a.id} className="person-drawer__assignment-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Link to={`/projects/${a.project.id}`} className="person-drawer__assignment-link">
-                    {a.project.displayName}
-                  </Link>
-                  <span className="person-drawer__assignment-pct">{a.allocationPercent}%</span>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>
-                  {a.staffingRole}
-                  {a.endDate && <span> {'\u00B7'} ends {new Date(a.endDate).toLocaleDateString()}</span>}
-                </div>
-              </li>
-            ))}
+            {sidebar.positions.map((p) => {
+              const projectLabel = p.projectName ?? p.projectCode ?? p.projectId;
+              const alloc = p.activeAllocationPercent ?? p.requiredAllocationPercent;
+              const endDate = p.activeValidTo ?? p.endDate;
+              return (
+                <li key={p.id} className="person-drawer__assignment-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 2 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Link to={`/projects/${p.projectId}`} className="person-drawer__assignment-link">
+                      {projectLabel}
+                    </Link>
+                    <span className="person-drawer__assignment-pct">{alloc}%</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-subtle)' }}>
+                    {p.role}
+                    {endDate && <span> {'\u00B7'} ends {new Date(endDate).toLocaleDateString()}</span>}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : person.allocations.length > 0 ? (
           <ul className="person-drawer__assignment-list">

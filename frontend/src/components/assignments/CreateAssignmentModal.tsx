@@ -2,15 +2,11 @@ import { FormEvent, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import type {
-  CreateAssignmentRequest,
-  ProjectAssignmentResponse,
-} from '@/lib/api/assignments';
 import {
   createProjectPosition,
   transitionProjectPositionFill,
+  type ProjectPosition,
 } from '@/lib/api/project-positions';
-import { mapPositionToAssignmentResponse } from '@/features/lean-migration/position-to-assignment-mapper';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
 import { UtilisationPeek } from '@/components/assignments/UtilisationPeek';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
@@ -37,7 +33,7 @@ export interface AssignmentModalPreFill {
 
 interface CreateAssignmentModalProps {
   onCancel: () => void;
-  onSuccess: (response: ProjectAssignmentResponse) => void;
+  onSuccess: (position: ProjectPosition) => void;
   open: boolean;
   preFill: AssignmentModalPreFill | null;
 }
@@ -58,7 +54,7 @@ interface CreateAssignmentModalProps {
  * only when `open && preFill`, so `useAuth()` and `useState` are deferred
  * until the modal is actually visible.
  */
-function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel: () => void; onSuccess: (r: ProjectAssignmentResponse) => void; preFill: AssignmentModalPreFill }): JSX.Element {
+function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel: () => void; onSuccess: (p: ProjectPosition) => void; preFill: AssignmentModalPreFill }): JSX.Element {
   const { principal } = useAuth();
   const [staffingRole, setStaffingRole] = useState('');
   const [customRole, setCustomRole] = useState('');
@@ -86,7 +82,22 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
     onCancel();
   }
 
-  function buildRequest(asDraft: boolean, forceOverlap: boolean): CreateAssignmentRequest & { personValidated?: boolean } {
+  interface BuiltRequest {
+    actorId: string;
+    allocationPercent: number;
+    personId: string;
+    projectId: string;
+    staffingRole: string;
+    startDate: string;
+    draft?: boolean;
+    allowOverlapOverride?: boolean;
+    overrideReason?: string;
+    personValidated?: boolean;
+    endDate?: string;
+    note?: string;
+  }
+
+  function buildRequest(asDraft: boolean, forceOverlap: boolean): BuiltRequest {
     return {
       actorId,
       allocationPercent,
@@ -137,14 +148,13 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
             ...(req.endDate ? { validTo: req.endDate } : {}),
             ...(req.note ? { reason: req.note } : {}),
           });
-      const response: ProjectAssignmentResponse = mapPositionToAssignmentResponse(finalPosition);
       setStaffingRole('');
       setCustomRole('');
       setAllocInput('100');
       setStartDate('');
       setEndDate('');
       setNote('');
-      onSuccess(response);
+      onSuccess(finalPosition);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create assignment.';
       if (msg.toLowerCase().includes('overlapping')) {

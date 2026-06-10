@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
-// LEAN-P2-8: read-path re-pointed to /project-positions via the legacy mapper.
+// SoT PR 17b: read-path consumes /project-positions directly.
 import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { fetchCapitalisationReport } from '@/lib/api/capitalisation';
 import { fetchPersonDirectory } from '@/lib/api/person-directory';
 import { fetchApprovalQueue } from '@/lib/api/timesheets';
@@ -102,15 +101,15 @@ export function ExportCentrePage(): JSX.Element {
   }
 
   async function generateAssignmentOverview(): Promise<void> {
-    const res = mapListResponseToDirectory(await listProjectPositions({ take: 500 }));
-    const rows = res.items.map((a) => ({
-      'Allocation %': a.allocationPercent,
-      'End Date': a.endDate ?? '',
-      Person: a.person.displayName,
-      Project: a.project.displayName,
-      Role: a.staffingRole,
-      'Start Date': a.startDate,
-      Status: a.approvalState,
+    const res = await listProjectPositions({ take: 500 });
+    const rows = res.positions.map((p) => ({
+      'Allocation %': p.activeAllocationPercent ?? p.requiredAllocationPercent,
+      'End Date': p.activeValidTo ?? p.endDate ?? '',
+      Person: p.activePersonName ?? p.activePersonId ?? '',
+      Project: p.projectName ?? p.projectCode ?? p.projectId,
+      Role: p.role,
+      'Start Date': p.activeValidFrom ?? p.startDate ?? '',
+      Status: p.fillStatus,
     }));
     exportToXlsx(rows, `assignments_${today()}`);
   }

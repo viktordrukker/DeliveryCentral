@@ -114,8 +114,8 @@ describe('CreateCasePage', () => {
       ],
     });
 
-    // LEAN-P2 exit-gate: hook now reads /project-positions and runs the
-    // result through mapListResponseToDirectory. Mock the canonical shape.
+    // SoT PR 17b: hook now consumes /project-positions directly. Mock the
+    // canonical ProjectPosition shape.
     mockedListProjectPositions.mockResolvedValue({
       positions: [
         {

@@ -88,8 +88,8 @@ describe('W1-20 — staffing-desk + dashboards do not import legacy assignments/
         .join('\n');
       throw new Error(
         `W1-20 violation: legacy client imports re-introduced into the staffing-desk / dashboard scope.\n` +
-          `Migrate the offending import to '@/lib/api/project-positions' (use position-to-assignment-mapper ` +
-          `if a legacy DTO shape is still required for downstream rendering):\n${message}`,
+          `Migrate the offending import to '@/lib/api/project-positions' — the legacy clients ` +
+          `(@/lib/api/assignments and @/lib/api/staffing-requests) were deleted in SoT PR 17b:\n${message}`,
       );
     }
 

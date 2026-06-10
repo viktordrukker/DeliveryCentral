@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { StaffingDeskDetailDrawer } from '@/components/staffing-desk/StaffingDeskDetailDrawer';
 import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
-import { StaffingRequestDrawer } from '@/components/staffing-requests/StaffingRequestDrawer';
 import { DemandDrillDown } from '@/components/staffing-desk/DemandDrillDown';
 import { StaffingDeskExportButton } from '@/components/staffing-desk/StaffingDeskExportButton';
 import { SavedFiltersDropdown } from '@/components/staffing-desk/SavedFiltersDropdown';
@@ -111,7 +110,6 @@ export function StaffingDeskPage(): JSX.Element {
   const closeDrawer = useCallback(() => setSelectedRow(null), []);
   const [supplyOpen, setSupplyOpen] = useState(false);
   const [demandOpen, setDemandOpen] = useState(false);
-  const [requestDrawerOpen, setRequestDrawerOpen] = useState(false);
   // SoT PR 8 — embedded CreatePositionDrawer driven by `?openCreatePosition=true`.
   // Same query-param contract as ProjectDetailPage so BenchInspector deep-links
   // and other callers behave consistently.
@@ -344,7 +342,6 @@ export function StaffingDeskPage(): JSX.Element {
         {/* SoT PR 8 — embedded CreatePositionDrawer (V2-done criterion 6).
             Replaces the legacy "(Full page)" link to /staffing-requests/new. */}
         <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>+ New Position</Button>
-        <Button variant="ghost" size="sm" type="button" onClick={() => setRequestDrawerOpen(true)}>+ New Position (Quick)</Button>
       </div>
       <CreatePositionDrawer
         open={createPositionOpen}
@@ -354,12 +351,6 @@ export function StaffingDeskPage(): JSX.Element {
           closeCreatePosition();
           state.refetch();
         }}
-      />
-      <StaffingRequestDrawer
-        open={requestDrawerOpen}
-        onClose={() => setRequestDrawerOpen(false)}
-        onSubmitted={() => state.refetch()}
-        initialValues={filters.project ? { projectId: filters.project } : undefined}
       />
 
       {state.isLoading && <LoadingState variant="skeleton" skeletonType="table" />}

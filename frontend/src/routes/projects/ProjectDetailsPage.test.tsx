@@ -670,10 +670,8 @@ describe('ProjectDetailPage', () => {
 
   it('navigates between tabs and shows correct content', async () => {
     mockedFetchProjectById.mockResolvedValue(buildActiveProject());
-    // LEAN-P2 exit-gate: hook reads /project-positions and runs the response
-    // through mapListResponseToDirectory. The mapper sets person.displayName
-    // to the personId (joined display names are filled in BE-side by a future
-    // DTO enrichment); assertions below verify role + the personId surrogate.
+    // SoT PR 17b: TeamVendorsTab consumes /project-positions directly.
+    // Assertions below verify role + activePersonId surrogate.
     mockedListProjectPositions.mockResolvedValue({
       positions: [
         {

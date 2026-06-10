@@ -9,7 +9,6 @@ import { Button, Tabs } from '@/components/ds';
 import { fetchInbox } from '@/lib/api/inbox';
 import { fetchMyLeaveRequests } from '@/lib/api/leaveRequests';
 import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 
 import { LeaveTab } from './LeaveTab';
 import { MeCasesTab } from './MeCasesTab';
@@ -110,16 +109,18 @@ export function WorkspaceShellPage(): JSX.Element {
       fetchInbox({ limit: 100 }).catch(() => null),
       fetchMyLeaveRequests().catch(() => null),
       listProjectPositions({ activePersonId: personId, take: 200 })
-        .then(mapListResponseToDirectory)
         .catch(() => null),
-    ]).then(([inbox, leave, assignments]) => {
+    ]).then(([inbox, leave, positionsRes]) => {
       if (!active) return;
       if (inbox) setInboxCount(inbox.filter((n) => !n.readAt).length);
       if (leave) setLeaveCount(leave.filter((l) => l.status === 'PENDING').length);
-      if (assignments) {
+      if (positionsRes) {
         const now = Date.now();
         setProjectsCount(
-          assignments.items.filter((a) => !a.endDate || new Date(a.endDate).getTime() >= now).length,
+          positionsRes.positions.filter((p) => {
+            const end = p.activeValidTo ?? p.endDate;
+            return !end || new Date(end).getTime() >= now;
+          }).length,
         );
       }
     });

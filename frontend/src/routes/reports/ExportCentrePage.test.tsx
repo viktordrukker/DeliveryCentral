@@ -108,10 +108,10 @@ describe('ExportCentrePage', () => {
   it('calls listProjectPositions and exportToXlsx when Assignment Overview generated', async () => {
     const user = userEvent.setup();
 
-    // LEAN-P2-8: page now calls listProjectPositions and runs the result
-    // through mapListResponseToDirectory. The mapper fills `person.displayName`
-    // / `project.displayName` with the underlying IDs when the BE DTO doesn't
-    // carry joined records — assert against that shape.
+    // SoT PR 17b: page consumes listProjectPositions directly. Person/Project
+    // columns fall back to the raw IDs when the BE DTO doesn't carry an
+    // enriched activePersonName / projectName projection — assert against
+    // that shape.
     mockedListProjectPositions.mockResolvedValue({
       positions: [
         {

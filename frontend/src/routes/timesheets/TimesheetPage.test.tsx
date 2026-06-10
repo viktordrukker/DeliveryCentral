@@ -18,10 +18,6 @@ vi.mock('@/app/auth-context', async () => {
   };
 });
 
-vi.mock('@/lib/api/assignments', () => ({
-  fetchAssignments: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
-}));
-
 vi.mock('@/lib/api/timesheets', () => ({
   fetchMyTimesheetWeek: vi.fn(),
   submitTimesheetWeek: vi.fn(),
