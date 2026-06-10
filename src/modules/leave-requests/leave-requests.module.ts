@@ -4,6 +4,7 @@ import { NotificationEventTranslatorService } from '@src/modules/notifications/a
 import { NotificationsModule } from '@src/modules/notifications/notifications.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+import { LeaveImpactPreviewService } from './application/leave-impact-preview.service';
 import { LeaveRequestsService } from './application/leave-requests.service';
 import { LeaveBalanceService } from './application/leave-balance.service';
 import { LeavePolicyService } from './application/leave-policy.service';
@@ -15,7 +16,7 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
 @Module({
   imports: [NotificationsModule],
   controllers: [LeaveRequestsController, LeavePolicyController],
-  exports: [LeaveRequestsService, LeaveBalanceService, LeavePolicyService],
+  exports: [LeaveRequestsService, LeaveBalanceService, LeavePolicyService, LeaveImpactPreviewService],
   providers: [
     // F-14.2 / 20c-02 — bind the new LeaveRequest repository port to its
     // Prisma adapter so `LeaveRequestsService` doesn't speak Prisma directly.
@@ -37,6 +38,7 @@ import { LeaveRequestsController } from './presentation/leave-requests.controlle
     },
     LeaveBalanceService,
     LeavePolicyService,
+    LeaveImpactPreviewService,
   ],
 })
 export class LeaveRequestsModule {}
