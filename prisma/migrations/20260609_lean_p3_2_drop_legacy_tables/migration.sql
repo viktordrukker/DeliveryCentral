@@ -221,6 +221,7 @@ BEGIN
     -- 7a. Create the new enum (without the legacy values).
     CREATE TYPE "AggregateType_new" AS ENUM (
       'Person',
+      'Tenant',
       'Project',
       'Client',
       'Vendor',
