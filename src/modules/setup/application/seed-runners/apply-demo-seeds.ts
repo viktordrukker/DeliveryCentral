@@ -23,15 +23,14 @@ export class ApplyDemoSeedsRunner {
     const profile = require('../../../../../prisma/seeds/it-company-profile') as Record<string, unknown>;
 
     const dataset = {
-      assignmentApprovals: profile.itCompanyAssignmentApprovals,
-      assignmentHistory: profile.itCompanyAssignmentHistory,
-      assignments: profile.itCompanyAssignments,
       externalSyncStates: profile.itCompanyExternalSyncStates,
       orgUnits: profile.itCompanyOrgUnits,
       people: profile.itCompanyPeople,
       personOrgMemberships: profile.itCompanyPersonOrgMemberships,
+      positionFillHistory: profile.itCompanyProjectPositionFillHistory,
       positions: profile.itCompanyPositions,
       projectExternalLinks: profile.itCompanyProjectExternalLinks,
+      projectPositions: profile.itCompanyProjectPositions,
       projects: profile.itCompanyProjects,
       reportingLines: profile.itCompanyReportingLines,
       resourcePoolMemberships: profile.itCompanyResourcePoolMemberships,
