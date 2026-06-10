@@ -131,7 +131,6 @@ describe('MODEL_TO_AGGREGATE_TYPE registry', () => {
         PersonCostRate: AggregateType.PersonCostRate,
         InAppNotification: AggregateType.Notification,
         LeaveRequest: AggregateType.LeaveRequest,
-        StaffingRequest: AggregateType.StaffingRequest,
         TimesheetWeek: AggregateType.TimesheetWeek,
       }),
     );

@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
 
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { M365Module } from '../integrations/m365/m365.module';
 import { RadiusModule } from '../integrations/radius/radius.module';
 import { OrganizationModule } from '../organization/organization.module';
@@ -15,7 +14,6 @@ import { ExceptionsController } from './presentation/exceptions.controller';
 
 @Module({
   imports: [
-    forwardRef(() => AssignmentsModule),
     M365Module,
     forwardRef(() => OrganizationModule),
     ProjectPositionsModule,

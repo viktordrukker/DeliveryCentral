@@ -18,16 +18,15 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 interface ProducerSite {
   file: string;
-  method: 'assignmentCreated' | 'projectActivated' | 'caseCreated';
+  method: 'projectActivated' | 'caseCreated';
   label: string;
 }
 
+// SoT PR 16b — the assignments module was deleted with the legacy
+// StaffingRequest/Assignment aggregates. The `assignmentCreated`
+// producer site is gone; the surviving real producers covered by
+// `flag.outboxEnabled` remain `projectActivated` and `caseCreated`.
 const REQUIRED_PRODUCERS: ProducerSite[] = [
-  {
-    file: 'src/modules/assignments/application/create-project-assignment.service.ts',
-    method: 'assignmentCreated',
-    label: 'Assignment created',
-  },
   {
     file: 'src/modules/project-registry/application/activate-project.service.ts',
     method: 'projectActivated',

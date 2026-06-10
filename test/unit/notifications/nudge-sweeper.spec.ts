@@ -55,24 +55,37 @@ function buildPrisma(initial: Partial<FakeStack> = {}): FakeStack {
   const settings = initial.settings ?? {};
 
   const prisma = {
-    staffingRequestProposalSlate: {
+    // SoT PR 16b — the StaffingRequestProposalSlate table was dropped
+    // with the legacy staffing schema; the sweeper now reads
+    // `projectPositionCandidate` rows directly. Each FakeProposal
+    // fixture is interpreted as the candidate row for its proposer:
+    // its `status` maps to the parent position's `fillStatus`, and a
+    // slate is treated as "fully resolved" (so no PENDING candidate
+    // row to return) once any candidate decision is non-PENDING.
+    projectPositionCandidate: {
       findMany: async (args: {
         where: {
-          status: string;
-          proposedAt: { lt: Date };
-          candidates: { none: { decision: { not: string } } };
+          decision: string;
+          createdAt: { lt: Date };
+          position: { fillStatus: { in: string[] } };
         };
         select?: unknown;
-      }): Promise<Array<Pick<FakeProposal, 'id' | 'staffingRequestId' | 'proposedAt' | 'proposedByPersonId'>>> => {
+      }): Promise<Array<{
+        id: string;
+        positionId: string;
+        createdAt: Date;
+        createdByPersonId: string;
+      }>> => {
+        const allowedFillStatuses = new Set(args.where.position.fillStatus.in);
         return proposals
-          .filter((p) => p.status === args.where.status)
-          .filter((p) => p.proposedAt < args.where.proposedAt.lt)
-          .filter((p) => !p.candidateDecisions.some((d) => d !== 'PENDING'))
+          .filter((p) => allowedFillStatuses.has(p.status === 'OPEN' ? 'PROPOSED' : 'CLOSED'))
+          .filter((p) => p.proposedAt < args.where.createdAt.lt)
+          .filter((p) => !p.candidateDecisions.some((d) => d !== args.where.decision))
           .map((p) => ({
             id: p.id,
-            staffingRequestId: p.staffingRequestId,
-            proposedAt: p.proposedAt,
-            proposedByPersonId: p.proposedByPersonId,
+            positionId: p.staffingRequestId,
+            createdAt: p.proposedAt,
+            createdByPersonId: p.proposedByPersonId,
           }));
       },
     },

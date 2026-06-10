@@ -1,7 +1,6 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 
-import { FulfilStaffingRequestRequestDto } from '@src/modules/staffing-requests/application/contracts/fulfil-staffing-request.request';
 import { SetRolePresetOverrideRequestDto } from '@src/modules/admin/application/contracts/set-role-preset-override.request';
 import {
   CreateReportTemplateRequestDto,
@@ -14,24 +13,6 @@ import { UpdateHrisConfigRequestDto } from '@src/modules/integrations/hris/appli
  * shape and rejects the obvious malformed ones.
  */
 describe('F-19 / 20c-09 — typed DTOs for previously inline @Body() type aliases', () => {
-  it('FulfilStaffingRequestRequestDto accepts two UUIDs', async () => {
-    const dto = plainToInstance(FulfilStaffingRequestRequestDto, {
-      assignedPersonId: '00000000-0000-0000-0000-000000000001',
-      proposedByPersonId: '00000000-0000-0000-0000-000000000002',
-    });
-    expect(await validate(dto)).toHaveLength(0);
-  });
-
-  it('FulfilStaffingRequestRequestDto rejects non-UUID strings', async () => {
-    const dto = plainToInstance(FulfilStaffingRequestRequestDto, {
-      assignedPersonId: 'not-a-uuid',
-      proposedByPersonId: '00000000-0000-0000-0000-000000000002',
-    });
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0]?.property).toBe('assignedPersonId');
-  });
-
   it('SetRolePresetOverrideRequestDto accepts a role list', async () => {
     const dto = plainToInstance(SetRolePresetOverrideRequestDto, {
       roles: ['admin', 'project_manager'],

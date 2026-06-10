@@ -5,8 +5,6 @@ import { AuditLoggerService } from '../audit-observability/application/audit-log
 import { CaseManagementModule } from '../case-management/case-management.module';
 import { CreateCaseService } from '../case-management/application/create-case.service';
 import { CaseTypeKey } from '../case-management/domain/entities/case-type.entity';
-import { ResponsibilityResolverService } from '../identity-access/application/responsibility-resolver.service';
-import { AssignmentsModule } from '../assignments/assignments.module';
 import { NotificationEventTranslatorService } from '../notifications/application/notification-event-translator.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PROJECT_POSITION_REPOSITORY } from '../project-positions/application/tokens';
@@ -27,9 +25,7 @@ import { DeactivateEmployeeService } from './application/deactivate-employee.ser
 import { PersonDeactivateUndoExecutor } from './application/person-deactivate-undo.executor';
 import { UndoActionExecutorRegistry } from '@src/modules/undo/application/undo-action-executor.registry';
 import { UndoService } from '@src/modules/undo/application/undo.service';
-import { DecidePersonReleaseService } from './application/decide-person-release.service';
 import { EmployeeActivityService } from './application/employee-activity.service';
-import { OpenPersonReleaseRequestService } from './application/open-person-release-request.service';
 import { TerminateEmployeeService } from './application/terminate-employee.service';
 import { ManagerScopeQueryService } from './application/manager-scope-query.service';
 import { OrgChartQueryService } from './application/org-chart-query.service';
@@ -51,13 +47,11 @@ import { ManagerScopeController } from './presentation/manager-scope.controller'
 import { OrganizationController } from './presentation/organization.controller';
 import { OrgChartController } from './presentation/org-chart.controller';
 import { PersonDirectoryController } from './presentation/person-directory.controller';
-import { PersonReleaseRequestController } from './presentation/person-release-request.controller';
 import { ReportingLinesController } from './presentation/reporting-lines.controller';
 import { TeamsController } from './presentation/teams.controller';
 
 @Module({
   imports: [
-    forwardRef(() => AssignmentsModule),
     forwardRef(() => ProjectRegistryModule),
     ProjectPositionsModule,
     WorkEvidenceModule,
@@ -69,7 +63,6 @@ import { TeamsController } from './presentation/teams.controller';
     ManagerScopeController,
     OrgChartController,
     OrganizationController,
-    PersonReleaseRequestController,
     ReportingLinesController,
     TeamsController,
   ],
@@ -306,51 +299,6 @@ import { TeamsController } from './presentation/teams.controller';
       useFactory: (reportingLineRepository: InMemoryReportingLineRepository) =>
         new TerminateReportingLineService(reportingLineRepository),
       inject: [InMemoryReportingLineRepository],
-    },
-    {
-      provide: OpenPersonReleaseRequestService,
-      useFactory: (
-        personRepository: InMemoryPersonRepository,
-        prisma: PrismaService,
-        auditLogger: AuditLoggerService,
-        notificationEventTranslator: NotificationEventTranslatorService,
-        responsibilityResolver: ResponsibilityResolverService,
-      ) =>
-        new OpenPersonReleaseRequestService(
-          personRepository,
-          prisma,
-          auditLogger,
-          notificationEventTranslator,
-          responsibilityResolver,
-        ),
-      inject: [
-        InMemoryPersonRepository,
-        PrismaService,
-        AuditLoggerService,
-        NotificationEventTranslatorService,
-        ResponsibilityResolverService,
-      ],
-    },
-    {
-      provide: DecidePersonReleaseService,
-      useFactory: (
-        prisma: PrismaService,
-        auditLogger: AuditLoggerService,
-        notificationEventTranslator: NotificationEventTranslatorService,
-        responsibilityResolver: ResponsibilityResolverService,
-      ) =>
-        new DecidePersonReleaseService(
-          prisma,
-          auditLogger,
-          notificationEventTranslator,
-          responsibilityResolver,
-        ),
-      inject: [
-        PrismaService,
-        AuditLoggerService,
-        NotificationEventTranslatorService,
-        ResponsibilityResolverService,
-      ],
     },
     EmployeeActivityService,
     {

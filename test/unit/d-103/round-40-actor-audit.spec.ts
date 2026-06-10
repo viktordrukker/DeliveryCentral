@@ -113,13 +113,9 @@ describe('D-103 write-path round 40 — residual actor-audit (source-shape)', ()
     }
   });
 
-  it('transition-project-assignment.syncParentSrHeadcount: StaffingRequest.update stamps updatedByPersonId from actorId', () => {
-    const src = readFileSync(
-      'src/modules/assignments/application/transition-project-assignment.service.ts',
-      'utf-8',
-    );
-    const section = src.slice(src.indexOf('private async syncParentSrHeadcount'));
-    expect(section).toMatch(/staffingRequest\.update/);
-    expect(section).toMatch(/updatedByPersonId:\s*actorId/);
-  });
+  // SoT PR 16b — the assignments module was deleted along with the legacy
+  // StaffingRequest aggregate. The previous assertion that
+  // `transition-project-assignment.syncParentSrHeadcount` stamps
+  // `updatedByPersonId` is no longer applicable because both the source
+  // file and the column it touched have been removed.
 });

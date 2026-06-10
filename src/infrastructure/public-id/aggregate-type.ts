@@ -16,11 +16,6 @@ export enum AggregateType {
   Vendor = 'vnd',
   OrgUnit = 'org',
   ResourcePool = 'pool',
-  // LEAN PR 16a/2 — deprecated. Dropped by PR 16b (LEAN-P3-2 forward-only
-  // drop migration) along with the underlying Prisma models. Kept here for
-  // one merge cycle so legacy publicIds in audit history can still resolve.
-  ProjectAssignment = 'asn',
-  StaffingRequest = 'stf',
   CaseRecord = 'case',
   TimesheetWeek = 'tsh',
   LeaveRequest = 'lvr',
@@ -53,7 +48,6 @@ export const MODEL_TO_AGGREGATE_TYPE: Readonly<Record<string, AggregateType>> = 
   PersonCostRate: AggregateType.PersonCostRate,
   InAppNotification: AggregateType.Notification,
   LeaveRequest: AggregateType.LeaveRequest,
-  StaffingRequest: AggregateType.StaffingRequest,
   TimesheetWeek: AggregateType.TimesheetWeek,
   PlannerScenario: AggregateType.PlannerScenario,
   LeavePolicy: AggregateType.LeavePolicy,
