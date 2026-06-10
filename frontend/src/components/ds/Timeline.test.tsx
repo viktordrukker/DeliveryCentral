@@ -20,7 +20,7 @@ describe('Timeline', () => {
   it('renders an empty state when no segments are in range', () => {
     render(<Timeline segments={[]} testId="t" />);
     expect(screen.getByTestId('t')).toBeInTheDocument();
-    expect(screen.getByText(/No assignments in range/i)).toBeInTheDocument();
+    expect(screen.getByText(/No positions in range/i)).toBeInTheDocument();
   });
 
   it('renders one focusable button per segment for stacked variant', () => {

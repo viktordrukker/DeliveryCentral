@@ -175,7 +175,7 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
       data-testid="person-profile-kpis"
     >
       <div style={KPI}>
-        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Active assignments</span>
+        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Active positions</span>
         <span style={{ fontSize: 18, fontWeight: 600 }}>{activeAssignments.length}</span>
       </div>
       <div style={KPI}>

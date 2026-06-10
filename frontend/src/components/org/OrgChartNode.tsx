@@ -130,7 +130,7 @@ export function renderPersonNodeContent(
       )
       .join('');
   } else {
-    assignmentsHtml = '<div style="font-size: 10px; color: var(--color-text-subtle); font-style: italic;">No assignments</div>';
+    assignmentsHtml = '<div style="font-size: 10px; color: var(--color-text-subtle); font-style: italic;">No positions</div>';
   }
 
   // Allocation bar

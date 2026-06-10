@@ -553,7 +553,7 @@ export function Timeline({
           className="ds-timeline__track ds-timeline__track--empty"
           style={{ height: trackHeight }}
         >
-          {emptyState ?? <span className="ds-timeline__empty">No assignments in range</span>}
+          {emptyState ?? <span className="ds-timeline__empty">No positions in range</span>}
         </div>
       </div>
     );
