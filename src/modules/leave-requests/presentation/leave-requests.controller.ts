@@ -13,12 +13,17 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LeaveRequestType } from '@prisma/client';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 
 import { ALL_AUTHENTICATED_ROLES, HR_GOVERNANCE_ROLES } from '@src/shared/auth/role-presets';
 import { LeaveDecisionBodyDto } from '../application/contracts/leave-decision-body.dto';
 import { LeaveBalanceDto, LeaveBalanceService } from '../application/leave-balance.service';
+import {
+  LeaveImpactPreviewDto,
+  LeaveImpactPreviewService,
+} from '../application/leave-impact-preview.service';
 import {
   CreateLeaveRequestDto,
   LeaveRequestDto,
@@ -31,6 +36,7 @@ export class LeaveRequestsController {
   public constructor(
     private readonly service: LeaveRequestsService,
     private readonly balanceService: LeaveBalanceService,
+    private readonly previewService: LeaveImpactPreviewService,
   ) {}
 
   @Post()
@@ -71,6 +77,31 @@ export class LeaveRequestsController {
       throw new BadRequestException('year must be a number');
     }
     return this.balanceService.getBalances(personId, targetYear);
+  }
+
+  @Get('preview')
+  @RequireRoles(...ALL_AUTHENTICATED_ROLES)
+  @ApiOperation({ summary: 'Preview leave impact (working days, balance after, conflicts) before submitting' })
+  @ApiOkResponse({ description: 'Leave impact preview' })
+  public async preview(
+    @Req() req: { principal?: RequestPrincipal },
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('type') type?: string,
+    @Query('personId') personIdParam?: string,
+  ): Promise<LeaveImpactPreviewDto> {
+    if (!startDate || !endDate) {
+      throw new BadRequestException('startDate and endDate are required');
+    }
+    const leaveType = (type ?? 'ANNUAL') as LeaveRequestType;
+    if (!LEAVE_REQUEST_TYPE_VALUES.has(leaveType)) {
+      throw new BadRequestException(`Unknown leave type: ${type}`);
+    }
+    const actorId = this.resolvePersonId(req);
+    // Default to the caller; managers/HR may pass a personId to preview
+    // on behalf of an employee (read-only — no write).
+    const personId = personIdParam ?? actorId;
+    return this.previewService.preview({ personId, startDate, endDate, type: leaveType });
   }
 
   @Get()
@@ -141,3 +172,16 @@ export class LeaveRequestsController {
     return id;
   }
 }
+
+const LEAVE_REQUEST_TYPE_VALUES: ReadonlySet<LeaveRequestType> = new Set<LeaveRequestType>([
+  'ANNUAL',
+  'SICK',
+  'PARENTAL',
+  'COMPASSIONATE',
+  'UNPAID',
+  'OTHER',
+  'OT_OFF',
+  'PERSONAL',
+  'BEREAVEMENT',
+  'STUDY',
+]);
