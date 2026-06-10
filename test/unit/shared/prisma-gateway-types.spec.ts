@@ -14,7 +14,8 @@ const FILES_WITH_TYPED_GATEWAYS = [
   'src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-delivery.repository.ts',
   'src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-request.repository.ts',
   'src/modules/notifications/infrastructure/repositories/prisma/prisma-notification-channel.repository.ts',
-  'src/modules/assignments/infrastructure/repositories/prisma/prisma-project-assignment.repository.ts',
+  // SoT PR 16b — the assignments module + its Prisma repository were
+  // deleted; the typed-gateway assertion no longer has a target file.
   'src/modules/project-registry/infrastructure/repositories/prisma/prisma-project.repository.ts',
 ];
 
