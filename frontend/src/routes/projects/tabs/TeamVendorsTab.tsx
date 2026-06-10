@@ -181,7 +181,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
       {actionSuccess ? <div className="success-banner">{actionSuccess}</div> : null}
 
       {/* 1. Team Assignments (read-first, always expanded) */}
-      <SectionCard title="Team Assignments">
+      <SectionCard title="Positions">
         {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (

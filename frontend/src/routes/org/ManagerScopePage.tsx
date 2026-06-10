@@ -71,7 +71,7 @@ export function ManagerScopePage(): JSX.Element {
                 <dd>{state.manager.currentOrgUnit?.name ?? 'Not assigned'}</dd>
               </div>
               <div>
-                <dt>Current Assignment Count</dt>
+                <dt>Current Position Count</dt>
                 <dd>{state.manager.currentAssignmentCount}</dd>
               </div>
               <div>

@@ -302,7 +302,7 @@ export function PlannedVsActualPage(): JSX.Element {
     { key: 'source', render: (item) => item.sourceType, title: 'Source', width: 90 },
     { key: 'hours', align: 'right', render: (item) => <span style={{ fontWeight: 600 }}>{item.effortHours}h</span>, title: 'Hours', width: 55 },
     { key: 'date', render: (item) => formatDateShort(item.activityDate), title: 'Date', width: 80 },
-    { key: 'status', render: () => <StatusBadge label="No Assignment" size="small" tone="danger" />, title: 'Status', width: 110 },
+    { key: 'status', render: () => <StatusBadge label="No Position" size="small" tone="danger" />, title: 'Status', width: 110 },
   ], []);
 
   const anomalyCols = useMemo<Column<ComparisonAnomalyItem>[]>(() => [
@@ -853,7 +853,7 @@ export function PlannedVsActualPage(): JSX.Element {
       <CreateAssignmentModal
         open={assignModalPreFill !== null}
         preFill={assignModalPreFill}
-        onSuccess={() => { setAssignModalPreFill(null); toast.success('Assignment created — the time variance view will refresh after approval'); refetch(); }}
+        onSuccess={() => { setAssignModalPreFill(null); toast.success('Position created — the time variance view will refresh after approval'); refetch(); }}
         onCancel={() => setAssignModalPreFill(null)}
       />
       <BatchAssignmentConfirmModal

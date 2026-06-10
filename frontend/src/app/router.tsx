@@ -152,7 +152,6 @@ const TimeReportPage = lazy(() => import('@/routes/reports/TimeReportPage').then
 const CapitalisationPage = lazy(() => import('@/routes/reports/CapitalisationPage').then(m => ({ default: m.CapitalisationPage })));
 const ExportCentrePage = lazy(() => import('@/routes/reports/ExportCentrePage').then(m => ({ default: m.ExportCentrePage })));
 const WorkloadMatrixPage = lazy(() => import('@/routes/workload/WorkloadMatrixPage').then(m => ({ default: m.WorkloadMatrixPage })));
-const WorkloadPlanningPage = lazy(() => import('@/routes/workload/WorkloadPlanningPage').then(m => ({ default: m.WorkloadPlanningPage })));
 
 function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
   return <Suspense fallback={<LoadingState label="Loading..." />}>{children}</Suspense>;

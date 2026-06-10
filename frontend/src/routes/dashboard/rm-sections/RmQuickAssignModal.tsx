@@ -59,7 +59,7 @@ export function RmQuickAssignModal({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0 }}>Quick Assignment</h2>
+          <h2 style={{ margin: 0 }}>Quick Position</h2>
           <Button variant="secondary" onClick={onClose} type="button">
             {'✕'} Close
           </Button>
@@ -158,7 +158,7 @@ export function RmQuickAssignModal({
           </label>
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
             <Button variant="primary" disabled={form.isSubmitting} type="submit">
-              {form.isSubmitting ? 'Submitting...' : 'Create assignment'}
+              {form.isSubmitting ? 'Submitting...' : 'Create position'}
             </Button>
             <Button variant="secondary" onClick={onClose} type="button">
               Cancel

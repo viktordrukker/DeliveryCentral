@@ -48,7 +48,7 @@ export function MetadataAdminPage(): JSX.Element {
           <input
             className="field__control"
             onChange={(event) => setEntityType(event.target.value)}
-            placeholder="Example: ProjectAssignment"
+            placeholder="Example: ProjectPosition"
             type="text"
             value={entityType}
           />

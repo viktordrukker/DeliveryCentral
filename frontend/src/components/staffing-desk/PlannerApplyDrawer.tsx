@@ -130,7 +130,7 @@ export function PlannerApplyDrawer({ onApply, onClose, open, simulation, budgetD
       {allMoves.length > 0 && (
         <div style={{ marginBottom: 'var(--space-3)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-status-active)', marginBottom: 'var(--space-1)' }}>
-            Assignments to Create ({checkedDispatches.size}/{allMoves.length})
+            Positions to Fill ({checkedDispatches.size}/{allMoves.length})
             {overrideCount > 0 && (
               <span style={{ marginLeft: 8, color: 'var(--color-status-warning)' }}>
                 · {overrideCount} override{overrideCount > 1 ? 's' : ''}

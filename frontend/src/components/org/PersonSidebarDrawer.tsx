@@ -137,7 +137,7 @@ export function PersonSidebarDrawer({ person, onClose }: PersonSidebarDrawerProp
       {/* Assignments with staffing role */}
       <div className="person-drawer__section">
         <div className="person-drawer__section-title">
-          Assignments ({person.assignmentCount})
+          Positions ({person.assignmentCount})
         </div>
         {sidebar.isLoading ? (
           <div className="person-drawer__empty">Loading...</div>

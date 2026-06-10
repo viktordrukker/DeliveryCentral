@@ -179,7 +179,7 @@ export function ExportCentrePage(): JSX.Element {
 
       <div style={{ maxWidth: '720px' }}>
         <ReportCard
-          description="Downloads the full current people directory with status, org unit, manager, resource pools, and assignment count."
+          description="Downloads the full current people directory with status, org unit, manager, resource pools, and position count."
           name="Headcount Report"
           onGenerate={generateHeadcount}
         />

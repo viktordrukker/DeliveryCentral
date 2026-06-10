@@ -156,7 +156,7 @@ describe('CreateCasePage', () => {
     await user.selectOptions(screen.getByLabelText('Subject Person'), 'person-1');
     await user.selectOptions(screen.getByLabelText('Owner'), 'person-2');
     await user.selectOptions(screen.getByLabelText('Related Project'), 'prj-1');
-    await user.selectOptions(screen.getByLabelText('Related Assignment'), 'asn-1');
+    await user.selectOptions(screen.getByLabelText('Related Position'), 'asn-1');
     await user.type(
       screen.getByLabelText('Summary'),
       'Provision access and confirm onboarding readiness.',

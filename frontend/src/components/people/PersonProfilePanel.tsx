@@ -207,7 +207,7 @@ export function PersonProfilePanel({ personId }: PersonProfilePanelProps): JSX.E
   );
 
   const assignmentsCard = (
-    <SectionCard title={`Assignments (${assignments.length})`}>
+    <SectionCard title={`Positions (${assignments.length})`}>
       {assignments.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 4px' }}>
           No assignments on record.

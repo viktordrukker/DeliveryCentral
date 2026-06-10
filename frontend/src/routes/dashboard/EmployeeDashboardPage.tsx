@@ -135,13 +135,13 @@ export function EmployeeDashboardPage(): JSX.Element {
             <Link className="kpi-strip__item" to="#assignments" style={{ borderLeft: '3px solid var(--color-accent)' }}>
               <TipBalloon tip="Number of projects you are currently assigned to." arrow="left" />
               <span className="kpi-strip__value">{d.currentAssignments.length}</span>
-              <span className="kpi-strip__label">Current Assignments</span>
+              <span className="kpi-strip__label">Current Positions</span>
             </Link>
 
             <Link className="kpi-strip__item" to="#future-assignments" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
               <TipBalloon tip="Upcoming assignments that have not started yet." arrow="left" />
               <span className="kpi-strip__value">{d.futureAssignments.length}</span>
-              <span className="kpi-strip__label">Future Assignments</span>
+              <span className="kpi-strip__label">Future Positions</span>
             </Link>
 
             <Link className="kpi-strip__item" to="#workload-gauge"
@@ -176,7 +176,7 @@ export function EmployeeDashboardPage(): JSX.Element {
           )}
 
           {/* ── Assignments tables ── */}
-          <SectionCard id="assignments" title="Current Assignments" collapsible>
+          <SectionCard id="assignments" title="Current Positions" collapsible>
             <AssignmentList
               emptyDescription="This employee has no current assignments for the selected date."
               emptyTitle="No current assignments"
@@ -184,7 +184,7 @@ export function EmployeeDashboardPage(): JSX.Element {
             />
           </SectionCard>
 
-          <SectionCard id="future-assignments" title="Future Assignments" collapsible>
+          <SectionCard id="future-assignments" title="Future Positions" collapsible>
             <AssignmentList
               emptyDescription="There are no future assignments queued yet."
               emptyTitle="No future assignments"

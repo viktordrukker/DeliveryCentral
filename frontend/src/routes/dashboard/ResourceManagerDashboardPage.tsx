@@ -164,7 +164,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
       });
       setQuickForm({
         ...INITIAL_QUICK_ASSIGN,
-        success: 'Assignment request created.',
+        success: 'Position created and filled.',
       });
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
     } catch (err) {

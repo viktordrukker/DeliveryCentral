@@ -64,7 +64,7 @@ function ReconciliationTooltip(props: Record<string, unknown>): JSX.Element | nu
       <div className="chart-tooltip__header">{d.label}</div>
       <div className="chart-tooltip__body">
         <TRow color="var(--color-status-active)" label="Covered Actual" value={`${d.matched}h`} />
-        <TRow color="var(--color-status-danger)" label="Actual w/o Assignment" value={`${Math.abs(d.unapproved)}h`} />
+        <TRow color="var(--color-status-danger)" label="Actual w/o Position" value={`${Math.abs(d.unapproved)}h`} />
         <TRow color="var(--color-status-warning)" label="Planned, No Actual" value={`${Math.abs(d.silent)}h`} />
         <div className="chart-tooltip__divider" />
         <TRow
@@ -302,7 +302,7 @@ export function ReconciliationOverviewChart({ data, drillPrefix = '/projects' }:
               {/* Positive: matched hours go up (own stack) */}
               <Bar yAxisId="hours" dataKey="matched" stackId="positive" fill="var(--color-status-active)" name="Covered Actual" radius={[3, 3, 0, 0]} />
               {/* Negative: actual without assignment + planned without actual go below zero */}
-              <Bar yAxisId="hours" dataKey="unapproved" stackId="negative" fill="var(--color-status-danger)" name="Actual w/o Assignment" />
+              <Bar yAxisId="hours" dataKey="unapproved" stackId="negative" fill="var(--color-status-danger)" name="Actual w/o Position" />
               <Bar yAxisId="hours" dataKey="silent" stackId="negative" fill="var(--color-status-warning)" name="Planned, No Actual" radius={[0, 0, 3, 3]} />
               {/* Average alignment rate — single horizontal reference line, not a per-project trend */}
               <ReferenceLine yAxisId="pct" y={avgMatchRate} stroke="var(--color-chart-1)" strokeWidth={2} label={{ value: `Alignment ${avgMatchRate}%`, position: 'right', fontSize: 10, fill: 'var(--color-chart-1)' }} />
