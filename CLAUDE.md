@@ -118,7 +118,7 @@ Do not install any package not on this list without asking first.
 ```bash
 npm --prefix frontend run test
 ```
-All 53 test files must pass. Never leave the suite in a failing state.
+The full suite (181 test files) must pass. Never leave the suite in a failing state.
 
 ### After every backend change
 ```bash

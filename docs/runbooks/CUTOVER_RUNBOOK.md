@@ -31,8 +31,9 @@ with a 30s in-process cache (`CacheEntry` map in `PlatformFlagsService`).
 
 ## Why this runbook exists
 
-The C0 flip is the last gate of the V2 master plan
-(`/home/drukker/.claude/plans/v2-master-plan-2026-06-02.md`). It is the only
+The C0 flip is the last gate of the V2 source-of-truth plan
+(`/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md` — supersedes
+the v2-master-plan-2026-06-02 and all prior `v2-*`/`lean-*` plans). It is the only
 externally-visible event in the 18-week chain. Every other piece of work — Phases
 0–5 lean migration, Phase 6 safety nets — exists so this flip is boring.
 
@@ -62,27 +63,38 @@ delivery-ops must be paged.
 ### Baselines + safety nets
 
 - [ ] **Playwright baseline green on main** — last 5 main pushes show
-      `playwright-visual-regression` job green. Threshold 3% pixel delta;
+      `v2-playwright-baseline` job green. Threshold 3% pixel delta;
       no allowed exceptions added in the last 72h without sign-off.
       Verify:
       ```bash
-      gh run list --workflow=playwright-visual-regression.yml \
+      gh run list --workflow=v2-playwright-baseline.yml \
         --branch=main --limit=5 --json conclusion,headSha
       ```
 - [ ] **Axe a11y baseline green on main** — last 5 main pushes show
-      `axe-a11y-baseline` job green.
+      `v2-axe-baseline` job green.
       Verify:
       ```bash
-      gh run list --workflow=axe-a11y-baseline.yml \
+      gh run list --workflow=v2-axe-baseline.yml \
         --branch=main --limit=5 --json conclusion,headSha
       ```
 - [ ] **Bundle-size gate green on main** — last 5 main pushes show
-      `bundle-size-gate` job green; latest measurement reports delta
+      `bundle-size-check` job green; latest measurement reports delta
       ≤ +15% vs 2026-05-01 baseline.
       Verify:
       ```bash
-      gh run list --workflow=bundle-size-gate.yml \
+      gh run list --workflow=bundle-size-check.yml \
         --branch=main --limit=5 --json conclusion,headSha
+      ```
+- [ ] **Lean-migration soak monitor green + 7-day gate passing** — the
+      `v2-soak-monitor` cron (daily 07:00 UTC) has produced a snapshot for
+      each of the trailing 7 days, and the 7-day acceptance gate passes
+      (every snapshot reports zero divergence / zero orphaned-link probes).
+      Verify:
+      ```bash
+      gh run list --workflow=v2-soak-monitor.yml \
+        --limit=7 --json conclusion,createdAt
+      npm run soak:check-7-day
+      # Exit code must be 0 — any missing day or non-zero probe fails the gate.
       ```
 
 ### Soak + manual validation
@@ -396,8 +408,9 @@ Green (advance) → all gauges within budget, no complaints.
 
 ## Reference
 
-- **Master plan:** `/home/drukker/.claude/plans/v2-master-plan-2026-06-02.md`
-- **Master plan items shipped by this runbook:** `CUTOVER_RUNBOOK`,
+- **Source-of-truth plan:** `/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md`
+  (supersedes `v2-master-plan-2026-06-02.md` and all prior `v2-*`/`lean-*` plans)
+- **Plan items shipped by this runbook:** `CUTOVER_RUNBOOK`,
   `ROLLBACK-DRILL`, `MANUAL-CLICK-THROUGH-30-JOURNEYS` (gate; this doc
   references but does not produce the artifact).
 - **Wave A baselines:** `V2-PLAYWRIGHT-BASELINE` (PR #548),

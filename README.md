@@ -16,7 +16,7 @@ Host `npm` scripts still exist for CI and container-internal workflows, but the 
 
 ## Core rules
 
-- `ProjectAssignment` is authoritative only inside this platform.
+- `ProjectPosition` is authoritative only inside this platform.
 - Jira must not create or mutate staffing truth.
 - `WorkEvidence` is observational and separate from formal assignment truth.
 - External integrations are isolated behind adapters and anti-corruption boundaries.
@@ -159,40 +159,37 @@ Each PowerShell run writes a transcript log under `logs/`. If a double-clicked w
 
 ## Seed datasets
 
-Three seed profiles are available. Pass the profile via environment variable when running the seed job inside the backend container:
+`it-company` is the only seed profile (200 people / 40 projects / 5-year history). Legacy profiles (`demo`, `phase2`, `life-demo`, `investor-demo`, `realistic`/`enterprise`) were retired with the DM-R-11 closure.
 
 ```bash
-# Default demo dataset (runs automatically on first seed)
+# Seed the it-company dataset (the default and only profile)
 docker compose --profile tools run --rm seed
 
-# Phase 2 — expanded mock org with 32 people, 12 projects, 8 test accounts
-docker compose exec -e SEED_PROFILE=phase2 backend sh -c \
+# Or run the seed directly inside the backend container
+docker compose exec -e SEED_PROFILE=it-company backend sh -c \
   "npx ts-node --project tsconfig.json prisma/seed.ts"
 ```
 
-### Phase 2 test accounts
+### IT-Company test accounts
 
 | Email | Password | Roles |
 |-------|----------|-------|
-| `noah.bennett@example.com` | `DirectorPass1!` | `director` |
-| `diana.walsh@example.com` | `HrManagerPass1!` | `hr_manager` |
-| `sophia.kim@example.com` | `ResourceMgrPass1!` | `resource_manager` |
-| `lucas.reed@example.com` | `ProjectMgrPass1!` | `project_manager` |
-| `carlos.vega@example.com` | `DeliveryMgrPass1!` | `delivery_manager` |
-| `ethan.brooks@example.com` | `EmployeePass1!` | `employee` |
-| `emma.garcia@example.com` | `DualRolePass1!` | `resource_manager`, `hr_manager` |
+| `admin@deliverycentral.local` | `DeliveryCentral@Admin1` | `admin` (superadmin person) |
+| `noah.bennett@itco.local` | `DirectorPass1!` | `director` |
+| `diana.walsh@itco.local` | `HrManagerPass1!` | `hr_manager` |
+| `sophia.kim@itco.local` | `ResourceMgrPass1!` | `resource_manager` |
+| `lucas.reed@itco.local` | `ProjectMgrPass1!` | `project_manager` |
+| `carlos.vega@itco.local` | `DeliveryMgrPass1!` | `delivery_manager` |
+| `ethan.brooks@itco.local` | `EmployeePass1!` | `employee` |
+| `emma.garcia@itco.local` | `DualRolePass1!` | `resource_manager`, `hr_manager` |
 
-### Demo dataset
-
-The default demo dataset covers:
+The dataset covers:
 - directorates, departments, and resource pools
 - people and reporting lines
 - internal and Jira-linked projects
-- assignments and approval states
+- project positions and approval states
 - work evidence separated from staffing truth
 - metadata dictionaries and customization fixtures
-
-See [demo dataset documentation](docs/demo/demo-dataset.md).
 
 ## Testing and quality
 
