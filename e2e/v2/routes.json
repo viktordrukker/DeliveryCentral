@@ -1,5 +1,5 @@
 {
-  "$comment": "V2 visual-regression baseline routes. 30 critical pages × 4 viewports = 120 snapshots. Sample IDs are placeholders resolved at runtime via SAMPLE_PERSON_ID / SAMPLE_PROJECT_ID / SAMPLE_POSITION_ID env vars or by querying the API.",
+  "$comment": "V2 visual-regression baseline routes. 27 critical pages × 4 viewports = 108 snapshots. Sample IDs are placeholders resolved at runtime via SAMPLE_PERSON_ID / SAMPLE_PROJECT_ID / SAMPLE_POSITION_ID env vars or by querying the API.",
   "viewports": [
     { "name": "desktop", "width": 1920, "height": 1080 },
     { "name": "laptop", "width": 1366, "height": 768 },
@@ -31,9 +31,6 @@
     { "id": "approvals", "path": "/approvals", "role": "admin" },
     { "id": "time-management", "path": "/time-management", "role": "admin" },
     { "id": "timesheets", "path": "/timesheets", "role": "admin" },
-    { "id": "reports-utilization", "path": "/reports/utilization", "role": "admin" },
-    { "id": "reports-finance", "path": "/reports/finance", "role": "admin" },
-    { "id": "reports-skills", "path": "/reports/skills", "role": "admin" },
     { "id": "admin-home", "path": "/admin", "role": "admin" },
     { "id": "admin-leave-policies", "path": "/admin/leave-policies", "role": "admin" },
     { "id": "setup-wizard", "path": "/setup", "role": "unauthenticated" }

@@ -630,8 +630,8 @@ export function EmployeeDetailsPage(): JSX.Element {
                   description="Cost rates for this person are managed by Finance. The detailed history endpoint is not yet exposed on this profile."
                   title="Cost rate history not available here"
                   action={{
-                    href: '/admin/finance/rates',
-                    label: 'Open finance rates admin',
+                    href: '/admin/rate-cards',
+                    label: 'Open rate cards admin',
                   }}
                 />
               </SectionCard>
@@ -640,12 +640,17 @@ export function EmployeeDetailsPage(): JSX.Element {
             {activeTab === 'time' ? (
               <SectionCard title="Time & leave">
                 <EmptyState
-                  description="Time and leave for this person are owned by their workspace. Open their My Time view to see weekly hours and leave balance."
+                  description={
+                    id === principal?.personId
+                      ? 'Time and leave live in your personal workspace. Open My Time to see weekly hours and leave balance.'
+                      : "Time and leave live in each person's own workspace and are not visible from this profile. Submitted timesheets can be reviewed from the approvals queue."
+                  }
                   title="Time & leave lives on the workspace"
-                  action={{
-                    href: `/me?personId=${id}`,
-                    label: 'Open workspace',
-                  }}
+                  action={
+                    id === principal?.personId
+                      ? { href: '/me?tab=time', label: 'Open my workspace' }
+                      : { href: '/approvals?source=timesheet', label: 'Review timesheet approvals' }
+                  }
                 />
               </SectionCard>
             ) : null}
@@ -687,15 +692,17 @@ export function EmployeeDetailsPage(): JSX.Element {
           >
             <SectionCard title="Quick actions">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <Button
-                  as="a"
-                  variant="secondary"
-                  size="md"
-                  href={`/messages/new?personId=${id}`}
-                  style={{ justifyContent: 'flex-start' }}
-                >
-                  Message
-                </Button>
+                {state.data.primaryEmail ? (
+                  <Button
+                    as="a"
+                    variant="secondary"
+                    size="md"
+                    href={`mailto:${state.data.primaryEmail}`}
+                    style={{ justifyContent: 'flex-start' }}
+                  >
+                    Message
+                  </Button>
+                ) : null}
                 <Button
                   as="a"
                   variant="secondary"

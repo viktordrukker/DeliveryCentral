@@ -133,13 +133,20 @@ describe('EmployeeDetailsPage — DS canvas 6-tab grammar', () => {
     expect(await screen.findByText('3 active positions')).toBeInTheDocument();
     expect(screen.queryByText('Employee Summary')).not.toBeInTheDocument();
 
-    // Cost rates tab swaps to the finance admin forward action.
+    // Cost rates tab swaps to the rate-cards admin forward action.
     await user.click(screen.getByTestId('tab-cost'));
     expect(await screen.findByText('Cost rate history not available here')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Open rate cards admin' }).getAttribute('href'),
+    ).toBe('/admin/rate-cards');
 
-    // Time & leave tab swaps to the workspace forward action.
+    // Time & leave tab — non-self viewer gets the approvals-queue forward
+    // action (the /me workspace only ever shows the viewer's own time).
     await user.click(screen.getByTestId('tab-time'));
     expect(await screen.findByText('Time & leave lives on the workspace')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Review timesheet approvals' }).getAttribute('href'),
+    ).toBe('/approvals?source=timesheet');
 
     // Activity tab triggers the audit-feed fetch.
     await user.click(screen.getByTestId('tab-activity'));
@@ -155,6 +162,10 @@ describe('EmployeeDetailsPage — DS canvas 6-tab grammar', () => {
     expect(screen.getByText('Quick actions')).toBeInTheDocument();
     expect(screen.getByText('Linked entities')).toBeInTheDocument();
     expect(screen.getByText('Recent activity')).toBeInTheDocument();
+    // Message quick action mails the person directly (no /messages route exists).
+    expect(screen.getByRole('link', { name: 'Message' }).getAttribute('href')).toBe(
+      'mailto:ethan.brooks@example.com',
+    );
   });
 });
 

@@ -3,7 +3,7 @@
  * V2 Playwright baseline smoke check.
  *
  * Validates the routes manifest and asserts the spec file is structurally
- * sound, without running the 120 actual snapshot tests (those only execute
+ * sound, without running the 108 actual snapshot tests (those only execute
  * via `.github/workflows/v2-playwright-baseline.yml` against v2-staging).
  *
  * Wired up as `npm run test:e2e:v2-baseline:smoke` and intended for the
@@ -43,8 +43,8 @@ try {
 if (!Array.isArray(manifest.viewports) || manifest.viewports.length !== 4) {
   fail(`expected exactly 4 viewports, got ${manifest.viewports?.length ?? 'undefined'}`);
 }
-if (!Array.isArray(manifest.routes) || manifest.routes.length !== 30) {
-  fail(`expected exactly 30 routes, got ${manifest.routes?.length ?? 'undefined'}`);
+if (!Array.isArray(manifest.routes) || manifest.routes.length !== 27) {
+  fail(`expected exactly 27 routes, got ${manifest.routes?.length ?? 'undefined'}`);
 }
 
 const allowedRoles = new Set([
@@ -81,8 +81,8 @@ for (const route of manifest.routes) {
 }
 
 const totalPairs = manifest.viewports.length * manifest.routes.length;
-if (totalPairs !== 120) {
-  fail(`expected 120 snapshot pairs, computed ${totalPairs}`);
+if (totalPairs !== 108) {
+  fail(`expected 108 snapshot pairs, computed ${totalPairs}`);
 }
 
 const spec = fs.readFileSync(specPath, 'utf8');

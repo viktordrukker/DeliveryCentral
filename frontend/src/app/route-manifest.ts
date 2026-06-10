@@ -327,7 +327,7 @@ export const routeManifest: RouteManifestEntry[] = [
   // but hidden from nav.
   { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-requests' },
   { allowedRoles: ALL_ROLES, navVisible: false, path: '/staffing-board' },
-  { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Board (?view=board) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
+  { allowedRoles: STAFFING_DESK_ROLES, description: 'Unified staffing operations console — flagship RM-centric surface with Table (?view=table) + Distribution Studio (?view=planner) views.', flag: 'dsRefresh', group: 'staffing', navVisible: true, titleV2: 'Staffing Desk', path: '/staffing-desk', title: 'Staffing Desk' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-requests/new' },
   { allowedRoles: STAFFING_DESK_ROLES, navVisible: false, path: '/staffing-desk/positions/new' },
   // W2-05 — bulk "open multiple positions at once" surface for PM/RM.
