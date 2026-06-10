@@ -1,0 +1,141 @@
+# SoT PR 19 — V2 soak monitor cron.
+#
+# Captures one daily parity snapshot from the v2-staging admin endpoint
+# and commits it to `docs/planning/lean-migration-soak-log/YYYY-MM-DD.json`
+# on the dedicated branch `lean-migration-soak-snapshots`.
+#
+# Runs at 07:00 UTC every day; also triggerable on-demand via
+# workflow_dispatch (useful when validating a fresh staging deploy).
+#
+# Exit semantics from the monitor script:
+#   0 — snapshot captured, divergenceCount == 0
+#   1 — snapshot captured but divergenceCount > 0 → opens a GitHub issue
+#       so the soak counter visibly resets
+#   2 — unhandled runtime error → fails the job (red ✕ on the workflow run)
+#
+# Required repo secret:
+#   SOAK_ADMIN_BEARER — bearer token for an admin principal on
+#                       deliverit-test-v2.agentic.uz. Operator must set
+#                       this before the cron starts producing real
+#                       snapshots; until then, every run will surface a
+#                       missing-secret failure in the run log.
+#
+# This workflow is intentionally read-only against the v2-staging app —
+# the script only hits `GET /api/admin/lean-migration/parity` and writes
+# the JSON locally. It never flips a feature flag, never deletes data,
+# and never touches the prod environment.
+
+name: v2-soak-monitor
+
+on:
+  schedule:
+    # 07:00 UTC daily. Keep this in sync with the operator runbook in
+    # docs/planning/v2-soak-acceptance.md.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: 'Override v2-staging API base (defaults to deliverit-test-v2.agentic.uz)'
+        required: false
+        default: 'https://deliverit-test-v2.agentic.uz'
+
+concurrency:
+  # Snapshots must not overlap or drop — let an in-flight run finish
+  # before queueing the next.
+  group: v2-soak-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  snapshot:
+    name: Capture daily soak snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_BASE: ${{ github.event.inputs.api_base || 'https://deliverit-test-v2.agentic.uz' }}
+      ADMIN_BEARER: ${{ secrets.SOAK_ADMIN_BEARER }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity check — SOAK_ADMIN_BEARER is set
+        run: |
+          if [ -z "${ADMIN_BEARER}" ]; then
+            echo "::error::SOAK_ADMIN_BEARER secret is not set. See docs/planning/v2-soak-acceptance.md."
+            exit 2
+          fi
+          echo "SOAK_ADMIN_BEARER is set (length: ${#ADMIN_BEARER})."
+
+      - name: Run soak monitor
+        id: monitor
+        run: |
+          set +e
+          npm run soak:monitor
+          ec=$?
+          echo "monitor_exit=${ec}" >> "$GITHUB_OUTPUT"
+          # Don't fail the step yet — we still want to commit on exit 1
+          # (divergence), and only fail the workflow on exit 2 (runtime).
+          if [ "${ec}" -eq 2 ]; then
+            exit 2
+          fi
+          exit 0
+
+      - name: Switch to soak-snapshots branch
+        run: |
+          set -euo pipefail
+          git fetch origin lean-migration-soak-snapshots:lean-migration-soak-snapshots 2>/dev/null || true
+          if git show-ref --verify --quiet refs/heads/lean-migration-soak-snapshots; then
+            git checkout lean-migration-soak-snapshots
+            git merge --no-edit origin/main || true
+          else
+            git checkout -b lean-migration-soak-snapshots
+          fi
+
+      - name: Commit + push snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name 'soak-monitor-bot'
+          git config user.email 'soak-monitor@users.noreply.github.com'
+          git add docs/planning/lean-migration-soak-log/
+          if git diff --cached --quiet; then
+            echo 'No snapshot changes to commit.'
+            exit 0
+          fi
+          stamp=$(date -u +%Y-%m-%d)
+          git commit -m "chore(soak): daily snapshot ${stamp}"
+          git push origin lean-migration-soak-snapshots
+
+      - name: Open divergence issue on exit 1
+        if: steps.monitor.outputs.monitor_exit == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y-%m-%d)
+          gh issue create \
+            --title "V2 soak monitor — divergence detected on ${stamp}" \
+            --label soak-divergence \
+            --body "Daily V2 soak monitor reported \`divergenceCount > 0\` on ${stamp}. The 7-day green counter has been reset. See the snapshot under \`docs/planning/lean-migration-soak-log/${stamp}.json\` on the \`lean-migration-soak-snapshots\` branch and follow the runbook in \`docs/planning/lean-migration-c0-exit-checklist.md\` (section: \"If any divergence > 0\")."
+
+      - name: Mark workflow run as failed if divergent
+        if: steps.monitor.outputs.monitor_exit == '1'
+        run: |
+          echo '::error::Soak monitor reported divergence. See the opened issue for details.'
+          exit 1

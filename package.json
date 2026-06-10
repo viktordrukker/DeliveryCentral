@@ -81,6 +81,8 @@
     "db:seed:it-company": "ts-node --transpile-only --project tsconfig.json prisma/seed.ts --profile it-company",
     "platform:self-check": "ts-node --transpile-only --project tsconfig.json scripts/validation/run-platform-self-check.ts",
     "platform:operator-drills": "ts-node --transpile-only --project tsconfig.json scripts/validation/run-operator-drill.ts",
+    "soak:monitor": "ts-node --transpile-only --project tsconfig.json scripts/lean-migration-soak-monitor.ts",
+    "soak:check-7-day": "ts-node --transpile-only --project tsconfig.json scripts/check-soak-7-day-green.ts",
     "local:build": "docker compose build",
     "local:up": "docker compose up -d backend frontend",
     "local:down": "docker compose down",

@@ -94,6 +94,9 @@ testing first; the flip is the last step.
 - [ ] **V2-G.1 visual-regression gate** is green for the v2 build.
 - [ ] **V2-G.3 staging-soak gate** is green: 7 consecutive clean
       snapshots in `docs/planning/lean-migration-soak-log/`.
+      Verify via `npm run soak:check-7-day` (SoT PR 19 — exits `0` only
+      when the trailing 7-day window is fully green). Full protocol in
+      `docs/planning/v2-soak-acceptance.md`.
 - [ ] **`lean-readiness-check.ts` exit code 0** against the v2 staging
       DB on the day of the flip.
 - [ ] **No open `LEAN-P*` PRs** other than the C0 flip itself.
@@ -133,7 +136,10 @@ green ships an unfinished surface to real users.
 - `docs/planning/lean-phase-0-exit.md` — Phase 0 sign-off.
 - `docs/planning/lean-enum-mapping.md` — legacy → lean enum table.
 - `scripts/lean-readiness-check.ts` — five canonical reconciliation probes.
-- `scripts/lean-migration-soak-monitor.ts` — this PR.
+- `scripts/lean-migration-soak-monitor.ts` — daily snapshot capture (LEAN-P2-9).
+- `scripts/check-soak-7-day-green.ts` — 7-day acceptance gate (SoT PR 19).
+- `.github/workflows/v2-soak-monitor.yml` — daily cron + alerting (SoT PR 19).
+- `docs/planning/v2-soak-acceptance.md` — operator protocol (SoT PR 19).
 - `src/modules/admin/presentation/lean-migration-parity.controller.ts` —
   admin parity endpoint.
 - `src/modules/admin/application/lean-migration-parity.service.ts` —
