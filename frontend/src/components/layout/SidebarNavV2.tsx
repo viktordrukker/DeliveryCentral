@@ -8,6 +8,7 @@ import { useAuth } from '@/app/auth-context';
 import { NavIcon, getIconKey } from '@/components/common/NavIcon';
 import { Avatar } from '@/components/ds/Avatar';
 import { fetchSidebarCounts, type SidebarCounts } from '@/lib/api/sidebar-counts';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 import { SidebarSection } from './SidebarSection';
 
 // DS/chrome.jsx nav counts — map a route path to its sidebar-counts key.
@@ -73,9 +74,13 @@ export function SidebarNavV2({
   // Phase E — exclude routes flagged `obsoleteInV2: true`. The route stays
   // reachable by URL (router still mounts it); only sidebar visibility is
   // suppressed in v2. Legacy SidebarNav (when `dsRefresh` OFF) is unaffected.
+  // Flag-gated routes (e.g. /me behind `workspaceMe`) are hidden until their
+  // flag is enabled — mirrors `isRouteNavVisible` in route-manifest.ts.
   const visibleRoutes = routes.filter(
     (route) =>
-      canAccessRoute(route.path, principal?.roles) && route.obsoleteInV2 !== true,
+      canAccessRoute(route.path, principal?.roles) &&
+      route.obsoleteInV2 !== true &&
+      (!route.flag || isFeatureEnabled(route.flag)),
   );
 
   const byGroup = GROUP_ORDER.reduce<Record<RouteGroupV2, AppRouteDefinition[]>>(
