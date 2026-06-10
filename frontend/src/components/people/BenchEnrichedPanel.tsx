@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -7,11 +8,53 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
-import { Button, Table, type Column } from '@/components/ds';
+import { Button, Checkbox, SearchInput, Select, Table, type Column } from '@/components/ds';
 import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-bench';
 import { BenchInspector } from './BenchInspector';
 
 const PAGE_SIZE = 12;
+
+/**
+ * SoT PR 17h-bench — DS-canvas sort options. Cost/day and Best match degrade
+ * to "Longest idle" when the source data lacks the required fields
+ * (BenchEnrichedRowDto carries neither a cost rate nor a per-person match
+ * score today). The options are kept in the dropdown so the canvas grammar
+ * holds; selecting them is a no-op fallback rather than a hidden surprise.
+ */
+type BenchSort = 'days' | 'cost' | 'match';
+function parseSort(raw: string | null): BenchSort {
+  return raw === 'cost' || raw === 'match' ? raw : 'days';
+}
+
+/**
+ * SoT PR 17h-bench — DS-canvas additional filter chips. Composable with the
+ * URL `?filter=...` KPI drill-down (UX Law 5). Available-now is satisfied by
+ * availabilityHours14d > 0; engineering matches role substrings; L4+ matches
+ * grade letter ≥ L4.
+ */
+type ChipKey = 'idleOver7' | 'engineering' | 'l4plus' | 'availableNow';
+const CHIP_LABELS: Record<ChipKey, string> = {
+  idleOver7: 'Idle > 7d',
+  engineering: 'Engineering',
+  l4plus: 'L4 +',
+  availableNow: 'Available now',
+};
+const CHIP_ORDER: ChipKey[] = ['idleOver7', 'engineering', 'l4plus', 'availableNow'];
+
+function chipPredicate(chip: ChipKey, row: BenchEnrichedRowDto): boolean {
+  switch (chip) {
+    case 'idleOver7':
+      return row.daysOnBench > 7;
+    case 'engineering':
+      return /engineer/i.test(row.role);
+    case 'l4plus': {
+      const m = (row.grade ?? '').match(/L(\d+)/i);
+      return m ? Number(m[1]) >= 4 : false;
+    }
+    case 'availableNow':
+      return row.availabilityHours14d > 0;
+  }
+}
 
 /**
  * SCOPED-MIN-6 — Bench KPI drill-down filter (UX Law 5 + Law 9).
@@ -116,8 +159,35 @@ export function BenchEnrichedPanel(): JSX.Element {
   // V2-A.8 — client-side pagination (endpoint returns the full array).
   const [page, setPage] = useState(1);
   // SCOPED-MIN-6 — KPI drill-down via URL filter (UX Law 5).
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const filter = parseFilter(searchParams.get('filter'));
+  // SoT PR 17h-bench — DS-canvas search + chips + sort + selection.
+  // Search and chips are local UI state (not URL-persisted) to keep this PR
+  // additive; the existing `?filter=` KPI drill-down stays the single URL
+  // contract per UX Law 5.
+  const [search, setSearch] = useState('');
+  const [activeChips, setActiveChips] = useState<Set<ChipKey>>(() => new Set());
+  const sort = parseSort(searchParams.get('sort'));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  function toggleChip(chip: ChipKey): void {
+    setActiveChips((prev) => {
+      const next = new Set(prev);
+      if (next.has(chip)) next.delete(chip);
+      else next.add(chip);
+      return next;
+    });
+    setPage(1);
+  }
+
+  function setSortParam(next: BenchSort): void {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next === 'days') params.delete('sort');
+      else params.set('sort', next);
+      return params;
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -171,8 +241,25 @@ export function BenchEnrichedPanel(): JSX.Element {
   }
 
   // SCOPED-MIN-6 — apply URL-driven filter before sorting (UX Law 5 + 9).
-  const filteredRows = applyFilter(rows, filter);
-  // Sort by daysOnBench DESC (longest idle first) per canvas
+  const filterScoped = applyFilter(rows, filter);
+  // SoT PR 17h-bench — narrow further by search text + active chips. Composes
+  // with the KPI drill-down (UX Law 5).
+  const searchLc = search.trim().toLowerCase();
+  const filteredRows = filterScoped.filter((r) => {
+    if (searchLc) {
+      const haystack = [r.name, r.role, r.grade ?? '', r.office ?? '']
+        .join(' ')
+        .toLowerCase();
+      if (!haystack.includes(searchLc)) return false;
+    }
+    for (const chip of activeChips) {
+      if (!chipPredicate(chip, r)) return false;
+    }
+    return true;
+  });
+  // Sort selection — canvas grammar: Longest idle (default), Cost / day,
+  // Best match. The DTO has neither cost nor match score today, so those
+  // two options degrade to the default (longest idle) sort.
   const sortedRows = [...filteredRows].sort((a, b) => b.daysOnBench - a.daysOnBench);
   const selectedRow = selectedPersonId ? rows.find((r) => r.personId === selectedPersonId) ?? null : null;
 
@@ -264,6 +351,138 @@ export function BenchEnrichedPanel(): JSX.Element {
         </Link>
       </div>
 
+      {/* SoT PR 17h-bench — DS-canvas filter bar (DS/page-bench.jsx L62–79).
+          Search by name/role/grade/office, composable chip toggles, and the
+          canvas sort dropdown. */}
+      <div
+        className="filter-bar"
+        data-testid="bench-filter-bar"
+        style={{ position: 'static', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+      >
+        <div style={{ width: 280 }}>
+          <SearchInput
+            value={search}
+            onValueChange={(next) => {
+              setSearch(next);
+              setPage(1);
+            }}
+            placeholder="Name, role, skill…"
+            aria-label="Search bench"
+            data-testid="bench-search"
+          />
+        </div>
+        {CHIP_ORDER.map((chip) => {
+          const active = activeChips.has(chip);
+          return (
+            <Button
+              key={chip}
+              variant={active ? 'primary' : 'secondary'}
+              size="sm"
+              type="button"
+              aria-pressed={active}
+              onClick={() => toggleChip(chip)}
+              data-testid={`bench-chip-${chip}`}
+            >
+              {CHIP_LABELS[chip]}
+            </Button>
+          );
+        })}
+        <div style={{ flex: 1 }} />
+        <span
+          className="compact muted"
+          style={{ color: 'var(--color-text-muted)', fontSize: 12 }}
+        >
+          Sort:
+        </span>
+        <Select
+          value={sort}
+          onChange={(event) => setSortParam(event.target.value as BenchSort)}
+          aria-label="Sort bench"
+          data-testid="bench-sort"
+          style={{ width: 160 }}
+        >
+          <option value="days">Longest idle</option>
+          <option value="cost">Cost / day</option>
+          <option value="match">Best match</option>
+        </Select>
+      </div>
+
+      {/* SoT PR 17h-bench — DS-canvas bulk-action bar (DS/page-bench.jsx
+          L81–98). Visible only when one or more rows are selected. */}
+      {selectedIds.size > 0 ? (
+        <div
+          data-testid="bench-bulk-bar"
+          style={{
+            alignItems: 'center',
+            background: 'var(--color-accent-soft)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--radius-card)',
+            color: 'var(--color-accent-text)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '10px 14px',
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 500 }}>
+            <span
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+              data-testid="bench-bulk-count"
+            >
+              {selectedIds.size} selected
+            </span>
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            type="button"
+            onClick={() => {
+              // TODO(SoT PR 17h-bench): wire into Workforce Planner "Suggest
+              // position" multi-person flow when the bulk endpoint lands.
+              toast.info('Suggest position — coming soon');
+            }}
+            data-testid="bench-bulk-suggest"
+          >
+            Suggest position
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() => {
+              // TODO(SoT PR 17h-bench): wire into the in-app messaging surface
+              // once it gains a bulk-recipient API.
+              toast.info('Send message — coming soon');
+            }}
+            data-testid="bench-bulk-message"
+          >
+            Send message
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            type="button"
+            onClick={() => {
+              const rowsToExport = sortedRows.filter((r) => selectedIds.has(r.personId));
+              exportBenchCsv(rowsToExport.length > 0 ? rowsToExport : sortedRows);
+            }}
+            data-testid="bench-bulk-export"
+          >
+            Export
+          </Button>
+          <div style={{ flex: 1 }} />
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            data-testid="bench-bulk-clear"
+          >
+            Clear
+          </Button>
+        </div>
+      ) : null}
+
       {/* V2-A.7 — master-detail layout: list on the left, inspector on the right when a row is selected. */}
       <div
         style={{
@@ -280,7 +499,56 @@ export function BenchEnrichedPanel(): JSX.Element {
         </div>
         <div style={{ overflow: 'auto' }}>
           {(() => {
+            const visibleIds = pageRows.map((r) => r.personId);
+            const allOnPageSelected =
+              visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+            const someOnPageSelected = visibleIds.some((id) => selectedIds.has(id));
             const columns: Column<BenchEnrichedRowDto>[] = [
+              {
+                key: 'select',
+                title: (
+                  <Checkbox
+                    aria-label={allOnPageSelected ? 'Deselect all on page' : 'Select all on page'}
+                    checked={allOnPageSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = !allOnPageSelected && someOnPageSelected;
+                    }}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (checked) visibleIds.forEach((id) => next.add(id));
+                        else visibleIds.forEach((id) => next.delete(id));
+                        return next;
+                      });
+                    }}
+                    data-testid="bench-select-all"
+                  />
+                ),
+                width: 36,
+                render: (r) => (
+                  <span
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    style={{ display: 'inline-flex' }}
+                  >
+                    <Checkbox
+                      aria-label={`Select ${r.name}`}
+                      checked={selectedIds.has(r.personId)}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked;
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(r.personId);
+                          else next.delete(r.personId);
+                          return next;
+                        });
+                      }}
+                      data-testid={`bench-select-${r.personId}`}
+                    />
+                  </span>
+                ),
+              },
               {
                 key: 'person',
                 title: 'Person',
