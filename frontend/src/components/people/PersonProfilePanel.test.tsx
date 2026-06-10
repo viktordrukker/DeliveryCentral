@@ -109,7 +109,7 @@ describe('PersonProfilePanel', () => {
     fetchPersonProfile.mockResolvedValue(sampleProfile);
     renderRoute(<PersonProfilePanel personId="p1" />);
     await waitFor(() => expect(screen.getByTestId('person-profile-kpis')).toBeInTheDocument());
-    expect(screen.getByText('Active assignments')).toBeInTheDocument();
+    expect(screen.getByText('Active positions')).toBeInTheDocument();
     expect(screen.getByText('Total allocation')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
     expect(screen.getByText('152h')).toBeInTheDocument();

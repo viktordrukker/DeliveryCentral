@@ -151,7 +151,7 @@ export function PersonDirectoryInspector({
           </div>
         </div>
         <div>
-          <div style={S_META_LABEL}>Active assignments</div>
+          <div style={S_META_LABEL}>Active positions</div>
           <div style={{ ...S_META_VALUE, fontVariantNumeric: 'tabular-nums' }}>
             {row.currentAssignmentCount}
           </div>
