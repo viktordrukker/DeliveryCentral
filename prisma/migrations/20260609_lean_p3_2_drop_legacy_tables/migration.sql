@@ -247,14 +247,66 @@ BEGIN
       'ProjectPosition'
     );
 
-    -- 7b. Swap the AuditLog column over to the new enum.
+    -- 7b. Drop the two views that depend on the enum-typed column
+    -- (same pattern as 20260423_dm_7_6_aggregate_type_enum). We recreate
+    -- them at the bottom of this DO block.
+    DROP VIEW IF EXISTS "employee_activity_view";
+    DROP VIEW IF EXISTS "domain_outbox_pending";
+
+    -- 7c. Swap every dependent column over to the new enum.
+    -- AuditLog + DomainEvent are the schema-declared consumers.
+    -- DomainEvent_default is the partition that Postgres reports as
+    -- a separate dependency in the drop-error.
     ALTER TABLE "AuditLog"
       ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
       USING ("aggregateType"::text::"AggregateType_new");
 
-    -- 7c. Drop the old enum + rename the new one.
+    ALTER TABLE "DomainEvent"
+      ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
+      USING ("aggregateType"::text::"AggregateType_new");
+
+    -- Partition: if the table exists as a separate dependency, ALTER it too.
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'DomainEvent_default') THEN
+      ALTER TABLE "DomainEvent_default"
+        ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
+        USING ("aggregateType"::text::"AggregateType_new");
+    END IF;
+
+    -- 7d. Drop the old enum + rename the new one.
     DROP TYPE "AggregateType";
     ALTER TYPE "AggregateType_new" RENAME TO "AggregateType";
+
+    -- 7e. Recreate the two views (same definition as in
+    -- 20260423_dm_7_6_aggregate_type_enum, now bound to the pruned enum).
+    CREATE OR REPLACE VIEW "domain_outbox_pending" AS
+      SELECT
+        id,
+        "aggregateType",
+        "aggregateId",
+        "eventName",
+        "actorId",
+        "correlationId",
+        "causationId",
+        payload,
+        "createdAt",
+        "chainSeq"
+      FROM "DomainEvent"
+      WHERE "publishedAt" IS NULL
+      ORDER BY "chainSeq" ASC;
+
+    CREATE OR REPLACE VIEW "employee_activity_view" AS
+      SELECT
+        id,
+        "aggregateId"    AS "personId",
+        "eventName"      AS "eventType",
+        "createdAt"      AS "occurredAt",
+        "actorId",
+        COALESCE(payload ->> 'summary', '')  AS summary,
+        NULLIF(payload ->> 'relatedEntityId', '')::uuid AS "relatedEntityId",
+        payload          AS metadata,
+        "createdAt"
+      FROM "DomainEvent"
+      WHERE "aggregateType" = 'Person';
   END IF;
 EXCEPTION WHEN undefined_object THEN
   -- AggregateType enum already missing (fresh DB or earlier prune); no-op.
