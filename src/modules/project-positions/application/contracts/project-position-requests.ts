@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
+  IsDefined,
   IsIn,
   IsInt,
   IsNumber,
@@ -12,6 +13,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 import { POSITION_FILL_STATUS_VALUES, PositionFillStatusValue } from '../../domain/value-objects/position-fill-status';
@@ -80,9 +82,13 @@ export class TransitionProjectPositionFillRequestDto {
   @ApiProperty({
     required: false,
     description:
-      'Person filling the position. Required for fill-side transitions (PROPOSED/BOOKED/ONBOARDING/ASSIGNED) when activePersonId is not already set.',
+      'Person filling the position. Required for fill-side transitions (PROPOSED/BOOKED/ONBOARDING/ASSIGNED) when activePersonId is not already set. PROPOSED is only reachable from OPEN (never has an active person), so personId is unconditionally required there; the entity invariant covers the remaining fill statuses.',
   })
-  @IsOptional()
+  @ValidateIf(
+    (o: TransitionProjectPositionFillRequestDto) =>
+      o.toStatus === 'PROPOSED' || o.personId !== undefined,
+  )
+  @IsDefined({ message: 'personId is required when toStatus is PROPOSED' })
   @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
   personId?: string;
 

@@ -144,6 +144,39 @@ describe('TransitionProjectPositionFillService — fill-history ledger', () => {
     expect(saveCalls[0].tx).toBe(txObject);
   });
 
+  it('rejects a person-less fill transition (PROPOSED → BOOKED with no active person, no personId)', async () => {
+    const position = makePosition({ fillStatus: PositionFillStatus.proposed() });
+    const { service, historyWrites, saveCalls } = buildHarness(position);
+
+    await expect(
+      service.execute({
+        positionId: POSITION_ID,
+        toStatus: 'BOOKED',
+        actorId: 'actor-1',
+        actorRoles: ['project_manager'],
+      }),
+    ).rejects.toBeInstanceOf(InvalidPositionFillTransitionError);
+
+    expect(historyWrites).toHaveLength(0);
+    expect(saveCalls).toHaveLength(0);
+  });
+
+  it('rejects OPEN → PROPOSED without a personId', async () => {
+    const position = makePosition({ fillStatus: PositionFillStatus.open() });
+    const { service, historyWrites } = buildHarness(position);
+
+    await expect(
+      service.execute({
+        positionId: POSITION_ID,
+        toStatus: 'PROPOSED',
+        actorId: 'actor-1',
+        actorRoles: ['resource_manager'],
+      }),
+    ).rejects.toThrow(/requires a person/);
+
+    expect(historyWrites).toHaveLength(0);
+  });
+
   it('writes no history row when the transition is rejected by the state machine', async () => {
     const position = makePosition({ fillStatus: PositionFillStatus.released() });
     const { service, historyWrites, saveCalls } = buildHarness(position);
@@ -162,7 +195,12 @@ describe('TransitionProjectPositionFillService — fill-history ledger', () => {
   });
 
   it('unified approvals queue position-proposal APPROVE writes one history row', async () => {
-    const position = makePosition({ fillStatus: PositionFillStatus.proposed() });
+    // A PROPOSED position always carries the proposed candidate — approving
+    // books that person (person-less PROPOSED is rejected by the entity).
+    const position = makePosition({
+      fillStatus: PositionFillStatus.proposed(),
+      activePersonId: 'person-5',
+    });
     const { service, historyWrites } = buildHarness(position);
 
     const queue = new UnifiedApprovalQueueService(
