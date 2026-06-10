@@ -12,7 +12,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge, type StatusTone } from '@/components/common/StatusBadge';
-import { Button, DescriptionList, Pct, Table, WorkflowStages, type Column, type WorkflowStage, type WorkflowStageStatus } from '@/components/ds';
+import { TipBalloon } from '@/components/common/TipBalloon';
+import { Avatar, Button, DescriptionList, Pct, Table, WorkflowStages, type Column, type WorkflowStage, type WorkflowStageStatus } from '@/components/ds';
 import {
   type ApprovalQueueItemDto,
   fetchUnifiedApprovals,
@@ -35,6 +36,12 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
 import { formatDateTime } from '@/lib/format-date';
 
 /**
+ * V2 SoT PR 17h-position — ProjectPositionDetailPage 2-col DS-canvas
+ * conformance. Spec: DS/page-extras.jsx → `PositionDetail` block (lines
+ * 240-432). Main column shows the proposed-fill card, position spec,
+ * other-candidates table and fill-history timeline. Right rail (320px)
+ * holds quick actions + linked entities.
+ *
  * NEW-LGL-7 / action B-02 — lean ProjectPosition detail + Find-Candidates.
  * URL: `/projects/:projectId/positions/:positionId`. Consumes the lean
  * endpoints only (GET /:id, GET /:id/candidates, POST /:id/transition).
@@ -53,6 +60,15 @@ const STATUS_TONE: Record<PositionFillStatus, StatusTone> = {
 
 // Positions still seeking a fill — Propose is meaningful here.
 const PROPOSABLE: ReadonlySet<PositionFillStatus> = new Set(['DRAFT', 'OPEN']);
+
+// Statuses where a "current fill" is meaningful — the canvas's emphasized
+// "Current fill — proposed" card.
+const HAS_FILL: ReadonlySet<PositionFillStatus> = new Set([
+  'PROPOSED',
+  'BOOKED',
+  'ONBOARDING',
+  'ASSIGNED',
+]);
 
 // Canonical lifecycle order for the workflow visualization. ON_HOLD and
 // RELEASED are terminal/branch states and are not part of the linear flow.
@@ -103,7 +119,7 @@ function renderSlaBadge(stage: 'on-track' | 'due-soon' | 'breached' | null): JSX
 function buildLifecycleStages(current: PositionFillStatus): WorkflowStage[] {
   if (current === 'ON_HOLD' || current === 'RELEASED') {
     return [
-      ...LIFECYCLE_ORDER.map((s, i) => ({
+      ...LIFECYCLE_ORDER.map((s) => ({
         key: s,
         label: s,
         description: LIFECYCLE_DESCRIPTIONS[s],
@@ -132,16 +148,6 @@ function buildLifecycleStages(current: PositionFillStatus): WorkflowStage[] {
 }
 
 export function ProjectPositionDetailPage(): JSX.Element {
-  // Unified entry point — works for /projects/:projectId/positions/:positionId
-  // AND /positions/:id AND /staffing-requests/:id AND /assignments/:id (where
-  // :id is treated as positionId; if that 404s, we fall back to a legacy id
-  // lookup via the parent placeholder pages' redirect).
-  //
-  // W1-11 — :positionId / :id may be either a raw UUID (legacy deep-link) or
-  // an opaque `pos_…` publicId. The backend's ParsePublicIdOrUuid pipe accepts
-  // both shapes. When we resolve a UUID-shaped URL to a position that carries
-  // a publicId, we replace the URL with the publicId form so the back-stack
-  // and refer headers never carry the raw UUID forward.
   const params = useParams<{ projectId?: string; positionId?: string; id?: string }>();
   const location = useLocation();
   const projectId = params.projectId;
@@ -167,7 +173,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setCurrentLabel } = useDrilldown();
 
-  // Push a human-readable label into the breadcrumb trail (never raw UUID).
   useEffect(() => {
     if (!position) return;
     const projectLabel = projectMeta ? `${projectMeta.projectCode} — ${projectMeta.name}` : '';
@@ -175,19 +180,11 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setCurrentLabel(label);
   }, [position, projectMeta, setCurrentLabel]);
 
-  // W1-11 — replace UUID-shaped URL segments with the resolved publicId so
-  // raw UUIDs never persist in the browser back-stack, history API, or
-  // referer headers. We use the native History API directly (not
-  // react-router's navigate) to avoid unmount + re-render when the route
-  // param changes — local component state (modal, candidate slate) stays
-  // intact through the URL swap. Guard: only act on raw-uuid-shaped params
-  // so the publicId form is already a no-op.
+  // W1-11 — swap UUID-shaped param for publicId in URL when known.
   useEffect(() => {
     if (!position?.publicId) return;
     if (!positionId) return;
     if (positionId === position.publicId) return;
-    // Only swap when the param actually looks like a raw uuid; otherwise the
-    // URL already carries the publicId form.
     if (!/^[0-9a-f-]{36}$/i.test(positionId)) return;
     if (typeof window === 'undefined' || !window.history) return;
     const nextPath = location.pathname.replace(positionId, position.publicId);
@@ -204,12 +201,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setIsLoading(true);
     setError(null);
     try {
-      // Two-pronged lookup so this page works for callers that pass either
-      // a canonical ProjectPosition id OR a legacy ProjectAssignment id.
-      // The staffing-desk's "assignment" rows carry the legacy id; the seed
-      // populates that id on ProjectPosition.legacyAssignmentId. We try the
-      // direct GET first (fast path for canonical ids), then fall back to
-      // a listing filtered by legacyAssignmentId.
       let pos: ProjectPosition | null = null;
       try {
         pos = await getProjectPositionById(positionId);
@@ -221,12 +212,7 @@ export function ProjectPositionDetailPage(): JSX.Element {
         }
       }
       setPosition(pos);
-      // Prefer publicId for subsequent backend calls (W1-11 — opaque). Falls
-      // back to the canonical position.id for rows that pre-date the W1-07
-      // backfill. The BE pipe accepts either shape.
       const realId = pos.publicId ?? pos.id;
-      // Resolve active-person + project labels in parallel — never show
-      // raw UUIDs to the user (per feedback-no-uuids-in-browser).
       void Promise.allSettled([
         pos.activePersonId
           ? fetchPersonDirectoryById(pos.activePersonId).then(
@@ -248,8 +234,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
       } else {
         setCandidates([]);
       }
-      // W2-04 — load lean lifecycle history + position-proposal approvals
-      // in parallel; failures degrade gracefully (sections show empty).
       void Promise.allSettled([
         fetchPositionHistory(realId).then(
           (r) => setHistory(r.history),
@@ -276,8 +260,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
     setAutoMatchBusy(true);
     setAutoMatchMessage(null);
     try {
-      // Prefer publicId — opaque identifier the backend's ParsePublicIdOrUuid
-      // pipe accepts, with raw uuid as fallback for unbackfilled rows.
       const res = await autoMatchPosition(position.publicId ?? position.id, { topN: 5 });
       setAutoMatchMessage(
         res.created === 0
@@ -296,9 +278,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
     if (!proposeFor || !position) return;
     setBusy(true);
     try {
-      // Use position.publicId when available (W1-11 — opaque). Falls back to
-      // the canonical position.id (resolved through the legacy-id fallback)
-      // for rows that pre-date the W1-07 backfill.
       await transitionProjectPositionFill(position.publicId ?? position.id, {
         toStatus: 'PROPOSED',
         personId: proposeFor.personId,
@@ -314,7 +293,16 @@ export function ProjectPositionDetailPage(): JSX.Element {
   }
 
   const candidateColumns: Array<Column<PositionCandidate>> = [
-    { key: 'name', title: 'Candidate', render: (c) => c.name },
+    {
+      key: 'name',
+      title: 'Candidate',
+      render: (c) => (
+        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 'var(--space-2)' }}>
+          <Avatar name={c.name} size="sm" />
+          {c.name}
+        </span>
+      ),
+    },
     { key: 'role', title: 'Role', render: (c) => c.role || '—' },
     { key: 'grade', title: 'Grade', render: (c) => c.grade ?? '—' },
     {
@@ -353,6 +341,16 @@ export function ProjectPositionDetailPage(): JSX.Element {
       : []),
   ];
 
+  // The proposed/active candidate's match score in the slate — surfaces in the
+  // "Current fill" emphasized card next to the avatar.
+  const activeCandidate =
+    position?.activePersonId
+      ? candidates.find((c) => c.personId === position.activePersonId)
+      : undefined;
+  const activeMatchPct = activeCandidate
+    ? Math.round(activeCandidate.matchScore * 100)
+    : null;
+
   return (
     <PageContainer testId="project-position-detail-page">
       <div style={{ fontSize: 13, marginBottom: 'var(--space-2)', color: 'var(--color-text-muted)' }}>
@@ -371,155 +369,493 @@ export function ProjectPositionDetailPage(): JSX.Element {
       {error && <ErrorState description={error} />}
 
       {!isLoading && !error && position && (
-        <>
-          <SectionCard
-            title={
-              projectMeta
-                ? `${position.role} · ${projectMeta.projectCode} ${projectMeta.name}`
-                : position.role
-            }
-          >
-            <DescriptionList
-              items={[
-                { label: 'Status', value: <StatusBadge tone={STATUS_TONE[position.fillStatus]} label={position.fillStatus} /> },
-                { label: 'Required allocation', value: <Pct value={position.requiredAllocationPercent} fractionDigits={0} /> },
-                {
-                  label: 'Active person',
-                  value: position.activePersonId
-                    ? activePersonName ?? <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>resolving…</span>
-                    : '—',
-                },
-                {
-                  label: 'Active allocation',
-                  value:
-                    position.activeAllocationPercent !== undefined ? (
-                      <Pct value={position.activeAllocationPercent} fractionDigits={0} />
+        <div
+          data-testid="position-detail-2col"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 320px',
+            gap: 'var(--space-5)',
+            alignItems: 'flex-start',
+          }}
+        >
+          {/* Main column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {/* Current fill — proposed (emphasized card) */}
+            <section
+              data-testid="position-current-fill"
+              className="section-card section-card-emphasized"
+              style={{ borderLeft: '3px solid var(--color-status-info)' }}
+            >
+              <div
+                style={{
+                  alignItems: 'center',
+                  display: 'flex',
+                  gap: 'var(--space-2)',
+                  justifyContent: 'space-between',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
+                <h3 className="section-card__title" style={{ margin: 0 }}>
+                  Current fill{position.fillStatus === 'PROPOSED' ? ' — proposed' : ''}
+                </h3>
+                <StatusBadge
+                  tone={STATUS_TONE[position.fillStatus]}
+                  label={position.fillStatus}
+                  variant="chip"
+                />
+              </div>
+              {HAS_FILL.has(position.fillStatus) && position.activePersonId ? (
+                <div
+                  style={{
+                    alignItems: 'center',
+                    display: 'grid',
+                    gap: 'var(--space-4)',
+                    gridTemplateColumns: 'auto 1fr auto',
+                  }}
+                >
+                  <Avatar name={activePersonName ?? 'Proposed person'} size="xl" />
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 600 }}>
+                      {activePersonName ?? (
+                        <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          resolving…
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginTop: 2 }}>
+                      {position.role}
+                      {position.activeAllocationPercent !== undefined
+                        ? ` · ${position.activeAllocationPercent}%`
+                        : ''}
+                    </div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: 'var(--space-4)',
+                        gridTemplateColumns: 'repeat(4, minmax(0, auto))',
+                        marginTop: 'var(--space-3)',
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            color: 'var(--color-text-muted)',
+                            fontSize: 11,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Match{' '}
+                          {activeMatchPct === null ? (
+                            <TipBalloon
+                              tip="Match score for this person is not yet computed by the backend."
+                              arrow="top"
+                            />
+                          ) : null}
+                        </div>
+                        <div style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                          {activeMatchPct === null ? '—' : `${activeMatchPct}%`}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            color: 'var(--color-text-muted)',
+                            fontSize: 11,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Cost{' '}
+                          <TipBalloon
+                            tip="Per-person cost band is not yet exposed by the backend."
+                            arrow="top"
+                          />
+                        </div>
+                        <div style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>—</div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            color: 'var(--color-text-muted)',
+                            fontSize: 11,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Available
+                        </div>
+                        <div style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                          {position.activeValidFrom
+                            ? new Date(position.activeValidFrom).toLocaleDateString()
+                            : '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            color: 'var(--color-text-muted)',
+                            fontSize: 11,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Conflict{' '}
+                          <TipBalloon
+                            tip="Allocation conflict detection is not yet wired into this view."
+                            arrow="top"
+                          />
+                        </div>
+                        <div
+                          style={{
+                            color: 'var(--color-status-active)',
+                            fontSize: 16,
+                            fontVariantNumeric: 'tabular-nums',
+                            fontWeight: 600,
+                          }}
+                        >
+                          None
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-2)',
+                    }}
+                  >
+                    {position.fillStatus === 'PROPOSED' ? (
+                      <>
+                        <Button variant="primary" size="md" type="button" disabled>
+                          Confirm · Book
+                        </Button>
+                        <Button variant="secondary" size="md" type="button" disabled>
+                          View profile
+                        </Button>
+                        <Button variant="ghost" size="md" type="button" disabled>
+                          Reject
+                        </Button>
+                      </>
                     ) : (
-                      '—'
-                    ),
-                },
-                { label: 'Required skills', value: requiredSkills.length > 0 ? requiredSkills.join(', ') : '—' },
-              ]}
-            />
-          </SectionCard>
+                      <Button variant="secondary" size="md" type="button" disabled>
+                        View profile
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No proposed fill yet"
+                  description={
+                    PROPOSABLE.has(position.fillStatus)
+                      ? 'Review the candidates below and propose someone to start the fill.'
+                      : `Position is ${position.fillStatus}.`
+                  }
+                />
+              )}
+            </section>
 
-          <SectionCard title="Position lifecycle">
-            <WorkflowStages
-              stages={buildLifecycleStages(position.fillStatus)}
-              orientation="horizontal"
-              ariaLabel="Position lifecycle stages"
-            />
-          </SectionCard>
+            {/* Position spec — 2-col description list */}
+            <SectionCard title="Position spec">
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 'var(--space-4)',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                }}
+              >
+                <DescriptionList
+                  items={[
+                    { label: 'Role', value: position.role },
+                    {
+                      label: 'Required allocation',
+                      value: <Pct value={position.requiredAllocationPercent} fractionDigits={0} />,
+                    },
+                    {
+                      label: 'Status',
+                      value: (
+                        <StatusBadge tone={STATUS_TONE[position.fillStatus]} label={position.fillStatus} />
+                      ),
+                    },
+                    {
+                      label: 'Start',
+                      value: position.startDate
+                        ? new Date(position.startDate).toLocaleDateString()
+                        : '—',
+                    },
+                    {
+                      label: 'End',
+                      value: position.endDate
+                        ? new Date(position.endDate).toLocaleDateString()
+                        : '—',
+                    },
+                  ]}
+                />
+                <DescriptionList
+                  items={[
+                    {
+                      label: 'Required skills',
+                      value: requiredSkills.length > 0 ? requiredSkills.join(', ') : '—',
+                    },
+                    {
+                      label: 'Active person',
+                      value: position.activePersonId
+                        ? activePersonName ?? (
+                            <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                              resolving…
+                            </span>
+                          )
+                        : '—',
+                    },
+                    {
+                      label: 'Active allocation',
+                      value:
+                        position.activeAllocationPercent !== undefined ? (
+                          <Pct value={position.activeAllocationPercent} fractionDigits={0} />
+                        ) : (
+                          '—'
+                        ),
+                    },
+                    {
+                      label: 'Priority',
+                      value: position.priority ?? '—',
+                    },
+                    {
+                      label: 'Position ID',
+                      value: (
+                        <span style={{ fontFamily: 'var(--font-mono)' }}>
+                          {position.publicId ?? '—'}
+                        </span>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            </SectionCard>
 
-          <SectionCard title={`Suggested candidates${candidates.length > 0 ? ` (${candidates.length})` : ''}`}>
-            {dsRefreshEnabled && canStaff && PROPOSABLE.has(position.fillStatus) ? (
+            <SectionCard title="Position lifecycle">
+              <WorkflowStages
+                stages={buildLifecycleStages(position.fillStatus)}
+                orientation="horizontal"
+                ariaLabel="Position lifecycle stages"
+              />
+            </SectionCard>
+
+            {/* Other candidates considered */}
+            <SectionCard title={`Other candidates considered${candidates.length > 0 ? ` (${candidates.length})` : ''}`}>
+              {dsRefreshEnabled && canStaff && PROPOSABLE.has(position.fillStatus) ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-3)',
+                    marginBottom: 'var(--space-3)',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                    Auto-match populates the slate with the top-5 skill-matched + available people. Review and adjust before proposing.
+                  </span>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    type="button"
+                    onClick={() => void runAutoMatch()}
+                    disabled={autoMatchBusy}
+                    data-testid="auto-match-button"
+                  >
+                    {autoMatchBusy ? 'Auto-matching…' : 'Auto-match'}
+                  </Button>
+                </div>
+              ) : null}
+              {autoMatchMessage ? (
+                <div
+                  role="status"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--color-text-muted)',
+                    marginBottom: 'var(--space-3)',
+                  }}
+                  data-testid="auto-match-message"
+                >
+                  {autoMatchMessage}
+                </div>
+              ) : null}
+              {!PROPOSABLE.has(position.fillStatus) ? (
+                <EmptyState
+                  title="Position not seeking a fill"
+                  description={`This position is ${position.fillStatus}. Candidate suggestions show for DRAFT/OPEN positions.`}
+                />
+              ) : candidates.length === 0 ? (
+                <EmptyState
+                  title="No candidates found"
+                  description="No available bench people match this position's role and skills."
+                />
+              ) : (
+                <Table<PositionCandidate>
+                  variant="compact"
+                  getRowKey={(c) => c.personId}
+                  rows={candidates}
+                  columns={candidateColumns}
+                />
+              )}
+            </SectionCard>
+
+            <SectionCard title={`Pending approvals${approvals.length > 0 ? ` (${approvals.length})` : ''}`}>
+              {approvals.length === 0 ? (
+                <EmptyState
+                  title="No pending approvals"
+                  description="This position has no open proposals awaiting a decision."
+                />
+              ) : (
+                <Table<ApprovalQueueItemDto>
+                  variant="compact"
+                  getRowKey={(a) => a.id}
+                  rows={approvals}
+                  columns={[
+                    { key: 'title', title: 'Title', render: (a) => a.title },
+                    {
+                      key: 'submittedBy',
+                      title: 'Submitted by',
+                      render: (a) => a.submittedBy?.displayName ?? '—',
+                    },
+                    {
+                      key: 'submittedAt',
+                      title: 'Submitted',
+                      render: (a) => formatDateTime(a.submittedAt),
+                    },
+                    {
+                      key: 'sla',
+                      title: 'SLA',
+                      render: (a) => renderSlaBadge(a.slaStage),
+                    },
+                    {
+                      key: 'action',
+                      title: '',
+                      render: (a) => (
+                        <Link
+                          to={`/approvals?focus=${encodeURIComponent(a.id)}`}
+                          style={{ color: 'var(--color-accent)' }}
+                        >
+                          Review
+                        </Link>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </SectionCard>
+
+            {/* Fill history timeline */}
+            <SectionCard title="Fill history" collapsible>
+              <AssignmentHistoryTimeline items={history} />
+            </SectionCard>
+          </div>
+
+          {/* Right rail (320px) */}
+          <aside
+            data-testid="position-right-rail"
+            style={{
+              alignSelf: 'stretch',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+              position: 'sticky',
+              top: 'var(--space-4)',
+            }}
+          >
+            <SectionCard title="Quick actions">
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 'var(--space-3)',
-                  marginBottom: 'var(--space-3)',
-                  flexWrap: 'wrap',
+                  flexDirection: 'column',
+                  gap: 'var(--space-2)',
                 }}
               >
-                <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                  Auto-match populates the slate with the top-5 skill-matched + available people. Review and adjust before proposing.
+                {projectId ? (
+                  <Link to={`/projects/${projectId}/positions`} style={{ color: 'var(--color-accent)', fontSize: 13 }}>
+                    Edit position
+                  </Link>
+                ) : null}
+                {PROPOSABLE.has(position.fillStatus) ? (
+                  <Button variant="secondary" size="sm" type="button" disabled>
+                    Cancel position
+                  </Button>
+                ) : null}
+                {position.fillStatus === 'ON_HOLD' || position.fillStatus === 'RELEASED' ? (
+                  <Button variant="secondary" size="sm" type="button" disabled>
+                    Re-open
+                  </Button>
+                ) : null}
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                  Edit + lifecycle actions ship in the next slice.
                 </span>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  type="button"
-                  onClick={() => void runAutoMatch()}
-                  disabled={autoMatchBusy}
-                  data-testid="auto-match-button"
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Linked">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {projectId ? (
+                  <Link
+                    to={`/projects/${projectId}/dashboard`}
+                    style={{
+                      color: 'var(--color-text)',
+                      display: 'flex',
+                      fontSize: 13,
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-2)',
+                    }}
+                  >
+                    {projectMeta
+                      ? `${projectMeta.projectCode} — ${projectMeta.name}`
+                      : 'Parent project'}
+                  </Link>
+                ) : null}
+                {projectId ? (
+                  <Link
+                    to={`/projects/${projectId}/positions`}
+                    style={{
+                      color: 'var(--color-text)',
+                      display: 'flex',
+                      fontSize: 13,
+                      gap: 'var(--space-2)',
+                      padding: 'var(--space-2)',
+                    }}
+                  >
+                    All positions on this project
+                  </Link>
+                ) : null}
+                <Link
+                  to="/staffing-desk"
+                  style={{
+                    color: 'var(--color-text)',
+                    display: 'flex',
+                    fontSize: 13,
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-2)',
+                  }}
                 >
-                  {autoMatchBusy ? 'Auto-matching…' : 'Auto-match'}
-                </Button>
+                  Staffing desk
+                </Link>
+                <Link
+                  to="/approvals"
+                  style={{
+                    color: 'var(--color-text)',
+                    display: 'flex',
+                    fontSize: 13,
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-2)',
+                  }}
+                >
+                  Approvals queue
+                </Link>
               </div>
-            ) : null}
-            {autoMatchMessage ? (
-              <div
-                role="status"
-                style={{
-                  fontSize: 12,
-                  color: 'var(--color-text-muted)',
-                  marginBottom: 'var(--space-3)',
-                }}
-                data-testid="auto-match-message"
-              >
-                {autoMatchMessage}
-              </div>
-            ) : null}
-            {!PROPOSABLE.has(position.fillStatus) ? (
-              <EmptyState
-                title="Position not seeking a fill"
-                description={`This position is ${position.fillStatus}. Candidate suggestions show for DRAFT/OPEN positions.`}
-              />
-            ) : candidates.length === 0 ? (
-              <EmptyState
-                title="No candidates found"
-                description="No available bench people match this position's role and skills."
-              />
-            ) : (
-              <Table<PositionCandidate>
-                variant="compact"
-                getRowKey={(c) => c.personId}
-                rows={candidates}
-                columns={candidateColumns}
-              />
-            )}
-          </SectionCard>
-
-          <SectionCard title={`Pending approvals${approvals.length > 0 ? ` (${approvals.length})` : ''}`}>
-            {approvals.length === 0 ? (
-              <EmptyState
-                title="No pending approvals"
-                description="This position has no open proposals awaiting a decision."
-              />
-            ) : (
-              <Table<ApprovalQueueItemDto>
-                variant="compact"
-                getRowKey={(a) => a.id}
-                rows={approvals}
-                columns={[
-                  { key: 'title', title: 'Title', render: (a) => a.title },
-                  {
-                    key: 'submittedBy',
-                    title: 'Submitted by',
-                    render: (a) => a.submittedBy?.displayName ?? '—',
-                  },
-                  {
-                    key: 'submittedAt',
-                    title: 'Submitted',
-                    render: (a) => formatDateTime(a.submittedAt),
-                  },
-                  {
-                    key: 'sla',
-                    title: 'SLA',
-                    render: (a) => renderSlaBadge(a.slaStage),
-                  },
-                  {
-                    key: 'action',
-                    title: '',
-                    render: (a) => (
-                      <Link
-                        to={`/approvals?focus=${encodeURIComponent(a.id)}`}
-                        style={{ color: 'var(--color-accent)' }}
-                      >
-                        Review
-                      </Link>
-                    ),
-                  },
-                ]}
-              />
-            )}
-          </SectionCard>
-
-          <SectionCard title="Lifecycle history" collapsible>
-            <AssignmentHistoryTimeline items={history} />
-          </SectionCard>
-        </>
+            </SectionCard>
+          </aside>
+        </div>
       )}
 
       <ConfirmDialog

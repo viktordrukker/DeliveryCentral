@@ -126,6 +126,46 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     expect(screen.getByText('Node')).toBeInTheDocument();
   });
 
+  it('lays out the page as a 2-col canvas: main column + right rail (DS canvas PositionDetail)', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    // Canvas: 2-col grid wrapper exists.
+    expect(screen.getByTestId('position-detail-2col')).toBeInTheDocument();
+    // Main column emphasized "Current fill" card.
+    expect(screen.getByTestId('position-current-fill')).toBeInTheDocument();
+    // Right-rail aside with Quick actions + Linked entities.
+    expect(screen.getByTestId('position-right-rail')).toBeInTheDocument();
+    expect(screen.getByText('Quick actions')).toBeInTheDocument();
+    expect(screen.getByText('Linked')).toBeInTheDocument();
+    // Position spec card with the 2-col DescriptionList grid.
+    expect(screen.getByText('Position spec')).toBeInTheDocument();
+    // Fill history timeline section.
+    expect(screen.getByText('Fill history')).toBeInTheDocument();
+  });
+
+  it('shows Confirm + View profile + Reject buttons when a candidate is PROPOSED', async () => {
+    mockedGet.mockResolvedValue({
+      ...OPEN_POSITION,
+      fillStatus: 'PROPOSED' as const,
+      activePersonId: 'p-ada',
+      activeAllocationPercent: 80,
+    });
+    // PROPOSED is not in PROPOSABLE — no candidate slate fetch is expected.
+
+    renderAt();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('position-current-fill')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Confirm · Book/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View profile/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reject/i })).toBeInTheDocument();
+  });
+
   it('Propose → confirm → transitions the position to PROPOSED with the candidate', async () => {
     mockedGet.mockResolvedValue(OPEN_POSITION);
     mockedCandidates.mockResolvedValue(CANDIDATES);
