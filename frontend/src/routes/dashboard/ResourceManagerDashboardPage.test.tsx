@@ -20,13 +20,9 @@ vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: vi.fn(),
 }));
 
-// LEAN-P2-8: removed dead `fetchStaffingRequests` mock — the RM dashboard
-// page no longer fetches staffing-requests directly; that data is aggregated
-// into `fetchResourceManagerDashboard` after the Phase 1 read-path re-point.
-vi.mock('@/lib/api/assignments', () => ({
-  createAssignment: vi.fn(),
-}));
-
+// SoT PR 17b — RM dashboard no longer touches /assignments or
+// /staffing-requests directly; that data is aggregated into
+// `fetchResourceManagerDashboard` after the Phase 1 read-path re-point.
 vi.mock('@/lib/api/dashboard-pending-actions', () => ({
   fetchPendingActions: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
 }));

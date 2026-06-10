@@ -1,6 +1,6 @@
 import { FormEvent } from 'react';
 
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { ProjectPosition } from '@/lib/api/project-positions';
 import { PersonDirectoryItem } from '@/lib/api/person-directory';
 import { ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';
@@ -22,7 +22,7 @@ const CASE_TYPE_OPTIONS: Array<{ label: string; value: string }> = [
 ];
 
 interface CaseFormProps {
-  assignments: AssignmentDirectoryItem[];
+  assignments: ProjectPosition[];
   errors: Partial<Record<keyof CaseFormValues, string>>;
   isSubmitting: boolean;
   onChange: (field: keyof CaseFormValues, value: string) => void;
@@ -125,11 +125,15 @@ export function CaseForm({
             value={values.relatedAssignmentId}
           >
             <option value="">Optional assignment context</option>
-            {assignments.map((assignment) => (
-              <option key={assignment.id} value={assignment.id}>
-                {`${assignment.person.displayName} -> ${assignment.project.displayName}`}
-              </option>
-            ))}
+            {assignments.map((assignment) => {
+              const personLabel = assignment.activePersonName ?? assignment.activePersonId ?? 'Unassigned';
+              const projectLabel = assignment.projectName ?? assignment.projectCode ?? assignment.projectId;
+              return (
+                <option key={assignment.id} value={assignment.id}>
+                  {`${personLabel} -> ${projectLabel} · ${assignment.role}`}
+                </option>
+              );
+            })}
           </select>
         </label>
 

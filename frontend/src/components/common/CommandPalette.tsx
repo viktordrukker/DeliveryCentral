@@ -8,9 +8,7 @@ import { markSidebarNavigation } from '@/app/drilldown-context';
 import { appRoutes } from '@/app/navigation';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import { fetchCases, CaseRecord } from '@/lib/api/cases';
 
 export interface RecentPage {
@@ -53,7 +51,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
-  const [assignments, setAssignments] = useState<AssignmentDirectoryItem[]>([]);
+  const [assignments, setAssignments] = useState<ProjectPosition[]>([]);
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,20 +81,23 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
         void fetchProjectDirectory({ search: query }).then((r) => {
           setProjects(r.items.slice(0, 5));
         });
-        // LEAN-P2: legacy ACTIVE status maps to BOOKED/ASSIGNED/ONBOARDING.
+        // SoT PR 17b: ACTIVE positions cover BOOKED/ASSIGNED/ONBOARDING.
         void listProjectPositions({ fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'], take: 15 })
-          .then(mapListResponseToDirectory)
           .then((r) => {
-          setAssignments(
-            r.items
-              .filter((a) =>
-                a.person.displayName.toLowerCase().includes(q) ||
-                a.project.displayName.toLowerCase().includes(q) ||
-                a.staffingRole.toLowerCase().includes(q),
-              )
-              .slice(0, 5),
-          );
-        });
+            setAssignments(
+              r.positions
+                .filter((p) => {
+                  const personLabel = (p.activePersonName ?? p.activePersonId ?? '').toLowerCase();
+                  const projectLabel = (p.projectName ?? p.projectCode ?? p.projectId).toLowerCase();
+                  return (
+                    personLabel.includes(q) ||
+                    projectLabel.includes(q) ||
+                    p.role.toLowerCase().includes(q)
+                  );
+                })
+                .slice(0, 5),
+            );
+          });
         void fetchCases({}).then((r) => {
           setCases(
             r.items
@@ -241,16 +242,21 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     },
   }));
 
-  const assignmentItems: CommandItem[] = assignments.map((assignment) => ({
-    group: 'Positions',
-    id: `assignment-${assignment.id}`,
-    label: `${assignment.person.displayName} · ${assignment.project.displayName}`,
-    sublabel: `${assignment.staffingRole} · ${assignment.allocationPercent}%`,
-    onSelect: () => {
-      navigate(`/projects/${assignment.project.id}?position=${assignment.id}`);
-      onClose();
-    },
-  }));
+  const assignmentItems: CommandItem[] = assignments.map((assignment) => {
+    const personLabel = assignment.activePersonName ?? assignment.activePersonId ?? 'Unassigned';
+    const projectLabel = assignment.projectName ?? assignment.projectCode ?? assignment.projectId;
+    const alloc = assignment.activeAllocationPercent ?? assignment.requiredAllocationPercent;
+    return {
+      group: 'Positions',
+      id: `assignment-${assignment.id}`,
+      label: `${personLabel} · ${projectLabel}`,
+      sublabel: `${assignment.role} · ${alloc}%`,
+      onSelect: () => {
+        navigate(`/projects/${assignment.projectId}?position=${assignment.id}`);
+        onClose();
+      },
+    };
+  });
 
   const caseItems: CommandItem[] = cases.map((c) => ({
     group: 'Cases',

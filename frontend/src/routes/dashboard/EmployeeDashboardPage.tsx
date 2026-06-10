@@ -16,7 +16,7 @@ import { WorkloadGauge } from '@/components/charts/WorkloadGauge';
 import { WeeklyAllocationArea } from '@/components/charts/WeeklyAllocationArea';
 import { PulseWidget } from '@/components/common/PulseWidget';
 import { useEmployeeDashboard } from '@/features/dashboard/useEmployeeDashboard';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { EmployeeDashboardAssignmentItem } from '@/lib/api/dashboard-employee';
 import { HR_DIRECTOR_ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Button } from '@/components/ds';
 import { ReportIssueModal } from '@/components/employee/ReportIssueModal';
@@ -31,7 +31,7 @@ function buildWeeks(count: number, asOf: string): string[] {
 }
 
 function toAllocationItems(
-  assignments: AssignmentDirectoryItem[],
+  assignments: EmployeeDashboardAssignmentItem[],
 ): Array<{ allocationPercent: number; projectName: string; validFrom: string; validTo: string | null }> {
   return assignments.map((a) => ({
     allocationPercent: a.allocationPercent,

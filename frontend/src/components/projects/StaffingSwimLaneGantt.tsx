@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
+import type { ProjectPosition } from '@/lib/api/project-positions';
 
 interface StaffingSwimLaneGanttProps {
-  assignments: AssignmentDirectoryItem[];
+  assignments: ProjectPosition[];
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -36,15 +36,20 @@ export function StaffingSwimLaneGantt({ assignments }: StaffingSwimLaneGanttProp
   const { groups, timeRange } = useMemo(() => {
     const now = new Date();
     const rows: GanttRow[] = assignments
-      .filter((a) => a.startDate)
-      .map((a) => ({
-        id: a.id,
-        name: a.person.displayName,
-        role: a.staffingRole,
-        allocation: a.allocationPercent,
-        startDate: new Date(a.startDate),
-        endDate: a.endDate ? new Date(a.endDate) : new Date(now.getTime() + 90 * 86400000),
-        status: a.approvalState,
+      .map((a) => {
+        const start = a.activeValidFrom ?? a.startDate ?? '';
+        const end = a.activeValidTo ?? a.endDate;
+        return { a, start, end };
+      })
+      .filter((r) => r.start)
+      .map((r) => ({
+        id: r.a.id,
+        name: r.a.activePersonName ?? r.a.activePersonId ?? 'Unassigned',
+        role: r.a.role,
+        allocation: r.a.activeAllocationPercent ?? r.a.requiredAllocationPercent,
+        startDate: new Date(r.start),
+        endDate: r.end ? new Date(r.end) : new Date(now.getTime() + 90 * 86400000),
+        status: r.a.fillStatus,
       }));
 
     // Group by role
@@ -173,7 +178,7 @@ export function StaffingSwimLaneGantt({ assignments }: StaffingSwimLaneGanttProp
                   height={ROW_HEIGHT - 8}
                   rx={4}
                   fill={roleColor(group.role)}
-                  opacity={row.status === 'ENDED' || row.status === 'REVOKED' ? 0.4 : 0.85}
+                  opacity={row.status === 'RELEASED' ? 0.4 : 0.85}
                 >
                   <title>{`${row.name} — ${row.role} — ${row.allocation}% — ${row.startDate.toLocaleDateString()} to ${row.endDate.toLocaleDateString()}`}</title>
                 </rect>

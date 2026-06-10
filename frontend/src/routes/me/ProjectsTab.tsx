@@ -8,12 +8,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Pct, Table, type Column } from '@/components/ds';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import { formatDate } from '@/lib/format-date';
-
-const NUM = { fontVariantNumeric: 'tabular-nums' as const };
 
 /**
  * /me?tab=projects — My Memberships table.
@@ -23,16 +19,16 @@ const NUM = { fontVariantNumeric: 'tabular-nums' as const };
  * below. Each row deep-links to /projects/:id (Law 4 — actions within
  * 200px of the row).
  *
- * Data: /assignments?personId=<me>. Active = no endDate, or endDate >= today.
+ * Data: /project-positions?activePersonId=<me>. Active = no endDate, or endDate >= today.
  * Historical = endDate < today.
  */
 export function ProjectsTab(): JSX.Element {
   const { principal } = useAuth();
   const navigate = useNavigate();
-  const [items, setItems] = useState<AssignmentDirectoryItem[] | null>(null);
+  const [items, setItems] = useState<ProjectPosition[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showHistorical, setShowHistorical] = useState(false);
+  const [showHistorical] = useState(false);
 
   useEffect(() => {
     if (!principal?.personId) return undefined;
@@ -40,9 +36,8 @@ export function ProjectsTab(): JSX.Element {
     setLoading(true);
     setError(null);
     listProjectPositions({ activePersonId: principal.personId, take: 200 })
-      .then(mapListResponseToDirectory)
       .then((res) => {
-        if (active) setItems(res.items);
+        if (active) setItems(res.positions);
       })
       .catch((e: unknown) => {
         if (active) setError(e instanceof Error ? e.message : 'Failed to load memberships');
@@ -58,10 +53,11 @@ export function ProjectsTab(): JSX.Element {
   const { activeRows, historicalRows } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const a: AssignmentDirectoryItem[] = [];
-    const h: AssignmentDirectoryItem[] = [];
+    const a: ProjectPosition[] = [];
+    const h: ProjectPosition[] = [];
     for (const item of items ?? []) {
-      const end = item.endDate ? new Date(item.endDate) : null;
+      const endStr = item.activeValidTo ?? item.endDate ?? null;
+      const end = endStr ? new Date(endStr) : null;
       if (!end || end >= today) a.push(item);
       else h.push(item);
     }
@@ -108,55 +104,61 @@ export function ProjectsTab(): JSX.Element {
 }
 
 interface MembershipsTableProps {
-  rows: AssignmentDirectoryItem[];
+  rows: ProjectPosition[];
   muted?: boolean;
 }
 
 function MembershipsTable({ rows, muted }: MembershipsTableProps): JSX.Element {
-  const columns: Column<AssignmentDirectoryItem>[] = [
+  const columns: Column<ProjectPosition>[] = [
     {
       key: 'project',
       title: 'Project',
-      getValue: (r) => r.project.displayName ?? 'Project',
+      getValue: (r) => r.projectName ?? r.projectCode ?? r.projectId,
       render: (r) => (
         <Link
-          to={`/projects/${r.project.id}`}
+          to={`/projects/${r.projectId}`}
           style={{ color: 'var(--color-accent)', textDecoration: 'none', fontWeight: 500 }}
         >
-          {r.project.displayName ?? 'Project'}
+          {r.projectName ?? r.projectCode ?? r.projectId}
         </Link>
       ),
     },
     {
       key: 'role',
       title: 'Role',
-      getValue: (r) => r.staffingRole,
-      render: (r) => r.staffingRole,
+      getValue: (r) => r.role,
+      render: (r) => r.role,
     },
     {
       key: 'alloc',
       title: 'Alloc',
       align: 'right',
-      getValue: (r) => r.allocationPercent,
-      render: (r) => <Pct value={r.allocationPercent} fractionDigits={0} />,
+      getValue: (r) => r.activeAllocationPercent ?? r.requiredAllocationPercent,
+      render: (r) => <Pct value={r.activeAllocationPercent ?? r.requiredAllocationPercent} fractionDigits={0} />,
     },
     {
       key: 'start',
       title: 'Start',
-      getValue: (r) => r.startDate,
-      render: (r) => formatDate(r.startDate),
+      getValue: (r) => r.activeValidFrom ?? r.startDate ?? '',
+      render: (r) => {
+        const v = r.activeValidFrom ?? r.startDate;
+        return v ? formatDate(v) : '—';
+      },
     },
     {
       key: 'end',
       title: 'End',
-      getValue: (r) => r.endDate ?? '',
-      render: (r) => (r.endDate ? formatDate(r.endDate) : '—'),
+      getValue: (r) => r.activeValidTo ?? r.endDate ?? '',
+      render: (r) => {
+        const v = r.activeValidTo ?? r.endDate;
+        return v ? formatDate(v) : '—';
+      },
     },
     {
       key: 'status',
       title: 'Status',
-      getValue: (r) => r.approvalState,
-      render: (r) => <StatusBadge status={r.approvalState} variant="chip" />,
+      getValue: (r) => r.fillStatus,
+      render: (r) => <StatusBadge status={r.fillStatus} variant="chip" />,
     },
   ];
   return (

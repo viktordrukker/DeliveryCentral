@@ -4,9 +4,7 @@ import { Link } from 'react-router-dom';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { BalanceMeter, Button, Drawer, Pct, Table, type Column } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import {
   approveLeaveRequest,
   fetchMyLeaveBalance,
@@ -54,7 +52,7 @@ const LEAVE_TYPE_LABELS: Record<LeaveRequestType, string> = {
 
 interface PreloadedData {
   balances: LeaveBalanceDto[];
-  conflicts: AssignmentDirectoryItem[];
+  conflicts: ProjectPosition[];
 }
 
 /**
@@ -108,19 +106,22 @@ export function LeaveDecisionDrawer({
       // primary decision input.
       fetchMyLeaveBalance(year).catch(() => [] as LeaveBalanceDto[]),
       listProjectPositions({ activePersonId: target.personId, take: 100 })
-        .then(mapListResponseToDirectory)
-        .catch(() => ({ items: [] as AssignmentDirectoryItem[], totalCount: 0 })),
+        .catch(() => ({ positions: [] as ProjectPosition[], total: 0 })),
     ])
-      .then(([balances, assignmentsResp]) => {
+      .then(([balances, positionsResp]) => {
         if (!active) return;
         // Filter to overlapping range and active allocation > 0
         const rs = target.leaveStartDate ? new Date(target.leaveStartDate) : null;
         const re = target.leaveEndDate ? new Date(target.leaveEndDate) : null;
-        const conflicts = assignmentsResp.items.filter((a) => {
-          if (!rs || !re) return true;
-          const aStart = new Date(a.startDate);
-          const aEnd = a.endDate ? new Date(a.endDate) : new Date(8.64e15);
-          return aStart <= re && aEnd >= rs && (a.allocationPercent ?? 0) > 0;
+        const conflicts = positionsResp.positions.filter((p) => {
+          const startStr = p.activeValidFrom ?? p.startDate;
+          const endStr = p.activeValidTo ?? p.endDate;
+          const alloc = p.activeAllocationPercent ?? 0;
+          if (!startStr) return alloc > 0;
+          if (!rs || !re) return alloc > 0;
+          const aStart = new Date(startStr);
+          const aEnd = endStr ? new Date(endStr) : new Date(8.64e15);
+          return aStart <= re && aEnd >= rs && alloc > 0;
         });
         setPreload({ balances, conflicts });
       })
@@ -322,18 +323,18 @@ export function LeaveDecisionDrawer({
               No active assignments overlap this range.
             </p>
           ) : preload ? (() => {
-            const conflictColumns: Column<AssignmentDirectoryItem>[] = [
-              { key: 'project', title: 'Project', getValue: (c) => c.project.displayName ?? 'Project', render: (c) => c.project.displayName ?? 'Project' },
-              { key: 'role', title: 'Role', getValue: (c) => c.staffingRole, render: (c) => <span style={{ color: 'var(--color-text-muted)' }}>{c.staffingRole}</span> },
-              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (c) => c.allocationPercent, render: (c) => <Pct value={c.allocationPercent} fractionDigits={0} /> },
-              { key: 'status', title: 'Status', getValue: (c) => c.approvalState, render: (c) => <StatusBadge status={c.approvalState} variant="chip" /> },
+            const conflictColumns: Column<ProjectPosition>[] = [
+              { key: 'project', title: 'Project', getValue: (p) => p.projectName ?? p.projectCode ?? p.projectId, render: (p) => p.projectName ?? p.projectCode ?? p.projectId },
+              { key: 'role', title: 'Role', getValue: (p) => p.role, render: (p) => <span style={{ color: 'var(--color-text-muted)' }}>{p.role}</span> },
+              { key: 'alloc', title: 'Alloc', align: 'right', getValue: (p) => p.activeAllocationPercent ?? p.requiredAllocationPercent, render: (p) => <Pct value={p.activeAllocationPercent ?? p.requiredAllocationPercent} fractionDigits={0} /> },
+              { key: 'status', title: 'Status', getValue: (p) => p.fillStatus, render: (p) => <StatusBadge status={p.fillStatus} variant="chip" /> },
             ];
             return (
               <Table
                 variant="compact"
                 columns={conflictColumns}
                 rows={preload.conflicts}
-                getRowKey={(c) => c.id}
+                getRowKey={(p) => p.id}
               />
             );
           })() : null}

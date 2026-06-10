@@ -19,8 +19,7 @@ vi.mock('@/lib/api/leaveRequests', () => ({
   fetchMyLeaveBalance: (...args: unknown[]) => fetchBalanceMock(...args),
 }));
 
-// LEAN-P2 exit-gate: LeaveDecisionDrawer reads conflicts via
-// /project-positions + the position-to-assignment mapper.
+// SoT PR 17b: LeaveDecisionDrawer reads conflicts via /project-positions.
 vi.mock('@/lib/api/project-positions', () => ({
   listProjectPositions: (...args: unknown[]) => listProjectPositionsMock(...args),
 }));
@@ -56,9 +55,8 @@ afterEach(() => {
   isFeatureEnabledMock.mockReset();
 });
 
-// LEAN-P2 exit-gate: the drawer now reads via /project-positions. Express
-// the conflict fixture in the lean shape — the mapper flattens projectId to
-// project.displayName until the BE DTO enrichment lands.
+// SoT PR 17b: the drawer reads /project-positions directly. Conflict
+// rows render projectName ?? projectCode ?? projectId.
 const CONFLICT_POSITION = {
   id: 'a1',
   projectId: 'Atlas',
@@ -100,8 +98,8 @@ describe('LeaveDecisionDrawer', () => {
     expect(screen.getByText(/Priya Natarajan/)).toBeInTheDocument();
     expect(screen.getByText(/Annual Leave/)).toBeInTheDocument();
     expect(screen.getByText(/5 days/)).toBeInTheDocument();
-    // LEAN-P2 exit-gate: the drawer now reads via /project-positions with
-    // the lean activePersonId filter (mapped via position-to-assignment-mapper).
+    // SoT PR 17b: the drawer reads /project-positions directly with the
+    // lean activePersonId filter.
     await waitFor(() => expect(listProjectPositionsMock).toHaveBeenCalledWith({ activePersonId: 'p-1', take: 100 }));
   });
 
@@ -120,9 +118,8 @@ describe('LeaveDecisionDrawer', () => {
 
   it('renders conflicting assignments when fetch returns rows in range', async () => {
     defaultMocks();
-    // LEAN-P2 exit-gate: drawer reads /project-positions. Mock the canonical
-    // shape — the mapper projects projectId → project.displayName until the
-    // BE DTO enrichment lands, so use the desired display string as projectId.
+    // SoT PR 17b: drawer reads /project-positions. Display falls back to
+    // projectId when no projectName is provided.
     listProjectPositionsMock.mockResolvedValue({
       positions: [
         {

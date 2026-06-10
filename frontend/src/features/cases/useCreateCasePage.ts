@@ -1,15 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { CaseFormValues } from '@/components/cases/CaseForm';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import { CaseRecord, createCase } from '@/lib/api/cases';
 import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-directory';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 
 interface UseCreateCasePageState {
-  assignments: AssignmentDirectoryItem[];
+  assignments: ProjectPosition[];
   createdCase: CaseRecord | null;
   error: string | null;
   errors: Partial<Record<keyof CaseFormValues, string>>;
@@ -24,7 +22,7 @@ interface UseCreateCasePageState {
 export function useCreateCasePage(): UseCreateCasePageState {
   const [people, setPeople] = useState<PersonDirectoryItem[]>([]);
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
-  const [assignments, setAssignments] = useState<AssignmentDirectoryItem[]>([]);
+  const [assignments, setAssignments] = useState<ProjectPosition[]>([]);
   const [createdCase, setCreatedCase] = useState<CaseRecord | null>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,16 +39,16 @@ export function useCreateCasePage(): UseCreateCasePageState {
     void Promise.all([
       fetchPersonDirectory({ page: 1, pageSize: 100 }),
       fetchProjectDirectory(),
-      listProjectPositions().then(mapListResponseToDirectory),
+      listProjectPositions(),
     ])
-      .then(([peopleResponse, projectResponse, assignmentResponse]) => {
+      .then(([peopleResponse, projectResponse, positionsResponse]) => {
         if (!active) {
           return;
         }
 
         setPeople(peopleResponse.items);
         setProjects(projectResponse.items);
-        setAssignments(assignmentResponse.items);
+        setAssignments(positionsResponse.positions);
       })
       .catch((loadError) => {
         if (active) {

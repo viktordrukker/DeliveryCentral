@@ -1,17 +1,32 @@
 import { useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
-import type { BulkAssignmentResponse } from '@/lib/api/assignments';
-import { createProjectPosition, transitionProjectPositionFill } from '@/lib/api/project-positions';
-import { mapPositionToAssignmentResponse } from '@/features/lean-migration/position-to-assignment-mapper';
+import { createProjectPosition, transitionProjectPositionFill, type ProjectPosition } from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
 import { DatePicker, FormField, FormModal, Input, Select, Table, type Column } from '@/components/ds';
 
+export interface BatchPositionCreationFailure {
+  code: string;
+  index: number;
+  message: string;
+  personId: string;
+  projectId: string;
+  role: string;
+}
+
+export interface BatchPositionCreationResponse {
+  createdCount: number;
+  createdPositions: ProjectPosition[];
+  failedCount: number;
+  failedItems: BatchPositionCreationFailure[];
+  totalCount: number;
+}
+
 interface BatchAssignmentConfirmModalProps {
   items: AssignmentModalPreFill[];
   onCancel: () => void;
-  onSuccess: (response: BulkAssignmentResponse) => void;
+  onSuccess: (response: BatchPositionCreationResponse) => void;
   open: boolean;
 }
 
@@ -54,12 +69,12 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
 
     setError(null);
     try {
-      // LEAN-P2 exit-gate: legacy POST /assignments/bulk replaced with a
-      // per-item createProjectPosition (OPEN) → transitionProjectPositionFill
-      // (BOOKED) fan-out. Successes/failures aggregated into the legacy
-      // BulkAssignmentResponse envelope so downstream UI stays compatible.
-      const createdItems: BulkAssignmentResponse['createdItems'] = [];
-      const failedItems: BulkAssignmentResponse['failedItems'] = [];
+      // SoT PR 17 — per-item createProjectPosition (OPEN) →
+      // transitionProjectPositionFill (BOOKED) fan-out. Successes/failures
+      // aggregated into a local response envelope so the consumer
+      // (PlannedVsActualPage) can show toast counts.
+      const createdPositions: ProjectPosition[] = [];
+      const failedItems: BatchPositionCreationFailure[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         try {
@@ -78,7 +93,7 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
             allocationPercent,
             validFrom: startDate,
           });
-          createdItems.push({ assignment: mapPositionToAssignmentResponse(booked), index: i });
+          createdPositions.push(booked);
         } catch (rowErr) {
           failedItems.push({
             code: 'CREATE_FAILED',
@@ -86,17 +101,15 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
             message: rowErr instanceof Error ? rowErr.message : 'Failed to create assignment.',
             personId: item.personId,
             projectId: item.projectId,
-            staffingRole: effectiveRole.trim(),
+            role: effectiveRole.trim(),
           });
         }
       }
-      const response: BulkAssignmentResponse = {
-        createdCount: createdItems.length,
-        createdItems,
+      const response: BatchPositionCreationResponse = {
+        createdCount: createdPositions.length,
+        createdPositions,
         failedCount: failedItems.length,
         failedItems,
-        message: `Created ${createdItems.length} of ${items.length}.`,
-        strategy: 'PER_ROW',
         totalCount: items.length,
       };
       setStaffingRole('');

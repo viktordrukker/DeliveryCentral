@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Timeline, type TimelineMarker, type TimelineSegment } from '@/components/ds';
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
-import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapPositionToDirectoryItem } from '@/features/lean-migration/position-to-assignment-mapper';
+import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 
 export interface PlannedAssignment {
   allocationPercent: number;
@@ -66,26 +64,25 @@ export function WorkloadTimeline({
   planned,
 }: WorkloadTimelineProps): JSX.Element {
   const navigate = useNavigate();
-  const [fetchedAssignments, setFetchedAssignments] = useState<AssignmentDirectoryItem[]>([]);
+  const [fetchedPositions, setFetchedPositions] = useState<ProjectPosition[]>([]);
   const [loading, setLoading] = useState(!preloadedAssignments && Boolean(personId));
 
   useEffect(() => {
     if (preloadedAssignments) return;
     if (!personId) {
       // Planned-only mode: no person to fetch existing workload for.
-      setFetchedAssignments([]);
+      setFetchedPositions([]);
       setLoading(false);
       return;
     }
     let active = true;
     setLoading(true);
-    // LEAN-P2-3: read from /project-positions (canonical) and map back to
-    // the legacy AssignmentDirectoryItem shape so downstream rendering does
-    // not change. `activePersonId` returns positions where this person is
-    // currently filling; `take: 200` matches the legacy pageSize.
+    // SoT PR 17b: read from /project-positions (canonical) directly.
+    // `activePersonId` returns positions where this person is currently
+    // filling; `take: 200` matches the legacy pageSize.
     void listProjectPositions({ activePersonId: personId, take: 200 })
       .then((r) => {
-        if (active) setFetchedAssignments(r.positions.map(mapPositionToDirectoryItem));
+        if (active) setFetchedPositions(r.positions);
       })
       .catch(() => {})
       .finally(() => { if (active) setLoading(false); });
@@ -95,18 +92,18 @@ export function WorkloadTimeline({
   const assignments: NormalizedAssignment[] = useMemo(() => {
     const source = preloadedAssignments
       ? preloadedAssignments
-      : fetchedAssignments.map((a) => ({
-          allocationPercent: a.allocationPercent,
-          assignmentId: a.id,
-          endDate: a.endDate,
-          projectName: a.project.displayName,
-          startDate: a.startDate,
-          status: a.approvalState,
+      : fetchedPositions.map((p) => ({
+          allocationPercent: p.activeAllocationPercent ?? p.requiredAllocationPercent,
+          assignmentId: p.id,
+          endDate: p.activeValidTo ?? p.endDate ?? null,
+          projectName: p.projectName ?? p.projectCode ?? p.projectId,
+          startDate: p.activeValidFrom ?? p.startDate ?? '',
+          status: p.fillStatus,
         }));
     return excludeAssignmentId
       ? source.filter((a) => a.assignmentId !== excludeAssignmentId)
       : source;
-  }, [preloadedAssignments, fetchedAssignments, excludeAssignmentId]);
+  }, [preloadedAssignments, fetchedPositions, excludeAssignmentId]);
 
   const segments: TimelineSegment[] = useMemo(() => {
     const items: TimelineSegment[] = assignments.map((a, i) => ({

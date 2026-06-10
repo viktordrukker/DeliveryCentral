@@ -11,7 +11,6 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { TipTrigger } from '@/components/common/TipBalloon';
 import { useTimesheetWeek } from '@/features/timesheets/useTimesheetWeek';
 import { listProjectPositions } from '@/lib/api/project-positions';
-import { mapListResponseToDirectory } from '@/features/lean-migration/position-to-assignment-mapper';
 import { formatDateRange } from '@/lib/format-date';
 import { fetchProjectDirectory } from '@/lib/api/project-registry';
 import { fetchMyTimesheetWeek, UpsertEntryInput } from '@/lib/api/timesheets';
@@ -400,23 +399,24 @@ export function TimesheetPage(): JSX.Element {
   async function autoPopulateFromAssignments(): Promise<void> {
     if (!principal?.personId) return;
     try {
-      // LEAN-P2: APPROVED/ACTIVE legacy statuses map to BOOKED/ASSIGNED/ONBOARDING
-      // on the lean aggregate. One fetch covers the full active set.
+      // SoT PR 17b: ACTIVE positions cover BOOKED/ASSIGNED/ONBOARDING.
       const positionsResponse = await listProjectPositions({
         activePersonId: principal.personId,
         fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'],
-      }).then(mapListResponseToDirectory);
-      const allItems = positionsResponse.items;
+      });
+      const allItems = positionsResponse.positions;
       const seen = new Set<string>();
-      const uniqueItems = allItems.filter((a) => {
-        if (seen.has(a.id)) return false;
-        seen.add(a.id);
+      const uniqueItems = allItems.filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
         return true;
       });
 
-      const activeAssignments = uniqueItems.filter((a) => {
-        const from = a.startDate ? new Date(a.startDate) : null;
-        const to = a.endDate ? new Date(a.endDate) : null;
+      const activeAssignments = uniqueItems.filter((p) => {
+        const fromStr = p.activeValidFrom ?? p.startDate;
+        const toStr = p.activeValidTo ?? p.endDate;
+        const from = fromStr ? new Date(fromStr) : null;
+        const to = toStr ? new Date(toStr) : null;
         const weekStartDate = new Date(weekStart);
         const weekEndDate = new Date(weekStart);
         weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6);
@@ -432,8 +432,8 @@ export function TimesheetPage(): JSX.Element {
 
       const existingProjectIds = new Set(week ? getProjectRows(week.entries, []) : []);
       let addedCount = 0;
-      for (const assignment of activeAssignments) {
-        const projId = assignment.project.id;
+      for (const position of activeAssignments) {
+        const projId = position.projectId;
         if (!existingProjectIds.has(projId)) {
           await saveEntry({
             capex: false,
@@ -466,12 +466,12 @@ export function TimesheetPage(): JSX.Element {
       const result = await listProjectPositions({
         activePersonId: principal.personId,
         fillStatuses: ['BOOKED', 'ASSIGNED', 'ONBOARDING'],
-      }).then(mapListResponseToDirectory);
+      });
       const existing = new Set(week ? getProjectRows(week.entries, []) : []);
       setAvailableProjects(
-        result.items
-          .filter((a) => !existing.has(a.project.id))
-          .map((a) => ({ id: a.project.id, name: a.project.displayName })),
+        result.positions
+          .filter((p) => !existing.has(p.projectId))
+          .map((p) => ({ id: p.projectId, name: p.projectName ?? p.projectCode ?? p.projectId })),
       );
     } catch {
       setAvailableProjects([]);

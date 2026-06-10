@@ -1,12 +1,25 @@
 import { Link } from 'react-router-dom';
 
-import type { AssignmentDirectoryItem } from '@/lib/api/assignments';
 import { Button } from '@/components/ds';
+
+/**
+ * Legacy assignment-list row shape used by the V1 EmployeeDashboardPage
+ * (obsoleteInV2 — V2Redirects to /me). Defined locally because the
+ * `@/lib/api/assignments` client was deleted in SoT PR 17b. This component
+ * is scheduled for full deletion alongside EmployeeDashboardPage at PR 20.
+ */
+export interface AssignmentListItem {
+  id: string;
+  staffingRole: string;
+  allocationPercent: number;
+  approvalState: string;
+  project: { id: string; displayName: string };
+}
 
 interface AssignmentListProps {
   emptyDescription: string;
   emptyTitle: string;
-  items: AssignmentDirectoryItem[];
+  items: AssignmentListItem[];
 }
 
 export function AssignmentList({

@@ -18,7 +18,6 @@ import { formatDateShort, formatDate } from '@/lib/format-date';
 import type { ProjectDetails, AssignProjectTeamResponse } from '@/lib/api/project-registry';
 import { assignTeamToProject } from '@/lib/api/project-registry';
 import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
-import { mapPositionToDirectoryItem } from '@/features/lean-migration/position-to-assignment-mapper';
 import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchRolePlan, fetchRolePlanComparison, type RolePlanEntryDto, type RolePlanComparisonResult } from '@/lib/api/project-role-plan';
 import { fetchTeams, type TeamSummary } from '@/lib/api/teams';
@@ -134,11 +133,8 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
     [teams],
   );
 
-  // StaffingSwimLaneGantt is shared with other surfaces and still consumes
-  // the legacy AssignmentDirectoryItem shape. Map on-demand so the table
-  // columns above stay bound to ProjectPosition without leaking the legacy
-  // shape upstream.
-  const ganttAssignments = useMemo(() => positions.map(mapPositionToDirectoryItem), [positions]);
+  // SoT PR 17b — gantt now consumes ProjectPosition[] directly.
+  const ganttAssignments = positions;
 
   async function handleAssignTeam(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
