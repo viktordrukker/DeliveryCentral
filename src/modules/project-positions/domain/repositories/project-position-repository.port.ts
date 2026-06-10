@@ -5,6 +5,18 @@ import { ProjectPosition } from '../entities/project-position.entity';
 import { PositionId } from '../value-objects/position-id';
 import type { PositionFillStatusValue } from '../value-objects/position-fill-status';
 
+/**
+ * Thrown by `save()` when the optimistic-concurrency version guard detects a
+ * concurrent write (stored version no longer matches the aggregate's prior
+ * version). Mapped to HTTP 409 by `PositionDomainExceptionFilter`.
+ */
+export class OptimisticConcurrencyConflictError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = 'OptimisticConcurrencyConflictError';
+  }
+}
+
 export interface ListProjectPositionsQuery {
   projectId?: string;
   activePersonId?: string;

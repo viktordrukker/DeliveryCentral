@@ -240,8 +240,23 @@ export function mapLegacyAssignmentStatus(legacy: string): PositionFillStatusVal
   }
 }
 
+/**
+ * Discriminates the three rejection classes of the fill state machine so the
+ * presentation layer can map each to the right HTTP status:
+ *  - MISSING_EDGE   — no transition from the current status to the target (409)
+ *  - ROLE_FORBIDDEN — the edge exists but the actor's roles are not allowed (403)
+ *  - MISSING_REASON — the edge requires a non-empty reason and none was given (400)
+ */
+export type PositionFillTransitionErrorKind =
+  | 'MISSING_EDGE'
+  | 'ROLE_FORBIDDEN'
+  | 'MISSING_REASON';
+
 export class InvalidPositionFillTransitionError extends Error {
-  public constructor(message: string) {
+  public constructor(
+    message: string,
+    public readonly kind: PositionFillTransitionErrorKind,
+  ) {
     super(message);
     this.name = 'InvalidPositionFillTransitionError';
   }
