@@ -13,7 +13,7 @@ import { createReportingLine } from '@/lib/api/reporting-lines';
 import { fetchPerson360 } from '@/lib/api/pulse';
 import { fetchBusinessAudit } from '@/lib/api/business-audit';
 import { fetchPersonSkills, fetchSkills } from '@/lib/api/skills';
-import { EmployeeDetailsPlaceholderPage } from './EmployeeDetailsPlaceholderPage';
+import { EmployeeDetailsPage } from './EmployeeDetailsPage';
 
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
@@ -66,6 +66,19 @@ describe('EmployeeDetailsPage', () => {
     mockedDeactivateEmployee.mockReset();
     mockedCreateReportingLine.mockReset();
     mockedFetchPerson360.mockReset();
+    // SoT PR 17h-employee — 360 View is now embedded inside the Overview tab
+    // for view-360 roles, so every test that renders the page (with
+    // hr_manager principal) triggers fetchPerson360.
+    mockedFetchPerson360.mockResolvedValue({
+      personId: 'p1',
+      displayName: 'Ethan Brooks',
+      moodTrend: [],
+      workloadTrend: [],
+      hoursTrend: [],
+      currentMood: 3,
+      currentAllocation: 50,
+      alertActive: false,
+    });
     mockedFetchBusinessAudit.mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 });
     mockedFetchPersonSkills.mockResolvedValue([]);
     mockedFetchSkills.mockResolvedValue([]);
@@ -287,7 +300,7 @@ describe('EmployeeDetailsPage', () => {
     expect(screen.getByText('Start date is required.')).toBeInTheDocument();
   });
 
-  it('renders 360 View tab and loads 360 data when clicked', async () => {
+  it('renders 360 View inside the Overview tab (canvas 6-tab grammar)', async () => {
     mockedFetchPersonDirectoryById.mockResolvedValue({
       currentAssignmentCount: 1,
       currentLineManager: { displayName: 'Sophia Kim', id: 'm1' },
@@ -314,17 +327,15 @@ describe('EmployeeDetailsPage', () => {
       alertActive: false,
     });
 
-    const user = userEvent.setup();
     renderWithRouter('/people/p1');
 
-    // Tab nav is visible to hr_manager
+    // SoT PR 17h-employee — the 4-tab legacy grammar (Overview / 360 View /
+    // Skills / History) was replaced with the DS-canvas 6-tab grammar.
+    // 360 View is no longer its own tab; it lives inside Overview.
     expect(await screen.findByTestId('person-detail-tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('tab-360')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-360')).not.toBeInTheDocument();
 
-    // Click 360 View tab
-    await user.click(screen.getByTestId('tab-360'));
-
-    // 360 content should load
+    // 360 panel renders inside the default Overview tab for view-360 roles.
     expect(await screen.findByTestId('person-360-tab')).toBeInTheDocument();
     expect(screen.getByText('Current Mood')).toBeInTheDocument();
   });
@@ -334,7 +345,7 @@ function renderWithRouter(initialEntry: string): void {
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route element={<EmployeeDetailsPlaceholderPage />} path="/people/:id" />
+        <Route element={<EmployeeDetailsPage />} path="/people/:id" />
       </Routes>
     </MemoryRouter>,
   );

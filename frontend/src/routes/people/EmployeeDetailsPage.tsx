@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -16,7 +17,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { formatDate, formatDateShort } from '@/lib/format-date';
+import { formatDate } from '@/lib/format-date';
 import { ReportingLineForm } from '@/components/people/ReportingLineForm';
 import { PersonSkillsTab } from '@/components/people/PersonSkillsTab';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
@@ -26,20 +27,49 @@ import { deactivateEmployee, terminateEmployee } from '@/lib/api/person-director
 import { showUndoToast } from '@/lib/undo-toast';
 import { terminateReportingLine } from '@/lib/api/reporting-lines';
 import { fetchBusinessAudit, BusinessAuditRecord } from '@/lib/api/business-audit';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-
 import { humanizeEnum, EMPLOYMENT_STATUS_LABELS } from '@/lib/labels';
 import { PersonActivityFeed } from '@/components/people/PersonActivityFeed';
 import { Person360Tab } from '@/components/people/Person360Tab';
-import { HR_DIRECTOR_ADMIN_ROLES, THREESIXTY_REVIEW_ROLES, SKILL_EDIT_ROLES, hasAnyRole } from '@/app/route-manifest';
+import {
+  HR_DIRECTOR_ADMIN_ROLES,
+  THREESIXTY_REVIEW_ROLES,
+  SKILL_EDIT_ROLES,
+  hasAnyRole,
+} from '@/app/route-manifest';
 import { getDashboardPath } from '@/app/role-routing';
-// V2-A.11 (2026-05-25) — removed `import LockOutlinedIcon from '@mui/icons-material/LockOutlined'`.
-// EmptyState's default icon now renders for the forbidden-profile case.
-// EmptyState/LoadingState/ErrorState themselves still depend on MUI (transitively);
-// removing that is a macro task tracked separately (39-file footprint).
 import { Button, DatePicker } from '@/components/ds';
 
-export function EmployeeDetailsPlaceholderPage(): JSX.Element {
+type EmployeeTabId =
+  | 'overview'
+  | 'positions'
+  | 'skills'
+  | 'cost'
+  | 'time'
+  | 'activity';
+
+const EMPLOYEE_TABS: EmployeeTabId[] = [
+  'overview',
+  'positions',
+  'skills',
+  'cost',
+  'time',
+  'activity',
+];
+
+/**
+ * SoT PR 17h-employee — DS-canvas 6-tab Employee Detail surface.
+ *
+ * Spec: DS/page-profile.jsx (PeopleProfile). Six tabs (Overview / Positions /
+ * Skills / Cost rates / Time & leave / Activity) plus a 320px right rail with
+ * Quick actions, Linked entities, and Recent activity. The dsRefresh-ON branch
+ * still delegates to PersonProfilePanel which renders the canvas-conformant
+ * surface; this page owns the lifecycle action header (Deactivate / Terminate),
+ * the reporting-line scheduler, and the dsRefresh-OFF fallback that mirrors the
+ * same 6-tab grammar.
+ *
+ * Renamed from EmployeeDetailsPlaceholderPage — the page is no longer a stub.
+ */
+export function EmployeeDetailsPage(): JSX.Element {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { principal } = useAuth();
@@ -47,13 +77,16 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   const canManageLifecycle = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   const canView360 = hasAnyRole(principal?.roles, THREESIXTY_REVIEW_ROLES);
   const canEditSkills = hasAnyRole(principal?.roles, SKILL_EDIT_ROLES);
-  const activeTab = searchParams.get('tab') ?? 'overview';
+  const rawTab = searchParams.get('tab') ?? 'overview';
+  const activeTab: EmployeeTabId = (EMPLOYEE_TABS as string[]).includes(rawTab)
+    ? (rawTab as EmployeeTabId)
+    : 'overview';
 
   const [personAuditEvents, setPersonAuditEvents] = useState<BusinessAuditRecord[]>([]);
   const [personAuditLoading, setPersonAuditLoading] = useState(false);
   const [personAuditError, setPersonAuditError] = useState<string | null>(null);
 
-  function setTab(tab: string): void {
+  function setTab(tab: EmployeeTabId): void {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set('tab', tab);
@@ -75,12 +108,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     if (state.data?.displayName) setCurrentLabel(state.data.displayName);
   }, [state.data?.displayName, setCurrentLabel]);
 
-  // Sync lifecycleStatus from server when the person id changes (handle
-  // route-param flips between people). For the same person, do NOT re-sync —
-  // local-mutation actions (deactivate/terminate) update lifecycleStatus
-  // directly, and re-syncing would clobber the optimistic state before the
-  // next reload(). When another user changes status server-side, the explicit
-  // state.reload() call (e.g. after refresh button) will refetch + re-trigger.
   useEffect(() => {
     if (state.data?.lifecycleStatus !== undefined) {
       setLifecycleStatus(state.data.lifecycleStatus);
@@ -89,7 +116,7 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   }, [state.data?.id]);
 
   useEffect(() => {
-    if (!id || activeTab !== 'history') return;
+    if (!id || activeTab !== 'activity') return;
     let active = true;
     setPersonAuditLoading(true);
     setPersonAuditError(null);
@@ -105,7 +132,9 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       .finally(() => {
         if (active) setPersonAuditLoading(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [id, activeTab]);
 
   const [terminateError, setTerminateError] = useState<string | null>(null);
@@ -223,10 +252,10 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   }
 
   if (dsRefreshEnabled && id) {
-    // V2-A.10 — PersonProfilePanel is the page surface. The legacy chrome
-    // (lifecycle actions, audit timeline, 4-tab strip) is preserved as a
-    // minimal action header so HR/admin can still deactivate or terminate
-    // employees without leaving the canvas profile.
+    // The dsRefresh-ON path uses PersonProfilePanel which already implements
+    // the DS canvas 6-tab grammar + 320px right rail (SoT PR 9). We keep the
+    // lifecycle action header (Deactivate / Terminate) here so HR/admin can
+    // act without leaving the canvas profile.
     return (
       <PageContainer testId="employee-details-page">
         <ConfirmDialog
@@ -300,6 +329,24 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
     );
   }
 
+  const positionsCount = state.data?.currentAssignmentCount ?? 0;
+  const lifecycleBadge = lifecycleStatus || state.data?.lifecycleStatus ? (
+    <StatusBadge
+      tone={(() => {
+        const status = lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE';
+        if (status === 'ACTIVE') return 'active';
+        if (status === 'INACTIVE') return 'warning';
+        if (status === 'TERMINATED') return 'danger';
+        return 'neutral';
+      })()}
+      label={humanizeEnum(
+        lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE',
+        EMPLOYMENT_STATUS_LABELS,
+      )}
+      variant="chip"
+    />
+  ) : null;
+
   return (
     <PageContainer testId="employee-details-page">
       <ConfirmDialog
@@ -343,47 +390,40 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
             ) : null}
           </>
         }
-        badges={
-          // W3-05 — replaces the legacy 5-up SummaryCard KPI strip with a
-          // single lifecycle StatusBadge per Phase 18 Detail Surface grammar.
-          // Org-unit, line-manager, and assignment counts are surfaced inside
-          // the section cards below (no duplicate KPI tile row).
-          lifecycleStatus || state.data?.lifecycleStatus ? (
-            <StatusBadge
-              tone={(() => {
-                const status = lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE';
-                if (status === 'ACTIVE') return 'active';
-                if (status === 'INACTIVE') return 'warning';
-                if (status === 'TERMINATED') return 'danger';
-                return 'neutral';
-              })()}
-              label={humanizeEnum(
-                lifecycleStatus ?? state.data?.lifecycleStatus ?? 'ACTIVE',
-                EMPLOYMENT_STATUS_LABELS,
-              )}
-              variant="chip"
-            />
-          ) : null
-        }
+        badges={lifecycleBadge}
         eyebrow="People"
-        subtitle="Employee profile foundation for staffing visibility and future portal workflows."
+        subtitle="Employee profile — staffing, skills, cost, time & leave, and activity."
         title={state.data?.displayName ?? 'Employee Details'}
       />
 
       <div data-testid="person-detail-tabs">
         <TabBar
           activeTab={activeTab}
-          onTabChange={(id) => setTab(id as typeof activeTab)}
+          onTabChange={(value) => setTab(value as EmployeeTabId)}
           tabs={[
             { id: 'overview', label: 'Overview' },
-            ...(canView360 ? [{ id: '360', label: '360 View' }] : []),
+            {
+              id: 'positions',
+              label: (
+                <>
+                  Positions{' '}
+                  <span style={{ color: 'var(--color-text-muted)' }}>
+                    ({positionsCount})
+                  </span>
+                </>
+              ),
+            },
             { id: 'skills', label: 'Skills' },
-            { id: 'history', label: 'History' },
+            { id: 'cost', label: 'Cost rates' },
+            { id: 'time', label: 'Time & leave' },
+            { id: 'activity', label: 'Activity' },
           ]}
         />
       </div>
 
-      {state.isLoading ? <LoadingState label="Loading employee details..." variant="skeleton" skeletonType="detail" /> : null}
+      {state.isLoading ? (
+        <LoadingState label="Loading employee details..." variant="skeleton" skeletonType="detail" />
+      ) : null}
       {state.notFound ? (
         <SectionCard>
           <EmptyState
@@ -401,9 +441,9 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
       {showTerminateForm ? (
         <SectionCard title="Terminate Employee">
           <div className="details-list">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '480px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 480 }}>
               <label>
-                <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Reason (optional)</span>
+                <span style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Reason (optional)</span>
                 <input
                   className="input"
                   onChange={(e) => { setTerminateReason(e.target.value); }}
@@ -413,13 +453,14 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                 />
               </label>
               <label>
-                <span style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>Termination date (optional)</span>
+                <span style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>Termination date (optional)</span>
                 <DatePicker
- className="input"
- onValueChange={(value) => { setTerminateDate(value); }} value={terminateDate}
- />
+                  className="input"
+                  onValueChange={(value) => { setTerminateDate(value); }}
+                  value={terminateDate}
+                />
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <Button variant="danger" disabled={isTerminating} onClick={() => { void handleTerminate(); }} type="button">
                   {isTerminating ? 'Terminating...' : 'Confirm termination'}
                 </Button>
@@ -432,150 +473,199 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
         </SectionCard>
       ) : null}
 
-      {state.data && activeTab === '360' && canView360 && id ? (
-        <Person360Tab personId={id} />
-      ) : null}
+      {state.data && id ? (
+        <div
+          data-testid="employee-details-body"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 320px',
+            gap: 20,
+            alignItems: 'flex-start',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+            {activeTab === 'overview' ? (
+              <>
+                <SectionCard title="Employee Summary">
+                  <dl className="details-list">
+                    <div>
+                      <dt>Name</dt>
+                      <dd>{state.data.displayName}</dd>
+                    </div>
+                    <div>
+                      <dt>Email</dt>
+                      <dd>{state.data.primaryEmail ?? 'Not available'}</dd>
+                    </div>
+                    <div>
+                      <dt>Org Unit</dt>
+                      <dd>{state.data.currentOrgUnit?.name ?? 'Not assigned'}</dd>
+                    </div>
+                    <div>
+                      <dt>Resource Pools</dt>
+                      <dd>
+                        {state.data.resourcePools && state.data.resourcePools.length > 0
+                          ? state.data.resourcePools.map((pool) => pool.name).join(', ')
+                          : 'No pool memberships'}
+                      </dd>
+                    </div>
+                  </dl>
+                </SectionCard>
 
-      {state.data && activeTab === 'skills' && id ? (
-        <SectionCard title="Skills">
-          <PersonSkillsTab canEdit={canEditSkills} personId={id} />
-        </SectionCard>
-      ) : null}
+                <SectionCard title="Reporting Relationships">
+                  <dl className="details-list">
+                    <div>
+                      <dt>Line Manager</dt>
+                      <dd>{state.data.currentLineManager?.displayName ?? 'No line manager'}</dd>
+                    </div>
+                    <div>
+                      <dt>Dotted-Line Summary</dt>
+                      <dd>
+                        {state.data.dottedLineManagers.length > 0
+                          ? state.data.dottedLineManagers
+                              .map((manager) => manager.displayName)
+                              .join(', ')
+                          : 'No dotted-line relationships'}
+                      </dd>
+                    </div>
+                  </dl>
+                </SectionCard>
 
-      {activeTab === 'history' && id ? (
-        <>
-          <SectionCard title="Lifecycle Activity" collapsible>
-            <PersonActivityFeed personId={id} />
-          </SectionCard>
-          <SectionCard title="Change History">
-            {personAuditLoading ? <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" /> : null}
-            {personAuditError ? <ErrorState description={personAuditError} /> : null}
-            {!personAuditLoading && !personAuditError ? (
-              <AuditTimeline events={personAuditEvents} />
+                <SectionCard title="Reporting Line Management">
+                  <p className="placeholder-block__copy">
+                    Use effective dates to schedule manager changes without overwriting historical
+                    relationships.
+                  </p>
+                  {reportingLine.isLoadingManagers ? (
+                    <LoadingState label="Loading manager options..." variant="skeleton" skeletonType="detail" />
+                  ) : null}
+                  {reportingLine.error ? <ErrorState description={reportingLine.error} /> : null}
+                  {reportingLine.successMessage ? (
+                    <div className="success-banner">{reportingLine.successMessage}</div>
+                  ) : null}
+                  {reportingLine.lastCreatedReportingLine ? (
+                    <div className="reporting-line-panel">
+                      <div className="reporting-line-panel__summary">
+                        <span className="reporting-line-panel__label">Latest scheduled change</span>
+                        <strong>
+                          {reportingLine.lastCreatedReportingLine.type} from{' '}
+                          {formatDate(reportingLine.lastCreatedReportingLine.startDate)}
+                          {reportingLine.lastCreatedReportingLine.endDate
+                            ? ` until ${formatDate(reportingLine.lastCreatedReportingLine.endDate)}`
+                            : ''}
+                        </strong>
+                      </div>
+                      <div className="reporting-line-panel__actions">
+                        {endRelationshipError ? <p className="field__error">{endRelationshipError}</p> : null}
+                        {endRelationshipSuccess ? <p className="field__success">{endRelationshipSuccess}</p> : null}
+                        <label className="field">
+                          <span className="field__label">End date</span>
+                          <DatePicker
+                            onValueChange={(value) => { setEndRelationshipDate(value); }}
+                            value={endRelationshipDate}
+                          />
+                        </label>
+                        <Button
+                          variant="secondary"
+                          disabled={isEndingRelationship}
+                          onClick={() => { void handleEndRelationship(reportingLine.lastCreatedReportingLine!.id); }}
+                          type="button"
+                        >
+                          {isEndingRelationship ? 'Ending...' : 'End relationship'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  <ReportingLineForm
+                    currentManagerName={state.data.currentLineManager?.displayName}
+                    errors={reportingLine.errors}
+                    isSubmitting={reportingLine.isSubmitting}
+                    managerOptions={reportingLine.managerOptions}
+                    onChange={reportingLine.handleChange}
+                    onSubmit={reportingLine.handleSubmit}
+                    values={reportingLine.values}
+                  />
+                </SectionCard>
+
+                {canView360 ? (
+                  <SectionCard title="360 View">
+                    <Person360Tab personId={id} />
+                  </SectionCard>
+                ) : null}
+              </>
             ) : null}
-          </SectionCard>
-        </>
-      ) : null}
 
-      {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
-        <>
-          {/* W3-05 — legacy ad-hoc 5-up KPI tile strip removed. Lifecycle is
-              now shown as a single StatusBadge in PageHeader; org-unit /
-              line-manager / assignment-count remain inside SectionCards per
-              Phase 18 Detail Surface grammar. */}
-          <div className="dashboard-main-grid">
-            <SectionCard title="Employee Summary">
-              <dl className="details-list">
-                <div>
-                  <dt>Name</dt>
-                  <dd>{state.data.displayName}</dd>
-                </div>
-                <div>
-                  <dt>Email</dt>
-                  <dd>{state.data.primaryEmail ?? 'Not available'}</dd>
-                </div>
-                <div>
-                  <dt>Org Unit</dt>
-                  <dd>{state.data.currentOrgUnit?.name ?? 'Not assigned'}</dd>
-                </div>
-                <div>
-                  <dt>Resource Pools</dt>
-                  <dd>
-                    {state.data.resourcePools && state.data.resourcePools.length > 0
-                      ? state.data.resourcePools.map((pool) => pool.name).join(', ')
-                      : 'No pool memberships'}
-                  </dd>
-                </div>
-              </dl>
-            </SectionCard>
+            {activeTab === 'positions' ? (
+              <SectionCard title={`Positions (${positionsCount})`}>
+                {positionsCount === 0 ? (
+                  <EmptyState
+                    description="This person has no active positions at this time."
+                    title="No active positions"
+                    action={{
+                      href: `/staffing-desk?view=table&kind=position&personId=${id}`,
+                      label: 'Open staffing desk',
+                    }}
+                  />
+                ) : (
+                  <EmptyState
+                    description="Use the staffing desk to see this person's full position history and active fills."
+                    title={`${positionsCount} active position${positionsCount === 1 ? '' : 's'}`}
+                    action={{
+                      href: `/staffing-desk?view=table&kind=position&personId=${id}`,
+                      label: 'Open staffing desk',
+                    }}
+                  />
+                )}
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Reporting Relationships">
-              <dl className="details-list">
-                <div>
-                  <dt>Line Manager</dt>
-                  <dd>{state.data.currentLineManager?.displayName ?? 'No line manager'}</dd>
-                </div>
-                <div>
-                  <dt>Dotted-Line Summary</dt>
-                  <dd>
-                    {state.data.dottedLineManagers.length > 0
-                      ? state.data.dottedLineManagers
-                          .map((manager) => manager.displayName)
-                          .join(', ')
-                      : 'No dotted-line relationships'}
-                  </dd>
-                </div>
-              </dl>
-            </SectionCard>
+            {activeTab === 'skills' ? (
+              <SectionCard title="Skills">
+                <PersonSkillsTab canEdit={canEditSkills} personId={id} />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="Reporting Line Management">
-              <p className="placeholder-block__copy">
-                Use effective dates to schedule manager changes without overwriting historical
-                relationships.
-              </p>
-              {reportingLine.isLoadingManagers ? (
-                <LoadingState label="Loading manager options..." variant="skeleton" skeletonType="detail" />
-              ) : null}
-              {reportingLine.error ? <ErrorState description={reportingLine.error} /> : null}
-              {reportingLine.successMessage ? (
-                <div className="success-banner">{reportingLine.successMessage}</div>
-              ) : null}
-              {reportingLine.lastCreatedReportingLine ? (
-                <div className="reporting-line-panel">
-                  <div className="reporting-line-panel__summary">
-                    <span className="reporting-line-panel__label">Latest scheduled change</span>
-                    <strong>
-                      {reportingLine.lastCreatedReportingLine.type} from{' '}
-                      {formatDate(reportingLine.lastCreatedReportingLine.startDate)}
-                      {reportingLine.lastCreatedReportingLine.endDate
-                        ? ` until ${formatDate(reportingLine.lastCreatedReportingLine.endDate)}`
-                        : ''}
-                    </strong>
-                  </div>
-                  <div className="reporting-line-panel__actions">
-                    {endRelationshipError ? <p className="field__error">{endRelationshipError}</p> : null}
-                    {endRelationshipSuccess ? <p className="field__success">{endRelationshipSuccess}</p> : null}
-                    <label className="field">
-                      <span className="field__label">End date</span>
-                      <DatePicker onValueChange={(value) => { setEndRelationshipDate(value); }} value={endRelationshipDate}
- />
-                    </label>
-                    <Button variant="secondary" disabled={isEndingRelationship} onClick={() => { void handleEndRelationship(reportingLine.lastCreatedReportingLine!.id); }} type="button">
-                      {isEndingRelationship ? 'Ending...' : 'End relationship'}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-              <ReportingLineForm
-                currentManagerName={state.data.currentLineManager?.displayName}
-                errors={reportingLine.errors}
-                isSubmitting={reportingLine.isSubmitting}
-                managerOptions={reportingLine.managerOptions}
-                onChange={reportingLine.handleChange}
-                onSubmit={reportingLine.handleSubmit}
-                values={reportingLine.values}
-              />
-            </SectionCard>
-
-            <SectionCard title="Active Positions Summary">
-              {state.data.currentAssignmentCount === 0 ? (
+            {activeTab === 'cost' ? (
+              <SectionCard title="Cost rates">
                 <EmptyState
-                  description="This person has no active positions at this time."
-                  title="No active positions"
+                  description="Cost rates for this person are managed by Finance. The detailed history endpoint is not yet exposed on this profile."
+                  title="Cost rate history not available here"
                   action={{
-                    href: `/staffing-desk?view=table&kind=position&personId=${id ?? ''}`,
-                    label: 'Open staffing desk',
+                    href: '/admin/finance/rates',
+                    label: 'Open finance rates admin',
                   }}
                 />
-              ) : (
-                <dl className="details-list">
-                  <div>
-                    <dt>Active positions</dt>
-                    <dd>{state.data.currentAssignmentCount}</dd>
-                  </div>
-                </dl>
-              )}
-            </SectionCard>
+              </SectionCard>
+            ) : null}
+
+            {activeTab === 'time' ? (
+              <SectionCard title="Time & leave">
+                <EmptyState
+                  description="Time and leave for this person are owned by their workspace. Open their My Time view to see weekly hours and leave balance."
+                  title="Time & leave lives on the workspace"
+                  action={{
+                    href: `/me?personId=${id}`,
+                    label: 'Open workspace',
+                  }}
+                />
+              </SectionCard>
+            ) : null}
+
+            {activeTab === 'activity' ? (
+              <>
+                <SectionCard title="Lifecycle Activity" collapsible>
+                  <PersonActivityFeed personId={id} />
+                </SectionCard>
+                <SectionCard title="Change History">
+                  {personAuditLoading ? (
+                    <LoadingState label="Loading history..." variant="skeleton" skeletonType="detail" />
+                  ) : null}
+                  {personAuditError ? <ErrorState description={personAuditError} /> : null}
+                  {!personAuditLoading && !personAuditError ? (
+                    <AuditTimeline events={personAuditEvents} />
+                  ) : null}
+                </SectionCard>
+              </>
+            ) : null}
 
             <SectionCard title="Lifecycle Actions">
               <p className="placeholder-block__copy">
@@ -589,11 +679,70 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                 token={authToken.token}
               />
             </SectionCard>
-
           </div>
-        </>
+
+          <aside
+            data-testid="employee-details-right-rail"
+            style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16 }}
+          >
+            <SectionCard title="Quick actions">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Button
+                  as="a"
+                  variant="secondary"
+                  size="md"
+                  href={`/messages/new?personId=${id}`}
+                  style={{ justifyContent: 'flex-start' }}
+                >
+                  Message
+                </Button>
+                <Button
+                  as="a"
+                  variant="secondary"
+                  size="md"
+                  href={`/staffing-desk?view=table&kind=position&personId=${id}`}
+                  style={{ justifyContent: 'flex-start' }}
+                >
+                  Manage positions
+                </Button>
+                {canEditSkills ? (
+                  <Button
+                    as="a"
+                    variant="secondary"
+                    size="md"
+                    href={`/people/${id}?tab=skills`}
+                    style={{ justifyContent: 'flex-start' }}
+                  >
+                    Edit profile
+                  </Button>
+                ) : null}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Linked entities">
+              <dl
+                className="details-list"
+                style={{ display: 'grid', gridTemplateColumns: '1fr auto', rowGap: 6 }}
+              >
+                <dt>Active positions</dt>
+                <dd>
+                  <a href={`/staffing-desk?view=table&kind=position&personId=${id}`}>
+                    {positionsCount}
+                  </a>
+                </dd>
+                <dt>Resource pools</dt>
+                <dd>{state.data.resourcePools?.length ?? 0}</dd>
+                <dt>Dotted-line</dt>
+                <dd>{state.data.dottedLineManagers.length}</dd>
+              </dl>
+            </SectionCard>
+
+            <SectionCard title="Recent activity">
+              <PersonActivityFeed personId={id} limit={5} />
+            </SectionCard>
+          </aside>
+        </div>
       ) : null}
     </PageContainer>
   );
 }
-
