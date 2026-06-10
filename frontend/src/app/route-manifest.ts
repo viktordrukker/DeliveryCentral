@@ -384,9 +384,13 @@ export const appRoutes: AppRouteDefinition[] = routeManifest
   .map((route) => ({
     allowedRoles: route.allowedRoles,
     description: route.description,
+    flag: route.flag,
     group: route.group,
+    groupV2: route.groupV2,
+    obsoleteInV2: route.obsoleteInV2,
     path: route.path,
     title: route.title,
+    titleV2: route.titleV2,
   }));
 
 export function getAllowedRoles(path: string): AppRole[] | undefined {

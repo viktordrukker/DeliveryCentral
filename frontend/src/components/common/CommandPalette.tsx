@@ -10,6 +10,7 @@ import { fetchPersonDirectory, PersonDirectoryItem } from '@/lib/api/person-dire
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { listProjectPositions, type ProjectPosition } from '@/lib/api/project-positions';
 import { fetchCases, CaseRecord } from '@/lib/api/cases';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 export interface RecentPage {
   path: string;
@@ -123,19 +124,30 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
     };
   }, [query]);
 
+  // Mirror the sidebar's visibility contract: flagged-off routes never list;
+  // `obsoleteInV2` routes drop out when the v2 chrome (`dsRefresh`) is on.
+  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const visibleRoutes = appRoutes.filter((route) => {
+    if (route.flag && !isFeatureEnabled(route.flag)) return false;
+    if (dsRefreshEnabled && route.obsoleteInV2 === true) return false;
     if (!route.allowedRoles) return true;
     return route.allowedRoles.some((r) => principal?.roles.includes(r));
   });
 
   const pageItems: CommandItem[] = visibleRoutes
-    .filter((route) =>
-      !query || route.title.toLowerCase().includes(query.toLowerCase()),
-    )
     .map((route) => ({
+      route,
+      // v2 chrome renames some surfaces (e.g. /cases → "HR Queue"); the
+      // palette must match the sidebar label the user sees.
+      label: dsRefreshEnabled ? route.titleV2 ?? route.title : route.title,
+    }))
+    .filter(({ label }) =>
+      !query || label.toLowerCase().includes(query.toLowerCase()),
+    )
+    .map(({ route, label }) => ({
       group: 'Pages',
       id: `page-${route.path}`,
-      label: route.title,
+      label,
       sublabel: route.description,
       onSelect: () => {
         markSidebarNavigation();
