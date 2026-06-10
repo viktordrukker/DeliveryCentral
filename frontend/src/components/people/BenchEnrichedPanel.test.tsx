@@ -281,3 +281,97 @@ describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
     expect(screen.getByLabelText('Next person')).toBeDisabled();
   });
 });
+
+describe('BenchEnrichedPanel — SoT PR 17h-bench DS canvas filter+bulk bars', () => {
+  it('renders the DS-canvas filter bar (search + chips + sort)', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-filter-bar')).toBeInTheDocument());
+    expect(screen.getByTestId('bench-search')).toBeInTheDocument();
+    expect(screen.getByTestId('bench-chip-idleOver7')).toBeInTheDocument();
+    expect(screen.getByTestId('bench-chip-engineering')).toBeInTheDocument();
+    expect(screen.getByTestId('bench-chip-l4plus')).toBeInTheDocument();
+    expect(screen.getByTestId('bench-chip-availableNow')).toBeInTheDocument();
+    expect(screen.getByTestId('bench-sort')).toBeInTheDocument();
+  });
+
+  it('search filters rows by name / role / grade', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    const search = screen.getByTestId('bench-search') as HTMLInputElement;
+    fireEvent.change(search, { target: { value: 'Architect' } });
+    await waitFor(() => {
+      expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+      expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    });
+  });
+
+  it('chip toggle hides non-matching rows and survives a second toggle', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    // engineering chip should keep only Ada (Senior Engineer) and Alan (Engineer);
+    // Grace is an Architect.
+    fireEvent.click(screen.getByTestId('bench-chip-engineering'));
+    await waitFor(() => expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument());
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Alan Turing')).toBeInTheDocument();
+    // toggling off restores the full set
+    fireEvent.click(screen.getByTestId('bench-chip-engineering'));
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument());
+  });
+
+  it('L4 + chip keeps only people with grade L4 or higher', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('bench-chip-l4plus'));
+    await waitFor(() => expect(screen.queryByText('Alan Turing')).not.toBeInTheDocument());
+    // Ada (L5) and Grace (L7) remain
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+  });
+
+  it('sort change writes ?sort to the URL', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-sort')).toBeInTheDocument());
+    const select = screen.getByTestId('bench-sort') as HTMLSelectElement;
+    expect(select.value).toBe('days');
+    fireEvent.change(select, { target: { value: 'cost' } });
+    await waitFor(() => expect(select.value).toBe('cost'));
+  });
+
+  it('selection checkbox reveals the bulk-action bar with N selected', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    expect(screen.queryByTestId('bench-bulk-bar')).not.toBeInTheDocument();
+    // Sorted DESC: Grace (p2, 72d) idx 0, Ada (p1, 14d) idx 1, Alan (p3, 0d) idx 2.
+    fireEvent.click(screen.getByTestId('bench-select-p2'));
+    await waitFor(() => expect(screen.getByTestId('bench-bulk-bar')).toBeInTheDocument());
+    expect(screen.getByTestId('bench-bulk-count').textContent).toBe('1 selected');
+    fireEvent.click(screen.getByTestId('bench-select-p1'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bench-bulk-count').textContent).toBe('2 selected'),
+    );
+    // Clear button hides the bulk bar.
+    fireEvent.click(screen.getByTestId('bench-bulk-clear'));
+    await waitFor(() => expect(screen.queryByTestId('bench-bulk-bar')).not.toBeInTheDocument());
+  });
+
+  it('select-all-on-page toggles every row checkbox on the current page', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('bench-select-all'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bench-bulk-count').textContent).toBe('3 selected'),
+    );
+    fireEvent.click(screen.getByTestId('bench-select-all'));
+    await waitFor(() => expect(screen.queryByTestId('bench-bulk-bar')).not.toBeInTheDocument());
+  });
+});
