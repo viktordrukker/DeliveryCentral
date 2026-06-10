@@ -35,15 +35,15 @@ async function openModalFromPVA(page: import('@playwright/test').Page): Promise<
   // Reconciliation actions on PvA rows trigger the modal. Look for the
   // primary action label first, then a fallback.
   const candidates = [
-    page.getByRole('button', { name: /create assignment/i }),
+    page.getByRole('button', { name: /create (position|assignment)/i }),
     page.getByRole('button', { name: /reconcile/i }),
   ];
   for (const loc of candidates) {
     const first = loc.first();
     if (await first.isVisible().catch(() => false)) {
       await first.click();
-      // Modal is identifiable by the "Create Assignment" title.
-      const title = page.getByText(/create assignment/i).first();
+      // Modal is identifiable by the "Create Position" title.
+      const title = page.getByText(/create position/i).first();
       if (await title.isVisible({ timeout: 2000 }).catch(() => false)) return true;
     }
   }
@@ -55,7 +55,7 @@ test.describe('UX contract — CreateAssignmentModal §1 Open lifecycle @ux-cont
     const opened = await openModalFromPVA(page);
     test.skip(!opened, 'No reconciliation candidates in seed');
 
-    await expect(page.getByRole('heading', { name: /create assignment/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /create position/i }).first()).toBeVisible();
     // Read-only context fields (Person / Project) are always present.
     await expect(page.getByText(/^person$/i).first()).toBeVisible();
     await expect(page.getByText(/^project$/i).first()).toBeVisible();
@@ -80,7 +80,7 @@ test.describe('UX contract — CreateAssignmentModal §7.1 Submit validation @ux
     test.skip(!opened, 'No reconciliation candidates in seed');
 
     // Try to submit without selecting a staffing role.
-    const submit = page.getByRole('button', { name: /create.*request|create.*assignment/i }).last();
+    const submit = page.getByRole('button', { name: /create.*request|create.*assignment|create.*position/i }).last();
     await submit.click();
     await expect(page.getByText(/staffing role is required/i)).toBeVisible();
   });

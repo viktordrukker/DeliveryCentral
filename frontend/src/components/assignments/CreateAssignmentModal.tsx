@@ -156,7 +156,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
       setNote('');
       onSuccess(finalPosition);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create assignment.';
+      const msg = err instanceof Error ? err.message : 'Failed to create position.';
       if (msg.toLowerCase().includes('overlapping')) {
         setPendingDraft(asDraft);
         setOverlapConfirm(true);
@@ -185,7 +185,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
         closeOnBackdropClick={!isSubmitting}
         closeOnEscape={!isSubmitting}
         size="lg"
-        title="Create Assignment"
+        title="Create Position"
         footer={
           showHrCaseFooter ? (
             <>
@@ -248,7 +248,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                 <input type="radio" name="inactive-resolution" checked={inactiveOverride} onChange={() => setInactiveOverride(true)} />
-                <span><strong>Retroactive assignment</strong> — accept evidence and create a backdated assignment (requires override)</span>
+                <span><strong>Retroactive position</strong> — accept evidence and create a backdated position (requires override)</span>
               </label>
             </div>
           </div>
@@ -357,8 +357,8 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
           setOverlapConfirm(false);
           void handleSubmit(undefined, pendingDraft, true);
         }}
-        title="Overlapping Assignment"
-        message="An assignment for this person and project already exists in this period. Overallocation will occur. Do you want to proceed?"
+        title="Overlapping Position"
+        message="A position for this person and project already exists in this period. Overallocation will occur. Do you want to proceed?"
         confirmLabel={isSubmitting ? 'Creating…' : 'Accept Overlap'}
       />
 
