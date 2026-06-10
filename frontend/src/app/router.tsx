@@ -75,7 +75,7 @@ import { IntegrationsPage } from '@/routes/integrations/IntegrationsPage';
 import { MetadataAdminPage } from '@/routes/metadata-admin/MetadataAdminPage';
 import { ManagerScopePage } from '@/routes/org/ManagerScopePage';
 import { BenchPage } from '@/routes/people/BenchPage';
-import { EmployeeDetailsPlaceholderPage } from '@/routes/people/EmployeeDetailsPlaceholderPage';
+import { EmployeeDetailsPage } from '@/routes/people/EmployeeDetailsPage';
 import { EmployeeLifecycleAdminPage } from '@/routes/people/EmployeeLifecycleAdminPage';
 import { PeoplePage } from '@/routes/people/PeoplePage';
 import { ProjectDetailPage } from '@/routes/projects/ProjectDetailPage';
@@ -301,7 +301,7 @@ const dashboardChildren = [
   },
   { element: <TeamsPage />, path: 'teams' },
   { element: <LazyPage><TeamDashboardPage /></LazyPage>, path: 'teams/:id/dashboard' },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><EmployeeDetailsPlaceholderPage /></RoleGuard>, path: 'people/:id' },
+  { element: <RoleGuard allowedRoles={ALL_ROLES}><EmployeeDetailsPage /></RoleGuard>, path: 'people/:id' },
   { element: <RoleGuard allowedRoles={ALL_ROLES}><ProjectsPage /></RoleGuard>, path: 'projects' },
   {
     element: <RoleGuard allowedRoles={PROJECT_CREATE_ROLES}><CreateProjectPage /></RoleGuard>,
