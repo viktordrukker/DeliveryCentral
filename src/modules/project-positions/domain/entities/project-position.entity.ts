@@ -154,6 +154,7 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     if (!transition) {
       throw new InvalidPositionFillTransitionError(
         `No transition from ${from} to ${to} exists in the position fill state machine.`,
+        'MISSING_EDGE',
       );
     }
 
@@ -163,12 +164,14 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     if (!hasAllowedRole) {
       throw new InvalidPositionFillTransitionError(
         `Actor roles [${options.actorRoles.join(', ')}] cannot transition position from ${from} to ${to}.`,
+        'ROLE_FORBIDDEN',
       );
     }
 
     if (transitionRequiresReason(from, to) && (!options.reason || options.reason.trim().length === 0)) {
       throw new InvalidPositionFillTransitionError(
         `Transition from ${from} to ${to} requires a non-empty reason.`,
+        'MISSING_REASON',
       );
     }
 

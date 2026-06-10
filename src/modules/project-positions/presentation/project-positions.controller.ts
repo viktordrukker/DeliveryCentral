@@ -9,6 +9,7 @@ import {
   Post,
   Query,
   Req,
+  UseFilters,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -60,6 +61,7 @@ import {
 } from '../application/position-forensics.service';
 import { SuggestFillsService } from '../application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from '../application/transition-project-position-fill.service';
+import { PositionDomainExceptionFilter } from './position-domain-exception.filter';
 
 interface RequestWithPrincipal extends Request {
   principal?: RequestPrincipal;
@@ -80,6 +82,7 @@ interface RequestWithPrincipal extends Request {
  */
 @ApiTags('project-positions')
 @Controller('project-positions')
+@UseFilters(PositionDomainExceptionFilter)
 export class ProjectPositionsController {
   public constructor(
     private readonly createService: CreateProjectPositionService,

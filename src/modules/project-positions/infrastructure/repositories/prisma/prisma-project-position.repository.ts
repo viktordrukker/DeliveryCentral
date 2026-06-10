@@ -3,6 +3,7 @@ import { Prisma, ProjectPositionFillStatus as PrismaProjectPositionFillStatus } 
 import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
 import {
   ListProjectPositionsQuery,
+  OptimisticConcurrencyConflictError,
   ProjectPositionRepositoryPort,
 } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
@@ -55,7 +56,7 @@ export class PrismaProjectPositionRepository implements ProjectPositionRepositor
       data,
     });
     if (updated.count === 0) {
-      throw new Error(
+      throw new OptimisticConcurrencyConflictError(
         `Optimistic concurrency conflict on ProjectPosition ${aggregate.positionId.value} (expected version ${expectedPriorVersion}).`,
       );
     }
