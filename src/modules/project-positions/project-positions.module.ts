@@ -53,12 +53,13 @@ import {
       // emitter contract here is "fire-and-forget"; failures inside the
       // translator are swallowed by `dispatchQuietly`.
       provide: TransitionProjectPositionFillService,
-      inject: [PROJECT_POSITION_REPOSITORY, NotificationEventTranslatorService],
+      inject: [PROJECT_POSITION_REPOSITORY, PrismaService, NotificationEventTranslatorService],
       useFactory: (
         repo: PrismaProjectPositionRepository,
+        prisma: PrismaService,
         translator: NotificationEventTranslatorService,
       ) =>
-        new TransitionProjectPositionFillService(repo, {
+        new TransitionProjectPositionFillService(repo, prisma, {
           emit: (event) =>
             translator.positionFillChanged({
               positionId: event.positionId,
