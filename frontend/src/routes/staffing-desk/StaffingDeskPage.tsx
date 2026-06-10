@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { BulkReassignPanel } from '@/components/staffing-desk/BulkReassignPanel';
@@ -197,9 +197,6 @@ export function StaffingDeskPage(): JSX.Element {
           }}
         />
         <StaffingDeskViewSwitcher value={filters.view} onChange={(v) => setFilters({ view: v })} />
-        <Button as={Link} variant="secondary" size="sm" to="/approvals">Approvals</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/people/bench">Bench</Button>
-        <Button as={Link} variant="secondary" size="sm" to="/dashboard">Dashboard</Button>
         <TipTrigger />
       </>
     );
@@ -246,7 +243,9 @@ export function StaffingDeskPage(): JSX.Element {
 
   return (
     <PageContainer testId="staffing-desk-page">
-      {/* Section 1 — PageHeader with badges (open positions / bench / dirty). */}
+      {/* Section 1 — PageHeader with badges (open positions / bench / dirty)
+          and the primary "+ New Position" CTA (DS canvas locates the page-level
+          primary action in the header, not floating above the table). */}
       <PageHeader
         title="Staffing Desk"
         breadcrumbs={[{ label: 'Workforce' }, { label: 'Staffing Desk' }]}
@@ -264,6 +263,9 @@ export function StaffingDeskPage(): JSX.Element {
               </span>
             )}
           </>
+        }
+        actions={
+          <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>+ New Position</Button>
         }
       />
 
@@ -330,19 +332,10 @@ export function StaffingDeskPage(): JSX.Element {
         </div>
       )}
 
-      {/* Action buttons below segmented toggle.
-          Sprint F-0.10 (Decision-10) — single canonical staffing flow:
-          Create Position → Slate → Pick → Position lifecycle.
-          The legacy "Make Assignment" direct-create CTA is removed in v1
-          (route gated by `staffingMakeAssignment` flag, default OFF). */}
-      {/* W4-06 — button copy clarified per audit. The primary CTA explicitly
-          says "Quick" so users know which surface they're about to open; the
-          secondary CTA points to the full-page workflow for slate/pick details. */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', padding: 'var(--space-2) 0' }}>
-        {/* SoT PR 8 — embedded CreatePositionDrawer (V2-done criterion 6).
-            Replaces the legacy "(Full page)" link to /staffing-requests/new. */}
-        <Button variant="primary" size="sm" type="button" data-testid="create-position-open" onClick={openCreatePosition}>+ New Position</Button>
-      </div>
+      {/* SoT PR 17g — the "+ New Position" CTA was promoted into the PageHeader's
+          actions slot above (DS canvas locates the page-level primary action in
+          the header, not floating above the table). The CreatePositionDrawer
+          remains mounted here so deep-links (?openCreatePosition=true) work. */}
       <CreatePositionDrawer
         open={createPositionOpen}
         initialProjectId={filters.project || filters.projectId || undefined}

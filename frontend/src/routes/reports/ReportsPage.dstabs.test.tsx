@@ -6,7 +6,9 @@
  *   2. Gates the DS Tabs render on `isFeatureEnabled('dsRefresh')`.
  *   3. Drives the DS Tabs from the same TABS array (one entry per known
  *      section: exceptions, time, capitalisation, export, utilization,
- *      builder, evidence) and the same `?section=` URL param.
+ *      evidence) and the same `?section=` URL param. SoT PR 17g — Builder
+ *      tab removed; the standalone ReportBuilderPage is half-built and is
+ *      hidden per V2-done criterion #4.
  *   4. Leaves the dsRefresh=OFF path with PageHeader.tabs unchanged.
  *
  * Source-string assertions (rather than runtime renders) are used here so
@@ -38,8 +40,8 @@ describe('V2 Scope §4 item 15 — ReportsPage DS Tabs + dsRefresh gate', () => 
 
   it('passes the role-filtered tabs (one entry per known section visible to the user) to DS Tabs', () => {
     // W1-26 — tabs are filtered by role before being passed to DS Tabs. The
-    // canonical TABS array still enumerates all 7 sections; `visibleTabs` is
-    // the role-filtered slice driven from the auth principal.
+    // canonical TABS array enumerates 6 sections (Builder removed PR 17g);
+    // `visibleTabs` is the role-filtered slice driven from the auth principal.
     expect(src).toMatch(/<Tabs[\s\S]*?tabs=\{visibleTabs\.map\(\(t\) => \(\{ id: t\.id, label: t\.label \}\)\)\}/);
   });
 
@@ -61,14 +63,14 @@ describe('V2 Scope §4 item 15 — ReportsPage DS Tabs + dsRefresh gate', () => 
     expect(src).toMatch(/onTabChange=\{onTabChange\}/);
   });
 
-  it('enumerates the seven known sections in the TABS array', () => {
+  it('enumerates the six known sections in the TABS array (Builder removed PR 17g)', () => {
     // Each section id appears as a TABS entry — no invented sections.
     expect(src).toMatch(/id: 'exceptions'/);
     expect(src).toMatch(/id: 'time'/);
     expect(src).toMatch(/id: 'capitalisation'/);
     expect(src).toMatch(/id: 'export'/);
     expect(src).toMatch(/id: 'utilization'/);
-    expect(src).toMatch(/id: 'builder'/);
+    expect(src).not.toMatch(/id: 'builder'/);
     expect(src).toMatch(/id: 'evidence'/);
   });
 

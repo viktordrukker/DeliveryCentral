@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ReportsPage } from './ReportsPage';
 
-// W1-26 — ReportsPage filters tabs by role; tests expect all 7 tabs visible,
+// W1-26 — ReportsPage filters tabs by role; tests expect all 6 tabs visible,
 // so mock with an admin principal who has access to every report sub-page.
+// SoT PR 17g — Builder tab removed per V2-done criterion #4 (synthetic preview,
+// no real API integration; canvas does not bless it for v2).
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
     principal: { personId: 'admin-1', roles: ['admin'] },
@@ -44,9 +46,6 @@ vi.mock('@/routes/reports/ExportCentrePage', () => ({
 vi.mock('@/routes/reports/UtilizationPage', () => ({
   UtilizationPage: () => <div data-testid="stub-utilization">Utilization content</div>,
 }));
-vi.mock('@/routes/reports/ReportBuilderPage', () => ({
-  ReportBuilderPage: () => <div data-testid="stub-builder">Builder content</div>,
-}));
 
 function renderReports(initialEntries: string[] = ['/reports']): ReturnType<typeof render> {
   return render(
@@ -57,7 +56,7 @@ function renderReports(initialEntries: string[] = ['/reports']): ReturnType<type
 }
 
 describe('ReportsPage — Phase E3 umbrella shell', () => {
-  it('renders 7 tabs in the header strip', async () => {
+  it('renders 6 tabs in the header strip', async () => {
     renderReports();
     await waitFor(() => expect(screen.getByText('Reports')).toBeInTheDocument());
     expect(screen.getByRole('tab', { name: 'Exceptions' })).toBeInTheDocument();
@@ -65,8 +64,8 @@ describe('ReportsPage — Phase E3 umbrella shell', () => {
     expect(screen.getByRole('tab', { name: 'CAPEX' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Export' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Utilization' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Builder' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Evidence' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Builder' })).not.toBeInTheDocument();
   });
 
   it('defaults to the Exceptions tab', async () => {
@@ -103,9 +102,9 @@ describe('ReportsPage — Phase E3 umbrella shell', () => {
     evidenceManagementMock.enabled = true;
   });
 
-  it('renders the Builder page under the Builder tab', async () => {
+  it('falls back to Exceptions when the section param is unknown (builder no longer valid)', async () => {
     renderReports(['/reports?section=builder']);
-    await waitFor(() => expect(screen.getByTestId('stub-builder')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('stub-exceptions')).toBeInTheDocument());
   });
 
   it('falls back to Exceptions when the section param is unknown', async () => {

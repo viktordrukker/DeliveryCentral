@@ -2,8 +2,10 @@
  * W2-02 — Project-scoped Cases tab on Project Detail.
  *
  * Source-string assertions verifying:
- *   1. Tab is registered in both V2_TABS and BASE_TABS on ProjectDetailPage.
- *   2. ProjectCasesTab is rendered when activeTab === 'cases' (both grammars).
+ *   1. Tab is registered in BASE_TABS on ProjectDetailPage (legacy grammar).
+ *      SoT PR 17g — V2_TABS no longer includes Cases; ?tab=cases redirects
+ *      to Pulse in v2 (DS canvas grammar is 3 tabs: Pulse / Plan / Money).
+ *   2. ProjectCasesTab is rendered when activeTab === 'cases' (legacy only).
  *   3. ProjectCasesTab uses fetchProjectCases(projectId) and DS primitives.
  *   4. cases.ts API exposes fetchProjectCases + the projectId query param.
  *   5. EmptyState forwards to /cases (UX Law 2 — no dead-end screens).
@@ -18,15 +20,19 @@ describe('W2-02 — ProjectDetailPage Cases tab registration', () => {
     expect(src).toMatch(/{ id: 'cases', label: 'Cases' }/);
   });
 
-  it('registers a Cases tab in V2_TABS', () => {
-    expect(src).toMatch(/const V2_TABS\s*=\s*\[[\s\S]*?{ id: 'cases', label: 'Cases' }/);
+  it('does NOT register Cases in V2_TABS (SoT PR 17g — DS canvas is Pulse/Plan/Money)', () => {
+    expect(src).not.toMatch(/const V2_TABS\s*=\s*\[[\s\S]*?{ id: 'cases', label: 'Cases' }/);
+  });
+
+  it('maps ?tab=cases onto pulse in V2 so legacy deep-links survive', () => {
+    expect(src).toMatch(/const LEGACY_TAB_REDIRECTS_V2[\s\S]*?cases: 'pulse'/);
   });
 
   it('imports ProjectCasesTab from ./tabs/ProjectCasesTab', () => {
     expect(src).toMatch(/import \{ ProjectCasesTab \} from '\.\/tabs\/ProjectCasesTab'/);
   });
 
-  it('renders ProjectCasesTab when activeTab === cases', () => {
+  it('renders ProjectCasesTab when activeTab === cases (legacy 7-tab grammar)', () => {
     expect(src).toMatch(/activeTab === 'cases' \? <ProjectCasesTab projectId=\{id!\} \/>/);
   });
 });

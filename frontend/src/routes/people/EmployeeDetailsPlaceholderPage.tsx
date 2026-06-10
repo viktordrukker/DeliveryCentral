@@ -577,13 +577,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
               )}
             </SectionCard>
 
-            <SectionCard title="Current Workload">
-              <EmptyState
-                description="Workload calculations are not yet available for this employee."
-                title="No workload data"
-              />
-            </SectionCard>
-
             <SectionCard title="Lifecycle Actions">
               <p className="placeholder-block__copy">
                 Employee deletion is not supported. Use deactivation to preserve assignment and org

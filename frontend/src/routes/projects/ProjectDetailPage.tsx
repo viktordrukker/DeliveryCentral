@@ -49,12 +49,10 @@ const BASE_TABS = [
 // V2-A.1 — 3-tab canvas grammar (Pulse / Plan / Money). The Plan tab stacks
 // milestones + risks + change requests + team as sequential sections; the
 // Money tab keeps the BudgetTab content (already canvas-faithful internally).
-// W2-02 — Cases is added as a 4th canvas tab alongside Pulse/Plan/Money.
 const V2_TABS = [
   { id: 'pulse', label: 'Pulse' },
   { id: 'plan', label: 'Plan' },
   { id: 'money', label: 'Money' },
-  { id: 'cases', label: 'Cases' },
 ];
 
 const LEGACY_TAB_REDIRECTS: Record<string, string> = {
@@ -72,6 +70,7 @@ const LEGACY_TAB_REDIRECTS_V2: Record<string, string> = {
   team: 'plan',
   budget: 'money',
   lifecycle: 'plan',
+  cases: 'pulse',
   status: 'pulse',
   report: 'pulse',
 };

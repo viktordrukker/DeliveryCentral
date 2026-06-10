@@ -19,7 +19,7 @@ import { useFilterParams } from '@/hooks/useFilterParams';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { fetchProjectHealthBatch, ProjectHealthDto } from '@/lib/api/project-health';
 import { useProjectRegistry } from '@/features/projects/useProjectRegistry';
-import { ProjectDirectoryItem } from '@/lib/api/project-registry';
+import { ProjectDirectoryItem, type ProjectBudgetStatus } from '@/lib/api/project-registry';
 import { Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { ProjectDirectoryInspector } from '@/components/projects/ProjectDirectoryInspector';
@@ -184,9 +184,13 @@ export function ProjectsPage(): JSX.Element {
       // remain no-ops until ProjectDirectoryItem carries cpi / budgetStatus /
       // openPositionsCount / plannedEndDate (BE PR issue 459 sweep).
       if (filters.status && item.status !== filters.status) return false;
+      // SoT PR 17g — align local cast with the BE enum (project-registry.ts:11
+      // exports ProjectBudgetStatus = 'GREEN' | 'YELLOW' | 'RED' | 'UNSET').
+      // The previous local shape ('over' | 'under' | 'on') silently broke
+      // every URL-driven budget drilldown from the director dashboard.
       const rec = item as ProjectDirectoryItem & {
         cpi?: number | null;
-        budgetStatus?: 'over' | 'under' | 'on' | null;
+        budgetStatus?: ProjectBudgetStatus | null;
         openPositionsCount?: number | null;
         plannedEndDate?: string | null;
       };
@@ -432,6 +436,26 @@ export function ProjectsPage(): JSX.Element {
           <option value="JIRA">Jira PPM</option>
           <option value="M365">M365</option>
           <option value="RADIUS">Radius</option>
+        </select>
+      </label>
+      {/* SoT PR 17g — budgetStatus filter UI matches the BE enum
+          (GREEN/YELLOW/RED/UNSET). Previously the local cast used a
+          different shape ('over'/'under'/'on') so URL-driven drilldowns
+          from the Director finance band silently no-op'd. */}
+      <label className="field">
+        <span className="field__label">Budget</span>
+        <select
+          className="field__control"
+          aria-label="Filter by budget status"
+          onChange={(e) => setFilters({ budgetStatus: e.target.value })}
+          value={filters.budgetStatus}
+          data-testid="projects-filter-budget-status"
+        >
+          <option value="">All budgets</option>
+          <option value="GREEN">Green</option>
+          <option value="YELLOW">Yellow</option>
+          <option value="RED">Red</option>
+          <option value="UNSET">Unset</option>
         </select>
       </label>
     </FilterBar>

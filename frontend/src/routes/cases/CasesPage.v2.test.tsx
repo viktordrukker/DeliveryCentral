@@ -23,10 +23,10 @@ describe('ds-trunk-185 — Cases page v2 chrome', () => {
     expect(src).toMatch(/title="Cases"/);
   });
 
-  it('renders a kpi-strip with at least three Link tiles on the v2 branch', () => {
+  it('renders a kpi-strip with at least one Link tile on the v2 branch (SoT PR 17g dropped the two SLA placeholders)', () => {
     expect(src).toMatch(/className="kpi-strip"/);
     const linkTiles = src.match(/<Link\s+className="kpi-strip__item"/g) ?? [];
-    expect(linkTiles.length).toBeGreaterThanOrEqual(3);
+    expect(linkTiles.length).toBeGreaterThanOrEqual(1);
   });
 
   it('mounts CasesPanel inside the v2 chrome (no rebuild of the existing list/filters)', () => {
