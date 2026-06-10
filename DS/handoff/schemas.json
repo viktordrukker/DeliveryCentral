@@ -1,0 +1,215 @@
+{
+  "$schema":  "https://json-schema.org/draft-07/schema",
+  "$id":      "https://deliverit/schemas/v1",
+  "title":    "DeliverIT — Page schemas (KPI cards, table columns, filter types)",
+  "version":  "1.0.0",
+  "generated":"2026-05-23",
+  "note":     "Source-of-truth shapes Claude Code can wire to the API. Field names follow the existing platform's TS conventions (camelCase). Status enums use the FIXED semantic tones.",
+
+  "definitions": {
+    "Tone": {
+      "type": "string",
+      "enum": ["active", "warning", "danger", "critical", "info", "pending", "accent"],
+      "description": "Status tone — FIXED across the platform."
+    },
+    "Role": {
+      "type": "string",
+      "enum": ["employee", "project_manager", "resource_manager", "delivery_manager", "director", "hr_manager", "admin"]
+    },
+    "Money": {
+      "type": "object",
+      "required": ["value", "currency"],
+      "properties": {
+        "value":    { "type": "number" },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    },
+    "Delta": {
+      "type": "object",
+      "properties": {
+        "direction": { "type": "string", "enum": ["up", "down", "flat"] },
+        "value":     { "type": "number" },
+        "unit":      { "type": "string", "examples": ["%", "$", "d", "x"] },
+        "vsLabel":   { "type": "string", "examples": ["vs last week", "vs target", "vs prior period"] }
+      }
+    },
+    "FilterType": {
+      "type": "string",
+      "enum": ["text", "select", "multi-select", "date", "date-range", "number-range", "boolean", "role-scoped"]
+    },
+    "PositionFillStatus": {
+      "type": "string",
+      "enum": ["draft", "open", "proposed", "booked", "onboarding", "assigned", "on_hold", "released"]
+    },
+    "ApprovalSource": {
+      "type": "string",
+      "enum": ["position-proposal", "budget", "activation", "leave", "case", "skill-review"]
+    }
+  },
+
+  "kpiCard": {
+    "description": "KPI shape — used by KpiStrip + dashboard KPI rows. Every KPI is a doorway, so href is REQUIRED.",
+    "type": "object",
+    "required": ["id", "label", "value", "href"],
+    "properties": {
+      "id":        { "type": "string", "examples": ["open-positions", "budget-variance", "util"] },
+      "label":     { "type": "string" },
+      "value":     { "oneOf": [{ "type": "number" }, { "type": "string" }, { "$ref": "#/definitions/Money" }] },
+      "unit":      { "type": "string", "examples": ["%", "d", "h", "M"] },
+      "tone":      { "$ref": "#/definitions/Tone" },
+      "delta":     { "$ref": "#/definitions/Delta" },
+      "foot":      { "type": "string", "description": "Secondary line (target, breakdown, freshness)." },
+      "spark":     {
+        "type": "object",
+        "properties": {
+          "kind":   { "type": "string", "enum": ["sparkline", "minibar", "donut"] },
+          "data":   { "type": "array", "items": { "type": "number" } },
+          "threshold": { "type": "number" },
+          "max":    { "type": "number" }
+        }
+      },
+      "href":      { "type": "string", "description": "Drilldown URL (filtered list query). Mandatory per UX Law 9." },
+      "rolesVisible": { "type": "array", "items": { "$ref": "#/definitions/Role" } }
+    },
+    "example": {
+      "id":    "budget-variance",
+      "label": "Budget variance",
+      "value": -8.2,
+      "unit":  "%",
+      "tone":  "danger",
+      "delta": { "direction": "down", "value": 3.1, "unit": "%", "vsLabel": "vs last week" },
+      "href":  "/projects/MCB-UK/money?view=variance",
+      "rolesVisible": ["project_manager", "delivery_manager", "director"]
+    }
+  },
+
+  "tableColumn": {
+    "description": "Column shape for Table + DataView. Server-side render gets `sortable`+`filterable` honored.",
+    "type": "object",
+    "required": ["id", "header", "kind"],
+    "properties": {
+      "id":         { "type": "string", "examples": ["role", "alloc", "status", "cost"] },
+      "header":     { "type": "string" },
+      "kind":       { "type": "string", "enum": ["text", "number", "money", "percent", "date", "status", "user", "actions", "tone-dot", "sparkline", "varbar", "donut", "kbd-shortcut"] },
+      "width":      { "type": ["number", "string"], "description": "Pixel value or 'auto'." },
+      "align":      { "type": "string", "enum": ["left", "right", "center"] },
+      "sortable":   { "type": "boolean", "default": true },
+      "filterable": { "type": "boolean", "default": false },
+      "filter":     { "$ref": "#/definitions/FilterType" },
+      "default":    { "type": "boolean", "default": true, "description": "Visible by default. Max 6 default columns per UX rule." },
+      "tonePath":   { "type": "string", "description": "When kind=status, JSON path inside row that yields the Tone enum." },
+      "format":     { "type": "object", "additionalProperties": true },
+      "monoFont":   { "type": "boolean", "default": false, "description": "Tabular figures + mono font (IDs, codes, dates, money)." }
+    },
+    "examples": [
+      { "id":"role",   "header":"Role",       "kind":"text",   "default":true, "sortable":true,  "filterable":true,  "filter":"text" },
+      { "id":"alloc",  "header":"Alloc",      "kind":"percent","default":true, "align":"right",  "monoFont":true,    "filter":"number-range" },
+      { "id":"status", "header":"Status",     "kind":"status", "default":true, "tonePath":"status.tone", "filter":"multi-select" },
+      { "id":"cost",   "header":"Cost · 4w",  "kind":"money",  "default":true, "align":"right",  "monoFont":true,    "filterable":false },
+      { "id":"actions","header":"",           "kind":"actions","default":true, "width":40,       "sortable":false }
+    ]
+  },
+
+  "filterDescriptor": {
+    "description": "FilterBar shape. URL search-param key MUST match `urlKey` for filter persistence (UX Law 5).",
+    "type": "object",
+    "required": ["id", "label", "type", "urlKey"],
+    "properties": {
+      "id":     { "type": "string" },
+      "label":  { "type": "string" },
+      "type":   { "$ref": "#/definitions/FilterType" },
+      "urlKey": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9_]*$" },
+      "options":{
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["value", "label"],
+          "properties": {
+            "value": { "type": ["string", "number", "boolean"] },
+            "label": { "type": "string" },
+            "tone":  { "$ref": "#/definitions/Tone" },
+            "count": { "type": "number", "description": "Result count badge." }
+          }
+        }
+      },
+      "defaultValue": { "description": "Default per role." },
+      "roleScoped":   { "type": "boolean", "default": false, "description": "PMs see their projects, RMs their pool, etc." }
+    },
+    "example": {
+      "id": "status", "label": "Status", "type": "multi-select", "urlKey": "status",
+      "options": [
+        { "value": "open",     "label": "Open",     "tone": "warning", "count": 18 },
+        { "value": "proposed", "label": "Proposed", "tone": "info",    "count": 6 },
+        { "value": "booked",   "label": "Booked",   "tone": "accent",  "count": 11 },
+        { "value": "assigned", "label": "Assigned", "tone": "active",  "count": 152 }
+      ]
+    }
+  },
+
+  "pageDescriptor": {
+    "description": "Page-level descriptor — used by RoleRouter to bind a role to a grammar + content slots.",
+    "type": "object",
+    "required": ["route", "grammar", "rolesAllowed"],
+    "properties": {
+      "route":   { "type": "string", "examples": ["/projects/:id/pulse", "/people/bench", "/admin/approvals"] },
+      "grammar": { "type": "string", "enum": ["decision-dashboard","list-detail-workflow","detail-surface","create-edit-form","operational-queue","analysis-surface","admin-control","auth-form"] },
+      "rolesAllowed": { "type": "array", "items": { "$ref": "#/definitions/Role" } },
+      "kpiCards":     { "type": "array", "items": { "$ref": "#/kpiCard" } },
+      "filters":      { "type": "array", "items": { "$ref": "#/filterDescriptor" } },
+      "columns":      { "type": "array", "items": { "$ref": "#/tableColumn" } }
+    }
+  },
+
+  "examples": {
+
+    "projectPulseKpiCards": [
+      { "id":"open-positions",   "label":"Open positions",     "value":3,   "unit":" / 8", "tone":"warning",  "delta":{"direction":"down","value":2,"vsLabel":"longer than 14d SLA"}, "href":"/projects/MCB-UK/plan?status=open", "rolesVisible":["project_manager","resource_manager","director"] },
+      { "id":"budget-variance",  "label":"Budget variance",    "value":-8.2,"unit":"%",    "tone":"danger",   "delta":{"direction":"down","value":3.1,"unit":"%","vsLabel":"from −5.1% last week"}, "href":"/projects/MCB-UK/money?view=variance" },
+      { "id":"milestone-prog",   "label":"Milestone progress", "value":62,  "unit":"%",    "tone":"active",   "delta":{"direction":"up","value":0,"vsLabel":"on track vs plan"}, "href":"/projects/MCB-UK/plan?tab=milestones" },
+      { "id":"days-to-gate",     "label":"Days to next gate",  "value":11,  "unit":" d",   "tone":"info",     "foot":"Reg approval · 6 Jun", "href":"/projects/MCB-UK/plan?milestone=gate-3" },
+      { "id":"burn-4w",          "label":"Burn rate (4w)",     "value":{"value":248000,"currency":"USD"},     "spark":{"kind":"sparkline","data":[182,205,211,240,232,248]}, "href":"/projects/MCB-UK/money?view=burn" }
+    ],
+
+    "positionTableColumns": [
+      { "id":"role",      "header":"Role",        "kind":"text",   "default":true, "filterable":true,  "filter":"text" },
+      { "id":"alloc",     "header":"Alloc",       "kind":"percent","default":true, "align":"right",    "monoFont":true,  "filter":"number-range" },
+      { "id":"start",     "header":"Start",       "kind":"date",   "default":true, "monoFont":true,    "filter":"date-range" },
+      { "id":"status",    "header":"Status",      "kind":"status", "default":true, "tonePath":"status.tone", "filter":"multi-select" },
+      { "id":"activeFill","header":"Active fill", "kind":"user",   "default":true, "filterable":false },
+      { "id":"suggested", "header":"Suggest",     "kind":"number", "default":true, "align":"right" },
+      { "id":"workstream","header":"Workstream",  "kind":"text",   "default":false, "filter":"select" },
+      { "id":"actions",   "header":"",            "kind":"actions","default":true, "width":40 }
+    ],
+
+    "benchFilters": [
+      { "id":"q",        "label":"Search",   "type":"text",         "urlKey":"q" },
+      { "id":"days-off", "label":"Days off", "type":"number-range", "urlKey":"daysOff", "defaultValue":[7,365] },
+      { "id":"role",     "label":"Role",     "type":"multi-select", "urlKey":"role" },
+      { "id":"office",   "label":"Office",   "type":"multi-select", "urlKey":"office" },
+      { "id":"grade",    "label":"Grade",    "type":"select",       "urlKey":"grade", "options":[{"value":"L3","label":"L3 +"},{"value":"L4","label":"L4 +"},{"value":"L5","label":"L5 +"}] },
+      { "id":"available","label":"Available now","type":"boolean",  "urlKey":"avail", "defaultValue":false }
+    ],
+
+    "approvalsQueueFilters": [
+      { "id":"source",   "label":"Source",   "type":"multi-select", "urlKey":"src",
+        "options":[
+          {"value":"position-proposal","label":"Position proposals","count":2},
+          {"value":"budget",           "label":"Budget",            "count":2},
+          {"value":"activation",       "label":"Activation",        "count":1},
+          {"value":"leave",            "label":"Leave",             "count":1},
+          {"value":"case",             "label":"HR cases",          "count":1}
+        ]},
+      { "id":"sla",      "label":"SLA",      "type":"select",       "urlKey":"sla",
+        "options":[{"value":"breached","label":"Breached","tone":"critical"},{"value":"due-soon","label":"Due ≤ 24h","tone":"warning"},{"value":"on-track","label":"On track","tone":"active"}] },
+      { "id":"submitter","label":"Submitter","type":"text",         "urlKey":"by" }
+    ],
+
+    "directorDashboardKpiCards": [
+      { "id":"active-projects",  "label":"Active projects",            "value":6,    "tone":"active",  "foot":"1 in activation, 1 in closeout",          "href":"/projects?status=active" },
+      { "id":"at-risk",          "label":"At-risk projects",           "value":2,    "tone":"warning", "delta":{"direction":"up","value":1,"vsLabel":"this week"}, "href":"/projects?rag=at-risk" },
+      { "id":"budget-portfolio", "label":"Budget variance · portfolio","value":-2.6, "unit":"%", "tone":"danger",  "spark":{"kind":"sparkline","data":[0.5,-0.2,-1.1,-1.4,-1.8,-2.1,-2.6]}, "href":"/reports/budget/portfolio" },
+      { "id":"util",             "label":"Utilization",                "value":76,   "unit":"%", "tone":"info",    "foot":"Target 78% · 12 on bench",                "href":"/reports/utilization" },
+      { "id":"open-positions",   "label":"Open positions",             "value":18,   "delta":{"direction":"down","value":3,"vsLabel":"vs last week"},                "href":"/projects/positions?status=open" }
+    ]
+  }
+}

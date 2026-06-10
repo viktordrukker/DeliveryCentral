@@ -1,0 +1,288 @@
+/* =========================================================================
+   DeliverIT — Design System Tokens
+   "Senior, calm, fact-led. Spreadsheet when dense, magazine when summarizing."
+
+   Architecture mirrors the existing DC tokens.ts shape:
+   • all colors get a light + dark value
+   • 4px spacing grid, 10 steps
+   • status semantics are FIXED (green/amber/red/dark-red/cyan/grey)
+   • [data-color-mode="dark"] flips the surface set
+   • [data-colour-blind="true"] flips RAG hues globally
+   ========================================================================= */
+
+:root,
+[data-color-mode="light"] {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --color-bg:              oklch(0.985 0.004 250);   /* page */
+  --color-surface:         #ffffff;                  /* card */
+  --color-surface-alt:     oklch(0.975 0.005 250);   /* sunken / hover row */
+  --color-surface-raised:  #ffffff;                  /* popover, drawer */
+  --color-border:          oklch(0.91 0.006 250);
+  --color-border-strong:   oklch(0.83 0.008 250);
+  --color-border-subtle:   oklch(0.945 0.005 250);
+  --color-overlay:         rgba(15, 23, 42, 0.42);
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --color-text:            oklch(0.20 0.018 252);
+  --color-text-muted:      oklch(0.46 0.012 252);
+  --color-text-subtle:     oklch(0.58 0.010 252);
+  --color-text-inverse:    #ffffff;
+  --color-text-link:       var(--color-accent);
+
+  /* ── Brand accent (refreshed deep blue — confident, not corporate stale) */
+  --color-accent:          oklch(0.40 0.13 254);     /* ~#1647a8 */
+  --color-accent-hover:    oklch(0.34 0.13 254);
+  --color-accent-active:   oklch(0.30 0.13 254);
+  --color-accent-soft:     oklch(0.95 0.03 254);
+  --color-accent-text:     oklch(0.36 0.13 254);
+  --focus-ring-color:      oklch(0.55 0.15 254 / 0.45);
+
+  /* ── Status semantics (FIXED — see brief) ─────────────────────────────── */
+  --color-status-active:    #1f8a4d;   /* healthy / green */
+  --color-status-active-bg: #e6f4ec;
+  --color-status-warning:   #b8730a;   /* amber */
+  --color-status-warning-bg:#fbf1dd;
+  --color-status-danger:    #c8332b;   /* red */
+  --color-status-danger-bg: #fbe9e7;
+  --color-status-critical:  #7b0a0a;   /* dark red */
+  --color-status-critical-bg:#f5d8d8;
+  --color-status-pending:   #5f6b7a;   /* neutral grey */
+  --color-status-pending-bg:#eef1f5;
+  --color-status-info:      #0a7490;   /* cyan */
+  --color-status-info-bg:   #e0f3f7;
+
+  /* ── Utilization heatmap (5 bands) ────────────────────────────────────── */
+  --color-util-critical: #c8332b;
+  --color-util-over:     #b8730a;
+  --color-util-optimal:  #1f8a4d;
+  --color-util-under:    #0a7490;
+  --color-util-idle:     #94a3b8;
+
+  /* ── Chart palette (8-tone, sequential) ───────────────────────────────── */
+  --color-chart-1: oklch(0.45 0.14 254);   /* anchor blue */
+  --color-chart-2: oklch(0.52 0.13 175);   /* teal */
+  --color-chart-3: oklch(0.55 0.16 60);    /* amber-orange */
+  --color-chart-4: oklch(0.50 0.18 28);    /* terracotta */
+  --color-chart-5: oklch(0.50 0.15 305);   /* violet */
+  --color-chart-6: oklch(0.58 0.12 220);   /* slate-blue */
+  --color-chart-7: oklch(0.55 0.13 145);   /* moss */
+  --color-chart-8: oklch(0.50 0.12 350);   /* mulberry */
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-card:     0 1px 0 rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-card-hover: 0 2px 0 rgba(15,23,42,0.04), 0 6px 16px rgba(15,23,42,0.06);
+  --shadow-dropdown: 0 4px 16px rgba(15,23,42,0.10), 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-modal:    0 24px 56px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08);
+  --shadow-inset:    inset 0 1px 0 rgba(15,23,42,0.04);
+
+  --color-row-hover: oklch(0.97 0.008 254);
+  --color-row-selected: oklch(0.945 0.024 254);
+
+  /* ── Lifecycle bars (Timeline / Planner) ──────────────────────────────
+     Bars encode position-fill state visually so they read at any width.
+     Light + dark mode both defined; the heat band uses the same scale as
+     the utilization tokens but anchored to overallocation thresholds. */
+  --lifecycle-draft-stroke:      var(--color-border-strong);
+  --lifecycle-open-fill:         transparent;
+  --lifecycle-open-stroke:       #b8730a; /* status-warning */
+  --lifecycle-proposed-fill:     #fbf1dd; /* status-warning-bg */
+  --lifecycle-proposed-stroke:   #b8730a;
+  --lifecycle-booked-fill:       var(--color-accent);
+  --lifecycle-onboarding-fill:   #e0f3f7; /* status-info-bg */
+  --lifecycle-onboarding-stroke: #0a7490;
+  --lifecycle-assigned-fill:     #1f8a4d; /* status-active */
+  --lifecycle-hold-fill:         #cfd5dd;
+  --lifecycle-hold-stroke:       #5f6b7a;
+  --lifecycle-released-fill:     #cfd5dd;
+
+  --timeline-heat-100: oklch(0.92 0.05 80);   /* 100–119% — pale amber */
+  --timeline-heat-120: oklch(0.78 0.13 60);   /* 120–149% — amber */
+  --timeline-heat-150: oklch(0.65 0.18 32);   /* 150–199% — red */
+  --timeline-heat-200: oklch(0.42 0.16 22);   /* >=200% — critical dark red */
+
+  --timeline-grid-week:     var(--color-border-subtle);
+  --timeline-grid-month:    var(--color-border);
+  --timeline-today:         var(--color-status-warning);
+  --timeline-snap-preview:  var(--color-accent);
+}
+
+[data-color-mode="dark"] {
+  --color-bg:              oklch(0.16 0.012 252);
+  --color-surface:         oklch(0.205 0.014 252);
+  --color-surface-alt:     oklch(0.235 0.014 252);
+  --color-surface-raised:  oklch(0.235 0.014 252);
+  --color-border:          oklch(0.30 0.012 252);
+  --color-border-strong:   oklch(0.38 0.014 252);
+  --color-border-subtle:   oklch(0.255 0.012 252);
+  --color-overlay:         rgba(0, 0, 0, 0.62);
+
+  --color-text:            oklch(0.94 0.008 252);
+  --color-text-muted:      oklch(0.72 0.012 252);
+  --color-text-subtle:     oklch(0.58 0.012 252);
+  --color-text-inverse:    oklch(0.15 0.012 252);
+
+  --color-accent:          oklch(0.70 0.14 254);
+  --color-accent-hover:    oklch(0.76 0.14 254);
+  --color-accent-active:   oklch(0.82 0.14 254);
+  --color-accent-soft:     oklch(0.30 0.07 254);
+  --color-accent-text:     oklch(0.78 0.14 254);
+  --focus-ring-color:      oklch(0.72 0.15 254 / 0.55);
+
+  --color-status-active:    #4ade80;
+  --color-status-active-bg: oklch(0.28 0.06 150);
+  --color-status-warning:   #fbbf24;
+  --color-status-warning-bg:oklch(0.30 0.07 75);
+  --color-status-danger:    #f87171;
+  --color-status-danger-bg: oklch(0.30 0.08 25);
+  --color-status-critical:  #ef5a5a;
+  --color-status-critical-bg: oklch(0.26 0.09 22);
+  --color-status-pending:   #94a3b8;
+  --color-status-pending-bg:oklch(0.28 0.012 250);
+  --color-status-info:      #22d3ee;
+  --color-status-info-bg:   oklch(0.30 0.07 210);
+
+  --color-util-critical: #f87171;
+  --color-util-over:     #fbbf24;
+  --color-util-optimal:  #4ade80;
+  --color-util-under:    #22d3ee;
+  --color-util-idle:     #94a3b8;
+
+  --color-chart-1: oklch(0.72 0.14 254);
+  --color-chart-2: oklch(0.72 0.13 175);
+  --color-chart-3: oklch(0.74 0.15 60);
+  --color-chart-4: oklch(0.70 0.16 28);
+  --color-chart-5: oklch(0.72 0.14 305);
+  --color-chart-6: oklch(0.74 0.11 220);
+  --color-chart-7: oklch(0.74 0.13 145);
+  --color-chart-8: oklch(0.70 0.13 350);
+
+  --shadow-card:       0 1px 0 rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-card-hover: 0 6px 18px rgba(0,0,0,0.45);
+  --shadow-dropdown:   0 6px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-modal:      0 30px 60px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.04);
+
+  --color-row-hover: oklch(0.245 0.014 252);
+  --color-row-selected: oklch(0.27 0.04 254);
+
+  /* Lifecycle (dark) — fills tuned for dark surfaces; strokes brighter */
+  --lifecycle-draft-stroke:      var(--color-border-strong);
+  --lifecycle-open-fill:         transparent;
+  --lifecycle-open-stroke:       #fbbf24;
+  --lifecycle-proposed-fill:     oklch(0.34 0.08 75);
+  --lifecycle-proposed-stroke:   #fbbf24;
+  --lifecycle-booked-fill:       var(--color-accent);
+  --lifecycle-onboarding-fill:   oklch(0.34 0.08 210);
+  --lifecycle-onboarding-stroke: #22d3ee;
+  --lifecycle-assigned-fill:     #4ade80;
+  --lifecycle-hold-fill:         oklch(0.38 0.012 252);
+  --lifecycle-hold-stroke:       #94a3b8;
+  --lifecycle-released-fill:     oklch(0.32 0.012 252);
+
+  --timeline-heat-100: oklch(0.45 0.07 80);
+  --timeline-heat-120: oklch(0.55 0.13 60);
+  --timeline-heat-150: oklch(0.58 0.18 32);
+  --timeline-heat-200: oklch(0.50 0.18 22);
+}
+
+/* Color-blind RAG swap (purple/orange/blue instead of green/amber/red).
+   Same data-attr mechanism as the existing DS. */
+[data-colour-blind="true"] {
+  --color-status-active:  #6b46c1;
+  --color-status-warning: #ea580c;
+  --color-status-danger:  #2563eb;
+  --color-util-optimal:   #6b46c1;
+  --color-util-over:      #ea580c;
+  --color-util-critical:  #2563eb;
+}
+
+:root {
+  /* ── Shared (mode-agnostic) ───────────────────────────────────────────── */
+
+  /* Type — Geist for UI, Geist Mono for tabular figures */
+  --font-sans:    "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono:    "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Geist", -apple-system, "Segoe UI", system-ui, sans-serif;
+
+  /* Type scale — tight ratio, fixed pixel anchors with one clamp on hero */
+  --font-size-code:        12px;
+  --font-size-compact-sm:  11px;
+  --font-size-compact:     12px;
+  --font-size-body-sm:     13px;
+  --font-size-body:        14px;
+  --font-size-body-lg:     16px;
+  --font-size-h3:          18px;
+  --font-size-h2:          22px;
+  --font-size-h1:          28px;
+  --font-size-kpi:         32px;
+  --font-size-display:     clamp(28px, 2.4vw, 44px);
+
+  --line-tight:  1.15;
+  --line-snug:   1.30;
+  --line-normal: 1.45;
+  --line-loose:  1.60;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  --letter-tight: -0.011em;
+  --letter-loose:  0.04em;
+
+  /* Spacing — 4px grid, 10 steps */
+  --space-0:  0px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  32px;
+  --space-8:  40px;
+  --space-9:  56px;
+  --space-10: 80px;
+
+  /* Radius */
+  --radius-sm:      4px;
+  --radius-md:      6px;
+  --radius-lg:      10px;
+  --radius-control: 6px;
+  --radius-card:    10px;
+  --radius-pill:    999px;
+
+  /* Layout */
+  --header-height:           56px;
+  --page-header-height:      52px;
+  --sidebar-width-expanded:  236px;
+  --sidebar-width-collapsed: 56px;
+  --content-padding:         24px;
+  --card-gap:                16px;
+
+  /* Breakpoints (informational; values used in @media) */
+  --bp-sm: 640px;
+  --bp-md: 1024px;
+  --bp-lg: 1280px;
+  --bp-xl: 1536px;
+
+  /* Motion — capped at 250ms per brief */
+  --duration-instant: 80ms;
+  --duration-fast:    150ms;
+  --duration-base:    200ms;
+  --duration-slow:    250ms;
+  --ease-out:         cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:      cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Accessibility */
+  --touch-target-min: 44px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast:    0ms;
+    --duration-base:    0ms;
+    --duration-slow:    0ms;
+  }
+}

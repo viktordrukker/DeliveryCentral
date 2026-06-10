@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>DeliverIT — Design Handoff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="tokens.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="timeline.css"/>
+
+  <style>
+    html, body, #root { height: 100%; }
+    body { background: #f0eee9; /* DC canvas background — matches design_canvas DC.bg */ }
+
+    /* Each "artboard" is a self-contained UI surface that owns its own
+       color mode via [data-color-mode]. The wrapper paints page bg + sets
+       baseline color so dark mode reads as a real dark surface, not as a
+       dark box on a warm canvas. */
+    .dc-artboard {
+      background: var(--color-bg);
+      color: var(--color-text);
+      width: 100%; height: 100%;
+      overflow: auto;
+      font-family: var(--font-sans);
+    }
+    /* AppShell page wants a height — give it the full artboard. */
+    .dc-artboard > .page { height: 100%; }
+
+    /* Tweaks panel sits above DC chrome */
+    .tweaks-mount { position: fixed; z-index: 100; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="chrome.jsx"></script>
+  <script type="text/babel" src="Timeline.jsx"></script>
+  <script type="text/babel" src="Calendar.jsx"></script>
+  <script type="text/babel" src="BalanceMeter.jsx"></script>
+
+  <script type="text/babel" src="ds-foundations.jsx"></script>
+  <script type="text/babel" src="ds-components.jsx"></script>
+  <script type="text/babel" src="page-pulse.jsx"></script>
+  <script type="text/babel" src="page-bench.jsx"></script>
+  <script type="text/babel" src="page-profile.jsx"></script>
+  <script type="text/babel" src="page-approvals.jsx"></script>
+  <script type="text/babel" src="page-director.jsx"></script>
+  <script type="text/babel" src="page-extras.jsx"></script>
+  <script type="text/babel" src="page-plan-money.jsx"></script>
+  <script type="text/babel" src="page-directory-hr.jsx"></script>
+  <script type="text/babel" src="page-admin-setup.jsx"></script>
+  <script type="text/babel" src="page-timeline-ds.jsx"></script>
+  <script type="text/babel" src="page-staffing-desk.jsx"></script>
+  <script type="text/babel" src="page-workspace.jsx"></script>
+  <script type="text/babel" src="page-time-management.jsx"></script>
+</head>
+<body data-screen-label="01 Cover">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "colorMode": "light",
+      "accent": "default",
+      "density": "default"
+    }/*EDITMODE-END*/;
+
+    // ── ColorMode wrapper ────────────────────────────────────────────────
+    // Wraps an artboard's children with the picked color mode + accent. Each
+    // artboard is independent, so we can show light + dark variants side-by-side.
+    function Themed({ mode = 'light', accent, children }) {
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        if (!ref.current) return;
+        ref.current.setAttribute('data-color-mode', mode);
+        if (accent && accent !== 'default') {
+          ref.current.style.setProperty('--color-accent', ACCENT_PRESETS[accent].accent);
+          ref.current.style.setProperty('--color-accent-hover', ACCENT_PRESETS[accent].hover);
+          ref.current.style.setProperty('--color-accent-active', ACCENT_PRESETS[accent].active);
+          ref.current.style.setProperty('--color-accent-soft', ACCENT_PRESETS[accent].soft);
+          ref.current.style.setProperty('--color-accent-text', ACCENT_PRESETS[accent].text);
+        }
+      }, [mode, accent]);
+      return <div ref={ref} className="dc-artboard">{children}</div>;
+    }
+
+    const ACCENT_PRESETS = {
+      default:  { accent:'oklch(0.40 0.13 254)', hover:'oklch(0.34 0.13 254)', active:'oklch(0.30 0.13 254)', soft:'oklch(0.95 0.03 254)', text:'oklch(0.36 0.13 254)' },
+      teal:     { accent:'oklch(0.42 0.12 200)', hover:'oklch(0.36 0.12 200)', active:'oklch(0.30 0.12 200)', soft:'oklch(0.95 0.03 200)', text:'oklch(0.36 0.12 200)' },
+      indigo:   { accent:'oklch(0.40 0.16 282)', hover:'oklch(0.34 0.16 282)', active:'oklch(0.30 0.16 282)', soft:'oklch(0.95 0.04 282)', text:'oklch(0.36 0.16 282)' },
+      slate:    { accent:'oklch(0.32 0.04 252)', hover:'oklch(0.26 0.04 252)', active:'oklch(0.22 0.04 252)', soft:'oklch(0.95 0.01 252)', text:'oklch(0.30 0.04 252)' },
+    };
+
+    // ── App ──────────────────────────────────────────────────────────────
+    function App() {
+      const [t, setTweak] = window.useTweaks
+        ? window.useTweaks(TWEAK_DEFAULTS)
+        : [TWEAK_DEFAULTS, () => {}];
+
+      // Whole-canvas global color mode (applied per artboard via Themed). Each
+      // section also renders an explicit light/dark pair where it teaches the
+      // most, so this toggle changes the *single*-mode artboards.
+      const mode = t.colorMode === 'dark' ? 'dark' : 'light';
+      const accent = t.accent;
+
+      // Inline DCArtboard renderer — DCSection identifies artboards by
+      // strict reference equality on c.type === DCArtboard, so we can NOT
+      // wrap them in a helper component.
+      const DCArtboard = window.DCArtboard;
+      const DCSection  = window.DCSection;
+      const DesignCanvas = window.DesignCanvas;
+      const ab = (props) => (
+        <DCArtboard id={props.id} label={props.label} width={props.w} height={props.h} key={props.id}>
+          <Themed mode={props.m || mode} accent={accent}>{props.children}</Themed>
+        </DCArtboard>
+      );
+
+      return (
+        <>
+          <DesignCanvas>
+            {/* COVER — design system overview */}
+            <DCSection id="cover" title="DeliverIT · Design System Handoff" subtitle="Visual language refresh · lean staffing aggregate · 7 platform roles. Drag artboards to reorder · click ⛶ to focus.">
+              {ab({id:'cover',      label:'Cover · brand statement', w:960,  h:686,  children:<CoverArtboard/>})}
+              {ab({id:'auth-light', label:'Auth · login + SSO',     w:1200, h:780,  children:<AuthForm/>})}
+              {ab({id:'auth-dark',  label:'Auth · dark',            w:1200, h:780, m:'dark', children:<AuthForm/>})}
+            </DCSection>
+
+            <DCSection id="foundations" title="01 · Foundations" subtitle="Tokens — colors, type, spacing, radii, shadows. Same shape as current DC tokens; values redesigned.">
+              {ab({id:'found-light', label:'Tokens · light', w:1180, h:2440, children:<FoundationsView/>})}
+              {ab({id:'found-dark',  label:'Tokens · dark',  w:1180, h:2440, m:'dark', children:<FoundationsView/>})}
+            </DCSection>
+
+            <DCSection id="atoms" title="02 · Atoms" subtitle="Buttons, inputs, badges, chips, avatars, kbd, switches.">
+              {ab({id:'atoms-light', label:'Atoms · light', w:1180, h:2780, children:<AtomsView/>})}
+              {ab({id:'atoms-dark',  label:'Atoms · dark',  w:1180, h:2780, m:'dark', children:<AtomsView/>})}
+            </DCSection>
+
+            <DCSection id="molecules" title="03 · Molecules" subtitle="FormField, filter bar, breadcrumbs, tabs, toast stack, date pickers.">
+              {ab({id:'mol', label:'Molecules', w:1180, h:1680, children:<MoleculesView/>})}
+            </DCSection>
+
+            <DCSection id="surfaces" title="04 · Surfaces" subtitle="Modal, drawer, popover, menu, confirm dialog. Shown in-place for static review.">
+              {ab({id:'surf', label:'Surfaces', w:1180, h:1500, children:<SurfacesView/>})}
+            </DCSection>
+
+            <DCSection id="data" title="05 · Data primitives" subtitle="KPI, Quadrant, Sparkline, Donut, MiniBar, VarBar, Table.">
+              {ab({id:'data', label:'Data primitives', w:1180, h:1810, children:<DataView/>})}
+            </DCSection>
+
+            <DCSection id="states" title="06 · State primitives" subtitle="Empty, Error, Loading, Feedback banners.">
+              {ab({id:'states', label:'States', w:1180, h:1220, children:<StateView/>})}
+            </DCSection>
+
+            <DCSection id="pulse" title="07 · Project Pulse" subtitle="The headline. PM/Director answers ‘What state is this project, right now, what needs me?’ in under 5 seconds.">
+              {ab({id:'pulse-light', label:'Pulse · light', w:1440, h:1660, children:<ProjectPulse/>})}
+              {ab({id:'pulse-dark',  label:'Pulse · dark',  w:1440, h:1660, m:'dark', children:<ProjectPulse/>})}
+            </DCSection>
+
+            <DCSection id="director" title="08 · Director Dashboard" subtitle="Portfolio across 6 projects. 4-axis RAG, multi-line burn, variance drivers, recent decisions.">
+              {ab({id:'director-light', label:'Director · light', w:1440, h:1780, children:<DirectorDashboard/>})}
+              {ab({id:'director-dark',  label:'Director · dark',  w:1440, h:1780, m:'dark', children:<DirectorDashboard/>})}
+            </DCSection>
+
+            <DCSection id="staffing" title="09 · Lean Staffing — Bench & Position Detail" subtitle="Project → Position → Person. Bench is a query. Suggested fills are inline.">
+              {ab({id:'bench',    label:'Bench · inspector pattern',    w:1440, h:1200, children:<BenchPage/>})}
+              {ab({id:'position', label:'Position Detail · one aggregate', w:1440, h:1230, children:<PositionDetail/>})}
+            </DCSection>
+
+            <DCSection id="people" title="10 · People Profile" subtitle="Composed 360 — identity, employment, position history, skills, cost, time/leave, activity.">
+              {ab({id:'profile-light', label:'Profile · light', w:1440, h:1460, children:<PeopleProfile/>})}
+              {ab({id:'profile-dark',  label:'Profile · dark',  w:1440, h:1460, m:'dark', children:<PeopleProfile/>})}
+            </DCSection>
+
+            <DCSection id="approvals" title="11 · Approvals Queue" subtitle="Cross-domain. One-screen-approval inspector. All context, no tab-switching.">
+              {ab({id:'approvals', label:'Approvals · cross-domain', w:1440, h:940, children:<ApprovalsQueue/>})}
+            </DCSection>
+
+            <DCSection id="wizard" title="12 · Create Project Wizard" subtitle="3 steps. Identity → Positions + Milestones → Activation. Templates carry forward.">
+              {ab({id:'wizard', label:'Create Project · Step 2', w:1440, h:1220, children:<CreateProjectWizard/>})}
+            </DCSection>
+
+            <DCSection id="plan-money" title="13 · Project Plan + Money" subtitle="The remaining two project tabs. Gantt + workstreams; EVM + variance + forecast + change requests.">
+              {ab({id:'plan',  label:'Plan · Gantt + workstreams',         w:1440, h:1760, children:<ProjectPlan/>})}
+              {ab({id:'money', label:'Money · EVM, variance, CRs',         w:1440, h:1780, children:<ProjectMoney/>})}
+            </DCSection>
+
+            <DCSection id="dir-hr" title="14 · People Directory + HR Queue" subtitle="Workforce list with bulk actions. Tabbed HR approvals with one-screen decision + onboarding checklists.">
+              {ab({id:'dir', label:'People Directory · list view',   w:1440, h:1060, children:<PeopleDirectory view="list"/>})}
+              {ab({id:'hr',  label:'HR Queue · leave + onboarding',  w:1440, h:1060, children:<HRQueue/>})}
+            </DCSection>
+
+            <DCSection id="admin-setup" title="15 · Admin Settings + Setup Wizard" subtitle="Integrations registry + RBAC matrix + platform settings. First-boot installer (step 5 of 8).">
+              {ab({id:'admin', label:'Admin · Integrations + RBAC',  w:1440, h:1500, children:<AdminSettings/>})}
+              {ab({id:'setup', label:'Setup Wizard · Step 5',        w:1200, h:1120, children:<SetupWizard/>})}
+            </DCSection>
+
+            <DCSection id="handoff" title="16 · Handoff bundle" subtitle="Ship-ready artifacts for Claude Code: tokens.ts (CSS custom properties + MUI theme bridge), schemas.json (KPI + column + filter shapes).">
+              {ab({id:'handoff', label:'Handoff index', w:960, h:760, children:<HandoffIndex/>})}
+            </DCSection>
+
+            {/* ── Amendment: Staffing Desk + Planner (the killer feature) ── */}
+            <DCSection id="ds-timeline" title="17 · Timeline component (DS)" subtitle="Killer-feature amendment. The lifecycle bar primitive. Drag, resize, snap, heat band — every PositionFillStatus rendered.">
+              {ab({id:'tl-light', label:'Timeline · light', w:1240, h:1820, children:<TimelineDS/>})}
+              {ab({id:'tl-dark',  label:'Timeline · dark',  w:1240, h:1820, m:'dark', children:<TimelineDS/>})}
+            </DCSection>
+
+            <DCSection id="staffing-desk" title="18 · Staffing Desk landing · Board" subtitle="Title bar + tab strip (private/public scope, gear, +) + JQL query bar with autocomplete + view switcher + KPI strip + action table. Premium, opinionated, fast.">
+              {ab({id:'desk-light', label:'Desk · light', w:1480, h:1100, children:<StaffingDeskBoard/>})}
+              {ab({id:'desk-dark',  label:'Desk · dark',  w:1480, h:1100, m:'dark', children:<StaffingDeskBoard/>})}
+            </DCSection>
+
+            <DCSection id="distribution-studio" title="19 · Distribution Studio planner" subtitle="Project/person swimlanes · weekly Σ sparkline · overallocation heat band · bench sidebar · anomaly drawer · one row shown in mid-drag-resize with snap preview · scenario dirty indicator.">
+              {ab({id:'planner-light', label:'Planner · light · mid-drag', w:1600, h:1260, children:<DistributionStudio/>})}
+              {ab({id:'planner-dark',  label:'Planner · dark',             w:1600, h:1260, m:'dark', children:<DistributionStudio/>})}
+            </DCSection>
+
+            <DCSection id="find-candidates" title="20 · Find candidates panel" subtitle="Single-position inline view. Top 5 ranked by skill × availability × cost. Inline propose — contrasts with the planner's bulk-suggest flow by density, not color.">
+              {ab({id:'find-candidates', label:'Position detail · Find candidates', w:1280, h:760, children:<FindCandidatesPanel/>})}
+            </DCSection>
+
+            <DCSection id="staffing-states" title="21 · States · modals · banners" subtitle="Empty results · RBAC denial · scenario loading · solver timeout · dual-write banner · tab CRUD modals (new / rename / clone / scope toggle / delete confirm).">
+              {ab({id:'staffing-states', label:'States + modals', w:1280, h:1560, children:<StaffingStatesAndModals/>})}
+            </DCSection>
+
+            {/* ── Employee Workspace amendment ── */}
+            <DCSection id="ds-calendar" title="22 · &lt;Calendar/&gt; · DS primitive" subtitle="Date picker + range + month / year overview. Reuses StatusBadge tones; no new color tokens.">
+              {ab({id:'cal-light', label:'Calendar · light', w:1180, h:1700, children:<CalendarDS/>})}
+              {ab({id:'cal-dark',  label:'Calendar · dark',  w:1180, h:1700, m:'dark', children:<CalendarDS/>})}
+            </DCSection>
+
+            <DCSection id="ds-balance" title="23 · &lt;BalanceMeter/&gt; · DS primitive" subtitle="Used / pending / remaining of a budget. Overdrawn state visible past the 100% mark.">
+              {ab({id:'bal-light', label:'BalanceMeter · light', w:1180, h:760, children:<BalanceMeterDS/>})}
+              {ab({id:'bal-dark',  label:'BalanceMeter · dark',  w:1180, h:760, m:'dark', children:<BalanceMeterDS/>})}
+            </DCSection>
+
+            <DCSection id="workspace" title="24 · Employee Workspace · /me" subtitle="The canonical self-service surface. 6 tabs · Overview hero, Leave with Calendar + BalanceMeter + live conflict preview, Time weekly grid with inline cell edit, Projects memberships, Inbox with mark-all-read, Settings with digest schedule + quiet hours.">
+              {ab({id:'ws-overview', label:'Overview · light', w:1440, h:1020, children:<WorkspaceOverviewTab/>})}
+              {ab({id:'ws-leave',    label:'Leave · with conflict', w:1440, h:1260, children:<WorkspaceLeaveTab/>})}
+              {ab({id:'ws-projects', label:'Projects · with empty state', w:1440, h:1060, children:<WorkspaceProjectsTab/>})}
+              {ab({id:'ws-time',     label:'Time · weekly grid', w:1440, h:1020, children:<WorkspaceTimeTab/>})}
+              {ab({id:'ws-inbox',    label:'Inbox · unread', w:1440, h:820, children:<WorkspaceInboxTab/>})}
+              {ab({id:'ws-settings', label:'Settings · digest + quiet hours', w:1440, h:1280, children:<WorkspaceSettingsTab/>})}
+            </DCSection>
+
+            <DCSection id="time-mgmt" title="25 · Time Management · manager" subtitle="Manager-side queue. Timesheets tab with inspector drawer · Leave tab · cross-domain KPI strip. ‘This is where time decisions get made.’">
+              {ab({id:'tm-timesheets', label:'Timesheets · queue + inspector', w:1440, h:1280, children:<TimeManagementWithDrawer/>})}
+              {ab({id:'tm-leave',      label:'Leave · queue',                  w:1440, h:880,  children:<TimeManagementLeaveTab/>})}
+              {ab({id:'tm-leave-drawer', label:'Leave Decision Drawer · primary', w:1440, h:780, children:<LeaveDecisionDrawer/>})}
+              {ab({id:'tm-leave-reject', label:'Leave Decision Drawer · reject reason', w:1440, h:840, children:<LeaveDecisionDrawerReject/>})}
+            </DCSection>
+          </DesignCanvas>
+
+          {window.TweaksPanel ? (
+            <window.TweaksPanel title="Tweaks">
+              <window.TweakSection label="Color mode (canvas-wide)"/>
+              <window.TweakRadio
+                label="Mode"
+                value={t.colorMode}
+                options={['light', 'dark']}
+                onChange={(v) => setTweak('colorMode', v)}
+              />
+              <window.TweakSection label="Brand accent"/>
+              <window.TweakRadio
+                label="Palette"
+                value={t.accent}
+                options={['default', 'teal', 'indigo', 'slate']}
+                onChange={(v) => setTweak('accent', v)}
+              />
+            </window.TweaksPanel>
+          ) : null}
+        </>
+      );
+    }
+
+    // Cover artboard — brand sheet for the design system
+    function CoverArtboard() {
+      return (
+        <div style={{padding:'56px 64px', minHeight:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', gap:32, background:'var(--color-bg)'}}>
+          <div style={{display:'flex', alignItems:'center', gap:14}}>
+            <span style={{width:40, height:40, borderRadius:8, background:'var(--color-accent)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontSize:20, fontWeight:700}}>D</span>
+            <div>
+              <div style={{fontSize:18, fontWeight:600, letterSpacing:'-0.01em'}}>DeliverIT</div>
+              <div className="compact muted">Design System · v1.0 handoff · 23 May 2026</div>
+            </div>
+            <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+              <span className="badge badge-outline">v12.3 platform</span>
+              <span className="badge badge-accent">14 page templates</span>
+            </div>
+          </div>
+
+          <div style={{maxWidth:720}}>
+            <h1 style={{fontSize:'clamp(36px, 4vw, 60px)', lineHeight:1.05, letterSpacing:'-0.02em', fontWeight:600, margin:'0 0 18px'}}>
+              Workforce supply, demand, and delivery — in one place.
+            </h1>
+            <p style={{fontSize:18, lineHeight:1.5, color:'var(--color-text-muted)', margin:0}}>
+              A senior, calm, fact-led design system for bank-IT delivery teams. Spreadsheet density when it matters; magazine spread when summarizing. Boring fintech, not consumer SaaS.
+            </p>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20}}>
+            {[
+              { eyebrow:'Audience',    title:'7 roles',       body:'employee · PM · RM · DM · Director · HR · admin' },
+              { eyebrow:'Discipline',  title:'Dual-mode',     body:'light + dark · WCAG 2.2 AA · reduced-motion safe' },
+              { eyebrow:'Type',        title:'Geist',         body:'Geist + Geist Mono · tabular numbers everywhere' },
+              { eyebrow:'Scope',       title:'21 atoms · 14 pages', body:'tokens · atoms · molecules · surfaces · data · states · templates' },
+            ].map((b) => (
+              <div key={b.eyebrow}>
+                <div className="label-eyebrow">{b.eyebrow}</div>
+                <div className="h3" style={{marginTop:6}}>{b.title}</div>
+                <div className="compact muted" style={{marginTop:4}}>{b.body}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:'flex', gap:24, paddingTop:24, borderTop:'1px solid var(--color-border)', color:'var(--color-text-subtle)', fontSize:12, fontVariantNumeric:'tabular-nums'}}>
+            <span>Scroll the canvas →</span>
+            <span style={{marginLeft:'auto'}}>Sections 01 Foundations · 02 Atoms · 03 Molecules · 04 Surfaces · 05 Data · 06 States · 07–12 Page templates</span>
+          </div>
+        </div>
+      );
+    }
+
+    window.CoverArtboard = CoverArtboard;
+
+    function HandoffIndex() {
+      const FILES = [
+        { name:'handoff/tokens.ts',       size:'~13 kb', desc:'Full TS export — same shape as the platform\u2019s current design-tokens.ts. Includes applyDesignTokens(mode) + buildMuiTheme(mode).' },
+        { name:'handoff/schemas.json',    size:'~13 kb', desc:'JSON shapes for KPI cards, table columns, filter descriptors. Page-level examples for Pulse, Bench, Approvals, Director.' },
+        { name:'tokens.css',              size:'~9 kb',  desc:'CSS custom properties — light + dark. Drop-in for the existing :root variables.' },
+        { name:'styles.css',              size:'~33 kb', desc:'Atom/molecule/surface/data styles. Composable via class names — no framework runtime.' },
+      ];
+      return (
+        <div style={{padding:'40px 56px', minHeight:'100%'}}>
+          <div className="label-eyebrow">DeliverIT \u00b7 Handoff bundle for Claude Code</div>
+          <h1 className="h1" style={{marginTop:8, marginBottom:6}}>Ship-ready files</h1>
+          <p className="body muted" style={{maxWidth:560}}>
+            Drop into <span className="mono">frontend/src/styles/</span> and a new <span className="mono">src/lib/page-schemas/</span>. The TS object mirrors the current platform tokens module so the MUI bridge keeps working.
+          </p>
+
+          <div style={{display:'flex', flexDirection:'column', gap:10, marginTop:24}}>
+            {FILES.map((f) => (
+              <a key={f.name} href={f.name} target="_blank" rel="noopener" style={{
+                display:'grid', gridTemplateColumns:'auto 1fr auto', gap:16, alignItems:'center',
+                padding:'14px 18px', border:'1px solid var(--color-border)', borderRadius:'var(--radius-card)',
+                background:'var(--color-surface)', color:'var(--color-text)', textDecoration:'none',
+              }}>
+                <span style={{width:40, height:40, borderRadius:8, background:'var(--color-accent-soft)', color:'var(--color-accent-text)', display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
+                  <Icon name="docs" size={20}/>
+                </span>
+                <div style={{minWidth:0}}>
+                  <div style={{display:'flex', alignItems:'baseline', gap:10}}>
+                    <span className="body-sm mono" style={{fontWeight:600}}>{f.name}</span>
+                    <span className="compact-sm muted">{f.size}</span>
+                  </div>
+                  <div className="compact muted" style={{marginTop:3}}>{f.desc}</div>
+                </div>
+                <Icon name="external" style={{color:'var(--color-text-subtle)'}}/>
+              </a>
+            ))}
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:24}}>
+            <div className="banner banner-info">
+              <Icon name="info" style={{color:'var(--color-status-info)'}}/>
+              <div>
+                <div className="banner-title">Status semantics are FIXED</div>
+                <div className="banner-body">green=healthy, amber=warning, red=danger, dark red=critical, grey=pending, cyan=info. Encoded in tokens.ts as the Tone enum; do not remap.</div>
+              </div>
+            </div>
+            <div className="banner banner-active">
+              <Icon name="check-circle" style={{color:'var(--color-status-active)'}}/>
+              <div>
+                <div className="banner-title">WCAG 2.2 AA verified</div>
+                <div className="banner-body">All text/UI pairs in tokens.ts \u2265 4.5:1 in both light and dark. Color-blind RAG swap via [data-colour-blind].</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    window.HandoffIndex = HandoffIndex;
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
