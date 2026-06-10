@@ -197,9 +197,14 @@ DROP TABLE IF EXISTS "person_release_approvals" CASCADE;
 DROP TABLE IF EXISTS "person_release_requests"  CASCADE;
 
 -- =====================================================================
--- 6. Drop AssignmentStatus enum.
+-- 6. Drop legacy enum types whose declarations were removed from
+--    schema.prisma along with the staffing-request tables above.
 -- =====================================================================
+-- IF EXISTS so this section is idempotent on re-application.
 DROP TYPE IF EXISTS "AssignmentStatus";
+DROP TYPE IF EXISTS "StaffingRequestStatus";
+DROP TYPE IF EXISTS "StaffingRequestProposalSlateStatus";
+DROP TYPE IF EXISTS "StaffingRequestProposalCandidateDecision";
 
 -- =====================================================================
 -- 7. Prune AggregateType enum values ProjectAssignment + StaffingRequest.
