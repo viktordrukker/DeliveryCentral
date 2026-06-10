@@ -114,7 +114,7 @@ export async function previewLeave(input: {
 /**
  * LEAN-P4-missing-11 — cancel an own PENDING leave request via the
  * canonical `cancelByEmployee` path (POST /leave-requests/:id/cancel,
- * landed by LEAN-P4-missing-12 / #532).
+ * landed by LEAN-P4-missing-12 / issue 532).
  */
 export async function cancelLeaveRequest(id: string): Promise<LeaveRequestDto> {
   return httpPost<LeaveRequestDto, Record<string, never>>(`/leave-requests/${id}/cancel`, {});
