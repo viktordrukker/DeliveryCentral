@@ -132,7 +132,7 @@ export function ProjectsPage(): JSX.Element {
           onClick={() => {
             exportToXlsx(
               state.visibleItems.map((p) => ({
-                'Assignment Count': p.assignmentCount,
+                'Position Count': p.assignmentCount,
                 'Health Score': healthMap.get(p.id)?.score ?? '',
                 Name: p.name,
                 'Project Code': p.projectCode,

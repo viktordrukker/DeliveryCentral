@@ -118,7 +118,7 @@ export function CaseForm({
         </label>
 
         <label className="field">
-          <span className="field__label">Related Assignment</span>
+          <span className="field__label">Related Position</span>
           <select
             className="field__control"
             onChange={(event) => onChange('relatedAssignmentId', event.target.value)}

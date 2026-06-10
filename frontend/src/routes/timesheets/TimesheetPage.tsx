@@ -971,7 +971,7 @@ export function TimesheetPage(): JSX.Element {
       {!isReadOnly && (
         <div className="timesheet-actions">
           <Button variant="secondary" onClick={() => void autoPopulateFromAssignments()} type="button">
-            Refresh from Assignments
+            Refresh from Positions
           </Button>
           <Button variant="secondary" onClick={() => void openAddProjectDialog()} type="button">
             + Add Row

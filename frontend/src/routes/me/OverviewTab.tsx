@@ -129,13 +129,13 @@ export function OverviewTab(): JSX.Element {
         />
       </div>
 
-      <SectionCard title="My assignments">
+      <SectionCard title="My positions">
         <p style={{ margin: '0 0 var(--space-3)', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
-          Lifecycle-coloured Timeline of current + future assignments. Click a bar to open the project.
+          Lifecycle-coloured Timeline of current + future positions. Click a bar to open the project.
         </p>
         {segments.length === 0 ? (
           <EmptyState
-            title="No active assignments"
+            title="No active positions"
             description="When you're staffed onto a project, it will show here."
             actions={[{ label: 'Browse projects', onClick: () => navigate('/projects'), variant: 'secondary' }]}
           />
@@ -148,7 +148,7 @@ export function OverviewTab(): JSX.Element {
               size="md"
               showLegend
               showToday
-              ariaLabel="Your current and future assignments"
+              ariaLabel="Your current and future positions"
               onSegmentClick={(seg) => seg.href && navigate(seg.href)}
             />
           </div>

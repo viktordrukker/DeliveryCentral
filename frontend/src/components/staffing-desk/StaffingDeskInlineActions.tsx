@@ -59,8 +59,8 @@ export function StaffingDeskInlineActions({ actions, row }: Props): JSX.Element 
         )}
         <ConfirmDialog
           open={confirmAction === 'reject' || confirmAction === 'end'}
-          title={confirmAction === 'reject' ? 'Reject Assignment' : 'End Assignment'}
-          message={confirmAction === 'reject' ? 'Provide a reason for rejection.' : 'Provide a reason for ending this assignment.'}
+          title={confirmAction === 'reject' ? 'Reject Position' : 'End Position'}
+          message={confirmAction === 'reject' ? 'Provide a reason for rejection.' : 'Provide a reason for ending this position.'}
           requireReason
           onCancel={() => setConfirmAction(null)}
           onConfirm={handleConfirm}
