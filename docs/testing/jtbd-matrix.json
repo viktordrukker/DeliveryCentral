@@ -1,7 +1,7 @@
 {
   "$schema": "Machine-readable JTBD matrix mapped to API, UI, and e2e assertions",
-  "version": "1.1.1",
-  "updatedAt": "2026-06-09",
+  "version": "1.1.2",
+  "updatedAt": "2026-06-10",
   "personas": {
     "employee": {
       "account": "ethan.brooks@itco.local",
@@ -21,10 +21,10 @@
       "criticalJtbds": [
         { "id": "PM-01", "jtbd": "See PM dashboard", "route": "/dashboard/project-manager", "api": "GET /api/dashboard/project-manager/:personId", "e2eTag": "@critical", "unitTest": "ProjectManagerDashboardPage.test.tsx" },
         { "id": "PM-06", "jtbd": "Create project", "route": "/projects/new", "api": "POST /api/project-registry", "e2eTag": "@critical", "unitTest": null },
-        { "id": "PM-13", "jtbd": "Open one staffing position", "route": "/staffing-desk/positions/new", "api": "POST /api/staffing-requests", "e2eTag": "@critical", "unitTest": "CreatePositionPage.test.tsx" },
-        { "id": "PM-14", "jtbd": "Open multiple staffing positions in bulk", "route": "/staffing-requests/bulk", "api": "POST /api/staffing-requests/bulk", "e2eTag": "@critical", "unitTest": "BulkCreatePositionsPage.test.tsx" },
+        { "id": "PM-13", "jtbd": "Open one staffing position", "route": "/staffing-desk/positions/new", "api": "POST /api/project-positions", "e2eTag": "@critical", "unitTest": "CreatePositionPage.test.tsx" },
+        { "id": "PM-14", "jtbd": "Open multiple staffing positions in bulk", "route": "/staffing-requests/bulk", "api": "POST /api/project-positions (batched client-side)", "e2eTag": "@critical", "unitTest": "BulkCreatePositionsPage.test.tsx" },
         { "id": "PM-19", "jtbd": "View planned vs actual", "route": "/dashboard/planned-vs-actual", "api": "GET /api/dashboard/workload/planned-vs-actual", "e2eTag": "@critical", "unitTest": "PlannedVsActualPage.test.tsx" },
-        { "id": "PM-23", "jtbd": "Create staffing request (canonical)", "route": "/staffing-requests/new", "api": "POST /api/staffing-requests", "e2eTag": "@critical", "unitTest": null },
+        { "id": "PM-23", "jtbd": "Create project position (canonical lean flow)", "route": "/staffing-requests/new", "api": "POST /api/project-positions", "e2eTag": "@critical", "unitTest": "CreatePositionPage.test.tsx", "notes": "Route path preserved for back-compat; renders CreatePositionPage which posts to /api/project-positions. Legacy /api/staffing-requests endpoint removed by SoT PR 16." },
         { "id": "PM-27", "jtbd": "Approve pending items in unified queue", "route": "/approvals", "api": "GET /api/approvals/queue", "e2eTag": "@critical", "unitTest": "ApprovalsPage.test.tsx" }
       ]
     },
@@ -34,7 +34,7 @@
       "criticalJtbds": [
         { "id": "RM-01", "jtbd": "See RM dashboard", "route": "/dashboard/resource-manager", "api": "GET /api/dashboard/resource-manager/:personId", "e2eTag": "@critical", "unitTest": "ResourceManagerDashboardPage.test.tsx" },
         { "id": "RM-05", "jtbd": "View workload via staffing-desk timeline", "route": "/staffing-desk?view=timeline", "api": "GET /api/workload", "e2eTag": "@critical", "unitTest": null },
-        { "id": "RM-08", "jtbd": "View staffing-desk board", "route": "/staffing-desk?view=board", "api": "GET /api/staffing-requests", "e2eTag": "@smoke", "unitTest": "StaffingDeskPage.test.tsx" },
+        { "id": "RM-08", "jtbd": "View staffing-desk board", "route": "/staffing-desk?view=board", "api": "GET /api/project-positions", "e2eTag": "@smoke", "unitTest": "StaffingDeskPage.test.tsx" },
         { "id": "RM-09", "jtbd": "Run Distribution Studio planner", "route": "/staffing-desk?view=planner", "api": "POST /api/planner-scenario/autoMatch", "e2eTag": "@critical", "unitTest": null },
         { "id": "RM-10", "jtbd": "View resource pools", "route": "/resource-pools", "api": "GET /api/resource-pools", "e2eTag": "@smoke", "unitTest": null },
         { "id": "RM-12", "jtbd": "Match candidate from bench", "route": "/people/bench", "api": "GET /api/people/bench", "e2eTag": "@smoke", "unitTest": null }

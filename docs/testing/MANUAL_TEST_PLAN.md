@@ -1,10 +1,12 @@
 # DeliveryCentral — Manual Test Plan
 
-**Version:** 1.1
+**Version:** 1.2
 **Created:** 2026-04-11
-**Updated:** 2026-06-09 (seed profile + accounts switched to `it-company` default)
+**Updated:** 2026-06-10 (SoT PR 18 — legacy Assignment/StaffingRequest surfaces removed; tests ASN-01..ASN-08 + STF-01..STF-04 struck through pending replacement with ProjectPosition equivalents)
 **Seed profile:** `it-company`
 **Target environment:** Docker local (`http://localhost:5173`)
+
+> **Lean migration complete as of 2026-06-10:** legacy `ProjectAssignment` / `StaffingRequest` aggregates were dropped via SoT PR 16 (`20260606_lean_p3_1_data_fixup` + `lean_p3_2_drop_legacy_tables` forward-only migrations) and the corresponding FE surfaces (`AssignmentsTable`, `BulkAssignmentResults`, `StaffingRequestDrawer`, `StaffingRequestForm`, `ProposalBuilderDrawer`, `ProposalReviewPanel`, `AssignmentTable`, `useAssignmentDetails`, `workflow-progression`) were deleted via SoT PRs 17a + 17b. The canonical staffing aggregate is `ProjectPosition` (BE: `/api/project-positions`; FE: `CreatePositionPage` / `BulkCreatePositionsPage` / `StaffingDeskPage` / `DistributionStudio`). Sections 3.2 (Assignments) and 3.3 (Staffing Requests) below are kept as struck-through historical references — they will be replaced by a §3.2 "Project Positions" rewrite in a subsequent PR.
 
 ---
 
@@ -127,27 +129,31 @@ docker compose restart backend
 | PRJ-04 | Project dashboard | Navigate to `/projects/:id/dashboard` | Dashboard with evidence charts, allocation breakdown | PM | P1 |
 | PRJ-05 | Close project | Open active project → click Close | Project status changes to CLOSED | PM | P1 |
 
-### 3.2 Assignments
+### 3.2 ~~Assignments~~ — REMOVED (SoT PR 16/17, 2026-06-10)
+
+> ~~Legacy `/assignments` surface deleted. Use Project Positions on `/staffing-desk` (board view) and `CreatePositionPage` (`/staffing-desk/positions/new`) instead. ProjectPosition state machine covers DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED on `activeFill`.~~
 
 | # | Test | Steps | Expected | Account | P |
 |---|------|-------|----------|---------|---|
-| ASN-01 | Assignments list | Navigate to `/assignments` | Assignments listed with status, person, project | PM | P0 |
-| ASN-02 | Create assignment | Navigate to `/assignments/new` → fill form → submit | New assignment created with REQUESTED status | PM | P0 |
-| ASN-03 | Approve assignment | Open REQUESTED assignment → click Approve | Status changes to APPROVED/ACTIVE | RM | P0 |
-| ASN-04 | Reject assignment | Open REQUESTED assignment → click Reject | Status changes to REJECTED, reason captured | RM | P1 |
-| ASN-05 | End assignment | Open ACTIVE assignment → click End | Status changes to ENDED, end date set | PM | P1 |
-| ASN-06 | Assignment detail | Click assignment in list | Detail page with history timeline, approval records | PM | P0 |
-| ASN-07 | Bulk assignment | Navigate to `/assignments/bulk` → add multiple → submit | Multiple assignments created | PM | P2 |
-| ASN-08 | Overallocation warning | Create assignment that puts person over 100% | Conflict warning shown | PM | P1 |
+| ~~ASN-01~~ | ~~Assignments list~~ | ~~Navigate to `/assignments`~~ | ~~REMOVED — `/assignments` route deleted (PR 17a). Use `/staffing-desk?view=board`.~~ | ~~PM~~ | ~~P0~~ |
+| ~~ASN-02~~ | ~~Create assignment~~ | ~~Navigate to `/assignments/new`~~ | ~~REMOVED — replaced by `/staffing-desk/positions/new` (CreatePositionPage).~~ | ~~PM~~ | ~~P0~~ |
+| ~~ASN-03~~ | ~~Approve assignment~~ | ~~Open REQUESTED assignment~~ | ~~REMOVED — covered by ProjectPosition `transitionFill` flow on StaffingDesk.~~ | ~~RM~~ | ~~P0~~ |
+| ~~ASN-04~~ | ~~Reject assignment~~ | — | ~~REMOVED — see above.~~ | ~~RM~~ | ~~P1~~ |
+| ~~ASN-05~~ | ~~End assignment~~ | — | ~~REMOVED — see above.~~ | ~~PM~~ | ~~P1~~ |
+| ~~ASN-06~~ | ~~Assignment detail~~ | — | ~~REMOVED — `useAssignmentDetails` hook + `AssignmentDetailsPage` deleted (PR 17a/17b). Use ProjectPosition forensics + history endpoints.~~ | ~~PM~~ | ~~P0~~ |
+| ~~ASN-07~~ | ~~Bulk assignment~~ | ~~Navigate to `/assignments/bulk`~~ | ~~REMOVED — replaced by `/staffing-requests/bulk` (BulkCreatePositionsPage).~~ | ~~PM~~ | ~~P2~~ |
+| ~~ASN-08~~ | ~~Overallocation warning~~ | — | ~~REMOVED — overallocation now enforced by CHECK constraints on `ProjectPosition.allocationPercent` 0..100 + DB-level overlap guard.~~ | ~~PM~~ | ~~P1~~ |
 
-### 3.3 Staffing Requests
+### 3.3 ~~Staffing Requests~~ — REMOVED (SoT PR 16/17, 2026-06-10)
+
+> ~~Legacy `StaffingRequest` aggregate dropped via PR 16 forward-only migration. The FE `/staffing-requests` list, drawer, and form components were deleted in PR 17b. The path `/staffing-requests/new` is preserved as a back-compat URL but now renders `CreatePositionPage` and posts to `POST /api/project-positions`.~~
 
 | # | Test | Steps | Expected | Account | P |
 |---|------|-------|----------|---------|---|
-| STF-01 | Staffing requests list | Navigate to `/staffing-requests` | Requests listed with status, project, priority | PM | P0 |
-| STF-02 | Create request | Navigate to `/staffing-requests/new` → fill form → submit | Request created with DRAFT status | PM | P0 |
-| STF-03 | Request detail | Click a request | Detail page with fulfillment options, skill suggestions | RM | P1 |
-| STF-04 | Submit request | Open DRAFT request → click Submit | Status changes to OPEN | PM | P1 |
+| ~~STF-01~~ | ~~Staffing requests list~~ | ~~Navigate to `/staffing-requests`~~ | ~~REMOVED — list route deleted; use `/staffing-desk?view=board`.~~ | ~~PM~~ | ~~P0~~ |
+| ~~STF-02~~ | ~~Create request~~ | ~~Navigate to `/staffing-requests/new` → StaffingRequestForm~~ | ~~SUPERSEDED — same URL now renders `CreatePositionPage` (lean ProjectPosition flow). Replacement coverage: PM-13 / PM-23 in jtbd-matrix.json.~~ | ~~PM~~ | ~~P0~~ |
+| ~~STF-03~~ | ~~Request detail~~ | — | ~~REMOVED — replaced by ProjectPosition detail surface on StaffingDesk.~~ | ~~RM~~ | ~~P1~~ |
+| ~~STF-04~~ | ~~Submit request~~ | — | ~~REMOVED — submit step folded into ProjectPosition `transitionFill` (DRAFT → REQUESTED).~~ | ~~PM~~ | ~~P1~~ |
 
 ### 3.4 Staffing Board
 

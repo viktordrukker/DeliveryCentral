@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 **Roadmap source-of-truth:** [`MASTER_TRACKER.md`](MASTER_TRACKER.md) (live execution tracker) + [`/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md`](/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md) (V2 lean-flow SoT — 20-PR shrink plan, supersedes all prior `v2-*` and `lean-*` plans). For the thematic index, [`synthesis-themes.md`](synthesis-themes.md) (24 themes). For doc topology, [`README.md`](README.md). Superseded pre-pivot roadmaps (`NEXT_ITERATION_PLAN.md`, `ULTIMATE_ANALYSIS_AND_PLAN.md`, `master-plan.md`) moved to `docs/archive/2026-05-23/`. Post-C0 strategic roadmap: `/home/drukker/.claude/plans/it-block-lifecycle-coverage-2026-06-02.md` (orthogonal).
 
-_Last updated: 2026-06-09 (SoT PR 18 doc sweep — `ProjectPosition` confirmed as canonical staffing aggregate; legacy `ProjectAssignment`/`StaffingRequest` tables dropped via SoT PR 16 forward-only migration; account references switched to `*@itco.local`; jtbd-matrix counts corrected; superseded v2/lean plans archived under `/home/drukker/.claude/plans/archive/`)._
+_Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE deletion footprint to the implemented column; legacy `ProjectAssignment` / `StaffingRequest` BE tables (PR 16) and FE clients + components (PR 17a/17b) are gone; remaining V2 residuals are PR 19 (soak monitor) and PR 20 (`dsRefresh` C0 flip). Earlier sweep — 2026-06-09 — confirmed `ProjectPosition` as the canonical staffing aggregate, switched accounts to `*@itco.local`, corrected jtbd-matrix counts, and archived superseded v2/lean plans under `/home/drukker/.claude/plans/archive/`)._
 
 ---
 
@@ -47,7 +47,7 @@ _Last updated: 2026-06-09 (SoT PR 18 doc sweep — `ProjectPosition` confirmed a
 
 - **Project lifecycle:** ACTIVE → CLOSED workflow shipped; `CloseProjectService` + `RestoreProjectService` (HD-8 chunk 8.4a). `ProjectClosureReadinessService` checks budget variance + work hours.
 - **Project Radiator v1:** 16-axis PMBOK radar; per-axis PM override with audit; portfolio rollup; PDF/PPTX export; 60s scoring cache.
-- **Project positions (canonical):** `ProjectPosition` is the canonical staffing aggregate as of SoT PR 16 (2026-06-09). State machine DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED on `ProjectPosition.activeFill`. CHECK constraints prevent overlap > 100% (allocationPercent 0..100). Undo seam (HD-8 chunk 8.4a/b) for cancel/close/deactivate. Legacy interim entities (`ProjectAssignment`, `StaffingRequest`, `AssignmentApproval`, `AssignmentHistory`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`) dropped via forward-only migration `20260*lean_p3_2_drop_legacy_tables` after a 7-day green parity soak.
+- **Project positions (canonical):** `ProjectPosition` is the canonical staffing aggregate as of SoT PR 16 (2026-06-09). State machine DRAFT → REQUESTED → APPROVED → ACTIVE → COMPLETED/CANCELLED on `ProjectPosition.activeFill`. CHECK constraints prevent overlap > 100% (allocationPercent 0..100). Undo seam (HD-8 chunk 8.4a/b) for cancel/close/deactivate. Legacy interim entities (`ProjectAssignment`, `StaffingRequest`, `AssignmentApproval`, `AssignmentHistory`, `StaffingRequestProposalSlate`, `StaffingRequestProposalCandidate`, `StaffingRequestFulfilment`, `PersonReleaseRequest`, `PersonReleaseApproval`) dropped via forward-only migration `20260*lean_p3_2_drop_legacy_tables` after a 7-day green parity soak. **FE deletion finalized 2026-06-10 (SoT PR 17a + PR 17b):** removed `frontend/src/lib/api/assignments.ts`, `frontend/src/lib/api/staffing-requests.ts`, the `position-to-assignment-mapper` bridge (incl. its tests + the `phase2-exit-gate` / `callsite-audit` lean-migration tests), and 9 legacy FE components (`AssignmentsTable`, `BulkAssignmentResults`, `AssignmentTable`, `useAssignmentDetails`, `workflow-progression`, `ProposalBuilderDrawer`, `ProposalReviewPanel`, `StaffingRequestDrawer`, `StaffingRequestForm` + its validation module). `grep -rE 'from.*api/assignments|from.*api/staffing-requests' frontend/src` returns zero (V2-done criterion 8 met).
 - **Jira PPM connector:** ❌ stub-shaped today (Cat-1.2 NEW C1-JIRA-PPM promotes to first-class).
 
 ### 2.3 Staffing + workforce
@@ -154,9 +154,18 @@ For the full breakdown see [`MASTER_TRACKER.md`](MASTER_TRACKER.md) + [`/home/dr
 
 ---
 
-## 5. Highest-value remaining gaps (post Sprint F-8.1/F-8.2)
+## 5. Highest-value remaining gaps (post SoT PR 17b, 2026-06-10)
 
-The original Cat-1 list (T-02..T-12, T-18) is largely closed by F-3..F-8. What's left is the long-tail Cat-2/Cat-3 backlog from `MASTER_TRACKER.md` and the Appendix A of `/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`. Top candidates for the next sprint:
+**V2 lean-migration residuals (top of stack, per SoT v2-source-of-truth-2026-06-09):**
+
+1. **SoT PR 19 — soak monitor** — instrument a 7-day green parity soak on staging for the dropped legacy tables + the new `ProjectPosition`-only read/write paths; emits `lean-migration-soak` Grafana panel + Slack alert on >0 errors from the dropped-aggregate audit. Effort: 1–2d. Critical-path gate to PR 20.
+2. **SoT PR 20 — `dsRefresh` C0 flip** — flip the `dsRefresh` feature flag default from OFF to ON in prod once PR 19 completes a full green soak. This is the LAST step per `feedback-v2-build-fully-before-cutover.md`. Effort: 0.5d (config + rollback playbook only).
+
+**Known infra debt (5 pre-existing missing-package flakes — non-blocking for V2 cutover):**
+
+The frontend test infrastructure has 5 long-standing missing-package errors that surface as "module not found" but are gated behind dynamic imports and do not break runtime: `html2canvas`, `jspdf`, `pptxgenjs` (PDF/PPTX export in `ProjectRadiator`), `react-markdown` (Help Center article body — installed in `package.json` but not resolvable in the local test runner under certain Docker rebuild states), and `@ladle/react` (Ladle story runner — optional dev tool). These do not affect production builds, do not affect any persona's critical JTBDs, and are tracked separately from V2 lean-migration scope.
+
+**Cat-1 / Cat-2 / Cat-3 long-tail (orthogonal to V2 cutover; see `MASTER_TRACKER.md` + Appendix A of `/home/drukker/.claude/plans/now-it-is-a-zazzy-gizmo.md`):**
 
 1. **20c-09 / 20c-10 / 20c-11 — DTO + type-safety hygiene** — 25+ inline `@Body()` without DTOs; `any`/`as unknown as` cleanup. Cat-1 hygiene. Effort: 5–7d.
 2. **DM-2.5-8..12 — publicId top-down rollout** — controller-uuid-leak baseline 55 → 0. CLAUDE.md memory rule + security boundary. Effort: 8–12d.
