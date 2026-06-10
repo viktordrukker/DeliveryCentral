@@ -182,7 +182,7 @@ export function TeamVendorsTab({ project, projectId, reload }: TeamVendorsTabPro
 
       {/* 1. Team Assignments (read-first, always expanded) */}
       <SectionCard title="Positions">
-        {teamAssignmentsLoading ? <LoadingState label="Loading assignments..." variant="skeleton" skeletonType="detail" /> : null}
+        {teamAssignmentsLoading ? <LoadingState label="Loading positions..." variant="skeleton" skeletonType="detail" /> : null}
         {teamAssignmentsError ? <ErrorState description={teamAssignmentsError} /> : null}
         {!teamAssignmentsLoading && !teamAssignmentsError ? (
           positions.length === 0 ? (

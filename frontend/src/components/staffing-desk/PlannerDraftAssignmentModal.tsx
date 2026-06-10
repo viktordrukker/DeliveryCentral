@@ -101,7 +101,7 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
     <Modal
       open
       onClose={onClose}
-      title="Draft assignment"
+      title="Draft position"
       description={`${projectName} · week of ${startDate} — Creates a REQUESTED or DRAFT ProjectAssignment visible in team tabs, staffing desk, and planner.`}
       size="md"
       closeOnBackdropClick={!submitting}

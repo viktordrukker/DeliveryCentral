@@ -69,7 +69,7 @@ export function ExceptionQueueFilters({
           className="field__control"
           disabled={isLoading}
           onChange={(event) => onTargetEntityIdChange(event.target.value)}
-          placeholder="Filter by assignment, project, or external id"
+          placeholder="Filter by position, project, or external id"
           type="search"
           value={values.targetEntityId}
         />

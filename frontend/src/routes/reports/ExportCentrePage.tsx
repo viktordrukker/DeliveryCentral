@@ -173,7 +173,7 @@ export function ExportCentrePage(): JSX.Element {
     <PageContainer testId="export-centre-page">
       <PageHeader
         eyebrow="Reports"
-        subtitle="Generate and download data exports for headcount, assignments, timesheets, capitalisation, and workload."
+        subtitle="Generate and download data exports for headcount, positions, timesheets, capitalisation, and workload."
         title="Export Centre"
       />
 

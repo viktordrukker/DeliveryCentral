@@ -319,7 +319,7 @@ export function TimesheetInspectorDrawer({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={1000}
-                placeholder="e.g. Hours don't match assignments; please review and resubmit."
+                placeholder="e.g. Hours don't match positions; please review and resubmit."
                 style={{ resize: 'vertical', width: '100%' }}
                 autoFocus
               />

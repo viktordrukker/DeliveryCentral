@@ -157,7 +157,7 @@ export function ProjectTimeline({ filters }: Props): JSX.Element {
 
   if (loading) return <LoadingState variant="skeleton" skeletonType="table" />;
   if (error) return <ErrorState description={error} />;
-  if (!data || data.projects.length === 0) return <EmptyState title="No projects" description="No projects with assignments or requests in this period." />;
+  if (!data || data.projects.length === 0) return <EmptyState title="No projects" description="No projects with positions in this period." />;
 
   return (
     <div>

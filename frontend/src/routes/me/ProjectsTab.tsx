@@ -71,7 +71,7 @@ export function ProjectsTab(): JSX.Element {
     return (
       <SectionCard title="My memberships">
         <EmptyState
-          title="No assignments yet"
+          title="No positions yet"
           description="You're not currently staffed on any project. Talk to your resource manager about upcoming work."
           actions={[
             { label: 'View open projects', onClick: () => navigate('/projects'), variant: 'primary' },
@@ -86,7 +86,7 @@ export function ProjectsTab(): JSX.Element {
       <SectionCard title={`Active assignments (${activeRows.length})`}>
         {activeRows.length === 0 ? (
           <EmptyState
-            title="No active assignments"
+            title="No active positions"
             description="Past assignments are listed below."
           />
         ) : (

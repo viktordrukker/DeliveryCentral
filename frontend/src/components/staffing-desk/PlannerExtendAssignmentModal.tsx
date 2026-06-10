@@ -117,7 +117,7 @@ export function PlannerExtendAssignmentModal({ target, simulation, onClose }: Pr
       open
       onCancel={onClose}
       onSubmit={handleConfirm}
-      title="Extend assignment"
+      title="Extend position"
       description={`${target.personName} · ${target.projectName} · ${target.staffingRole || '—'} · ${target.allocationPercent}% — Current end: ${target.currentValidTo ?? 'open-ended'}`}
       submitLabel={softConflicts.length > 0 ? 'Extend anyway' : 'Extend'}
       submitDisabled={submitDisabled}

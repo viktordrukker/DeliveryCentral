@@ -134,7 +134,7 @@ export function PlannerCellDetailPopover({ detail, simulation, onClose, onExtend
                           onClose();
                         }}
                         style={{ fontSize: 9 }}
-                        title="Extend assignment end date"
+                        title="Extend position end date"
                       >
                         Extend
                       </Button>
