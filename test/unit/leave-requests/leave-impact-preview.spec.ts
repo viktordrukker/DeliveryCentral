@@ -42,8 +42,6 @@ interface MembershipRow {
   orgUnitId: string | null;
 }
 
-const ACTIVE_FILL_STATUSES = new Set(['BOOKED', 'ONBOARDING', 'ASSIGNED']);
-
 function buildPrismaStub(state: {
   holidays: HolidayRow[];
   positions: PositionRow[];
