@@ -14,9 +14,6 @@ import {
   generateItCompanyPulseEntries,
   generateItCompanyTimesheets,
   itCompanyAccounts,
-  itCompanyAssignmentApprovals,
-  itCompanyAssignmentHistory,
-  itCompanyAssignments,
   itCompanyCases,
   itCompanyClients,
   itCompanyDatasetSummary,
@@ -33,6 +30,8 @@ import {
   itCompanyProjectChangeRequests,
   itCompanyProjectExternalLinks,
   itCompanyProjectMilestones,
+  itCompanyProjectPositionFillHistory,
+  itCompanyProjectPositions,
   itCompanyProjectRagSnapshots,
   itCompanyProjectRetrospectives,
   itCompanyProjectRisks,
@@ -41,8 +40,6 @@ import {
   itCompanyReportingLines,
   itCompanyResourcePoolMemberships,
   itCompanyResourcePools,
-  itCompanyStaffingRequestFulfilments,
-  itCompanyStaffingRequests,
   itCompanyWorkEvidence,
   itCompanyWorkEvidenceLinks,
   itCompanyWorkEvidenceSources,
@@ -53,15 +50,14 @@ const prismaSeed = prisma as any;
 
 interface SeedDataset {
   activityEvents?: unknown[];
-  assignmentApprovals: unknown[];
-  assignmentHistory: unknown[];
-  assignments: unknown[];
   externalSyncStates: unknown[];
   orgUnits: Array<Record<string, unknown>>;
   people: unknown[];
   personOrgMemberships: unknown[];
+  positionFillHistory: unknown[];
   positions: unknown[];
   projectExternalLinks: unknown[];
+  projectPositions: unknown[];
   projects: unknown[];
   reportingLines: unknown[];
   resourcePoolMemberships: unknown[];
@@ -702,10 +698,10 @@ async function clearExistingData(): Promise<void> {
   // seed's own rollback path fails the second a profile inserts more than
   // 1000 rows of any aggregate before erroring (see commit f096b04 trail).
   // DM-R-31c honeypot canary rows must be preserved — every DELETE on the
-  // 3 sentinel rows trips a tripwire that aborts the transaction.
+  // sentinel rows trips a tripwire that aborts the transaction. (The
+  // ProjectAssignment sentinel went away with the lean drop migration.)
   const HONEYPOT_PERSON_ID            = '00000000-dead-beef-0000-000000000001';
   const HONEYPOT_PROJECT_ID           = '00000000-dead-beef-0000-000000000002';
-  const HONEYPOT_PROJECT_ASSIGNMENT_ID = '00000000-dead-beef-0000-000000000003';
   await prisma.$transaction(
     async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL public.allow_bulk = 'true'`);
@@ -732,13 +728,13 @@ async function clearExistingData(): Promise<void> {
       await t.workEvidenceLink.deleteMany();
       await t.workEvidence.deleteMany();
       await t.workEvidenceSource.deleteMany();
-      await t.assignmentHistory.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
-      await t.assignmentApproval.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
-      await t.projectAssignment.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      // Lean staffing aggregate — fillHistory references position with
+      // onDelete: Restrict, so it must go first.
+      await t.projectPositionFillHistory.deleteMany();
+      await t.projectPositionCandidate.deleteMany();
+      await t.projectPosition.deleteMany();
       await t.externalSyncState.deleteMany();
       await t.projectExternalLink.deleteMany();
-      await t.staffingRequestFulfilment.deleteMany();
-      await t.staffingRequest.deleteMany();
       await t.projectRadiatorOverride.deleteMany();
       await t.projectRisk.deleteMany();
       await t.projectRolePlan.deleteMany();
@@ -748,8 +744,6 @@ async function clearExistingData(): Promise<void> {
       // Restrict (or default). Must wipe BEFORE Project/Person deleteMany
       // or the parent delete fails with `P2003 Foreign key constraint`.
       await t.budgetApproval.deleteMany();           // → ProjectBudget
-      await t.personReleaseApproval.deleteMany();    // → PersonReleaseRequest
-      await t.personReleaseRequest.deleteMany();     // → Person, Project
       await t.projectActivationApproval.deleteMany();// → Project
       await t.rateCardEntry.deleteMany();            // → RateCard
       await t.rateCard.deleteMany();
@@ -1091,7 +1085,6 @@ async function createManyInChunks(table: string, data: unknown[], chunkSize = 10
 async function clearOperatingData(): Promise<void> {
   const HONEYPOT_PERSON_ID             = '00000000-dead-beef-0000-000000000001';
   const HONEYPOT_PROJECT_ID            = '00000000-dead-beef-0000-000000000002';
-  const HONEYPOT_PROJECT_ASSIGNMENT_ID = '00000000-dead-beef-0000-000000000003';
   const ADMIN_PERSON_ID                = '00000000-0000-0000-0000-000000000001';
 
   await prisma.$transaction(
@@ -1104,13 +1097,13 @@ async function clearOperatingData(): Promise<void> {
       await t.workEvidenceLink.deleteMany();
       await t.workEvidence.deleteMany();
       await t.workEvidenceSource.deleteMany();
-      await t.assignmentHistory.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
-      await t.assignmentApproval.deleteMany({ where: { assignmentId: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
-      await t.projectAssignment.deleteMany({ where: { id: { not: HONEYPOT_PROJECT_ASSIGNMENT_ID } } });
+      // Lean staffing aggregate — fillHistory references position with
+      // onDelete: Restrict, so it must go first.
+      await t.projectPositionFillHistory.deleteMany();
+      await t.projectPositionCandidate.deleteMany();
+      await t.projectPosition.deleteMany();
       await t.externalSyncState.deleteMany();
       await t.projectExternalLink.deleteMany();
-      await t.staffingRequestFulfilment.deleteMany();
-      await t.staffingRequest.deleteMany();
       await t.projectRadiatorOverride.deleteMany();
       await t.projectRisk.deleteMany();
       await t.projectRolePlan.deleteMany();
@@ -1120,8 +1113,6 @@ async function clearOperatingData(): Promise<void> {
       // Restrict (or default). Must wipe BEFORE Project/Person deleteMany
       // or the parent delete fails with `P2003 Foreign key constraint`.
       await t.budgetApproval.deleteMany();           // → ProjectBudget
-      await t.personReleaseApproval.deleteMany();    // → PersonReleaseRequest
-      await t.personReleaseRequest.deleteMany();     // → Person, Project
       await t.projectActivationApproval.deleteMany();// → Project
       await t.rateCardEntry.deleteMany();            // → RateCard
       await t.rateCard.deleteMany();
@@ -1183,9 +1174,8 @@ async function seedDataset(dataset: SeedDataset): Promise<void> {
   await createManyInChunks('project', dataset.projects);
   await createManyInChunks('projectExternalLink', dataset.projectExternalLinks);
   await createManyInChunks('externalSyncState', dataset.externalSyncStates);
-  await createManyInChunks('projectAssignment', dataset.assignments);
-  await createManyInChunks('assignmentApproval', dataset.assignmentApprovals);
-  await createManyInChunks('assignmentHistory', dataset.assignmentHistory);
+  await createManyInChunks('projectPosition', dataset.projectPositions);
+  await createManyInChunks('projectPositionFillHistory', dataset.positionFillHistory);
   await createManyInChunks('workEvidenceSource', dataset.workEvidenceSources);
   await createManyInChunks('workEvidence', dataset.workEvidence);
   await createManyInChunks('workEvidenceLink', dataset.workEvidenceLinks);
@@ -1227,15 +1217,14 @@ async function main(): Promise<void> {
     await createManyInChunks('client', itCompanyClients);
 
     await seedDataset({
-      assignmentApprovals: itCompanyAssignmentApprovals,
-      assignmentHistory: itCompanyAssignmentHistory,
-      assignments: itCompanyAssignments,
       externalSyncStates: itCompanyExternalSyncStates,
       orgUnits: itCompanyOrgUnits,
       people: itCompanyPeople,
       personOrgMemberships: itCompanyPersonOrgMemberships,
+      positionFillHistory: itCompanyProjectPositionFillHistory,
       positions: itCompanyPositions,
       projectExternalLinks: itCompanyProjectExternalLinks,
+      projectPositions: itCompanyProjectPositions,
       projects: itCompanyProjects,
       reportingLines: itCompanyReportingLines,
       resourcePoolMemberships: itCompanyResourcePoolMemberships,
@@ -1245,10 +1234,6 @@ async function main(): Promise<void> {
       workEvidenceLinks: itCompanyWorkEvidenceLinks,
       workEvidenceSources: itCompanyWorkEvidenceSources,
     });
-
-    // Staffing requests + fulfilments
-    await createManyInChunks('staffingRequest', itCompanyStaffingRequests);
-    await createManyInChunks('staffingRequestFulfilment', itCompanyStaffingRequestFulfilments);
 
     // Per-project context: milestones, change requests, RAG snapshots,
     // budgets, role plans, risks, retrospectives, vendor engagements.

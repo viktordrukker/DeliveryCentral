@@ -48,15 +48,15 @@ const RP   = 'bbbb0006'; // ResourcePool
 const RPM  = 'bbbb0007'; // ResourcePoolMembership
 const PRJ  = 'bbbb0008'; // Project
 const ASG  = 'bbbb0009'; // Assignment
-const APR  = 'bbbb000a'; // AssignmentApproval
-const AHI  = 'bbbb000b'; // AssignmentHistory
+const _APR = 'bbbb000a'; // AssignmentApproval (retired — table dropped by lean migration)
+const AHI  = 'bbbb000b'; // ProjectPositionFillHistory (was AssignmentHistory pre-lean)
 const WES  = 'bbbb000c'; // WorkEvidenceSource
 const WEV  = 'bbbb000d'; // WorkEvidence
 const WEL  = 'bbbb000e'; // WorkEvidenceLink
 const PEL  = 'bbbb000f'; // ProjectExternalLink
 const ESS  = 'bbbb0010'; // ExternalSyncState
-const SRQ  = 'bbbb0011'; // StaffingRequest
-const SRF  = 'bbbb0012'; // StaffingRequestFulfilment
+const SRQ  = 'bbbb0011'; // Unfilled ProjectPosition (was StaffingRequest pre-lean)
+const _SRF = 'bbbb0012'; // StaffingRequestFulfilment (retired — table dropped by lean migration)
 const _ACT = 'bbbb0013'; // EmployeeActivityEvent (skipped — kept for namespace registry)
 const RAG  = 'bbbb0014'; // ProjectRagSnapshot
 const MIL  = 'bbbb0015'; // ProjectMilestone
@@ -959,69 +959,10 @@ assignments.push({
   requestedAt: addDays(closedProjects[5].startsOn, -7),
 });
 
-// ---------------------------------------------------------------------------
-// ASSIGNMENT APPROVALS — sequence #1 always; some sequence #2 for director-level
-// ---------------------------------------------------------------------------
-let aprSeq = 0;
-const aprid = (): string => ns(APR, ++aprSeq);
-
-const assignmentApprovals = assignments.flatMap((a, idx) => {
-  const out: Array<Record<string, unknown>> = [{
-    id: aprid(),
-    assignmentId: a.id,
-    decidedByPersonId: a.status === 'PROPOSED' ? null : sophia.id,
-    sequenceNumber: 1,
-    decision: a.status === 'PROPOSED' ? 'PENDING' : 'APPROVED',
-    decisionReason: a.status === 'PROPOSED' ? null : 'Resource available, skills match',
-    decisionAt: a.approvedAt,
-    createdAt: a.requestedAt,
-    updatedAt: NOW,
-  }];
-  // 2 director-level escalations on active critical-priority projects
-  if (idx < 2 && a.allocationPercent === 100 && a.status === 'ASSIGNED') {
-    out.push({
-      id: aprid(),
-      assignmentId: a.id,
-      decidedByPersonId: noah.id,
-      sequenceNumber: 2,
-      decision: 'APPROVED',
-      decisionReason: 'Director sign-off on full-time allocation to critical project',
-      decisionAt: a.approvedAt,
-      createdAt: a.requestedAt,
-      updatedAt: NOW,
-    });
-  }
-  return out;
-});
-
-// ---------------------------------------------------------------------------
-// ASSIGNMENT HISTORY — 3 max per assignment (CREATE / BOOK / END)
-// ---------------------------------------------------------------------------
-let ahiSeq = 0;
-const ahiid = (): string => ns(AHI, ++ahiSeq);
-
-const assignmentHistory: Array<Record<string, unknown>> = [];
-assignments.forEach(a => {
-  // CREATE
-  assignmentHistory.push({
-    id: ahiid(), assignmentId: a.id, changedByPersonId: a.requestedByPersonId,
-    changeType: 'STATUS_PROPOSED', changeReason: 'Assignment requested', occurredAt: a.requestedAt,
-  });
-  // BOOK (skipped if PROPOSED still)
-  if (a.approvedAt && a.status !== 'PROPOSED') {
-    assignmentHistory.push({
-      id: ahiid(), assignmentId: a.id, changedByPersonId: sophia.id,
-      changeType: 'STATUS_BOOKED', changeReason: 'Approved by RM', occurredAt: a.approvedAt,
-    });
-  }
-  // END (only for COMPLETED)
-  if (a.status === 'COMPLETED' && a.validTo) {
-    assignmentHistory.push({
-      id: ahiid(), assignmentId: a.id, changedByPersonId: sophia.id,
-      changeType: 'STATUS_COMPLETED', changeReason: 'Project ended', occurredAt: a.validTo,
-    });
-  }
-});
+// (Legacy ASSIGNMENT APPROVALS + ASSIGNMENT HISTORY factories removed — the
+// AssignmentApproval / AssignmentHistory tables were dropped by the lean
+// migration `20260609_lean_p3_2_drop_legacy_tables`. Their lean equivalent,
+// ProjectPositionFillHistory, is generated in the LEAN RE-MAP section below.)
 
 // ---------------------------------------------------------------------------
 // WORK EVIDENCE SOURCES + WORK EVIDENCE
@@ -1124,12 +1065,11 @@ projects.slice(0, 35).forEach((p, idx) => {
 });
 
 // ---------------------------------------------------------------------------
-// STAFFING REQUESTS + FULFILMENTS
+// STAFFING REQUESTS — re-mapped onto unfilled ProjectPosition rows in the
+// LEAN RE-MAP section below (the staffing_requests table was dropped).
 // ---------------------------------------------------------------------------
 let srqSeq = 0;
 const srqid = (): string => ns(SRQ, ++srqSeq);
-let srfSeq = 0;
-const srfid = (): string => ns(SRF, ++srfSeq);
 
 const staffingRequests = [
   // 4 OPEN (Jade Partner Portal needs the most help)
@@ -1144,12 +1084,6 @@ const staffingRequests = [
   { id: srqid(), projectId: activeProjects[4].id, requestedByPersonId: pms[4].id, role: 'Frontend Engineer',   skills: ['REACT', 'NEXTJS'],          summary: 'Frontend devs for Echo eCommerce v2',            allocationPercent: 100, headcountRequired: 3, headcountFulfilled: 2, priority: 'MEDIUM',   status: 'IN_REVIEW', startDate: monthsAgo(2), endDate: monthsAgo(-8), createdAt: daysAgo(45), updatedAt: daysAgo(7) },
   // 1 CANCELLED (showing historical request)
   { id: srqid(), projectId: closedProjects[2].id, requestedByPersonId: pms[2].id, role: 'Mobile Engineer',     skills: ['SWIFT', 'KOTLIN'],          summary: 'Mobile dev that was no longer needed',           allocationPercent: 80,  headcountRequired: 1, headcountFulfilled: 0, priority: 'LOW',      status: 'CANCELLED', startDate: monthsAgo(40), endDate: monthsAgo(34), createdAt: monthsAgo(42), updatedAt: monthsAgo(40) },
-];
-
-const staffingRequestFulfilments = [
-  // 2 fulfilments for the partial request
-  { id: srfid(), requestId: staffingRequests[6].id, assignedPersonId: feIcs[0].id, proposedByPersonId: sophia.id, fulfilledAt: daysAgo(20) },
-  { id: srfid(), requestId: staffingRequests[6].id, assignedPersonId: feIcs[1].id, proposedByPersonId: sophia.id, fulfilledAt: daysAgo(15) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1877,32 +1811,141 @@ export const itCompanyContacts = contacts;
 export const itCompanyEmploymentEvents = employmentEvents;
 export const itCompanyBudgetApprovals = budgetApprovals;
 
-export const itCompanyAssignments = assignments.map(a => {
-  const sla = SEED_SLA_STAGE[a.status] ?? null;
+// ---------------------------------------------------------------------------
+// LEAN RE-MAP — the legacy ProjectAssignment / AssignmentApproval /
+// AssignmentHistory / StaffingRequest / StaffingRequestFulfilment tables were
+// dropped by `20260609_lean_p3_2_drop_legacy_tables`. The assignment factory
+// output above is re-mapped onto the lean aggregate: one ProjectPosition per
+// AssignmentDef (fillStatus derived from the legacy status) plus
+// ProjectPositionFillHistory rows per lifecycle step so bench-aging
+// (last RELEASED transition per person) has data. OPEN / IN_REVIEW /
+// CANCELLED StaffingRequests become unfilled positions.
+// ---------------------------------------------------------------------------
+
+// Mirrors `mapLegacyAssignmentStatus` (src/modules/project-positions/domain/
+// value-objects/position-fill-status.ts) for the statuses this dataset uses.
+// Kept local so the profile stays import-free (it is require()d by the setup
+// wizard at runtime).
+const LEGACY_ASSIGNMENT_STATUS_TO_FILL: Record<string, 'PROPOSED' | 'BOOKED' | 'ASSIGNED' | 'RELEASED'> = {
+  PROPOSED: 'PROPOSED',
+  BOOKED: 'BOOKED',
+  ASSIGNED: 'ASSIGNED',
+  COMPLETED: 'RELEASED',
+};
+
+const REQUEST_STATUS_TO_FILL: Record<string, 'OPEN' | 'PROPOSED' | 'RELEASED'> = {
+  OPEN: 'OPEN',
+  IN_REVIEW: 'PROPOSED',
+  CANCELLED: 'RELEASED',
+};
+
+const projectById = new Map(projects.map(p => [p.id, p]));
+
+const assignmentPositions = assignments.map(a => {
+  const fillStatus = LEGACY_ASSIGNMENT_STATUS_TO_FILL[a.status] ?? 'ASSIGNED';
+  const proj = projectById.get(a.projectId);
+  // Lean SLA only tracks unfinished pipeline stages; in this dataset that is
+  // the single PROPOSED assignment (legacy PROPOSED → REVIEW stage).
+  const sla = fillStatus === 'PROPOSED' ? SEED_SLA_STAGE[a.status] ?? null : null;
   return {
-    id: a.id, personId: a.personId, projectId: a.projectId,
-    requestedByPersonId: a.requestedByPersonId, assignmentCode: a.assignmentCode,
-    staffingRole: a.staffingRole, status: a.status,
-    allocationPercent: a.allocationPercent,
-    requestedAt: a.requestedAt, approvedAt: a.approvedAt,
-    validFrom: a.validFrom, validTo: a.validTo,
-    notes: a.notes, version: 1,
-    createdAt: a.requestedAt, updatedAt: NOW,
+    id: a.id,
+    projectId: a.projectId,
+    role: a.staffingRole,
+    summary: a.notes,
+    requiredAllocationPercent: a.allocationPercent,
+    startDate: a.validFrom,
+    endDate: a.validTo ?? proj?.endsOn ?? addMonths(NOW, 12),
+    priority: 'MEDIUM',
+    requestedByPersonId: a.requestedByPersonId,
+    fillStatus,
+    activePersonId: a.personId,
+    activeAllocationPercent: a.allocationPercent,
+    activeValidFrom: a.validFrom,
+    activeValidTo: a.validTo,
+    releaseReason: fillStatus === 'RELEASED' ? 'Project ended' : null,
+    notes: a.notes,
+    version: 1,
+    createdAt: a.requestedAt,
+    updatedAt: NOW,
+    createdByPersonId: a.requestedByPersonId,
     slaStage: sla ? sla.stage : null,
     slaDueAt: sla ? addBusinessDays(a.requestedAt, sla.days) : null,
-    slaBreachedAt: null,
+    legacyAssignmentId: a.id,
   };
 });
 
-export const itCompanyAssignmentApprovals = assignmentApprovals;
-export const itCompanyAssignmentHistory = assignmentHistory;
+const requestPositions = staffingRequests.map(r => ({
+  id: r.id,
+  projectId: r.projectId,
+  role: r.role,
+  skills: r.skills,
+  summary: r.summary,
+  requiredAllocationPercent: r.allocationPercent,
+  startDate: r.startDate,
+  endDate: r.endDate,
+  priority: r.priority,
+  requestedByPersonId: r.requestedByPersonId,
+  fillStatus: REQUEST_STATUS_TO_FILL[r.status] ?? 'OPEN',
+  activePersonId: null,
+  cancellationReason: r.status === 'CANCELLED' ? 'No longer needed' : null,
+  notes: r.summary,
+  version: 1,
+  createdAt: r.createdAt,
+  updatedAt: r.updatedAt,
+  createdByPersonId: r.requestedByPersonId,
+  legacyStaffingRequestId: r.id,
+}));
+
+let fhSeq = 0;
+const fhid = (): string => ns(AHI, ++fhSeq);
+
+const positionFillHistory: Array<Record<string, unknown>> = [];
+assignments.forEach(a => {
+  const fillStatus = LEGACY_ASSIGNMENT_STATUS_TO_FILL[a.status] ?? 'ASSIGNED';
+  // PROPOSED — every assignment-derived position entered the pipeline.
+  positionFillHistory.push({
+    id: fhid(), positionId: a.id, changeType: 'PROPOSED',
+    changedByPersonId: a.requestedByPersonId, changeReason: 'Assignment requested',
+    newPersonId: a.personId, previousStatus: 'OPEN', newStatus: 'PROPOSED',
+    occurredAt: a.requestedAt,
+  });
+  // BOOKED (skipped if still PROPOSED)
+  if (a.approvedAt && fillStatus !== 'PROPOSED') {
+    positionFillHistory.push({
+      id: fhid(), positionId: a.id, changeType: 'BOOKED',
+      changedByPersonId: sophia.id, changeReason: 'Approved by RM',
+      newPersonId: a.personId, previousStatus: 'PROPOSED', newStatus: 'BOOKED',
+      occurredAt: a.approvedAt,
+    });
+  }
+  // ASSIGNED (current fills + completed historical fills)
+  if (fillStatus === 'ASSIGNED' || fillStatus === 'RELEASED') {
+    positionFillHistory.push({
+      id: fhid(), positionId: a.id, changeType: 'ASSIGNED',
+      changedByPersonId: sophia.id, changeReason: 'Fill confirmed',
+      newPersonId: a.personId, previousStatus: 'BOOKED', newStatus: 'ASSIGNED',
+      occurredAt: a.approvedAt ?? a.validFrom,
+    });
+  }
+  // RELEASED (only for legacy COMPLETED) — bench-aging reads the latest
+  // RELEASED row per previousPersonId to compute daysOnBench.
+  if (fillStatus === 'RELEASED' && a.validTo) {
+    positionFillHistory.push({
+      id: fhid(), positionId: a.id, changeType: 'RELEASED',
+      changedByPersonId: sophia.id, changeReason: 'Project ended',
+      previousPersonId: a.personId, previousStatus: 'ASSIGNED', newStatus: 'RELEASED',
+      occurredAt: a.validTo,
+    });
+  }
+});
+
+export const itCompanyProjectPositions = [...assignmentPositions, ...requestPositions];
+export const itCompanyProjectPositionFillHistory = positionFillHistory;
 export const itCompanyWorkEvidenceSources = workEvidenceSources;
 export const itCompanyWorkEvidence = workEvidence;
 export const itCompanyWorkEvidenceLinks = workEvidenceLinks;
 export const itCompanyProjectExternalLinks = projectExternalLinks;
 export const itCompanyExternalSyncStates = externalSyncStates;
-export const itCompanyStaffingRequests = staffingRequests;
-export const itCompanyStaffingRequestFulfilments = staffingRequestFulfilments;
 export const itCompanyProjectMilestones = projectMilestones;
 export const itCompanyProjectChangeRequests = projectChangeRequests;
 export const itCompanyProjectBudgets = projectBudgets;
@@ -1991,10 +2034,10 @@ export const itCompanyDatasetSummary = {
   projectCount: projects.length,
   activeProjectCount: activeProjects.length,
   closedProjectCount: closedProjects.length,
-  assignmentCount: assignments.length,
-  assignmentHistoryCount: assignmentHistory.length,
+  projectPositionCount: itCompanyProjectPositions.length,
+  positionFillHistoryCount: positionFillHistory.length,
   workEvidenceCount: workEvidence.length,
-  staffingRequestCount: staffingRequests.length,
+  openPositionCount: requestPositions.length,
   caseCount: cases.length,
   ragSnapshotCount: projectRagSnapshots.length,
   milestoneCount: projectMilestones.length,
