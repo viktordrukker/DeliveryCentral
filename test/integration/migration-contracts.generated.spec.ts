@@ -5184,7 +5184,7 @@ describe('DM-R-13 per-migration contract', () => {
     });
   
     it('migration.sql SHA-256 is frozen', () => {
-      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("797176cbc7eaaa655d2fa9def69febaeaeed9e0333302bf675f37930292af4eb");
+      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("3fde032c4c8a13519d8ab4fe31385a1a6d7e84ffcb1281e2fe40aeca5ea99a4f");
     });
   
     it('FORWARD_ONLY must not carry rollback.sql (fake rollbacks silently lose data)', () => {

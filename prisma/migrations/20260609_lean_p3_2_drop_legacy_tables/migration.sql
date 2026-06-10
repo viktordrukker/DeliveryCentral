@@ -255,8 +255,10 @@ BEGIN
 
     -- 7c. Swap every dependent column over to the new enum.
     -- AuditLog + DomainEvent are the schema-declared consumers.
-    -- DomainEvent_default is the partition that Postgres reports as
-    -- a separate dependency in the drop-error.
+    -- Postgres auto-propagates the ALTER COLUMN TYPE from the parent
+    -- partitioned table "DomainEvent" to all its partitions (incl.
+    -- DomainEvent_default) — inherited columns cannot be altered
+    -- directly on the partition.
     ALTER TABLE "AuditLog"
       ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
       USING ("aggregateType"::text::"AggregateType_new");
@@ -264,13 +266,6 @@ BEGIN
     ALTER TABLE "DomainEvent"
       ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
       USING ("aggregateType"::text::"AggregateType_new");
-
-    -- Partition: if the table exists as a separate dependency, ALTER it too.
-    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'DomainEvent_default') THEN
-      ALTER TABLE "DomainEvent_default"
-        ALTER COLUMN "aggregateType" TYPE "AggregateType_new"
-        USING ("aggregateType"::text::"AggregateType_new");
-    END IF;
 
     -- 7d. Drop the old enum + rename the new one.
     DROP TYPE "AggregateType";
