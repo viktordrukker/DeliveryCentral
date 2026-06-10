@@ -57,7 +57,8 @@ export interface FillTransitionOptions {
   caseId?: string;
   // Person to set on `activePersonId` for transitions that mark the position filled.
   // Required for PROPOSED / BOOKED / ASSIGNED / ONBOARDING transitions when the
-  // position has no active person yet.
+  // position has no active person yet — `transitionFill` throws
+  // `InvalidPositionFillTransitionError` otherwise.
   personId?: string;
   allocationPercent?: number;
   validFrom?: Date;
@@ -172,11 +173,23 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
       );
     }
 
+    // Fill-side invariant: a position can only be PROPOSED/BOOKED/ONBOARDING/
+    // ASSIGNED *for someone* — either a person already active on the position
+    // or one provided with this transition. Person-less fills would let
+    // approvals book nobody.
+    const isFillTransition =
+      to === 'PROPOSED' || to === 'BOOKED' || to === 'ONBOARDING' || to === 'ASSIGNED';
+    if (isFillTransition && !options.personId && !this.props.activePersonId) {
+      throw new InvalidPositionFillTransitionError(
+        `Transition from ${from} to ${to} requires a person — provide personId or fill the position first.`,
+      );
+    }
+
     // Apply state changes.
     this.props.fillStatus = PositionFillStatus.from(to);
 
     // Person + allocation context for "fill" transitions.
-    if (to === 'PROPOSED' || to === 'BOOKED' || to === 'ONBOARDING' || to === 'ASSIGNED') {
+    if (isFillTransition) {
       if (options.personId) {
         this.props.activePersonId = options.personId;
       }

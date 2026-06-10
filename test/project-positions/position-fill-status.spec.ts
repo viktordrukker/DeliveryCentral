@@ -18,7 +18,7 @@ import {
 import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
 import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
 
-function makePosition(status: PositionFillStatusValue): ProjectPosition {
+function makePosition(status: PositionFillStatusValue, activePersonId?: string): ProjectPosition {
   return ProjectPosition.create(
     {
       projectId: '11111111-1111-1111-1111-111111111111',
@@ -27,6 +27,7 @@ function makePosition(status: PositionFillStatusValue): ProjectPosition {
       startDate: new Date('2026-01-01T00:00:00.000Z'),
       endDate: new Date('2026-12-31T00:00:00.000Z'),
       fillStatus: PositionFillStatus.from(status),
+      activePersonId,
     },
     PositionId.create(),
   );
@@ -310,5 +311,81 @@ describe('ProjectPosition.transitionFill()', () => {
     const pos = makePosition('OPEN');
     pos.setUpdatedBy('99999999-9999-9999-9999-999999999999');
     expect(pos.updatedByPersonId).toBe('99999999-9999-9999-9999-999999999999');
+  });
+});
+
+describe('ProjectPosition.transitionFill() — person required on fill-side transitions', () => {
+  it('rejects OPEN → PROPOSED without a person', () => {
+    const pos = makePosition('OPEN');
+    expect(() =>
+      pos.transitionFill('PROPOSED', { actorRoles: ['resource_manager'] }),
+    ).toThrow(InvalidPositionFillTransitionError);
+    expect(() =>
+      makePosition('OPEN').transitionFill('PROPOSED', { actorRoles: ['resource_manager'] }),
+    ).toThrow(/requires a person/);
+    // State unchanged after the rejected transition.
+    expect(pos.fillStatus.value).toBe('OPEN');
+    expect(pos.activePersonId).toBeUndefined();
+  });
+
+  it('rejects PROPOSED → BOOKED when no person is active and none is provided', () => {
+    const pos = makePosition('PROPOSED');
+    expect(() =>
+      pos.transitionFill('BOOKED', { actorRoles: ['project_manager'] }),
+    ).toThrow(/requires a person/);
+  });
+
+  it('rejects BOOKED → ONBOARDING and BOOKED → ASSIGNED on a person-less position', () => {
+    expect(() =>
+      makePosition('BOOKED').transitionFill('ONBOARDING', { actorRoles: ['project_manager'] }),
+    ).toThrow(InvalidPositionFillTransitionError);
+    expect(() =>
+      makePosition('BOOKED').transitionFill('ASSIGNED', { actorRoles: ['project_manager'] }),
+    ).toThrow(InvalidPositionFillTransitionError);
+  });
+
+  it('allows PROPOSED → BOOKED when the person is provided in the transition', () => {
+    const pos = makePosition('PROPOSED');
+    pos.transitionFill('BOOKED', {
+      actorRoles: ['project_manager'],
+      personId: '22222222-2222-2222-2222-222222222222',
+    });
+    expect(pos.fillStatus.value).toBe('BOOKED');
+    expect(pos.activePersonId).toBe('22222222-2222-2222-2222-222222222222');
+  });
+
+  it('allows BOOKED → ASSIGNED without personId when a person is already active', () => {
+    const pos = makePosition('BOOKED', '22222222-2222-2222-2222-222222222222');
+    pos.transitionFill('ASSIGNED', { actorRoles: ['project_manager'] });
+    expect(pos.fillStatus.value).toBe('ASSIGNED');
+    expect(pos.activePersonId).toBe('22222222-2222-2222-2222-222222222222');
+  });
+
+  it('allows ON_HOLD → ASSIGNED resume without personId when a person is already active', () => {
+    const pos = makePosition('ON_HOLD', '22222222-2222-2222-2222-222222222222');
+    pos.transitionFill('ASSIGNED', { actorRoles: ['hr_manager'] });
+    expect(pos.fillStatus.value).toBe('ASSIGNED');
+    expect(pos.activePersonId).toBe('22222222-2222-2222-2222-222222222222');
+  });
+
+  it('non-fill transitions (RELEASED, ON_HOLD, PROPOSED → OPEN) never require a person', () => {
+    const released = makePosition('OPEN');
+    released.transitionFill('RELEASED', {
+      actorRoles: ['project_manager'],
+      reason: 'Demand withdrawn',
+    });
+    expect(released.fillStatus.value).toBe('RELEASED');
+
+    const held = makePosition('ASSIGNED', '22222222-2222-2222-2222-222222222222');
+    held.transitionFill('ON_HOLD', { actorRoles: ['hr_manager'], reason: 'Medical leave' });
+    expect(held.fillStatus.value).toBe('ON_HOLD');
+
+    const reopened = makePosition('PROPOSED', '22222222-2222-2222-2222-222222222222');
+    reopened.transitionFill('OPEN', {
+      actorRoles: ['project_manager'],
+      reason: 'Candidate rejected',
+    });
+    expect(reopened.fillStatus.value).toBe('OPEN');
+    expect(reopened.activePersonId).toBeUndefined();
   });
 });

@@ -1544,8 +1544,10 @@ export class WorkforcePlannerService {
 
   /**
    * SoT PR 16b — canonical-only writer for a planner dispatch.
-   * Planner dispatches always start at `PROPOSED`, so the active-window
-   * slots stay unpopulated until the position transitions to BOOKED.
+   * Planner dispatches always start at `PROPOSED` with the dispatched
+   * person recorded as `activePersonId` (a person-less PROPOSED would let
+   * the approval book nobody); the active-window slots stay unpopulated
+   * until the position transitions to BOOKED.
    */
   private async writeCanonicalDispatchPosition(
     tx: Prisma.TransactionClient,
@@ -1568,7 +1570,7 @@ export class WorkforcePlannerService {
       startDate,
       endDate,
       fillStatus,
-      activePersonId: null,
+      activePersonId: dispatch.personId,
       activeAllocationPercent: null,
       activeValidFrom: null,
       activeValidTo: null,
@@ -1588,7 +1590,7 @@ export class WorkforcePlannerService {
         changeType: 'PROPOSED',
         changedByPersonId: actorId,
         changeReason: 'Planner-applied dispatch (canonical write).',
-        newPersonId: null,
+        newPersonId: dispatch.personId,
         newStatus: fillStatus,
         newSnapshot: {
           allocationPercent: dispatch.allocationPercent,
