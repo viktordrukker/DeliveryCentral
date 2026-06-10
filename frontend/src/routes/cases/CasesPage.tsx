@@ -51,11 +51,10 @@ export function CasesPage(): JSX.Element {
 
   if (dsRefreshEnabled) {
     const openCount = state.data.filter((c) => PENDING_STATUSES.has(c.status)).length;
-    // SLA fields are not yet exposed on CaseRecord, so the SLA tiles render
-    // placeholder values until the case list payload includes SLA status
-    // (tracked alongside the deferred CaseInspector follow-up).
-    const breachedCount = 0;
-    const dueTodayCount = 0;
+    // SoT PR 17g — SLA tiles dropped (SLA fields are not yet exposed on
+    // CaseRecord, so the previous Breached/Due-today placeholders surfaced
+    // hard-coded zeros and linked to filters the case list cannot honor).
+    // Re-add when CaseRecord carries slaStatus from the BE.
 
     return (
       <PageContainer testId="cases-page" viewport>
@@ -74,22 +73,6 @@ export function CasesPage(): JSX.Element {
           >
             <span className="kpi-strip__value">{openCount}</span>
             <span className="kpi-strip__label">Open cases</span>
-          </Link>
-          <Link
-            className="kpi-strip__item"
-            to="/cases?slaStatus=BREACHED"
-            style={{ borderLeft: `3px solid ${breachedCount > 0 ? 'var(--color-status-danger)' : 'var(--color-border-strong)'}`, opacity: breachedCount > 0 ? 1 : 0.6 }}
-          >
-            <span className="kpi-strip__value">{breachedCount}</span>
-            <span className="kpi-strip__label">Breached SLA</span>
-          </Link>
-          <Link
-            className="kpi-strip__item"
-            to="/cases?slaStatus=DUE_TODAY"
-            style={{ borderLeft: `3px solid ${dueTodayCount > 0 ? 'var(--color-status-warning)' : 'var(--color-border-strong)'}`, opacity: dueTodayCount > 0 ? 1 : 0.6 }}
-          >
-            <span className="kpi-strip__value">{dueTodayCount}</span>
-            <span className="kpi-strip__label">Due today</span>
           </Link>
         </div>
 

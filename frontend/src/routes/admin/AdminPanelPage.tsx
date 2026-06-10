@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import { useImpersonation } from '@/app/impersonation-context';
 
@@ -74,51 +74,6 @@ const adminTabs: AdminTabDefinition[] = [
     key: 'monitor',
     title: 'Monitoring',
   },
-];
-
-// V2 SoT PR 12 — deep-link card descriptors per tab. Each entry surfaces an
-// existing /admin/* route from the centralized route manifest so users
-// land at /admin and reach every admin sub-page without round-tripping
-// through the sidebar. Routes remain deep-linkable individually.
-interface AdminDeepLink {
-  description: string;
-  label: string;
-  to: string;
-}
-
-const PLATFORM_DEEP_LINKS: AdminDeepLink[] = [
-  { description: 'Lock past periods so timesheets and capitalisation cannot be edited retroactively.', label: 'Manage period locks →', to: '/admin/period-locks' },
-  { description: 'Bill-rate cards and per-(role × grade × skill) hourly rates used by the J2 resolver.', label: 'Manage rate cards →', to: '/admin/rate-cards' },
-  { description: 'Re-run install steps, inspect setup state, and reach diagnostic surfaces.', label: 'Open setup operations →', to: '/admin/setup' },
-  { description: 'Author and publish Help Center articles end users see from the in-app help button.', label: 'Manage help articles →', to: '/admin/help' },
-];
-
-const INTEGRATIONS_DEEP_LINKS: AdminDeepLink[] = [
-  { description: 'Uniform registry of every adapter (Jira, M365, RADIUS, JSM, LDAP, LLM) with status and last-sync.', label: 'Open integrations registry →', to: '/admin/integrations/registry' },
-  { description: 'Configure single sign-on (OIDC) provider, client credentials, and auto-provisioning.', label: 'Configure SSO →', to: '/admin/integrations/sso' },
-  { description: 'Manage outbound webhook subscriptions with HMAC-SHA256 signed delivery.', label: 'Manage webhooks →', to: '/admin/webhooks' },
-  { description: 'Configure BambooHR or Workday HRIS integration for automated employee sync.', label: 'Configure HRIS →', to: '/admin/hris' },
-  { description: 'Read-only health, readiness, and diagnostics visibility.', label: 'Open monitoring view →', to: '/admin/monitoring' },
-];
-
-const ROLES_DEEP_LINKS: AdminDeepLink[] = [
-  { description: 'View and manage ABAC policies per role and resource.', label: 'Manage access policies →', to: '/admin/access-policies' },
-  { description: 'Configure who approves each governed action (activation, budget change, person release).', label: 'Open responsibility matrix →', to: '/admin/responsibility-matrix' },
-  { description: 'Tenant-defined custom roles (Squad Lead, Tribe Lead, IT Service Owner).', label: 'Manage custom roles →', to: '/admin/governance/roles' },
-  { description: 'Admin matrix of 30 V2 journeys × 8 roles — staging soak gate.', label: 'Open V2 soak checklist →', to: '/admin/v2-soak-checklist' },
-  { description: 'Notification channel and template management.', label: 'Manage notifications →', to: '/admin/notifications' },
-];
-
-const DICTS_DEEP_LINKS: AdminDeepLink[] = [
-  { description: 'Per-leave-type accrual, max carry-over, and approval chains.', label: 'Manage leave policies →', to: '/admin/leave-policies' },
-  { description: 'Bulk import people from a CSV file — up to 200+ records at once.', label: 'Open bulk import →', to: '/admin/people/import' },
-  { description: 'Manage external vendors and subcontractors for project staffing.', label: 'Manage vendors →', to: '/admin/vendors' },
-  { description: 'Configure scoring thresholds for the 16-axis project radiator.', label: 'Manage radiator thresholds →', to: '/admin/radiator-thresholds' },
-];
-
-const MONITOR_DEEP_LINKS: AdminDeepLink[] = [
-  { description: 'Read-only health, readiness, and diagnostics visibility.', label: 'Open monitoring view →', to: '/admin/monitoring' },
-  { description: 'Browse the immutable business audit log of governed actions.', label: 'Browse business audit →', to: '/admin/audit' },
 ];
 
 interface AccountFormState {
@@ -242,23 +197,6 @@ interface AdminTabContentProps {
   tab: AdminTabKey;
 }
 
-function AdminDeepLinkCards({ links }: { links: AdminDeepLink[] }): JSX.Element {
-  return (
-    <SectionCard title="More admin surfaces">
-      <div className="admin-panel__deep-links" data-testid="admin-deep-links">
-        {links.map((link) => (
-          <div className="admin-panel__deep-link-row" key={link.to}>
-            <p className="admin-section-card__description">{link.description}</p>
-            <Button as={Link} variant="secondary" to={link.to}>
-              {link.label}
-            </Button>
-          </div>
-        ))}
-      </div>
-    </SectionCard>
-  );
-}
-
 function AdminTabContent({
   accountForm,
   onCreateAccount,
@@ -273,7 +211,6 @@ function AdminTabContent({
           <SectionCard title="Position Workflow">
             <AssignmentWorkflowSettings />
           </SectionCard>
-          <AdminDeepLinkCards links={PLATFORM_DEEP_LINKS} />
         </div>
       );
     case 'roles':
@@ -292,14 +229,12 @@ function AdminTabContent({
           <SectionCard title="Business audit">
             <BusinessAuditAdminContent />
           </SectionCard>
-          <AdminDeepLinkCards links={ROLES_DEEP_LINKS} />
         </div>
       );
     case 'integrations':
       return (
         <div className="admin-panel__cards" data-testid="admin-tab-integrations">
           <IntegrationsAdminContent />
-          <AdminDeepLinkCards links={INTEGRATIONS_DEEP_LINKS} />
         </div>
       );
     case 'dicts':
@@ -311,14 +246,12 @@ function AdminTabContent({
           <SectionCard title="Dictionaries">
             <DictionariesAdminContent />
           </SectionCard>
-          <AdminDeepLinkCards links={DICTS_DEEP_LINKS} />
         </div>
       );
     case 'monitor':
       return (
         <div className="admin-panel__cards" data-testid="admin-tab-monitor">
           <FeatureFlagsAdminContent />
-          <AdminDeepLinkCards links={MONITOR_DEEP_LINKS} />
         </div>
       );
     default:

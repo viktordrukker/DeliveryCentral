@@ -34,30 +34,18 @@ describe('SoT PR 5 — MoneyTab surface', () => {
   });
 });
 
-describe('W2-07 — MoneyTab BE finance strip', () => {
+describe('SoT PR 17g — outer finance strip removed per DS canvas', () => {
   const src = readFileSync('src/routes/projects/tabs/MoneyTab.tsx', 'utf-8');
 
-  it('accepts an optional project prop carrying ProjectDetails', () => {
-    expect(src).toMatch(/project\?:\s*ProjectDetails\s*\|\s*null/);
+  it('does NOT render the outer finance-strip wrapper (MoneyPanel covers EVM signals)', () => {
+    expect(src).not.toMatch(/data-testid="money-tab-finance-strip"/);
+    expect(src).not.toMatch(/data-testid="money-tab-cpi"/);
+    expect(src).not.toMatch(/data-testid="money-tab-budget-status"/);
+    expect(src).not.toMatch(/data-testid="money-tab-open-positions"/);
   });
 
-  it('reads cpi / budgetStatus / openPositionsCount from project', () => {
-    expect(src).toMatch(/project\?\.cpi/);
-    expect(src).toMatch(/project\?\.budgetStatus/);
-    expect(src).toMatch(/project\?\.openPositionsCount/);
-  });
-
-  it('renders the finance strip with three testIds the QA walk can hit', () => {
-    expect(src).toMatch(/data-testid="money-tab-finance-strip"/);
-    expect(src).toMatch(/data-testid="money-tab-cpi"/);
-    expect(src).toMatch(/data-testid="money-tab-budget-status"/);
-    expect(src).toMatch(/data-testid="money-tab-open-positions"/);
-  });
-
-  it('maps budgetStatus enum to StatusBadge tones (no raw hex)', () => {
-    expect(src).toMatch(/GREEN: 'active'/);
-    expect(src).toMatch(/YELLOW: 'warning'/);
-    expect(src).toMatch(/RED: 'danger'/);
-    expect(src).toMatch(/UNSET: 'neutral'/);
+  it('does NOT define duplicate BUDGET_STATUS_TONE / BUDGET_STATUS_LABEL maps', () => {
+    expect(src).not.toMatch(/BUDGET_STATUS_TONE/);
+    expect(src).not.toMatch(/BUDGET_STATUS_LABEL/);
   });
 });

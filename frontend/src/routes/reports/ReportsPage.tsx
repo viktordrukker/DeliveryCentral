@@ -35,9 +35,10 @@ const ExportCentrePage = lazy(() =>
 const UtilizationPage = lazy(() =>
   import('@/routes/reports/UtilizationPage').then((m) => ({ default: m.UtilizationPage })),
 );
-const ReportBuilderPage = lazy(() =>
-  import('@/routes/reports/ReportBuilderPage').then((m) => ({ default: m.ReportBuilderPage })),
-);
+// SoT PR 17g — Report Builder hidden (V2-done criterion #4: half-built features
+// must be hidden). Synthetic preview data, no real API integration; the DS
+// canvas does not bless a builder surface for v2. Page remains reachable via
+// direct URL for engineering work but is removed from the Reports tab strip.
 
 type ReportsSection =
   | 'exceptions'
@@ -45,7 +46,6 @@ type ReportsSection =
   | 'capitalisation'
   | 'export'
   | 'utilization'
-  | 'builder'
   | 'evidence';
 
 interface ReportsTab {
@@ -62,7 +62,6 @@ const TABS: ReportsTab[] = [
   { id: 'capitalisation', label: 'CAPEX', description: 'Capitalisation breakdown', allowedRoles: CAPITALISATION_ROLES },
   { id: 'export', label: 'Export', description: 'XLSX export center', allowedRoles: EXPORT_CENTRE_ROLES },
   { id: 'utilization', label: 'Utilization', description: 'Available vs assigned vs actual hours', allowedRoles: EXCEPTIONS_ROLES },
-  { id: 'builder', label: 'Builder', description: 'Custom report builder + saved templates', allowedRoles: EXCEPTIONS_ROLES },
   { id: 'evidence', label: 'Evidence', description: 'Observed-work records + diagnostics', allowedRoles: EVIDENCE_MANAGEMENT_ROLES },
 ];
 
@@ -167,7 +166,6 @@ export function ReportsPage(): JSX.Element {
           {activeTab === 'capitalisation' ? <CapitalisationPage /> : null}
           {activeTab === 'export' ? <ExportCentrePage /> : null}
           {activeTab === 'utilization' ? <UtilizationPage /> : null}
-          {activeTab === 'builder' ? <ReportBuilderPage /> : null}
           {activeTab === 'evidence' ? (
             <FeatureGuard feature="evidenceManagement">
               <WorkEvidencePage />
