@@ -4,7 +4,7 @@ This document summarizes the platform as it exists in code today, oriented to th
 
 **Roadmap source-of-truth:** [`MASTER_TRACKER.md`](MASTER_TRACKER.md) (live execution tracker) + [`/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md`](/home/drukker/.claude/plans/v2-source-of-truth-2026-06-09.md) (V2 lean-flow SoT — 20-PR shrink plan, supersedes all prior `v2-*` and `lean-*` plans). For the thematic index, [`synthesis-themes.md`](synthesis-themes.md) (24 themes). For doc topology, [`README.md`](README.md). Superseded pre-pivot roadmaps (`NEXT_ITERATION_PLAN.md`, `ULTIMATE_ANALYSIS_AND_PLAN.md`, `master-plan.md`) moved to `docs/archive/2026-05-23/`. Post-C0 strategic roadmap: `/home/drukker/.claude/plans/it-block-lifecycle-coverage-2026-06-02.md` (orthogonal).
 
-_Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE deletion footprint to the implemented column; legacy `ProjectAssignment` / `StaffingRequest` BE tables (PR 16) and FE clients + components (PR 17a/17b) are gone; remaining V2 residuals are PR 19 (soak monitor) and PR 20 (`dsRefresh` C0 flip). Earlier sweep — 2026-06-09 — confirmed `ProjectPosition` as the canonical staffing aggregate, switched accounts to `*@itco.local`, corrected jtbd-matrix counts, and archived superseded v2/lean plans under `/home/drukker/.claude/plans/archive/`)._
+_Last updated: 2026-06-11 (docs truth sweep — §1 module/route inventories aligned to disk (39 BE modules / 26 FE route trees), §§2.5-2.12 stale "❌ not shipped" claims flipped to ✅ for retention cron (D-168), outbox producers (D-142), DB pool (D-143), FK indexes (D-110), hot-path queries (D-144/145/146), locale consumption (D-160/161/163/165), FxRate (D-164), PublicHoliday multi-region (D-163), right-to-erasure redact v1 (D-167), and LLM scaffold — each verified against code. Prior sweep — 2026-06-10 — SoT PR 18 follow-up — adds PR 17a/17b FE deletion footprint to the implemented column; legacy `ProjectAssignment` / `StaffingRequest` BE tables (PR 16) and FE clients + components (PR 17a/17b) are gone; remaining V2 residuals are PR 19 (soak monitor) and PR 20 (`dsRefresh` C0 flip). Earlier sweep — 2026-06-09 — confirmed `ProjectPosition` as the canonical staffing aggregate, switched accounts to `*@itco.local`, corrected jtbd-matrix counts, and archived superseded v2/lean plans under `/home/drukker/.claude/plans/archive/`)._
 
 ---
 
@@ -12,8 +12,8 @@ _Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE dele
 
 ### Runtime
 
-- **Backend:** NestJS modular monolith. 36 modules under `src/modules/`. Global API prefix `/api`. Structured JSON logging. Swagger at `/api/docs`. Operator endpoints: `/api/health`, `/api/readiness`, `/api/health/deep` (12-aggregate probe), `/api/diagnostics`, `/metrics` (HD-11 prom-client).
-- **Frontend:** React + Vite + React Router. 30 route trees under `frontend/src/routes/`. Local entry `http://localhost:5173`. Vite dev proxy forwards `/api` to backend. Production build served from container.
+- **Backend:** NestJS modular monolith. 39 modules under `src/modules/`. Global API prefix `/api`. Structured JSON logging. Swagger at `/api/docs`. Operator endpoints: `/api/health`, `/api/readiness`, `/api/health/deep` (12-aggregate probe), `/api/diagnostics`, `/metrics` (HD-11 prom-client).
+- **Frontend:** React + Vite + React Router. 26 route trees under `frontend/src/routes/`. Local entry `http://localhost:5173`. Vite dev proxy forwards `/api` to backend. Production build served from container.
 - **Database:** PostgreSQL 16. Prisma migrations at `prisma/migrations/`. 104 schema models (was 113 prior to SoT PR 16; 9 legacy staffing tables dropped 2026-06-09). CHECK constraints (DM-4-1: 33 across 14 tables). Hash-chained AuditLog.
 - **Local environment:** Docker-only. PostgreSQL 512MB, backend 2GB (raised from 1GB on 2026-04-18), frontend 1GB. Single seed profile `it-company` (200 people, 40 projects, 5-year history).
 
@@ -23,11 +23,11 @@ _Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE dele
 
 ### Domain modules (backend)
 
-`admin`, `assignment-workload`, `assignments`, `audit-observability`, `auth`, `case-management`, `customization-metadata`, `dashboard`, `exceptions`, `financial-governance`, `health`, `help-center`, `identity-access`, `in-app-notifications`, `integrations`, `integrations-hub`, `leave-requests`, `metadata`, `notifications`, `organization`, `organization-org-chart`, `overtime`, `platform-settings`, `project-registry`, `pulse`, `reports`, `resource-pools`, `setup`, `skills`, `staffing-desk`, `staffing-requests`, `time-work-evidence`, `timesheets`, `undo`, `work-evidence`, `workload`.
+`admin`, `admin-feature-flags`, `audit-observability`, `auth`, `case-management`, `customization-metadata`, `dashboard`, `delivery-manager`, `dm-team-detail`, `exceptions`, `financial-governance`, `health`, `help-center`, `identity-access`, `in-app-notifications`, `integrations`, `integrations-hub`, `leave-requests`, `metadata`, `notifications`, `organization`, `organization-org-chart`, `overtime`, `planner-scenarios`, `platform-settings`, `project-positions`, `project-registry`, `pulse`, `reports`, `resource-pools`, `search`, `setup`, `skills`, `staffing-desk`, `time-work-evidence`, `timesheets`, `undo`, `work-evidence`, `workload`.
 
 ### Frontend route trees
 
-`admin`, `assignments`, `auth`, `cases`, `dashboard`, `exceptions`, `help`, `integrations`, `leave`, `metadata-admin`, `my-time`, `notifications`, `org`, `people`, `projects`, `reports`, `resource-pools`, `settings`, `setup`, `staffing-board`, `staffing-desk`, `staffing-requests`, `teams`, `time-management`, `timesheets`, `work-evidence`, `workload`. Plus `FeatureGuard.tsx`, `ProtectedRoute.tsx`, `RoleGuard.tsx`, `RoutePlaceholderPage.tsx`, `NotFoundPage.tsx`.
+`admin`, `approvals`, `auth`, `cases`, `dashboard`, `exceptions`, `help`, `integrations`, `leave`, `me`, `metadata-admin`, `my-time`, `notifications`, `org`, `people`, `projects`, `reports`, `resource-pools`, `settings`, `setup`, `staffing-desk`, `teams`, `time-management`, `timesheets`, `work-evidence`, `workload`. Plus `FeatureGuard.tsx`, `ProtectedRoute.tsx`, `RoleGuard.tsx`, `RoutePlaceholderPage.tsx`, `NotFoundPage.tsx`.
 
 ---
 
@@ -77,12 +77,12 @@ _Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE dele
 - **Budget-change request approval:** ✅ FE button wired on Project BudgetTab (D-92 — Sprint F-3.1 / PR #32).
 - **Audit log:** hash-chained. AuditLog `payload.email` + `actorDisplayName` are NOT redacted on erasure (D-167 in Cat-1.8 closes; redact-payload v1).
 - **Audit log admin page:** ✅ `BusinessAuditPage` at `/admin/audit` (HR/director/admin). Filterable + paginated stream of business-action audit rows (D-114).
-- **AuditLog retention:** ❌ no policy / no purge cron (D-168 in Cat-1.8).
+- **AuditLog retention:** ✅ retention policy + purge cron shipped (`audit-retention-sweep.service.ts`) — Sprint F-5 (D-168).
 
 ### 2.6 Notifications + nudge + outbox
 
 - **In-app notifications:** shipped. PersonNotificationPreference (HD-8 era).
-- **Outbox seam:** schema landed (HD-7); ❌ producers + publisher zero-wired (D-142 in Cat-1.6).
+- **Outbox seam:** ✅ schema landed (HD-7); producers + publisher wired (`outbox-event-publisher.service.ts`), gated by `flag.outboxEnabled` (ON since Sprint F-6.5 / D-142). Producer contract test in place.
 - **Nudge sweeper:** HD-8 chunk 8.3 — NudgeSweeperService runs per-tick scan (60min), emits `nudge.proposal_acknowledgment_overdue` + `nudge.timesheet_submission_overdue` events through outbox seam.
 - **Approver nudge button:** ✅ `NudgeButton.tsx` + `POST /notifications/nudge` with 24h rate-limit — wired into manager-dashboard approval queue rows (21-09 — Sprint F-3.4 / PR #35).
 - **SLA pre-breach:** HD-10 — assignment SLA sweep at 50%/75% pre-breach + breach.
@@ -94,21 +94,21 @@ _Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE dele
 
 ### 2.8 Performance + caching
 
-- **DB pool:** ❌ `prisma.service.ts:50-58` instantiates with no `connection_limit` (D-143 in Cat-1.6).
-- **FK indexes:** ❌ 12 missing (D-110 in Cat-1.6).
-- **MV bundle:** ❌ not built (T-13 in Cat-2; not needed at bank-IT 200-2,000 person scale).
+- **DB pool:** ✅ env-driven `connection_limit` + `pool_timeout` in `src/shared/persistence/prisma.service.ts` — Sprint F-6.6 (D-143).
+- **FK indexes:** ✅ 16 FK indexes + ratchet guardrail shipped via migration `20260515_d110_fk_indexes` — Sprint F-6.1 (D-110).
+- **MV bundle:** ❌ read-model layer not consumed by app code (T-13 in Cat-2; not needed at bank-IT 200-2,000 person scale). MVs themselves exist in the `read_models` schema (DM-8-8 migration).
 - **Cache headers:** ❌ tenant-shared metadata serves `no-store` (T-13 D-148 in Cat-2).
-- **Hot-path queries:** ❌ 3 unbounded findMany sites + 2 N+1s (D-144/145/146 in Cat-1.6).
+- **Hot-path queries:** ✅ top-3 unbounded findMany caps, PvA per-id loop → batch, workforce-planner via PlatformSettingsService — Sprint F-6.2/6.3/6.4 (D-144/145/146).
 
 ### 2.9 Locale + currency + fiscal
 
-- **Tenant timezone, weekStartDay, currency, fiscalYearStart:** ❌ settings exist but NOT consumed (D-160a/D-161/D-163/D-165 in Cat-1.3 fix).
-- **FxRate model:** ❌ does not exist (D-164 in Cat-1.3).
-- **PublicHoliday:** ❌ defaults to `'AU'` (D-163 in Cat-1.3 makes multi-region).
+- **Tenant timezone, weekStartDay, currency, fiscalYearStart:** ✅ consumed — tenant-tz/week-aware `getWeekStart` (`src/shared/temporal/week-of.ts`, D-161), `Intl` + `date-fns-tz` formatters (`frontend/src/lib/locale.ts`, D-165), FiscalCalendar entities flag-gated (D-160b). Sprint F-7.
+- **FxRate model:** ✅ exists, service flag-gated — Sprint F-7 (D-164).
+- **PublicHoliday:** ✅ multi-region via tenant setting; `'AU'` is only the final fallback (`public-holiday.service.ts`) — Sprint F-7 (D-163).
 
 ### 2.10 GDPR + compliance
 
-- **Right-to-erasure:** ❌ zero `purge|forget|gdpr` hits in `src/` (D-167 in Cat-1.8 ships redact-payload v1).
+- **Right-to-erasure:** ✅ redact-payload v1 shipped (`redact-person-admin.controller.ts`, `setup/domain/redact.ts`) — Sprint F-5 (D-167). Cryptographic forgetting (per-row encryption + key-shred) remains Cat-3 (D-167 v2).
 - **Soft-delete model:** dual `archivedAt` + `deletedAt`; default `archivedAt` as live column (D-96 in Cat-1.8).
 
 ### 2.11 Observability
@@ -119,7 +119,7 @@ _Last updated: 2026-06-10 (SoT PR 18 follow-up sweep — adds PR 17a/17b FE dele
 
 ### 2.12 Local-LLM scaffolding
 
-- ❌ Not yet (Cat-1.2 NEW C1-LLM-SCAFFOLD). Generic OpenAI-compatible client wrapper to be built; no AI features yet.
+- ✅ Generic OpenAI-compatible client wrapper shipped at `src/shared/llm/` (`llm-client.ts`, `openai-compatible-client.ts`, `llm.module.ts`) — Sprint F-4 (NEW C1-LLM-SCAFFOLD). No AI features built on top of it yet.
 
 ---
 

@@ -27,7 +27,7 @@ Listed in `SOFT_DELETE_TRACKED_MODELS` (exported from
 `soft-delete.middleware.ts`). Every model with an `archivedAt` column
 that participates in the standard lifecycle pattern:
 
-- Person, OrgUnit, Project, ProjectAssignment, CaseRecord, CaseType
+- Person, OrgUnit, Project, CaseRecord, CaseType
 - Position, ReportingLine, ResourcePool
 - PersonOrgMembership, PersonResourcePoolMembership
 - ProjectExternalLink, ExternalAccountLink, PersonExternalIdentityLink

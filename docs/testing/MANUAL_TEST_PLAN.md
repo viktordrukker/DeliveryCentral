@@ -2,7 +2,7 @@
 
 **Version:** 1.2
 **Created:** 2026-04-11
-**Updated:** 2026-06-10 (SoT PR 18 — legacy Assignment/StaffingRequest surfaces removed; tests ASN-01..ASN-08 + STF-01..STF-04 struck through pending replacement with ProjectPosition equivalents)
+**Updated:** 2026-06-11 (docs truth sweep — SBD-01..SBD-03 struck through: `/staffing-board` grid retired, redirect-only to `/staffing-desk`; DQ-06 struck through: `/assignments` list page deleted, path now redirects to `/staffing-desk`. Prior update 2026-06-10, SoT PR 18 — legacy Assignment/StaffingRequest surfaces removed; tests ASN-01..ASN-08 + STF-01..STF-04 struck through pending replacement with ProjectPosition equivalents)
 **Seed profile:** `it-company`
 **Target environment:** Docker local (`http://localhost:5173`)
 
@@ -159,9 +159,9 @@ docker compose restart backend
 
 | # | Test | Steps | Expected | Account | P |
 |---|------|-------|----------|---------|---|
-| SBD-01 | Staffing board loads | Navigate to `/staffing-board` | 12-week grid with person swimlanes | RM | P0 |
-| SBD-02 | Drag assignment | Drag an assignment bar to different week | Assignment moved, conflict check runs | RM | P1 |
-| SBD-03 | Overallocation detected | Drag to create >100% allocation | Red highlight on conflicting cell | RM | P1 |
+| ~~SBD-01~~ | ~~Staffing board loads~~ | ~~Navigate to `/staffing-board`~~ | ~~REMOVED — grid retired (LEAN-P2); `/staffing-board` is a redirect-only path to `/staffing-desk?view=timeline`.~~ | ~~RM~~ | ~~P0~~ |
+| ~~SBD-02~~ | ~~Drag assignment~~ | ~~Drag an assignment bar to different week~~ | ~~REMOVED — drag-and-drop placement now lives on StaffingDesk (`@dnd-kit/core`).~~ | ~~RM~~ | ~~P1~~ |
+| ~~SBD-03~~ | ~~Overallocation detected~~ | ~~Drag to create >100% allocation~~ | ~~REMOVED — overallocation now surfaced by StaffingDesk (server computes per-person allocation totals; >100% flagged as overallocated).~~ | ~~RM~~ | ~~P1~~ |
 
 ### 3.5 Workload
 
@@ -398,7 +398,7 @@ docker compose restart backend
 | DQ-03 | Dates are formatted | Check all date displays | Consistent format (e.g., "Apr 8, 2026") not ISO strings | P1 |
 | DQ-04 | KPI values match data | Compare dashboard KPIs to list page counts | Numbers should match (e.g., Active Projects KPI = project list count) | P0 |
 | DQ-05 | Seed data integrity | Check people count in directory | 200 people from it-company seed | P0 |
-| DQ-06 | Assignment counts match | Check main dashboard assignment KPI vs `/assignments` list | Numbers should match | P1 |
+| ~~DQ-06~~ | ~~Assignment counts match~~ | ~~Check main dashboard assignment KPI vs `/assignments` list~~ | ~~REMOVED — `/assignments` list page deleted (PR 17a); path now redirects to `/staffing-desk?view=table`; position counts surface there.~~ | ~~P1~~ |
 | DQ-07 | Timesheet data present | Navigate to `/timesheets` as Ethan Brooks | Seed timesheet entries visible for recent weeks | P0 |
 | DQ-08 | Pulse data present | Navigate to Employee Dashboard as Ethan Brooks | Pulse history shows 12 weeks of mood data | P0 |
 | DQ-09 | Skills data present | Navigate to person detail for Ethan Brooks | Skills section shows TypeScript, React, NestJS, etc. | P1 |

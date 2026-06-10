@@ -20,8 +20,8 @@ stops it), a **pass criterion**, and a **blast-radius cap** (a safety
 rail — if any observable OUTSIDE the named defense is breached, the
 drill itself is a failure).
 
-### Scenario A — Rogue migration drops ProjectAssignment
-- **Setup:** In a branch, write a migration with `DROP TABLE "ProjectAssignment";`. Attempt to apply via `npm run db:migrate:safe:dev`.
+### Scenario A — Rogue migration drops ProjectPosition
+- **Setup:** In a branch, write a migration with `DROP TABLE "ProjectPosition";`. Attempt to apply via `npm run db:migrate:safe:dev`. (Was `ProjectAssignment` — that table was legitimately dropped 2026-06-09 in SoT PR 16; `ProjectPosition` is the canonical staffing aggregate.)
 - **Defense:** DM-R-21 DDL event-trigger lockout; even if migration is attempted, the `ALTER/DROP` runs as `app_migrator`, but the drop is logged in `ddl_audit`. Also: DM-R-11 round-trip would catch the destructive migration in CI on push-to-main.
 - **Pass criterion:** (a) `db-migrate-safe.sh` refuses with DM-R-3 snapshot first, (b) `ddl_audit` logs the drop attempt, (c) operator uses `db-last-good.sh` to recover within 15 min.
 - **Blast-radius cap:** dev DB only. Never run against staging or prod.
