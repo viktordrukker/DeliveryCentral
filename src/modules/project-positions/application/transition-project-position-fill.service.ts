@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import type { ProjectPositionFillChangeType } from '@prisma/client';
 
 import { ProjectPosition } from '../domain/entities/project-position.entity';
 import { ProjectPositionFillChangedEvent } from '../domain/events/project-position-fill-changed.event';
@@ -6,6 +7,7 @@ import { ProjectPositionRepositoryPort } from '../domain/repositories/project-po
 import { PositionId } from '../domain/value-objects/position-id';
 import type { PositionFillStatusValue } from '../domain/value-objects/position-fill-status';
 import type { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 export interface TransitionProjectPositionFillCommand {
   positionId: string;
@@ -20,12 +22,27 @@ export interface TransitionProjectPositionFillCommand {
   validTo?: string;
 }
 
+/** Maps the destination fill status onto the ledger's change-type vocabulary. */
+const FILL_CHANGE_TYPE_BY_STATUS: Record<PositionFillStatusValue, ProjectPositionFillChangeType> = {
+  DRAFT: 'DRAFTED',
+  OPEN: 'OPENED',
+  PROPOSED: 'PROPOSED',
+  BOOKED: 'BOOKED',
+  ONBOARDING: 'ONBOARDED',
+  ASSIGNED: 'ASSIGNED',
+  ON_HOLD: 'HELD',
+  RELEASED: 'RELEASED',
+};
+
 /**
  * S2-3 — drive a `ProjectPosition` through its fill-status lifecycle.
  *
  * Delegates the state-machine validation + entity mutation to
  * `ProjectPosition.transitionFill()` (S2-2 entity helper). Persists the
- * resulting state via the repository port. Emits a
+ * resulting state via the repository port and writes one
+ * `ProjectPositionFillHistory` ledger row per transition inside the same
+ * transaction, so `/history`, `/forensics`, time-to-fill, and SLA readers
+ * see every canonical transition. Emits a
  * `ProjectPositionFillChangedEvent` for the S2-7 outbox + notification path.
  *
  * Mirrors the shape of the legacy `TransitionProjectAssignmentService` —
@@ -38,6 +55,7 @@ export class TransitionProjectPositionFillService {
 
   public constructor(
     private readonly repository: ProjectPositionRepositoryPort,
+    private readonly prisma: PrismaService,
     private readonly eventEmitter?: { emit(event: ProjectPositionFillChangedEvent): void | Promise<void> },
   ) {}
 
@@ -48,6 +66,7 @@ export class TransitionProjectPositionFillService {
     }
 
     const fromStatus = position.fillStatus.value;
+    const fromPersonId = position.activePersonId;
 
     position.transitionFill(command.toStatus, {
       actorRoles: command.actorRoles,
@@ -60,7 +79,23 @@ export class TransitionProjectPositionFillService {
     });
     position.setUpdatedBy(command.actorId);
 
-    await this.repository.save(position);
+    // Status update + ledger row commit (or roll back) together so the
+    // fill-history audit trail can never drift from the position's state.
+    await this.prisma.$transaction(async (tx) => {
+      await this.repository.save(position, tx);
+      await tx.projectPositionFillHistory.create({
+        data: {
+          positionId: position.positionId.value,
+          changeType: FILL_CHANGE_TYPE_BY_STATUS[command.toStatus],
+          changedByPersonId: command.actorId,
+          changeReason: command.reason ?? null,
+          previousStatus: fromStatus,
+          newStatus: command.toStatus,
+          previousPersonId: fromPersonId ?? null,
+          newPersonId: position.activePersonId ?? null,
+        },
+      });
+    });
 
     if (this.eventEmitter) {
       const event: ProjectPositionFillChangedEvent = {
