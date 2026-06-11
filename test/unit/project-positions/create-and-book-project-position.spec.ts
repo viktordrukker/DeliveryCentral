@@ -46,6 +46,9 @@ function buildHarness(options: {
 
   const prisma = {
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(txObject),
+    // Σ-allocation guard reads the person's other positions; empty = no
+    // overlapping allocation, guard always passes in these scenarios.
+    projectPosition: { findMany: async () => [] },
   } as unknown as PrismaService;
 
   const referenceRepository: ProjectPositionReferenceRepositoryPort = {
@@ -75,6 +78,7 @@ function buildHarness(options: {
 function baseCommand() {
   return {
     actorId: ACTOR_ID,
+    actorRoles: ['project_manager'] as const,
     projectId: PROJECT_ID,
     personId: PERSON_ID,
     role: 'Engineer',

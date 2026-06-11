@@ -1,4 +1,4 @@
-import { httpGet, httpPost } from './http-client';
+import { ApiError, httpGet, httpPost } from './http-client';
 
 /**
  * LEAN-P2-1 — canonical frontend client for the lean staffing aggregate.
@@ -111,6 +111,16 @@ export interface TransitionProjectPositionFillRequest {
   allocationPercent?: number;
   validFrom?: string;
   validTo?: string;
+  // PR-14 (Decision D) — explicit Σ-allocation override. Only honoured for
+  // RM/DM/admin actors; recorded on the fill-history row.
+  allowOverallocation?: boolean;
+}
+
+// PR-14 (Decision D) — detects the backend Σ-allocation guard rejection
+// (409 OVERALLOCATION from PositionDomainExceptionFilter) so booking surfaces
+// can offer the RM/DM "Override and book anyway" retry affordance.
+export function isOverallocationError(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && /over-allocation/i.test(err.message);
 }
 
 export interface BenchPerson {
@@ -213,6 +223,9 @@ export interface CreateAndBookPositionRequest {
   startDate: string;
   endDate: string;
   note?: string;
+  // PR-14 (Decision D) — explicit Σ-allocation override. Only honoured for
+  // RM/DM/admin actors; recorded on both fill-history rows.
+  allowOverallocation?: boolean;
 }
 
 export async function createAndBookPosition(

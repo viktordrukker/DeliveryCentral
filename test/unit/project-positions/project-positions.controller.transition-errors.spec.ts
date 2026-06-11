@@ -113,6 +113,36 @@ describe('ProjectPositionsController transition error mapping', () => {
     });
   });
 
+  it('maps a Σ-allocation rejection to 409 with the domain message (PR-14 Decision D)', async () => {
+    const message =
+      'Over-allocation: person p-1 already has 80% active allocation in the overlapping window; ' +
+      'this 50% fill would take them to 130%. RM/DM/admin can retry with allowOverallocation to override.';
+    transitionService.execute.mockRejectedValueOnce(
+      new InvalidPositionFillTransitionError(message, 'OVERALLOCATION'),
+    );
+
+    const response = await postTransition().expect(409);
+    expect(response.body).toEqual({
+      error: 'InvalidPositionFillTransitionError',
+      message,
+      statusCode: 409,
+    });
+  });
+
+  it('maps an inverted fill window to 400 with the domain message (PR-14 Decision D)', async () => {
+    const message = 'validFrom (2026-09-30) must not be after validTo (2026-07-01).';
+    transitionService.execute.mockRejectedValueOnce(
+      new InvalidPositionFillTransitionError(message, 'INVALID_DATES'),
+    );
+
+    const response = await postTransition().expect(400);
+    expect(response.body).toEqual({
+      error: 'InvalidPositionFillTransitionError',
+      message,
+      statusCode: 400,
+    });
+  });
+
   it('maps an optimistic-concurrency version conflict to 409 with the domain message', async () => {
     const message = `Optimistic concurrency conflict on ProjectPosition ${POSITION_ID} (expected version 3).`;
     transitionService.execute.mockRejectedValueOnce(
