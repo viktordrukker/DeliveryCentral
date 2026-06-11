@@ -115,10 +115,16 @@ export function StaffingDeskPage(): JSX.Element {
   // and other callers behave consistently.
   const [searchParams, setSearchParams] = useSearchParams();
   const createPositionOpen = searchParams.get('openCreatePosition') === 'true';
+  // PR-11 — bench candidate threading: the bench "Propose to position" CTA
+  // (and the legacy /staffing-requests/new redirect) forward
+  // `?candidatePersonId=<id>`. Arm the drawer with it so the candidate is
+  // pinned in the header and auto-proposed after create.
+  const candidatePersonId = searchParams.get('candidatePersonId') ?? undefined;
   const closeCreatePosition = useCallback(() => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('openCreatePosition');
+      next.delete('candidatePersonId');
       return next;
     }, { replace: true });
   }, [setSearchParams]);
@@ -339,6 +345,7 @@ export function StaffingDeskPage(): JSX.Element {
       <CreatePositionDrawer
         open={createPositionOpen}
         initialProjectId={filters.project || filters.projectId || undefined}
+        candidatePersonId={candidatePersonId}
         onClose={closeCreatePosition}
         onCreated={() => {
           closeCreatePosition();

@@ -11,6 +11,28 @@ vi.mock('@/lib/api/people-bench', () => ({
   fetchEnrichedBench: () => fetchEnrichedBench(),
 }));
 
+// PR-11 — the embedded CreatePositionDrawer (single-person "Suggest position")
+// pulls auth + project directory + skill catalog when it mounts.
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({
+    principal: { personId: 'person-pm-1', roles: ['project_manager'] },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+vi.mock('@/lib/api/project-registry', () => ({
+  fetchProjectDirectory: () =>
+    Promise.resolve({
+      items: [
+        { id: 'prj-1', name: 'Atlas', projectCode: 'PRJ-1', status: 'ACTIVE', clientName: null },
+      ],
+      totalCount: 1,
+    }),
+}));
+vi.mock('@/lib/api/skills', () => ({
+  fetchSkills: () => Promise.resolve([]),
+}));
+
 const sampleRows: BenchEnrichedRowDto[] = [
   {
     personId: 'p1',
@@ -373,5 +395,35 @@ describe('BenchEnrichedPanel — SoT PR 17h-bench DS canvas filter+bulk bars', (
     );
     fireEvent.click(screen.getByTestId('bench-select-all'));
     await waitFor(() => expect(screen.queryByTestId('bench-bulk-bar')).not.toBeInTheDocument());
+  });
+});
+
+describe('BenchEnrichedPanel — PR-11 bench candidate threading', () => {
+  it('single selection + Suggest position opens the create drawer armed with the candidate', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('bench-select-p2'));
+    await waitFor(() => expect(screen.getByTestId('bench-bulk-bar')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('bench-bulk-suggest'));
+    await waitFor(() =>
+      expect(screen.getByTestId('create-position-drawer')).toBeInTheDocument(),
+    );
+    const pin = screen.getByTestId('create-position-candidate-pin');
+    expect(pin.textContent).toContain('Creating position for');
+    expect(pin.textContent).toContain('Grace Hopper');
+  });
+
+  it('multi selection keeps the bulk Suggest position stub (no drawer)', async () => {
+    fetchEnrichedBench.mockResolvedValue(sampleRows);
+    renderRoute(<BenchEnrichedPanel />);
+    await waitFor(() => expect(screen.getByTestId('bench-enriched-list')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('bench-select-p2'));
+    fireEvent.click(screen.getByTestId('bench-select-p1'));
+    await waitFor(() =>
+      expect(screen.getByTestId('bench-bulk-count').textContent).toBe('2 selected'),
+    );
+    fireEvent.click(screen.getByTestId('bench-bulk-suggest'));
+    expect(screen.queryByTestId('create-position-drawer')).not.toBeInTheDocument();
   });
 });
