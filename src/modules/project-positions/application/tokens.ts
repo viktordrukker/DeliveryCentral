@@ -1,2 +1,5 @@
 /** DI tokens for the project-positions module. */
 export const PROJECT_POSITION_REPOSITORY = Symbol('PROJECT_POSITION_REPOSITORY');
+export const PROJECT_POSITION_REFERENCE_REPOSITORY = Symbol(
+  'PROJECT_POSITION_REFERENCE_REPOSITORY',
+);

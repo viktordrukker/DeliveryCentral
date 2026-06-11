@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { TransactionContext } from '@src/shared/domain/transaction-context';
 
@@ -67,6 +72,31 @@ export class CreateProjectPositionService {
       const projectExists = await this.referenceRepository.projectExists(command.projectId);
       if (!projectExists) {
         throw new NotFoundException('Project does not exist.');
+      }
+      const projectIsActive = await this.referenceRepository.projectIsActive(command.projectId);
+      if (!projectIsActive) {
+        // 409, matching the Wave-1 filter convention: a state conflict on the
+        // referenced entity, not a malformed request.
+        throw new ConflictException(
+          'Project is closed or archived — positions cannot be created on it.',
+        );
+      }
+      // Only validate `requestedByPersonId` when explicitly provided: the
+      // actorId fallback may be a userId (principal without a personId) and
+      // is not guaranteed to be a Person reference.
+      if (command.requestedByPersonId) {
+        const personExists = await this.referenceRepository.personExists(
+          command.requestedByPersonId,
+        );
+        if (!personExists) {
+          throw new NotFoundException('Requested-by person does not exist.');
+        }
+        const personIsActive = await this.referenceRepository.personIsActive(
+          command.requestedByPersonId,
+        );
+        if (!personIsActive) {
+          throw new ConflictException('Requested-by person is not an active employee.');
+        }
       }
     }
 

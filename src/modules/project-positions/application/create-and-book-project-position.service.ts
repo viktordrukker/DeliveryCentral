@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -7,6 +7,7 @@ import { ProjectPosition } from '../domain/entities/project-position.entity';
 import { ProjectPositionFillChangedEvent } from '../domain/events/project-position-fill-changed.event';
 import { ProjectPositionRepositoryPort } from '../domain/repositories/project-position-repository.port';
 import { CreateProjectPositionService } from './create-project-position.service';
+import { ProjectPositionReferenceRepositoryPort } from './ports/project-position-reference.repository.port';
 
 export interface CreateAndBookProjectPositionCommand {
   actorId: string;
@@ -50,24 +51,24 @@ export class CreateAndBookProjectPositionService {
     private readonly repository: ProjectPositionRepositoryPort,
     private readonly prisma: PrismaService,
     private readonly createService: CreateProjectPositionService,
+    private readonly referenceRepository: ProjectPositionReferenceRepositoryPort,
     private readonly eventEmitter?: { emit(event: ProjectPositionFillChangedEvent): void | Promise<void> },
   ) {}
 
   public async execute(command: CreateAndBookProjectPositionCommand): Promise<ProjectPosition> {
-    const project = await this.prisma.project.findUnique({
-      where: { id: command.projectId },
-      select: { id: true },
-    });
-    if (!project) {
-      throw new NotFoundException('Project does not exist.');
-    }
-
-    const person = await this.prisma.person.findUnique({
-      where: { id: command.personId },
-      select: { id: true },
-    });
-    if (!person) {
+    // Only the booked person is validated here — project existence + active
+    // status are guarded by `CreateProjectPositionService` (same adapter)
+    // inside the transaction; a rejected project rolls the unit back with
+    // nothing written.
+    const personExists = await this.referenceRepository.personExists(command.personId);
+    if (!personExists) {
       throw new NotFoundException('Person does not exist.');
+    }
+    const personIsActive = await this.referenceRepository.personIsActive(command.personId);
+    if (!personIsActive) {
+      throw new ConflictException(
+        'Person is not an active employee — cannot book them onto a position.',
+      );
     }
 
     const validFrom = new Date(command.startDate);
@@ -83,7 +84,9 @@ export class CreateAndBookProjectPositionService {
           startDate: command.startDate,
           endDate: command.endDate,
           openImmediately: true,
-          requestedByPersonId: command.actorId,
+          // requestedByPersonId intentionally omitted — the create service
+          // defaults it to actorId, and an explicit pass would subject the
+          // actor (possibly a userId principal) to Person reference checks.
         },
         tx,
       );
