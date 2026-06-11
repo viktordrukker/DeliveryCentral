@@ -1,5 +1,6 @@
 import { INestApplication, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 
 import { PublicIdService } from '@src/infrastructure/public-id';
@@ -12,9 +13,16 @@ import { ListProjectPositionsService } from '@src/modules/project-positions/appl
 import { PositionForensicsService } from '@src/modules/project-positions/application/position-forensics.service';
 import { SuggestFillsService } from '@src/modules/project-positions/application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
+import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
+import type { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import { OptimisticConcurrencyConflictError } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
-import { InvalidPositionFillTransitionError } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
+import {
+  InvalidPositionFillTransitionError,
+  PositionFillStatus,
+} from '@src/modules/project-positions/domain/value-objects/position-fill-status';
+import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
 import { ProjectPositionsController } from '@src/modules/project-positions/presentation/project-positions.controller';
+import type { PrismaService } from '@src/shared/persistence/prisma.service';
 
 const POSITION_ID = '0b9f7a3e-1d2c-4e5f-8a6b-7c8d9e0f1a2b';
 
@@ -126,5 +134,85 @@ describe('ProjectPositionsController transition error mapping', () => {
 
     const response = await postTransition().expect(404);
     expect(response.body.message).toBe(`ProjectPosition ${POSITION_ID} not found.`);
+  });
+});
+
+/**
+ * RBAC alignment (Decision B) end-to-end check through the REAL transition
+ * service: the gate now lets resource_manager reach the endpoint, and an RM
+ * driving an edge the entity matrix forbids (PROPOSED → BOOKED is
+ * PM/DM/director/admin) must get a clean 403 ROLE_FORBIDDEN — not the
+ * pre-Wave-1 opaque 500.
+ */
+describe('ProjectPositionsController transition — RM forbidden edge → 403', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    const position = ProjectPosition.create(
+      {
+        projectId: 'proj-1',
+        role: 'Engineer',
+        requiredAllocationPercent: 100,
+        startDate: new Date('2026-06-01'),
+        endDate: new Date('2026-12-31'),
+        fillStatus: PositionFillStatus.proposed(),
+        activePersonId: 'person-1',
+        version: 2,
+      },
+      PositionId.from(POSITION_ID),
+    );
+    const repository = {
+      findByPositionId: async () => position,
+      save: async () => undefined,
+    } as unknown as ProjectPositionRepositoryPort;
+    const prisma = {
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ projectPositionFillHistory: { create: async () => ({ id: 'hist-1' }) } }),
+    } as unknown as PrismaService;
+
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProjectPositionsController],
+      providers: [
+        { provide: CreateProjectPositionService, useValue: {} },
+        {
+          provide: TransitionProjectPositionFillService,
+          useValue: new TransitionProjectPositionFillService(repository, prisma),
+        },
+        { provide: ListProjectPositionsService, useValue: {} },
+        { provide: GetProjectPositionByIdService, useValue: {} },
+        { provide: SuggestFillsService, useValue: {} },
+        { provide: PositionForensicsService, useValue: {} },
+        { provide: ListPositionHistoryService, useValue: {} },
+        { provide: BulkReassignPositionsService, useValue: {} },
+        {
+          provide: PublicIdService,
+          useValue: { looksLikeUuid: () => true, isValidShape: () => true },
+        },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    app.use((req: Request & { principal?: unknown }, _res: Response, next: NextFunction) => {
+      req.principal = { personId: 'rm-person-1', roles: ['resource_manager'] };
+      next();
+    });
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('returns 403 (not 500) when an RM attempts PROPOSED → BOOKED', async () => {
+    const response = await request(app.getHttpServer())
+      .post(`/project-positions/${POSITION_ID}/transition`)
+      .send({ toStatus: 'BOOKED' })
+      .expect(403);
+
+    expect(response.body).toEqual({
+      error: 'InvalidPositionFillTransitionError',
+      message: `Actor roles [resource_manager] cannot transition position from PROPOSED to BOOKED.`,
+      statusCode: 403,
+    });
   });
 });

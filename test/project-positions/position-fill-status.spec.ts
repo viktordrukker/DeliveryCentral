@@ -129,6 +129,7 @@ describe('Transition role gating', () => {
   it.each([
     ['OPEN', 'PROPOSED', 'project_manager'], // Only RM/DM can propose
     ['OPEN', 'PROPOSED', 'hr_manager'],
+    ['PROPOSED', 'BOOKED', 'hr_manager'], // HR may hold (HOLD_ROLES) but never book
     ['DRAFT', 'OPEN', 'employee'],
     ['ASSIGNED', 'RELEASED', 'employee'],
   ] satisfies ReadonlyArray<[PositionFillStatusValue, PositionFillStatusValue, PlatformRole]>)(
