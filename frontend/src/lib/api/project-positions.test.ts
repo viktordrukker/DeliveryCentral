@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as httpClient from './http-client';
 import {
   checkBench,
+  createAndBookPosition,
   createProjectPosition,
   fetchPersonSuggestedPositions,
   fetchPositionForensics,
@@ -161,6 +162,53 @@ describe('createProjectPosition', () => {
       openImmediately: true,
     });
     expect(result).toEqual(position);
+  });
+});
+
+describe('createAndBookPosition', () => {
+  beforeEach(() => {
+    httpPost.mockReset();
+  });
+
+  it('POSTs the atomic create-and-book payload to /project-positions/create-and-book', async () => {
+    const position = buildPosition({ fillStatus: 'BOOKED', activePersonId: 'p-2' });
+    httpPost.mockResolvedValueOnce(position);
+
+    const result = await createAndBookPosition({
+      projectId: 'proj-1',
+      personId: 'p-2',
+      role: 'Senior Engineer',
+      allocationPercent: 80,
+      startDate: '2026-06-01',
+      endDate: '2026-12-31',
+      note: 'direct booking',
+    });
+
+    expect(httpPost).toHaveBeenCalledWith('/project-positions/create-and-book', {
+      projectId: 'proj-1',
+      personId: 'p-2',
+      role: 'Senior Engineer',
+      allocationPercent: 80,
+      startDate: '2026-06-01',
+      endDate: '2026-12-31',
+      note: 'direct booking',
+    });
+    expect(result).toEqual(position);
+  });
+
+  it('propagates errors so callers can report the position was NOT created', async () => {
+    httpPost.mockRejectedValueOnce(new Error('Person does not exist.'));
+
+    await expect(
+      createAndBookPosition({
+        projectId: 'proj-1',
+        personId: 'p-404',
+        role: 'Engineer',
+        allocationPercent: 100,
+        startDate: '2026-06-01',
+        endDate: '2026-06-01',
+      }),
+    ).rejects.toThrow('Person does not exist.');
   });
 });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
-import { createProjectPosition, transitionProjectPositionFill, type ProjectPosition } from '@/lib/api/project-positions';
+import { createAndBookPosition, type ProjectPosition } from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
 import { DatePicker, FormField, FormModal, Input, Select, Table, type Column } from '@/components/ds';
@@ -69,36 +69,32 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
 
     setError(null);
     try {
-      // SoT PR 17 — per-item createProjectPosition (OPEN) →
-      // transitionProjectPositionFill (BOOKED) fan-out. Successes/failures
-      // aggregated into a local response envelope so the consumer
+      // Per-item atomic createAndBookPosition fan-out. Each row either
+      // creates AND books in one backend transaction, or creates nothing —
+      // a failed row leaves no orphaned OPEN position behind. Successes/
+      // failures aggregated into a local response envelope so the consumer
       // (PlannedVsActualPage) can show toast counts.
       const createdPositions: ProjectPosition[] = [];
       const failedItems: BatchPositionCreationFailure[] = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         try {
-          const position = await createProjectPosition({
+          const booked = await createAndBookPosition({
             projectId: item.projectId,
+            personId: item.personId,
             role: effectiveRole.trim(),
-            requiredAllocationPercent: allocationPercent,
+            allocationPercent,
             startDate,
             endDate: startDate,
-            openImmediately: true,
-            requestedByPersonId: actorId,
-          });
-          const booked = await transitionProjectPositionFill(position.id, {
-            toStatus: 'BOOKED',
-            personId: item.personId,
-            allocationPercent,
-            validFrom: startDate,
           });
           createdPositions.push(booked);
         } catch (rowErr) {
           failedItems.push({
             code: 'CREATE_FAILED',
             index: i,
-            message: rowErr instanceof Error ? rowErr.message : 'Failed to create assignment.',
+            message: rowErr instanceof Error
+              ? `Position not created: ${rowErr.message}`
+              : 'Position not created.',
             personId: item.personId,
             projectId: item.projectId,
             role: effectiveRole.trim(),
@@ -136,6 +132,7 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
       submitDisabled={submitDisabled}
       dirty={isDirty}
       size="md"
+      testId="batch-assignment-confirm"
     >
       <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 6 }}>
         <Table

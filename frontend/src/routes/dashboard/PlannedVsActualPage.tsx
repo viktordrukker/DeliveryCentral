@@ -853,7 +853,7 @@ export function PlannedVsActualPage(): JSX.Element {
       <CreateAssignmentModal
         open={assignModalPreFill !== null}
         preFill={assignModalPreFill}
-        onSuccess={() => { setAssignModalPreFill(null); toast.success('Position created — the time variance view will refresh after approval'); refetch(); }}
+        onSuccess={() => { setAssignModalPreFill(null); toast.success('Position created and booked'); refetch(); }}
         onCancel={() => setAssignModalPreFill(null)}
       />
       <BatchAssignmentConfirmModal
@@ -861,8 +861,8 @@ export function PlannedVsActualPage(): JSX.Element {
         items={batchItems}
         onSuccess={(result) => {
           setBatchItems([]);
-          toast.success(`Created ${result.createdCount} of ${result.totalCount} assignments`);
-          if (result.failedCount > 0) toast.warning(`${result.failedCount} failed — check for conflicts`);
+          toast.success(`Created and booked ${result.createdCount} of ${result.totalCount} positions`);
+          if (result.failedCount > 0) toast.warning(`${result.failedCount} not created — check for conflicts`);
           refetch();
         }}
         onCancel={() => setBatchItems([])}

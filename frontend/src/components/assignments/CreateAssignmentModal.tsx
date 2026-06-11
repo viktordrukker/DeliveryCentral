@@ -3,8 +3,8 @@ import { FormEvent, useState } from 'react';
 import { useAuth } from '@/app/auth-context';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
+  createAndBookPosition,
   createProjectPosition,
-  transitionProjectPositionFill,
   type ProjectPosition,
 } from '@/lib/api/project-positions';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
@@ -125,28 +125,29 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
     setError(null);
 
     try {
-      // LEAN-P2 exit-gate: legacy POST /assignments replaced with
-      // createProjectPosition (OPEN) → transitionProjectPositionFill(BOOKED).
-      // Drafts skip the transition and leave the position in DRAFT.
+      // Atomic create-and-book: one POST creates the position and books the
+      // person inside a single backend transaction — no orphaned OPEN
+      // position when booking fails. Drafts keep the plain create and stay
+      // in DRAFT.
       const req = buildRequest(asDraft, forceOverlap);
-      const position = await createProjectPosition({
-        projectId: req.projectId,
-        role: req.staffingRole,
-        requiredAllocationPercent: req.allocationPercent,
-        startDate: req.startDate,
-        endDate: req.endDate ?? req.startDate,
-        openImmediately: !asDraft,
-        requestedByPersonId: req.actorId,
-      });
       const finalPosition = asDraft
-        ? position
-        : await transitionProjectPositionFill(position.id, {
-            toStatus: 'BOOKED',
+        ? await createProjectPosition({
+            projectId: req.projectId,
+            role: req.staffingRole,
+            requiredAllocationPercent: req.allocationPercent,
+            startDate: req.startDate,
+            endDate: req.endDate ?? req.startDate,
+            openImmediately: false,
+            requestedByPersonId: req.actorId,
+          })
+        : await createAndBookPosition({
+            projectId: req.projectId,
             personId: req.personId,
+            role: req.staffingRole,
             allocationPercent: req.allocationPercent,
-            validFrom: req.startDate,
-            ...(req.endDate ? { validTo: req.endDate } : {}),
-            ...(req.note ? { reason: req.note } : {}),
+            startDate: req.startDate,
+            endDate: req.endDate ?? req.startDate,
+            ...(req.note ? { note: req.note } : {}),
           });
       setStaffingRole('');
       setCustomRole('');
@@ -199,7 +200,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
                 {isSubmitting ? 'Saving…' : 'Save Draft'}
               </Button>
               <Button variant="primary" disabled={submitDisabled} onClick={() => void handleSubmit(undefined, false)} data-autofocus="true">
-                {isSubmitting ? 'Creating…' : inactiveOverride ? 'Override & Create' : 'Create & Request'}
+                {isSubmitting ? 'Creating…' : inactiveOverride ? 'Override & Create' : 'Create & Book'}
               </Button>
             </>
           )

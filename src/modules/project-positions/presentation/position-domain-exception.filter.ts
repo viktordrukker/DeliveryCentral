@@ -10,6 +10,7 @@ const STATUS_BY_TRANSITION_ERROR_KIND: Record<PositionFillTransitionErrorKind, H
   MISSING_EDGE: HttpStatus.CONFLICT, // state conflict — edge does not exist from the current status
   ROLE_FORBIDDEN: HttpStatus.FORBIDDEN,
   MISSING_REASON: HttpStatus.BAD_REQUEST,
+  MISSING_PERSON: HttpStatus.BAD_REQUEST,
 };
 
 /**

@@ -33,6 +33,7 @@ import {
   BenchCheckRequestDto,
   BulkReassignPositionsRequestDto,
   BulkReassignPositionsResponseDto,
+  CreateAndBookProjectPositionRequestDto,
   CreateProjectPositionRequestDto,
   ListProjectPositionsQueryDto,
   TransitionProjectPositionFillRequestDto,
@@ -46,6 +47,7 @@ import { BulkReassignPositionsService } from '../application/bulk-reassign-posit
 import { PositionCandidatesResponseDto } from '../application/contracts/position-candidate.dto';
 import { PersonSuggestedPositionsResponseDto } from '../application/contracts/person-suggested-position.dto';
 import { BenchEnrichedRowDto } from '../application/contracts/bench-enriched.dto';
+import { CreateAndBookProjectPositionService } from '../application/create-and-book-project-position.service';
 import { CreateProjectPositionService } from '../application/create-project-position.service';
 import { GetProjectPositionByIdService } from '../application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from '../application/list-bench-people.service';
@@ -86,6 +88,7 @@ interface RequestWithPrincipal extends Request {
 export class ProjectPositionsController {
   public constructor(
     private readonly createService: CreateProjectPositionService,
+    private readonly createAndBookService: CreateAndBookProjectPositionService,
     private readonly transitionService: TransitionProjectPositionFillService,
     private readonly listService: ListProjectPositionsService,
     private readonly getService: GetProjectPositionByIdService,
@@ -196,6 +199,35 @@ export class ProjectPositionsController {
       summary: body.summary,
       requestedByPersonId: body.requestedByPersonId,
       openImmediately: body.openImmediately,
+    });
+    return ProjectPositionResponseDto.from(position);
+  }
+
+  @Post('create-and-book')
+  @ApiOperation({
+    summary:
+      'Atomic create-and-book — creates a position and drives it OPEN → ' +
+      'PROPOSED(person) → BOOKED inside one transaction, writing both ' +
+      'fill-history ledger rows. Replaces the FE create + transition pair ' +
+      'that hit the nonexistent OPEN→BOOKED edge and orphaned OPEN positions.',
+  })
+  @ApiCreatedResponse({ type: ProjectPositionResponseDto })
+  @ApiNotFoundResponse({ description: 'Project or person does not exist.' })
+  @RequireRoles(...PROJECT_DELIVERY_ROLES, 'resource_manager')
+  public async createAndBook(
+    @Body() body: CreateAndBookProjectPositionRequestDto,
+    @Req() request: RequestWithPrincipal,
+  ): Promise<ProjectPositionResponseDto> {
+    const actorId = request.principal?.personId ?? request.principal?.userId ?? '';
+    const position = await this.createAndBookService.execute({
+      actorId,
+      projectId: body.projectId,
+      personId: body.personId,
+      role: body.role,
+      allocationPercent: body.allocationPercent,
+      startDate: body.startDate,
+      endDate: body.endDate,
+      note: body.note,
     });
     return ProjectPositionResponseDto.from(position);
   }

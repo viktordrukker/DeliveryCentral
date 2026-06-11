@@ -246,11 +246,13 @@ export function mapLegacyAssignmentStatus(legacy: string): PositionFillStatusVal
  *  - MISSING_EDGE   — no transition from the current status to the target (409)
  *  - ROLE_FORBIDDEN — the edge exists but the actor's roles are not allowed (403)
  *  - MISSING_REASON — the edge requires a non-empty reason and none was given (400)
+ *  - MISSING_PERSON — a fill-side transition has no person to fill for (400)
  */
 export type PositionFillTransitionErrorKind =
   | 'MISSING_EDGE'
   | 'ROLE_FORBIDDEN'
-  | 'MISSING_REASON';
+  | 'MISSING_REASON'
+  | 'MISSING_PERSON';
 
 export class InvalidPositionFillTransitionError extends Error {
   public constructor(

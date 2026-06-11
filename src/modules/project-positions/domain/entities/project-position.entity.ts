@@ -185,6 +185,7 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     if (isFillTransition && !options.personId && !this.props.activePersonId) {
       throw new InvalidPositionFillTransitionError(
         `Transition from ${from} to ${to} requires a person — provide personId or fill the position first.`,
+        'MISSING_PERSON',
       );
     }
 

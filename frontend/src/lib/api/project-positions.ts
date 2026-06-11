@@ -193,6 +193,30 @@ export async function createProjectPosition(
   return httpPost<ProjectPosition, CreateProjectPositionRequest>('/project-positions', request);
 }
 
+// Atomic create-and-book — single POST that creates the position and drives
+// it OPEN → PROPOSED(person) → BOOKED inside one backend transaction.
+// Replaces the createProjectPosition + transitionProjectPositionFill(BOOKED)
+// pair, which relied on a nonexistent OPEN→BOOKED edge and orphaned OPEN
+// positions when the transition failed.
+export interface CreateAndBookPositionRequest {
+  projectId: string;
+  personId: string;
+  role: string;
+  allocationPercent: number;
+  startDate: string;
+  endDate: string;
+  note?: string;
+}
+
+export async function createAndBookPosition(
+  request: CreateAndBookPositionRequest,
+): Promise<ProjectPosition> {
+  return httpPost<ProjectPosition, CreateAndBookPositionRequest>(
+    '/project-positions/create-and-book',
+    request,
+  );
+}
+
 export async function transitionProjectPositionFill(
   id: string,
   request: TransitionProjectPositionFillRequest,
