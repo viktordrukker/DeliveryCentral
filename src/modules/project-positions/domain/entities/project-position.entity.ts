@@ -19,6 +19,17 @@ import {
  * with services in S2-3. This scaffold is sufficient for transition-matrix
  * unit tests and for the S2-3 service layer to compose against.
  */
+// Domain mirror of the Prisma `StaffingRequestPriority` enum — the staffing
+// queue's primary sort key (URGENT first).
+export type PositionPriorityValue = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export const POSITION_PRIORITY_VALUES: readonly PositionPriorityValue[] = [
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+  'URGENT',
+] as const;
+
 export interface PositionFillSnapshot {
   status: PositionFillStatusValue;
   activePersonId?: string;
@@ -32,6 +43,9 @@ interface ProjectPositionProps {
   publicId?: string;
   projectId: string;
   role: string;
+  skills?: string[];
+  summary?: string;
+  priority?: PositionPriorityValue;
   requiredAllocationPercent: number;
   startDate: Date;
   endDate: Date;
@@ -95,6 +109,18 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
     return this.props.role;
   }
 
+  public get skills(): string[] {
+    return this.props.skills ?? [];
+  }
+
+  public get summary(): string | undefined {
+    return this.props.summary;
+  }
+
+  public get priority(): PositionPriorityValue {
+    return this.props.priority ?? 'MEDIUM';
+  }
+
   public get fillStatus(): PositionFillStatus {
     return this.props.fillStatus;
   }
@@ -125,6 +151,14 @@ export class ProjectPosition extends AggregateRoot<ProjectPositionProps> {
 
   public get releaseReason(): string | undefined {
     return this.props.releaseReason;
+  }
+
+  public get rejectionReason(): string | undefined {
+    return this.props.rejectionReason;
+  }
+
+  public get cancellationReason(): string | undefined {
+    return this.props.cancellationReason;
   }
 
   public get onHoldReason(): string | undefined {

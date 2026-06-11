@@ -16,6 +16,10 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+import {
+  POSITION_PRIORITY_VALUES,
+  PositionPriorityValue,
+} from '../../domain/entities/project-position.entity';
 import { POSITION_FILL_STATUS_VALUES, PositionFillStatusValue } from '../../domain/value-objects/position-fill-status';
 
 export class CreateProjectPositionRequestDto {
@@ -52,6 +56,11 @@ export class CreateProjectPositionRequestDto {
   @IsOptional()
   @IsString()
   summary?: string;
+
+  @ApiProperty({ required: false, enum: POSITION_PRIORITY_VALUES, default: 'MEDIUM' })
+  @IsOptional()
+  @IsIn(POSITION_PRIORITY_VALUES)
+  priority?: PositionPriorityValue;
 
   @ApiProperty({ required: false })
   @IsOptional()

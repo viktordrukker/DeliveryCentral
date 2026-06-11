@@ -211,6 +211,7 @@ export class ProjectPositionsController {
       endDate: body.endDate,
       skills: body.skills,
       summary: body.summary,
+      priority: body.priority,
       requestedByPersonId: body.requestedByPersonId,
       openImmediately: body.openImmediately,
     });

@@ -14,10 +14,12 @@ import {
   Select,
   Textarea,
 } from '@/components/ds';
+import { SkillMultiSelect } from '@/components/staffing-requests/SkillMultiSelect';
 import {
   createProjectPosition,
   transitionProjectPositionFill,
   type CreateProjectPositionRequest,
+  type StaffingRequestPriorityValue,
 } from '@/lib/api/project-positions';
 import {
   fetchProjectDirectory,
@@ -60,7 +62,8 @@ interface FormState {
   projectId: string;
   role: string;
   customRole: string;
-  priority: string;
+  priority: StaffingRequestPriorityValue;
+  skills: string[];
   requiredAllocationPercent: string;
   startDate: string;
   endDate: string;
@@ -73,6 +76,7 @@ const INITIAL: FormState = {
   role: '',
   customRole: '',
   priority: 'MEDIUM',
+  skills: [],
   requiredAllocationPercent: '100',
   startDate: '',
   endDate: '',
@@ -188,7 +192,9 @@ function CreatePositionDrawerInner({
         requiredAllocationPercent: Number(values.requiredAllocationPercent),
         startDate: values.startDate,
         endDate: values.endDate,
+        skills: values.skills.length > 0 ? values.skills : undefined,
         summary: values.summary.trim() || undefined,
+        priority: values.priority,
         requestedByPersonId: principal.personId,
         openImmediately: values.openImmediately,
       };
@@ -306,7 +312,7 @@ function CreatePositionDrawerInner({
             <Select
               {...props}
               value={values.priority}
-              onChange={(e) => setField('priority', e.target.value)}
+              onChange={(e) => setField('priority', e.target.value as StaffingRequestPriorityValue)}
               disabled={submitting}
             >
               {PRIORITY_OPTIONS.map((opt) => (
@@ -315,6 +321,16 @@ function CreatePositionDrawerInner({
                 </option>
               ))}
             </Select>
+          )}
+        </FormField>
+
+        <FormField label="Required skills (optional)">
+          {() => (
+            <SkillMultiSelect
+              value={values.skills}
+              onChange={(next) => setField('skills', next)}
+              disabled={submitting}
+            />
           )}
         </FormField>
 

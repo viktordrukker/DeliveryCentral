@@ -5,6 +5,7 @@ import { CreateProjectPositionService } from '@src/modules/project-positions/app
 import type { ProjectPositionReferenceRepositoryPort } from '@src/modules/project-positions/application/ports/project-position-reference.repository.port';
 import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
 import type { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
+import { ProjectPositionPrismaMapper } from '@src/modules/project-positions/infrastructure/repositories/prisma/project-position-prisma.mapper';
 import type { PrismaService } from '@src/shared/persistence/prisma.service';
 
 const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
@@ -92,6 +93,15 @@ describe('CreateAndBookProjectPositionService — atomic create-and-book', () =>
     expect(position.fillStatus.value).toBe('BOOKED');
     expect(position.activePersonId).toBe(PERSON_ID);
     expect(position.activeAllocationPercent).toBe(80);
+
+    // PR-7 field fidelity — create-and-book routes through the same
+    // CreateProjectPositionService, so the fidelity fields reach the
+    // persistence shape with their defaults instead of being dropped.
+    expect(ProjectPositionPrismaMapper.toPersistence(position)).toMatchObject({
+      skills: [],
+      summary: null,
+      priority: 'MEDIUM',
+    });
 
     // One position throughout — create save + two transition saves, all on
     // the same aggregate, all through the same transaction client.

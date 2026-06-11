@@ -42,6 +42,9 @@ export interface ProjectPosition {
   projectName?: string;
   projectCode?: string;
   role: string;
+  // PR-7 field fidelity — demand definition fields persisted end-to-end.
+  skills?: string[];
+  summary?: string;
   requiredAllocationPercent: number;
   fillStatus: PositionFillStatus;
   activePersonId?: string;
@@ -61,6 +64,8 @@ export interface ProjectPosition {
   onHoldReason?: string;
   onHoldCaseId?: string;
   releaseReason?: string;
+  rejectionReason?: string;
+  cancellationReason?: string;
   version: number;
   createdByPersonId?: string;
   updatedByPersonId?: string;
@@ -93,6 +98,7 @@ export interface CreateProjectPositionRequest {
   endDate: string;
   skills?: string[];
   summary?: string;
+  priority?: StaffingRequestPriorityValue;
   requestedByPersonId?: string;
   openImmediately?: boolean;
 }
