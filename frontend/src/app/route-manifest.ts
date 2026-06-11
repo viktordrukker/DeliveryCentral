@@ -209,6 +209,16 @@ export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_mana
 export const APPROVALS_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'hr_manager', 'director', 'admin'];
 export const ADMIN_ROLES: AppRole[] = ['admin'];
 
+// PR-13 — per-edge gates of the lean position fill state machine. Mirror of
+// backend `POSITION_FILL_STATUS_TRANSITIONS` in
+// src/modules/project-positions/domain/value-objects/position-fill-status.ts:
+//   PROPOSE — OPEN→PROPOSED (RM_DM + admin break-glass)
+//   DECIDE  — PROPOSED→BOOKED / PROPOSED→OPEN (PM_DM_DIRECTOR_ADMIN)
+//   RELEASE — any→RELEASED (PM_DM_DIRECTOR_RM_ADMIN)
+export const POSITION_PROPOSE_ROLES: AppRole[] = ['resource_manager', 'delivery_manager', 'admin'];
+export const POSITION_DECIDE_ROLES: AppRole[] = ['project_manager', 'delivery_manager', 'director', 'admin'];
+export const POSITION_RELEASE_ROLES: AppRole[] = ['project_manager', 'resource_manager', 'delivery_manager', 'director', 'admin'];
+
 export const PEOPLE_MANAGE_ROLES: AppRole[] = ['hr_manager', 'resource_manager', 'director', 'admin'];
 export const RM_MANAGE_ROLES: AppRole[] = ['resource_manager', 'admin'];
 export const THREESIXTY_REVIEW_ROLES: AppRole[] = ['hr_manager', 'delivery_manager', 'resource_manager', 'director', 'admin'];
