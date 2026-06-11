@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
@@ -15,6 +16,7 @@ import {
   Textarea,
 } from '@/components/ds';
 import { SkillMultiSelect } from '@/components/staffing-requests/SkillMultiSelect';
+import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import {
   createProjectPosition,
   transitionProjectPositionFill,
@@ -112,6 +114,17 @@ interface CreatePositionDrawerProps {
   initialProjectId?: string;
   /** Called after a position is successfully created. */
   onCreated?: (positionId: string) => void;
+  /**
+   * PR-11 — bench candidate threading. When set, the candidate is pinned in
+   * the drawer header and auto-proposed (OPEN → PROPOSED) after create.
+   */
+  candidatePersonId?: string;
+  /**
+   * Display name for the pinned candidate. Resolved via the person directory
+   * when omitted (the `?candidatePersonId=` query-param arming carries only
+   * the id).
+   */
+  candidateDisplayName?: string;
 }
 
 /**
@@ -128,12 +141,17 @@ function CreatePositionDrawerInner({
   onClose,
   initialProjectId,
   onCreated,
+  candidatePersonId,
+  candidateDisplayName,
 }: {
   onClose: () => void;
   initialProjectId?: string;
   onCreated?: (positionId: string) => void;
+  candidatePersonId?: string;
+  candidateDisplayName?: string;
 }): JSX.Element {
   const { principal } = useAuth();
+  const navigate = useNavigate();
   const [values, setValues] = useState<FormState>({ ...INITIAL, projectId: initialProjectId ?? '' });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -141,6 +159,24 @@ function CreatePositionDrawerInner({
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
+  // PR-11 — candidate pin. The display name is resolved from the directory
+  // when the caller armed the drawer with only a personId (query-param path).
+  const [candidateName, setCandidateName] = useState(candidateDisplayName ?? '');
+
+  useEffect(() => {
+    if (!candidatePersonId || candidateDisplayName) return;
+    let active = true;
+    fetchPersonDirectoryById(candidatePersonId)
+      .then((person) => {
+        if (active) setCandidateName(person.displayName);
+      })
+      .catch(() => {
+        // Pin falls back to the generic label; auto-propose still works.
+      });
+    return () => {
+      active = false;
+    };
+  }, [candidatePersonId, candidateDisplayName]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -202,7 +238,37 @@ function CreatePositionDrawerInner({
       if (created.fillStatus === 'DRAFT' && values.openImmediately) {
         await transitionProjectPositionFill(created.id, { toStatus: 'OPEN' });
       }
-      toast.success(`Position opened: ${created.role}`);
+      if (candidatePersonId) {
+        // PR-11 — auto-propose the pinned bench candidate in the same flow.
+        // A propose failure must not orphan the freshly created position
+        // silently: keep it, close the drawer, and surface a warning toast
+        // that links straight to the position detail.
+        const label = candidateName || 'the candidate';
+        try {
+          await transitionProjectPositionFill(created.id, {
+            toStatus: 'PROPOSED',
+            personId: candidatePersonId,
+          });
+          toast.success(`Position opened: ${created.role} — ${label} proposed`);
+        } catch (proposeErr) {
+          const detail = proposeErr instanceof Error ? proposeErr.message : '';
+          toast.warning(
+            `Position created, but proposing ${label} failed${detail ? ` — ${detail}` : ''}.`,
+            {
+              duration: 10000,
+              action: {
+                label: 'View position',
+                onClick: () =>
+                  navigate(
+                    `/projects/${created.projectId}/positions/${created.publicId ?? created.id}`,
+                  ),
+              },
+            },
+          );
+        }
+      } else {
+        toast.success(`Position opened: ${created.role}`);
+      }
       onCreated?.(created.id);
       onClose();
     } catch (err) {
@@ -222,7 +288,16 @@ function CreatePositionDrawerInner({
       ariaLabel="Open a new position"
       testId="create-position-drawer"
       title="Open a new position"
-      description="Lean flow — creates a ProjectPosition directly."
+      description={
+        candidatePersonId ? (
+          <span data-testid="create-position-candidate-pin">
+            Creating position for <strong>{candidateName || 'selected candidate'}</strong> — they
+            will be proposed to the new position automatically.
+          </span>
+        ) : (
+          'Lean flow — creates a ProjectPosition directly.'
+        )
+      }
       footer={
         <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
           <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
@@ -402,6 +477,8 @@ export function CreatePositionDrawer({
   onClose,
   initialProjectId,
   onCreated,
+  candidatePersonId,
+  candidateDisplayName,
 }: CreatePositionDrawerProps): JSX.Element | null {
   // Pitfall 15: hook-bearing inner only mounts when open, matches the
   // ManagePositionsDrawer pattern.
@@ -411,6 +488,8 @@ export function CreatePositionDrawer({
       onClose={onClose}
       initialProjectId={initialProjectId}
       onCreated={onCreated}
+      candidatePersonId={candidatePersonId}
+      candidateDisplayName={candidateDisplayName}
     />
   );
 }

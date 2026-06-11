@@ -9,6 +9,7 @@ import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button, Checkbox, SearchInput, Select, Table, type Column } from '@/components/ds';
+import { CreatePositionDrawer } from '@/components/staffing-requests/CreatePositionDrawer';
 import { type BenchEnrichedRowDto, fetchEnrichedBench } from '@/lib/api/people-bench';
 import { BenchInspector } from './BenchInspector';
 
@@ -169,6 +170,12 @@ export function BenchEnrichedPanel(): JSX.Element {
   const [activeChips, setActiveChips] = useState<Set<ChipKey>>(() => new Set());
   const sort = parseSort(searchParams.get('sort'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  // PR-11 — single-person "Suggest position" opens the create-position drawer
+  // armed with the candidate (pinned + auto-proposed after create).
+  const [proposeCandidate, setProposeCandidate] = useState<{
+    personId: string;
+    name: string;
+  } | null>(null);
 
   function toggleChip(chip: ChipKey): void {
     setActiveChips((prev) => {
@@ -437,8 +444,18 @@ export function BenchEnrichedPanel(): JSX.Element {
             size="sm"
             type="button"
             onClick={() => {
-              // TODO(SoT PR 17h-bench): wire into Workforce Planner "Suggest
-              // position" multi-person flow when the bulk endpoint lands.
+              // PR-11 — a single selected person opens the create-position
+              // drawer armed with that candidate. Multi-person flow is still
+              // stubbed: TODO(SoT PR 17h-bench) wire into Workforce Planner
+              // "Suggest position" when the bulk endpoint lands.
+              if (selectedIds.size === 1) {
+                const personId = Array.from(selectedIds)[0];
+                const row = rows.find((r) => r.personId === personId);
+                if (row) {
+                  setProposeCandidate({ personId: row.personId, name: row.name });
+                  return;
+                }
+              }
               toast.info('Suggest position — coming soon');
             }}
             data-testid="bench-bulk-suggest"
@@ -721,6 +738,14 @@ export function BenchEnrichedPanel(): JSX.Element {
         />
       ) : null}
       </div>
+
+      {/* PR-11 — drawer armed with the single selected bench candidate. */}
+      <CreatePositionDrawer
+        open={proposeCandidate !== null}
+        onClose={() => setProposeCandidate(null)}
+        candidatePersonId={proposeCandidate?.personId}
+        candidateDisplayName={proposeCandidate?.name}
+      />
     </div>
   );
 }

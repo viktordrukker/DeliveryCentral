@@ -35,3 +35,29 @@ describe('Staffing Desk Create-Position CTAs (W4-06 + SoT PR 8)', () => {
     expect(src).not.toMatch(/Open full create page/);
   });
 });
+
+/**
+ * PR-11 — bench candidate threading. The bench "Propose to position" CTA
+ * (and the legacy /staffing-requests/new redirect) forward
+ * `?candidatePersonId=<id>` to /staffing-desk; the page must arm the
+ * embedded CreatePositionDrawer with it so the candidate is pinned and
+ * auto-proposed after create. Source-string inspection per the precedent in
+ * StaffingDeskPage.positionIds.test.tsx (render-level coverage of this page
+ * requires mocking ~12 hooks; drawer behavior is render-tested in
+ * CreatePositionDrawer.test.tsx).
+ */
+describe('Staffing Desk candidate arming (PR-11)', () => {
+  const src = readFileSync('src/routes/staffing-desk/StaffingDeskPage.tsx', 'utf-8');
+
+  it('reads ?candidatePersonId from the URL', () => {
+    expect(src).toMatch(/searchParams\.get\('candidatePersonId'\)/);
+  });
+
+  it('arms the CreatePositionDrawer with the candidate', () => {
+    expect(src).toMatch(/candidatePersonId=\{candidatePersonId\}/);
+  });
+
+  it('disarms the candidate when the drawer closes', () => {
+    expect(src).toMatch(/next\.delete\('candidatePersonId'\)/);
+  });
+});
