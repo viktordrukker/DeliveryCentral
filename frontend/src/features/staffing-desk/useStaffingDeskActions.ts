@@ -8,10 +8,9 @@ export interface StaffingDeskActions {
   approveAssignment: (id: string, reason?: string) => Promise<void>;
   rejectAssignment: (id: string, reason: string) => Promise<void>;
   endAssignment: (id: string, reason: string, endDate?: string) => Promise<void>;
-  reviewRequest: (id: string) => Promise<void>;
-  releaseRequest: (id: string) => Promise<void>;
-  fulfilRequest: (id: string, proposedByPersonId: string, assignedPersonId: string) => Promise<void>;
-  cancelRequest: (id: string) => Promise<void>;
+  reviewRequest: (id: string, personId: string) => Promise<void>;
+  releaseRequest: (id: string, reason: string) => Promise<void>;
+  cancelRequest: (id: string, reason: string) => Promise<void>;
 }
 
 export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions {
@@ -29,11 +28,17 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
     [refetch],
   );
 
+  // PR-13 — every action drives the lean /project-positions/:id/transition
+  // handler with the canonical edges of the fill state machine:
+  //   approveAssignment → PROPOSED→BOOKED
+  //   rejectAssignment  → PROPOSED→OPEN with reason (candidate rejected,
+  //                       position returns to the queue)
+  //   endAssignment     → →RELEASED with reason
+  //   reviewRequest     → OPEN→PROPOSED with personId (person-required
+  //                       invariant — proposing without a candidate is a 400)
+  //   releaseRequest    → PROPOSED→OPEN with reason
+  //   cancelRequest     → →RELEASED with reason
   return {
-    // LEAN-P2-2: assignment-side transitions read/write through the lean
-    // /project-positions transition handler. Staffing-request actions still
-    // hit the legacy /staffing-requests endpoints — that domain is a separate
-    // migration tracked under P2-3/P2-7.
     approveAssignment: useCallback(
       (id: string, reason?: string) =>
         wrap('Assignment approved', () =>
@@ -43,17 +48,17 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
     ),
     rejectAssignment: useCallback(
       (id: string, reason: string) =>
-        transitionProjectPositionFill(id, { toStatus: 'RELEASED', reason })
+        transitionProjectPositionFill(id, { toStatus: 'OPEN', reason })
           .then(() => {
             refetch();
             showUndoToast({
               undoActionId: undefined,
-              successMessage: 'Assignment rejected.',
+              successMessage: 'Candidate rejected — position back in the queue.',
               onUndone: () => refetch(),
             });
           })
           .catch((err: unknown) => {
-            toast.error(err instanceof Error ? err.message : 'Assignment rejected failed.');
+            toast.error(err instanceof Error ? err.message : 'Candidate rejection failed.');
           }),
       [refetch],
     ),
@@ -71,34 +76,21 @@ export function useStaffingDeskActions(refetch: () => void): StaffingDeskActions
       },
       [wrap],
     ),
-    // LEAN-P2 exit-gate: staffing-request actions migrated onto the unified
-    // /project-positions transition handler. Mappings:
-    //   reviewRequest  → toStatus: 'PROPOSED' (RM is reviewing a candidate)
-    //   releaseRequest → toStatus: 'OPEN' (release back to the queue)
-    //   fulfilRequest  → toStatus: 'BOOKED' with personId
-    //   cancelRequest  → toStatus: 'RELEASED'
     reviewRequest: useCallback(
-      (id: string) => wrap('Request taken into review', () =>
-        transitionProjectPositionFill(id, { toStatus: 'PROPOSED' }),
+      (id: string, personId: string) => wrap('Candidate proposed', () =>
+        transitionProjectPositionFill(id, { toStatus: 'PROPOSED', personId }),
       ),
       [wrap],
     ),
     releaseRequest: useCallback(
-      (id: string) => wrap('Request released', () =>
-        transitionProjectPositionFill(id, { toStatus: 'OPEN' }),
+      (id: string, reason: string) => wrap('Position released back to the queue', () =>
+        transitionProjectPositionFill(id, { toStatus: 'OPEN', reason }),
       ),
       [wrap],
     ),
-    fulfilRequest: useCallback(
-      (id: string, _proposedByPersonId: string, assignedPersonId: string) =>
-        wrap('Request fulfilled', () =>
-          transitionProjectPositionFill(id, { toStatus: 'BOOKED', personId: assignedPersonId }),
-        ),
-      [wrap],
-    ),
     cancelRequest: useCallback(
-      (id: string) => wrap('Request cancelled', () =>
-        transitionProjectPositionFill(id, { toStatus: 'RELEASED' }),
+      (id: string, reason: string) => wrap('Position cancelled', () =>
+        transitionProjectPositionFill(id, { toStatus: 'RELEASED', reason }),
       ),
       [wrap],
     ),
