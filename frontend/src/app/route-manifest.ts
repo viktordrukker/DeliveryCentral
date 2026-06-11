@@ -198,6 +198,10 @@ export const BENCH_PAGE_ROLES: AppRole[] = ['project_manager', 'resource_manager
 // W1-26 — `/admin/monitoring` widened from `ADMIN_ONLY_ROLES` to include
 // director so executives can observe platform health without admin role.
 export const MONITORING_ROLES: AppRole[] = ['director', 'admin'];
+// FE/BE alignment: BE `POST /project-positions` (create) is guarded by
+// `@RequireRoles(...STAFFING_ROLES)` (PM+RM+DM+director+admin) — this list
+// must stay identical. Contract tests on both sides:
+// `route-manifest.test.tsx` ↔ `test/unit/project-positions/project-positions.controller.rbac.spec.ts`.
 export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin'];
 // /approvals merges leave + case approvals (HR-governed) with staffing-side
 // approvals, so HR must be allowed in alongside the staffing roles. Mirrors

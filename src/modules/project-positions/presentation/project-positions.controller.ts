@@ -25,6 +25,7 @@ import { RequestPrincipal } from '@src/modules/identity-access/application/reque
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
 import {
   ALL_AUTHENTICATED_ROLES,
+  HR_GOVERNANCE_ROLES,
   PROJECT_DELIVERY_ROLES,
   STAFFING_ROLES,
 } from '@src/shared/auth/role-presets';
@@ -68,6 +69,16 @@ import { PositionDomainExceptionFilter } from './position-domain-exception.filte
 interface RequestWithPrincipal extends Request {
   principal?: RequestPrincipal;
 }
+
+// RBAC alignment (issue: RM creates 403, HR cannot reach ON_HOLD) — the
+// transition gate admits hr_manager alongside the staffing roles because the
+// entity-level matrix (`POSITION_FILL_STATUS_TRANSITIONS`) grants HR the
+// ON_HOLD edges via HOLD_ROLES. Which edges HR can actually drive stays
+// enforced by the matrix — this gate only decides who may attempt a
+// transition at all. Mirrors the `UNIFIED_APPROVAL_QUEUE_ROLES` composition.
+const POSITION_TRANSITION_ROLES = Array.from(
+  new Set([...STAFFING_ROLES, ...HR_GOVERNANCE_ROLES]),
+);
 
 /**
  * Sprint 2 / S2-4 — REST surface for the lean staffing aggregate.
@@ -179,10 +190,13 @@ export class ProjectPositionsController {
     return this.suggestFillsService.suggestForPosition(id, take);
   }
 
+  // STAFFING_ROLES (not PROJECT_DELIVERY_ROLES): every FE create surface
+  // (`/staffing-desk/positions/new`, `/staffing-requests/new|bulk`) is offered
+  // to STAFFING_DESK_ROLES, which includes resource_manager.
   @Post()
   @ApiOperation({ summary: 'Create a project position (demand record)' })
   @ApiCreatedResponse({ type: ProjectPositionResponseDto })
-  @RequireRoles(...PROJECT_DELIVERY_ROLES)
+  @RequireRoles(...STAFFING_ROLES)
   public async create(
     @Body() body: CreateProjectPositionRequestDto,
     @Req() request: RequestWithPrincipal,
@@ -262,7 +276,7 @@ export class ProjectPositionsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Transition a project position to a new fill-status' })
   @ApiOkResponse({ type: ProjectPositionResponseDto })
-  @RequireRoles(...STAFFING_ROLES)
+  @RequireRoles(...POSITION_TRANSITION_ROLES)
   public async transition(
     @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
     @Body() body: TransitionProjectPositionFillRequestDto,

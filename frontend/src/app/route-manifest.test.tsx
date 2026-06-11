@@ -256,6 +256,34 @@ describe('W1 routing bundle — short-form aliases', () => {
   });
 });
 
+describe('FE↔BE RBAC contract — position create/transition gates', () => {
+  // Mirror of backend `STAFFING_ROLES` (src/shared/auth/role-presets.ts),
+  // the gate on `POST /project-positions`. Kept in sync with the backend
+  // contract spec `test/unit/project-positions/project-positions.controller.rbac.spec.ts`.
+  const backendStaffingRoles = [
+    'project_manager',
+    'resource_manager',
+    'delivery_manager',
+    'director',
+    'admin',
+  ].sort();
+
+  it('every position-create surface offers exactly the roles the BE create gate accepts', () => {
+    for (const path of ['/staffing-desk/positions/new', '/staffing-requests/new', '/staffing-requests/bulk']) {
+      const allowed = getAllowedRoles(path);
+      expect(allowed, `manifest missing ${path}`).toBeDefined();
+      expect([...allowed!].sort(), `roles mismatch on ${path}`).toEqual(backendStaffingRoles);
+      expect(allowed).toContain('resource_manager');
+    }
+  });
+
+  it('hr_manager can reach the position detail surface that hosts the ON_HOLD transition', () => {
+    // BE `POST /project-positions/:id/transition` admits STAFFING_ROLES ∪
+    // HR_GOVERNANCE_ROLES; the entity matrix limits HR to the ON_HOLD edges.
+    expect(canAccessRoute('/assignments/:id', ['hr_manager'])).toBe(true);
+  });
+});
+
 describe('hasAnyRole helper', () => {
   it('returns true when user has a matching role', () => {
     expect(hasAnyRole(['admin', 'employee'], ['admin'])).toBe(true);
