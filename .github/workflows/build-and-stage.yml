@@ -140,6 +140,13 @@ jobs:
             docker compose -p dc-staging -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral-staging/.current-sha
 
+            # Disk hygiene: every deploy pulls 2 fresh images; without pruning
+            # the host fills up (2026-06-11 incident: 380 images / 68 GB filled
+            # the disk to 100% and crash-looped the shared postgres). Keep
+            # images younger than 72h so the previous tag stays available for
+            # instant rollback, drop everything older.
+            docker image prune -a -f --filter "until=72h" || echo "::warning::image prune failed (non-fatal)"
+
             # Self-healing Caddy refresh: validate template inside the live container
             # before swapping, so a syntactically broken template never takes down the proxy.
             TEMPLATE_PATH=/opt/deliverycentral-staging/ops/templates/data-stack.Caddyfile
