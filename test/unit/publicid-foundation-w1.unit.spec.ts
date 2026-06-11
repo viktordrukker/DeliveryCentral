@@ -10,6 +10,8 @@
  *   3. Generated runtime publicIds have the expected prefix.
  */
 
+import { createHash } from 'crypto';
+
 import {
   AggregateType,
   MODEL_TO_AGGREGATE_TYPE,
@@ -20,11 +22,13 @@ import { PublicIdService } from '../../src/infrastructure/public-id/public-id.se
 
 /**
  * Mirror of the SQL backfill expression
- *   'prefix_' || substr(replace(id::text, '-', ''), 1, 12)
+ *   'prefix_' || substr(md5(id::text), 1, 12)
  * — exercised against the same input the DB sees during the W1 migration.
+ * md5 of the full UUID text (not the uuid prefix) keeps the derivation
+ * collision-proof for seed profiles whose patterned UUIDs share a prefix.
  */
 function backfillExpression(prefix: string, uuid: string): string {
-  return `${prefix}_${uuid.replace(/-/g, '').slice(0, 12)}`;
+  return `${prefix}_${createHash('md5').update(uuid).digest('hex').slice(0, 12)}`;
 }
 
 describe('W1-07 / W1-08 publicId foundation', () => {
@@ -73,31 +77,31 @@ describe('W1-07 / W1-08 publicId foundation', () => {
         aggregate: 'Person',
         prefix: 'usr',
         uuid: '12345678-90ab-cdef-1234-567890abcdef',
-        expected: 'usr_1234567890ab',
+        expected: 'usr_cb817dfdd939',
       },
       {
         aggregate: 'Project',
         prefix: 'prj',
         uuid: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-        expected: 'prj_aaaaaaaabbbb',
+        expected: 'prj_a99ef0d86ae0',
       },
       {
         aggregate: 'OrgUnit',
         prefix: 'org',
         uuid: '00000001-0000-4000-8000-000000000001',
-        expected: 'org_000000010000',
+        expected: 'org_df63401c1587',
       },
       {
         aggregate: 'Client',
         prefix: 'cli',
         uuid: '99999999-8888-4444-aaaa-bbbbbbbbbbbb',
-        expected: 'cli_999999998888',
+        expected: 'cli_d99f552d56b6',
       },
       {
         aggregate: 'CaseRecord',
         prefix: 'case',
         uuid: 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb',
-        expected: 'case_ffffffffeeee',
+        expected: 'case_022ace26b120',
       },
     ];
 
@@ -106,6 +110,16 @@ describe('W1-07 / W1-08 publicId foundation', () => {
         expect(backfillExpression(prefix, uuid)).toBe(expected);
       });
     }
+
+    it('does not collide on patterned seed UUIDs sharing the same prefix-12', () => {
+      // Regression: it-company seed Person ids are bbbb0001-0000-0000-0000-<seq>,
+      // identical in their first 12 hex chars. The original uuid-prefix
+      // derivation produced usr_bbbb00010000 for every row and broke the
+      // unique index on staging.
+      const a = backfillExpression('usr', 'bbbb0001-0000-0000-0000-000000000001');
+      const b = backfillExpression('usr', 'bbbb0001-0000-0000-0000-000000000002');
+      expect(a).not.toBe(b);
+    });
 
     it('is idempotent — repeated calls produce identical output', () => {
       const uuid = '12345678-90ab-cdef-1234-567890abcdef';
