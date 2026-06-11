@@ -411,6 +411,9 @@ export function ApprovalsPage(): JSX.Element {
                 <ApprovalInspector
                   item={selectedItem}
                   onClose={() => setSelectedItemKey(null)}
+                  // PR-10 — refetch after a decision so the decided row leaves
+                  // the queue without losing the working context (UX Law 3).
+                  onDecided={() => setReloadTick((t) => t + 1)}
                 />
               ) : null}
             </div>

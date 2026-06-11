@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,12 @@ const fetchUnifiedApprovals = vi.fn();
 
 vi.mock('@/lib/api/approvals-unified', () => ({
   fetchUnifiedApprovals: (params: unknown) => fetchUnifiedApprovals(params),
+  decideApproval: vi.fn(),
+}));
+
+// PR-10 — the inspector reads principal roles to gate position decisions.
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({ principal: { personId: 'actor-1', roles: ['project_manager'] } }),
 }));
 
 const sampleItems: ApprovalQueueItemDto[] = [
@@ -172,6 +178,30 @@ describe('ApprovalsPage', () => {
     await waitFor(() =>
       expect(fetchUnifiedApprovals).toHaveBeenCalledWith({ sources: ['timesheet'], pageSize: 100 }),
     );
+  });
+
+  // PR-10 — ?focus= deep-links (issue 658) open the inspector; for position
+  // proposals it must render the enriched proposal block (UX Law 7).
+  it('opens the enriched inspector when ?focus= matches a position proposal', async () => {
+    const enriched: ApprovalQueueItemDto = {
+      ...sampleItems[0],
+      meta: {
+        projectName: 'Apollo',
+        candidateDisplayName: 'Ada Lovelace',
+        allocationPercent: 80,
+        startDate: '2026-07-01',
+        endDate: '2026-12-31',
+        proposedByDisplayName: 'Sophia Kim',
+      },
+    };
+    fetchUnifiedApprovals.mockResolvedValue(response([enriched, sampleItems[1]]));
+    renderRoute(<ApprovalsPage />, { initialEntries: ['/approvals?focus=pp-1'] });
+    await waitFor(() => expect(screen.getByTestId('approval-inspector')).toBeInTheDocument());
+    const detail = within(screen.getByTestId('approval-inspector-position-detail'));
+    expect(detail.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(detail.getByText('80%')).toBeInTheDocument();
+    expect(detail.getByText('2026-07-01 → 2026-12-31')).toBeInTheDocument();
+    expect(detail.getByText('Sophia Kim')).toBeInTheDocument();
   });
 
   it('B24: header Refresh re-fetches the queue', async () => {

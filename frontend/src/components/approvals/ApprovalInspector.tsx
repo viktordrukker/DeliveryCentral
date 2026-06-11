@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/app/auth-context';
+import { hasAnyRole, POSITION_DECIDE_ROLES } from '@/app/route-manifest';
 import { Avatar, Button, Textarea } from '@/components/ds';
 import { Money } from '@/components/ds';
 import { Pct } from '@/components/ds/Pct';
@@ -170,6 +172,7 @@ function readString(meta: Record<string, unknown>, key: string): string | null {
  * reason blocks), keeping the same comment/footer pattern.
  */
 export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspectorProps): JSX.Element {
+  const { principal } = useAuth();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState<'approve' | 'reject' | null>(null);
 
@@ -191,6 +194,24 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
   const leaveBusinessDays = isLeave ? readNumber(item.meta, 'businessDays') ?? readNumber(item.meta, 'totalDays') : null;
   const leaveBalanceRemaining = isLeave ? readNumber(item.meta, 'balanceRemaining') ?? readNumber(item.meta, 'remainingDays') : null;
   const hasLeaveDetail = leaveType || leaveStart || leaveEnd || leaveBusinessDays != null || leaveBalanceRemaining != null;
+
+  // PR-10 — position-proposal meta surfaced inline so the decision happens on
+  // one screen (UX Law 7): candidate identity, allocation, engagement dates,
+  // and who proposed the fill. Project name renders via the shared Project tile.
+  const isPositionProposal = item.source === 'position-proposal';
+  const candidateName = isPositionProposal ? readString(item.meta, 'candidateDisplayName') : null;
+  const positionAllocation = isPositionProposal ? readNumber(item.meta, 'allocationPercent') : null;
+  const positionStart = isPositionProposal ? readString(item.meta, 'startDate') : null;
+  const positionEnd = isPositionProposal ? readString(item.meta, 'endDate') : null;
+  const proposedBy = isPositionProposal ? readString(item.meta, 'proposedByDisplayName') : null;
+  const hasPositionDetail =
+    candidateName || positionAllocation != null || positionStart || positionEnd || proposedBy;
+
+  // PR-10 — only POSITION_DECIDE_ROLES can drive PROPOSED → BOOKED / OPEN; for
+  // everyone else (e.g. HR who sees the unified queue) the decision buttons
+  // would 403, so hide them and show a quiet view-only hint instead.
+  const canDecide =
+    !isPositionProposal || hasAnyRole(principal?.roles, POSITION_DECIDE_ROLES);
 
   const showVariance = currentAmount != null && requestedAmount != null && currentAmount > 0;
   const computedVariancePct = showVariance
@@ -360,6 +381,42 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
             </div>
           ) : null}
 
+          {hasPositionDetail ? (
+            <div data-testid="approval-inspector-position-detail">
+              <div style={S_SECTION_LABEL}>Proposed fill</div>
+              <div style={S_CTX_GRID}>
+                {candidateName ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Candidate</div>
+                    <div style={S_CTX_VALUE}>{candidateName}</div>
+                  </div>
+                ) : null}
+                {positionAllocation != null ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Allocation</div>
+                    <div style={S_CTX_VALUE}>
+                      <Pct value={positionAllocation} fractionDigits={0} />
+                    </div>
+                  </div>
+                ) : null}
+                {positionStart || positionEnd ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Dates</div>
+                    <div style={S_CTX_VALUE}>
+                      {positionStart ?? '—'}{positionEnd && positionEnd !== positionStart ? ` → ${positionEnd}` : ''}
+                    </div>
+                  </div>
+                ) : null}
+                {proposedBy ? (
+                  <div>
+                    <div style={S_CTX_LABEL}>Proposed by</div>
+                    <div style={S_CTX_VALUE}>{proposedBy}</div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           {reason ? (
             <div>
               <div style={S_SECTION_LABEL}>Submitter rationale</div>
@@ -370,18 +427,21 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
       )}
 
       {/* Comment field — DS canvas marks this required. Empty submissions are
-          still accepted by the backend; the label communicates intent. */}
-      <div>
-        <div style={S_SECTION_LABEL}>
-          Decision comment <span style={{ color: 'var(--color-text-subtle)' }}>(required)</span>
+          still accepted by the backend; the label communicates intent. Hidden
+          for view-only roles since there is no decision to comment on. */}
+      {canDecide ? (
+        <div>
+          <div style={S_SECTION_LABEL}>
+            Decision comment <span style={{ color: 'var(--color-text-subtle)' }}>(required)</span>
+          </div>
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Add context for the submitter (visible in the audit trail)…"
+            rows={3}
+          />
         </div>
-        <Textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Add context for the submitter (visible in the audit trail)…"
-          rows={3}
-        />
-      </div>
+      ) : null}
 
       {/* Footer — Open source ↗ deep-link + Reject + Approve + A/R kbd hints.
           Escalate stays hidden because no generic /api/approvals/:id/escalate
@@ -396,46 +456,65 @@ export function ApprovalInspector({ item, onClose, onDecided }: ApprovalInspecto
         }}
         data-testid="approval-inspector-footer"
       >
-        <span
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginRight: 'auto',
-            color: 'var(--color-text-muted)',
-            fontSize: 11,
-          }}
-          data-testid="approval-inspector-kbd-hints"
-        >
-          <span style={S_KBD}>A</span>
-          <span>Approve</span>
-          <span aria-hidden="true">·</span>
-          <span style={S_KBD}>R</span>
-          <span>Reject</span>
-        </span>
+        {canDecide ? (
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginRight: 'auto',
+              color: 'var(--color-text-muted)',
+              fontSize: 11,
+            }}
+            data-testid="approval-inspector-kbd-hints"
+          >
+            <span style={S_KBD}>A</span>
+            <span>Approve</span>
+            <span aria-hidden="true">·</span>
+            <span style={S_KBD}>R</span>
+            <span>Reject</span>
+          </span>
+        ) : (
+          // PR-10 — quiet hint instead of decision buttons whose request would
+          // 403 (PROPOSED → BOOKED is gated to POSITION_DECIDE_ROLES).
+          <span
+            style={{
+              marginRight: 'auto',
+              color: 'var(--color-text-muted)',
+              fontSize: 11,
+            }}
+            data-testid="approval-inspector-viewonly-hint"
+          >
+            View only — position proposals are decided by a PM, DM, Director, or Admin.
+          </span>
+        )}
         <Button as={Link} variant="secondary" size="sm" to={item.href} aria-label="Open source page">
           Open source ↗
         </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          type="button"
-          loading={submitting === 'reject'}
-          disabled={submitting !== null}
-          onClick={() => handleAction('reject')}
-        >
-          Reject
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          type="button"
-          loading={submitting === 'approve'}
-          disabled={submitting !== null}
-          onClick={() => handleAction('approve')}
-        >
-          Approve
-        </Button>
+        {canDecide ? (
+          <>
+            <Button
+              variant="danger"
+              size="sm"
+              type="button"
+              loading={submitting === 'reject'}
+              disabled={submitting !== null}
+              onClick={() => handleAction('reject')}
+            >
+              Reject
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="button"
+              loading={submitting === 'approve'}
+              disabled={submitting !== null}
+              onClick={() => handleAction('approve')}
+            >
+              Approve
+            </Button>
+          </>
+        ) : null}
       </div>
     </aside>
   );
