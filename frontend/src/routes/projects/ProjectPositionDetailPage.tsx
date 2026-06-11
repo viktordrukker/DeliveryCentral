@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
-import {
-  POSITION_DECIDE_ROLES,
-  POSITION_PROPOSE_ROLES,
-  POSITION_RELEASE_ROLES,
-  STAFFING_DESK_ROLES,
-  hasAnyRole,
-} from '@/app/route-manifest';
+import { STAFFING_DESK_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { AssignmentHistoryTimeline } from '@/components/assignments/AssignmentHistoryTimeline';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -30,17 +23,14 @@ import {
   type PositionFillStatus,
   type ProjectPosition,
   type ProjectPositionFillHistory,
-  type TransitionProjectPositionFillRequest,
   fetchPositionHistory,
   getPositionCandidates,
   getProjectPositionById,
   listProjectPositions,
   transitionProjectPositionFill,
 } from '@/lib/api/project-positions';
-import { autoMatchPosition } from '@/lib/api/staffing-candidates';
 import { fetchPersonDirectoryById } from '@/lib/api/person-directory';
 import { fetchProjectById, type ProjectDetails } from '@/lib/api/project-registry';
-import { isFeatureEnabled } from '@/lib/feature-flags';
 import { formatDateTime } from '@/lib/format-date';
 
 /**
@@ -162,12 +152,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const positionId = params.positionId ?? params.id;
   const { principal } = useAuth();
   const canStaff = hasAnyRole(principal?.roles, STAFFING_DESK_ROLES);
-  // PR-9 — per-edge gates mirroring the BE fill state machine:
-  //   PROPOSE — OPEN→PROPOSED, DECIDE — PROPOSED→BOOKED/OPEN + DRAFT→OPEN,
-  //   RELEASE — any non-terminal →RELEASED (cancel).
-  const canPropose = hasAnyRole(principal?.roles, POSITION_PROPOSE_ROLES);
-  const canDecide = hasAnyRole(principal?.roles, POSITION_DECIDE_ROLES);
-  const canRelease = hasAnyRole(principal?.roles, POSITION_RELEASE_ROLES);
 
   const [position, setPosition] = useState<ProjectPosition | null>(null);
   const [candidates, setCandidates] = useState<PositionCandidate[]>([]);
@@ -175,18 +159,12 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [proposeFor, setProposeFor] = useState<PositionCandidate | null>(null);
-  // PR-9 — which lifecycle ConfirmDialog is open (book / reject / cancel).
-  const [pendingAction, setPendingAction] = useState<'book' | 'reject' | 'cancel' | null>(null);
   const [busy, setBusy] = useState(false);
   const [activePersonName, setActivePersonName] = useState<string | null>(null);
   const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
-  // LEAN-P4-missing-3 — RM auto-match by skill (gated on dsRefresh).
-  const [autoMatchBusy, setAutoMatchBusy] = useState(false);
-  const [autoMatchMessage, setAutoMatchMessage] = useState<string | null>(null);
   // W2-04 — lifecycle history + pending approvals for this position.
   const [history, setHistory] = useState<ProjectPositionFillHistory[]>([]);
   const [approvals, setApprovals] = useState<ApprovalQueueItemDto[]>([]);
-  const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
   const { setCurrentLabel } = useDrilldown();
 
   useEffect(() => {
@@ -271,58 +249,22 @@ export function ProjectPositionDetailPage(): JSX.Element {
     void load();
   }, [load]);
 
-  async function runAutoMatch(): Promise<void> {
-    if (!position) return;
-    setAutoMatchBusy(true);
-    setAutoMatchMessage(null);
-    try {
-      const res = await autoMatchPosition(position.publicId ?? position.id, { topN: 5 });
-      setAutoMatchMessage(
-        res.created === 0
-          ? 'Auto-match found no candidates meeting the 80% skill floor.'
-          : `Auto-matched ${res.created} candidate${res.created === 1 ? '' : 's'} into the slate.`,
-      );
-      await load();
-    } catch (err: unknown) {
-      setAutoMatchMessage(err instanceof Error ? err.message : 'Auto-match failed.');
-    } finally {
-      setAutoMatchBusy(false);
-    }
-  }
-
-  // PR-9 — shared runner for every lifecycle edge wired on this page. Same
-  // client pattern as the approvals queue (useStaffingDeskActions): POST the
-  // unified /transition endpoint, toast the outcome, stay on the page and
-  // reload position + history (UX Law 3).
-  async function runTransition(
-    request: TransitionProjectPositionFillRequest,
-    successMessage: string,
-  ): Promise<void> {
-    if (!position) return;
-    setBusy(true);
-    try {
-      await transitionProjectPositionFill(position.publicId ?? position.id, request);
-      setProposeFor(null);
-      setPendingAction(null);
-      toast.success(successMessage);
-      await load();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Transition failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function confirmPropose(): Promise<void> {
     if (!proposeFor || !position) return;
-    await runTransition(
-      {
+    setBusy(true);
+    try {
+      await transitionProjectPositionFill(position.publicId ?? position.id, {
         toStatus: 'PROPOSED',
         personId: proposeFor.personId,
         allocationPercent: position.requiredAllocationPercent,
-      },
-      `${proposeFor.name} proposed — awaiting a booking decision.`,
-    );
+      });
+      setProposeFor(null);
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to propose candidate.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const candidateColumns: Array<Column<PositionCandidate>> = [
@@ -359,10 +301,7 @@ export function ProjectPositionDetailPage(): JSX.Element {
           '—'
         ),
     },
-    // PR-9 — Propose is the OPEN→PROPOSED edge: only offered on OPEN
-    // positions to the PROPOSE role set (RM/DM + admin). DRAFT positions get
-    // an "Open position" CTA instead (the BE rejects DRAFT→PROPOSED).
-    ...(canPropose && position?.fillStatus === 'OPEN'
+    ...(canStaff
       ? [
           {
             key: 'action',
@@ -386,51 +325,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const activeMatchPct = activeCandidate
     ? Math.round(activeCandidate.matchScore * 100)
     : null;
-
-  // PR-9 — ConfirmDialog config per lifecycle action. Reasons are required
-  // exactly where the BE matrix marks `requiresReason` (reject + cancel).
-  const personLabel = activePersonName ?? 'the proposed candidate';
-  const lifecycleDialog =
-    pendingAction && position
-      ? {
-          book: {
-            title: 'Confirm booking?',
-            message: `Book ${personLabel} for "${position.role}"? The position moves to BOOKED.`,
-            confirmLabel: busy ? 'Booking…' : 'Confirm · Book',
-            requireReason: false,
-            tone: 'default' as const,
-            onConfirm: (_reason?: string): void =>
-              void runTransition(
-                { toStatus: 'BOOKED' },
-                `${personLabel} booked — position is BOOKED.`,
-              ),
-          },
-          reject: {
-            title: 'Reject candidate?',
-            message: `Reject ${personLabel} for "${position.role}"? The position returns to OPEN for new proposals. A reason is required.`,
-            confirmLabel: busy ? 'Rejecting…' : 'Reject',
-            requireReason: true,
-            tone: 'danger' as const,
-            onConfirm: (reason?: string): void =>
-              void runTransition(
-                { toStatus: 'OPEN', reason },
-                'Candidate rejected — position is back in the queue.',
-              ),
-          },
-          cancel: {
-            title: 'Cancel position?',
-            message: `Cancel "${position.role}"? The position moves to RELEASED (terminal) and stops accepting candidates. A reason is required.`,
-            confirmLabel: busy ? 'Cancelling…' : 'Cancel position',
-            requireReason: true,
-            tone: 'danger' as const,
-            onConfirm: (reason?: string): void =>
-              void runTransition(
-                { toStatus: 'RELEASED', reason },
-                'Position cancelled — moved to RELEASED.',
-              ),
-          },
-        }[pendingAction]
-      : null;
 
   return (
     <PageContainer testId="project-position-detail-page">
@@ -607,63 +501,32 @@ export function ProjectPositionDetailPage(): JSX.Element {
                       gap: 'var(--space-2)',
                     }}
                   >
-                    {position.fillStatus === 'PROPOSED' && canDecide ? (
+                    {position.fillStatus === 'PROPOSED' ? (
                       <>
-                        <Button
-                          variant="primary"
-                          size="md"
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setPendingAction('book')}
-                          data-testid="confirm-book-button"
-                        >
+                        <Button variant="primary" size="md" type="button" disabled>
                           Confirm · Book
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="md"
-                          type="button"
-                          disabled={busy}
-                          onClick={() => setPendingAction('reject')}
-                          data-testid="reject-button"
-                        >
+                        <Button variant="secondary" size="md" type="button" disabled>
+                          View profile
+                        </Button>
+                        <Button variant="ghost" size="md" type="button" disabled>
                           Reject
                         </Button>
                       </>
-                    ) : null}
-                    <Button
-                      as={Link}
-                      to={`/people/${position.activePersonId}`}
-                      variant="secondary"
-                      size="md"
-                    >
-                      View profile
-                    </Button>
+                    ) : (
+                      <Button variant="secondary" size="md" type="button" disabled>
+                        View profile
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (
                 <EmptyState
                   title="No proposed fill yet"
                   description={
-                    position.fillStatus === 'DRAFT'
-                      ? 'This position is a draft — open it first to start accepting candidate proposals.'
-                      : position.fillStatus === 'OPEN'
-                        ? 'Review the candidates below and propose someone to start the fill.'
-                        : `Position is ${position.fillStatus}.`
-                  }
-                  actions={
-                    position.fillStatus === 'DRAFT' && canDecide
-                      ? [
-                          {
-                            label: 'Open position',
-                            onClick: () =>
-                              void runTransition(
-                                { toStatus: 'OPEN' },
-                                'Position opened — now accepting candidate proposals.',
-                              ),
-                          },
-                        ]
-                      : undefined
+                    PROPOSABLE.has(position.fillStatus)
+                      ? 'Review the candidates below and propose someone to start the fill.'
+                      : `Position is ${position.fillStatus}.`
                   }
                 />
               )}
@@ -757,45 +620,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
 
             {/* Other candidates considered */}
             <SectionCard title={`Other candidates considered${candidates.length > 0 ? ` (${candidates.length})` : ''}`}>
-              {dsRefreshEnabled && canStaff && PROPOSABLE.has(position.fillStatus) ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 'var(--space-3)',
-                    marginBottom: 'var(--space-3)',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    Auto-match populates the slate with the top-5 skill-matched + available people. Review and adjust before proposing.
-                  </span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    type="button"
-                    onClick={() => void runAutoMatch()}
-                    disabled={autoMatchBusy}
-                    data-testid="auto-match-button"
-                  >
-                    {autoMatchBusy ? 'Auto-matching…' : 'Auto-match'}
-                  </Button>
-                </div>
-              ) : null}
-              {autoMatchMessage ? (
-                <div
-                  role="status"
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--color-text-muted)',
-                    marginBottom: 'var(--space-3)',
-                  }}
-                  data-testid="auto-match-message"
-                >
-                  {autoMatchMessage}
-                </div>
-              ) : null}
               {!PROPOSABLE.has(position.fillStatus) ? (
                 <EmptyState
                   title="Position not seeking a fill"
@@ -892,21 +716,19 @@ export function ProjectPositionDetailPage(): JSX.Element {
                     Edit position
                   </Link>
                 ) : null}
-                {/* PR-9 — every non-terminal status has a →RELEASED edge with a
-                    required reason. RELEASED is terminal in the BE matrix (no
-                    re-open edge), so no lifecycle action is offered there. */}
-                {position.fillStatus !== 'RELEASED' && canRelease ? (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setPendingAction('cancel')}
-                    data-testid="cancel-position-button"
-                  >
+                {PROPOSABLE.has(position.fillStatus) ? (
+                  <Button variant="secondary" size="sm" type="button" disabled>
                     Cancel position
                   </Button>
                 ) : null}
+                {position.fillStatus === 'ON_HOLD' || position.fillStatus === 'RELEASED' ? (
+                  <Button variant="secondary" size="sm" type="button" disabled>
+                    Re-open
+                  </Button>
+                ) : null}
+                <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                  Edit + lifecycle actions ship in the next slice.
+                </span>
               </div>
             </SectionCard>
 
@@ -983,17 +805,6 @@ export function ProjectPositionDetailPage(): JSX.Element {
         confirmLabel={busy ? 'Proposing…' : 'Propose'}
         onCancel={() => setProposeFor(null)}
         onConfirm={() => void confirmPropose()}
-      />
-
-      <ConfirmDialog
-        open={lifecycleDialog !== null}
-        title={lifecycleDialog?.title ?? ''}
-        message={lifecycleDialog?.message ?? ''}
-        requireReason={lifecycleDialog?.requireReason ?? false}
-        tone={lifecycleDialog?.tone}
-        confirmLabel={lifecycleDialog?.confirmLabel ?? 'Confirm'}
-        onCancel={() => setPendingAction(null)}
-        onConfirm={(reason) => lifecycleDialog?.onConfirm(reason)}
       />
     </PageContainer>
   );

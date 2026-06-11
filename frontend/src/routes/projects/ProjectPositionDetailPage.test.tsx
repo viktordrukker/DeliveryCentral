@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { toast } from 'sonner';
 import { vi } from 'vitest';
 
 import { fetchUnifiedApprovals } from '@/lib/api/approvals-unified';
@@ -11,23 +10,15 @@ import {
   getProjectPositionById,
   transitionProjectPositionFill,
 } from '@/lib/api/project-positions';
-import { autoMatchPosition } from '@/lib/api/staffing-candidates';
-import { isFeatureEnabled } from '@/lib/feature-flags';
 import { ProjectPositionDetailPage } from './ProjectPositionDetailPage';
-
-// PR-9 — per-test role control: lifecycle buttons are gated by the per-edge
-// role constants (POSITION_PROPOSE/DECIDE/RELEASE_ROLES).
-let mockRoles: string[] = ['resource_manager'];
 
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
-    principal: { personId: 'rm-1', roles: mockRoles },
+    principal: { personId: 'rm-1', roles: ['resource_manager'] },
     isAuthenticated: true,
     isLoading: false,
   }),
 }));
-
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock('@/lib/api/project-positions', () => ({
   getProjectPositionById: vi.fn(),
@@ -41,19 +32,9 @@ vi.mock('@/lib/api/approvals-unified', () => ({
   fetchUnifiedApprovals: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 }),
 }));
 
-vi.mock('@/lib/api/staffing-candidates', () => ({
-  autoMatchPosition: vi.fn(),
-}));
-
-vi.mock('@/lib/feature-flags', () => ({
-  isFeatureEnabled: vi.fn(),
-}));
-
 const mockedGet = vi.mocked(getProjectPositionById);
 const mockedCandidates = vi.mocked(getPositionCandidates);
 const mockedTransition = vi.mocked(transitionProjectPositionFill);
-const mockedAutoMatch = vi.mocked(autoMatchPosition);
-const mockedFlag = vi.mocked(isFeatureEnabled);
 const mockedHistory = vi.mocked(fetchPositionHistory);
 const mockedApprovals = vi.mocked(fetchUnifiedApprovals);
 
@@ -64,13 +45,6 @@ const OPEN_POSITION = {
   requiredAllocationPercent: 80,
   fillStatus: 'OPEN' as const,
   version: 1,
-};
-
-const PROPOSED_POSITION = {
-  ...OPEN_POSITION,
-  fillStatus: 'PROPOSED' as const,
-  activePersonId: 'p-ada',
-  activeAllocationPercent: 80,
 };
 
 const CANDIDATES = {
@@ -115,16 +89,11 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     mockedGet.mockReset();
     mockedCandidates.mockReset();
     mockedTransition.mockReset();
-    mockedAutoMatch.mockReset();
-    mockedFlag.mockReset();
     mockedHistory.mockReset();
     mockedApprovals.mockReset();
-    mockRoles = ['resource_manager'];
     // Defaults — empty history + no pending approvals; tests can override.
     mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
     mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
-    // Default: dsRefresh OFF — auto-match button hidden. Per-test overrides enable it.
-    mockedFlag.mockReturnValue(false);
   });
 
   it('renders the position summary and ranked candidates', async () => {
@@ -162,9 +131,13 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     expect(screen.getByText('Fill history')).toBeInTheDocument();
   });
 
-  it('shows enabled Confirm + Reject + a View profile link when a candidate is PROPOSED (decide role)', async () => {
-    mockRoles = ['delivery_manager'];
-    mockedGet.mockResolvedValue(PROPOSED_POSITION);
+  it('shows Confirm + View profile + Reject buttons when a candidate is PROPOSED', async () => {
+    mockedGet.mockResolvedValue({
+      ...OPEN_POSITION,
+      fillStatus: 'PROPOSED' as const,
+      activePersonId: 'p-ada',
+      activeAllocationPercent: 80,
+    });
     // PROPOSED is not in PROPOSABLE — no candidate slate fetch is expected.
 
     renderAt();
@@ -172,12 +145,9 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('position-current-fill')).toBeInTheDocument();
     });
-    expect(screen.getByTestId('confirm-book-button')).toBeEnabled();
-    expect(screen.getByTestId('reject-button')).toBeEnabled();
-    expect(screen.getByRole('link', { name: /View profile/i })).toHaveAttribute(
-      'href',
-      '/people/p-ada',
-    );
+    expect(screen.getByRole('button', { name: /Confirm · Book/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View profile/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reject/i })).toBeInTheDocument();
   });
 
   it('Propose → confirm → transitions the position to PROPOSED with the candidate', async () => {
@@ -216,120 +186,13 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
   });
 });
 
-describe('ProjectPositionDetailPage.AutoMatch (LEAN-P4-missing-3)', () => {
-  beforeEach(() => {
-    mockedGet.mockReset();
-    mockedCandidates.mockReset();
-    mockedTransition.mockReset();
-    mockedAutoMatch.mockReset();
-    mockedFlag.mockReset();
-    mockedHistory.mockReset();
-    mockedApprovals.mockReset();
-    mockRoles = ['resource_manager'];
-    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
-    mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
-  });
-
-  it('hides the Auto-match button when dsRefresh is OFF', async () => {
-    mockedFlag.mockReturnValue(false);
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.queryByTestId('auto-match-button')).not.toBeInTheDocument();
-  });
-
-  it('shows the Auto-match button when dsRefresh is ON for an OPEN position', async () => {
-    mockedFlag.mockReturnValue(true);
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.getByTestId('auto-match-button')).toBeInTheDocument();
-    expect(screen.getByTestId('auto-match-button')).toHaveTextContent('Auto-match');
-  });
-
-  it('clicking Auto-match calls autoMatchPosition + reloads candidates + surfaces a success message', async () => {
-    mockedFlag.mockReturnValue(true);
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-    mockedAutoMatch.mockResolvedValue({
-      positionId: 'pos-1',
-      created: 3,
-      candidates: [
-        {
-          candidateId: 'cand-1',
-          personId: 'p-ada',
-          name: 'Ada Lovelace',
-          rank: 1,
-          matchScore: 0.92,
-          matchedSkills: ['React', 'Node'],
-          missingSkills: [],
-          decision: 'PENDING',
-        },
-      ],
-    });
-    const user = userEvent.setup();
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    const button = screen.getByTestId('auto-match-button');
-    await user.click(button);
-
-    await waitFor(() =>
-      expect(mockedAutoMatch).toHaveBeenCalledWith('pos-1', { topN: 5 }),
-    );
-    // Candidates reload after the auto-match call.
-    await waitFor(() => expect(mockedCandidates).toHaveBeenCalledTimes(2));
-    expect(await screen.findByTestId('auto-match-message')).toHaveTextContent(
-      'Auto-matched 3 candidates into the slate.',
-    );
-  });
-
-  it('surfaces a friendly message when auto-match returns zero candidates', async () => {
-    mockedFlag.mockReturnValue(true);
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-    mockedAutoMatch.mockResolvedValue({ positionId: 'pos-1', created: 0, candidates: [] });
-    const user = userEvent.setup();
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    await user.click(screen.getByTestId('auto-match-button'));
-
-    expect(await screen.findByTestId('auto-match-message')).toHaveTextContent(
-      'no candidates meeting the 80% skill floor',
-    );
-  });
-
-  it('hides the Auto-match button on a non-proposable position even when dsRefresh is ON', async () => {
-    mockedFlag.mockReturnValue(true);
-    mockedGet.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'ASSIGNED', activePersonId: 'p-ada' });
-
-    renderAt();
-    await screen.findByText('Position not seeking a fill');
-
-    expect(screen.queryByTestId('auto-match-button')).not.toBeInTheDocument();
-  });
-});
-
 describe('ProjectPositionDetailPage history + approvals (W2-04)', () => {
   beforeEach(() => {
     mockedGet.mockReset();
     mockedCandidates.mockReset();
     mockedTransition.mockReset();
-    mockedAutoMatch.mockReset();
-    mockedFlag.mockReset();
     mockedHistory.mockReset();
     mockedApprovals.mockReset();
-    mockRoles = ['resource_manager'];
-    mockedFlag.mockReturnValue(false);
   });
 
   it('renders the lifecycle history timeline when history rows are present', async () => {
@@ -424,174 +287,5 @@ describe('ProjectPositionDetailPage history + approvals (W2-04)', () => {
 
     expect(screen.queryByText('Propose Bo for Other Role')).not.toBeInTheDocument();
     expect(await screen.findByText('No pending approvals')).toBeInTheDocument();
-  });
-});
-
-describe('ProjectPositionDetailPage lifecycle actions (PR-9)', () => {
-  beforeEach(() => {
-    mockedGet.mockReset();
-    mockedCandidates.mockReset();
-    mockedTransition.mockReset();
-    mockedAutoMatch.mockReset();
-    mockedFlag.mockReset();
-    mockedHistory.mockReset();
-    mockedApprovals.mockReset();
-    vi.mocked(toast.success).mockClear();
-    vi.mocked(toast.error).mockClear();
-    mockRoles = ['resource_manager'];
-    mockedHistory.mockResolvedValue({ positionId: 'pos-1', history: [] });
-    mockedApprovals.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 100 });
-    mockedFlag.mockReturnValue(false);
-  });
-
-  it('Confirm · Book → confirm dialog → transitions PROPOSED→BOOKED, toasts and reloads', async () => {
-    mockRoles = ['delivery_manager'];
-    mockedGet.mockResolvedValue(PROPOSED_POSITION);
-    mockedTransition.mockResolvedValue({ ...PROPOSED_POSITION, fillStatus: 'BOOKED' });
-    const user = userEvent.setup();
-
-    renderAt();
-    await user.click(await screen.findByTestId('confirm-book-button'));
-
-    // Dialog confirm button carries the same label — pick the one that is
-    // not the page button.
-    const pageButton = screen.getByTestId('confirm-book-button');
-    const dialogConfirm = screen
-      .getAllByRole('button', { name: 'Confirm · Book' })
-      .find((b) => b !== pageButton)!;
-    await user.click(dialogConfirm);
-
-    await waitFor(() =>
-      expect(mockedTransition).toHaveBeenCalledWith('pos-1', { toStatus: 'BOOKED' }),
-    );
-    // Law 3 — stays on the page: position reloads + success toast.
-    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
-    expect(toast.success).toHaveBeenCalled();
-  });
-
-  it('Reject requires a reason and transitions PROPOSED→OPEN with it', async () => {
-    mockRoles = ['project_manager'];
-    mockedGet.mockResolvedValue(PROPOSED_POSITION);
-    mockedTransition.mockResolvedValue({ ...OPEN_POSITION });
-    const user = userEvent.setup();
-
-    renderAt();
-    await user.click(await screen.findByTestId('reject-button'));
-
-    const pageButton = screen.getByTestId('reject-button');
-    const dialogConfirm = screen
-      .getAllByRole('button', { name: 'Reject' })
-      .find((b) => b !== pageButton)!;
-    // Reason is required — confirm stays disabled until one is typed.
-    expect(dialogConfirm).toBeDisabled();
-    await user.type(screen.getByLabelText('Reason'), 'Not a skills fit');
-    await user.click(dialogConfirm);
-
-    await waitFor(() =>
-      expect(mockedTransition).toHaveBeenCalledWith('pos-1', {
-        toStatus: 'OPEN',
-        reason: 'Not a skills fit',
-      }),
-    );
-  });
-
-  it('Cancel position requires a reason and transitions →RELEASED', async () => {
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-    mockedTransition.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'RELEASED' });
-    const user = userEvent.setup();
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-    await user.click(screen.getByTestId('cancel-position-button'));
-
-    const pageButton = screen.getByTestId('cancel-position-button');
-    const dialogConfirm = screen
-      .getAllByRole('button', { name: 'Cancel position' })
-      .find((b) => b !== pageButton)!;
-    expect(dialogConfirm).toBeDisabled();
-    await user.type(screen.getByLabelText('Reason'), 'Descoped by the client');
-    await user.click(dialogConfirm);
-
-    await waitFor(() =>
-      expect(mockedTransition).toHaveBeenCalledWith('pos-1', {
-        toStatus: 'RELEASED',
-        reason: 'Descoped by the client',
-      }),
-    );
-  });
-
-  it('offers no Re-open and no Cancel on a RELEASED position (terminal — no BE edge)', async () => {
-    mockRoles = ['admin'];
-    mockedGet.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'RELEASED' });
-
-    renderAt();
-    await screen.findByText('Position not seeking a fill');
-
-    expect(screen.queryByRole('button', { name: /re-open/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('cancel-position-button')).not.toBeInTheDocument();
-  });
-
-  it('hides Confirm · Book and Reject from roles outside POSITION_DECIDE_ROLES', async () => {
-    mockRoles = ['resource_manager'];
-    mockedGet.mockResolvedValue(PROPOSED_POSITION);
-
-    renderAt();
-    await waitFor(() => {
-      expect(screen.getByTestId('position-current-fill')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('confirm-book-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
-  });
-
-  it('hides Cancel position from roles outside POSITION_RELEASE_ROLES', async () => {
-    mockRoles = ['employee'];
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.queryByTestId('cancel-position-button')).not.toBeInTheDocument();
-  });
-
-  it('hides Propose from roles outside POSITION_PROPOSE_ROLES', async () => {
-    mockRoles = ['project_manager'];
-    mockedGet.mockResolvedValue(OPEN_POSITION);
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.queryByRole('button', { name: 'Propose' })).not.toBeInTheDocument();
-  });
-
-  it('DRAFT shows an "Open position" CTA that drives DRAFT→OPEN', async () => {
-    mockRoles = ['project_manager'];
-    mockedGet.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'DRAFT' });
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-    mockedTransition.mockResolvedValue(OPEN_POSITION);
-    const user = userEvent.setup();
-
-    renderAt();
-    await user.click(await screen.findByRole('button', { name: 'Open position' }));
-
-    await waitFor(() =>
-      expect(mockedTransition).toHaveBeenCalledWith('pos-1', { toStatus: 'OPEN' }),
-    );
-    expect(toast.success).toHaveBeenCalled();
-  });
-
-  it('on DRAFT hides Propose (no DRAFT→PROPOSED edge) and hides the Open CTA from non-decide roles', async () => {
-    mockRoles = ['resource_manager'];
-    mockedGet.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'DRAFT' });
-    mockedCandidates.mockResolvedValue(CANDIDATES);
-
-    renderAt();
-    await screen.findByText('Ada Lovelace');
-
-    expect(screen.queryByRole('button', { name: 'Open position' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Propose' })).not.toBeInTheDocument();
   });
 });
