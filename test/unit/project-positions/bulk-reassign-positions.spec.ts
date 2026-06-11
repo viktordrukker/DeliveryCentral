@@ -1,6 +1,12 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 import { BulkReassignPositionsService } from '@src/modules/project-positions/application/bulk-reassign-positions.service';
+import type { ProjectPositionReferenceRepositoryPort } from '@src/modules/project-positions/application/ports/project-position-reference.repository.port';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 interface FakeRow {
@@ -130,13 +136,24 @@ function buildPrisma(seed: {
   return { prisma, state };
 }
 
-describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
+function buildReferenceRepo(
+  overrides: Partial<Record<keyof ProjectPositionReferenceRepositoryPort, boolean>> = {},
+): jest.Mocked<ProjectPositionReferenceRepositoryPort> {
+  return {
+    projectExists: jest.fn().mockResolvedValue(overrides.projectExists ?? true),
+    projectIsActive: jest.fn().mockResolvedValue(overrides.projectIsActive ?? true),
+    personExists: jest.fn().mockResolvedValue(overrides.personExists ?? true),
+    personIsActive: jest.fn().mockResolvedValue(overrides.personIsActive ?? true),
+  };
+}
+
+describe('BulkReassignPositionsService (LEAN-P4-missing-1 / PR-15 hardening)', () => {
   const actorId = '11111111-1111-1111-1111-111111111111';
   const actorRoles = ['project_manager' as const];
 
   it('rejects empty positionIds', async () => {
     const { prisma } = buildPrisma({ rows: [] });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     await expect(
       svc.execute({
         positionIds: [],
@@ -149,7 +166,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
 
   it('rejects when neither toPersonId nor toProjectId provided', async () => {
     const { prisma } = buildPrisma({ rows: [makeRow({ id: 'pos-1' })] });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     await expect(
       svc.execute({ positionIds: ['pos-1'], actorId, actorRoles }),
     ).rejects.toThrow(BadRequestException);
@@ -157,7 +174,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
 
   it('rejects when any position is missing', async () => {
     const { prisma } = buildPrisma({ rows: [makeRow({ id: 'pos-1' })] });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     await expect(
       svc.execute({
         positionIds: ['pos-1', 'pos-missing'],
@@ -171,11 +188,11 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
   it('rejects when any position is RELEASED', async () => {
     const { prisma } = buildPrisma({
       rows: [
-        makeRow({ id: 'pos-1', fillStatus: 'OPEN' }),
+        makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' }),
         makeRow({ id: 'pos-2', fillStatus: 'RELEASED' }),
       ],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     await expect(
       svc.execute({
         positionIds: ['pos-1', 'pos-2'],
@@ -186,7 +203,60 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('happy path: bulk reassigns active person across already-BOOKED positions', async () => {
+  it('rejects an unknown target person with 404 before any row work', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' })],
+    });
+    const refRepo = buildReferenceRepo({ personExists: false });
+    const svc = new BulkReassignPositionsService(prisma, refRepo);
+    await expect(
+      svc.execute({
+        positionIds: ['pos-1'],
+        toPersonId: 'ghost-person',
+        actorId,
+        actorRoles,
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(refRepo.personExists).toHaveBeenCalledWith('ghost-person');
+    expect(state.updates).toHaveLength(0);
+    expect(state.historyWrites).toHaveLength(0);
+  });
+
+  it('rejects a non-active target person with 409', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' })],
+    });
+    const refRepo = buildReferenceRepo({ personIsActive: false });
+    const svc = new BulkReassignPositionsService(prisma, refRepo);
+    await expect(
+      svc.execute({
+        positionIds: ['pos-1'],
+        toPersonId: 'terminated-person',
+        actorId,
+        actorRoles,
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('skips person validation when toPersonId is null (unassign)', async () => {
+    const { prisma } = buildPrisma({
+      rows: [makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'someone' })],
+    });
+    const refRepo = buildReferenceRepo({ personExists: false, personIsActive: false });
+    const svc = new BulkReassignPositionsService(prisma, refRepo);
+    const result = await svc.execute({
+      positionIds: ['pos-1'],
+      toPersonId: null,
+      actorId,
+      actorRoles,
+    });
+    expect(result.reassigned).toBe(1);
+    expect(refRepo.personExists).not.toHaveBeenCalled();
+    expect(refRepo.personIsActive).not.toHaveBeenCalled();
+  });
+
+  it('happy path: bulk reassigns active person across already-BOOKED positions with a truthful REASSIGNED ledger', async () => {
     const { prisma, state } = buildPrisma({
       rows: [
         makeRow({
@@ -201,7 +271,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
         }),
       ],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     const result = await svc.execute({
       positionIds: ['pos-1', 'pos-2'],
       toPersonId: 'new-person',
@@ -217,9 +287,75 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
     // version bumped exactly once (originalVersion was 1, new should be 2)
     expect(state.updates[0].data.version).toBe(2);
     expect(state.historyWrites).toHaveLength(2);
-    expect(state.historyWrites[0].changeType).toBe('ASSIGNED');
+    // Truthful ledger: an in-place swap is REASSIGNED with the unchanged
+    // status on both sides and the real person delta — not a fabricated
+    // ASSIGNED progression.
+    expect(state.historyWrites[0].changeType).toBe('REASSIGNED');
+    expect(state.historyWrites[0].previousStatus).toBe('BOOKED');
+    expect(state.historyWrites[0].newStatus).toBe('BOOKED');
+    expect(state.historyWrites[0].previousPersonId).toBe('old-person');
+    expect(state.historyWrites[0].newPersonId).toBe('new-person');
+    expect(state.historyWrites[1].changeType).toBe('REASSIGNED');
+    expect(state.historyWrites[1].previousStatus).toBe('ASSIGNED');
+    expect(state.historyWrites[1].newStatus).toBe('ASSIGNED');
     expect(state.historyWrites[0].changeReason).toContain('bulk_reassign:Maternity cover');
     expect(state.historyWrites[0].changeReason).toContain('person:old-person->new-person');
+  });
+
+  it('rejects person reassignment on DRAFT/OPEN rows per-row and keeps the partial-failure envelope', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        makeRow({ id: 'pos-open', fillStatus: 'OPEN' }),
+        makeRow({ id: 'pos-draft', fillStatus: 'DRAFT' }),
+        makeRow({
+          id: 'pos-booked',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+        }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    const result = await svc.execute({
+      positionIds: ['pos-open', 'pos-draft', 'pos-booked'],
+      toPersonId: 'new-person',
+      actorId,
+      actorRoles,
+    });
+    expect(result.reassigned).toBe(1);
+    expect(result.positionIds).toEqual(['pos-booked']);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0]).toContain('pos-open: NOT_FILLED');
+    expect(result.errors[1]).toContain('pos-draft: NOT_FILLED');
+    // No writes for the rejected rows — DRAFT/OPEN never get a silent
+    // in-place person swap.
+    expect(state.updates).toHaveLength(1);
+    expect(state.updates[0].id).toBe('pos-booked');
+    expect(state.historyWrites).toHaveLength(1);
+  });
+
+  it('returns 422 when every row fails per-row validation', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        makeRow({ id: 'pos-open', fillStatus: 'OPEN' }),
+        makeRow({ id: 'pos-draft', fillStatus: 'DRAFT' }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    const promise = svc.execute({
+      positionIds: ['pos-open', 'pos-draft'],
+      toPersonId: 'new-person',
+      actorId,
+      actorRoles,
+    });
+    await expect(promise).rejects.toThrow(UnprocessableEntityException);
+    await promise.catch((err: UnprocessableEntityException) => {
+      const body = err.getResponse() as { message: string[] };
+      expect(body.message).toHaveLength(2);
+      expect(body.message[0]).toContain('pos-open: NOT_FILLED');
+      expect(body.message[1]).toContain('pos-draft: NOT_FILLED');
+    });
+    expect(state.updates).toHaveLength(0);
+    expect(state.historyWrites).toHaveLength(0);
   });
 
   it('transitions PROPOSED positions to BOOKED when a new person is supplied', async () => {
@@ -232,7 +368,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
         }),
       ],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     const result = await svc.execute({
       positionIds: ['pos-1'],
       toPersonId: 'candidate-2',
@@ -259,7 +395,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
         }),
       ],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     const result = await svc.execute({
       positionIds: ['pos-1'],
       toProjectId: 'new-project',
@@ -268,31 +404,60 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
     });
     expect(result.reassigned).toBe(1);
     expect(state.updates[0].data.projectId).toBe('new-project');
+    expect(state.historyWrites[0].changeType).toBe('REASSIGNED');
+    expect(state.historyWrites[0].previousStatus).toBe('OPEN');
+    expect(state.historyWrites[0].newStatus).toBe('OPEN');
     expect(state.historyWrites[0].changeReason).toContain(
       'project:old-project->new-project',
     );
   });
 
-  it('partial-failure rolls back: zero updates committed when any position fails', async () => {
+  it('returns 422 (not 200) when the transaction rolls back and every row failed', async () => {
     const { prisma, state } = buildPrisma({
       rows: [
-        makeRow({ id: 'pos-1', fillStatus: 'BOOKED' }),
-        makeRow({ id: 'pos-2', fillStatus: 'BOOKED' }),
+        makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' }),
+        makeRow({ id: 'pos-2', fillStatus: 'BOOKED', activePersonId: 'x' }),
       ],
       failOnId: 'pos-2',
     });
-    const svc = new BulkReassignPositionsService(prisma);
-    const result = await svc.execute({
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    const promise = svc.execute({
       positionIds: ['pos-1', 'pos-2'],
       toPersonId: 'new-person',
       actorId,
       actorRoles,
     });
-    expect(result.reassigned).toBe(0);
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain('forced failure on pos-2');
+    await expect(promise).rejects.toThrow(UnprocessableEntityException);
+    await promise.catch((err: UnprocessableEntityException) => {
+      const body = err.getResponse() as { message: string[] };
+      expect(body.message.join(' ')).toContain('forced failure on pos-2');
+      expect(body.message.join(' ')).toContain('transaction rolled back');
+    });
     // Service still attempted updates for both before the throw.
     expect(state.updates.length).toBeGreaterThan(0);
+  });
+
+  it('includes per-row NOT_FILLED errors in the 422 when the transaction also rolls back', async () => {
+    const { prisma } = buildPrisma({
+      rows: [
+        makeRow({ id: 'pos-open', fillStatus: 'OPEN' }),
+        makeRow({ id: 'pos-booked', fillStatus: 'BOOKED', activePersonId: 'x' }),
+      ],
+      failOnId: 'pos-booked',
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    const promise = svc.execute({
+      positionIds: ['pos-open', 'pos-booked'],
+      toPersonId: 'new-person',
+      actorId,
+      actorRoles,
+    });
+    await expect(promise).rejects.toThrow(UnprocessableEntityException);
+    await promise.catch((err: UnprocessableEntityException) => {
+      const body = err.getResponse() as { message: string[] };
+      expect(body.message[0]).toContain('pos-open: NOT_FILLED');
+      expect(body.message[1]).toContain('forced failure on pos-booked');
+    });
   });
 
   it('unassigns active person when toPersonId is explicit null', async () => {
@@ -305,7 +470,7 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
         }),
       ],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     const result = await svc.execute({
       positionIds: ['pos-1'],
       toPersonId: null,
@@ -314,13 +479,16 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1)', () => {
     });
     expect(result.reassigned).toBe(1);
     expect(state.updates[0].data.activePersonId).toBeNull();
+    expect(state.historyWrites[0].changeType).toBe('REASSIGNED');
+    expect(state.historyWrites[0].previousPersonId).toBe('someone');
+    expect(state.historyWrites[0].newPersonId).toBeNull();
   });
 
   it('deduplicates positionIds before processing', async () => {
     const { prisma, state } = buildPrisma({
-      rows: [makeRow({ id: 'pos-1', fillStatus: 'BOOKED' })],
+      rows: [makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' })],
     });
-    const svc = new BulkReassignPositionsService(prisma);
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
     const result = await svc.execute({
       positionIds: ['pos-1', 'pos-1', 'pos-1'],
       toPersonId: 'p1',

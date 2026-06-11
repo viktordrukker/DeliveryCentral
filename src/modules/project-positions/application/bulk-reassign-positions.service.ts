@@ -1,14 +1,17 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import type { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
 import { ProjectPositionPrismaMapper } from '../infrastructure/repositories/prisma/project-position-prisma.mapper';
+import { ProjectPositionReferenceRepositoryPort } from './ports/project-position-reference.repository.port';
 
 export interface BulkReassignPositionsCommand {
   positionIds: string[];
@@ -36,14 +39,31 @@ export interface BulkReassignPositionsResult {
  * in-place (no fill-status change). RELEASED rows are rejected — they are
  * terminal and the caller should know.
  *
- * Atomicity: any single position failure rolls the whole batch back so
- * staffing state never lands half-applied.
+ * PR-15 hardening:
+ *   - DRAFT / OPEN rows are not filled — a person-reassign request against
+ *     them fails per-row with NOT_FILLED instead of silently writing an
+ *     activePersonId that bypassed the fill state machine.
+ *   - The target person must exist (404) and be an active employee (409),
+ *     via the same reference adapter as the create paths (issue 669).
+ *   - Fill-history rows record the real change: in-place swaps and project
+ *     moves write changeType REASSIGNED with the unchanged status on both
+ *     sides — no fabricated ASSIGNED progression.
+ *   - If every row failed (per-row validation and/or full transaction
+ *     rollback), the request fails with 422 carrying the per-row errors.
+ *     Mixed outcomes return 200 with the partial-failure envelope.
+ *
+ * Atomicity: rows that pass per-row validation are written in one
+ * transaction — any write failure rolls all of them back so staffing state
+ * never lands half-applied.
  */
 @Injectable()
 export class BulkReassignPositionsService {
   private readonly logger = new Logger(BulkReassignPositionsService.name);
 
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly referenceRepository: ProjectPositionReferenceRepositoryPort,
+  ) {}
 
   public async execute(
     command: BulkReassignPositionsCommand,
@@ -56,6 +76,20 @@ export class BulkReassignPositionsService {
       throw new BadRequestException(
         'At least one of toPersonId or toProjectId must be supplied.',
       );
+    }
+
+    // PR-15 — target validation. The new person applies to every row, so an
+    // unknown (404) or non-active (409) target fails the whole request, same
+    // conventions as the create-side reference checks (issue 669).
+    if (typeof command.toPersonId === 'string') {
+      const personExists = await this.referenceRepository.personExists(command.toPersonId);
+      if (!personExists) {
+        throw new NotFoundException('Target person does not exist.');
+      }
+      const personIsActive = await this.referenceRepository.personIsActive(command.toPersonId);
+      if (!personIsActive) {
+        throw new ConflictException('Target person is not an active employee.');
+      }
     }
 
     // Pre-fetch every row outside the transaction so we can fail fast on
@@ -77,9 +111,36 @@ export class BulkReassignPositionsService {
       );
     }
 
+    // PR-15 — per-row state-machine respect: DRAFT / OPEN rows have no
+    // active person to reassign. They fail per-row instead of receiving a
+    // silent in-place person write that never went through PROPOSED/BOOKED.
+    const rowErrors: string[] = [];
+    const eligibleIds: string[] = [];
+    for (const id of ids) {
+      const row = found.get(id)!;
+      if (
+        command.toPersonId !== undefined &&
+        (row.fillStatus === 'DRAFT' || row.fillStatus === 'OPEN')
+      ) {
+        rowErrors.push(
+          `${id}: NOT_FILLED — position is ${row.fillStatus} and has no active person; ` +
+            'fill it via the propose/book flow before reassigning.',
+        );
+        continue;
+      }
+      eligibleIds.push(id);
+    }
+
+    if (eligibleIds.length === 0) {
+      throw new UnprocessableEntityException({
+        error: 'BulkReassignAllRowsFailed',
+        message: rowErrors,
+      });
+    }
+
     try {
       await this.prisma.$transaction(async (tx) => {
-        for (const id of ids) {
+        for (const id of eligibleIds) {
           const row = found.get(id)!;
           const position = ProjectPositionPrismaMapper.toDomain(row);
           const fromStatus = position.fillStatus.value;
@@ -127,11 +188,11 @@ export class BulkReassignPositionsService {
           }
 
           // Audit: emit one ProjectPositionFillHistory row per position so
-          // the bulk action is recoverable from the audit trail. We re-use
-          // the existing enum members (BOOKED when the position transitioned,
-          // ASSIGNED for in-place active-person swaps) and encode project /
-          // person change details in changeReason so no schema migration is
-          // required.
+          // the bulk action is recoverable from the audit trail. A genuine
+          // state-machine transition records its real edge (BOOKED); every
+          // in-place person swap / project move records REASSIGNED with the
+          // unchanged status on both sides. Project / person change details
+          // are encoded in changeReason.
           const reasonPrefix = command.reason
             ? `bulk_reassign:${command.reason}`
             : 'bulk_reassign';
@@ -149,7 +210,7 @@ export class BulkReassignPositionsService {
             data: {
               positionId: id,
               changedByPersonId: command.actorId,
-              changeType: didTransition ? 'BOOKED' : 'ASSIGNED',
+              changeType: didTransition ? 'BOOKED' : 'REASSIGNED',
               changeReason: `${reasonPrefix}${projectChange}${personChange}`,
               previousStatus: fromStatus,
               newStatus: position.fillStatus.value,
@@ -160,16 +221,25 @@ export class BulkReassignPositionsService {
         }
       });
     } catch (err) {
+      // The whole transaction rolled back — every eligible row failed on
+      // top of any per-row validation errors. 422, never a 200 that claims
+      // success after a rollback.
       this.logger.warn(
         `Bulk reassign rolled back: ${(err as Error).message}`,
       );
-      return {
-        reassigned: 0,
-        positionIds: [],
-        errors: [(err as Error).message],
-      };
+      throw new UnprocessableEntityException({
+        error: 'BulkReassignAllRowsFailed',
+        message: [
+          ...rowErrors,
+          `transaction rolled back — no positions were reassigned: ${(err as Error).message}`,
+        ],
+      });
     }
 
-    return { reassigned: ids.length, positionIds: ids, errors: [] };
+    return {
+      reassigned: eligibleIds.length,
+      positionIds: eligibleIds,
+      errors: rowErrors,
+    };
   }
 }

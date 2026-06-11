@@ -253,7 +253,9 @@ export class ProjectPositionsController {
     summary:
       'LEAN-P4-missing-1 — PM bulk reassign of project positions. Updates ' +
       'activePersonId and/or projectId for the listed positions inside a ' +
-      'single prisma.$transaction. Any single failure rolls the batch back.',
+      'single prisma.$transaction. DRAFT/OPEN rows reject person reassigns ' +
+      'per-row (NOT_FILLED); mixed outcomes return 200 with per-row errors; ' +
+      'if every row failed the request returns 422.',
   })
   @ApiOkResponse({ type: BulkReassignPositionsResponseDto })
   @RequireRoles(...PROJECT_DELIVERY_ROLES)
