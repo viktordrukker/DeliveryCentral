@@ -240,6 +240,10 @@ jobs:
             docker compose -p dc-prod -f docker-compose.prod.yml up -d --no-build backend frontend
             echo "$DEPLOY_SHA" > /opt/deliverycentral/.current-sha
 
+            # Disk hygiene — see build-and-stage.yml for the 2026-06-11
+            # full-disk incident rationale. 72h window preserves rollback tags.
+            docker image prune -a -f --filter "until=72h" || echo "::warning::image prune failed (non-fatal)"
+
             # Self-healing Caddy refresh — see build-and-stage.yml for rationale.
             TEMPLATE_PATH=/opt/deliverycentral/ops/templates/data-stack.Caddyfile
             DEPLOYED_PATH=/opt/deliverycentral-data/Caddyfile
