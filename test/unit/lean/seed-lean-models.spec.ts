@@ -162,12 +162,12 @@ describe('it-company seed — lean model re-map', () => {
   // PR-3 seed realism invariants
   // -------------------------------------------------------------------------
 
-  type PositionLike = {
+  interface PositionLike {
     fillStatus: string;
     activePersonId: string | null;
     activeValidTo?: Date | null;
     activeAllocationPercent?: number;
-  };
+  }
   const positionRows = itCompanyProjectPositions as unknown as PositionLike[];
 
   describe('Σ-allocation cap', () => {
