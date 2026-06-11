@@ -81,6 +81,7 @@ const CLI  = 'bbbb0024'; // Client
 const CON  = 'bbbb0025'; // Contact (DM-6a-4)
 const EMP  = 'bbbb0026'; // EmploymentEvent (DM-6a-5)
 const BAP  = 'bbbb0027'; // BudgetApproval (DM-6a-3)
+const PPC  = 'bbbb0028'; // ProjectPositionCandidate (PR-3 seed realism)
 
 // ---------------------------------------------------------------------------
 // Time anchors
@@ -861,23 +862,59 @@ function pickAlloc(idx: number): number {
   return opts[idx % opts.length];
 }
 
-// ACTIVE projects: 8-15 assignments each
+// ACTIVE projects: 8-15 assignments each.
+//
+// Σ-allocation cap — the previous modular `seed % pool.length` pick staffed
+// the same ~14 people on up to 4 concurrent projects at 100/80/60% (live
+// staging showed 220-400% utilization). The factory now tracks each person's
+// concurrent active allocation and probes forward through the pool until it
+// finds someone with enough remaining capacity, so everyone stays ≤100%
+// (except the 2 deliberately over-allocated people pushed after this loop).
+const activeAllocByPerson = new Map<string, number>();
+const activeTeamByProject = new Map<string, Set<string>>();
+
 activeProjects.forEach((proj, projIdx) => {
   const teamSize = 8 + (projIdx % 4) * 2; // 8, 10, 12, 14
+  const team = new Set<string>();
+  activeTeamByProject.set(proj.id, team);
   for (let i = 0; i < teamSize; i++) {
     const seed = projIdx * 100 + i;
     const personPool = projIdx === 8 ? allEngIcs : projIdx % 2 === 0 ? beIcs.concat(feIcs) : allEngIcs;
-    const person = personPool[seed % personPool.length];
+    const wantAlloc = pickAlloc(i);
+    // First pass: someone (not already on this project) who fits the full slot.
+    let person: PersonDef | null = null;
+    let alloc = wantAlloc;
+    for (let probe = 0; probe < personPool.length; probe++) {
+      const cand = personPool[(seed + probe) % personPool.length];
+      if (team.has(cand.id)) continue;
+      const used = activeAllocByPerson.get(cand.id) ?? 0;
+      if (used + wantAlloc <= 100) { person = cand; break; }
+    }
+    // Fallback: downsize the slot onto whoever still has ≥25% free.
+    if (!person) {
+      for (let probe = 0; probe < personPool.length; probe++) {
+        const cand = personPool[(seed + probe) % personPool.length];
+        if (team.has(cand.id)) continue;
+        const free = 100 - (activeAllocByPerson.get(cand.id) ?? 0);
+        if (free >= 25) { person = cand; alloc = free; break; }
+      }
+    }
+    if (!person) continue; // pool exhausted — leave the slot unstaffed
     const startOffset = rng(0, 30, seed);
     const validFrom = addDays(proj.startsOn, startOffset);
     if (validFrom > NOW) continue;
-    // Most active: ASSIGNED, some BOOKED (just approved), one PROPOSED (in approval queue)
+    // Most active: ASSIGNED, some BOOKED (just approved), a few PROPOSED
+    // (in the approval queue — candidate slates hang off these below)
     const statusRoll = i;
     let status: string;
     if (statusRoll === 0 && projIdx === 9) status = 'PROPOSED'; // brand-new project: still in approval
+    else if (statusRoll === 1 && projIdx === 6) status = 'PROPOSED'; // Gamma AI Copilot: ramping up
+    else if (statusRoll === 2 && projIdx === 8) status = 'PROPOSED'; // Internal DC: backfill in review
     else if (statusRoll === 1 && projIdx === 9) status = 'BOOKED';
     else if (statusRoll === 2 && projIdx < 3) status = 'BOOKED';
     else status = 'ASSIGNED';
+    team.add(person.id);
+    activeAllocByPerson.set(person.id, (activeAllocByPerson.get(person.id) ?? 0) + alloc);
     assignments.push({
       id: asgid(),
       personId: person.id,
@@ -886,7 +923,7 @@ activeProjects.forEach((proj, projIdx) => {
       assignmentCode: `ASG-${asgSeq.toString().padStart(4, '0')}`,
       staffingRole: ROLES[i % ROLES.length],
       status,
-      allocationPercent: pickAlloc(i),
+      allocationPercent: alloc,
       validFrom,
       validTo: null,
       notes: `${ROLES[i % ROLES.length]} on ${proj.name}`,
@@ -896,24 +933,45 @@ activeProjects.forEach((proj, projIdx) => {
   }
 });
 
-// Over-allocation edge case: pick one mid engineer ("Pat O'Connor") and put them on 2 active projects at >100% combined.
-// We'll force the 2nd assignment to be on a different project
-const overAllocPerson = midEngs[7]; // arbitrary pick
-assignments.push({
-  id: asgid(),
-  personId: overAllocPerson.id,
-  projectId: activeProjects[3].id, // Delta Data Platform
-  requestedByPersonId: pms[3].id,
-  assignmentCode: `ASG-${asgSeq.toString().padStart(4, '0')}`,
-  staffingRole: 'Engineer (Spillover)',
-  status: 'ASSIGNED',
-  allocationPercent: 50,
-  validFrom: monthsAgo(2),
-  validTo: null,
-  notes: 'Cross-project loan; combined allocation exceeds 100%.',
-  approvedAt: monthsAgo(2),
-  requestedAt: monthsAgo(2),
+// ---------------------------------------------------------------------------
+// DELIBERATE OVER-ALLOCATION — exactly 2 people stay above 100% combined
+// allocation ON PURPOSE. They exercise the upcoming Σ-allocation guard and
+// the "Overallocated" KPI / drilldowns on the workforce dashboards. Everyone
+// else is capped at ≤100% by the factory above. Their ids are exported as
+// `itCompanyOverAllocatedPersonIds` so tests can assert the invariant.
+// ---------------------------------------------------------------------------
+const overAllocPeople: PersonDef[] = [];
+for (const [personId, used] of activeAllocByPerson) {
+  if (overAllocPeople.length >= 2) break;
+  if (used < 80) continue;
+  const p = people.find(x => x.id === personId);
+  if (p) overAllocPeople.push(p);
+}
+overAllocPeople.forEach((person, k) => {
+  // Find an active project this person is not already staffed on.
+  const target = activeProjects.find(
+    (proj, idx) => idx !== 8 && !activeTeamByProject.get(proj.id)?.has(person.id),
+  ) ?? activeProjects[3];
+  activeTeamByProject.get(target.id)?.add(person.id);
+  activeAllocByPerson.set(person.id, (activeAllocByPerson.get(person.id) ?? 0) + 50);
+  assignments.push({
+    id: asgid(),
+    personId: person.id,
+    projectId: target.id,
+    requestedByPersonId: target.projectManagerId,
+    assignmentCode: `ASG-${asgSeq.toString().padStart(4, '0')}`,
+    staffingRole: 'Engineer (Spillover)',
+    status: 'ASSIGNED',
+    allocationPercent: 50,
+    validFrom: monthsAgo(2 - k),
+    validTo: null,
+    notes: 'Cross-project loan; combined allocation deliberately exceeds 100%.',
+    approvedAt: monthsAgo(2 - k),
+    requestedAt: monthsAgo(2 - k),
+  });
 });
+
+export const itCompanyOverAllocatedPersonIds = overAllocPeople.map(p => p.id);
 
 // CLOSED projects: 6-12 assignments each, all status COMPLETED with validTo set
 closedProjects.forEach((proj, idx) => {
@@ -1419,10 +1477,19 @@ export function generateItCompanyTimesheets(): {
     assignments.filter(a => a.status === 'ASSIGNED').map(a => a.personId),
   );
 
+  let personIdx = -1;
   for (const person of people) {
     if (person.employmentStatus === 'TERMINATED') continue;
+    personIdx += 1;
     const isActiveIc = activeAsgPersonIds.has(person.id);
     const weekDepth = isActiveIc ? 20 : 12;
+    // Status mix — the previous seed marked weeks 1-3 SUBMITTED for everyone
+    // (~590 rows flooding /approvals). Now only ~30% of people still have
+    // their latest completed week awaiting approval; everything older is
+    // APPROVED, and a handful of people carry a REJECTED week to exercise
+    // the rework loop.
+    const submitsLatestWeek = personIdx % 10 < 3;
+    const hasRejectedWeek = personIdx % 47 === 11;
 
     for (let w = weekDepth - 1; w >= 0; w--) {
       const monday = weekMonday(w);
@@ -1430,11 +1497,11 @@ export function generateItCompanyTimesheets(): {
       tsSeq += 1;
       const weekId = ns(TS, tsSeq);
 
-      // Status mix
       let status: string;
       if (w === 0) status = 'DRAFT';
       else if (w === 4 && person.id === ethan.id) status = 'REJECTED'; // edge case
-      else if (w >= 1 && w <= 3) status = 'SUBMITTED';
+      else if (w === 1 && submitsLatestWeek) status = 'SUBMITTED';
+      else if (w === 2 && hasRejectedWeek) status = 'REJECTED';
       else status = 'APPROVED';
 
       weeks.push({
@@ -1597,22 +1664,64 @@ export function generateItCompanyNotifications(): Array<Record<string, unknown>>
 }
 
 // ---------------------------------------------------------------------------
-// SKILL ASSIGNMENTS — for the named test accounts
+// SKILL ASSIGNMENTS — every person gets 3-6 PersonSkill rows generated from
+// their job role (engineers get engineering skills, HR gets people skills,
+// …) so the matching engine / suggest-fills scorer has real signal. The
+// previous seed had ~9 rows for 200 people, which flattened every match
+// score to the role-only baseline. Skill names must exist in the
+// `seedSkills()` catalog in prisma/seed.ts — unknown names are silently
+// skipped at insert time.
 // ---------------------------------------------------------------------------
-export const itCompanyPersonSkillAssignments: Array<{ personId: string; skillName: string; proficiency: number; certified: boolean }> = [
-  { personId: ethan.id, skillName: 'TypeScript',  proficiency: 4, certified: false },
-  { personId: ethan.id, skillName: 'React',       proficiency: 4, certified: false },
-  { personId: ethan.id, skillName: 'NestJS',      proficiency: 3, certified: false },
-  { personId: ethan.id, skillName: 'PostgreSQL',  proficiency: 3, certified: false },
-  { personId: lucas.id, skillName: 'Project Management', proficiency: 5, certified: true },
-  { personId: lucas.id, skillName: 'Agile/Scrum', proficiency: 5, certified: true },
-  { personId: sophia.id, skillName: 'Agile/Scrum', proficiency: 4, certified: false },
-  { personId: sophia.id, skillName: 'Project Management', proficiency: 4, certified: false },
-];
+const ROLE_SKILL_POOLS: Record<string, string[]> = {
+  'CEO':                  ['Project Management', 'Agile/Scrum', 'Stakeholder Management'],
+  'Engineering Director': ['Project Management', 'Stakeholder Management', 'TypeScript', 'AWS'],
+  'Delivery Director':    ['Project Management', 'Agile/Scrum', 'Stakeholder Management'],
+  'Operations Director':  ['Project Management', 'Stakeholder Management', 'People Operations'],
+  'Engineering Manager':  ['Project Management', 'Agile/Scrum', 'TypeScript', 'Stakeholder Management', 'CI/CD'],
+  'Architect':            ['TypeScript', 'AWS', 'Kubernetes', 'PostgreSQL', 'Docker', 'Terraform'],
+  'Senior Engineer':      ['TypeScript', 'NestJS', 'AWS', 'PostgreSQL', 'Docker', 'React', 'Redis', 'CI/CD'],
+  'Mid Engineer':         ['TypeScript', 'React', 'JavaScript', 'NestJS', 'PostgreSQL', 'MongoDB', 'Docker'],
+  'Junior Engineer':      ['TypeScript', 'JavaScript', 'React', 'PostgreSQL', 'Docker'],
+  'QA Engineer':          ['Playwright', 'Test Automation', 'TypeScript', 'JavaScript', 'CI/CD', 'Agile/Scrum'],
+  'DevOps Engineer':      ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Python'],
+  'Designer':             ['Figma', 'UI/UX Design', 'React', 'JavaScript', 'Agile/Scrum'],
+  'Project Manager':      ['Project Management', 'Agile/Scrum', 'Stakeholder Management', 'CI/CD'],
+  'Delivery Manager':     ['Project Management', 'Agile/Scrum', 'Stakeholder Management'],
+  'Resource Manager':     ['Project Management', 'Agile/Scrum', 'Stakeholder Management', 'People Operations'],
+  'HR Manager':           ['People Operations', 'Recruiting', 'Stakeholder Management', 'Project Management'],
+  'HR Specialist':        ['People Operations', 'Recruiting', 'Agile/Scrum'],
+  'Finance Manager':      ['Financial Analysis', 'Stakeholder Management', 'Project Management'],
+  'Finance Analyst':      ['Financial Analysis', 'PostgreSQL', 'Project Management'],
+  'Office Admin':         ['People Operations', 'Project Management', 'Stakeholder Management'],
+};
+const DEFAULT_SKILL_POOL = ['Project Management', 'Agile/Scrum', 'Stakeholder Management'];
+
+const personSkillAssignments: Array<{ personId: string; skillName: string; proficiency: number; certified: boolean }> = [];
+people.forEach((p, idx) => {
+  const pool = ROLE_SKILL_POOLS[p.role] ?? DEFAULT_SKILL_POOL;
+  const count = Math.min(pool.length, 3 + rng(0, 3, idx * 7 + 1));
+  const start = rng(0, pool.length - 1, idx * 13 + 2);
+  const gradeNum = Number(p.grade.replace('G', '')) || 8;
+  for (let k = 0; k < count; k++) {
+    const proficiencyBase = gradeNum >= 11 ? 4 : gradeNum >= 9 ? 3 : 2;
+    personSkillAssignments.push({
+      personId: p.id,
+      skillName: pool[(start + k) % pool.length],
+      proficiency: Math.min(5, proficiencyBase + rng(0, 1, idx * 5 + k)),
+      certified: (idx + k) % 5 === 0,
+    });
+  }
+});
+export const itCompanyPersonSkillAssignments = personSkillAssignments;
 
 // ---------------------------------------------------------------------------
 // EXPORTS
 // ---------------------------------------------------------------------------
+// Time anchor every relative date in this dataset hangs off — exported so
+// invariant tests (bench-aging windows etc.) can compare against the same
+// reference instead of the wall clock.
+export const itCompanySeedNow = NOW;
+
 export const itCompanyPeople = people.map(p => ({
   id: p.id,
   personNumber: p.personNumber,
@@ -1939,8 +2048,82 @@ assignments.forEach(a => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// BENCH REALISM — daysOnBench reads the latest RELEASED fill-history row per
+// person. The closed-project factory spreads releases across the full 5-year
+// window, which put every benched person at 300-540+ days on bench. Re-date
+// the LATEST RELEASED row of each currently-benched person to 1-180 days ago
+// so the bench-aging buckets carry a realistic spread. (The re-dated row
+// deliberately diverges from its position's activeValidTo — bench aging only
+// reads history.)
+// ---------------------------------------------------------------------------
+const staffedNowPersonIds = new Set(
+  assignments
+    .filter(a => a.status === 'BOOKED' || a.status === 'ASSIGNED')
+    .map(a => a.personId),
+);
+const activePersonIds = new Set(
+  people.filter(p => p.employmentStatus === 'ACTIVE').map(p => p.id),
+);
+const latestReleasedByPerson = new Map<string, Record<string, unknown>>();
+for (const row of positionFillHistory) {
+  if (row.changeType !== 'RELEASED') continue;
+  const personId = row.previousPersonId as string;
+  const prev = latestReleasedByPerson.get(personId);
+  if (!prev || (row.occurredAt as Date) > (prev.occurredAt as Date)) {
+    latestReleasedByPerson.set(personId, row);
+  }
+}
+let benchSeq = 0;
+for (const [personId, row] of latestReleasedByPerson) {
+  if (staffedNowPersonIds.has(personId) || !activePersonIds.has(personId)) continue;
+  benchSeq += 1;
+  row.occurredAt = daysAgo(rng(1, 180, benchSeq * 31 + 7));
+}
+
 export const itCompanyProjectPositions = [...assignmentPositions, ...requestPositions];
 export const itCompanyProjectPositionFillHistory = positionFillHistory;
+
+// ---------------------------------------------------------------------------
+// CANDIDATE SLATES — ~half the PROPOSED positions get 2-3 PENDING
+// ProjectPositionCandidate rows so the slate-review UI has data to render.
+// Candidates come from the senior/mid engineer pools and exclude the
+// position's already-proposed person.
+// ---------------------------------------------------------------------------
+let ppcSeq = 0;
+const ppcid = (): string => ns(PPC, ++ppcSeq);
+
+const slateCandidatePool = [...seniorEngs, ...midEngs];
+const proposedPositions = itCompanyProjectPositions.filter(p => p.fillStatus === 'PROPOSED');
+const projectPositionCandidates: Array<Record<string, unknown>> = [];
+proposedPositions.forEach((pos, idx) => {
+  if (idx % 2 === 1) return; // ~half get slates
+  const slateSize = 2 + rng(0, 1, idx * 3 + 1); // 2-3 candidates
+  let rank = 1;
+  const picked = new Set<string>();
+  for (let probe = 0; picked.size < slateSize && probe < slateCandidatePool.length; probe++) {
+    const cand = slateCandidatePool[(idx * 17 + probe) % slateCandidatePool.length];
+    if (cand.id === pos.activePersonId || picked.has(cand.id)) continue;
+    picked.add(cand.id);
+    projectPositionCandidates.push({
+      id: ppcid(),
+      positionId: pos.id,
+      candidatePersonId: cand.id,
+      rank,
+      matchScore: Math.round((0.92 - 0.08 * (rank - 1) - 0.01 * idx) * 100) / 100,
+      availabilityPercent: rank === 1 ? 100 : rank === 2 ? 60 : 40,
+      mismatchedSkills: rank === 1 ? [] : ['AWS'],
+      rationale: `Auto-suggested from the ${cand.role} pool`,
+      decision: 'PENDING',
+      createdAt: daysAgo(rng(1, 6, idx * 3 + rank)),
+      updatedAt: NOW,
+      createdByPersonId: sophia.id,
+    });
+    rank += 1;
+  }
+});
+
+export const itCompanyProjectPositionCandidates = projectPositionCandidates;
 export const itCompanyWorkEvidenceSources = workEvidenceSources;
 export const itCompanyWorkEvidence = workEvidence;
 export const itCompanyWorkEvidenceLinks = workEvidenceLinks;
@@ -2036,6 +2219,8 @@ export const itCompanyDatasetSummary = {
   closedProjectCount: closedProjects.length,
   projectPositionCount: itCompanyProjectPositions.length,
   positionFillHistoryCount: positionFillHistory.length,
+  positionCandidateCount: projectPositionCandidates.length,
+  personSkillCount: personSkillAssignments.length,
   workEvidenceCount: workEvidence.length,
   openPositionCount: requestPositions.length,
   caseCount: cases.length,

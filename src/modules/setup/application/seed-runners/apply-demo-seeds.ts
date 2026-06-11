@@ -30,6 +30,7 @@ export class ApplyDemoSeedsRunner {
       positionFillHistory: profile.itCompanyProjectPositionFillHistory,
       positions: profile.itCompanyPositions,
       projectExternalLinks: profile.itCompanyProjectExternalLinks,
+      projectPositionCandidates: profile.itCompanyProjectPositionCandidates,
       projectPositions: profile.itCompanyProjectPositions,
       projects: profile.itCompanyProjects,
       reportingLines: profile.itCompanyReportingLines,
