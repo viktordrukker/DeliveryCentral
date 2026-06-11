@@ -6,7 +6,6 @@
  * BE references:
  *   - `/api/staffing-requests/:id`           → `STAFFING_ROLES` (PM/RM/DM/director/admin)
  *   - `/api/people/bench`                     → `STAFFING_ROLES`
- *   - `/api/staffing/positions/:id/auto-match` → `STAFFING_ROLES` (DistributionStudio canEdit)
  *   - `/api/org/managers/:id/scope`           → `ALL_MANAGER_ROLES` + AllowSelfScope
  *   - `/api/admin/monitoring` (read-only)     → director + admin (FE only — BE is admin)
  *   - `/api/admin/notifications` (write)      → admin (FE) — director is read-only
