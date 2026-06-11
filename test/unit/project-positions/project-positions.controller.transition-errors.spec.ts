@@ -174,6 +174,7 @@ describe('ProjectPositionsController transition — RM forbidden edge → 403', 
       controllers: [ProjectPositionsController],
       providers: [
         { provide: CreateProjectPositionService, useValue: {} },
+        { provide: CreateAndBookProjectPositionService, useValue: {} },
         {
           provide: TransitionProjectPositionFillService,
           useValue: new TransitionProjectPositionFillService(repository, prisma),
