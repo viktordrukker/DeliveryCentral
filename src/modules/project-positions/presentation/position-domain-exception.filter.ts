@@ -11,6 +11,8 @@ const STATUS_BY_TRANSITION_ERROR_KIND: Record<PositionFillTransitionErrorKind, H
   ROLE_FORBIDDEN: HttpStatus.FORBIDDEN,
   MISSING_REASON: HttpStatus.BAD_REQUEST,
   MISSING_PERSON: HttpStatus.BAD_REQUEST,
+  OVERALLOCATION: HttpStatus.CONFLICT, // state conflict — person's Σ-allocation would exceed 100%
+  INVALID_DATES: HttpStatus.BAD_REQUEST,
 };
 
 /**

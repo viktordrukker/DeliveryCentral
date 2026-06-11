@@ -203,6 +203,10 @@ export const MONITORING_ROLES: AppRole[] = ['director', 'admin'];
 // must stay identical. Contract tests on both sides:
 // `route-manifest.test.tsx` ↔ `test/unit/project-positions/project-positions.controller.rbac.spec.ts`.
 export const STAFFING_DESK_ROLES: AppRole[] = ['resource_manager', 'project_manager', 'delivery_manager', 'director', 'admin'];
+// PR-14 (Decision D) — who may tick "Override and book anyway" when the
+// Σ-allocation guard rejects a booking with 409. Mirrors backend
+// `OVERALLOCATION_OVERRIDE_ROLES` in the project-positions services.
+export const OVERALLOCATION_OVERRIDE_ROLES: AppRole[] = ['resource_manager', 'delivery_manager', 'admin'];
 // /approvals merges leave + case approvals (HR-governed) with staffing-side
 // approvals, so HR must be allowed in alongside the staffing roles. Mirrors
 // backend `UNIFIED_APPROVAL_QUEUE_ROLES` on the controller.

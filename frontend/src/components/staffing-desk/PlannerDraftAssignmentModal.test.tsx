@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
+import { ApiError } from '@/lib/api/http-client';
 import type { PlannerBenchPerson } from '@/lib/api/staffing-desk';
 
 import { PlannerDraftAssignmentModal } from './PlannerDraftAssignmentModal';
@@ -21,7 +22,9 @@ vi.mock('sonner', () => ({
 const mockCreateAndBookPosition = vi.fn();
 const mockCreateProjectPosition = vi.fn();
 
-vi.mock('@/lib/api/project-positions', () => ({
+vi.mock('@/lib/api/project-positions', async (importOriginal) => ({
+  // Real module (incl. isOverallocationError) with the two network calls stubbed.
+  ...(await importOriginal<typeof import('@/lib/api/project-positions')>()),
   createAndBookPosition: (req: unknown) => mockCreateAndBookPosition(req),
   createProjectPosition: (req: unknown) => mockCreateProjectPosition(req),
 }));
@@ -103,5 +106,30 @@ describe('PlannerDraftAssignmentModal — atomic create-and-book', () => {
       expect.objectContaining({ openImmediately: false }),
     );
     expect(mockCreateAndBookPosition).not.toHaveBeenCalled();
+  }, 15000);
+
+  it('Σ-allocation 409 offers RM "Override and book anyway" and retries with allowOverallocation (PR-14 Decision D)', async () => {
+    const overalloc409 = new ApiError(
+      'Over-allocation: person person-1 already has 80% active allocation in the overlapping window; ' +
+        'this 100% booking would take them to 180%. RM/DM/admin can retry with allowOverallocation to override.',
+      409,
+    );
+    mockCreateAndBookPosition
+      .mockRejectedValueOnce(overalloc409)
+      .mockResolvedValueOnce({
+        id: 'pos-3', projectId: 'proj-1', role: 'Engineer',
+        requiredAllocationPercent: 100, fillStatus: 'BOOKED', version: 3,
+      });
+    const { user } = renderModal();
+
+    fillForm();
+    await user.click(screen.getByTestId('draft-request'));
+
+    await waitFor(() => expect(screen.getByText(overalloc409.message)).toBeInTheDocument());
+    await user.click(screen.getByRole('checkbox', { name: /Override and book anyway/ }));
+    await user.click(screen.getByTestId('draft-request'));
+
+    await waitFor(() => expect(mockCreateAndBookPosition).toHaveBeenCalledTimes(2));
+    expect(mockCreateAndBookPosition.mock.calls[1][0]).toMatchObject({ allowOverallocation: true });
   }, 15000);
 });

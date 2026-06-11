@@ -110,6 +110,18 @@ export class CreateAndBookProjectPositionRequestDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @ApiProperty({
+    required: false,
+    default: false,
+    description:
+      'PR-14 (Decision D) — explicitly override the Σ-allocation guard when the booking ' +
+      'would push the person past 100%. Only honoured for RM/DM/admin actors; the override ' +
+      'is recorded on the fill-history rows.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowOverallocation?: boolean;
 }
 
 export class TransitionProjectPositionFillRequestDto {
@@ -156,6 +168,18 @@ export class TransitionProjectPositionFillRequestDto {
   @IsOptional()
   @IsDateString()
   validTo?: string;
+
+  @ApiProperty({
+    required: false,
+    default: false,
+    description:
+      'PR-14 (Decision D) — explicitly override the Σ-allocation guard when the fill ' +
+      'would push the person past 100%. Only honoured for RM/DM/admin actors; the override ' +
+      'is recorded on the fill-history row.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowOverallocation?: boolean;
 }
 
 export class ListProjectPositionsQueryDto {

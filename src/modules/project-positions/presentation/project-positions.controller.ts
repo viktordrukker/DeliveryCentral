@@ -236,6 +236,7 @@ export class ProjectPositionsController {
     const actorId = request.principal?.personId ?? request.principal?.userId ?? '';
     const position = await this.createAndBookService.execute({
       actorId,
+      actorRoles: request.principal?.roles ?? [],
       projectId: body.projectId,
       personId: body.personId,
       role: body.role,
@@ -243,6 +244,7 @@ export class ProjectPositionsController {
       startDate: body.startDate,
       endDate: body.endDate,
       note: body.note,
+      allowOverallocation: body.allowOverallocation,
     });
     return ProjectPositionResponseDto.from(position);
   }
@@ -296,6 +298,7 @@ export class ProjectPositionsController {
       allocationPercent: body.allocationPercent,
       validFrom: body.validFrom,
       validTo: body.validTo,
+      allowOverallocation: body.allowOverallocation,
     });
     return ProjectPositionResponseDto.from(position);
   }

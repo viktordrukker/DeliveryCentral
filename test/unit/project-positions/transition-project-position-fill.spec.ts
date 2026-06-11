@@ -56,6 +56,9 @@ function buildHarness(position: ProjectPosition): Harness {
 
   const prisma = {
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(txObject),
+    // Σ-allocation guard reads the person's other positions; empty = no
+    // overlapping allocation, guard always passes in these scenarios.
+    projectPosition: { findMany: async () => [] },
   } as unknown as PrismaService;
 
   const repository = {

@@ -1,10 +1,12 @@
 import { FormEvent, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
+import { hasAnyRole, OVERALLOCATION_OVERRIDE_ROLES } from '@/app/route-manifest';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   createAndBookPosition,
   createProjectPosition,
+  isOverallocationError,
   type ProjectPosition,
 } from '@/lib/api/project-positions';
 import { WorkloadTimeline } from '@/components/staffing-desk/WorkloadTimeline';
@@ -68,8 +70,12 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
   const [overlapConfirm, setOverlapConfirm] = useState(false);
   const [inactiveOverride, setInactiveOverride] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(false);
+  // PR-14 (Decision D) — Σ-allocation guard 409 retry affordance.
+  const [overallocBlocked, setOverallocBlocked] = useState(false);
+  const [allowOverallocation, setAllowOverallocation] = useState(false);
 
   const isPersonInactive = preFill.personStatus ? preFill.personStatus !== 'ACTIVE' : false;
+  const canOverrideOveralloc = hasAnyRole(principal?.roles, OVERALLOCATION_OVERRIDE_ROLES);
 
   const actorId = principal?.personId ?? '';
   const effectiveRole = staffingRole === '__custom__' ? customRole : staffingRole;
@@ -148,6 +154,7 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
             startDate: req.startDate,
             endDate: req.endDate ?? req.startDate,
             ...(req.note ? { note: req.note } : {}),
+            ...(allowOverallocation && canOverrideOveralloc ? { allowOverallocation: true } : {}),
           });
       setStaffingRole('');
       setCustomRole('');
@@ -158,7 +165,12 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
       onSuccess(finalPosition);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create position.';
-      if (msg.toLowerCase().includes('overlapping')) {
+      if (isOverallocationError(err)) {
+        // Σ-allocation guard 409 — keep the modal open with the server
+        // message; RM/DM/admin get an explicit override-and-retry checkbox.
+        setOverallocBlocked(true);
+        setError(msg);
+      } else if (msg.toLowerCase().includes('overlapping')) {
         setPendingDraft(asDraft);
         setOverlapConfirm(true);
       } else {
@@ -264,6 +276,18 @@ function CreateAssignmentModalInner({ onCancel, onSuccess, preFill }: { onCancel
         />
 
         {error && <div style={{ color: 'var(--color-status-danger)', fontSize: 12, marginBottom: 'var(--space-2)' }}>{error}</div>}
+
+        {/* PR-14 (Decision D) — over-allocation override + retry (RM/DM/admin only) */}
+        {overallocBlocked && canOverrideOveralloc && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 'var(--space-2)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={allowOverallocation}
+              onChange={(e) => setAllowOverallocation(e.target.checked)}
+            />
+            <span>Override and book anyway (records an over-allocation override)</span>
+          </label>
+        )}
 
         <form onSubmit={(e) => void handleSubmit(e, false)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <FormField label="Staffing Role" required>

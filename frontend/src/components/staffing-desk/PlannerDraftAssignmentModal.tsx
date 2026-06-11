@@ -2,7 +2,8 @@ import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
-import { createAndBookPosition, createProjectPosition } from '@/lib/api/project-positions';
+import { hasAnyRole, OVERALLOCATION_OVERRIDE_ROLES } from '@/app/route-manifest';
+import { createAndBookPosition, createProjectPosition, isOverallocationError } from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { PlannerBenchPerson } from '@/lib/api/staffing-desk';
 import {
@@ -40,10 +41,14 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // PR-14 (Decision D) — Σ-allocation guard 409 retry affordance.
+  const [overallocBlocked, setOverallocBlocked] = useState(false);
+  const [allowOverallocation, setAllowOverallocation] = useState(false);
 
   const effectiveRole = staffingRole === '__custom__' ? customRole.trim() : staffingRole;
   const allocPercent = parseInt(alloc, 10) || 0;
   const actorId = principal?.personId ?? '';
+  const canOverrideOveralloc = hasAnyRole(principal?.roles, OVERALLOCATION_OVERRIDE_ROLES);
 
   const sortedBench = useMemo(() => {
     return [...benchPeople].sort((a, b) => b.availablePercent - a.availablePercent || b.daysOnBench - a.daysOnBench);
@@ -86,16 +91,22 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
           startDate,
           endDate: endDate || startDate,
           ...(note.trim() ? { note: note.trim() } : {}),
+          ...(allowOverallocation && canOverrideOveralloc ? { allowOverallocation: true } : {}),
         });
       }
       toast.success(asDraft ? 'Draft assignment saved' : 'Position created and booked');
       onCreated();
     } catch (err: unknown) {
+      if (isOverallocationError(err)) {
+        // Σ-allocation guard 409 — keep the modal open with the server
+        // message; RM/DM/admin get an explicit override-and-retry checkbox.
+        setOverallocBlocked(true);
+      }
       setError(err instanceof Error ? err.message : 'Failed to create assignment');
     } finally {
       setSubmitting(false);
     }
-  }, [actorId, personId, effectiveRole, allocPercent, endDate, startDate, note, projectId, onCreated]);
+  }, [actorId, personId, effectiveRole, allocPercent, endDate, startDate, note, projectId, onCreated, allowOverallocation, canOverrideOveralloc]);
 
   return (
     <Modal
@@ -201,6 +212,18 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
         </FormField>
 
         {error && <div style={{ fontSize: 11, color: 'var(--color-status-danger)' }}>{error}</div>}
+
+        {/* PR-14 (Decision D) — over-allocation override + retry (RM/DM/admin only) */}
+        {overallocBlocked && canOverrideOveralloc && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={allowOverallocation}
+              onChange={(e) => setAllowOverallocation(e.target.checked)}
+            />
+            <span>Override and book anyway (records an over-allocation override)</span>
+          </label>
+        )}
       </form>
     </Modal>
   );
