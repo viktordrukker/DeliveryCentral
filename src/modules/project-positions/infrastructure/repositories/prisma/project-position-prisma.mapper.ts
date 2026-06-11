@@ -2,9 +2,13 @@ import type {
   Prisma,
   ProjectPosition as PrismaProjectPosition,
   ProjectPositionFillStatus as PrismaProjectPositionFillStatus,
+  StaffingRequestPriority as PrismaStaffingRequestPriority,
 } from '@prisma/client';
 
-import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
+import {
+  ProjectPosition,
+  type PositionPriorityValue,
+} from '@src/modules/project-positions/domain/entities/project-position.entity';
 import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
 import {
   PositionFillStatus,
@@ -22,6 +26,9 @@ export class ProjectPositionPrismaMapper {
         publicId: row.publicId ?? undefined,
         projectId: row.projectId,
         role: row.role,
+        skills: row.skills,
+        summary: row.summary ?? undefined,
+        priority: row.priority as PositionPriorityValue,
         requiredAllocationPercent: Number(row.requiredAllocationPercent),
         startDate: row.startDate,
         endDate: row.endDate,
@@ -53,6 +60,9 @@ export class ProjectPositionPrismaMapper {
       id: aggregate.positionId.value,
       projectId: aggregate.projectId,
       role: aggregate.role,
+      skills: aggregate.skills,
+      summary: aggregate.summary ?? null,
+      priority: aggregate.priority as PrismaStaffingRequestPriority,
       requiredAllocationPercent: aggregate.requiredAllocationPercent.toString(),
       // Note: domain entity holds startDate/endDate but they're not exposed on
       // the entity getters — the create service supplies them on save. For now
@@ -68,6 +78,8 @@ export class ProjectPositionPrismaMapper {
       activeValidFrom: snap.activeValidFrom ?? null,
       activeValidTo: snap.activeValidTo ?? null,
       releaseReason: aggregate.releaseReason ?? null,
+      rejectionReason: aggregate.rejectionReason ?? null,
+      cancellationReason: aggregate.cancellationReason ?? null,
       onHoldReason: aggregate.onHoldReason ?? null,
       onHoldCaseId: aggregate.onHoldCaseId ?? null,
       requestedByPersonId: (aggregate as unknown as { props: { requestedByPersonId?: string } }).props

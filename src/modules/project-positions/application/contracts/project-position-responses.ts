@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import { ProjectPosition } from '../../domain/entities/project-position.entity';
+import {
+  POSITION_PRIORITY_VALUES,
+  ProjectPosition,
+  type PositionPriorityValue,
+} from '../../domain/entities/project-position.entity';
 import { PositionFillStatusValue } from '../../domain/value-objects/position-fill-status';
 
 export class ProjectPositionResponseDto {
@@ -11,6 +15,9 @@ export class ProjectPositionResponseDto {
   @ApiProperty({ nullable: true }) publicId!: string | null;
   @ApiProperty() projectId!: string;
   @ApiProperty() role!: string;
+  @ApiProperty({ type: [String] }) skills!: string[];
+  @ApiProperty({ required: false }) summary?: string;
+  @ApiProperty({ enum: POSITION_PRIORITY_VALUES }) priority!: PositionPriorityValue;
   @ApiProperty() requiredAllocationPercent!: number;
   @ApiProperty({ enum: ['DRAFT', 'OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'RELEASED'] })
   fillStatus!: PositionFillStatusValue;
@@ -19,6 +26,8 @@ export class ProjectPositionResponseDto {
   @ApiProperty({ required: false }) onHoldReason?: string;
   @ApiProperty({ required: false }) onHoldCaseId?: string;
   @ApiProperty({ required: false }) releaseReason?: string;
+  @ApiProperty({ required: false }) rejectionReason?: string;
+  @ApiProperty({ required: false }) cancellationReason?: string;
   @ApiProperty() version!: number;
   @ApiProperty({ required: false }) createdByPersonId?: string;
   @ApiProperty({ required: false }) updatedByPersonId?: string;
@@ -29,6 +38,9 @@ export class ProjectPositionResponseDto {
       publicId: position.publicId ?? null,
       projectId: position.projectId,
       role: position.role,
+      skills: position.skills,
+      summary: position.summary,
+      priority: position.priority,
       requiredAllocationPercent: position.requiredAllocationPercent,
       fillStatus: position.fillStatus.value,
       activePersonId: position.activePersonId,
@@ -36,6 +48,8 @@ export class ProjectPositionResponseDto {
       onHoldReason: position.onHoldReason,
       onHoldCaseId: position.onHoldCaseId,
       releaseReason: position.releaseReason,
+      rejectionReason: position.rejectionReason,
+      cancellationReason: position.cancellationReason,
       version: position.version,
       createdByPersonId: position.createdByPersonId,
       updatedByPersonId: position.updatedByPersonId,

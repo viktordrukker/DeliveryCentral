@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { fireEvent, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderRoute } from '@test/render-route';
@@ -17,6 +17,7 @@ vi.mock('@/app/auth-context', () => ({
 const mockFetchProjectDirectory = vi.fn();
 const mockCreateProjectPosition = vi.fn();
 const mockTransitionProjectPositionFill = vi.fn();
+const mockFetchSkills = vi.fn();
 
 vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: (params: unknown) => mockFetchProjectDirectory(params),
@@ -26,12 +27,19 @@ vi.mock('@/lib/api/project-positions', () => ({
   transitionProjectPositionFill: (id: string, req: unknown) =>
     mockTransitionProjectPositionFill(id, req),
 }));
+vi.mock('@/lib/api/skills', () => ({
+  fetchSkills: () => mockFetchSkills(),
+}));
 
 describe('CreatePositionDrawer — SoT PR 8 embedded create flow', () => {
   beforeEach(() => {
     mockFetchProjectDirectory.mockResolvedValue(buildProjectDirectoryResponse());
     mockCreateProjectPosition.mockReset();
     mockTransitionProjectPositionFill.mockReset();
+    mockFetchSkills.mockResolvedValue([
+      { id: 'skill-react', name: 'React', category: 'Frontend', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'skill-node', name: 'Node.js', category: 'Backend', createdAt: '2026-01-01T00:00:00Z' },
+    ]);
   });
 
   it('does not render the form when open=false', () => {
@@ -86,5 +94,69 @@ describe('CreatePositionDrawer — SoT PR 8 embedded create flow', () => {
     });
 
     expect(mockCreateProjectPosition).not.toHaveBeenCalled();
+  });
+
+  it('sends skills + priority in the create payload (PR-7 field fidelity)', async () => {
+    mockCreateProjectPosition.mockResolvedValue({
+      id: 'pos-1',
+      role: 'Senior Backend Engineer',
+      fillStatus: 'OPEN',
+    });
+    const { user } = renderRoute(<CreatePositionDrawer open onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('select').length).toBeGreaterThanOrEqual(3);
+    });
+
+    // Selects render in form order: Project, Role, Priority.
+    const [projectSelect, roleSelect, prioritySelect] = Array.from(
+      document.querySelectorAll('select'),
+    );
+    await user.selectOptions(projectSelect, 'project-atlas-erp-rollout');
+    await user.selectOptions(roleSelect, 'Senior Backend Engineer');
+    await user.selectOptions(prioritySelect, 'URGENT');
+
+    // Pick a skill from the catalog-backed multi-combobox.
+    const skillInput = await waitFor(() => {
+      const input = document.querySelector<HTMLInputElement>('.ds-multi-combobox__input');
+      expect(input).not.toBeNull();
+      expect(input!.disabled).toBe(false);
+      return input!;
+    });
+    await user.click(skillInput);
+    await user.keyboard('Rea');
+    const reactOption = await waitFor(() => {
+      const option = Array.from(document.querySelectorAll('[role="option"]')).find((el) =>
+        (el.textContent ?? '').includes('React'),
+      );
+      expect(option).toBeTruthy();
+      return option!;
+    });
+    await user.click(reactOption);
+
+    const [startInput, endInput] = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[type="date"]'),
+    );
+    fireEvent.change(startInput, { target: { value: '2026-07-01' } });
+    fireEvent.change(endInput, { target: { value: '2026-12-31' } });
+
+    const submit = document.querySelector(
+      'button[type="submit"][form="create-position-drawer-form"]',
+    ) as HTMLButtonElement;
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(mockCreateProjectPosition).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateProjectPosition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'project-atlas-erp-rollout',
+        role: 'Senior Backend Engineer',
+        priority: 'URGENT',
+        skills: ['React'],
+        startDate: '2026-07-01',
+        endDate: '2026-12-31',
+      }),
+    );
   });
 });

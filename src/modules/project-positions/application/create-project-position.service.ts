@@ -7,7 +7,10 @@ import {
 
 import { TransactionContext } from '@src/shared/domain/transaction-context';
 
-import { ProjectPosition } from '../domain/entities/project-position.entity';
+import {
+  ProjectPosition,
+  type PositionPriorityValue,
+} from '../domain/entities/project-position.entity';
 import { ProjectPositionRepositoryPort } from '../domain/repositories/project-position-repository.port';
 import { PositionId } from '../domain/value-objects/position-id';
 import { PositionFillStatus } from '../domain/value-objects/position-fill-status';
@@ -22,6 +25,8 @@ export interface CreateProjectPositionCommand {
   endDate: string;
   skills?: string[];
   summary?: string;
+  /** Staffing-queue sort key. Defaults to MEDIUM (schema default). */
+  priority?: PositionPriorityValue;
   requestedByPersonId?: string;
   /** Open the position immediately. Default: DRAFT (still being shaped). */
   openImmediately?: boolean;
@@ -108,6 +113,9 @@ export class CreateProjectPositionService {
       {
         projectId: command.projectId,
         role: command.role,
+        skills: command.skills,
+        summary: command.summary,
+        priority: command.priority,
         requiredAllocationPercent: command.requiredAllocationPercent,
         startDate,
         endDate,
