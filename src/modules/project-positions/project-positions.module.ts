@@ -154,8 +154,11 @@ import {
     ListPositionHistoryService,
     {
       provide: BulkReassignPositionsService,
-      inject: [PrismaService],
-      useFactory: (prisma: PrismaService) => new BulkReassignPositionsService(prisma),
+      inject: [PrismaService, PROJECT_POSITION_REFERENCE_REPOSITORY],
+      useFactory: (
+        prisma: PrismaService,
+        referenceRepo: PrismaProjectPositionReferenceRepository,
+      ) => new BulkReassignPositionsService(prisma, referenceRepo),
     },
   ],
   exports: [

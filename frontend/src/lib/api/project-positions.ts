@@ -147,7 +147,8 @@ export type ProjectPositionFillChangeType =
   | 'ONBOARDED'
   | 'ASSIGNED'
   | 'HELD'
-  | 'RELEASED';
+  | 'RELEASED'
+  | 'REASSIGNED';
 
 export interface ProjectPositionFillHistory {
   id: string;

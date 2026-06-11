@@ -5191,4 +5191,29 @@ describe('DM-R-13 per-migration contract', () => {
       expect(fs.existsSync(path.join(migrationDir, 'rollback.sql'))).toBe(false);
     });
   });
+
+  describe('20260611_pr15_fill_change_type_reassigned', () => {
+    const migrationDir = path.join(migrationsRoot, "20260611_pr15_fill_change_type_reassigned");
+  
+    it('migration.sql exists + non-empty', () => {
+      const p = path.join(migrationDir, 'migration.sql');
+      expect(fs.existsSync(p)).toBe(true);
+      expect(fs.statSync(p).size).toBeGreaterThan(0);
+    });
+  
+    it('posture matches frozen classification (FORWARD_ONLY)', () => {
+      const hasReversible = fs.existsSync(path.join(migrationDir, 'REVERSIBLE.md'));
+      const hasForwardOnly = fs.existsSync(path.join(migrationDir, 'FORWARD_ONLY.md'));
+      const p = hasReversible ? 'REVERSIBLE' : hasForwardOnly ? 'FORWARD_ONLY' : 'UNCLASSIFIED';
+      expect(p).toBe("FORWARD_ONLY");
+    });
+  
+    it('migration.sql SHA-256 is frozen', () => {
+      expect(sha256File(path.join(migrationDir, 'migration.sql'))).toBe("1240e16f533eff376d80201684bbc17fba15edd5c57add3fc455cdb753871504");
+    });
+  
+    it('FORWARD_ONLY must not carry rollback.sql (fake rollbacks silently lose data)', () => {
+      expect(fs.existsSync(path.join(migrationDir, 'rollback.sql'))).toBe(false);
+    });
+  });
 });

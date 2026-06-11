@@ -355,6 +355,7 @@ enum ProjectPositionFillChangeType {
   RATE_PINNED
   ALLOCATION_CHANGED
   DATES_CHANGED
+  REASSIGNED
 }
 
 enum WorkEvidenceStatus {
