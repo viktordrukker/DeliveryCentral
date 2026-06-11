@@ -17,7 +17,11 @@ import { ListProjectPositionsService } from './application/list-project-position
 import { PositionForensicsService } from './application/position-forensics.service';
 import { SuggestFillsService } from './application/suggest-fills.service';
 import { TransitionProjectPositionFillService } from './application/transition-project-position-fill.service';
-import { PROJECT_POSITION_REPOSITORY } from './application/tokens';
+import {
+  PROJECT_POSITION_REFERENCE_REPOSITORY,
+  PROJECT_POSITION_REPOSITORY,
+} from './application/tokens';
+import { PrismaProjectPositionReferenceRepository } from './infrastructure/repositories/prisma/prisma-project-position-reference.repository';
 import { PrismaProjectPositionRepository } from './infrastructure/repositories/prisma/prisma-project-position.repository';
 import {
   PeopleBenchController,
@@ -42,10 +46,21 @@ import {
         new PrismaProjectPositionRepository(prisma.projectPosition),
     },
     {
+      // PR-8 — create-side reference checks (unknown → 404, closed project /
+      // non-active person → 409). Shared by the plain create and the atomic
+      // create-and-book paths.
+      provide: PROJECT_POSITION_REFERENCE_REPOSITORY,
+      inject: [PrismaService],
+      useFactory: (prisma: PrismaService) =>
+        new PrismaProjectPositionReferenceRepository(prisma),
+    },
+    {
       provide: CreateProjectPositionService,
-      inject: [PROJECT_POSITION_REPOSITORY],
-      useFactory: (repo: PrismaProjectPositionRepository) =>
-        new CreateProjectPositionService(repo),
+      inject: [PROJECT_POSITION_REPOSITORY, PROJECT_POSITION_REFERENCE_REPOSITORY],
+      useFactory: (
+        repo: PrismaProjectPositionRepository,
+        referenceRepo: PrismaProjectPositionReferenceRepository,
+      ) => new CreateProjectPositionService(repo, referenceRepo),
     },
     {
       // Atomic create-and-book — same fill-changed event bridge as the
@@ -55,15 +70,17 @@ import {
         PROJECT_POSITION_REPOSITORY,
         PrismaService,
         CreateProjectPositionService,
+        PROJECT_POSITION_REFERENCE_REPOSITORY,
         NotificationEventTranslatorService,
       ],
       useFactory: (
         repo: PrismaProjectPositionRepository,
         prisma: PrismaService,
         createService: CreateProjectPositionService,
+        referenceRepo: PrismaProjectPositionReferenceRepository,
         translator: NotificationEventTranslatorService,
       ) =>
-        new CreateAndBookProjectPositionService(repo, prisma, createService, {
+        new CreateAndBookProjectPositionService(repo, prisma, createService, referenceRepo, {
           emit: (event) =>
             translator.positionFillChanged({
               positionId: event.positionId,

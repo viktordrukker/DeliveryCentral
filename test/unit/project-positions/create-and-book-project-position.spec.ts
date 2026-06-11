@@ -1,7 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { CreateAndBookProjectPositionService } from '@src/modules/project-positions/application/create-and-book-project-position.service';
 import { CreateProjectPositionService } from '@src/modules/project-positions/application/create-project-position.service';
+import type { ProjectPositionReferenceRepositoryPort } from '@src/modules/project-positions/application/ports/project-position-reference.repository.port';
 import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
 import type { ProjectPositionRepositoryPort } from '@src/modules/project-positions/domain/repositories/project-position-repository.port';
 import type { PrismaService } from '@src/shared/persistence/prisma.service';
@@ -19,7 +20,9 @@ interface Harness {
 
 function buildHarness(options: {
   projectExists?: boolean;
+  projectIsActive?: boolean;
   personExists?: boolean;
+  personIsActive?: boolean;
   failHistoryWriteAt?: number;
 } = {}): Harness {
   const historyWrites: Array<Record<string, unknown>> = [];
@@ -41,16 +44,15 @@ function buildHarness(options: {
   };
 
   const prisma = {
-    project: {
-      findUnique: async () =>
-        (options.projectExists ?? true) ? { id: PROJECT_ID } : null,
-    },
-    person: {
-      findUnique: async () =>
-        (options.personExists ?? true) ? { id: PERSON_ID } : null,
-    },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(txObject),
   } as unknown as PrismaService;
+
+  const referenceRepository: ProjectPositionReferenceRepositoryPort = {
+    projectExists: async () => options.projectExists ?? true,
+    projectIsActive: async () => options.projectIsActive ?? true,
+    personExists: async () => options.personExists ?? true,
+    personIsActive: async () => options.personIsActive ?? true,
+  };
 
   const repository = {
     save: async (aggregate: ProjectPosition, tx?: unknown) => {
@@ -58,8 +60,13 @@ function buildHarness(options: {
     },
   } as unknown as ProjectPositionRepositoryPort;
 
-  const createService = new CreateProjectPositionService(repository);
-  const service = new CreateAndBookProjectPositionService(repository, prisma, createService);
+  const createService = new CreateProjectPositionService(repository, referenceRepository);
+  const service = new CreateAndBookProjectPositionService(
+    repository,
+    prisma,
+    createService,
+    referenceRepository,
+  );
 
   return { service, historyWrites, saveCalls, txObject };
 }
@@ -140,6 +147,24 @@ describe('CreateAndBookProjectPositionService — atomic create-and-book', () =>
     const { service, historyWrites, saveCalls } = buildHarness({ personExists: false });
 
     await expect(service.execute(baseCommand())).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(saveCalls).toHaveLength(0);
+    expect(historyWrites).toHaveLength(0);
+  });
+
+  it('rejects a closed/archived project with a 409 ConflictException and writes nothing', async () => {
+    const { service, historyWrites, saveCalls } = buildHarness({ projectIsActive: false });
+
+    await expect(service.execute(baseCommand())).rejects.toBeInstanceOf(ConflictException);
+
+    expect(saveCalls).toHaveLength(0);
+    expect(historyWrites).toHaveLength(0);
+  });
+
+  it('rejects a terminated/non-active person with a 409 ConflictException and writes nothing', async () => {
+    const { service, historyWrites, saveCalls } = buildHarness({ personIsActive: false });
+
+    await expect(service.execute(baseCommand())).rejects.toBeInstanceOf(ConflictException);
 
     expect(saveCalls).toHaveLength(0);
     expect(historyWrites).toHaveLength(0);
