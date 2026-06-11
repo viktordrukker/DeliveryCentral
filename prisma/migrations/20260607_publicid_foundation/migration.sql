@@ -21,6 +21,13 @@
 -- Honeypot rows (DM-R-31) are excluded from the UPDATE backfill via the
 -- explicit `WHERE id NOT IN (SELECT "rowId" FROM "honeypot" ...)` clause so
 -- the BEFORE UPDATE tripwire trigger does not fire on this backfill.
+--
+-- Derivation is substr(md5(id::text), 1, 12) — NOT the first 12 hex chars of
+-- the UUID itself. Seed profiles use patterned UUIDs (e.g. every it-company
+-- Person id = bbbb0001-0000-0000-0000-XXXXXXXXXXXX) whose prefix-12 is
+-- identical across all rows, which made the original uuid-prefix derivation
+-- collide on the unique index. md5 of the full UUID text is deterministic
+-- and collision-proof for distinct ids.
 
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -31,7 +38,7 @@ SET LOCAL statement_timeout = '60s';
 ALTER TABLE "Person" ADD COLUMN IF NOT EXISTS "publicId" varchar(32);
 
 UPDATE "Person"
-SET "publicId" = 'usr_' || substr(replace("id"::text, '-', ''), 1, 12)
+SET "publicId" = 'usr_' || substr(md5("id"::text), 1, 12)
 WHERE "publicId" IS NULL
   AND "id" NOT IN (SELECT "rowId" FROM "honeypot" WHERE "tableName" = 'Person');
 
@@ -40,7 +47,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Person_publicId_key" ON "Person" ("publicId")
 CREATE OR REPLACE FUNCTION "Person_publicid_dualmaintain"() RETURNS trigger AS $$
 BEGIN
   IF NEW."publicId" IS NULL THEN
-    NEW."publicId" := 'usr_' || substr(replace(NEW."id"::text, '-', ''), 1, 12);
+    NEW."publicId" := 'usr_' || substr(md5(NEW."id"::text), 1, 12);
   END IF;
   RETURN NEW;
 END;
@@ -57,7 +64,7 @@ FOR EACH ROW EXECUTE FUNCTION "Person_publicid_dualmaintain"();
 ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "publicId" varchar(32);
 
 UPDATE "Project"
-SET "publicId" = 'prj_' || substr(replace("id"::text, '-', ''), 1, 12)
+SET "publicId" = 'prj_' || substr(md5("id"::text), 1, 12)
 WHERE "publicId" IS NULL
   AND "id" NOT IN (SELECT "rowId" FROM "honeypot" WHERE "tableName" = 'Project');
 
@@ -66,7 +73,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Project_publicId_key" ON "Project" ("publicId
 CREATE OR REPLACE FUNCTION "Project_publicid_dualmaintain"() RETURNS trigger AS $$
 BEGIN
   IF NEW."publicId" IS NULL THEN
-    NEW."publicId" := 'prj_' || substr(replace(NEW."id"::text, '-', ''), 1, 12);
+    NEW."publicId" := 'prj_' || substr(md5(NEW."id"::text), 1, 12);
   END IF;
   RETURN NEW;
 END;
@@ -83,7 +90,7 @@ FOR EACH ROW EXECUTE FUNCTION "Project_publicid_dualmaintain"();
 ALTER TABLE "OrgUnit" ADD COLUMN IF NOT EXISTS "publicId" varchar(32);
 
 UPDATE "OrgUnit"
-SET "publicId" = 'org_' || substr(replace("id"::text, '-', ''), 1, 12)
+SET "publicId" = 'org_' || substr(md5("id"::text), 1, 12)
 WHERE "publicId" IS NULL
   AND "id" NOT IN (SELECT "rowId" FROM "honeypot" WHERE "tableName" = 'OrgUnit');
 
@@ -92,7 +99,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "OrgUnit_publicId_key" ON "OrgUnit" ("publicId
 CREATE OR REPLACE FUNCTION "OrgUnit_publicid_dualmaintain"() RETURNS trigger AS $$
 BEGIN
   IF NEW."publicId" IS NULL THEN
-    NEW."publicId" := 'org_' || substr(replace(NEW."id"::text, '-', ''), 1, 12);
+    NEW."publicId" := 'org_' || substr(md5(NEW."id"::text), 1, 12);
   END IF;
   RETURN NEW;
 END;
@@ -109,7 +116,7 @@ FOR EACH ROW EXECUTE FUNCTION "OrgUnit_publicid_dualmaintain"();
 ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "publicId" varchar(32);
 
 UPDATE "clients"
-SET "publicId" = 'cli_' || substr(replace("id"::text, '-', ''), 1, 12)
+SET "publicId" = 'cli_' || substr(md5("id"::text), 1, 12)
 WHERE "publicId" IS NULL
   AND "id" NOT IN (SELECT "rowId" FROM "honeypot" WHERE "tableName" = 'clients');
 
@@ -118,7 +125,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "clients_publicId_key" ON "clients" ("publicId
 CREATE OR REPLACE FUNCTION "clients_publicid_dualmaintain"() RETURNS trigger AS $$
 BEGIN
   IF NEW."publicId" IS NULL THEN
-    NEW."publicId" := 'cli_' || substr(replace(NEW."id"::text, '-', ''), 1, 12);
+    NEW."publicId" := 'cli_' || substr(md5(NEW."id"::text), 1, 12);
   END IF;
   RETURN NEW;
 END;
@@ -135,7 +142,7 @@ FOR EACH ROW EXECUTE FUNCTION "clients_publicid_dualmaintain"();
 ALTER TABLE "CaseRecord" ADD COLUMN IF NOT EXISTS "publicId" varchar(32);
 
 UPDATE "CaseRecord"
-SET "publicId" = 'case_' || substr(replace("id"::text, '-', ''), 1, 12)
+SET "publicId" = 'case_' || substr(md5("id"::text), 1, 12)
 WHERE "publicId" IS NULL
   AND "id" NOT IN (SELECT "rowId" FROM "honeypot" WHERE "tableName" = 'CaseRecord');
 
@@ -144,7 +151,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "CaseRecord_publicId_key" ON "CaseRecord" ("pu
 CREATE OR REPLACE FUNCTION "CaseRecord_publicid_dualmaintain"() RETURNS trigger AS $$
 BEGIN
   IF NEW."publicId" IS NULL THEN
-    NEW."publicId" := 'case_' || substr(replace(NEW."id"::text, '-', ''), 1, 12);
+    NEW."publicId" := 'case_' || substr(md5(NEW."id"::text), 1, 12);
   END IF;
   RETURN NEW;
 END;
