@@ -21,6 +21,25 @@ export interface ApprovalQueuePersonSummaryDto {
   displayName: string;
 }
 
+/**
+ * PR-10 (Wave 4) — enriched `meta` payload for `source = 'position-proposal'`
+ * items. Carries everything the approvals inspector needs to decide a
+ * PROPOSED → BOOKED transition on one screen (UX Law 7): candidate identity,
+ * allocation, engagement dates, owning project, and who proposed the fill.
+ */
+export interface PositionProposalQueueMetaDto {
+  projectId: string;
+  projectPublicId: string | null;
+  projectName: string;
+  candidatePersonId: string | null;
+  candidateDisplayName: string | null;
+  allocationPercent: number | null;
+  /** ISO date (yyyy-mm-dd) — position engagement window. */
+  startDate: string;
+  endDate: string;
+  proposedByDisplayName: string | null;
+}
+
 export interface ApprovalQueueItemDto {
   id: string;
   /**

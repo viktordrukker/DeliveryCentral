@@ -118,6 +118,133 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
 });
 
 /**
+ * PR-10 (Wave 4) — position-proposal items carry enriched meta (candidate,
+ * allocation, dates, project, proposed-by) so the approvals inspector can
+ * decide PROPOSED → BOOKED on one screen (UX Law 7), and the row window is
+ * a stable newest-first selection instead of an unordered take:100.
+ */
+describe('UnifiedApprovalQueueService — position-proposal source', () => {
+  interface PositionRow {
+    id: string;
+    publicId?: string | null;
+    role: string;
+    projectId: string;
+    activePersonId: string | null;
+    activeAllocationPercent: number | null;
+    requiredAllocationPercent: number;
+    startDate: Date;
+    endDate: Date;
+    updatedAt: Date;
+    project: { name: string; publicId: string | null };
+    activePerson: { id: string; displayName: string } | null;
+    updatedByPerson: { id: string; displayName: string } | null;
+  }
+
+  function buildStub(positions: PositionRow[]): {
+    prisma: PrismaService;
+    findManyArgs: () => unknown;
+  } {
+    let capturedArgs: unknown;
+    const prisma = {
+      projectPosition: {
+        findMany: async (args: unknown) => {
+          capturedArgs = args;
+          return positions;
+        },
+      },
+      budgetApproval: { findMany: async () => [] },
+      projectActivationApproval: { findMany: async () => [] },
+      leaveRequest: { findMany: async () => [] },
+      caseRecord: { findMany: async () => [] },
+      timesheetWeek: { findMany: async () => [] },
+      person: { findMany: async () => [] },
+    } as unknown as PrismaService;
+    return { prisma, findManyArgs: () => capturedArgs };
+  }
+
+  const basePosition: PositionRow = {
+    id: 'pos-1',
+    publicId: 'pos_apolloSenior',
+    role: 'Senior Engineer',
+    projectId: 'prj-1',
+    activePersonId: 'cand-1',
+    activeAllocationPercent: 80,
+    requiredAllocationPercent: 100,
+    startDate: new Date('2026-07-01T00:00:00Z'),
+    endDate: new Date('2026-12-31T00:00:00Z'),
+    updatedAt: new Date('2026-06-08T09:00:00Z'),
+    project: { name: 'Apollo', publicId: 'prj_apollo' },
+    activePerson: { id: 'cand-1', displayName: 'Ada Lovelace' },
+    updatedByPerson: { id: 'rm-1', displayName: 'Sophia Kim' },
+  };
+
+  it('enriches meta with candidate, allocation, dates, project, and proposed-by', async () => {
+    const { prisma } = buildStub([basePosition]);
+    const svc = new UnifiedApprovalQueueService(
+      prisma,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
+    );
+    const out = await svc.list({ sources: ['position-proposal'] });
+    expect(out.items).toHaveLength(1);
+    const item = out.items[0]!;
+    expect(item.source).toBe('position-proposal');
+    expect(item.title).toBe('Position fill proposed: Senior Engineer');
+    expect(item.targetPublicId).toBe('pos_apolloSenior');
+    expect(item.href).toBe('/positions/pos_apolloSenior');
+    expect(item.submittedBy).toEqual({ personId: 'rm-1', displayName: 'Sophia Kim' });
+    expect(item.meta).toEqual({
+      projectId: 'prj-1',
+      projectPublicId: 'prj_apollo',
+      projectName: 'Apollo',
+      candidatePersonId: 'cand-1',
+      candidateDisplayName: 'Ada Lovelace',
+      allocationPercent: 80,
+      startDate: '2026-07-01',
+      endDate: '2026-12-31',
+      proposedByDisplayName: 'Sophia Kim',
+    });
+  });
+
+  it('falls back to requiredAllocationPercent and null candidate fields', async () => {
+    const { prisma } = buildStub([
+      {
+        ...basePosition,
+        id: 'pos-2',
+        activePersonId: null,
+        activeAllocationPercent: null,
+        activePerson: null,
+        updatedByPerson: null,
+      },
+    ]);
+    const svc = new UnifiedApprovalQueueService(
+      prisma,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
+    );
+    const out = await svc.list({ sources: ['position-proposal'] });
+    expect(out.items[0]!.meta).toMatchObject({
+      candidatePersonId: null,
+      candidateDisplayName: null,
+      allocationPercent: 100,
+      proposedByDisplayName: null,
+    });
+  });
+
+  it('queries a stable newest-first window (orderBy updatedAt desc, take 100)', async () => {
+    const { prisma, findManyArgs } = buildStub([basePosition]);
+    const svc = new UnifiedApprovalQueueService(
+      prisma,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
+    );
+    await svc.list({ sources: ['position-proposal'] });
+    expect(findManyArgs()).toMatchObject({
+      where: { fillStatus: 'PROPOSED' },
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+  });
+});
+
+/**
  * LEAN-P4c-3 — leave items surface in the unified approval queue so HR
  * (and authorized managers) decide them from /approvals instead of
  * navigating to /leave-requests separately.

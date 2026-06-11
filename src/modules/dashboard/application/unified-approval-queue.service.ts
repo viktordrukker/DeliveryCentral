@@ -14,6 +14,7 @@ import {
   ApprovalQueueItemDto,
   ApprovalQueueResponseDto,
   ApprovalQueueSource,
+  PositionProposalQueueMetaDto,
   SlaStage,
 } from './contracts/approval-queue-item.dto';
 import {
@@ -302,24 +303,50 @@ export class UnifiedApprovalQueueService {
         role: true,
         projectId: true,
         activePersonId: true,
+        activeAllocationPercent: true,
+        requiredAllocationPercent: true,
+        startDate: true,
+        endDate: true,
         updatedAt: true,
+        project: { select: { name: true, publicId: true } },
+        activePerson: { select: { id: true, displayName: true } },
         updatedByPerson: { select: { id: true, displayName: true } },
       },
+      // PR-10 — stable newest-first window instead of an unordered take:100,
+      // so the queue never silently drops the most recent proposals.
+      orderBy: { updatedAt: 'desc' },
       take: 100,
     });
-    return rows.map((r) => itemFor({
-      source: 'position-proposal',
-      id: r.id,
-      // W1-12 — ProjectPosition carries `pos_…` publicId; surface it to the FE
-      // so the row "Open" link routes to /positions/<publicId> instead of the
-      // raw UUID. Backend accepts both via the publicId resolver middleware.
-      targetPublicId: r.publicId ?? null,
-      title: `Position fill proposed: ${r.role}`,
-      submittedAt: r.updatedAt,
-      submittedBy: r.updatedByPerson ?? null,
-      href: `/positions/${r.publicId ?? r.id}`,
-      meta: { projectId: r.projectId, candidatePersonId: r.activePersonId },
-    }));
+    return rows.map((r) => {
+      // The PROPOSE transition stamps activeAllocationPercent; fall back to
+      // the demand-side requiredAllocationPercent for legacy rows.
+      const allocation = r.activeAllocationPercent ?? r.requiredAllocationPercent;
+      // PR-10 — enriched meta so the inspector decides on one screen (Law 7).
+      const meta: PositionProposalQueueMetaDto = {
+        projectId: r.projectId,
+        projectPublicId: r.project.publicId ?? null,
+        projectName: r.project.name,
+        candidatePersonId: r.activePersonId,
+        candidateDisplayName: r.activePerson?.displayName ?? null,
+        allocationPercent: allocation != null ? Number(allocation) : null,
+        startDate: isoDate(r.startDate),
+        endDate: isoDate(r.endDate),
+        proposedByDisplayName: r.updatedByPerson?.displayName ?? null,
+      };
+      return itemFor({
+        source: 'position-proposal',
+        id: r.id,
+        // W1-12 — ProjectPosition carries `pos_…` publicId; surface it to the FE
+        // so the row "Open" link routes to /positions/<publicId> instead of the
+        // raw UUID. Backend accepts both via the publicId resolver middleware.
+        targetPublicId: r.publicId ?? null,
+        title: `Position fill proposed: ${r.role}`,
+        submittedAt: r.updatedAt,
+        submittedBy: r.updatedByPerson ?? null,
+        href: `/positions/${r.publicId ?? r.id}`,
+        meta: { ...meta },
+      });
+    });
   }
 
   private async loadBudgetApprovals(): Promise<ApprovalQueueItemDto[]> {

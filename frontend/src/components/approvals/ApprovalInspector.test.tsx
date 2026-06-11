@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApprovalInspector } from './ApprovalInspector';
 import type { ApprovalQueueItemDto } from '@/lib/api/approvals-unified';
 
+let mockRoles: string[] = ['project_manager'];
+
+vi.mock('@/app/auth-context', () => ({
+  useAuth: () => ({ principal: { personId: 'actor-1', roles: mockRoles } }),
+}));
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -71,6 +77,7 @@ function renderInspector(
 }
 
 beforeEach(async () => {
+  mockRoles = ['project_manager'];
   const mod = await import('@/lib/api/approvals-unified');
   vi.mocked(mod.decideApproval).mockClear();
   vi.mocked(mod.decideApproval).mockResolvedValue({
@@ -277,6 +284,79 @@ describe('ApprovalInspector', () => {
       });
       const balanceCell = screen.getByText('-2');
       expect(balanceCell.style.color).toContain('status-danger');
+    });
+  });
+
+  describe('PR-10 — position-proposal enrichment + role-gated decision', () => {
+    const positionItem: Partial<ApprovalQueueItemDto> = {
+      id: 'pos-1',
+      targetPublicId: 'pos_apolloSenior',
+      source: 'position-proposal',
+      title: 'Position fill proposed: Senior Engineer',
+      href: '/positions/pos_apolloSenior',
+      meta: {
+        projectId: 'prj-1',
+        projectPublicId: 'prj_apollo',
+        projectName: 'Apollo',
+        candidatePersonId: 'cand-1',
+        candidateDisplayName: 'Ada Lovelace',
+        allocationPercent: 80,
+        startDate: '2026-07-01',
+        endDate: '2026-12-31',
+        proposedByDisplayName: 'Sophia Kim',
+      },
+    };
+
+    it('renders candidate, allocation, dates, proposed-by, and project (UX Law 7)', () => {
+      renderInspector(positionItem);
+      expect(screen.getByTestId('approval-inspector-position-detail')).toBeInTheDocument();
+      expect(screen.getByText('Candidate')).toBeInTheDocument();
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Allocation')).toBeInTheDocument();
+      expect(screen.getByText('80%')).toBeInTheDocument();
+      expect(screen.getByText('2026-07-01 → 2026-12-31')).toBeInTheDocument();
+      expect(screen.getByText('Proposed by')).toBeInTheDocument();
+      expect(screen.getByText('Sophia Kim')).toBeInTheDocument();
+      // Project name renders via the shared Project tile.
+      expect(screen.getByText('Project')).toBeInTheDocument();
+      expect(screen.getByText('Apollo')).toBeInTheDocument();
+    });
+
+    it('omits the proposal block when meta carries no proposal fields', () => {
+      renderInspector({ ...positionItem, meta: {} });
+      expect(screen.queryByTestId('approval-inspector-position-detail')).not.toBeInTheDocument();
+    });
+
+    it('shows Approve/Reject for POSITION_DECIDE_ROLES (project_manager)', () => {
+      mockRoles = ['project_manager'];
+      renderInspector(positionItem);
+      expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Reject' })).toBeEnabled();
+      expect(screen.queryByTestId('approval-inspector-viewonly-hint')).not.toBeInTheDocument();
+    });
+
+    it('hides Approve/Reject and shows a view-only hint for non-decide roles (hr_manager)', () => {
+      mockRoles = ['hr_manager'];
+      renderInspector(positionItem);
+      expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('approval-inspector-kbd-hints')).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/Add context for the submitter/i),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('approval-inspector-viewonly-hint')).toBeInTheDocument();
+      // The deep-link forward action stays (UX Law 2 — no dead-end screens).
+      expect(screen.getByRole('link', { name: /Open source/i })).toHaveAttribute(
+        'href',
+        '/positions/pos_apolloSenior',
+      );
+    });
+
+    it('does not gate non-position sources for roles outside POSITION_DECIDE_ROLES', () => {
+      mockRoles = ['hr_manager'];
+      renderInspector(); // budget baseItem
+      expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled();
+      expect(screen.queryByTestId('approval-inspector-viewonly-hint')).not.toBeInTheDocument();
     });
   });
 });
