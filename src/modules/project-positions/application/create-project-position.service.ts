@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { TransactionContext } from '@src/shared/domain/transaction-context';
+
 import { ProjectPosition } from '../domain/entities/project-position.entity';
 import { ProjectPositionRepositoryPort } from '../domain/repositories/project-position-repository.port';
 import { PositionId } from '../domain/value-objects/position-id';
@@ -38,7 +40,10 @@ export class CreateProjectPositionService {
     private readonly referenceRepository?: ProjectPositionReferenceRepositoryPort,
   ) {}
 
-  public async execute(command: CreateProjectPositionCommand): Promise<ProjectPosition> {
+  public async execute(
+    command: CreateProjectPositionCommand,
+    tx?: TransactionContext,
+  ): Promise<ProjectPosition> {
     const startDate = new Date(command.startDate);
     const endDate = new Date(command.endDate);
 
@@ -84,7 +89,7 @@ export class CreateProjectPositionService {
       PositionId.create(),
     );
 
-    await this.repository.save(position);
+    await this.repository.save(position, tx);
     return position;
   }
 }

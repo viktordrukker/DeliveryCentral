@@ -7,6 +7,7 @@ import { PrismaModule } from '@src/shared/persistence/prisma.module';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { BulkReassignPositionsService } from './application/bulk-reassign-positions.service';
+import { CreateAndBookProjectPositionService } from './application/create-and-book-project-position.service';
 import { CreateProjectPositionService } from './application/create-project-position.service';
 import { GetProjectPositionByIdService } from './application/get-project-position-by-id.service';
 import { ListBenchPeopleService } from './application/list-bench-people.service';
@@ -45,6 +46,36 @@ import {
       inject: [PROJECT_POSITION_REPOSITORY],
       useFactory: (repo: PrismaProjectPositionRepository) =>
         new CreateProjectPositionService(repo),
+    },
+    {
+      // Atomic create-and-book — same fill-changed event bridge as the
+      // transition service so notification consumers see the booking.
+      provide: CreateAndBookProjectPositionService,
+      inject: [
+        PROJECT_POSITION_REPOSITORY,
+        PrismaService,
+        CreateProjectPositionService,
+        NotificationEventTranslatorService,
+      ],
+      useFactory: (
+        repo: PrismaProjectPositionRepository,
+        prisma: PrismaService,
+        createService: CreateProjectPositionService,
+        translator: NotificationEventTranslatorService,
+      ) =>
+        new CreateAndBookProjectPositionService(repo, prisma, createService, {
+          emit: (event) =>
+            translator.positionFillChanged({
+              positionId: event.positionId,
+              projectId: event.projectId,
+              fromStatus: event.fromStatus,
+              toStatus: event.toStatus,
+              actorPersonId: event.actorPersonId,
+              activePersonId: event.activePersonId,
+              reason: event.reason,
+              occurredAt: event.occurredAt,
+            }),
+        }),
     },
     {
       // LEAN-P1-5 — bridge the `ProjectPositionFillChangedEvent` from the
@@ -112,6 +143,7 @@ import {
   ],
   exports: [
     BulkReassignPositionsService,
+    CreateAndBookProjectPositionService,
     CreateProjectPositionService,
     TransitionProjectPositionFillService,
     ListProjectPositionsService,

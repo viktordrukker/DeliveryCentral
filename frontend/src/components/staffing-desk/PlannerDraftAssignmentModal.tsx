@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/app/auth-context';
-import { createProjectPosition, transitionProjectPositionFill } from '@/lib/api/project-positions';
+import { createAndBookPosition, createProjectPosition } from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { PlannerBenchPerson } from '@/lib/api/staffing-desk';
 import {
@@ -62,33 +62,33 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
     setSubmitting(true);
     setError(null);
     try {
-      // LEAN-P2-3: replace the legacy single-shot /assignments POST with the
-      // canonical two-step flow:
-      //   1) POST /project-positions to create the demand row.
-      //   2) For "Create & request" (asDraft=false), transition to BOOKED
-      //      with the picked person + allocation pinned in the transition
-      //      body. Drafts skip step 2 and leave the position at DRAFT until
-      //      the operator picks a candidate.
-      const position = await createProjectPosition({
-        projectId,
-        role: effectiveRole,
-        requiredAllocationPercent: allocPercent,
-        startDate,
-        endDate: endDate || startDate,
-        ...(note.trim() ? { summary: note.trim() } : {}),
-        ...(actorId ? { requestedByPersonId: actorId } : {}),
-        openImmediately: !asDraft,
-      });
-      if (!asDraft) {
-        await transitionProjectPositionFill(position.id, {
-          toStatus: 'BOOKED',
+      // "Create & book" (asDraft=false) uses the atomic create-and-book
+      // endpoint — create + OPEN→PROPOSED→BOOKED in one backend transaction,
+      // so a failed booking leaves no orphaned OPEN position. Drafts keep the
+      // plain create and stay at DRAFT until the operator picks a candidate.
+      if (asDraft) {
+        await createProjectPosition({
+          projectId,
+          role: effectiveRole,
+          requiredAllocationPercent: allocPercent,
+          startDate,
+          endDate: endDate || startDate,
+          ...(note.trim() ? { summary: note.trim() } : {}),
+          ...(actorId ? { requestedByPersonId: actorId } : {}),
+          openImmediately: false,
+        });
+      } else {
+        await createAndBookPosition({
+          projectId,
           personId,
+          role: effectiveRole,
           allocationPercent: allocPercent,
-          validFrom: startDate,
-          ...(endDate ? { validTo: endDate } : {}),
+          startDate,
+          endDate: endDate || startDate,
+          ...(note.trim() ? { note: note.trim() } : {}),
         });
       }
-      toast.success(asDraft ? 'Draft assignment saved' : 'Assignment requested');
+      toast.success(asDraft ? 'Draft assignment saved' : 'Position created and booked');
       onCreated();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create assignment');
@@ -102,7 +102,7 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
       open
       onClose={onClose}
       title="Draft position"
-      description={`${projectName} · week of ${startDate} — Creates a REQUESTED or DRAFT ProjectAssignment visible in team tabs, staffing desk, and planner.`}
+      description={`${projectName} · week of ${startDate} — Creates a BOOKED or DRAFT position visible in team tabs, staffing desk, and planner.`}
       size="md"
       closeOnBackdropClick={!submitting}
       closeOnEscape={!submitting}
@@ -124,7 +124,7 @@ export function PlannerDraftAssignmentModal({ projectId, projectName, startDate,
             data-testid="draft-request"
             data-autofocus="true"
           >
-            {submitting ? 'Creating…' : 'Create & request'}
+            {submitting ? 'Creating…' : 'Create & book'}
           </Button>
         </>
       }

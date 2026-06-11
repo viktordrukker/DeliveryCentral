@@ -64,6 +64,45 @@ export class CreateProjectPositionRequestDto {
   openImmediately?: boolean;
 }
 
+/**
+ * Payload for POST /project-positions/create-and-book — atomic direct
+ * booking (create + OPEN→PROPOSED→BOOKED in one transaction). Validator
+ * parity with `CreateProjectPositionRequestDto`.
+ */
+export class CreateAndBookProjectPositionRequestDto {
+  @ApiProperty()
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
+  projectId!: string;
+
+  @ApiProperty()
+  @Matches(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, { message: '$property must be a UUID-shaped string' })
+  personId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  role!: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  allocationPercent!: number;
+
+  @ApiProperty({ example: '2026-06-01' })
+  @IsDateString()
+  startDate!: string;
+
+  @ApiProperty({ example: '2026-12-31' })
+  @IsDateString()
+  endDate!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
 export class TransitionProjectPositionFillRequestDto {
   @ApiProperty({ enum: POSITION_FILL_STATUS_VALUES })
   @IsIn(POSITION_FILL_STATUS_VALUES)

@@ -17,10 +17,7 @@ import { DemandPipelineChart } from '@/components/charts/DemandPipelineChart';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useResourceManagerDashboard } from '@/features/dashboard/useResourceManagerDashboard';
-import {
-  createProjectPosition,
-  transitionProjectPositionFill,
-} from '@/lib/api/project-positions';
+import { createAndBookPosition } from '@/lib/api/project-positions';
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { ResourcePersonAllocationIndicator } from '@/lib/api/dashboard-resource-manager';
@@ -139,28 +136,19 @@ export function ResourceManagerDashboardPage(): JSX.Element {
     e.preventDefault();
     setQuickForm((prev) => ({ ...prev, error: null, isSubmitting: true, success: null }));
     try {
-      // LEAN-P2-4: the legacy `createAssignment` POST has been replaced by the
-      // canonical two-step ProjectPosition flow that the rest of the lean FE
-      // already uses (see useCreateAssignmentPage):
-      //   1) POST /project-positions to create the demand record (OPEN).
-      //   2) POST /project-positions/:id/transition to BOOKED with the
-      //      target person + allocation pinned in the body.
+      // Atomic create-and-book: one POST creates the demand record and books
+      // the person inside a single backend transaction — replaces the
+      // create(OPEN) + transition(BOOKED) pair that hit the nonexistent
+      // OPEN→BOOKED edge and orphaned OPEN positions.
       const allocation = Number(quickForm.allocationPercent);
       const startIso = `${quickForm.startDate}T00:00:00.000Z`;
-      const position = await createProjectPosition({
+      await createAndBookPosition({
         projectId: quickForm.projectId,
+        personId: quickForm.personId,
         role: quickForm.staffingRole,
-        requiredAllocationPercent: allocation,
+        allocationPercent: allocation,
         startDate: startIso,
         endDate: startIso,
-        requestedByPersonId: principal?.personId || undefined,
-        openImmediately: true,
-      });
-      await transitionProjectPositionFill(position.id, {
-        toStatus: 'BOOKED',
-        personId: quickForm.personId,
-        allocationPercent: allocation,
-        validFrom: startIso,
       });
       setQuickForm({
         ...INITIAL_QUICK_ASSIGN,

@@ -24,6 +24,7 @@ function makeController(
   const noop = {} as never;
   const controller = new ProjectPositionsController(
     noop, // createService
+    noop, // createAndBookService
     noop, // transitionService
     noop, // listService
     noop, // getService

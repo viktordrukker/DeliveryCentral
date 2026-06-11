@@ -4,6 +4,7 @@ import request from 'supertest';
 
 import { PublicIdService } from '@src/infrastructure/public-id';
 import { BulkReassignPositionsService } from '@src/modules/project-positions/application/bulk-reassign-positions.service';
+import { CreateAndBookProjectPositionService } from '@src/modules/project-positions/application/create-and-book-project-position.service';
 import { CreateProjectPositionService } from '@src/modules/project-positions/application/create-project-position.service';
 import { GetProjectPositionByIdService } from '@src/modules/project-positions/application/get-project-position-by-id.service';
 import { ListPositionHistoryService } from '@src/modules/project-positions/application/list-position-history.service';
@@ -31,6 +32,7 @@ describe('ProjectPositionsController transition error mapping', () => {
       controllers: [ProjectPositionsController],
       providers: [
         { provide: CreateProjectPositionService, useValue: {} },
+        { provide: CreateAndBookProjectPositionService, useValue: {} },
         { provide: TransitionProjectPositionFillService, useValue: transitionService },
         { provide: ListProjectPositionsService, useValue: {} },
         { provide: GetProjectPositionByIdService, useValue: {} },
