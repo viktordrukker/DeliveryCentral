@@ -24,6 +24,9 @@ function buildHarness(options: { projectExists?: boolean } = {}): Harness {
   } as unknown as ProjectPositionRepositoryPort;
   const referenceRepository = {
     projectExists: async () => options.projectExists ?? true,
+    projectIsActive: async () => true,
+    personExists: async () => true,
+    personIsActive: async () => true,
   } as unknown as ProjectPositionReferenceRepositoryPort;
   return { service: new CreateProjectPositionService(repository, referenceRepository), saved };
 }
