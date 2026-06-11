@@ -30,6 +30,7 @@ import {
   itCompanyProjectChangeRequests,
   itCompanyProjectExternalLinks,
   itCompanyProjectMilestones,
+  itCompanyProjectPositionCandidates,
   itCompanyProjectPositionFillHistory,
   itCompanyProjectPositions,
   itCompanyProjectRagSnapshots,
@@ -57,6 +58,7 @@ interface SeedDataset {
   positionFillHistory: unknown[];
   positions: unknown[];
   projectExternalLinks: unknown[];
+  projectPositionCandidates?: unknown[];
   projectPositions: unknown[];
   projects: unknown[];
   reportingLines: unknown[];
@@ -659,6 +661,16 @@ async function seedSkills(): Promise<void> {
     { id: '55555555-5c00-0000-0000-000000000023', name: 'Project Management', category: 'Methodology' },
     { id: '55555555-5c00-0000-0000-000000000024', name: 'Data Engineering',   category: 'Data' },
     { id: '55555555-5c00-0000-0000-000000000025', name: 'Machine Learning',   category: 'Data' },
+    // PR-3 seed realism — non-engineering roles need catalog coverage so the
+    // role-driven PersonSkill generator can give every person 3-6 skills.
+    { id: '55555555-5c00-0000-0000-000000000026', name: 'Playwright',         category: 'QA' },
+    { id: '55555555-5c00-0000-0000-000000000027', name: 'Test Automation',    category: 'QA' },
+    { id: '55555555-5c00-0000-0000-000000000028', name: 'Figma',              category: 'Design' },
+    { id: '55555555-5c00-0000-0000-000000000029', name: 'UI/UX Design',       category: 'Design' },
+    { id: '55555555-5c00-0000-0000-000000000030', name: 'People Operations',  category: 'HR' },
+    { id: '55555555-5c00-0000-0000-000000000031', name: 'Recruiting',         category: 'HR' },
+    { id: '55555555-5c00-0000-0000-000000000032', name: 'Financial Analysis', category: 'Finance' },
+    { id: '55555555-5c00-0000-0000-000000000033', name: 'Stakeholder Management', category: 'Methodology' },
   ];
 
   for (const skill of skills) {
@@ -1037,22 +1049,25 @@ async function seedItCompanyPersonSkills(): Promise<void> {
   }
 
   let count = 0;
+  const rows: Array<Record<string, unknown>> = [];
   for (const a of itCompanyPersonSkillAssignments) {
     const skillId = skillIdByLowerName.get(a.skillName.toLowerCase());
     if (!skillId) continue;
     count += 1;
-    try {
-      await prismaSeed.personSkill.create({
-        data: {
-          id: `cccc0004-bp00-0000-${String(count).padStart(4, '0')}-000000000000`,
-          personId: a.personId,
-          skillId,
-          proficiency: a.proficiency,
-        },
-      });
-    } catch {
-      // Skip duplicates (composite unique on personId+skillId)
-    }
+    rows.push({
+      id: `cccc0004-bp00-0000-${String(count).padStart(4, '0')}-000000000000`,
+      personId: a.personId,
+      skillId,
+      proficiency: a.proficiency,
+      certified: a.certified,
+    });
+  }
+  // skipDuplicates covers the composite unique on personId+skillId.
+  for (let index = 0; index < rows.length; index += 1000) {
+    await prismaSeed.personSkill.createMany({
+      data: rows.slice(index, index + 1000),
+      skipDuplicates: true,
+    });
   }
 
   console.log(`  Person skills: ${count} assignments`);
@@ -1175,6 +1190,9 @@ async function seedDataset(dataset: SeedDataset): Promise<void> {
   await createManyInChunks('projectExternalLink', dataset.projectExternalLinks);
   await createManyInChunks('externalSyncState', dataset.externalSyncStates);
   await createManyInChunks('projectPosition', dataset.projectPositions);
+  if (dataset.projectPositionCandidates) {
+    await createManyInChunks('projectPositionCandidate', dataset.projectPositionCandidates);
+  }
   await createManyInChunks('projectPositionFillHistory', dataset.positionFillHistory);
   await createManyInChunks('workEvidenceSource', dataset.workEvidenceSources);
   await createManyInChunks('workEvidence', dataset.workEvidence);
@@ -1224,6 +1242,7 @@ async function main(): Promise<void> {
       positionFillHistory: itCompanyProjectPositionFillHistory,
       positions: itCompanyPositions,
       projectExternalLinks: itCompanyProjectExternalLinks,
+      projectPositionCandidates: itCompanyProjectPositionCandidates,
       projectPositions: itCompanyProjectPositions,
       projects: itCompanyProjects,
       reportingLines: itCompanyReportingLines,
