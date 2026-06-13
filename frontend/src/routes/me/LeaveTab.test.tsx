@@ -56,7 +56,7 @@ vi.mock('@/app/auth-context', () => ({
   }),
 }));
 
-import { LeaveTab } from './LeaveTab';
+import { LeaveTab, isCompleteDate } from './LeaveTab';
 
 const PENDING_REQUEST = {
   id: 'lr-1',
@@ -140,5 +140,22 @@ describe('LeaveTab — LEAN-P4-missing-11 cancel CTA', () => {
     await waitFor(() => expect(cancelLeaveRequestMock).toHaveBeenCalledWith('lr-1'));
     // Reload was triggered (the loader is invoked a second time).
     await waitFor(() => expect(fetchMyLeaveRequestsMock.mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+});
+
+describe('LeaveTab — isCompleteDate guard (F-LEAVE-PREVIEW)', () => {
+  it('rejects half-typed / insane-year dates so the server preview is not fired', () => {
+    // The reported 400 came from a native date input emitting "0202-07-07"
+    // mid-typing. These must be treated as incomplete.
+    expect(isCompleteDate('0202-07-07')).toBe(false);
+    expect(isCompleteDate('202-07-07')).toBe(false);
+    expect(isCompleteDate('2026-07')).toBe(false);
+    expect(isCompleteDate('')).toBe(false);
+    expect(isCompleteDate('2026-13-40')).toBe(false); // not a real calendar date
+  });
+
+  it('accepts a fully-formed ISO date with a sane year', () => {
+    expect(isCompleteDate('2026-07-07')).toBe(true);
+    expect(isCompleteDate('2030-12-31')).toBe(true);
   });
 });
