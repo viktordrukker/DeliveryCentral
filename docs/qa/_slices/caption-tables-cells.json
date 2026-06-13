@@ -1,0 +1,317 @@
+[
+  {
+    "file": "frontend/src/components/assignments/AssignmentHistoryTimeline.tsx",
+    "line": 61,
+    "field": "previousPersonId / newPersonId",
+    "kind": "hard",
+    "snippet": "`${item.previousPersonId ?? '—'} → ${item.newPersonId ?? '—'}`,  // \"Person\" transition row shows raw person UUIDs"
+  },
+  {
+    "file": "frontend/src/components/assignments/AssignmentHistoryTimeline.tsx",
+    "line": 34,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "{item.changedByPersonId ? ` · ${item.changedByPersonId}` : ''}  // timeline meta line shows actor UUID"
+  },
+  {
+    "file": "frontend/src/components/projects/PositionForensicsDrawer.tsx",
+    "line": 264,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "by {event.changedByPersonId}  // forensics event footer shows actor UUID"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 75,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{event.targetEntityId ? ` · ${event.targetEntityId}` : ''}  // audit entity caption appends raw id"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 79,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "by {event.actorDisplayName ?? event.actorId}  // actor falls back to UUID when name unresolved"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 157,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "{event.actorDisplayName ?? event.actorId ?? 'System'}  // decision-log actor falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 545,
+    "field": "authorPersonId",
+    "kind": "hard",
+    "snippet": "render: (c) => <span ...>{c.authorPersonId}</span>  // Comments table \"Author\" column = raw UUID (also getValue exports it)"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 608,
+    "field": "personId",
+    "kind": "hard",
+    "snippet": "render: (p) => <span ...>{p.personId}</span>  // Participants table \"Person\" column = raw UUID (also getValue exports it)"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/BudgetTab.tsx",
+    "line": 211,
+    "field": "requestedByPersonId",
+    "kind": "hard",
+    "snippet": "render: (a) => a.requestedByPersonId  // \"Requested by\" column renders raw UUID (also getValue exports it)"
+  },
+  {
+    "file": "frontend/src/routes/leave/LeaveRequestPage.tsx",
+    "line": 243,
+    "field": "personId",
+    "kind": "hard",
+    "snippet": "render: (r) => <span ...>{r.personId.slice(0, 8)}…</span>  // \"Person\" column shows truncated raw UUID; getValue exports full id"
+  },
+  {
+    "file": "frontend/src/components/projects/ProjectPositionsList.tsx",
+    "line": 71,
+    "field": "activePersonId",
+    "kind": "hard",
+    "snippet": "render: (p) => p.activePersonId ?? '—'  // \"Active person\" column renders raw person UUID instead of name"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 138,
+    "field": "resolvedManagerPersonId",
+    "kind": "hard",
+    "snippet": "<Link ...>{item.resolvedManagerPersonId}</Link>  // Manager <dd> shows raw person UUID as link text"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 55,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{item.targetEntityType}: {item.targetEntityId}  // \"Target Entity\" <dd> shows raw entity id"
+  },
+  {
+    "file": "frontend/src/routes/exceptions/ExceptionsPage.tsx",
+    "line": 55,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{ key: 'targetEntityId', label: 'Target id', accessor: (r) => r.targetEntityId }  // whole \"Target id\" column of raw ids"
+  },
+  {
+    "file": "frontend/src/routes/people/EmployeeLifecycleAdminPage.tsx",
+    "line": 100,
+    "field": "orgUnitId",
+    "kind": "hard",
+    "snippet": "<dd>{state.createdEmployee.orgUnitId}</dd>  // \"Org Unit\" <dd> shows id instead of unit name"
+  },
+  {
+    "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
+    "line": 162,
+    "field": "orgUnitId",
+    "kind": "hard",
+    "snippet": "<dd>{pool.orgUnitId ?? 'Not linked'}</dd>  // \"Org Unit\" <dd> shows id instead of unit name"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 163,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "{row.subjectPersonName ?? row.subjectPersonId}  // Subject meta falls back to UUID"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 169,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "{row.ownerPersonName ?? row.ownerPersonId}  // Owner meta falls back to UUID"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 66,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.subjectPersonName ?? item.subjectPersonId}</span>  // also getValue (l.65) falls back to id"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 72,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.ownerPersonName ?? item.ownerPersonId}</span>  // also getValue (l.71) falls back to id"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/ProjectCasesTab.tsx",
+    "line": 90,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.subjectPersonName ?? item.subjectPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/ProjectCasesTab.tsx",
+    "line": 95,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.ownerPersonName ?? item.ownerPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 440,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "{displayCase.subjectPersonName ?? displayCase.subjectPersonId}"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 448,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "{displayCase.ownerPersonName ?? displayCase.ownerPersonId}"
+  },
+  {
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 276,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "label: `${c.caseNumber} · ${c.subjectPersonName ?? c.subjectPersonId}`  // command-palette result label falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 108,
+    "field": "activePersonId",
+    "kind": "fallback",
+    "snippet": "Person: p.activePersonName ?? p.activePersonId ?? ''  // export cell falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 109,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "Project: p.projectName ?? p.projectCode ?? p.projectId  // export cell terminates in raw project id"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionQueueTable.tsx",
+    "line": 59,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "{item.personDisplayName ?? item.personId ?? 'No person'}  // queue row falls back to UUID"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionQueueTable.tsx",
+    "line": 60,
+    "field": "projectId / targetEntityId",
+    "kind": "fallback",
+    "snippet": "{item.projectName ?? item.projectId ?? item.targetEntityId}  // terminates in raw project/entity id"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 60,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<dd>{item.personDisplayName ?? item.personId ?? 'No person linked'}</dd>"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 64,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "<dd>{item.projectName ?? item.projectId ?? 'No project linked'}</dd>"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 130,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link ...>{item.personDisplayName ?? item.personId}</Link>  // person link text falls back to UUID"
+  },
+  {
+    "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
+    "line": 132,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link ...>{item.personDisplayName ?? item.personId}</Link>  // person link text falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/RadiatorTab.tsx",
+    "line": 548,
+    "field": "projectManagerId",
+    "kind": "fallback",
+    "snippet": "{project.projectManagerDisplayName ?? project.projectManagerId}  // PM link text falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/RadiatorTab.tsx",
+    "line": 558,
+    "field": "deliveryManagerId",
+    "kind": "fallback",
+    "snippet": "{project.deliveryManagerDisplayName ?? project.deliveryManagerId}  // DM link text falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/timesheets/TimesheetApprovalPage.tsx",
+    "line": 299,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "const name = personNames[w.personId] ?? w.personId  // rendered in Avatar + span; getValue (l.298) also falls back to id"
+  },
+  {
+    "file": "frontend/src/components/time-management/LeaveDecisionDrawer.tsx",
+    "line": 327,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "getValue/render: (p) => p.projectName ?? p.projectCode ?? p.projectId  // terminates in raw project id"
+  },
+  {
+    "file": "frontend/src/routes/me/ProjectsTab.tsx",
+    "line": 116,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "getValue: (r) => r.projectName ?? r.projectCode ?? r.projectId  // sort/export key terminates in raw project id"
+  },
+  {
+    "file": "frontend/src/components/people/PersonSkillsTab.tsx",
+    "line": 143,
+    "field": "skillId",
+    "kind": "fallback",
+    "snippet": "getValue/render: ...allSkills.find(s => s.id === i.skillId)?.name ?? i.skillId  // \"Skill\" cell falls back to skill UUID"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseForm.tsx",
+    "line": 128,
+    "field": "activePersonId",
+    "kind": "fallback",
+    "snippet": "const personLabel = assignment.activePersonName ?? assignment.activePersonId ?? 'Unassigned'  // <option> label falls back to UUID"
+  },
+  {
+    "file": "frontend/src/components/projects/StaffingSwimLaneGantt.tsx",
+    "line": 47,
+    "field": "activePersonId",
+    "kind": "fallback",
+    "snippet": "name: r.a.activePersonName ?? r.a.activePersonId ?? 'Unassigned'  // gantt swim-lane label falls back to UUID"
+  },
+  {
+    "file": "frontend/src/features/work-evidence/useWorkEvidencePage.ts",
+    "line": 87,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "personName: ...?.displayName ?? item.personId ?? 'Unattributed person'  // computed label (rendered in WorkEvidenceTable) falls back to UUID"
+  },
+  {
+    "file": "frontend/src/features/work-evidence/useWorkEvidencePage.ts",
+    "line": 89,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "projectName: ...?.name ?? item.projectId ?? 'Unattributed project'  // computed label falls back to raw project id"
+  },
+  {
+    "file": "frontend/src/features/dashboard/planned-vs-actual-selectors.ts",
+    "line": 344,
+    "field": "missingPersonId (pid)",
+    "kind": "fallback",
+    "snippet": "const name = person?.displayName ?? pid  // PvA action-item person label falls back to UUID"
+  },
+  {
+    "file": "frontend/src/routes/admin/RateCardsAdminPage.tsx",
+    "line": 340,
+    "field": "clientId",
+    "kind": "fallback",
+    "snippet": "`Client · ${r.clientName ?? r.clientId.slice(0, 8)}`  // client cell falls back to truncated id"
+  }
+]

@@ -1,0 +1,219 @@
+[
+  {
+    "file": "frontend/src/components/assignments/AssignmentHistoryTimeline.tsx",
+    "line": 34,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "{item.changedByPersonId ? ` · ${item.changedByPersonId}` : ''}"
+  },
+  {
+    "file": "frontend/src/components/projects/PositionForensicsDrawer.tsx",
+    "line": 264,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "by {event.changedByPersonId}"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 75,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{event.targetEntityType}{event.targetEntityId ? ` · ${event.targetEntityId}` : ''}"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 79,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "by {event.actorDisplayName ?? event.actorId}"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 157,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "{event.actorDisplayName ?? event.actorId ?? 'System'}"
+  },
+  {
+    "file": "frontend/src/components/projects/RadiatorDrillDown.tsx",
+    "line": 83,
+    "field": "overriddenBy",
+    "kind": "hard",
+    "snippet": "{s.overriddenBy ? <span ...>by {s.overriddenBy}</span> : null}  // overriddenBy = overriddenByPersonId (raw person id)"
+  },
+  {
+    "file": "frontend/src/components/admin/BusinessAuditTable.tsx",
+    "line": 40,
+    "field": "correlationId",
+    "kind": "hard",
+    "snippet": "{item.correlationId ? `Correlation: ${item.correlationId}` : 'No correlation id'}"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 55,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{item.targetEntityType}: {item.targetEntityId}"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 60,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "{item.personDisplayName ?? item.personId ?? 'No person linked'}"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionDetailPanel.tsx",
+    "line": 64,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "{item.projectName ?? item.projectId ?? 'No project linked'}"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionQueueTable.tsx",
+    "line": 59,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "{item.personDisplayName ?? item.personId ?? 'No person'} |"
+  },
+  {
+    "file": "frontend/src/components/exceptions/ExceptionQueueTable.tsx",
+    "line": 60,
+    "field": "projectId / targetEntityId",
+    "kind": "fallback",
+    "snippet": "{item.projectName ?? item.projectId ?? item.targetEntityId}"
+  },
+  {
+    "file": "frontend/src/routes/exceptions/ExceptionsPage.tsx",
+    "line": 55,
+    "field": "targetEntityId",
+    "kind": "hard",
+    "snippet": "{ key: 'targetEntityId', label: 'Target id', accessor: (r) => r.targetEntityId }"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 163,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "{row.subjectPersonName ?? row.subjectPersonId}"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 169,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "{row.ownerPersonName ?? row.ownerPersonId}"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 440,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${displayCase.subjectPersonId}`}>{displayCase.subjectPersonName ?? displayCase.subjectPersonId}</Link>"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 448,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${displayCase.ownerPersonId}`}>{displayCase.ownerPersonName ?? displayCase.ownerPersonId}</Link>"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 66,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.subjectPersonName ?? item.subjectPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 72,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.ownerPersonName ?? item.ownerPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/ProjectCasesTab.tsx",
+    "line": 90,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.subjectPersonName ?? item.subjectPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/ProjectCasesTab.tsx",
+    "line": 95,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.ownerPersonName ?? item.ownerPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/RadiatorTab.tsx",
+    "line": 548,
+    "field": "projectManagerId",
+    "kind": "fallback",
+    "snippet": "{project.projectManagerDisplayName ?? project.projectManagerId}"
+  },
+  {
+    "file": "frontend/src/routes/projects/tabs/RadiatorTab.tsx",
+    "line": 558,
+    "field": "deliveryManagerId",
+    "kind": "fallback",
+    "snippet": "{project.deliveryManagerDisplayName ?? project.deliveryManagerId}"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 104,
+    "field": "externalUserId",
+    "kind": "hard",
+    "snippet": "{item.externalUserId} ... (summary line under title — opaque external id)"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 101,
+    "field": "externalUserId",
+    "kind": "fallback",
+    "snippet": "{item.externalDisplayName ?? item.externalPrincipalName ?? item.externalUserId}"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 130,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${item.personId}`}>{item.personDisplayName ?? item.personId}</Link>"
+  },
+  {
+    "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
+    "line": 132,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${item.personId}`}>{item.personDisplayName ?? item.personId}</Link>"
+  },
+  {
+    "file": "frontend/src/routes/admin/RateCardsAdminPage.tsx",
+    "line": 340,
+    "field": "clientId",
+    "kind": "fallback",
+    "snippet": "{r.clientId ? `Client · ${r.clientName ?? r.clientId.slice(0, 8)}` : 'Tenant default'}"
+  },
+  {
+    "file": "frontend/src/components/org/PersonSidebarDrawer.tsx",
+    "line": 147,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "const projectLabel = p.projectName ?? p.projectCode ?? p.projectId; (rendered as link text :154)"
+  },
+  {
+    "file": "frontend/src/components/staffing-desk/WorkloadTimeline.tsx",
+    "line": 99,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "projectName: p.projectName ?? p.projectCode ?? p.projectId (feeds timeline label)"
+  },
+  {
+    "file": "frontend/src/components/time-management/LeaveDecisionDrawer.tsx",
+    "line": 327,
+    "field": "projectId",
+    "kind": "fallback",
+    "snippet": "render: (p) => p.projectName ?? p.projectCode ?? p.projectId"
+  }
+]

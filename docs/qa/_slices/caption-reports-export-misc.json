@@ -1,0 +1,79 @@
+[
+  {
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 108,
+    "field": "activePersonId",
+    "kind": "fallback",
+    "snippet": "Person: p.activePersonName ?? p.activePersonId ?? '',"
+  },
+  {
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 127,
+    "field": "personId",
+    "kind": "hard",
+    "snippet": "Person: week.personId,  // Timesheet Summary export: raw personId UUID written to the Person column, no name lookup"
+  },
+  {
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 258,
+    "field": "activePersonId",
+    "kind": "fallback",
+    "snippet": "const personLabel = assignment.activePersonName ?? assignment.activePersonId ?? 'Unassigned';  // used in displayed label (line 264)"
+  },
+  {
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 276,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "label: `${c.caseNumber} · ${c.subjectPersonName ?? c.subjectPersonId}`,"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 101,
+    "field": "externalUserId",
+    "kind": "fallback",
+    "snippet": "{item.externalDisplayName ?? item.externalPrincipalName ?? item.externalUserId}  // title falls back to external user id"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 104,
+    "field": "externalUserId",
+    "kind": "hard",
+    "snippet": "{item.externalUserId}  // raw external M365 user id printed in summary line (external identifier, may be intentional for reconciliation)"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 130,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${item.personId}`}>{item.personDisplayName ?? item.personId}</Link>  // internal person UUID shown as link text when name null"
+  },
+  {
+    "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
+    "line": 138,
+    "field": "resolvedManagerPersonId",
+    "kind": "hard",
+    "snippet": "<Link to={`/people/${item.resolvedManagerPersonId}`}>{item.resolvedManagerPersonId}</Link>  // raw manager person UUID as link text, no name lookup at all"
+  },
+  {
+    "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
+    "line": 101,
+    "field": "externalAccountId",
+    "kind": "fallback",
+    "snippet": "{item.externalDisplayName ?? item.externalUsername ?? item.externalAccountId}  // title falls back to external account id"
+  },
+  {
+    "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
+    "line": 104,
+    "field": "externalAccountId",
+    "kind": "hard",
+    "snippet": "{item.externalAccountId}  // raw external RADIUS account id printed in summary line (external identifier, may be intentional for reconciliation)"
+  },
+  {
+    "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
+    "line": 132,
+    "field": "personId",
+    "kind": "fallback",
+    "snippet": "<Link to={`/people/${item.personId}`}>{item.personDisplayName ?? item.personId}</Link>  // internal person UUID shown as link text when name null"
+  }
+]

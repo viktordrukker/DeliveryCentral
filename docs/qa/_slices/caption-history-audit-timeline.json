@@ -1,0 +1,86 @@
+[
+  {
+    "file": "frontend/src/components/assignments/AssignmentHistoryTimeline.tsx",
+    "line": 34,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "{item.changedByPersonId ? ` · ${item.changedByPersonId}` : ''}"
+  },
+  {
+    "file": "frontend/src/components/assignments/AssignmentHistoryTimeline.tsx",
+    "line": 61,
+    "field": "previousPersonId / newPersonId",
+    "kind": "hard",
+    "snippet": "`${item.previousPersonId ?? '—'} → ${item.newPersonId ?? '—'}`  // 'Person' row in transition snapshot"
+  },
+  {
+    "file": "frontend/src/components/projects/PositionForensicsDrawer.tsx",
+    "line": 264,
+    "field": "changedByPersonId",
+    "kind": "hard",
+    "snippet": "by {event.changedByPersonId}  // forensics timeline event attribution"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 545,
+    "field": "authorPersonId",
+    "kind": "hard",
+    "snippet": "{ key: 'author', ... render: (c) => <span ...>{c.authorPersonId}</span> }  // case Comments table Author column (CaseComment has NO name field)"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 79,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "by {event.actorDisplayName ?? event.actorId}  // EventCard actor line"
+  },
+  {
+    "file": "frontend/src/components/common/AuditTimeline.tsx",
+    "line": 157,
+    "field": "actorId",
+    "kind": "fallback",
+    "snippet": "{event.actorDisplayName ?? event.actorId ?? 'System'}  // directorDecisionMode .tl-row actor"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 440,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "{displayCase.subjectPersonName ?? displayCase.subjectPersonId}  // inside <Link to=/people/...>"
+  },
+  {
+    "file": "frontend/src/routes/cases/CaseDetailsPage.tsx",
+    "line": 448,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "{displayCase.ownerPersonName ?? displayCase.ownerPersonId}  // inside <Link to=/people/...>"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 163,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "<div ... title={row.subjectPersonId}>{row.subjectPersonName ?? row.subjectPersonId}</div>  // also leaks raw id into title tooltip"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseInspector.tsx",
+    "line": 169,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "<div ... title={row.ownerPersonId}>{row.ownerPersonName ?? row.ownerPersonId}</div>  // also leaks raw id into title tooltip"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 66,
+    "field": "subjectPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.subjectPersonName ?? item.subjectPersonId}</span>"
+  },
+  {
+    "file": "frontend/src/components/cases/CaseListTable.tsx",
+    "line": 72,
+    "field": "ownerPersonId",
+    "kind": "fallback",
+    "snippet": "render: (item) => <span>{item.ownerPersonName ?? item.ownerPersonId}</span>"
+  }
+]
