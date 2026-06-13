@@ -26,6 +26,33 @@ describe('BudgetEditForm (EPIC A)', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });
 
+  it('sends vendorBudget + uppercased currencyCode when filled (EPIC G)', async () => {
+    const user = userEvent.setup();
+    mockUpsert.mockResolvedValue({ id: 'b1', projectId: 'p1', fiscalYear: 2026, capexBudget: 0, opexBudget: 0 });
+    render(<BudgetEditForm projectId="p1" initial={null} onSaved={() => undefined} onCancel={() => undefined} />);
+
+    await user.type(screen.getByPlaceholderText('optional'), '25000');
+    await user.type(screen.getByPlaceholderText('e.g. USD'), 'usd');
+    await user.click(screen.getByRole('button', { name: /Save budget/i }));
+
+    await waitFor(() =>
+      expect(mockUpsert).toHaveBeenCalledWith('p1', expect.objectContaining({ vendorBudget: 25_000, currencyCode: 'USD' })),
+    );
+  });
+
+  it('omits vendorBudget + currencyCode when left blank (EPIC G)', async () => {
+    const user = userEvent.setup();
+    mockUpsert.mockResolvedValue({ id: 'b1', projectId: 'p1', fiscalYear: 2026, capexBudget: 0, opexBudget: 0 });
+    render(<BudgetEditForm projectId="p1" initial={null} onSaved={() => undefined} onCancel={() => undefined} />);
+
+    await user.click(screen.getByRole('button', { name: /Save budget/i }));
+
+    await waitFor(() => expect(mockUpsert).toHaveBeenCalled());
+    const arg = mockUpsert.mock.calls[0][1];
+    expect(arg.vendorBudget).toBeUndefined();
+    expect(arg.currencyCode).toBeUndefined();
+  });
+
   it('prefills from the existing budget and titles "Edit budget"', () => {
     render(
       <BudgetEditForm

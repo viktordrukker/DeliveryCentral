@@ -7,7 +7,7 @@ import { upsertProjectBudget } from '@/lib/api/project-budget';
 interface BudgetEditFormProps {
   projectId: string;
   /** Existing budget (capex/opex/fiscalYear) or null when BAC is unset. */
-  initial: { fiscalYear: number; capex: number; opex: number } | null;
+  initial: { fiscalYear: number; capex: number; opex: number; vendorBudget?: number; currencyCode?: string } | null;
   onSaved: () => void;
   onCancel: () => void;
 }
@@ -25,6 +25,8 @@ export function BudgetEditForm({ projectId, initial, onSaved, onCancel }: Budget
   const [fiscalYear, setFiscalYear] = useState(initial?.fiscalYear ?? currentYear);
   const [capex, setCapex] = useState(String(initial?.capex ?? 0));
   const [opex, setOpex] = useState(String(initial?.opex ?? 0));
+  const [vendor, setVendor] = useState(initial?.vendorBudget != null ? String(initial.vendorBudget) : '');
+  const [currency, setCurrency] = useState(initial?.currencyCode ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,10 +34,14 @@ export function BudgetEditForm({ projectId, initial, onSaved, onCancel }: Budget
     setSaving(true);
     setError(null);
     try {
+      const trimmedCurrency = currency.trim().toUpperCase();
       await upsertProjectBudget(projectId, {
         fiscalYear,
         capexBudget: Number(capex) || 0,
         opexBudget: Number(opex) || 0,
+        // EPIC G — only send when set, matching the backend's omit-when-absent behaviour.
+        ...(vendor.trim() !== '' ? { vendorBudget: Number(vendor) || 0 } : {}),
+        ...(trimmedCurrency !== '' ? { currencyCode: trimmedCurrency } : {}),
       });
       onSaved();
     } catch (e) {
@@ -85,6 +91,31 @@ export function BudgetEditForm({ projectId, initial, onSaved, onCancel }: Budget
             value={opex}
             onChange={(e) => setOpex(e.target.value)}
             style={{ width: 150 }}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Vendor Budget</span>
+          <input
+            className="field__control"
+            type="number"
+            min={0}
+            step={1000}
+            value={vendor}
+            placeholder="optional"
+            onChange={(e) => setVendor(e.target.value)}
+            style={{ width: 150 }}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Currency</span>
+          <input
+            className="field__control"
+            type="text"
+            maxLength={3}
+            value={currency}
+            placeholder="e.g. USD"
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            style={{ width: 90 }}
           />
         </label>
         <Button variant="primary" type="button" disabled={saving} onClick={() => void handleSave()}>
