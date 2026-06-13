@@ -29,6 +29,20 @@ function Root(): JSX.Element {
   );
 }
 
+// F-REPORTS-CHUNK — when a new deploy ships with re-hashed chunks, an in-flight
+// session's lazy-route imports 404 (Vite raises `vite:preloadError`) and the
+// user lands on the ErrorBoundary ("Failed to fetch dynamically imported
+// module"). Reload once to fetch the fresh manifest so a deploy doesn't strand
+// the session. The sessionStorage guard prevents a reload loop if the chunk is
+// genuinely gone.
+const PRELOAD_RELOAD_KEY = 'dc:vite-preload-reloaded';
+window.addEventListener('vite:preloadError', (event: Event) => {
+  event.preventDefault();
+  if (sessionStorage.getItem(PRELOAD_RELOAD_KEY)) return;
+  sessionStorage.setItem(PRELOAD_RELOAD_KEY, '1');
+  window.location.reload();
+});
+
 bootstrapDesignTokens();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
