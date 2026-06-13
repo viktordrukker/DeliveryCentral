@@ -29,6 +29,9 @@ export function JqlQueryBar({ filters, onApplyFilters, visible }: Props): JSX.El
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastAppliedRef = useRef('');
+  // True only for the programmatic focus we trigger when the bar becomes
+  // visible — used to suppress auto-opening the suggestions dropdown on render.
+  const programmaticFocusRef = useRef(false);
 
   // Sync visual filters → JQL string
   useEffect(() => {
@@ -38,9 +41,15 @@ export function JqlQueryBar({ filters, onApplyFilters, visible }: Props): JSX.El
     }
   }, [filters]);
 
-  // Focus on show
+  // Focus on show. Flag the focus as programmatic so onFocus does NOT pop the
+  // suggestions dropdown on render (was: full field list open on first paint).
   useEffect(() => {
-    if (visible) setTimeout(() => inputRef.current?.focus(), 50);
+    if (visible) {
+      setTimeout(() => {
+        programmaticFocusRef.current = true;
+        inputRef.current?.focus();
+      }, 50);
+    }
   }, [visible]);
 
   const apply = useCallback(() => {
@@ -139,7 +148,13 @@ export function JqlQueryBar({ filters, onApplyFilters, visible }: Props): JSX.El
               if (e.key === 'Tab' && suggestions.length > 0) { e.preventDefault(); applySuggestion(suggestions[0]); }
               if (e.key === 'Escape') setShowSuggestions(false);
             }}
-            onFocus={() => { updateSuggestions(jql); setShowSuggestions(true); }}
+            onFocus={() => {
+              // Skip the programmatic mount-focus — only open suggestions on a
+              // real user focus so the dropdown isn't open on render.
+              if (programmaticFocusRef.current) { programmaticFocusRef.current = false; return; }
+              updateSuggestions(jql);
+              setShowSuggestions(true);
+            }}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           />
           {showSuggestions && suggestions.length > 0 && (
