@@ -21,9 +21,16 @@ interface FakePosition {
   fillHistory: FakeHistoryRow[];
 }
 
-function buildStub(position: FakePosition | null): PrismaService {
+interface CapturedQuery {
+  where?: unknown;
+}
+
+function buildStub(position: FakePosition | null, captured?: CapturedQuery): PrismaService {
   const projectPosition = {
-    findUnique: async (_q: unknown): Promise<FakePosition | null> => position,
+    findUnique: async (q: { where?: unknown }): Promise<FakePosition | null> => {
+      if (captured) captured.where = q.where;
+      return position;
+    },
   };
   return { projectPosition } as unknown as PrismaService;
 }
@@ -102,5 +109,49 @@ describe('ListPositionHistoryService (W2-04)', () => {
     });
     expect(result.history[1]!.newPersonId).toBe('p-ada');
     expect(result.history[1]!.occurredAt).toBe('2026-06-02T00:00:00.000Z');
+  });
+
+  // Regression: GET /:id/history 500'd when the path param was a `pos_…`
+  // publicId because the service fed it straight into the uuid `id` column.
+  // The handler's ParsePublicIdOrUuid pipe passes the value verbatim, so the
+  // service must resolve the shape itself (mirrors PositionForensicsService).
+  it('resolves a `pos_…` publicId via the publicId column (not the uuid id column)', async () => {
+    const captured: CapturedQuery = {};
+    const svc = new ListPositionHistoryService(
+      buildStub(
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          fillHistory: [
+            row({
+              id: 'h-1',
+              changeType: 'OPENED',
+              previousStatus: 'DRAFT',
+              newStatus: 'OPEN',
+              occurredAt: new Date('2026-06-01T00:00:00.000Z'),
+            }),
+          ],
+        },
+        captured,
+      ),
+    );
+
+    const result = await svc.execute('pos_abcdefghij');
+
+    expect(captured.where).toEqual({ publicId: 'pos_abcdefghij' });
+    // The internal uuid is echoed back as positionId — not the publicId input.
+    expect(result.positionId).toBe('11111111-1111-1111-1111-111111111111');
+    expect(result.history).toHaveLength(1);
+    expect(result.history[0]!.newStatus).toBe('OPEN');
+  });
+
+  it('resolves a raw uuid via the uuid id column', async () => {
+    const captured: CapturedQuery = {};
+    const svc = new ListPositionHistoryService(
+      buildStub({ id: 'pos-1', fillHistory: [] }, captured),
+    );
+
+    await svc.execute('22222222-2222-2222-2222-222222222222');
+
+    expect(captured.where).toEqual({ id: '22222222-2222-2222-2222-222222222222' });
   });
 });
