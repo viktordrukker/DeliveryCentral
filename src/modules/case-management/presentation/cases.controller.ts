@@ -40,6 +40,7 @@ import { GetCaseByIdService } from '../application/get-case-by-id.service';
 import { ListCasesService } from '../application/list-cases.service';
 import { ReopenCaseService } from '../application/reopen-case.service';
 import { PrismaCaseCommentService, CaseCommentDto } from '../infrastructure/services/prisma-case-comment.service';
+import { PrismaCaseRecordRepository } from '../infrastructure/repositories/prisma/prisma-case-record.repository';
 import { InMemoryCaseSlaService } from '../infrastructure/services/in-memory-case-sla.service';
 import { AddCaseStepRequestDto } from '../application/contracts/add-case-step.request';
 import { AddCaseParticipantRequestDto } from '../application/contracts/add-case-participant.request';
@@ -62,6 +63,7 @@ export class CasesController {
     private readonly caseSlaService: InMemoryCaseSlaService,
     private readonly reopenCaseService: ReopenCaseService,
     private readonly casePresenter: CasePresenterService,
+    private readonly caseRecordRepository: PrismaCaseRecordRepository,
   ) {}
 
   @Post()
@@ -358,7 +360,7 @@ export class CasesController {
     }
     try {
       caseRecord.addParticipant(body.personId, body.role as 'APPROVER' | 'OBSERVER' | 'OPERATOR' | 'REVIEWER' | 'REQUESTER' | 'SUBJECT');
-      // Re-save handled by getCaseByIdService for in-memory; in Prisma would need save()
+      await this.caseRecordRepository.save(caseRecord);
       return { id: caseRecord.id, participants: caseRecord.participants.map((p) => ({ personId: p.personId, role: p.role })) };
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Failed to add participant.');
@@ -380,6 +382,7 @@ export class CasesController {
     }
     try {
       caseRecord.removeParticipant(personId);
+      await this.caseRecordRepository.save(caseRecord);
       return { success: true };
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Failed to remove participant.');
