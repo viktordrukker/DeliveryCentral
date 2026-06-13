@@ -10,7 +10,7 @@ import {
 } from '@/lib/api/staffing-desk';
 
 const EMPTY_KPIS: StaffingDeskKpis = { activeAssignments: 0, openRequests: 0, avgAllocationPercent: 0, overallocatedPeople: 0 };
-const EMPTY_SD: SupplyDemandMetrics = { totalPeople: 0, availableFte: 0, benchCount: 0, totalHeadcountRequired: 0, headcountFulfilled: 0, headcountOpen: 0, gapHc: 0, fillRatePercent: 100, avgDaysToFulfil: 0 };
+const EMPTY_SD: SupplyDemandMetrics = { totalPeople: 0, availableFte: 0, benchCount: 0, totalHeadcountRequired: 0, headcountFulfilled: 0, headcountOpen: 0, headcountInProgress: 0, gapHc: 0, fillRatePercent: 100, avgDaysToFulfil: 0 };
 
 export interface UseStaffingDeskState {
   items: StaffingDeskRow[];

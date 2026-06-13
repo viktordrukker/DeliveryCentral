@@ -43,6 +43,7 @@ const sampleRows: BenchEnrichedRowDto[] = [
     grade: 'L5',
     isOnBench: true,
     daysOnBench: 14,
+    daysOnBenchBasis: 'fill-history',
     availabilityHours14d: 80,
     suggestedProjectIds: ['proj-1', 'proj-2'],
   },
@@ -55,6 +56,7 @@ const sampleRows: BenchEnrichedRowDto[] = [
     grade: 'L7',
     isOnBench: true,
     daysOnBench: 72,
+    daysOnBenchBasis: 'fill-history',
     availabilityHours14d: 80,
     suggestedProjectIds: [],
   },
@@ -67,6 +69,7 @@ const sampleRows: BenchEnrichedRowDto[] = [
     grade: 'L3',
     isOnBench: false,
     daysOnBench: 0,
+    daysOnBenchBasis: 'fill-history',
     availabilityHours14d: 20,
     suggestedProjectIds: [],
   },
@@ -273,6 +276,7 @@ describe('BenchEnrichedPanel — A7/A8/A9 chrome', () => {
       grade: 'L4',
       isOnBench: true,
       daysOnBench: 50 - i, // DESC so the sort order is deterministic
+      daysOnBenchBasis: 'fill-history' as const,
       availabilityHours14d: 40,
       suggestedProjectIds: [],
     }));

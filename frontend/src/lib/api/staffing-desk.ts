@@ -56,7 +56,10 @@ export interface SupplyDemandMetrics {
   benchCount: number;
   totalHeadcountRequired: number;
   headcountFulfilled: number;
+  /** Canonical OPEN demand (fillStatus = OPEN). Agrees with the Director KPI. */
   headcountOpen: number;
+  /** In-progress demand (fillStatus = PROPOSED). */
+  headcountInProgress: number;
   gapHc: number;
   fillRatePercent: number;
   avgDaysToFulfil: number;

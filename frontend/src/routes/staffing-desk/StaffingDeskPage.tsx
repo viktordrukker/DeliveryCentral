@@ -260,6 +260,9 @@ export function StaffingDeskPage(): JSX.Element {
             <span className="badge badge-outline" data-testid="sd-badge-open">
               {state.supplyDemand.headcountOpen} open
             </span>
+            <span className="badge badge-outline" data-testid="sd-badge-in-progress">
+              {state.supplyDemand.headcountInProgress} in progress
+            </span>
             <span className="badge badge-outline" data-testid="sd-badge-bench">
               {state.supplyDemand.benchCount} bench
             </span>

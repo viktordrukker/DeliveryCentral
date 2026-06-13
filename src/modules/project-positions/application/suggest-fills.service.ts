@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { availabilityHours14d } from '@src/shared/persistence/active-fill-window';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { PositionCandidateDto, PositionCandidatesResponseDto } from './contracts/position-candidate.dto';
@@ -10,7 +11,6 @@ import {
 
 const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
 const DEFAULT_LIMIT = 5;
-const BENCH_AVAILABILITY_HOURS_14D = 80;
 
 interface ScoredCandidate {
   matchScore: number;
@@ -90,28 +90,35 @@ export class SuggestFillsService {
     });
     const busy = new Set(activeFills.map((f) => f.activePersonId).filter((id): id is string => !!id));
 
-    const scored = people
-      .filter((p) => !busy.has(p.id))
-      .map((p) => {
-        const personSkills = new Map<string, number>();
-        for (const ps of p.personSkills) {
-          const name = ps.skill?.name?.trim().toLowerCase();
-          if (!name) continue;
-          personSkills.set(name, Math.max(personSkills.get(name) ?? 0, ps.proficiency));
-        }
-        const s = SuggestFillsService.score(requiredSkills, position.role, personSkills, p.role);
-        const candidate: PositionCandidateDto = {
-          personId: p.id,
-          name: p.displayName,
-          role: p.role ?? '',
-          grade: p.grade,
-          matchScore: s.matchScore,
-          matchedSkills: s.matchedSkills,
-          missingSkills: s.missingSkills,
-          availabilityHours14d: BENCH_AVAILABILITY_HOURS_14D,
-        };
-        return candidate;
-      });
+    const available = people.filter((p) => !busy.has(p.id));
+    // PR-16 (Decision E) — derive real 14-day availability per candidate
+    // (capacity minus Σ active allocation) instead of a hardcoded 80 h.
+    const availabilityByPerson = new Map<string, number>();
+    await Promise.all(
+      available.map(async (p) => {
+        availabilityByPerson.set(p.id, await availabilityHours14d(this.prisma, { personId: p.id, from: asOf }));
+      }),
+    );
+    const scored = available.map((p) => {
+      const personSkills = new Map<string, number>();
+      for (const ps of p.personSkills) {
+        const name = ps.skill?.name?.trim().toLowerCase();
+        if (!name) continue;
+        personSkills.set(name, Math.max(personSkills.get(name) ?? 0, ps.proficiency));
+      }
+      const s = SuggestFillsService.score(requiredSkills, position.role, personSkills, p.role);
+      const candidate: PositionCandidateDto = {
+        personId: p.id,
+        name: p.displayName,
+        role: p.role ?? '',
+        grade: p.grade,
+        matchScore: s.matchScore,
+        matchedSkills: s.matchedSkills,
+        missingSkills: s.missingSkills,
+        availabilityHours14d: availabilityByPerson.get(p.id) ?? 0,
+      };
+      return candidate;
+    });
 
     scored.sort(
       (a, b) =>

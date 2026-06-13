@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import {
+  IN_PROGRESS_DEMAND_FILL_STATUS,
+  openDemandWhere,
+} from '@src/shared/persistence/active-fill-window';
+import {
   ACTIVE_FILL_STATUSES,
   canonicalActivePersonWhere,
   listBenchPersonIds,
@@ -613,19 +617,23 @@ export class StaffingDeskService {
       if (canonicalBench.has(p.id)) benchCount++;
     }
 
-    // SoT PR 14b — canonical demand read from ProjectPosition.
-    // Open demand (legacy OPEN/IN_REVIEW => canonical OPEN/PROPOSED).
-    const openWhere: Record<string, unknown> = { fillStatus: { in: ['OPEN', 'PROPOSED'] } };
-    if (dto.projectId) openWhere.projectId = dto.projectId;
-    const openPositions = await this.prisma.projectPosition.findMany({
-      where: openWhere,
-      select: { activePersonId: true, createdAt: true },
-    });
+    // PR-16 (Decision E) — canonical demand read from ProjectPosition.
+    // "open" = fillStatus OPEN; "in progress" = fillStatus PROPOSED. The desk
+    // shows both, but the OPEN count agrees with the Director KPI and the
+    // bench-matching pool. Demand headcount = OPEN + PROPOSED (one row == one
+    // headcount); fulfilled within demand stays 0 (an OPEN/PROPOSED row has no
+    // committed person against required headcount yet).
+    const openWhere = openDemandWhere(dto.projectId ? { projectId: dto.projectId } : undefined);
+    const inProgressWhere: Record<string, unknown> = { fillStatus: IN_PROGRESS_DEMAND_FILL_STATUS };
+    if (dto.projectId) inProgressWhere.projectId = dto.projectId;
+    const [headcountOpen, headcountInProgress] = await Promise.all([
+      this.prisma.projectPosition.count({ where: openWhere }),
+      this.prisma.projectPosition.count({ where: inProgressWhere }),
+    ]);
 
-    // Canonical model: 1 row = 1 headcount. Open position = required:1, fulfilled:0.
-    let totalHcRequired = openPositions.length;
-    let hcFulfilled = openPositions.filter((p) => p.activePersonId).length;
-    const headcountOpen = totalHcRequired - hcFulfilled;
+    // Canonical model: 1 row = 1 headcount. OPEN + PROPOSED rows are demand.
+    const totalHcRequired = headcountOpen + headcountInProgress;
+    const hcFulfilled = 0;
 
     // Fill rate from booked positions (was: status=FULFILLED staffing requests).
     const fulfilledPositions = await this.prisma.projectPosition.findMany({
@@ -651,6 +659,7 @@ export class StaffingDeskService {
       totalHeadcountRequired: totalHcRequired,
       headcountFulfilled: hcFulfilled,
       headcountOpen,
+      headcountInProgress,
       gapHc: headcountOpen - availableFte,
       fillRatePercent: allRequiredHc > 0 ? Math.round((allFulfilledHc / allRequiredHc) * 100) : 100,
       avgDaysToFulfil: fulfilledRequests.length > 0 ? Math.round(totalDaysToFulfil / fulfilledRequests.length) : 0,

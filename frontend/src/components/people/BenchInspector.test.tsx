@@ -23,6 +23,7 @@ const baseRow: BenchEnrichedRowDto = {
   grade: 'L4',
   isOnBench: true,
   daysOnBench: 22,
+  daysOnBenchBasis: 'fill-history',
   availabilityHours14d: 64,
   suggestedProjectIds: [],
 };

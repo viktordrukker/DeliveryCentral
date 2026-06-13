@@ -1,5 +1,6 @@
 import { Prisma, ProjectPositionFillStatus as PrismaProjectPositionFillStatus } from '@prisma/client';
 
+import { activeFillWindowWhere } from '@src/shared/persistence/active-fill-window';
 import { ProjectPosition } from '@src/modules/project-positions/domain/entities/project-position.entity';
 import {
   ListProjectPositionsQuery,
@@ -105,11 +106,8 @@ export class PrismaProjectPositionRepository implements ProjectPositionRepositor
     const rows = await this.gateway.findMany({
       where: {
         activePersonId: personId,
-        fillStatus: { in: ACTIVE_FILL_STATUSES },
-        AND: [
-          { OR: [{ activeValidFrom: null }, { activeValidFrom: { lte: asOf } }] },
-          { OR: [{ activeValidTo: null }, { activeValidTo: { gt: asOf } }] },
-        ],
+        // PR-16 (Decision E) — canonical active-fill window predicate.
+        ...activeFillWindowWhere({ from: asOf, to: asOf, statuses: ACTIVE_FILL_STATUSES }),
       },
     });
     return rows.map((row) => ProjectPositionPrismaMapper.toDomain(row));
@@ -123,10 +121,11 @@ export class PrismaProjectPositionRepository implements ProjectPositionRepositor
       where.fillStatus = { in: query.fillStatuses as PrismaProjectPositionFillStatus[] };
     }
     if (query.asOf) {
-      where.AND = [
-        { OR: [{ activeValidFrom: null }, { activeValidFrom: { lte: query.asOf } }] },
-        { OR: [{ activeValidTo: null }, { activeValidTo: { gt: query.asOf } }] },
-      ];
+      // PR-16 (Decision E) — canonical active-fill window predicate. Only the
+      // window AND-clause is borrowed here; the caller's `fillStatuses` (set
+      // above) own the status filter, so the helper's status filter is dropped.
+      const { AND } = activeFillWindowWhere({ from: query.asOf, to: query.asOf });
+      where.AND = AND;
     }
     return where;
   }

@@ -77,6 +77,9 @@ function buildStub(seed: {
   const projectPosition = {
     groupBy: async (_q: unknown) =>
       (seed.filledPersonIds ?? []).map((id) => ({ activePersonId: id })),
+    // PR-16 (Decision E) — availabilityHours14d reads active allocation via
+    // projectPosition.findMany. Bench people carry no active fill → empty.
+    findMany: async (_q: unknown) => [] as Array<{ activeAllocationPercent: unknown; requiredAllocationPercent: unknown }>,
   };
   const projectPositionFillHistory = {
     groupBy: async (_q: unknown): Promise<Array<{ previousPersonId: string; _max: { occurredAt: Date } }>> => {
@@ -134,7 +137,10 @@ describe('ListEnrichedBenchService (FE-#261)', () => {
     const p1 = rows.find((r) => r.personId === 'p1')!;
     const p2 = rows.find((r) => r.personId === 'p2')!;
     expect(p1.daysOnBench).toBe(10);
+    expect(p1.daysOnBenchBasis).toBe('fill-history');
     expect(p2.daysOnBench).toBe(20); // 2026-05-04 → 2026-05-24
+    // PR-16 (Decision E) — never-assigned person is labelled explicitly.
+    expect(p2.daysOnBenchBasis).toBe('no-fill-history');
   });
 
   it('isOnBench is always true; suggestedProjectIds defaults to [] when SuggestFills returns no matches', async () => {
