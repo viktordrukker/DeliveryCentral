@@ -1,0 +1,15 @@
+[
+  {
+    "endpoint": "GET /api/staffing-desk/project-timeline",
+    "real": true,
+    "reproduced": true,
+    "statusWithCorrectParams": "200",
+    "onlyOnMissingParam": true,
+    "severity": "P2",
+    "rootCause": "ProjectTimelineService.getTimeline does `new Date(from)` then `d.toISOString().slice(0,10)` (project-timeline.service.ts:65-69). `from` is a REQUIRED query param (controller @Query('from'), no DTO validation, no default). When the request omits `from`, `from` is undefined -> `new Date(undefined)` is Invalid Date -> `toISOString()` throws RangeError: Invalid time value, which surfaces as HTTP 500. There is no ParseDate/ValidationPipe guarding the param, so a missing/garbage `from` reaches the date loop and crashes instead of returning a 400.",
+    "stack": "RangeError: Invalid time value\n    at Date.toISOString (<anonymous>)\n    at ProjectTimelineService.getTimeline (/app/dist/src/modules/staffing-desk/application/project-timeline.service.js:29:31)\n    at StaffingDeskController.projectTimeline (/app/dist/src/modules/staffing-desk/presentation/staffing-desk.controller.js:61:44)\n    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)",
+    "suggestedFix": "Validate `from` at the controller boundary so a missing/invalid value yields 400, not 500. Either (a) introduce a small DTO with @IsDateString() on `from` (and @IsOptional @IsInt on weeks/poolId/projectId) bound via @Query() under the global ValidationPipe, or (b) guard in the service: if (!from || isNaN(new Date(from).getTime())) throw new BadRequestException('from is required (YYYY-MM-DD)'). Option (a) is consistent with the other DTO-validated query endpoints in this module.",
+    "uiCaller": "frontend/src/lib/api/staffing-desk.ts:fetchProjectTimeline (always sets `from` via URLSearchParams) called by frontend/src/components/staffing-desk/ProjectTimeline.tsx:109, which derives `from = addDays(baseMonday, weekOffset*7)` from getCurrentWeekMonday() and always passes weeks. The UI NEVER sends an empty `from`, so this crash is unreachable through normal app usage; it only fires on a hand-crafted no-param request (the QA probe).",
+    "evidence": "Director token (noah.bennett@itco.local, in STAFFING_ROLES so RBAC passes). (1) NO PARAMS: `curl -H 'Authorization: Bearer $TOK' https://deliverit-test-v2.agentic.uz/api/staffing-desk/project-timeline` -> HTTP 500 body {\"error\":\"InternalServerError\",\"message\":\"An unexpected error occurred\",\"statusCode\":500}, x-correlation-id 61a251a3-f8c1-474c-af78-3a12b6f48a98. Staging log for that exact correlationId: RangeError: Invalid time value at Date.toISOString at ProjectTimelineService.getTimeline (project-timeline.service.js:29:31). (2) CORRECT PARAMS (the exact UI wire): `curl ...?from=2026-06-08&weeks=13` -> HTTP 200, body {\"weeks\":[13 monday strings],\"projects\":[10],\"bench\":[134]} (staging log correlationId 6318c32b, statusCode 200). => 500 is a missing-required-param crash, not a logic bug; server should 400."
+  }
+]

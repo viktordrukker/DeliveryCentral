@@ -1,0 +1,55 @@
+[
+  {
+    "id": "F-1a-1",
+    "title": "Missing query-param validation crashes 6+ GET endpoints with 500 instead of 400",
+    "severity": "P2",
+    "class": "input-validation / API-contract",
+    "verified": true,
+    "reproduced": true,
+    "surface": "backend",
+    "endpoints": [
+      "GET /api/assignments/skill-match (skills)",
+      "GET /api/my-time/gaps (month)",
+      "GET /api/my-time/month (month)",
+      "GET /api/staffing-desk/project-timeline (from)",
+      "GET /api/time-management/compliance (month)",
+      "GET /api/time-management/team-calendar (month)"
+    ],
+    "alsoLikelyAffected": ["GET /api/my-time/auto-fill", "GET /api/my-time/copy-previous"],
+    "rootCause": "Controllers bind a REQUIRED query param as a raw `@Query('x') x: string` with no ValidationPipe/DTO, then immediately call x.split()/x.match()/new Date(x). When the param is omitted (or malformed), the raw string is undefined/invalid and the unguarded TypeError/RangeError/plain Error bubbles to StructuredExceptionFilter, which maps it to HTTP 500. parseMonthQuery (timesheets/application/contracts/month.query.ts) throws plain Error not BadRequestException; a MonthQueryDto with @Matches exists but is not wired into the controllers.",
+    "userReachable": false,
+    "userReachableNote": "Not reachable via the real UI — the FE always sends the param (e.g. fetchTeamCalendar always appends ?month=YYYY-MM; personId defaults to principal). This is an API-robustness / contract defect, surfaced by direct probing.",
+    "suggestedFix": "Apply a uniform fix: wire class-validator DTOs (e.g. MonthQueryDto) or a ValidationPipe/guard on these query params, and make parseMonthQuery throw BadRequestException. Server should return 400 with a clear message on missing/invalid input, never 500.",
+    "evidence": "skills.controller.ts:140-146 (skills.split on undefined); time-management.controller.ts:165-166,208-209 (monthStr.split — getQueue guards with `monthStr ?`, getCompliance/getTeamCalendar do not); project-timeline.service.ts:65-69 (new Date(undefined).toISOString() RangeError); month.query.ts parseMonthQuery throws plain Error. All reproduced live: 200 with correct param, 500 when omitted.",
+    "inventoryIds": ["see avail-endpoints.json verdict=BROKEN-5xx"]
+  },
+  {
+    "id": "F-1a-2",
+    "title": "GET /api/overtime/resolve/:personId omits ParseUUIDPipe → Prisma 500 on non-UUID id (and is dead from the FE)",
+    "severity": "P3",
+    "class": "input-validation / dead-code",
+    "verified": true,
+    "reproduced": true,
+    "surface": "backend",
+    "endpoints": ["GET /api/overtime/resolve/:personId"],
+    "rootCause": "overtime.controller.ts:57 binds @Param('personId') with NO ParseUUIDPipe and passes the raw string into prisma.overtimeException.findFirst({where:{personId}}); the UUID column rejects a non-UUID with PrismaClientKnownRequestError 'Inconsistent column data: Error creating UUID' → unguarded → HTTP 500. Every peer person route (/api/people/:id/profile, /skills, /360, /suggested-positions) uses ParseUUIDPipe and correctly returns 400.",
+    "userReachable": false,
+    "userReachableNote": "fetchResolvedPolicy(personId) in frontend/src/lib/api/overtime.ts:114 has NO callers anywhere in frontend/src — the endpoint is currently unused by the UI. Latent defect only.",
+    "suggestedFix": "Add ParseUUIDPipe to the @Param('personId') (match peer routes). Consider removing the unused fetchResolvedPolicy api fn if the endpoint stays FE-dead.",
+    "evidence": "overtime.controller.ts:57; overtime-resolver.service.ts:34-42; frontend/src/lib/api/overtime.ts:114 (no callers — grep fetchResolvedPolicy returns only the definition)."
+  },
+  {
+    "id": "F-1a-3",
+    "title": "POST /api/setup/token/issue not gated on setup-complete — unauth caller can arm a setup token post-install (hardening)",
+    "severity": "P3",
+    "class": "security-hardening",
+    "verified": true,
+    "reproduced": false,
+    "dismissedVector": "NOT a privilege-escalation vuln: the 200 returns only {tokenIssued:true}; the 256-bit secret is delivered solely to docker logs + a root-readable 0600 file. An unauthenticated network attacker cannot recover the token, cannot pass SetupTokenGuard, and the destructive Reset is separately @RequireRoles('admin'). Adversarial check downgraded this from the candidate security finding.",
+    "surface": "backend",
+    "endpoints": ["POST /api/setup/token/issue"],
+    "rootCause": "issueToken() lacks the setup.completedAt check that getStatus() has. On an installed deployment the boot path skips issuing (completedAt set), so the controller's `if(isActive()) throw BadRequest` guard never fires and an unauthenticated call mints a fresh real token (24h TTL, idempotent). No secret is returned, but it forces log/host-file writes (noise) and empowers anyone who already has log/file access.",
+    "suggestedFix": "Gate issueToken() on setup-incomplete state (read platformSettings 'setup.completedAt', throw BadRequest/404 when set) in setup.controller.ts:69 or setup.service.ts:120 — mirroring getStatus(). Makes it a no-op once installed.",
+    "evidence": "setup.controller.ts:66-75 (@Public, returns {tokenIssued:true}); setup-token.service.ts:46,54 (token → logs + 0600 file); setup-guard.ts:25 (constant-time verify); main.ts:145-171 (boot issues only when completedAt null)."
+  }
+]
