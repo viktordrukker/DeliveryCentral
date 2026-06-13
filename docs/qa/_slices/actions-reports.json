@@ -5,7 +5,7 @@
     "surface": "reports",
     "file": "frontend/src/routes/reports/ReportsPage.tsx",
     "line": 151,
-    "label": "Reports section tabs (Exceptions/Time/CAPEX/Export/Utilization/Evidence)",
+    "label": "Reports section tabs (DS Tabs — Exceptions/Time/CAPEX/Export/Utilization/Evidence)",
     "element": "atom",
     "triggeredApi": "route:/reports?section=<id>",
     "rolesAllowed": "EXCEPTIONS_ROLES",
@@ -245,7 +245,7 @@
     "surface": "reports",
     "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
     "line": 68,
-    "label": "ReportCard From (date)",
+    "label": "ReportCard From (date) — Timesheet Summary card",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
@@ -257,7 +257,7 @@
     "surface": "reports",
     "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
     "line": 73,
-    "label": "ReportCard To (date)",
+    "label": "ReportCard To (date) — Timesheet Summary card",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
@@ -271,7 +271,7 @@
     "line": 81,
     "label": "Generate & Download — Headcount Report",
     "element": "button",
-    "triggeredApi": "GET /api/org/people?pageSize=500",
+    "triggeredApi": "GET /api/org/people",
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
     "flag": null
   },
@@ -283,7 +283,7 @@
     "line": 81,
     "label": "Generate & Download — Position Overview",
     "element": "button",
-    "triggeredApi": "GET /api/project-positions?take=500",
+    "triggeredApi": "GET /api/project-positions",
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
     "flag": null
   },
@@ -295,7 +295,7 @@
     "line": 81,
     "label": "Generate & Download — Timesheet Summary",
     "element": "button",
-    "triggeredApi": "GET /api/timesheets/approval?status=APPROVED&from=<from>&to=<to>",
+    "triggeredApi": "GET /api/timesheets/approval",
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
     "flag": null
   },
@@ -307,7 +307,7 @@
     "line": 81,
     "label": "Generate & Download — CAPEX/OPEX by Project",
     "element": "button",
-    "triggeredApi": "GET /api/reports/capitalisation?from=<from>&to=<to>",
+    "triggeredApi": "GET /api/reports/capitalisation",
     "rolesAllowed": "EXPORT_CENTRE_ROLES",
     "flag": null
   },
@@ -380,7 +380,7 @@
     "label": "Data Source (select)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -392,7 +392,7 @@
     "label": "Column checkbox (toggle column)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -404,7 +404,7 @@
     "label": "+ Add (filter)",
     "element": "button",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -416,7 +416,7 @@
     "label": "Filter field (select)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -428,7 +428,7 @@
     "label": "Filter operator (select)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -440,7 +440,7 @@
     "label": "Filter value (text input)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -452,7 +452,7 @@
     "label": "Remove filter (✕)",
     "element": "atom",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -464,7 +464,7 @@
     "label": "Sort by (select)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -476,7 +476,7 @@
     "label": "Sort direction (select asc/desc)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -488,7 +488,7 @@
     "label": "Template name (text input)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -500,7 +500,7 @@
     "label": "Share with all users (checkbox)",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -512,7 +512,7 @@
     "label": "Save Template",
     "element": "button",
     "triggeredApi": "POST /api/reports/templates",
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -524,7 +524,7 @@
     "label": "Export XLSX",
     "element": "button",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -536,7 +536,7 @@
     "label": "Load (saved template row)",
     "element": "row-action",
     "triggeredApi": null,
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -548,7 +548,7 @@
     "label": "Delete (saved template row)",
     "element": "row-action",
     "triggeredApi": "DELETE /api/reports/templates/{id}",
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -560,7 +560,7 @@
     "label": "Builder sources load (on mount)",
     "element": "filter",
     "triggeredApi": "GET /api/reports/builder/sources",
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -571,8 +571,8 @@
     "line": 51,
     "label": "Report templates load (on mount)",
     "element": "filter",
-    "triggeredApi": "GET /api/reports/templates?ownerPersonId=<id>",
-    "rolesAllowed": "EXCEPTIONS_ROLES",
+    "triggeredApi": "GET /api/reports/templates",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -583,7 +583,7 @@
     "line": 83,
     "label": "Bar click → project / staffing-desk drilldown",
     "element": "atom",
-    "triggeredApi": "route:/projects/{projectId} | route:/staffing-desk?projectName=<name>",
+    "triggeredApi": "route:/projects/{id} | route:/staffing-desk?projectName=<name>",
     "rolesAllowed": null,
     "flag": null
   },
@@ -595,7 +595,7 @@
     "line": 42,
     "label": "Context menu: View details",
     "element": "row-action",
-    "triggeredApi": "route:/projects/{projectId}",
+    "triggeredApi": "route:/projects/{id}",
     "rolesAllowed": null,
     "flag": null
   },
@@ -643,7 +643,7 @@
     "line": 55,
     "label": "Bar click → projects filtered by name",
     "element": "atom",
-    "triggeredApi": "route:/projects?name=<projectName>",
+    "triggeredApi": "route:/projects?name=<name>",
     "rolesAllowed": null,
     "flag": null
   },
@@ -750,7 +750,7 @@
     "file": "frontend/src/components/charts/WorkforceOverviewChart.tsx",
     "line": 367,
     "label": "Prev (pagination)",
-    "element": "button",
+    "element": "stepper",
     "triggeredApi": null,
     "rolesAllowed": null,
     "flag": null
@@ -762,7 +762,7 @@
     "file": "frontend/src/components/charts/WorkforceOverviewChart.tsx",
     "line": 369,
     "label": "Next (pagination)",
-    "element": "button",
+    "element": "stepper",
     "triggeredApi": null,
     "rolesAllowed": null,
     "flag": null
@@ -835,7 +835,7 @@
     "line": 249,
     "label": "Go (table row → project drilldown, drillPrefix default /projects)",
     "element": "row-action",
-    "triggeredApi": "route:/projects/{id}",
+    "triggeredApi": "route:<drillPrefix>/{id}",
     "rolesAllowed": null,
     "flag": null
   },
@@ -846,7 +846,7 @@
     "file": "frontend/src/components/charts/ReconciliationOverviewChart.tsx",
     "line": 287,
     "label": "Prev (pagination)",
-    "element": "button",
+    "element": "stepper",
     "triggeredApi": null,
     "rolesAllowed": null,
     "flag": null
@@ -858,7 +858,7 @@
     "file": "frontend/src/components/charts/ReconciliationOverviewChart.tsx",
     "line": 289,
     "label": "Next (pagination)",
-    "element": "button",
+    "element": "stepper",
     "triggeredApi": null,
     "rolesAllowed": null,
     "flag": null
@@ -871,7 +871,7 @@
     "line": 296,
     "label": "Chart bar click → project drilldown",
     "element": "atom",
-    "triggeredApi": "route:/projects/{id}",
+    "triggeredApi": "route:<drillPrefix>/{id}",
     "rolesAllowed": null,
     "flag": null
   },
@@ -981,6 +981,102 @@
     "element": "atom",
     "triggeredApi": "route:/people/{id}?tab=360",
     "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_83",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/ProjectStaffingCoverageChart.tsx",
+    "line": 94,
+    "label": "Context menu dismiss (onClose — each menu item fires onClick then closes menu)",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_84",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/ProjectStaffingCoverageChart.tsx",
+    "line": 81,
+    "label": "Bar right-click → open context menu (onContextMenu wrapper div)",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_85",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/WorkforceOverviewChart.tsx",
+    "line": 299,
+    "label": "Table right-click → apply row selection as chart filter + switch to chart view (onContextMenu)",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_86",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/WorkforceOverviewChart.tsx",
+    "line": 334,
+    "label": "Table row click+drag range select / Shift+click extend (onRowMouseDown + onRowMouseEnter)",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_87",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/ReconciliationOverviewChart.tsx",
+    "line": 224,
+    "label": "Table right-click → apply row selection as chart filter + switch to chart view (onContextMenu)",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_88",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/components/charts/ReconciliationOverviewChart.tsx",
+    "line": 255,
+    "label": "Table row click+drag range select / Shift+click extend (onRowMouseDown + onRowMouseEnter)",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": null,
+    "flag": null
+  },
+  {
+    "id": "act_reports_89",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 68,
+    "label": "ReportCard From (date) — CAPEX/OPEX by Project card",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "EXPORT_CENTRE_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_reports_90",
+    "kind": "action",
+    "surface": "reports",
+    "file": "frontend/src/routes/reports/ExportCentrePage.tsx",
+    "line": 73,
+    "label": "ReportCard To (date) — CAPEX/OPEX by Project card",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "EXPORT_CENTRE_ROLES",
     "flag": null
   }
 ]

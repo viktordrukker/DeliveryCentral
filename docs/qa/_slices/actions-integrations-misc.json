@@ -29,7 +29,7 @@
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
     "line": 70,
-    "label": "Export",
+    "label": "Export ▾ (toggle export menu)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "resource_manager,director,admin",
@@ -37,6 +37,42 @@
   },
   {
     "id": "act_integrations-misc_4",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 102,
+    "label": "Download XLSX (export menu item) — resource pools",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_5",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 112,
+    "label": "Download CSV (export menu item) — resource pools",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_6",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 57,
+    "label": "Export menu click-outside dismiss — resource pools",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_7",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
@@ -48,7 +84,43 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_5",
+    "id": "act_integrations-misc_8",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
+    "line": 106,
+    "label": "Code * (create-pool field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_9",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
+    "line": 118,
+    "label": "Name * (create-pool field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_10",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
+    "line": 130,
+    "label": "Description (create-pool field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "resource_manager,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_11",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
@@ -60,7 +132,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_6",
+    "id": "act_integrations-misc_12",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
@@ -72,7 +144,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_7",
+    "id": "act_integrations-misc_13",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
@@ -84,7 +156,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_8",
+    "id": "act_integrations-misc_14",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
@@ -96,19 +168,19 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_9",
+    "id": "act_integrations-misc_15",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx",
     "line": 186,
-    "label": "Pool row click (navigate to detail)",
+    "label": "Pool row click (window.location.assign to detail)",
     "element": "row-action",
     "triggeredApi": "route:/resource-pools/:id",
     "rolesAllowed": "resource_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_10",
+    "id": "act_integrations-misc_16",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -120,7 +192,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_11",
+    "id": "act_integrations-misc_17",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -132,7 +204,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_12",
+    "id": "act_integrations-misc_18",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -144,7 +216,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_13",
+    "id": "act_integrations-misc_19",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -156,7 +228,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_14",
+    "id": "act_integrations-misc_20",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -168,7 +240,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_15",
+    "id": "act_integrations-misc_21",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -180,7 +252,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_16",
+    "id": "act_integrations-misc_22",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -192,7 +264,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_17",
+    "id": "act_integrations-misc_23",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
@@ -204,31 +276,31 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_18",
+    "id": "act_integrations-misc_24",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
-    "line": 255,
-    "label": "Remove pool member? — Confirm",
+    "line": 259,
+    "label": "Remove pool member? — Confirm (DELETE member)",
     "element": "modal",
     "triggeredApi": "DELETE /api/resource-pools/:poolId/members/:personId",
     "rolesAllowed": "resource_manager,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_19",
+    "id": "act_integrations-misc_25",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx",
     "line": 258,
-    "label": "Remove pool member? — Cancel",
-    "element": "modal",
+    "label": "Remove pool member? — Cancel (dismiss confirm)",
+    "element": "dismiss",
     "triggeredApi": null,
     "rolesAllowed": "resource_manager,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_20",
+    "id": "act_integrations-misc_26",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
@@ -240,79 +312,19 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_21",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 207,
-    "label": "Filter by contributor name",
-    "element": "filter",
-    "triggeredApi": "GET /api/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_22",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 217,
-    "label": "Filter by project name",
-    "element": "filter",
-    "triggeredApi": "GET /api/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_23",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 227,
-    "label": "Source filter (JIRA or MANUAL)",
-    "element": "filter",
-    "triggeredApi": "GET /api/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_24",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 237,
-    "label": "Date From (DatePicker)",
-    "element": "filter",
-    "triggeredApi": "GET /api/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_25",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 242,
-    "label": "Date To (DatePicker)",
-    "element": "filter",
-    "triggeredApi": "GET /api/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_26",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
-    "line": 263,
-    "label": "Add Observed Work (empty-state action)",
-    "element": "link",
-    "triggeredApi": "route:/work-evidence",
-    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
     "id": "act_integrations-misc_27",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 90,
+    "label": "TipTrigger (contextual help atom)",
+    "element": "atom",
+    "triggeredApi": "GET /api/help/tips",
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_28",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
@@ -321,10 +333,10 @@
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
+    "flag": "flag.evidenceManagement.allowManualEntry"
   },
   {
-    "id": "act_integrations-misc_28",
+    "id": "act_integrations-misc_29",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
@@ -333,58 +345,298 @@
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
-  },
-  {
-    "id": "act_integrations-misc_29",
-    "kind": "action",
-    "surface": "integrations-misc",
-    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
-    "line": 44,
-    "label": "Record work evidence (form submit)",
-    "element": "form",
-    "triggeredApi": "POST /api/work-evidence",
-    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
+    "flag": "flag.evidenceManagement.allowManualEntry"
   },
   {
     "id": "act_integrations-misc_30",
     "kind": "action",
     "surface": "integrations-misc",
-    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
-    "line": 62,
-    "label": "Effort (h) inline edit cell",
-    "element": "row-action",
-    "triggeredApi": "PATCH /api/work-evidence/:id",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 82,
+    "label": "Source Type (form field)",
+    "element": "form",
+    "triggeredApi": null,
     "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
-    "flag": null
+    "flag": "flag.evidenceManagement.allowManualEntry"
   },
   {
     "id": "act_integrations-misc_31",
     "kind": "action",
     "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 95,
+    "label": "Source Record Key (form field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_32",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 107,
+    "label": "Recorded At (datetime-local field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_33",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 119,
+    "label": "Effort Hours (number field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_34",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 134,
+    "label": "Summary (textarea field)",
+    "element": "form",
+    "triggeredApi": null,
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_35",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx",
+    "line": 144,
+    "label": "Record work evidence (form submit)",
+    "element": "form",
+    "triggeredApi": "POST /api/work-evidence",
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_36",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 207,
+    "label": "Filter by contributor name",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_37",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 217,
+    "label": "Filter by project name",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_38",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 227,
+    "label": "Source filter (JIRA or MANUAL)",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_39",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 237,
+    "label": "Date From (DatePicker)",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_40",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 242,
+    "label": "Date To (DatePicker)",
+    "element": "filter",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_41",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/routes/work-evidence/WorkEvidencePage.tsx",
+    "line": 263,
+    "label": "Add Observed Work (empty-state action)",
+    "element": "link",
+    "triggeredApi": "route:/work-evidence",
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": "flag.evidenceManagement.allowManualEntry"
+  },
+  {
+    "id": "act_integrations-misc_42",
+    "kind": "action",
+    "surface": "integrations-misc",
     "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
-    "line": 86,
-    "label": "Summary inline edit cell",
+    "line": 62,
+    "label": "Effort (h) inline edit cell (commit)",
     "element": "row-action",
     "triggeredApi": "PATCH /api/work-evidence/:id",
     "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_32",
+    "id": "act_integrations-misc_43",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 86,
+    "label": "Summary inline edit cell (commit)",
+    "element": "row-action",
+    "triggeredApi": "PATCH /api/work-evidence/:id",
+    "rolesAllowed": "project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_44",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 38,
+    "label": "Sort by Person (column header)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_45",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 44,
+    "label": "Sort by Project (column header)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_46",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 50,
+    "label": "Sort by Source (column header)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_47",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 56,
+    "label": "Sort by Effort (h) (column header)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_48",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 96,
+    "label": "Sort by Activity Date (column header)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_49",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx",
+    "line": 108,
+    "label": "Work-evidence table pager (prev/next)",
+    "element": "stepper",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,project_manager,resource_manager,delivery_manager,hr_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_50",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/notifications/InboxPage.tsx",
     "line": 101,
-    "label": "Export (notifications inbox)",
+    "label": "Export ▾ (toggle export menu) — inbox",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_33",
+    "id": "act_integrations-misc_51",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 102,
+    "label": "Download XLSX (export menu item) — inbox",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_52",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 112,
+    "label": "Download CSV (export menu item) — inbox",
+    "element": "row-action",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_53",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/ExportButton.tsx",
+    "line": 57,
+    "label": "Export menu click-outside dismiss — inbox",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_54",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/notifications/InboxPage.tsx",
@@ -396,7 +648,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_34",
+    "id": "act_integrations-misc_55",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/notifications/InboxPage.tsx",
@@ -408,7 +660,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_35",
+    "id": "act_integrations-misc_56",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/notifications/InboxPage.tsx",
@@ -420,7 +672,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_36",
+    "id": "act_integrations-misc_57",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/notifications/InboxPage.tsx",
@@ -432,67 +684,67 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_37",
+    "id": "act_integrations-misc_58",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
     "line": 90,
     "label": "Take the welcome tour / Replay welcome tour",
     "element": "button",
-    "triggeredApi": "startWelcomeTour",
+    "triggeredApi": null,
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_38",
+    "id": "act_integrations-misc_59",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
     "line": 106,
-    "label": "Search title or summary (SearchInput)",
+    "label": "Search title or summary (SearchInput, refetches list)",
     "element": "filter",
     "triggeredApi": "GET /api/help/articles",
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_39",
+    "id": "act_integrations-misc_60",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
     "line": 115,
-    "label": "All (tag filter reset)",
+    "label": "All (tag filter reset, refetches list)",
     "element": "filter",
     "triggeredApi": "GET /api/help/articles",
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_40",
+    "id": "act_integrations-misc_61",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
     "line": 124,
-    "label": "Tag chip (filter by tag)",
+    "label": "Tag chip (filter by tag, refetches list)",
     "element": "filter",
     "triggeredApi": "GET /api/help/articles",
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_41",
+    "id": "act_integrations-misc_62",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
     "line": 158,
     "label": "Clear filters (empty-state action)",
     "element": "button",
-    "triggeredApi": "GET /api/help/articles",
+    "triggeredApi": null,
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_42",
+    "id": "act_integrations-misc_63",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleListPage.tsx",
@@ -504,19 +756,19 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_43",
+    "id": "act_integrations-misc_64",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
     "line": 108,
-    "label": "Back to Help Center (not-found action)",
+    "label": "Back to Help Center (not-found empty-state action)",
     "element": "link",
     "triggeredApi": "route:/help",
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_44",
+    "id": "act_integrations-misc_65",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
@@ -528,7 +780,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_45",
+    "id": "act_integrations-misc_66",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
@@ -540,7 +792,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_46",
+    "id": "act_integrations-misc_67",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
@@ -552,7 +804,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_47",
+    "id": "act_integrations-misc_68",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
@@ -564,31 +816,43 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_48",
+    "id": "act_integrations-misc_69",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/routes/help/HelpArticleDetailPage.tsx",
     "line": 195,
     "label": "Submit feedback",
     "element": "button",
-    "triggeredApi": "POST /api/help/articles/:articleId/feedback",
+    "triggeredApi": "POST /api/help/articles/:id/feedback",
     "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_49",
+    "id": "act_integrations-misc_70",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/layout/NotificationBell.tsx",
     "line": 151,
     "label": "Notifications (bell trigger toggle)",
     "element": "button",
-    "triggeredApi": null,
-    "rolesAllowed": null,
+    "triggeredApi": "GET /api/notifications/inbox",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_50",
+    "id": "act_integrations-misc_71",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/layout/NotificationBell.tsx",
+    "line": 105,
+    "label": "Bell panel click-outside dismiss",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_72",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/layout/NotificationBell.tsx",
@@ -596,11 +860,11 @@
     "label": "Mark all read (bell panel)",
     "element": "button",
     "triggeredApi": "POST /api/notifications/inbox/read-all",
-    "rolesAllowed": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_51",
+    "id": "act_integrations-misc_73",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/layout/NotificationBell.tsx",
@@ -608,11 +872,11 @@
     "label": "Notification click (mark read + navigate link)",
     "element": "row-action",
     "triggeredApi": "POST /api/notifications/inbox/:id/read",
-    "rolesAllowed": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_52",
+    "id": "act_integrations-misc_74",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/layout/NotificationBell.tsx",
@@ -620,11 +884,11 @@
     "label": "Mark as read (per-item ×)",
     "element": "row-action",
     "triggeredApi": "POST /api/notifications/inbox/:id/read",
-    "rolesAllowed": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_53",
+    "id": "act_integrations-misc_75",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/layout/NotificationBell.tsx",
@@ -632,83 +896,203 @@
     "label": "View all notifications",
     "element": "link",
     "triggeredApi": "route:/notifications",
-    "rolesAllowed": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_54",
+    "id": "act_integrations-misc_76",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/common/CommandPalette.tsx",
     "line": 331,
-    "label": "Search pages, people, projects... (palette input)",
+    "label": "Search pages, people, projects... (palette input — fans out to 4 fetches)",
     "element": "filter",
-    "triggeredApi": "GET /api/person-directory",
-    "rolesAllowed": null,
+    "triggeredApi": "GET /api/org/people",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_55",
+    "id": "act_integrations-misc_77",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 82,
+    "label": "Palette search — project directory fetch",
+    "element": "filter",
+    "triggeredApi": "GET /api/projects",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_78",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 86,
+    "label": "Palette search — project-positions fetch",
+    "element": "filter",
+    "triggeredApi": "GET /api/project-positions",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_79",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 102,
+    "label": "Palette search — cases fetch",
+    "element": "filter",
+    "triggeredApi": "GET /api/cases",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_80",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/common/CommandPalette.tsx",
     "line": 357,
-    "label": "Command palette item (navigate to selected result)",
+    "label": "Command palette result item (navigate to selected page/person/project/position/case)",
     "element": "row-action",
-    "triggeredApi": "route:dynamic (page/person/project/position/case/action target)",
-    "rolesAllowed": null,
+    "triggeredApi": "route:dynamic",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_56",
+    "id": "act_integrations-misc_81",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 165,
+    "label": "Action: Log Hours / Submit Timesheet (palette action item)",
+    "element": "row-action",
+    "triggeredApi": "route:/timesheets",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_82",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 175,
+    "label": "Action: Create Position (palette action item)",
+    "element": "row-action",
+    "triggeredApi": "route:/staffing-desk?openCreatePosition=true",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_83",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 195,
+    "label": "Action: Approve Requests (palette action item)",
+    "element": "row-action",
+    "triggeredApi": "route:/staffing-desk",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_84",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 205,
+    "label": "Action: Create Project (palette action item)",
+    "element": "row-action",
+    "triggeredApi": "route:/projects/new",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_85",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 225,
+    "label": "Action: Create Case (palette action item)",
+    "element": "row-action",
+    "triggeredApi": "route:/cases/new",
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_86",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 325,
+    "label": "Command palette backdrop click-outside dismiss",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_87",
+    "kind": "action",
+    "surface": "integrations-misc",
+    "file": "frontend/src/components/common/CommandPalette.tsx",
+    "line": 310,
+    "label": "Command palette Escape-key dismiss",
+    "element": "dismiss",
+    "triggeredApi": null,
+    "rolesAllowed": "employee,hr_manager,project_manager,resource_manager,delivery_manager,director,admin",
+    "flag": null
+  },
+  {
+    "id": "act_integrations-misc_88",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/IntegrationCard.tsx",
     "line": 19,
-    "label": "Integration card (select provider)",
+    "label": "Integration card (select provider, onSelect)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_57",
+    "id": "act_integrations-misc_89",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/SyncButton.tsx",
     "line": 17,
-    "label": "Sync (generic sync button)",
+    "label": "Sync (generic sync button, onClick prop)",
     "element": "atom",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_58",
+    "id": "act_integrations-misc_90",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
     "line": 38,
-    "label": "Category filter (M365 reconciliation)",
+    "label": "Category filter (M365 reconciliation, onFilterChange)",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_59",
+    "id": "act_integrations-misc_91",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
     "line": 62,
-    "label": "Search by external user/principal/person/summary (M365)",
+    "label": "Search by external user/principal/person/summary (M365, onFilterChange)",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_60",
+    "id": "act_integrations-misc_92",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
@@ -720,19 +1104,19 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_61",
+    "id": "act_integrations-misc_93",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
     "line": 137,
     "label": "Manager link (M365 item)",
     "element": "link",
-    "triggeredApi": "route:/people/:resolvedManagerPersonId",
+    "triggeredApi": "route:/people/:personId",
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_62",
+    "id": "act_integrations-misc_94",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
@@ -744,7 +1128,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_63",
+    "id": "act_integrations-misc_95",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
@@ -756,7 +1140,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_64",
+    "id": "act_integrations-misc_96",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/M365ReconciliationPanel.tsx",
@@ -768,31 +1152,31 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_65",
+    "id": "act_integrations-misc_97",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
     "line": 38,
-    "label": "Category filter (RADIUS reconciliation)",
+    "label": "Category filter (RADIUS reconciliation, onFilterChange)",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_66",
+    "id": "act_integrations-misc_98",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
     "line": 62,
-    "label": "Search by account id/username/email/person/summary (RADIUS)",
+    "label": "Search by account id/username/email/person/summary (RADIUS, onFilterChange)",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "admin",
     "flag": null
   },
   {
-    "id": "act_integrations-misc_67",
+    "id": "act_integrations-misc_99",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
@@ -804,7 +1188,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_68",
+    "id": "act_integrations-misc_100",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
@@ -816,7 +1200,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_69",
+    "id": "act_integrations-misc_101",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",
@@ -828,7 +1212,7 @@
     "flag": null
   },
   {
-    "id": "act_integrations-misc_70",
+    "id": "act_integrations-misc_102",
     "kind": "action",
     "surface": "integrations-misc",
     "file": "frontend/src/components/integrations/RadiusReconciliationPanel.tsx",

@@ -5,11 +5,11 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/org/OrgPage.tsx",
     "line": 50,
-    "label": "People",
+    "label": "People (view toggle)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_2",
@@ -17,11 +17,11 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/org/OrgPage.tsx",
     "line": 58,
-    "label": "Departments",
+    "label": "Departments (view toggle)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_3",
@@ -29,11 +29,11 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/org/OrgPage.tsx",
     "line": 39,
-    "label": "Search org units, people... (search input)",
+    "label": "Search org units, people... (search input; client-side filter)",
     "element": "filter",
-    "triggeredApi": "GET /api/org/chart",
+    "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_4",
@@ -41,11 +41,11 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/org/OrgPage.tsx",
     "line": 75,
-    "label": "Refresh",
+    "label": "Refresh (refetch org/people/workload)",
     "element": "button",
     "triggeredApi": "GET /api/org/chart",
     "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_5",
@@ -57,7 +57,7 @@
     "element": "link",
     "triggeredApi": "route:/people",
     "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_6",
@@ -77,7 +77,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/InteractiveOrgChart.tsx",
     "line": 422,
-    "label": "Zoom out (\u2212)",
+    "label": "Zoom out (−)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
@@ -125,7 +125,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/InteractiveOrgChart.tsx",
     "line": 442,
-    "label": "Depth level buttons (1..N)",
+    "label": "Depth level buttons (1..min(maxDepth,6))",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
@@ -137,7 +137,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/InteractiveOrgChart.tsx",
     "line": 452,
-    "label": "Export PNG",
+    "label": "Export PNG (exportImg save)",
     "element": "button",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
@@ -149,7 +149,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/InteractiveOrgChart.tsx",
     "line": 322,
-    "label": "Org chart node click (opens person/department drawer)",
+    "label": "Org chart node click (opens person/department drawer; people view fetches sidebar data)",
     "element": "row-action",
     "triggeredApi": "GET /api/people/{id}/skills",
     "rolesAllowed": "ALL_ROLES",
@@ -161,7 +161,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/OrgChartNode.tsx",
     "line": 120,
-    "label": "Person node assignment bar (project link, raw-HTML anchor)",
+    "label": "Person node assignment bar (project link, raw-HTML anchor, top 3)",
     "element": "link",
     "triggeredApi": "route:/projects/{projectId}",
     "rolesAllowed": "ALL_ROLES",
@@ -173,8 +173,8 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/PersonSidebarDrawer.tsx",
     "line": 57,
-    "label": "Close drawer (\u2715)",
-    "element": "button",
+    "label": "Close drawer (✕)",
+    "element": "dismiss",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
     "flag": null
@@ -197,7 +197,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/PersonSidebarDrawer.tsx",
     "line": 153,
-    "label": "Position project link (sidebar positions)",
+    "label": "Position project link (sidebar positions list)",
     "element": "link",
     "triggeredApi": "route:/projects/{projectId}",
     "rolesAllowed": "ALL_ROLES",
@@ -247,7 +247,7 @@
     "line": 236,
     "label": "View Profile",
     "element": "button",
-    "triggeredApi": "route:/people/{id}",
+    "triggeredApi": "route:/people/{personId}",
     "rolesAllowed": "ALL_ROLES",
     "flag": null
   },
@@ -259,7 +259,7 @@
     "line": 239,
     "label": "View Positions",
     "element": "link",
-    "triggeredApi": "route:/staffing-desk?personId={id}",
+    "triggeredApi": "route:/staffing-desk?personId={personId}",
     "rolesAllowed": "ALL_ROLES",
     "flag": null
   },
@@ -281,8 +281,8 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/DepartmentSidebarDrawer.tsx",
     "line": 66,
-    "label": "Close drawer (\u2715)",
-    "element": "button",
+    "label": "Close drawer (✕)",
+    "element": "dismiss",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
     "flag": null
@@ -305,7 +305,7 @@
     "surface": "org-teams",
     "file": "frontend/src/components/org/DepartmentSidebarDrawer.tsx",
     "line": 139,
-    "label": "Search members... (member filter)",
+    "label": "Search members... (member filter; also resets showAll)",
     "element": "filter",
     "triggeredApi": null,
     "rolesAllowed": "ALL_ROLES",
@@ -428,8 +428,8 @@
     "label": "Create Team form submit",
     "element": "form",
     "triggeredApi": "POST /api/teams",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_37",
@@ -440,8 +440,8 @@
     "label": "Create team (submit button)",
     "element": "button",
     "triggeredApi": "POST /api/teams",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_38",
@@ -452,8 +452,8 @@
     "label": "Team Name input",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_39",
@@ -464,8 +464,8 @@
     "label": "Team Code input",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_40",
@@ -476,8 +476,8 @@
     "label": "Description textarea",
     "element": "filter",
     "triggeredApi": null,
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_41",
@@ -485,11 +485,11 @@
     "surface": "org-teams",
     "file": "frontend/src/components/teams/TeamList.tsx",
     "line": 14,
-    "label": "Team list item (select team)",
+    "label": "Team list item (select team; loads members)",
     "element": "row-action",
     "triggeredApi": "GET /api/teams/{id}/members",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "ALL_AUTHENTICATED_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_42",
@@ -500,8 +500,8 @@
     "label": "Open team dashboard",
     "element": "link",
     "triggeredApi": "route:/teams/{id}/dashboard",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "ALL_AUTHENTICATED_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_43",
@@ -509,11 +509,11 @@
     "surface": "org-teams",
     "file": "frontend/src/components/teams/TeamDetails.tsx",
     "line": 102,
-    "label": "Remove (member, opens ConfirmDialog)",
+    "label": "Remove (member; opens ConfirmDialog)",
     "element": "row-action",
     "triggeredApi": null,
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_44",
@@ -521,11 +521,11 @@
     "surface": "org-teams",
     "file": "frontend/src/components/teams/TeamDetails.tsx",
     "line": 50,
-    "label": "Remove (ConfirmDialog confirm) \u2014 fires updateTeamMember remove",
+    "label": "Remove (ConfirmDialog confirm) — fires updateTeamMember remove",
     "element": "modal",
     "triggeredApi": "POST /api/teams/{id}/members",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_45",
@@ -533,11 +533,11 @@
     "surface": "org-teams",
     "file": "frontend/src/components/teams/TeamDetails.tsx",
     "line": 49,
-    "label": "Cancel (ConfirmDialog)",
-    "element": "modal",
+    "label": "Cancel (ConfirmDialog dismiss)",
+    "element": "dismiss",
     "triggeredApi": null,
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_46",
@@ -545,11 +545,11 @@
     "surface": "org-teams",
     "file": "frontend/src/components/teams/MemberSelector.tsx",
     "line": 35,
-    "label": "Add member",
+    "label": "Add member (fires updateTeamMember add)",
     "element": "row-action",
     "triggeredApi": "POST /api/teams/{id}/members",
-    "rolesAllowed": "ALL_ROLES",
-    "flag": null
+    "rolesAllowed": "RM_EXEC_ROLES",
+    "flag": "obsoleteInV2"
   },
   {
     "id": "act_org-teams_47",
@@ -560,7 +560,7 @@
     "label": "Back to teams",
     "element": "link",
     "triggeredApi": "route:/teams",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -572,7 +572,7 @@
     "label": "Positions",
     "element": "link",
     "triggeredApi": "route:/staffing-desk",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -584,7 +584,7 @@
     "label": "Members KPI",
     "element": "kpi",
     "triggeredApi": "route:/people",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -596,7 +596,7 @@
     "label": "Active Positions KPI",
     "element": "kpi",
     "triggeredApi": "route:/staffing-desk",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -608,7 +608,7 @@
     "label": "Projects KPI",
     "element": "kpi",
     "triggeredApi": "route:/projects",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -620,7 +620,7 @@
     "label": "Unassigned KPI",
     "element": "kpi",
     "triggeredApi": "route:/people?status=unassigned",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -632,7 +632,7 @@
     "label": "Exceptions KPI",
     "element": "kpi",
     "triggeredApi": "route:/exceptions",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -641,10 +641,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 120,
-    "label": "Projects Involved \u2014 Go link",
-    "element": "link",
+    "label": "Projects Involved — Go link",
+    "element": "row-action",
     "triggeredApi": "route:/projects/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -653,10 +653,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 124,
-    "label": "Projects Involved \u2014 row click",
+    "label": "Projects Involved — row click",
     "element": "row-action",
     "triggeredApi": "route:/projects/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -665,10 +665,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 143,
-    "label": "Cross-Project Members \u2014 Go link",
-    "element": "link",
+    "label": "Cross-Project Members — Go link",
+    "element": "row-action",
     "triggeredApi": "route:/people/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -677,10 +677,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 147,
-    "label": "Cross-Project Members \u2014 row click",
+    "label": "Cross-Project Members — row click",
     "element": "row-action",
     "triggeredApi": "route:/people/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -689,10 +689,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 169,
-    "label": "People With No Assignments \u2014 Go link",
-    "element": "link",
+    "label": "People With No Assignments — Go link",
+    "element": "row-action",
     "triggeredApi": "route:/people/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -701,10 +701,10 @@
     "surface": "org-teams",
     "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
     "line": 173,
-    "label": "People With No Assignments \u2014 row click",
+    "label": "People With No Assignments — row click",
     "element": "row-action",
     "triggeredApi": "route:/people/{id}",
-    "rolesAllowed": "ALL_ROLES",
+    "rolesAllowed": "ALL_MANAGER_ROLES",
     "flag": null
   },
   {
@@ -737,8 +737,116 @@
     "surface": "org-teams",
     "file": "frontend/src/components/dashboard/delivery-manager/DeliveryManagerKpiStrip.tsx",
     "line": 46,
-    "label": "Unstaffed KPI (pivots to portfolio tab, no nav)",
+    "label": "Unstaffed KPI (preventDefault; pivots to portfolio tab via onShowPortfolioTab, no nav)",
     "element": "kpi",
+    "triggeredApi": null,
+    "rolesAllowed": "DELIVERY_DASHBOARD_ROLES",
+    "flag": "dashDeliveryManager"
+  },
+  {
+    "id": "act_org-teams_63",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 84,
+    "label": "Team Summary (collapsible SectionCard toggle)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_64",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 94,
+    "label": "Anomaly Summary (collapsible SectionCard toggle)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_65",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 112,
+    "label": "Projects Involved (collapsible SectionCard toggle)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_66",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 129,
+    "label": "Cross-Project Members (collapsible SectionCard toggle)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_67",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 154,
+    "label": "People With No Assignments (collapsible SectionCard toggle)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_68",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/routes/teams/TeamDashboardPage.tsx",
+    "line": 71,
+    "label": "Unassigned KPI TipBalloon (hover tooltip atom)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "ALL_MANAGER_ROLES",
+    "flag": null
+  },
+  {
+    "id": "act_org-teams_69",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/components/dashboard/delivery-manager/DeliveryManagerKpiStrip.tsx",
+    "line": 31,
+    "label": "Active Projects TipBalloon (hover tooltip atom)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "DELIVERY_DASHBOARD_ROLES",
+    "flag": "dashDeliveryManager"
+  },
+  {
+    "id": "act_org-teams_70",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/components/dashboard/delivery-manager/DeliveryManagerKpiStrip.tsx",
+    "line": 41,
+    "label": "Active Positions TipBalloon (hover tooltip atom)",
+    "element": "atom",
+    "triggeredApi": null,
+    "rolesAllowed": "DELIVERY_DASHBOARD_ROLES",
+    "flag": "dashDeliveryManager"
+  },
+  {
+    "id": "act_org-teams_71",
+    "kind": "action",
+    "surface": "org-teams",
+    "file": "frontend/src/components/dashboard/delivery-manager/DeliveryManagerKpiStrip.tsx",
+    "line": 57,
+    "label": "Unstaffed TipBalloon (hover tooltip atom)",
+    "element": "atom",
     "triggeredApi": null,
     "rolesAllowed": "DELIVERY_DASHBOARD_ROLES",
     "flag": "dashDeliveryManager"

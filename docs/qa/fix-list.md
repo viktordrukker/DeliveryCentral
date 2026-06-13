@@ -11,7 +11,7 @@ _Autonomous full-surface QA run, 2026-06-13. Branch `qa/v2-full-surface-2026-06-
 | **P3** | 6 | overtime UUID pipe; setup-token hardening; employee `/people` console noise; employee `/projects` health badges; sidebar badge↔drilldown mismatch (Law 9); 46/90 dead flags |
 | Design | 15 | DS canvas PARTIAL conformance (see `ds-fe-gap.md`) — mostly polish |
 
-Coverage: 414 endpoints probed (zero-mutation), 1165 action wires reconciled, 22 route renders driven (4 roles), 18 DS canvases, 90 flags. See `availability-matrix.json` / `action-inventory.json` for per-row verdicts.
+Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconciled (re-traced in validation round 2 after an independent audit caught a ~35% undercount in the first pass), 22 route renders driven (4 roles), 18 DS canvases, 90 flags. See `availability-matrix.json` / `action-inventory.json` for per-row verdicts.
 
 ---
 
@@ -71,6 +71,6 @@ Coverage: 414 endpoints probed (zero-mutation), 1165 action wires reconciled, 22
 
 ## Coverage caveats (honest gaps)
 - **Admin surface not live-tested:** `/admin`, `/admin/settings` need an admin account; admin login 401s on staging (non-default `SEED_ADMIN_PASSWORD`). Endpoints under `/api/admin/*` returned correct-403 for non-admin roles (RBAC verified) but their happy-path + render were not exercised. Needs operator staging admin password.
-- **Write/delete endpoints not live-executed:** verified auth-gating (no-token → 401) only, zero-mutation by design. Write-path correctness relies on static guard analysis + the action↔API reconcile (all 375 resolved action wires match real routes); recommend exercising the high-value reversible flows (assign, approve, submit) on staging in a follow-up.
+- **Write/delete endpoints not live-executed:** verified auth-gating (no-token → 401) only, zero-mutation by design. Write-path correctness relies on static guard analysis + the action↔API reconcile (392 resolved action wires match real controller routes; 17 residual are benign admin/setup path approximations); recommend exercising the high-value reversible flows (assign, approve, submit) on staging in a follow-up.
 - **Route render sweep:** 22 navs across 4 roles (V2-active surface + key detail pages). The ~93 obsolete-in-V2 / admin / less-trafficked routes carry a `RENDER-PENDING` verdict in `availability-matrix.json` (registered + data-layer probed, runtime render not driven).
 - **One unconfirmed wire:** `POST /api/projects/:id/role-plan/generate-requests` (1 action) has no matching controller route — likely an agent path approximation; verify against the real handler.
