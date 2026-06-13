@@ -57,7 +57,7 @@ export function CasesPage(): JSX.Element {
     // Re-add when CaseRecord carries slaStatus from the BE.
 
     return (
-      <PageContainer testId="cases-page" viewport>
+      <PageContainer testId="cases-page">
         <PageHeader
           eyebrow="Operational Queue"
           title="Cases"
@@ -82,7 +82,7 @@ export function CasesPage(): JSX.Element {
   }
 
   return (
-    <PageContainer testId="cases-page" viewport>
+    <PageContainer testId="cases-page">
       <CasesPanel />
     </PageContainer>
   );
