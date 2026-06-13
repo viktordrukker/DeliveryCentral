@@ -7,15 +7,15 @@ _Autonomous full-surface QA run, 2026-06-13. Branch `qa/v2-full-surface-2026-06-
 | Sev | Count | Headline |
 |-----|------:|----------|
 | **P1** | 2 | `project-positions` list 400s on pagination → `/me` Projects tab + paginated callers broken; person-detail page 400s via publicId → profile/skills/360/suggested all dead on dsRefresh surface |
-| **P2** | 4 systemic classes + 3 | query-param→500; publicId→UUID id-type; `/cases` dead-end (F-1b-E); **3 systemic classes below**: actor-spoofing (5 eps), undecorated-`@Body` (project-update silent no-op + unvalidated planner writes), Law-9 KPI-drilldowns (~8 KPIs) |
+| **P2** | 4 systemic classes + 3 | query-param→500; publicId→UUID id-type; `/cases` dead-end (F-1b-E); **4 systemic classes below**: actor-spoofing (5 eps), undecorated-`@Body` (project-update silent no-op + unvalidated planner writes), Law-9 KPI-drilldowns (~8 KPIs + backend ignores filters), timezone date off-by-one (~21 sites) |
 | **P3** | ~10 | overtime UUID pipe; setup-token; `/people` 403 noise (3 roles); `/projects` health 403; 46/90 dead flags; platform-settings null actor (F-WP-4); audit-attribution gaps; KPI unit/fragile-drilldown (F-DC-4/5) |
 | Design | 15 | DS canvas PARTIAL conformance (see `ds-fe-gap.md`) — mostly polish |
 
 _The F-1b-E / F-WP-* / F-DC-* findings were surfaced during the validation campaign (rounds 4–6: cross-role render sweep, static write-path tracing, dashboard data-consistency) — the first pass missed them entirely. The three systemic classes are in **`## Systemic classes`** below; full per-finding detail in `_slices/findings-r5.json` + `findings-r6.json` + `findings-phase1b-r4.json`._
 
-## Systemic classes (validation rounds 5–6)
+## Systemic classes (validation rounds 5–7)
 
-These three classes each span multiple endpoints/surfaces with one root mechanism — fix the mechanism, not just the instances.
+These four classes each span multiple endpoints/surfaces with one root mechanism — fix the mechanism, not just the instances.
 
 ### SC-1 · Actor-spoofing (P2, security) — `F-WP-1-CLASS`
 5 write endpoints persist a **client-supplied** actor into DB audit columns instead of `req.principal`: `POST /staffing-desk/planner/apply`, `/planner/scenarios`, `/org/people/:id/terminate`, `/cases/:id/comments`, `/projects/:id/assign-team`. Any authorized user can forge the audit trail. **Fix:** source actor from `req.principal` everywhere; the body actor field is only readable because of SC-2. (The other ~18 write handlers correctly use the principal.)
