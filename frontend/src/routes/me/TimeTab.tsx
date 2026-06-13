@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -293,12 +294,30 @@ export function TimeTab(): JSX.Element {
     );
   }
 
-  if (weekDays.length !== 7) {
+  // Still fetching — no data and no error yet. (The error-without-data case is
+  // handled above.) `weekDays` is always 0 or 7, so once data has loaded a
+  // non-7 length means the month genuinely has no timesheet weeks.
+  if (!data) {
     return (
       <SectionCard title="Weekly grid">
         <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--font-size-compact)' }}>
           Loading your timesheet…
         </p>
+      </SectionCard>
+    );
+  }
+
+  // Loaded, but the month has no timesheet weeks (e.g. no project assignments
+  // generating weeks this month). Render an explicit empty state with a forward
+  // action — NOT a perpetual "Loading…" (was the bug: empty conflated with loading).
+  if (weekDays.length !== 7) {
+    return (
+      <SectionCard title="Weekly grid">
+        <EmptyState
+          title="No timesheet for this month"
+          description="You have no project assignments generating timesheet weeks this month. Once you're assigned to a project, your weekly grid appears here."
+          actions={[{ label: 'Refresh', onClick: () => setRefetchTick((t) => t + 1), variant: 'secondary' }]}
+        />
       </SectionCard>
     );
   }

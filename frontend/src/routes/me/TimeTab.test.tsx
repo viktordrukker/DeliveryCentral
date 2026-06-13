@@ -245,5 +245,23 @@ describe('TimeTab weekly grid', () => {
     });
     expect(upsertTimesheetEntryMock).not.toHaveBeenCalled();
   });
+
+  it('shows an explicit empty state (not perpetual "Loading…") when the month has no weeks', async () => {
+    // Regression for F-TIME-1: a person/month with no timesheet weeks (e.g. no
+    // assignments — admin/superadmin) previously stuck on "Loading your timesheet…"
+    // forever because empty was conflated with loading.
+    fetchMonthlyTimesheetMock.mockResolvedValue({
+      ...buildResponse(),
+      weeks: [],
+      entries: [],
+      assignmentRows: [],
+    });
+    render(<TimeTab />);
+
+    expect(await screen.findByText('No timesheet for this month')).toBeInTheDocument();
+    expect(screen.queryByText('Loading your timesheet…')).toBeNull();
+    // UX Law 2 — empty state carries a forward action.
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+  });
 });
 
