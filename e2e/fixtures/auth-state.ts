@@ -8,14 +8,17 @@ export const PLAYWRIGHT_API_BASE = process.env['PLAYWRIGHT_API_BASE'] ?? 'http:/
 export const PLAYWRIGHT_BASE_URL = process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://127.0.0.1:4173';
 export const STORAGE_STATE_DIR = path.resolve(process.cwd(), 'playwright/.auth');
 
+// Single source of truth for E2E auth credentials. These mirror the sole seed
+// profile (it-company): @itco.local role accounts plus the superadmin. Any other
+// E2E file needing role credentials must import from here — never re-hardcode.
 export const ROLE_CREDENTIALS = {
   admin: { email: 'admin@deliverycentral.local', password: 'DeliveryCentral@Admin1' },
-  director: { email: 'noah.bennett@example.com', password: 'DirectorPass1!' },
-  hrManager: { email: 'diana.walsh@example.com', password: 'HrManagerPass1!' },
-  resourceManager: { email: 'sophia.kim@example.com', password: 'ResourceMgrPass1!' },
-  projectManager: { email: 'lucas.reed@example.com', password: 'ProjectMgrPass1!' },
-  deliveryManager: { email: 'carlos.vega@example.com', password: 'DeliveryMgrPass1!' },
-  employee: { email: 'ethan.brooks@example.com', password: 'EmployeePass1!' },
+  director: { email: 'noah.bennett@itco.local', password: 'DirectorPass1!' },
+  hrManager: { email: 'diana.walsh@itco.local', password: 'HrManagerPass1!' },
+  resourceManager: { email: 'sophia.kim@itco.local', password: 'ResourceMgrPass1!' },
+  projectManager: { email: 'lucas.reed@itco.local', password: 'ProjectMgrPass1!' },
+  deliveryManager: { email: 'carlos.vega@itco.local', password: 'DeliveryMgrPass1!' },
+  employee: { email: 'ethan.brooks@itco.local', password: 'EmployeePass1!' },
 } as const;
 
 export type AuthRole = keyof typeof ROLE_CREDENTIALS;

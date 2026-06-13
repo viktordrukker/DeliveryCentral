@@ -1,6 +1,10 @@
 /**
- * Phase 2 E2E — Project Manager JTBDs (PM1–PM5)
+ * Phase 2 E2E — Project Manager JTBDs (PM1, PM2, PM5)
  * Requires: phase2 seed profile loaded in the database.
+ *
+ * (PM3 request-assignment + PM4 end-assignment removed — the ProjectAssignment
+ *  create form and detail-page lifecycle actions were dropped in the lean V2
+ *  migration; positions are the replacement.)
  */
 import { expect, test } from '@playwright/test';
 
@@ -35,49 +39,6 @@ test.describe('@full PM2 — PM sees staffing gaps', () => {
 
     await expect(page.getByText(/Staffing Gap/i)).toBeVisible();
     await expect(page.getByText(/Jupiter Client Portal/i)).toBeVisible();
-  });
-});
-
-test.describe('@full PM3 — PM requests new assignment', () => {
-  test('create assignment form accepts all fields and shows success toast', async ({ page }) => {
-    await page.goto('/assignments/new');
-
-    await expect(page.getByTestId('create-assignment-page')).toBeVisible();
-    const form = page.getByTestId('create-assignment-form');
-
-    await form.getByLabel('Requested By').selectOption(lucas);
-    await form.getByLabel('Person').selectOption(p2.people.zoeTurner);
-    await form.getByLabel('Project').selectOption(p2.projects.deliveryCentral);
-    await form.getByLabel('Staffing Role').fill('E2E Test Consultant');
-    await form.getByLabel('Allocation Percent').fill('10');
-    await form.getByLabel('Start Date').fill('2026-07-01');
-    await form.getByRole('button', { name: 'Create Assignment' }).click();
-
-    await expect(page.getByRole('status')).toContainText('Assignment created with status REQUESTED');
-  });
-
-  test('duplicate assignment returns 409 and frontend shows error', async ({ page }) => {
-    await page.goto('/assignments/new');
-    const form = page.getByTestId('create-assignment-form');
-
-    // Try to create duplicate of ASN-101 (Ethan on DeliveryCentral from 2025-10-15)
-    await form.getByLabel('Requested By').selectOption(lucas);
-    await form.getByLabel('Person').selectOption(p2.people.ethanBrooks);
-    await form.getByLabel('Project').selectOption(p2.projects.deliveryCentral);
-    await form.getByLabel('Staffing Role').fill('Lead Engineer');
-    await form.getByLabel('Allocation Percent').fill('80');
-    await form.getByLabel('Start Date').fill('2025-10-15');
-    await form.getByRole('button', { name: 'Create Assignment' }).click();
-
-    await expect(page.getByText(/conflict|already exists|409/i)).toBeVisible();
-  });
-});
-
-test.describe('@full PM4 — PM ends an active assignment', () => {
-  test('assignment detail page shows End assignment button for APPROVED assignment', async ({ page }) => {
-    await page.goto(`/assignments/${p2.assignments.lucasOnDeliveryCentral}`);
-
-    await expect(page.getByRole('button', { name: /End assignment/i })).toBeVisible();
   });
 });
 

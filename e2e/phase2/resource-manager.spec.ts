@@ -1,6 +1,9 @@
 /**
- * Phase 2 E2E — Resource Manager JTBDs (RM1–RM5)
+ * Phase 2 E2E — Resource Manager JTBDs (RM1, RM3, RM4)
  * Requires: phase2 seed profile loaded in the database.
+ *
+ * (RM2 approve/reject + RM5 bulk-assign removed — the ProjectAssignment lifecycle
+ *  API and the /assignments/bulk page were dropped in the lean V2 migration.)
  */
 import { expect, test } from '@playwright/test';
 
@@ -31,29 +34,6 @@ test.describe('@full RM1 — RM sees allocation indicators for pool members', ()
   });
 });
 
-test.describe('@full RM2 — RM approves and rejects assignment requests', () => {
-  test('approve action on REQUESTED assignment transitions it to APPROVED', async ({ page }) => {
-    // The REQUESTED assignment for Raj on Jupiter is accessible
-    await page.goto(`/assignments/${p2.assignments.rajOnJupiterRequested}`);
-
-    await expect(page.getByText(/REQUESTED/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Approve assignment/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Reject assignment/i })).toBeVisible();
-  });
-
-  test('approving an already-approved assignment shows 422 error', async ({ page }) => {
-    const token = await getToken(page, resourceManager.email, resourceManager.password);
-    const response = await page.request.post(
-      `http://127.0.0.1:3000/api/assignments/${p2.assignments.ethanOnDeliveryCentral}/approve`,
-      {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        data: { actorId: sophia },
-      },
-    );
-    expect(response.status()).toBe(422);
-  });
-});
-
 test.describe('@full RM3 — RM sees future assignment pipeline', () => {
   test('RM dashboard shows Pipeline section with future assignments', async ({ page }) => {
     await page.goto(`/dashboard/resource-manager?personId=${sophia}`);
@@ -70,16 +50,3 @@ test.describe('@full RM4 — RM views team capacity by resource pool', () => {
   });
 });
 
-test.describe('@full RM5 — RM bulk-assigns multiple people', () => {
-  test('bulk assignment page exists and shows form', async ({ page }) => {
-    await page.goto('/assignments/bulk');
-
-    await expect(page.getByTestId('bulk-assignment-page')).toBeVisible();
-  });
-});
-
-async function getToken(page: import('@playwright/test').Page, email: string, password: string): Promise<string> {
-  const res = await page.request.post('http://127.0.0.1:3000/api/auth/login', { data: { email, password } });
-  const body = await res.json() as { accessToken: string };
-  return body.accessToken;
-}

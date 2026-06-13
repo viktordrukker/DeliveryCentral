@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from '../helpers/auth';
-import { PLAYWRIGHT_BASE_URL } from '../fixtures/auth-state';
+import { PLAYWRIGHT_BASE_URL, ROLE_CREDENTIALS } from '../fixtures/auth-state';
 
 const BASE = PLAYWRIGHT_BASE_URL;
 
@@ -15,7 +15,7 @@ test.describe('@full UX Law 2: No Dead-End Screens', () => {
   });
 
   test('unauthorized redirect shows toast, not dead-end', async ({ page }) => {
-    await loginAs(page, 'ethan.brooks@example.com', 'EmployeePass1!');
+    await loginAs(page, ROLE_CREDENTIALS.employee.email, ROLE_CREDENTIALS.employee.password);
     await page.goto(`${BASE}/admin`);
     await page.waitForLoadState('networkidle');
 

@@ -1,17 +1,16 @@
 /**
- * Phase 2 seed identifiers for E2E tests.
- * Requires: SEED_PROFILE=phase2 applied to the database before running.
+ * E2E seed identifiers.
+ * Account credentials are single-sourced from ROLE_CREDENTIALS (it-company seed).
+ * The people/projects/assignments UUIDs below are legacy phase2 fixtures and do
+ * not exist in the it-company seed; specs that depend on them are data-pinned to
+ * a profile that is no longer seeded.
  */
+import { ROLE_CREDENTIALS } from './auth-state';
+
 export const p2 = {
   accounts: {
-    admin: { email: 'admin@deliverycentral.local', password: 'DeliveryCentral@Admin1' },
-    director: { email: 'noah.bennett@example.com', password: 'DirectorPass1!' },
-    hrManager: { email: 'diana.walsh@example.com', password: 'HrManagerPass1!' },
-    resourceManager: { email: 'sophia.kim@example.com', password: 'ResourceMgrPass1!' },
-    projectManager: { email: 'lucas.reed@example.com', password: 'ProjectMgrPass1!' },
-    deliveryManager: { email: 'carlos.vega@example.com', password: 'DeliveryMgrPass1!' },
-    employee: { email: 'ethan.brooks@example.com', password: 'EmployeePass1!' },
-    dualRole: { email: 'emma.garcia@example.com', password: 'DualRolePass1!' },
+    ...ROLE_CREDENTIALS,
+    dualRole: { email: 'emma.garcia@itco.local', password: 'DualRolePass1!' },
   },
 
   people: {

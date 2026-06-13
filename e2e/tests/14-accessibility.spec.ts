@@ -6,6 +6,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 import { loginAs } from '../helpers/auth';
+import { ROLE_CREDENTIALS } from '../fixtures/auth-state';
 
 const ROLES: Array<{
   label: string;
@@ -13,12 +14,12 @@ const ROLES: Array<{
   password: string;
   path: string;
 }> = [
-  { label: 'employee', email: 'ethan.brooks@example.com', password: 'EmployeePass1!', path: '/dashboard/employee' },
-  { label: 'project-manager', email: 'lucas.reed@example.com', password: 'ProjectMgrPass1!', path: '/dashboard/project-manager' },
-  { label: 'resource-manager', email: 'sophia.kim@example.com', password: 'ResourceMgrPass1!', path: '/dashboard/resource-manager' },
-  { label: 'hr-manager', email: 'diana.walsh@example.com', password: 'HrManagerPass1!', path: '/dashboard/hr' },
-  { label: 'director', email: 'noah.bennett@example.com', password: 'DirectorPass1!', path: '/dashboard/director' },
-  { label: 'admin', email: 'admin@deliverycentral.local', password: 'DeliveryCentral@Admin1', path: '/admin' },
+  { label: 'employee', ...ROLE_CREDENTIALS.employee, path: '/dashboard/employee' },
+  { label: 'project-manager', ...ROLE_CREDENTIALS.projectManager, path: '/dashboard/project-manager' },
+  { label: 'resource-manager', ...ROLE_CREDENTIALS.resourceManager, path: '/dashboard/resource-manager' },
+  { label: 'hr-manager', ...ROLE_CREDENTIALS.hrManager, path: '/dashboard/hr' },
+  { label: 'director', ...ROLE_CREDENTIALS.director, path: '/dashboard/director' },
+  { label: 'admin', ...ROLE_CREDENTIALS.admin, path: '/admin' },
 ];
 
 test.describe('@a11y Accessibility smoke tests', () => {
