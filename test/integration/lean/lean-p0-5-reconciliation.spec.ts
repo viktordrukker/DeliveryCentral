@@ -41,7 +41,19 @@ const hasDb = !!(process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL);
 // Skip the live-DB suite when no test DB is available. The shape of the
 // migration SQL itself is still exercised by the unit tests in
 // test/unit/lean/.
-const describeIfDb = hasDb ? describe : describe.skip;
+//
+// CI-REENABLE-SKIP (issue 721): forced-skip pending lean test-debt cleanup.
+// This reconciliation test seeds + reads `ProjectAssignment` and
+// `StaffingRequestProposalCandidate`, both DROPPED by the later migration
+// `20260609_lean_p3_2_drop_legacy_tables`. Because `prisma migrate deploy`
+// applies ALL migrations (including the drop) before the suite runs, those
+// source tables no longer exist and the backfill assertions can never pass
+// post-drop. Re-enabling requires either reframing the test to assert the
+// post-drop end state or running it against a pinned pre-drop schema snapshot.
+// Tracked for the lean test-debt cleanup PR. To re-enable: restore
+// `hasDb ? describe : describe.skip`.
+const describeIfDb = describe.skip;
+void hasDb;
 
 describeIfDb('LEAN-P0-5 reconciliation backfill', () => {
   let prisma: PrismaClient;

@@ -32,7 +32,16 @@ const MIGRATION_PATH = path.resolve(
 );
 
 const hasDb = !!(process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL);
-const describeIfDb = hasDb ? describe : describe.skip;
+// CI-REENABLE-SKIP (issue 721): forced-skip pending lean test-debt cleanup.
+// This data-fixup test seeds + reads `ProjectAssignment`, DROPPED by the later
+// migration `20260609_lean_p3_2_drop_legacy_tables`. `prisma migrate deploy`
+// applies the drop before the suite runs, so the source table no longer exists
+// and the fixup assertions can never pass post-drop. Re-enabling requires
+// reframing against the post-drop end state or a pinned pre-drop snapshot.
+// Tracked for the lean test-debt cleanup PR. To re-enable: restore
+// `hasDb ? describe : describe.skip`.
+const describeIfDb = describe.skip;
+void hasDb;
 
 describeIfDb('LEAN-P3-1 data fixup', () => {
   let prisma: PrismaClient;
