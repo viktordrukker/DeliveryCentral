@@ -111,22 +111,11 @@ export class OidcService {
       (typeof claims.preferred_username === 'string' && claims.preferred_username) ||
       email;
 
-    // Match an existing LocalAccount by email; fall back to creating a new one
-    // tied to no Person yet (operator can link via /admin/people later, or LDAP /
-    // M365 directory sync will fill it in).
-    const account = await this.prisma.localAccount.upsert({
-      where: { email },
-      update: { displayName, source: source.source, lastLoginAt: new Date() },
-      create: {
-        email,
-        displayName,
-        // No password — OIDC accounts can't local-login. Random hash so the
-        // column constraint is satisfied; bcrypt would never match this string.
-        passwordHash: `oidc:${randomBytes(24).toString('hex')}`,
-        roles: [],
-        source: source.source,
-        lastLoginAt: new Date(),
-      },
+    const account = await this.provisionAccountForLogin({
+      email,
+      displayName,
+      source: source.source,
+      roleClaim: claims.roles,
     });
 
     const roles = account.roles.filter(isPlatformRole);
@@ -138,6 +127,51 @@ export class OidcService {
       input.userAgent,
       input.ip,
     );
+  }
+
+  /**
+   * EPIC D / D1 — provision-or-login an account for a verified OIDC identity,
+   * enforcing sso.autoProvisionUsers and mapping the IdP roles claim. Extracted
+   * for unit-testability (no OIDC token-exchange flow needed).
+   */
+  private async provisionAccountForLogin(input: {
+    email: string;
+    displayName: string;
+    source: LocalAccountSource;
+    roleClaim: unknown;
+  }): Promise<{ id: string; roles: string[]; personId: string | null; email: string }> {
+    const existing = await this.prisma.localAccount.findUnique({ where: { email: input.email } });
+    if (!existing) {
+      const autoProvision = Boolean(await this.platformSettings.getRawValue('sso.autoProvisionUsers'));
+      if (!autoProvision) {
+        this.logger.warn(`OIDC sign-in for unprovisioned ${input.email} rejected: sso.autoProvisionUsers is OFF.`);
+        throw new UnauthorizedException(
+          'Your identity is valid, but automatic account provisioning is disabled. Ask an administrator to create your account.',
+        );
+      }
+    }
+
+    // Map the IdP `roles` claim → platform roles on first provision. Unknown /
+    // non-platform roles are dropped; existing accounts keep their locally-managed
+    // roles (the IdP claim does not clobber on update).
+    const claimedRoles = Array.isArray(input.roleClaim)
+      ? (input.roleClaim.filter((r) => typeof r === 'string') as string[]).filter(isPlatformRole)
+      : [];
+
+    return this.prisma.localAccount.upsert({
+      where: { email: input.email },
+      update: { displayName: input.displayName, source: input.source, lastLoginAt: new Date() },
+      create: {
+        email: input.email,
+        displayName: input.displayName,
+        // No password — OIDC accounts can't local-login. Random hash so the
+        // column constraint is satisfied; bcrypt would never match this string.
+        passwordHash: `oidc:${randomBytes(24).toString('hex')}`,
+        roles: claimedRoles,
+        source: input.source,
+        lastLoginAt: new Date(),
+      },
+    });
   }
 
   private async loadConfig(): Promise<OidcConfig> {
