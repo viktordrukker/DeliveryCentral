@@ -22,7 +22,7 @@ import {
 } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
 import { PositionId } from '@src/modules/project-positions/domain/value-objects/position-id';
 import { ProjectPositionsController } from '@src/modules/project-positions/presentation/project-positions.controller';
-import type { PrismaService } from '@src/shared/persistence/prisma.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 const POSITION_ID = '0b9f7a3e-1d2c-4e5f-8a6b-7c8d9e0f1a2b';
 
@@ -48,6 +48,7 @@ describe('ProjectPositionsController transition error mapping', () => {
         { provide: PositionForensicsService, useValue: {} },
         { provide: ListPositionHistoryService, useValue: {} },
         { provide: BulkReassignPositionsService, useValue: {} },
+        { provide: PrismaService, useValue: {} },
         {
           provide: PublicIdService,
           useValue: { looksLikeUuid: () => true, isValidShape: () => true },
@@ -215,6 +216,7 @@ describe('ProjectPositionsController transition — RM forbidden edge → 403', 
         { provide: PositionForensicsService, useValue: {} },
         { provide: ListPositionHistoryService, useValue: {} },
         { provide: BulkReassignPositionsService, useValue: {} },
+        { provide: PrismaService, useValue: {} },
         {
           provide: PublicIdService,
           useValue: { looksLikeUuid: () => true, isValidShape: () => true },

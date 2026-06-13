@@ -22,6 +22,11 @@ export class ProjectPositionResponseDto {
   @ApiProperty({ enum: ['DRAFT', 'OPEN', 'PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD', 'RELEASED'] })
   fillStatus!: PositionFillStatusValue;
   @ApiProperty({ required: false }) activePersonId?: string;
+  // SC-7 — names resolved at the presentation boundary so the FE never renders
+  // raw UUIDs. Optional: populated by handlers that enrich; absent on raw maps.
+  @ApiProperty({ required: false }) activePersonName?: string;
+  @ApiProperty({ required: false }) projectName?: string;
+  @ApiProperty({ required: false }) projectCode?: string;
   @ApiProperty({ required: false }) activeAllocationPercent?: number;
   @ApiProperty({ required: false }) onHoldReason?: string;
   @ApiProperty({ required: false }) onHoldCaseId?: string;
@@ -32,7 +37,10 @@ export class ProjectPositionResponseDto {
   @ApiProperty({ required: false }) createdByPersonId?: string;
   @ApiProperty({ required: false }) updatedByPersonId?: string;
 
-  public static from(position: ProjectPosition): ProjectPositionResponseDto {
+  public static from(
+    position: ProjectPosition,
+    names?: { activePersonName?: string; projectName?: string; projectCode?: string },
+  ): ProjectPositionResponseDto {
     return {
       id: position.positionId.value,
       publicId: position.publicId ?? null,
@@ -44,6 +52,9 @@ export class ProjectPositionResponseDto {
       requiredAllocationPercent: position.requiredAllocationPercent,
       fillStatus: position.fillStatus.value,
       activePersonId: position.activePersonId,
+      activePersonName: names?.activePersonName,
+      projectName: names?.projectName,
+      projectCode: names?.projectCode,
       activeAllocationPercent: position.activeAllocationPercent,
       onHoldReason: position.onHoldReason,
       onHoldCaseId: position.onHoldCaseId,
