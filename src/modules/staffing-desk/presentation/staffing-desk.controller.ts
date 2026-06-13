@@ -155,7 +155,13 @@ export class StaffingDeskController {
   @Post('planner/apply')
   @ApiOperation({ summary: 'Apply planning decisions: create assignments + staffing requests + extensions' })
   @ApiOkResponse({ description: 'Apply result with counts' })
-  public async applyPlan(@Body() request: PlannerApplyRequestDto): Promise<PlannerApplyResponseDto> {
+  public async applyPlan(
+    @Body() request: PlannerApplyRequestDto,
+    @Req() req: { principal?: { personId?: string } },
+  ): Promise<PlannerApplyResponseDto> {
+    // SC-1 — the persisted audit actor is the authenticated user, never a
+    // client-supplied body actorId (which the FE sends but must not be trusted).
+    request.actorId = req.principal?.personId ?? '';
     return this.workforcePlannerService.applyPlan(request);
   }
 
@@ -189,7 +195,12 @@ export class StaffingDeskController {
 
   @Post('planner/scenarios')
   @ApiOperation({ summary: 'Save the current simulation state as a new scenario' })
-  public async createScenario(@Body() dto: CreatePlannerScenarioDto): Promise<PlannerScenarioDetailDto> {
+  public async createScenario(
+    @Body() dto: CreatePlannerScenarioDto,
+    @Req() req: { principal?: { personId?: string } },
+  ): Promise<PlannerScenarioDetailDto> {
+    // SC-1 — actor is the authenticated user, not a client-supplied actorId.
+    dto.actorId = req.principal?.personId ?? '';
     return this.plannerScenarioService.create(dto);
   }
 
