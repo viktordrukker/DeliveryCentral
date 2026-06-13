@@ -6,6 +6,10 @@ export class CaseParticipantResponseDto {
 
   @ApiProperty()
   public role!: string;
+
+  // SC-7 — resolved display name so the Participants table never leaks a raw UUID.
+  @ApiPropertyOptional()
+  public personName?: string;
 }
 
 export class CaseResponseDto {

@@ -3,6 +3,8 @@ import { httpGet, httpPost } from './http-client';
 export interface CaseParticipant {
   personId: string;
   role: string;
+  // SC-7 — resolved display name (BE-enriched). Falls back to personId when absent.
+  personName?: string;
 }
 
 export interface CaseRecord {

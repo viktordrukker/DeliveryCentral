@@ -605,7 +605,7 @@ export function CaseDetailsPage(): JSX.Element {
                   variant="compact"
                   columns={[
                     { key: 'role', title: 'Role', getValue: (p) => p.role, render: (p) => <span style={{ fontWeight: 500 }}>{p.role}</span> },
-                    { key: 'person', title: 'Person', getValue: (p) => p.personId, render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.personId}</span> },
+                    { key: 'person', title: 'Person', getValue: (p) => p.personName ?? p.personId, render: (p) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{p.personName ?? p.personId}</span> },
                     { key: 'open', title: '', align: 'right', render: (p) => (
                       <Link style={{ fontSize: 10, color: 'var(--color-accent)' }} to={`/people/${p.personId}`} onClick={(e) => e.stopPropagation()}>
                         Open person
