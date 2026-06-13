@@ -424,6 +424,21 @@ export function canAccessRoute(path: string, roles: string[] | undefined): boole
   return allowedRoles.some((role) => roles?.includes(role));
 }
 
+/**
+ * F-REDIRECT-DASH — reachability predicate: role-allowed AND feature-flag on.
+ *
+ * Unlike `isRouteNavVisible`, this ignores `navVisible` (a route can be a valid
+ * redirect/deep-link target even when hidden from the sidebar). Used by the
+ * home / `/dashboard` redirects to avoid landing on a flag-disabled route,
+ * which renders the "Module disabled" dead-end (e.g. `/dashboard/director` is
+ * gated by `dashDirector`, default-off / off on v2).
+ */
+export function isRouteEnabled(path: string, roles: string[] | undefined): boolean {
+  if (!canAccessRoute(path, roles)) return false;
+  const flag = routeManifestByPath.get(path)?.flag;
+  return !flag || isFeatureEnabled(flag);
+}
+
 export function getVisibleNavigationRoutes(roles: string[] | undefined): AppRouteDefinition[] {
   return appRoutes.filter((route) => canAccessRoute(route.path, roles));
 }
