@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
@@ -159,6 +159,10 @@ export function ProjectPositionDetailPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [proposeFor, setProposeFor] = useState<PositionCandidate | null>(null);
+  // PR-20 — `?proposePersonId=` (from the issue-673 bench propose-failure
+  // deep-link) pre-arms the propose dialog once the slate has loaded. The ref
+  // guards single-shot arming so a dismissal isn't undone by a re-render.
+  const armedProposeRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const [activePersonName, setActivePersonName] = useState<string | null>(null);
   const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
@@ -248,6 +252,19 @@ export function ProjectPositionDetailPage(): JSX.Element {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // PR-20 — honor `?proposePersonId=` deep-link: once the candidate slate is
+  // loaded, pre-arm the propose dialog with the matching candidate. Fires once.
+  useEffect(() => {
+    if (armedProposeRef.current) return;
+    if (candidates.length === 0) return;
+    const proposePersonId = new URLSearchParams(location.search).get('proposePersonId');
+    if (!proposePersonId) return;
+    const candidate = candidates.find((c) => c.personId === proposePersonId);
+    if (!candidate) return;
+    armedProposeRef.current = true;
+    setProposeFor(candidate);
+  }, [candidates, location.search]);
 
   async function confirmPropose(): Promise<void> {
     if (!proposeFor || !position) return;

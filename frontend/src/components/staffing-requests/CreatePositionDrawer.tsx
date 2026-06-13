@@ -258,9 +258,12 @@ function CreatePositionDrawerInner({
               duration: 10000,
               action: {
                 label: 'View position',
+                // PR-20 — arm the detail page's propose dialog with the
+                // candidate so the retry is one click instead of re-finding
+                // them in the slate.
                 onClick: () =>
                   navigate(
-                    `/projects/${created.projectId}/positions/${created.publicId ?? created.id}`,
+                    `/projects/${created.projectId}/positions/${created.publicId ?? created.id}?proposePersonId=${candidatePersonId}`,
                   ),
               },
             },

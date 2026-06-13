@@ -21,6 +21,12 @@ const mockFetchSkills = vi.fn();
 const mockFetchPersonDirectoryById = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockToastWarning = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 
 vi.mock('@/lib/api/project-registry', () => ({
   fetchProjectDirectory: (params: unknown) => mockFetchProjectDirectory(params),
@@ -53,6 +59,7 @@ describe('CreatePositionDrawer — SoT PR 8 embedded create flow', () => {
     mockFetchPersonDirectoryById.mockReset();
     mockToastSuccess.mockReset();
     mockToastWarning.mockReset();
+    mockNavigate.mockReset();
     mockFetchSkills.mockResolvedValue([
       { id: 'skill-react', name: 'React', category: 'Frontend', createdAt: '2026-01-01T00:00:00Z' },
       { id: 'skill-node', name: 'Node.js', category: 'Backend', createdAt: '2026-01-01T00:00:00Z' },
@@ -186,6 +193,7 @@ describe('CreatePositionDrawer — PR-11 bench candidate threading', () => {
     mockFetchPersonDirectoryById.mockReset();
     mockToastSuccess.mockReset();
     mockToastWarning.mockReset();
+    mockNavigate.mockReset();
     mockFetchSkills.mockResolvedValue([]);
   });
 
@@ -309,6 +317,12 @@ describe('CreatePositionDrawer — PR-11 bench candidate threading', () => {
     expect(message).toContain('Grace Hopper');
     expect(message).toContain('person is terminated');
     expect(options.action.label).toBe('View position');
+    // PR-20 — the "View position" deep-link arms the detail page's propose
+    // dialog with the candidate so the retry is one click.
+    options.action.onClick();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/projects/project-atlas-erp-rollout/positions/pos_pub9?proposePersonId=person-bench-1',
+    );
     // No silent orphan: the drawer still closes and reports the created id.
     expect(onCreated).toHaveBeenCalledWith('pos-9');
     expect(onClose).toHaveBeenCalled();
