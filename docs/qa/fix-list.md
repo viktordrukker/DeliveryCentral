@@ -122,3 +122,11 @@ Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconcile
 - **One unconfirmed wire:** `POST /api/projects/:id/role-plan/generate-requests` (1 action) has no matching controller route — likely an agent path approximation; verify against the real handler.
 - **Mutating action wires labeled honestly:** 238 POST/PATCH/PUT/DELETE action rows are `WIRE-OK-NOT-EXECUTED` in the matrix (route+method exist; body/role/side-effect NOT live-executed under the zero-mutation policy). Recommend static handler→service→repo trace + reversible-flow exercise for the ~12 high-value ones (assign/approve/submit/resolve/propose).
 - **Inventory scope = actionable wires.** The 1,781 rows target API-triggering, navigation, and state-changing controls. Pure-display help atoms (41 `TipBalloon`/`TipTrigger` tooltips, 85 `SectionCard` collapsible toggles, 118 `ErrorState` instances) are NOT individually enumerated — they carry no wire and can't harbor wire-level bugs. Law-2 (no dead-ends) is structurally satisfied for the default `ErrorState variant='page'` (always renders a "Go to Dashboard" link); residual: `variant='inline'` without `onRetry` could dead-end in a nav-less context — worth a targeted Law-2 sweep.
+
+## Round-9 functional-modality findings (stale / loading / search / allocation math)
+| ID | Sev | Finding → Fix |
+|----|-----|---------------|
+| `F-CMDK-1` (SC-6) | P2 | Command palette: Positions+Cases groups fetched but **never rendered** (render whitelist `CommandPalette.tsx:318` not updated when groups added); keyboard nav lands on hidden items. → add the groups to the whitelist + a test. |
+| `F-LOADING-1` | P2 | WorkloadMatrix Retry **sticks on the spinner** — `onRetry` (`WorkloadMatrixPage.tsx:307`) flips loading without refetching (no reload token). → bump a reload token; add an `active`-flag cancel guard. |
+| `F-STALE-1` | P2 | Reporting-line assign/end leaves **Line Manager stale** until reload (`EmployeeDetailsPage.tsx:209-230,518`; no refetch). → refetch / dispatch `ORG_DATA_CHANGED_EVENT` like `handleDeactivate`. |
+| `F-ALLOC-1` | P3 | Over-allocation **clamped to 100%** in `WeeklyAllocationArea.tsx:53` + `UtilisationPeek.tsx:80,98` (text understates overflow). → allow >100% / compute text from uncapped value. |

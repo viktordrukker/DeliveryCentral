@@ -1,0 +1,30 @@
+[
+  {
+    "id": "F-CMDK-1", "altId": "SC-6", "severity": "P2", "class": "frontend render/keyboard desync", "verified": true,
+    "title": "Command palette: Positions + Cases result groups fetched but never rendered; keyboard nav lands on hidden items",
+    "rootCause": "CommandPalette.tsx:318 sets the search-mode render whitelist to ['People','Projects','Pages','Actions'], but allItems (:297) also includes assignmentItems (group 'Positions', :262) and caseItems (group 'Cases', :274). The render loop (:348) iterates only whitelisted groups → Positions/Cases are fetched+filtered (:86-113) but never shown. Keyboard nav (:299-313) walks allItems indices including the hidden groups and globalIndex=allItems.indexOf(item) (:355) skips them → ArrowDown/Enter can land activeIndex on a non-rendered result (highlight vanishes, Enter navigates to an unseen entry). Whitelist set 2026-04-12 and never updated when Cases + Positions groups were added. No CommandPalette.test.tsx.",
+    "suggestedFix": "Add 'Positions' and 'Cases' to the render whitelist (or derive the whitelist from the groups present in allItems); add a test.",
+    "evidence": "CommandPalette.tsx:262,274,297,299-313,318,348,355."
+  },
+  {
+    "id": "F-LOADING-1", "severity": "P2", "class": "loading-never-resolves", "verified": true,
+    "title": "WorkloadMatrix retry sticks on the loading spinner (onRetry flips loading without refetching)",
+    "rootCause": "WorkloadMatrixPage.tsx ErrorState onRetry (:307) does setError(null)+setIsLoading(true) but does NOT trigger a refetch — the load effect dep array is [poolId,orgUnitId,managerId] (:117-133) with no reloadToken. After Retry: error=null + isLoading=true → permanent loading skeleton (:306) with no in-flight request; user is stuck until they change a filter or hard-reload. (Only onRetry in the codebase that flips loading without a reload — grep-confirmed.) Secondary: that effect has no `let active` cancellation guard, so a rapid filter change can let a stale response overwrite a newer one.",
+    "suggestedFix": "Make onRetry bump a reloadToken in the effect deps (or call the fetch directly); add an active-flag cancellation guard to the effect.",
+    "evidence": "WorkloadMatrixPage.tsx:117-133,306-307."
+  },
+  {
+    "id": "F-STALE-1", "severity": "P2", "class": "stale-after-mutation", "verified": true,
+    "title": "Reporting-line assign/end leaves the Line Manager field stale until manual reload",
+    "rootCause": "EmployeeDetailsPage.tsx reads currentLineManager from useEmployeeDetails(id) (:518,579). After a successful createReportingLine (useReportingLineManagement.ts:144) the hook only sets lastCreatedReportingLine + a success banner; handleEndRelationship (:209-230) sets a success message — NEITHER refetches state.data. useEmployeeDetails (features/people/useEmployeeDetails.ts:22) keys its effect on [id] only, with no reload token or event listener. So the displayed Line Manager keeps showing the OLD value until manual reload. (handleDeactivate at :161-172 does it right — updates from the response + dispatches ORG_DATA_CHANGED_EVENT.)",
+    "suggestedFix": "After reporting-line create/terminate, refetch the person (reload token / dispatch ORG_DATA_CHANGED_EVENT like handleDeactivate).",
+    "evidence": "EmployeeDetailsPage.tsx:209-230,518,579; useReportingLineManagement.ts:144; useEmployeeDetails.ts:22."
+  },
+  {
+    "id": "F-ALLOC-1", "severity": "P3", "class": "over-allocation display math", "verified": true,
+    "title": "Over-allocation (>100%) is silently clamped in allocation visualizations",
+    "rootCause": "WeeklyAllocationArea.tsx:53 hard-clamps YAxis domain={[0,100]} → a person's stacked per-project allocation over 100% renders clipped/capped at 100% with no over-allocation signal. UtilisationPeek.tsx:80 overflowWidth=Math.min(100,total-100) caps overflow at 100 and :98 reuses that clamped value for the 'Over-allocated by N%' TEXT → understates the true overflow when total>200%.",
+    "suggestedFix": "Allow the chart axis to exceed 100% (or render an explicit over-allocation marker); compute the over-allocation text from the true uncapped value.",
+    "evidence": "WeeklyAllocationArea.tsx:53; UtilisationPeek.tsx:80,98."
+  }
+]
