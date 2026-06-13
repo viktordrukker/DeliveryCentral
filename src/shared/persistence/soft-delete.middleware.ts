@@ -23,7 +23,6 @@ const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set([
   'Person',
   'OrgUnit',
   'Project',
-  'ProjectAssignment',
   'CaseRecord',
   'CaseType',
   'Position',
