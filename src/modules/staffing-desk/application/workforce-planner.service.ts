@@ -347,9 +347,12 @@ export class WorkforcePlannerService {
 
     // Generate week start dates.
     // Guard `from`: a missing or unparseable value yields an Invalid Date, and
-    // d.toISOString() then throws RangeError("Invalid time value"), 500-ing the
-    // whole planner. The endpoint must not crash on a missing param — default to
-    // the current week's UTC Monday so the Planner view always loads.
+    // d.toISOString() then throws RangeError("Invalid time value") — and an
+    // Invalid Date passed to a Prisma `gte`/window filter throws
+    // PrismaClientValidationError — either of which 500s the whole planner. The
+    // endpoint must not crash on a missing param — default to the current week's
+    // UTC Monday so the Planner view always loads. Every downstream date filter
+    // below must use `startDate`, never the raw `from`.
     const weekStarts: string[] = [];
     const parsedFrom = from ? new Date(from) : new Date(NaN);
     const startDate = Number.isNaN(parsedFrom.getTime()) ? mondayOfUtc(now) : parsedFrom;
@@ -384,7 +387,7 @@ export class WorkforcePlannerService {
     const projects = await this.prisma.project.findMany({
       where: {
         status: { in: planStatuses as ('ACTIVE' | 'DRAFT' | 'ON_HOLD' | 'CLOSED' | 'COMPLETED' | 'ARCHIVED')[] },
-        OR: [{ endsOn: null }, { endsOn: { gte: new Date(from) } }],
+        OR: [{ endsOn: null }, { endsOn: { gte: startDate } }],
       },
       select: { id: true, name: true, projectCode: true, status: true, startsOn: true, endsOn: true },
     });
@@ -398,7 +401,7 @@ export class WorkforcePlannerService {
     const positionWhere: Record<string, unknown> = {
       // PR-16 (Decision E) — canonical active-fill window predicate.
       ...activeFillWindowWhere({
-        from: new Date(from),
+        from: startDate,
         to: endDate,
         statuses: PLANNER_ALLOCATION_FILL_STATUSES,
       }),
@@ -457,7 +460,7 @@ export class WorkforcePlannerService {
         fillStatus: { in: ['OPEN', 'PROPOSED'] },
         projectId: { in: projectIds },
         startDate: { lte: endDate },
-        endDate: { gte: new Date(from) },
+        endDate: { gte: startDate },
         ...planPriorityWhere,
       },
       select: {

@@ -57,4 +57,47 @@ describe('WorkforcePlannerService.getPlan — robust `from` handling', () => {
     expect(res.weeks[0]).toBe('2026-09-07'); // a Monday
     expect(res.weeks[1]).toBe('2026-09-14');
   });
+
+  // Recursively collect any Invalid Date (NaN time) reachable in an object —
+  // this is what Prisma rejects with PrismaClientValidationError at runtime.
+  const invalidDatesIn = (value: unknown, found: Date[] = []): Date[] => {
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) found.push(value);
+    } else if (Array.isArray(value)) {
+      for (const v of value) invalidDatesIn(v, found);
+    } else if (value && typeof value === 'object') {
+      for (const v of Object.values(value as Record<string, unknown>)) invalidDatesIn(v, found);
+    }
+    return found;
+  };
+
+  it('passes no Invalid Date into any Prisma date filter when `from` is missing', async () => {
+    // The empty-[] stub above never validates query args, so it could not catch
+    // the *second* failure mode: a missing `from` produced `new Date(from)`
+    // (Invalid Date) inside `project.findMany`/`projectPosition.findMany` date
+    // filters → PrismaClientValidationError → planner 500 (live on v2 staging
+    // 2026-06-13, after the toISOString guard alone). Here we record every
+    // findMany `where` and assert no Invalid Date reaches it.
+    const calls: unknown[] = [];
+    const recording = { findMany: async (args: unknown) => { calls.push(args); return [] as unknown[]; } };
+    const prisma = {
+      person: recording,
+      personCostRate: recording,
+      personOrgMembership: recording,
+      personResourcePoolMembership: recording,
+      personSkill: recording,
+      project: recording,
+      projectPosition: recording,
+      projectPositionFillHistory: recording,
+      projectRolePlan: recording,
+      skill: recording,
+    } as unknown as PrismaService;
+    const settings = { getRawValue: async () => null } as unknown as PlatformSettingsService;
+    const service = new WorkforcePlannerService(prisma, settings);
+
+    await service.getPlan({ from: undefined as unknown as string, weeks: 13, includeDrafts: false });
+
+    const bad = calls.flatMap((c) => invalidDatesIn(c));
+    expect(bad).toHaveLength(0);
+  });
 });
