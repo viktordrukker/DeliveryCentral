@@ -106,6 +106,14 @@ export class PrismaCaseRecordRepository implements CaseRecordRepositoryPort {
         openedAt: aggregate.openedAt,
         ownerPersonId: aggregate.ownerPersonId,
         participants: {
+          // F-WP-3 — diff sync on update so participant REMOVALS persist
+          // (the prior append-only createMany never deleted removed rows).
+          // deleteMany drops only participants no longer in the aggregate;
+          // createMany+skipDuplicates adds only new ones, leaving unchanged
+          // participants (and their createdBy/createdAt metadata) intact.
+          deleteMany: {
+            id: { notIn: aggregate.participants.map((participant) => participant.id) },
+          },
           createMany: {
             // Prisma infers `caseRecordId` from the parent CaseRecord in this
             // nested update; passing it explicitly raises `Unknown argument`.
