@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+import { ROLE_CREDENTIALS } from '../fixtures/auth-state';
+
 test.describe('@smoke Smoke tests', () => {
   test('login page loads', async ({ page }) => {
     await page.goto('/login');
@@ -18,8 +20,8 @@ test.describe('@smoke Smoke tests', () => {
 
   test('employee can login and see employee dashboard', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill('ethan.brooks@example.com');
-    await page.getByLabel(/password/i).fill('EmployeePass1!');
+    await page.getByLabel(/email/i).fill(ROLE_CREDENTIALS.employee.email);
+    await page.getByLabel(/password/i).fill(ROLE_CREDENTIALS.employee.password);
     await page.getByRole('button', { name: /sign in|log in|submit/i }).click();
     await page.waitForURL('**/dashboard/employee');
     await expect(page.getByText('Ethan Brooks')).toBeVisible();

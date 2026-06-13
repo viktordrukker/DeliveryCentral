@@ -1,10 +1,12 @@
 /**
- * 2d-32 · Cross-role: assignment lifecycle (create → approve → end)
  * 2d-33 · Cross-role: project lifecycle (draft → activate → close)
  * 2d-34 · Cross-role: case lifecycle (create → open → close)
  *
- * All three use `test.describe.serial` to ensure ordered execution.
+ * Both use `test.describe.serial` to ensure ordered execution.
  * Requires: phase2 seed profile loaded in the database.
+ *
+ * (2d-32 assignment lifecycle removed — the ProjectAssignment create/approve/end
+ *  API was dropped in the lean V2 migration; positions are the replacement.)
  */
 import { expect, test } from '@playwright/test';
 
@@ -22,75 +24,6 @@ async function getToken(
   const body = await res.json() as { accessToken: string };
   return body.accessToken;
 }
-
-// ── 2d-32 Assignment lifecycle ───────────────────────────────────────────────
-
-// Shared state within the serial block
-let assignmentId: string;
-
-test.describe.serial('@full 2d-32 Cross-role — assignment lifecycle', () => {
-  test('RM creates assignment (REQUESTED)', async ({ page }) => {
-    const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
-
-    const res = await page.request.post(`${API}/assignments`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: {
-        requestedById: p2.people.sophiaKim,
-        personId: p2.people.noraBLake,
-        projectId: p2.projects.novaAnalytics,
-        staffingRole: 'E2E Cross-Role Backend Engineer',
-        allocationPercent: 30,
-        startDate: '2026-06-01',
-      },
-    });
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json() as { id: string; status: string };
-    expect(body.status).toBe('REQUESTED');
-    assignmentId = body.id;
-  });
-
-  test('RM approves the assignment (APPROVED)', async ({ page }) => {
-    const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
-
-    const res = await page.request.post(`${API}/assignments/${assignmentId}/approve`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: { actorId: p2.people.sophiaKim, comment: 'Cross-role E2E approval' },
-    });
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json() as { status: string };
-    expect(body.status).toBe('APPROVED');
-  });
-
-  test('RM ends the assignment (ENDED)', async ({ page }) => {
-    const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
-
-    const res = await page.request.post(`${API}/assignments/${assignmentId}/end`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      data: {
-        actorId: p2.people.sophiaKim,
-        endDate: '2026-06-30',
-        endReason: 'E2E cross-role end test',
-      },
-    });
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json() as { status: string };
-    expect(body.status).toBe('ENDED');
-  });
-
-  test('assignment detail UI shows ENDED status', async ({ page }) => {
-    // inject token then navigate
-    const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
-    await page.addInitScript(
-      ({ key, tok }: { key: string; tok: string }) => {
-        localStorage.setItem(key, tok);
-      },
-      { key: 'deliverycentral.authToken', tok: token },
-    );
-    await page.goto(`/assignments/${assignmentId}`);
-
-    await expect(page.getByText('ENDED')).toBeVisible();
-  });
-});
 
 // ── 2d-33 Project lifecycle ──────────────────────────────────────────────────
 

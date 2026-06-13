@@ -1,14 +1,16 @@
 /**
  * 2d-35 · Negative path: employee cannot access /admin
  * 2d-36 · Negative path: employee cannot view another role's dashboard
- * 2d-37 · Negative path: reject assignment with missing actor
  * 2d-38 · Negative path: close project with active assignments (conflict)
  *
  * Requires: phase2 seed profile loaded in the database.
+ *
+ * (2d-37 reject-assignment negative path removed — the assignment reject API +
+ *  detail-page reject UI were dropped in the lean V2 migration.)
  */
 import { expect, test } from '@playwright/test';
 
-import { loginAsEmployee, loginAsProjectManager } from '../fixtures/auth';
+import { loginAsEmployee } from '../fixtures/auth';
 import { p2 } from '../fixtures/phase2-identifiers';
 
 const API = 'http://127.0.0.1:3000/api';
@@ -77,48 +79,6 @@ test.describe('@critical 2d-36 Negative path — employee cannot view HR dashboa
       headers: { Authorization: `Bearer ${token}` },
     });
     expect([401, 403].includes(res.status())).toBeTruthy();
-  });
-});
-
-// ── 2d-37 Reject assignment with missing actor ───────────────────────────────
-
-test.describe('@critical 2d-37 Negative path — reject assignment without required actor', () => {
-  test('reject API without actorId returns 400 or 422 validation error', async ({ page }) => {
-    const token = await getToken(page, p2.accounts.resourceManager.email, p2.accounts.resourceManager.password);
-
-    const res = await page.request.post(
-      `${API}/assignments/${p2.assignments.rajOnJupiterRequested}/reject`,
-      {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        data: { comment: 'Missing actor — should fail' },
-        // Deliberately omitting actorId
-      },
-    );
-    // Backend validation should reject with 400 or 422
-    expect([400, 422].includes(res.status())).toBeTruthy();
-  });
-
-  test('reject form without filling Workflow Actor shows validation error in UI', async ({ page }) => {
-    await loginAsProjectManager(page);
-    await page.goto(`/assignments/${p2.assignments.rajOnJupiterRequested}`);
-
-    await expect(page.getByTestId('assignment-details-page')).toBeVisible();
-
-    // Attempt to click Reject without filling in the actor field
-    const rejectBtn = page.getByRole('button', { name: /Reject assignment/i });
-    if ((await rejectBtn.count()) > 0) {
-      await rejectBtn.click();
-
-      // Either a dialog/modal appears with a required field, or an error is shown
-      const actorField = page.getByLabel(/Workflow Actor|Actor/i);
-      const hasActorField = (await actorField.count()) > 0;
-      const hasErrorMsg = (await page.getByText(/required|missing|actor/i).count()) > 0;
-
-      // At minimum the action should not silently succeed without an actor
-      const stillRequested = (await page.getByText('REQUESTED').count()) > 0;
-
-      expect(hasActorField || hasErrorMsg || stillRequested).toBeTruthy();
-    }
   });
 });
 
