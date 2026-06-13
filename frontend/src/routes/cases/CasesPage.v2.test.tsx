@@ -36,6 +36,6 @@ describe('ds-trunk-185 — Cases page v2 chrome', () => {
   it('preserves the legacy branch — bare PageContainer + CasesPanel when dsRefresh is off', () => {
     // The fallback return must still wrap CasesPanel directly in PageContainer
     // without the v2 PageHeader/kpi-strip chrome.
-    expect(src).toMatch(/return \(\s*<PageContainer testId="cases-page" viewport>\s*<CasesPanel \/>\s*<\/PageContainer>\s*\);\s*\}\s*$/);
+    expect(src).toMatch(/return \(\s*<PageContainer testId="cases-page">\s*<CasesPanel \/>\s*<\/PageContainer>\s*\);\s*\}\s*$/);
   });
 });
