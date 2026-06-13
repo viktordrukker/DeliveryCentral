@@ -183,7 +183,9 @@ export function ProjectsPage(): JSX.Element {
       // `budgetStatus`, `hasOpenGaps`, `closingInDays` are wired through but
       // remain no-ops until ProjectDirectoryItem carries cpi / budgetStatus /
       // openPositionsCount / plannedEndDate (BE PR issue 459 sweep).
-      if (filters.status && item.status !== filters.status) return false;
+      // F-DC-3 — case-insensitive so KPI drilldowns that send lowercase (e.g.
+      // /projects?status=active) match the uppercase ProjectStatus enum.
+      if (filters.status && item.status?.toUpperCase() !== filters.status.toUpperCase()) return false;
       // SoT PR 17g — align local cast with the BE enum (project-registry.ts:11
       // exports ProjectBudgetStatus = 'GREEN' | 'YELLOW' | 'RED' | 'UNSET').
       // The previous local shape ('over' | 'under' | 'on') silently broke
