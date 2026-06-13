@@ -1,0 +1,53 @@
+{
+  "target": "data-consistency:delivery-manager",
+  "verdict": "ISSUES-FOUND",
+  "checked": 3,
+  "asOf": "live deliverit-test-v2.agentic.uz (v2-staging, dsRefresh forced ON)",
+  "loginAs": "carlos.vega@itco.local (delivery_manager)",
+  "kpiEndpoint": "GET /api/dashboard/delivery-manager -> summary",
+  "kpis": [
+    {
+      "label": "Active Projects",
+      "displayedValue": 10,
+      "source": "summary.totalActiveProjects",
+      "drilldownLink": "/projects?status=active",
+      "drilldownEndpoint": "GET /api/projects?status=active",
+      "drilldownObservedCount": 0,
+      "consistent": false,
+      "detail": "KPI=10. Link uses lowercase 'active'. Backend /projects ignores the status param entirely (returns all 40: 10 ACTIVE / 20 CLOSED / 10 COMPLETED, totalCount=40). ProjectsPage (dsRefresh ON, confirmed forced in docker-compose.v2-staging.yml + deployed chunk DeliveryManagerDashboardPage-CEIX43ZM.js links to lowercase 'active') applies a CASE-SENSITIVE client filter `item.status !== filters.status` -> 'ACTIVE' !== 'active' is true for every row -> ALL 10 active projects filtered out -> landing list shows 0 rows. KPI says 10, drilldown shows 0."
+    },
+    {
+      "label": "Active Positions",
+      "displayedValue": 95,
+      "source": "summary.totalActiveAssignments (portfolio-scoped to DM's 10 active projects)",
+      "drilldownLink": "/staffing-desk?status=active",
+      "drilldownEndpoint": "GET /api/staffing-desk?status=active",
+      "drilldownObservedCount": 436,
+      "drilldownOwnKpiActiveAssignments": 93,
+      "consistent": false,
+      "detail": "KPI=95 (DM portfolio-scoped). Drilldown /staffing-desk?status=active is GLOBAL/un-scoped: returns totalCount=436 position rows (status param IS honored: no-filter=645 -> active=436), with its own kpis.activeAssignments=93. Neither 436 (list count) nor 93 (staffing-desk KPI) equals the dashboard's 95. The DM KPI counts active position-assignment views on the DM's active projects; the drilldown shows org-wide positions. No path lands the user on a 95-row list."
+    },
+    {
+      "label": "Unstaffed",
+      "displayedValue": 0,
+      "source": "summary.projectsWithNoStaff",
+      "drilldownLink": "#unstaffed-projects (in-page tab switch to Portfolio tab; NOT a cross-page list)",
+      "drilldownEndpoint": "in-page: portfolioHealth rows with staffingCount===0 + staffingGaps[]",
+      "drilldownObservedCount": 0,
+      "consistent": true,
+      "detail": "KPI=0. Portfolio tab shows portfolioHealth rows with staffingCount===0 (count=0) and staffingGaps (length=0). 0=0. Note: Unstaffed is not a true cross-page drilldown (just a tab pivot), and the 'Staffing Gaps' section it lands on actually lists positions-ending-soon, NOT no-staff projects, so the conceptual target differs — but with value 0 there is no count mismatch to flag."
+    }
+  ],
+  "supportingEndpoints": {
+    "GET /api/dashboard/portfolio/summary": "200 OK, totalProjects=10 (matches Active Projects KPI at data level)",
+    "GET /api/dashboard/portfolio/heatmap": "200 OK, rows=10",
+    "GET /api/dashboard/delivery-manager": "200 OK"
+  },
+  "findings": [
+    "Active Projects: KPI=10 but drilldown /projects?status=active shows 0 rows (Law-9 lie). Root cause: KPI links lowercase 'active'; backend /projects ignores status (returns all 40); FE ProjectsPage filters client-side case-sensitively (ProjectsPage.tsx:186 `item.status !== filters.status`), so 'ACTIVE' !== 'active' excludes all 10. Verified lowercase link ships in deployed chunk DeliveryManagerDashboardPage-CEIX43ZM.js; dsRefresh forced ON via docker-compose.v2-staging.yml.",
+    "Active Positions: KPI=95 (DM portfolio-scoped) but drilldown /staffing-desk?status=active returns 436 rows globally (its own activeAssignments KPI=93). 95 != 436 and 95 != 93 (Law-9 lie + scope mismatch: dashboard scopes to DM portfolio, staffing-desk is org-wide).",
+    "Unstaffed: KPI=0, in-page portfolio rows with staffingCount===0 also 0 -> consistent (no mismatch to flag)."
+  ],
+  "evidence": "Live as carlos.vega (delivery_manager) on deliverit-test-v2.agentic.uz. GET /api/dashboard/delivery-manager -> summary={totalActiveProjects:10, totalActiveAssignments:95, projectsWithNoStaff:0}; portfolioHealth.length=10, staffingGaps.length=0, sum(staffingCount)=95, rows with staffingCount===0 = 0. Active Projects drilldown GET /api/projects?status=active -> items=40 totalCount=40 (status breakdown ACTIVE:10/CLOSED:20/COMPLETED:10 -> backend ignores status); ProjectsPage.tsx:180-186 applies case-sensitive `item.status !== filters.status` under dsRefresh, and DM chunk links lowercase 'active' -> 0 rows displayed. Active Positions drilldown GET /api/staffing-desk?status=active -> items=50 totalCount=436 kpis.activeAssignments=93 (no-status=645, invalid status=zzzz falls back to 645 -> param honored but org-wide, not DM-scoped). docker-compose.v2-staging.yml:20 confirms VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh; deployed /assets/DeliveryManagerDashboardPage-CEIX43ZM.js contains 'projects?status=active' and 'staffing-desk?status=active' (both lowercase).",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dataconsistency-delivery-manager.json"
+}

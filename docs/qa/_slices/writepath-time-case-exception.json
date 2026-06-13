@@ -1,0 +1,137 @@
+{
+  "target": "writepath:time-case-exception",
+  "verdict": "ALL-SOUND",
+  "checkedEndpoints": 19,
+  "tracedAt": "2026-06-13",
+  "source": "/tmp/dc-qa (read-only static trace; no execution, no POST)",
+  "flows": [
+    {
+      "flow": "timesheet upsert entry",
+      "endpoint": "PUT /api/timesheets/my/entries",
+      "controller": "timesheets/presentation/timesheets.controller.ts:67 upsertEntry",
+      "service": "timesheets/application/timesheets.service.ts:102 upsertEntry",
+      "repo": "timesheets/infrastructure/timesheet.repository.ts:76 upsertEntry -> prisma.timesheetEntry.upsert",
+      "dto": "UpsertEntryDto (timesheet.dto.ts:45) — Matches projectId UUID, IsNumber Min0 Max24 hours, IsString date/weekStart",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES); week ownership enforced by personId scoping in findWeekWithEntries",
+      "status": "SOUND — awaited prisma upsert; status guards (APPROVED/SUBMITTED reject), period-lock + future-date + max-hours checks; FE assignmentId<->positionId mapping handled"
+    },
+    {
+      "flow": "timesheet submit",
+      "endpoint": "POST /api/timesheets/my/:weekStart/submit",
+      "controller": "timesheets.controller.ts:87 submitWeek",
+      "service": "timesheets.service.ts:209 submitWeek -> repo.updateWeek",
+      "repo": "timesheet.repository.ts:51 updateWeek -> prisma.timesheetWeek.update",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES); week fetched by personId so caller can only submit own week",
+      "status": "SOUND — awaited; DRAFT-only guard; OT computed; submit-in-advance + weekly-cap validation"
+    },
+    {
+      "flow": "timesheet revoke",
+      "endpoint": "POST /api/timesheets/my/:weekStart/revoke",
+      "controller": "timesheets.controller.ts:107 revokeWeek",
+      "service": "timesheets.service.ts:271 revokeWeek -> repo.updateWeek",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES); explicit ForbiddenException if week.personId !== personId (line 275)",
+      "status": "SOUND — awaited; SUBMITTED->DRAFT; APPROVED blocked"
+    },
+    {
+      "flow": "timesheet reset",
+      "endpoint": "POST /api/timesheets/my/:weekStart/reset",
+      "controller": "timesheets.controller.ts:126 resetWeek",
+      "service": "timesheets.service.ts:297 resetWeek -> prisma.timesheetEntry.deleteMany",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES); explicit ForbiddenException if week.personId !== personId (line 301); DRAFT-only",
+      "status": "SOUND — awaited deleteMany scoped to week.id"
+    },
+    {
+      "flow": "timesheet approve",
+      "endpoint": "POST /api/timesheets/:id/approve",
+      "service": "timesheets.service.ts:321 approveWeek -> repo.updateWeek",
+      "guard": "@RequireRoles(...ALL_MANAGER_ROLES) + AUTHZ-02 manager-chain check (isApproverInManagerChain); self-approval blocked",
+      "status": "SOUND — awaited; SUBMITTED-only; manager-chain enforced"
+    },
+    {
+      "flow": "timesheet reject",
+      "endpoint": "POST /api/timesheets/:id/reject",
+      "service": "timesheets.service.ts:370 rejectWeek -> repo.updateWeek",
+      "dto": "RejectTimesheetDto (timesheet.dto.ts:124) — IsString IsNotEmpty reason",
+      "guard": "@RequireRoles(...ALL_MANAGER_ROLES)",
+      "status": "SOUND — awaited; SUBMITTED-only"
+    },
+    {
+      "flow": "my-time rename-row / delete-row",
+      "endpoint": "POST /api/my-time/rename-row, /api/my-time/delete-row",
+      "service": "timesheets.service.ts:173/193 -> repo.renameRowInMonth/deleteRowInMonth (updateMany/deleteMany, DRAFT-only, personId-scoped)",
+      "dto": "RenameMyTimeRowDto / DeleteMyTimeRowDto",
+      "status": "SOUND — awaited Prisma updateMany/deleteMany"
+    },
+    {
+      "flow": "exception resolve",
+      "endpoint": "POST /api/exceptions/:id/resolve",
+      "controller": "exceptions/presentation/exceptions.controller.ts:74 resolveException",
+      "service": "exceptions/application/resolve-exception.service.ts:19 execute -> ExceptionResolutionStore.resolve (Map.set)",
+      "dto": "ResolveExceptionRequestDto — IsString IsNotEmpty resolution, Matches UUID resolvedBy",
+      "guard": "@RequireRoles('admin')",
+      "status": "SOUND-BY-DESIGN — store is in-memory (process-lifetime operational overlay; exceptions are derived/recomputed per CLAUDE.md pitfall #11). Chain intact: controller awaits service, service validates + awaits getQueue existence check + writes record. NOT persistent to DB and resolvedBy is body-supplied (not principal) — informational, matches documented intentional design for the resolution overlay."
+    },
+    {
+      "flow": "exception suppress",
+      "endpoint": "POST /api/exceptions/:id/suppress",
+      "service": "exceptions/application/suppress-exception.service.ts:19 execute -> ExceptionResolutionStore.suppress (Map.set)",
+      "dto": "SuppressExceptionRequestDto — IsString IsNotEmpty reason, Matches UUID suppressedBy",
+      "guard": "@RequireRoles('admin')",
+      "status": "SOUND-BY-DESIGN — same in-memory overlay characteristics as resolve"
+    },
+    {
+      "flow": "case create",
+      "endpoint": "POST /api/cases",
+      "controller": "case-management/presentation/cases.controller.ts:72 createCase",
+      "service": "create-case.service.ts:35 execute -> caseRecordRepository.save (PrismaCaseRecordRepository.save -> prisma.caseRecord.upsert) + completeCaseStepService.initializeSteps (prisma.caseStep.createMany)",
+      "dto": "CreateCaseRequestDto — IsIn caseTypeKey, Matches UUID subject/owner/related, ValidateNested participants",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES)",
+      "status": "SOUND — both writes awaited; person/project/assignment existence validated; unique caseNumber retry loop"
+    },
+    {
+      "flow": "case transitions (close/open/cancel/approve/reject/archive)",
+      "endpoint": "POST /api/cases/:id/{close,open,cancel,approve,reject,archive}",
+      "services": "close/reopen/cancel/approve/archive-case.service.ts -> entity mutate + setUpdatedBy + caseRecordRepository.save (Prisma upsert update branch)",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES)",
+      "status": "SOUND — all awaited; domain entity enforces legal status transitions; module wires PrismaCaseRecordRepository (not in-memory)"
+    },
+    {
+      "flow": "case step complete / add",
+      "endpoint": "POST /api/cases/:id/steps/:stepKey/complete, POST /api/cases/:id/steps",
+      "service": "complete-case-step.service.ts:73/119 -> prisma.caseStep.update / create",
+      "dto": "AddCaseStepRequestDto",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES)",
+      "status": "SOUND — awaited Prisma update/create; COMPLETED-conflict guard"
+    },
+    {
+      "flow": "case comment add",
+      "endpoint": "POST /api/cases/:id/comments",
+      "service": "infrastructure/services/prisma-case-comment.service.ts:19 addComment -> prisma.caseRecord.update (payload.comments JSON append)",
+      "dto": "AddCaseNoteRequestDto — Matches UUID authorPersonId, IsString IsNotEmpty body",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES)",
+      "status": "SOUND — awaited Prisma update; comment persisted in CaseRecord.payload JSON"
+    }
+  ],
+  "secondaryObservations": [
+    {
+      "severity": "out-of-scope-note",
+      "flow": "case add/remove participant",
+      "endpoint": "POST /api/cases/:id/participants, POST /api/cases/:id/participants/:personId/remove",
+      "location": "cases.controller.ts:351-366 addParticipant, :373-387 removeParticipant",
+      "issue": "Mutates the domain entity returned by getCaseByIdService (a FRESH instance from Prisma) but NEVER calls caseRecordRepository.save(). The mutation is discarded — endpoints are effectively no-ops against the DB. Code comment at line 361 admits 'in Prisma would need save()'. NOT in the prompt's in-scope list (create/transition/comment) so excluded from primary verdict, but flagged as a real broken write-path on an adjacent endpoint.",
+      "proof": "cases.controller.ts:355-362 — getCaseByIdService.execute(id) returns a new CaseRecord (get-case-by-id.service.ts:11 -> findByCaseId), caseRecord.addParticipant(...) mutates in-memory, returns DTO; no repository.save call anywhere in the method body."
+    },
+    {
+      "severity": "out-of-scope-note",
+      "flow": "case participant persistence on save()",
+      "location": "prisma-case-record.repository.ts:108-119 save() update branch",
+      "issue": "On update, participants are written via createMany+skipDuplicates only — removed participants are never deleted from the DB. Append-only. Not reachable from the in-scope transition flows (they don't change participant sets) so no impact on the traced flows.",
+      "proof": "prisma-case-record.repository.ts:108 participants.createMany skipDuplicates:true — no deleteMany of stale rows."
+    }
+  ],
+  "infrastructureVerified": {
+    "globalValidationPipe": "main.ts:67 useGlobalPipes(new ValidationPipe({ transform:true, whitelist:true })) — class-validator DTOs enforced platform-wide",
+    "globalRbacGuard": "identity-access.module.ts:27 APP_GUARD RbacGuard — @RequireRoles enforced platform-wide",
+    "caseRepoWiring": "case-management.module.ts:44 binds PrismaCaseRecordRepository (Prisma, not in-memory) to all case services"
+  }
+}

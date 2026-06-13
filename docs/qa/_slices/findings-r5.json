@@ -1,0 +1,64 @@
+[
+  {
+    "id": "F-WP-1", "severity": "P2", "class": "security / audit-integrity (actor spoofing)", "verified": true,
+    "title": "Client-supplied actorId persisted into audit columns on planner/apply + planner/scenarios → attribution spoofing",
+    "rootCause": "staffing-desk.controller.ts:158-159 applyPlan(@Body() request) forwards the body straight to workforcePlannerService.applyPlan(request) with NO req.principal injection. The service writes request.actorId into ProjectPosition.createdByPersonId/updatedByPersonId (workforce-planner.service.ts:1613-1614,1669-1671) and ProjectPositionFillHistory.changedByPersonId (1626,1683). Same for POST planner/scenarios (controller :192-193 → planner-scenario.service.ts:119 dto.actorId → createdByPersonId). The FE sends actorId in the body (frontend/src/lib/api/staffing-desk.ts:499-500,515-516). Sibling create/transition/bulk-reassign + the scenario PATCH/DELETE correctly use req.principal — these POSTs are the outliers.",
+    "userImpact": "Any authenticated staffing-role user can attribute planner-applied positions and fill-history ledger rows to an ARBITRARY personId by changing the request body — forging the audit trail.",
+    "suggestedFix": "Inject req.principal.personId server-side as the actor and ignore any body-supplied actorId (match the sibling endpoints). Combine with F-WP-2 (validate the body).",
+    "systemicNote": "23 controller sites across 10 modules read actor-ish fields (actorId/changedBy/performedBy/requestedBy) potentially from @Body — round 6 sweeps which are spoofable. Ties to the known D-103 write-path gap.",
+    "evidence": "staffing-desk.controller.ts:155-160; workforce-planner.service.ts:145,1514,1525,1562,1613-1614,1626,1683; planner-scenario.service.ts:119; frontend/src/lib/api/staffing-desk.ts:499-516."
+  },
+  {
+    "id": "F-WP-2", "severity": "P2", "class": "input-validation", "verified": true,
+    "title": "planner/apply, planner/scenarios, team-builder bind @Body() to TS interfaces (not class-validator classes) → unvalidated writes",
+    "rootCause": "The @Body() metatypes are interfaces (PlannerApplyRequestDto, CreatePlannerScenarioDto, TeamBuilderRequestDto are TS interfaces — workforce-planner.service.ts:144, planner-scenario.service.ts:28, team-builder.service.ts:12). The global ValidationPipe (main.ts:67-72, whitelist:true, forbidNonWhitelisted OFF) cannot validate or whitelist-strip an interface (no runtime metatype), so unchecked personId/projectId/allocationPercent/dates/headcount flow straight into Prisma. This is the validation-layer root of F-WP-1 and admits malformed write payloads.",
+    "suggestedFix": "Convert these @Body() targets to class-validator DTO classes with @IsUUID/@IsInt/@IsDateString etc.; then whitelist strips actorId and validation rejects malformed bodies.",
+    "evidence": "workforce-planner.service.ts:144; planner-scenario.service.ts:28; team-builder.service.ts:12; main.ts:67-72."
+  },
+  {
+    "id": "F-WP-3", "severity": "P2", "class": "data-loss / no-op write", "verified": true,
+    "title": "POST /api/cases/:id/participants (add + remove) never persists → write silently discarded",
+    "rootCause": "cases.controller.ts:351-387 loads the entity via getCaseByIdService, mutates it in memory, and returns — but NEVER calls caseRecordRepository.save(). The code comment at :361 admits 'Re-save handled by getCaseByIdService for in-memory; in Prisma would need save()'. Under the live Prisma persistence the participant add/remove is a no-op against the DB.",
+    "userImpact": "Adding or removing a case participant appears to succeed (200) but does nothing — the change is lost on reload.",
+    "suggestedFix": "Call caseRecordRepository.save(caseRecord) after mutating; ensure the repo's save() actually deletes removed participants (prisma-case-record.repository.ts:108-119 currently only createMany+skipDuplicates — append-only, never deletes).",
+    "evidence": "cases.controller.ts:351-387 (no save, comment :361); prisma-case-record.repository.ts:108-119."
+  },
+  {
+    "id": "F-DC-2", "severity": "P2", "class": "data-consistency / UX-Law-9", "verified": true,
+    "title": "Director 'At-risk projects' KPI = 7 but its drilldown shows 40 (rag filter silently ignored)",
+    "rootCause": "The KPI counts byRag amber(5)+red(2)=7 over the 10 ACTIVE/ON_HOLD projects, and links to /projects?rag=AMBER,RED. But `rag` is not in ProjectsPage FILTER_DEFAULTS (ProjectsPage.tsx:31-43), so it is silently dropped and the page renders ALL 40 projects (incl 20 CLOSED + 10 COMPLETED).",
+    "suggestedFix": "Add `rag` to the ProjectsPage filter schema and wire it to the list query, or change the KPI drilldown to a filter the page honors.",
+    "evidence": "ProjectsPage.tsx:31-43; live KPI=7 vs /projects?rag=AMBER,RED list=40."
+  },
+  {
+    "id": "F-DC-3", "severity": "P2", "class": "data-consistency + filter bug", "verified": true,
+    "title": "DM 'Active Projects' KPI = 10 but drilldown shows 0 — case-sensitive status filter ('ACTIVE' !== 'active')",
+    "rootCause": "KPI=summary.totalActiveProjects=10, links to /projects?status=active (lowercase). Backend GET /api/projects ignores the status param (returns all 40). Under dsRefresh (forced ON on v2-staging) ProjectsPage.tsx:186 filters client-side CASE-SENSITIVELY: `item.status !== filters.status` → 'ACTIVE' !== 'active' excludes all 10 active projects → 0 rows. This is BOTH a Law-9 lie AND a real filter bug — any caller passing a lowercase/mismatched-case status gets an empty list.",
+    "suggestedFix": "Normalize case in the ProjectsPage status comparison (toUpperCase both sides) OR make the KPI link uppercase OR have the backend honor the status param. The case-sensitive client filter is the core bug.",
+    "evidence": "DeliveryManagerDashboardPage chunk (status='active' link); ProjectsPage.tsx:186; live KPI=10 vs /projects?status=active=0; GET /api/projects returns all 40 (ACTIVE:10/CLOSED:20/COMPLETED:10)."
+  },
+  {
+    "id": "F-DC-4", "severity": "P3", "class": "data-consistency / unit-mismatch", "verified": true,
+    "title": "Director 'Open positions' KPI = 36 vs drilldown list = 33 (positions counted, projects listed)",
+    "rootCause": "KPI = portfolioSummary.totalOpenGaps = 36 open ProjectPosition rows; drilldown /projects?hasOpenGaps=true = 33 projects that have >0 open positions. The card counts positions, the list counts projects — they can never be equal.",
+    "suggestedFix": "Either label the KPI '36 open positions across 33 projects', or make the drilldown list positions not projects.",
+    "evidence": "live KPI=36 vs /projects?hasOpenGaps=true=33."
+  },
+  {
+    "id": "F-DC-5", "severity": "P3", "class": "data-consistency / fragile-filter", "verified": true,
+    "title": "Budget-variance KPI drilldown uses budgetStatus=over which doesn't match the GREEN|YELLOW|RED enum",
+    "rootCause": "Drilldown /projects?budgetStatus=over compares against a GREEN|YELLOW|RED enum, so it returns 0 even when projects ARE over budget. Both numbers are 0 today (no over-budget projects) so not a hard mismatch now, but it will silently under-report.",
+    "suggestedFix": "Map the KPI drilldown value to the enum the page filters on.",
+    "evidence": "ProjectsPage budgetStatus filter vs KPI drilldown 'over'."
+  },
+  {
+    "id": "F-MATRIX-1", "severity": "n/a (matrix accuracy)", "class": "availability-matrix label fix", "verified": true,
+    "title": "Two FORBIDDEN-correct endpoints mislabeled by the director-only probe",
+    "findings": [
+      "ep_89 GET /api/dashboard/:role — gated @RequireRoles(ALL_AUTHENTICATED_ROLES) + AUTHZ-06 self-scope (role-dashboard.controller.ts:297-298), NOT admin-only. The probe substituted a UUID for :role → self-scope 403 ('Role X is not in your scope'). Happy path (own role) is 200, never tested. Relabel: SELF-SCOPE-OK, not FORBIDDEN-correct.",
+      "ep_226 GET /api/overtime/policy — role-specific @RequireRoles(resource_manager,delivery_manager,hr_manager,admin); director's 403 is correct FOR director but the RM/DM/HR happy-path (200) was never verified (probe used director only).",
+      "41 of 43 ALLOWED-GOT-403 are genuinely admin-only — correctly labeled."
+    ],
+    "evidence": "live: 'Insufficient role for this operation.' (guard) vs \"Role 'X' is not in your scope.\" (self-scope) distinguishes the two 403 paths."
+  }
+]

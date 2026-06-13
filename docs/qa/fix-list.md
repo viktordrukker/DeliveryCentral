@@ -7,9 +7,11 @@ _Autonomous full-surface QA run, 2026-06-13. Branch `qa/v2-full-surface-2026-06-
 | Sev | Count | Headline |
 |-----|------:|----------|
 | **P1** | 2 | `project-positions` list 400s on pagination → `/me` Projects tab + paginated callers broken; person-detail page 400s via publicId → profile/skills/360/suggested all dead on dsRefresh surface |
-| **P2** | 2 | Missing query-param validation → 500 (6+ endpoints); systemic publicId→UUID-only-endpoint id-type mismatch |
-| **P3** | 6 | overtime UUID pipe; setup-token hardening; employee `/people` console noise; employee `/projects` health badges; sidebar badge↔drilldown mismatch (Law 9); 46/90 dead flags |
+| **P2** | 8 | missing query-param validation→500; systemic publicId→UUID id-type mismatch; `/cases` dead-end for PM/RM/employee (F-1b-E); **actor-spoofing** on planner writes (F-WP-1); `@Body()` interface = unvalidated writes (F-WP-2); cases-participants no-op write (F-WP-3); director At-risk KPI 7≠40 (F-DC-2); DM Active KPI 10≠0 case-sensitive filter (F-DC-3) |
+| **P3** | 8 | overtime UUID pipe; setup-token hardening; `/people` 403 console-noise (3 roles); `/projects` health badge 403; sidebar badge↔drilldown (Law 9); 46/90 dead flags; open-positions KPI unit-mismatch (F-DC-4); budget-variance fragile drilldown (F-DC-5) |
 | Design | 15 | DS canvas PARTIAL conformance (see `ds-fe-gap.md`) — mostly polish |
+
+_Findings F-1b-E and F-WP/F-DC-* were surfaced during the validation campaign (rounds 4–5: cross-role render sweep, static write-path tracing, dashboard data-consistency) — the first pass missed them. Full detail in `_slices/findings-r5.json` + `findings-phase1b-r4.json`; summarized in the P2/P3 sections below._
 
 Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconciled (re-traced in validation round 2 after an independent audit caught a ~35% undercount in the first pass), 22 route renders driven (4 roles), 18 DS canvases, 90 flags. See `availability-matrix.json` / `action-inventory.json` for per-row verdicts.
 
@@ -53,10 +55,30 @@ Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconcile
 
 ---
 
+### P2-3 · `/cases` ("HR Queue") nav-visible to ALL_ROLES but `GET /api/cases` is HR_GOVERNANCE_ROLES → dead-end for PM/RM/employee
+**Trace:** `F-1b-E` (RBAC route↔endpoint mismatch class, with F-1b-C/D). Route `route-manifest.ts:342` is `ALL_ROLES, navVisible`; endpoint `cases.controller.ts:102` is `@RequireRoles(...HR_GOVERNANCE_ROLES)`. PM/RM/employee see "HR Queue", click it, hit 403 on the page's primary data. **Fix:** align the route's `allowedRoles` to the endpoint's roles (or relax the endpoint). Same sweep should fix F-1b-C/D (ungated side-fetches) — ensure every nav route + unconditional fetch is gated to its endpoint's `@RequireRoles`, and catch the uncaught promise.
+
+### P2-4 · Actor-spoofing: client-supplied `actorId` persisted to audit columns on planner writes
+**Trace:** `F-WP-1`. `staffing-desk.controller.ts:158` `applyPlan(@Body() request)` → service writes `request.actorId` into `ProjectPosition.createdByPersonId` + `ProjectPositionFillHistory.changedByPersonId` (`workforce-planner.service.ts:1613-1683`); same on `planner/scenarios`. Any staffing user can forge attribution. **Fix:** inject `req.principal.personId`, ignore body `actorId` (match sibling endpoints). **Systemic:** 23 controller sites across 10 modules read actor-ish fields possibly from `@Body` — see round-6 sweep (ties to the D-103 write-path gap).
+
+### P2-5 · `@Body()` bound to TS interfaces (not class-validator classes) → unvalidated writes
+**Trace:** `F-WP-2`. `planner/apply`, `planner/scenarios`, `team-builder` bind `@Body()` to interfaces, so the global `ValidationPipe` has no metatype to validate or whitelist-strip → unchecked `personId/projectId/allocationPercent/dates` reach Prisma (and is the root of P2-4). **Fix:** convert to class-validator DTO classes.
+
+### P2-6 · `POST /api/cases/:id/participants` (add/remove) never persists — silent no-op
+**Trace:** `F-WP-3`. `cases.controller.ts:351-387` mutates the entity but never calls `caseRecordRepository.save()` (comment admits it). Add/remove returns 200 but the DB is unchanged. **Fix:** call `save()`; ensure the repo deletes removed participants (`prisma-case-record.repository.ts:108-119` is currently append-only).
+
+### P2-7 · Director "At-risk projects" KPI = 7 but drilldown shows 40 (Law 9)
+**Trace:** `F-DC-2`. KPI links `/projects?rag=AMBER,RED` but `rag` isn't in `ProjectsPage.tsx:31-43` FILTER_DEFAULTS → silently ignored → all 40 shown. **Fix:** wire `rag` into the page filter, or change the drilldown.
+
+### P2-8 · DM "Active Projects" KPI = 10 but drilldown shows 0 — case-sensitive status filter
+**Trace:** `F-DC-3`. KPI links `/projects?status=active`; `ProjectsPage.tsx:186` filters `item.status !== filters.status` case-sensitively under dsRefresh → `'ACTIVE' !== 'active'` excludes all 10. **Both a Law-9 lie and a real filter bug** (any mismatched-case status filter returns empty). **Fix:** normalize case in the comparison (the core bug), and/or make the KPI link uppercase.
+
 ## P3
 
 | ID | Finding | Root cause → Fix |
 |----|---------|------------------|
+| `F-DC-4` | Director "Open positions" KPI 36 ≠ drilldown 33 | Unit mismatch — KPI counts positions, list counts projects. Relabel "36 across 33 projects" or list positions. |
+| `F-DC-5` | Budget-variance drilldown `budgetStatus=over` ≠ GREEN\|YELLOW\|RED enum | Returns 0 even when over-budget (0 today). Map drilldown value to the enum. |
 | `F-1a-2` | `GET /api/overtime/resolve/:personId` 500 on non-UUID id; also **FE-dead** | `overtime.controller.ts:57` omits `ParseUUIDPipe` (peer routes have it) → Prisma UUID crash. Add the pipe. `fetchResolvedPolicy` has no FE callers — consider removing. |
 | `F-1a-3` | `POST /api/setup/token/issue` not gated on setup-complete (hardening; **not** the priv-esc vuln it first looked like — 200 returns only `{tokenIssued:true}`, never the secret) | Gate `issueToken()` on `setup.completedAt` (mirror `getStatus()`) so it's a no-op post-install. |
 | `F-1b-C` | Employee `/people`: ungated `fetchResourcePools()` + bench fetch 403 → empty pool filter + hidden bench chip + 1 **uncaught** `ApiError` in console (page itself renders fine) | Gate the two side-fetches behind `hasAnyRole(...)` in `EmployeeDirectoryPage.tsx:139-141`; catch the promise. |

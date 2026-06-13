@@ -1,0 +1,71 @@
+{
+  "target": "matrix:dashboard-role-mislabel",
+  "verdict": "ISSUES-FOUND",
+  "checked": 43,
+  "note": "Prompt said 47 FORBIDDEN-correct endpoints; the avail-endpoints.json slice actually contains 43 entries with verdict ALLOWED-GOT-403. All 43 were re-examined.",
+  "summary": {
+    "trueRoleGate_directorCorrectlyForbidden_noHappyPathForDirector": 41,
+    "trueRoleGate_butHappyPathForOtherRoleUntested_directorProbeOnly": 1,
+    "paramDriven_selfScopeMasked_happyPathUnverified": 1
+  },
+  "twoDistinct403CodePaths": {
+    "requireRolesGuard": "message = 'Insufficient role for this operation.' (RolesGuard rejects before handler)",
+    "authz06SelfScope": "message = \"Role 'X' is not in your scope.\" (runtime check inside handler, line 297-298 of role-dashboard.controller.ts)"
+  },
+  "mislabeled": [
+    {
+      "id": "ep_89",
+      "method": "GET",
+      "path": "/api/dashboard/:role",
+      "matrixVerdict": "ALLOWED-GOT-403 (FORBIDDEN-correct)",
+      "classification": "MISLABEL — PARAM-DRIVEN self-scope, NOT a real gate",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES) — i.e. ANY authenticated user passes the RolesGuard; NOT admin-only",
+      "whyFalse403": "The probe substituted the :role path segment with a UUID (resolvedPath /api/dashboard/bbbb0001-0000-0000-0000-000000000017, paramResolved=false). The AUTHZ-06 runtime self-scope check at role-dashboard.controller.ts:297-298 (`if (!callerRoles.includes('admin') && !callerRoles.includes(role)) throw new ForbiddenException(\"Role '<role>' is not in your scope.\")`) fired because no one holds a role literally named 'bbbb0001-...'. The 403 is the self-scope check, not the @RequireRoles gate.",
+      "happyPathUnverified": true,
+      "liveProof": {
+        "PM_token_GET_/api/dashboard/project_manager": "HTTP 200 — body {\"role\":\"project_manager\", sections:[95 items]}",
+        "RM_token_GET_/api/dashboard/resource_manager": "HTTP 200 — body {\"role\":\"resource_manager\", sections:[137 items]}",
+        "PM_token_GET_/api/dashboard/hr_manager (role not held)": "HTTP 403 — {\"message\":\"Role 'hr_manager' is not in your scope.\"}",
+        "director_token_GET_/api/dashboard/employee (role not held)": "HTTP 403 — {\"message\":\"Role 'employee' is not in your scope.\"}",
+        "director_token_GET_/api/dashboard/resource_manager (role not held)": "HTTP 403 — {\"message\":\"Role 'resource_manager' is not in your scope.\"}"
+      },
+      "correctInterpretation": "Route is open to all authenticated users for their OWN role's dashboard; self-scope (AUTHZ-06) is working correctly. The matrix's 403 was an artifact of the UUID-substituted :role param, masking a 200 happy path. Correct matrix label: ALLOWED-200 happy path + self-scope-enforced for non-held roles. NOT FORBIDDEN-correct."
+    },
+    {
+      "id": "ep_226",
+      "method": "GET",
+      "path": "/api/overtime/policy",
+      "matrixVerdict": "ALLOWED-GOT-403 (FORBIDDEN-correct)",
+      "classification": "PARTIAL MISLABEL — true role gate, but director-probe-only left the happy path untested",
+      "guard": "@RequireRoles('resource_manager', 'delivery_manager', 'hr_manager', 'admin') — director is NOT in this list",
+      "whyFalse403": "Director genuinely lacks a role in the gate, so the @RequireRoles 403 ('Insufficient role for this operation.') is correct FOR THE DIRECTOR. But this is a role-specific gate, not admin-only; RM/DM/HR/admin have a real happy path that the matrix never exercised because it probed with director only.",
+      "happyPathUnverified": true,
+      "liveProof": {
+        "director_token": "HTTP 403 — {\"message\":\"Insufficient role for this operation.\"} (correct — director excluded from gate)",
+        "RM_token (sophia.kim, resource_manager)": "HTTP 200 — body [] (empty policy list, authorized)"
+      },
+      "correctInterpretation": "The 403 is a TRUE role gate (not param-driven), and is correct for the director. However the matrix bucketed it FORBIDDEN-correct using the director probe, so the RM/DM/HR/admin happy path (HTTP 200) was never verified by the availability matrix. Label should be: FORBIDDEN-correct for director + ALLOWED-200 for RM/DM/HR/admin (unverified by matrix, now live-confirmed for RM)."
+    }
+  ],
+  "correctlyLabeled_trueAdminGate_noDirectorHappyPath": [
+    {"ids": "ep_25,ep_17,ep_2,ep_5,ep_146,ep_147,ep_144,ep_145,ep_28,ep_133,ep_134,ep_165,ep_7,ep_19,ep_185,ep_186,ep_8,ep_265,ep_116,ep_238,ep_292,ep_121,ep_122,ep_152,ep_22,ep_23,ep_6,ep_45,ep_26,ep_13,ep_16,ep_12,ep_132,ep_184,ep_178,ep_177,ep_183,ep_182,ep_205,ep_206,ep_204", "count": 41,
+     "guard": "@RequireRoles('admin') (admin-only; one is @RequireRoles('admin','hr_manager') for people/import but those are POST/AUTH-OK, not in this 403 set)",
+     "verdict": "CORRECTLY LABELED FORBIDDEN-correct. Director genuinely lacks 'admin'; there is no director happy path to test. The bad UUID on the parameterized ones (ep_147 :id, ep_134 :id, ep_186 :id, ep_238 :prefix, ep_122 :id, ep_23 :preset, ep_26 :sessionId, ep_16 :id/deliveries) is irrelevant because the RolesGuard rejects BEFORE the handler/ParseUUIDPipe — the 403 is the admin gate, not the param."}
+  ],
+  "evidence": {
+    "source": {
+      "file": "/tmp/dc-qa/src/modules/dashboard/presentation/role-dashboard.controller.ts",
+      "route": "@Get(':role') @RequireRoles(...ALL_AUTHENTICATED_ROLES) at lines 280-281",
+      "selfScopeCheck": "lines 294-299: AUTHZ-06 — `if (!callerRoles.includes('admin') && !callerRoles.includes(role)) throw new ForbiddenException(`Role '${role}' is not in your scope.`)`",
+      "ALL_AUTHENTICATED_ROLES": "/tmp/dc-qa/src/shared/auth/role-presets.ts:67-75 = [employee, project_manager, resource_manager, hr_manager, delivery_manager, director, admin] (every signed-in person)",
+      "overtimeGate": "/tmp/dc-qa/src/modules/overtime/presentation/overtime.controller.ts:24-25 @Get('policy') @RequireRoles('resource_manager','delivery_manager','hr_manager','admin') — no director"
+    },
+    "live": {
+      "host": "https://deliverit-test-v2.agentic.uz",
+      "dashboard_role_catchall": "PM->/api/dashboard/project_manager=200; RM->/api/dashboard/resource_manager=200; PM->/api/dashboard/hr_manager=403 'Role hr_manager is not in your scope'; director->/api/dashboard/employee=403 'Role employee is not in your scope'; director->/api/dashboard/resource_manager=403 'Role resource_manager is not in your scope'",
+      "overtime_policy": "director->/api/overtime/policy=403 'Insufficient role for this operation.'; RM->/api/overtime/policy=200 (body [])",
+      "messageDistinguisher": "self-scope 403 says \"Role 'X' is not in your scope.\"; @RequireRoles 403 says \"Insufficient role for this operation.\" — proving ep_89 was self-scope (param-driven) and overtime/admin were the real guard."
+    }
+  },
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/writepath-mislabel.json"
+}

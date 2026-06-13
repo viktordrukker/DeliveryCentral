@@ -1,0 +1,92 @@
+{
+  "target": "writepath:staffing-assign",
+  "verdict": "ISSUES-FOUND",
+  "checked": 7,
+  "scope": "Static write-path trace (no execution). Controllers: StaffingDeskController (src/modules/staffing-desk/presentation/staffing-desk.controller.ts), ProjectPositionsController (src/modules/project-positions/presentation/project-positions.controller.ts). Endpoints traced: POST /project-positions (create), POST /project-positions/create-and-book (make-assignment), POST /project-positions/bulk-reassign (bulk-assignment), POST /project-positions/:id/transition (PROPOSED/OPEN/FILLED), POST /staffing-desk/planner/apply, POST /staffing-desk/team-builder, POST /staffing-desk/planner/scenarios.",
+  "endpoints": [
+    {
+      "endpoint": "POST /api/project-positions/:id/transition",
+      "controller": "src/modules/project-positions/presentation/project-positions.controller.ts:293-319",
+      "service": "src/modules/project-positions/application/transition-project-position-fill.service.ts",
+      "persists": true,
+      "persistence": "prisma.$transaction → repository.save (Prisma create/updateMany w/ optimistic concurrency, prisma-project-position.repository.ts:43-64) + tx.projectPositionFillHistory.create; all awaited",
+      "dto": "TransitionProjectPositionFillRequestDto (class-validator, project-position-requests.ts:143-199)",
+      "guard": "@RequireRoles(...POSITION_TRANSITION_ROLES) = STAFFING_ROLES ∪ HR_GOVERNANCE_ROLES — fits",
+      "actorId": "from request.principal (controller:303) — correct",
+      "verdict": "sound"
+    },
+    {
+      "endpoint": "POST /api/project-positions/create-and-book",
+      "controller": "src/modules/project-positions/presentation/project-positions.controller.ts:226-262",
+      "service": "src/modules/project-positions/application/create-and-book-project-position.service.ts",
+      "persists": true,
+      "persistence": "prisma.$transaction → createService.execute(repository.save) + 2× tx.projectPositionFillHistory.create (OPEN→PROPOSED→BOOKED); all awaited; Σ-allocation guard before commit",
+      "dto": "CreateAndBookProjectPositionRequestDto (class-validator, project-position-requests.ts:81-141)",
+      "guard": "@RequireRoles(...PROJECT_DELIVERY_ROLES,'resource_manager') — fits",
+      "actorId": "from request.principal (controller:245) — correct",
+      "verdict": "sound"
+    },
+    {
+      "endpoint": "POST /api/project-positions/bulk-reassign",
+      "controller": "src/modules/project-positions/presentation/project-positions.controller.ts:264-291",
+      "service": "src/modules/project-positions/application/bulk-reassign-positions.service.ts",
+      "persists": true,
+      "persistence": "prisma.$transaction → per-row tx.projectPosition.updateMany (version-guarded) + tx.projectPositionFillHistory.create; all awaited; full rollback → 422",
+      "dto": "BulkReassignPositionsRequestDto (class-validator, project-position-requests.ts:255-295)",
+      "guard": "@RequireRoles(...PROJECT_DELIVERY_ROLES) — fits",
+      "actorId": "from request.principal (controller:280) — correct",
+      "verdict": "sound"
+    },
+    {
+      "endpoint": "POST /api/project-positions (create demand record)",
+      "controller": "src/modules/project-positions/presentation/project-positions.controller.ts:197-224",
+      "service": "src/modules/project-positions/application/create-project-position.service.ts",
+      "persists": true,
+      "persistence": "repository.save → Prisma create (prisma-project-position.repository.ts:46-49); awaited",
+      "dto": "CreateProjectPositionRequestDto (class-validator, project-position-requests.ts:25-74)",
+      "guard": "@RequireRoles(...STAFFING_ROLES) — fits",
+      "actorId": "from request.principal (controller:209) — correct",
+      "verdict": "sound"
+    },
+    {
+      "endpoint": "POST /api/staffing-desk/planner/apply",
+      "controller": "src/modules/staffing-desk/presentation/staffing-desk.controller.ts:155-160",
+      "service": "src/modules/staffing-desk/application/workforce-planner.service.ts:1499 applyPlan",
+      "persists": true,
+      "persistence": "per-item prisma.$transaction → writeCanonicalDispatchPosition / writeCanonicalHirePositions (tx.projectPosition.create + tx.projectPositionFillHistory.create) + extension tx.projectPosition.update; all awaited",
+      "dto": "PlannerApplyRequestDto is a TS INTERFACE (workforce-planner.service.ts:144) — NO class-validator metadata; ValidationPipe cannot validate/strip; body unvalidated",
+      "guard": "@RequireRoles(...STAFFING_ROLES) at controller class level — role boundary OK",
+      "actorId": "TAKEN FROM REQUEST BODY (request.actorId, applyPlan controller passes @Body() straight through; service writes it to createdByPersonId/changedByPersonId/updatedByPersonId at workforce-planner.service.ts:1562,1613-1614,1626,1669-1671,1683) — NOT from principal",
+      "verdict": "ISSUE — actor spoofing + missing validation"
+    },
+    {
+      "endpoint": "POST /api/staffing-desk/planner/scenarios",
+      "controller": "src/modules/staffing-desk/presentation/staffing-desk.controller.ts:190-194",
+      "service": "src/modules/staffing-desk/application/planner-scenario.service.ts:114 create",
+      "persists": true,
+      "persistence": "prisma.plannerScenario.create; awaited",
+      "dto": "CreatePlannerScenarioDto is a TS INTERFACE (planner-scenario.service.ts:28) — no class-validator; body unvalidated",
+      "guard": "@RequireRoles(...STAFFING_ROLES) — OK",
+      "actorId": "TAKEN FROM REQUEST BODY (dto.actorId → createdByPersonId, planner-scenario.service.ts:119); createScenario controller passes @Body() dto straight through — NOT from principal. (update/archive correctly use req.principal.)",
+      "verdict": "ISSUE — actor spoofing + missing validation"
+    },
+    {
+      "endpoint": "POST /api/staffing-desk/team-builder",
+      "controller": "src/modules/staffing-desk/presentation/staffing-desk.controller.ts:215-222",
+      "service": "src/modules/staffing-desk/application/team-builder.service.ts:39 buildTeam",
+      "persists": false,
+      "persistence": "READ-ONLY — returns candidate suggestions; no Prisma write. Not a write flow.",
+      "dto": "TeamBuilderRequestDto is a TS INTERFACE (team-builder.service.ts:12) — unvalidated, but read-only so impact is low",
+      "guard": "@RequireRoles(...STAFFING_ROLES) — OK",
+      "actorId": "n/a (no write)",
+      "verdict": "sound (read-only; unvalidated input noted)"
+    }
+  ],
+  "findings": [
+    "ACTOR SPOOFING (write-path audit integrity) — POST /api/staffing-desk/planner/apply persists a CLIENT-SUPPLIED actorId into every audit/author column. Controller src/modules/staffing-desk/presentation/staffing-desk.controller.ts:158-159 passes @Body() request straight to applyPlan without injecting req.principal. Service src/modules/staffing-desk/application/workforce-planner.service.ts:1514,1525,1562 forwards request.actorId into writeCanonicalDispatchPosition/writeCanonicalHirePositions, landing at ProjectPosition.createdByPersonId/updatedByPersonId (lines 1613-1614,1669-1671) and ProjectPositionFillHistory.changedByPersonId (lines 1626,1683). FE confirms it sends actorId in the body (frontend/src/lib/api/staffing-desk.ts:499-500,515-516). Any staffing-role user can attribute planner-applied positions and fill-history ledger rows to an arbitrary personId. The sibling create/transition/bulk-reassign endpoints correctly derive actorId from request.principal — this endpoint is the outlier.",
+    "ACTOR SPOOFING — POST /api/staffing-desk/planner/scenarios persists client-supplied dto.actorId into PlannerScenario.createdByPersonId. Controller src/modules/staffing-desk/presentation/staffing-desk.controller.ts:192-193 passes @Body() dto straight to create(); service src/modules/staffing-desk/application/planner-scenario.service.ts:119 writes dto.actorId to createdByPersonId. The PATCH/DELETE handlers on the same controller (lines 196-213) correctly source actorId from req.principal.personId, making the POST an inconsistent and exploitable outlier.",
+    "MISSING BODY VALIDATION — POST /staffing-desk/planner/apply, POST /staffing-desk/planner/scenarios, and POST /staffing-desk/team-builder (plus planner/extension-validate, planner/why-not, planner/auto-match) bind @Body() to TS INTERFACES (PlannerApplyRequestDto workforce-planner.service.ts:144; CreatePlannerScenarioDto planner-scenario.service.ts:28; TeamBuilderRequestDto team-builder.service.ts:12), not class-validator classes. The global ValidationPipe (src/main.ts:67-72, whitelist:true, forbidNonWhitelisted OFF) has no metatype to validate or whitelist-strip an interface, so these bodies are completely unvalidated — unchecked personId/projectId UUIDs, allocationPercent ranges, dates, and headcount flow straight into Prisma create/update calls. This is the validation-layer cause of the actor-spoofing findings above and also admits malformed write payloads."
+  ],
+  "evidence": "Traced 7 in-scope POST endpoints (4 project-positions writes + planner/apply + planner/scenarios + team-builder). 4 project-positions write flows are SOUND: real awaited Prisma writes inside $transaction with fill-history ledger rows, class-validator DTOs (project-position-requests.ts), guards that fit, and actorId from request.principal. 2 staffing-desk write flows have a write-path actor-spoofing bug: planner/apply (controller staffing-desk.controller.ts:158-159 → service workforce-planner.service.ts:1514/1562/1613-1614/1626/1669-1671/1683) and planner/scenarios POST (controller :192-193 → service planner-scenario.service.ts:119) persist a CLIENT-SUPPLIED actorId into audit/author columns; FE sends it (frontend/src/lib/api/staffing-desk.ts:499-500,617-618). All staffing-desk POST bodies are interface-typed so the global ValidationPipe (main.ts:67-72) does not validate them. team-builder is read-only (no write).",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/writepath-staffing-assign.json"
+}

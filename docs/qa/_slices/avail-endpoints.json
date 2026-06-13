@@ -1352,7 +1352,8 @@
     "statusNoToken": 401,
     "statusAllowed": 403,
     "statusOther": 403,
-    "verdict": "ALLOWED-GOT-403"
+    "verdict": "SELF-SCOPE-OK",
+    "note": "MATRIX FIX (r5): not admin-gated — ALL_AUTHENTICATED + AUTHZ-06 self-scope. Probe substituted a UUID for :role → self-scope 403; happy-path (own role) is 200, untested by probe."
   },
   {
     "id": "ep_83",
@@ -2529,7 +2530,8 @@
     "statusNoToken": 401,
     "statusAllowed": 403,
     "statusOther": 403,
-    "verdict": "ALLOWED-GOT-403"
+    "verdict": "ALLOWED-GOT-403",
+    "note": "MATRIX FIX (r5): role-specific (RM/DM/HR/admin), NOT admin-only. Director 403 correct; RM/DM/HR happy-path 200 untested by director-only probe."
   },
   {
     "id": "ep_227",

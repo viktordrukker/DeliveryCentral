@@ -1,0 +1,73 @@
+{
+  "target": "data-consistency:director",
+  "verdict": "ISSUES-FOUND",
+  "checked": 5,
+  "asOf": "2026-06-13",
+  "account": "noah.bennett@itco.local (roles: [director])",
+  "host": "https://deliverit-test-v2.agentic.uz",
+  "page": "frontend/src/routes/dashboard/DirectorDashboardPage.tsx",
+  "kpiStrip": "frontend/src/components/dashboard/director/DirectorKpiStrip.tsx",
+  "endpointsTested": {
+    "GET /api/dashboard/director": "200 (after using a real director token; an earlier mismatched delivery_manager token returned 403 — not a product bug)",
+    "GET /api/dashboard/portfolio/summary": "200 {totalProjects:10, byRag:{green:3,amber:5,red:2}, totalOpenGaps:36, benchSize:168}",
+    "GET /api/dashboards/director/finance": "200 {totalBudget:3902906, totalActualCost:2151391, overBudgetProjectCount:0, cpi:0.91}",
+    "GET /api/dashboards/director/anomalies": "200",
+    "GET /api/dashboards/director/org-health": "200 {totalHeadcount:198, totalBenchSize:135, units:14}",
+    "GET /api/dashboards/director/bench-aging": "200 {benchCount:135}",
+    "GET /api/projects (drilldown source)": "200 {totalCount:40, byStatus:{ACTIVE:10,CLOSED:20,COMPLETED:10}, byBudgetStatus:{RED:34,YELLOW:6}, projectsWithOpenPositions:33, sumOpenPositions:36}"
+  },
+  "kpis": [
+    {
+      "label": "Active projects",
+      "displayed": 10,
+      "source": "portfolioSummary.totalProjects",
+      "drilldownLink": "/projects?status=ACTIVE",
+      "drilldownCount": 10,
+      "status": "CONSISTENT",
+      "note": "?status=ACTIVE is a fully-effective client-side filter; 10 ACTIVE projects in the 40-row directory."
+    },
+    {
+      "label": "At-risk projects",
+      "displayed": 7,
+      "source": "portfolioSummary.byRag.amber(5)+byRag.red(2)",
+      "drilldownLink": "/projects?rag=AMBER,RED",
+      "drilldownCount": 40,
+      "status": "MISMATCH",
+      "note": "Law-9 lie. KPI shows 7 (amber+red over the 10 ACTIVE/ON_HOLD projects). The drilldown's `rag` param is NOT in ProjectsPage FILTER_DEFAULTS, so it is silently ignored and the page renders ALL 40 projects (incl. 20 CLOSED + 10 COMPLETED) with no RAG filter. Card says 7, list shows 40."
+    },
+    {
+      "label": "Budget variance · portfolio",
+      "displayed": "+44.9%",
+      "source": "(totalActualCost-totalBudget)/totalBudget * -100 from /dashboards/director/finance",
+      "drilldownLink": "/projects?budgetStatus=over",
+      "drilldownCount": 0,
+      "status": "CONSISTENT-BUT-FRAGILE",
+      "note": "Variance is +44.9% (under budget; AC 2.15M vs budget 3.90M) and finance.overBudgetProjectCount=0, so the over-budget list correctly resolves to 0. HOWEVER the drilldown filter value `over` does NOT match the ProjectsPage budgetStatus enum (GREEN|YELLOW|RED) — the filter compares `rec.budgetStatus !== 'over'`, which would exclude every project with a known budgetStatus. It returns 0 here only because 0 is also the true over-budget count. The param contract is broken; it would also show 0 even when projects ARE over budget. Not flagged as a hard mismatch because both numbers are 0 today."
+    },
+    {
+      "label": "Utilisation",
+      "displayed": "32%",
+      "source": "round(directorDashboard.summary.staffingUtilisationRate=31.5)",
+      "drilldownLink": "/people",
+      "drilldownCount": "N/A",
+      "status": "NOT-A-COUNT-DRILLDOWN",
+      "note": "Links to /people (unfiltered org directory), not to a count that should equal 32%. No numeric equivalence to compare; value itself derives cleanly from the director endpoint."
+    },
+    {
+      "label": "Open positions",
+      "displayed": 36,
+      "source": "portfolioSummary.totalOpenGaps",
+      "drilldownLink": "/projects?hasOpenGaps=true",
+      "drilldownCount": 33,
+      "status": "MISMATCH",
+      "note": "Unit mismatch. KPI counts open POSITIONS (36 ProjectPosition rows with fillStatus=OPEN). The drilldown ?hasOpenGaps=true lists PROJECTS that have >0 open positions = 33 projects. 36 positions are spread across 33 projects, so the card number (36) can never equal the list length (33). A user clicking the 36 lands on a 33-row list."
+    }
+  ],
+  "findings": [
+    "At-risk projects: card=7 (amber+red over 10 active) vs drilldown /projects?rag=AMBER,RED shows 40 (rag param ignored — not in FILTER_DEFAULTS).",
+    "Open positions: card=36 (open ProjectPosition rows) vs drilldown /projects?hasOpenGaps=true shows 33 (projects with >0 gaps) — position count vs project count unit mismatch.",
+    "Budget variance drilldown ?budgetStatus=over uses value 'over' which does not match the GREEN|YELLOW|RED enum the ProjectsPage filter compares against; consistent at 0 today only by coincidence."
+  ],
+  "evidence": "Live as director noah.bennett (roles:[director]) on deliverit-test-v2. /dashboard/portfolio/summary -> {totalProjects:10, byRag:{amber:5,red:2}, totalOpenGaps:36}. /dashboards/director/finance -> {overBudgetProjectCount:0, totalBudget:3902906, totalActualCost:2151391}. /dashboard/director -> {staffingUtilisationRate:31.5}. Drilldown source /api/projects -> 40 items (10 ACTIVE, 20 CLOSED, 10 COMPLETED); 33 projects have openPositionsCount>0 summing to 36 open positions. ProjectsPage FILTER_DEFAULTS (frontend/src/routes/projects/ProjectsPage.tsx L31-43) has no `rag` key, so ?rag=AMBER,RED is a no-op -> at-risk drilldown returns 40 not 7. hasOpenGaps filter (L204) keeps projects -> 33 not 36. All 6 KPI/drilldown endpoints returned HTTP 200.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dataconsistency-director.json"
+}
