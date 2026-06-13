@@ -51,7 +51,7 @@ export function HrDashboardPage(): JSX.Element {
   const overlayPersonId = canOverlayOthers ? searchParams.get('personId') : null;
   const effectivePersonId = authLoading ? null : (overlayPersonId ?? principal?.personId ?? undefined);
   const state = useHrManagerDashboard(effectivePersonId);
-  const [openCaseSubjects, setOpenCaseSubjects] = useState<string[]>([]);
+  const [openCaseSubjects, setOpenCaseSubjects] = useState<Array<{ personId: string; name: string }>>([]);
   const [lastFetch, setLastFetch] = useState(new Date());
 
   const location = useLocation();
@@ -68,7 +68,8 @@ export function HrDashboardPage(): JSX.Element {
       .then((r) => {
         const subjects = r.items
           .filter((c) => c.status === 'OPEN' || c.status === 'IN_PROGRESS')
-          .map((c) => c.subjectPersonId);
+          // SC-7 — carry the resolved subject name (BE-enriched); fall back to id.
+          .map((c) => ({ personId: c.subjectPersonId, name: c.subjectPersonName ?? c.subjectPersonId }));
         setOpenCaseSubjects(subjects);
       })
       .catch(() => undefined);

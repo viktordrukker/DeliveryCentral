@@ -12,7 +12,8 @@ import type {
 
 interface Props {
   atRisk: HrAtRiskEmployee[];
-  openCaseSubjects: string[];
+  // SC-7 — resolved subject names (not raw personId UUIDs).
+  openCaseSubjects: Array<{ personId: string; name: string }>;
   recentJoinerActivity: HrLifecycleActivityItem[];
   recentDeactivationActivity: HrLifecycleActivityItem[];
   onPersonClick: (personId: string) => void;
@@ -100,13 +101,14 @@ export function HrLifecycleTab({
             {openCaseSubjects.length} person{openCaseSubjects.length !== 1 ? 's have' : ' has'} an open case and may need HR attention.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {openCaseSubjects.slice(0, 20).map((id) => (
-              <span
-                key={id}
-                style={{ display: 'inline-block', background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: 3, padding: '2px 8px', fontSize: 11, fontFamily: 'monospace' }}
+            {openCaseSubjects.slice(0, 20).map((s) => (
+              <Link
+                key={s.personId}
+                to={`/people/${s.personId}`}
+                style={{ display: 'inline-block', background: 'var(--color-status-danger)', color: 'var(--color-surface)', borderRadius: 3, padding: '2px 8px', fontSize: 11 }}
               >
-                {id.slice(0, 8)}...
-              </span>
+                {s.name}
+              </Link>
             ))}
           </div>
           <div style={{ marginTop: 8 }}>
