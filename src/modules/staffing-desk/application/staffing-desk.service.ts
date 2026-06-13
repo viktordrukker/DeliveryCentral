@@ -56,8 +56,10 @@ export class StaffingDeskService {
       this.logger.warn(`Staffing-request fetch capped at ${STAFFING_DESK_FETCH_LIMIT}; results may be truncated. PERF-08 follow-up needed.`);
     }
     const personIdsForLookups = new Set<string>();
-    for (const a of assignmentRows) personIdsForLookups.add(a.personId);
-    for (const r of requestRows) personIdsForLookups.add(r.requestedByPersonId);
+    for (const a of assignmentRows) if (a.personId) personIdsForLookups.add(a.personId);
+    // requestedByPersonId is '' for open-demand positions with no requester — never
+    // add it to a set that feeds a uuid `in` filter (see fetchLookups defensive note).
+    for (const r of requestRows) if (r.requestedByPersonId) personIdsForLookups.add(r.requestedByPersonId);
     const projectIdsForLookups = new Set<string>();
     for (const a of assignmentRows) projectIdsForLookups.add(a.projectId);
     for (const r of requestRows) projectIdsForLookups.add(r.projectId);
@@ -470,11 +472,18 @@ export class StaffingDeskService {
   private async fetchLookups(personIds: string[], projectIds: string[]) {
     // PERF-07: scope every lookup query to the IDs returned by the primary queries.
     // Without scoping, this loaded every Person, Project, PersonSkill, etc. row in the DB.
-    const personFilter = personIds.length > 0 ? { id: { in: personIds } } : { id: { in: [] } };
-    const projectFilter = projectIds.length > 0 ? { id: { in: projectIds } } : { id: { in: [] } };
-    const personScopedFilter = personIds.length > 0 ? { personId: { in: personIds } } : { personId: { in: [] } };
+    //
+    // Defensive: drop empty/falsy ids before they reach a Prisma `in` filter on a
+    // uuid column. Open-demand positions (migrated from requester-less StaffingRequests)
+    // carry a null requestedByPersonId; if any caller coerces that to '' it would make
+    // Prisma throw "Error creating UUID, invalid length found 0" and 500 the whole desk.
+    const validPersonIds = personIds.filter((id) => typeof id === 'string' && id.length > 0);
+    const validProjectIds = projectIds.filter((id) => typeof id === 'string' && id.length > 0);
+    const personFilter = validPersonIds.length > 0 ? { id: { in: validPersonIds } } : { id: { in: [] } };
+    const projectFilter = validProjectIds.length > 0 ? { id: { in: validProjectIds } } : { id: { in: [] } };
+    const personScopedFilter = validPersonIds.length > 0 ? { personId: { in: validPersonIds } } : { personId: { in: [] } };
     const subjectScopedFilter =
-      personIds.length > 0 ? { subjectPersonId: { in: personIds } } : { subjectPersonId: { in: [] } };
+      validPersonIds.length > 0 ? { subjectPersonId: { in: validPersonIds } } : { subjectPersonId: { in: [] } };
 
     const [people, projects, personSkills, poolMemberships, orgMemberships, reportingLines] = await Promise.all([
       this.prisma.person.findMany({ where: personFilter, select: { id: true, displayName: true, grade: true, role: true, primaryEmail: true, employmentStatus: true } }),

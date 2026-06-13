@@ -316,6 +316,16 @@ export interface WorkforcePlannerResponseDto {
 
 /* ── Service ── */
 
+/** The Monday (UTC, 00:00) of the week containing `d`. Used to default a
+ *  missing/invalid planner `from` so the grid always has a valid origin. */
+function mondayOfUtc(d: Date): Date {
+  const day = d.getUTCDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  const m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  m.setUTCDate(m.getUTCDate() - daysFromMonday);
+  return m;
+}
+
 @Injectable()
 export class WorkforcePlannerService {
   public constructor(
@@ -335,9 +345,14 @@ export class WorkforcePlannerService {
     const now = new Date();
     const { from, weeks: weekCount, includeDrafts } = params;
 
-    // Generate week start dates
+    // Generate week start dates.
+    // Guard `from`: a missing or unparseable value yields an Invalid Date, and
+    // d.toISOString() then throws RangeError("Invalid time value"), 500-ing the
+    // whole planner. The endpoint must not crash on a missing param — default to
+    // the current week's UTC Monday so the Planner view always loads.
     const weekStarts: string[] = [];
-    const startDate = new Date(from);
+    const parsedFrom = from ? new Date(from) : new Date(NaN);
+    const startDate = Number.isNaN(parsedFrom.getTime()) ? mondayOfUtc(now) : parsedFrom;
     for (let i = 0; i < weekCount; i++) {
       const d = new Date(startDate);
       d.setUTCDate(d.getUTCDate() + i * 7);
