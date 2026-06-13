@@ -48,6 +48,7 @@ describe('CaseDetailsPage', () => {
       participants: [
         {
           personId: 'owner-1',
+          personName: 'Owner One',
           role: 'OWNER',
         },
       ],
@@ -68,6 +69,8 @@ describe('CaseDetailsPage', () => {
     expect(screen.getByRole('link', { name: 'prj-1' })).toHaveAttribute('href', '/projects/prj-1');
     expect(screen.getByRole('link', { name: 'asn-1' })).toHaveAttribute('href', '/projects/prj-1?position=asn-1');
     expect(screen.getByText('OWNER')).toBeInTheDocument();
+    // SC-7 — Participants table shows the resolved name, not the raw UUID.
+    expect(screen.getByText('Owner One')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open person' })).toHaveAttribute('href', '/people/owner-1');
   });
 

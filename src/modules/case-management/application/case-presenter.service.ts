@@ -75,6 +75,8 @@ export class CasePresenterService {
       participants: caseRecord.participants.map((participant) => ({
         personId: participant.personId,
         role: participant.role,
+        // SC-7 — resolve from the same map (no extra query).
+        personName: allPeopleById.get(participant.personId)?.displayName,
       })),
       relatedAssignmentId: caseRecord.relatedAssignmentId,
       relatedProjectId: caseRecord.relatedProjectId,
