@@ -315,7 +315,7 @@ export function CommandPalette({ onClose, open, recentPages = [] }: CommandPalet
   if (!open) return null;
 
   const groups = query
-    ? ['People', 'Projects', 'Pages', 'Actions']
+    ? ['People', 'Projects', 'Positions', 'Cases', 'Pages', 'Actions']
     : ['Recent', 'Pages', 'Actions'];
 
   return (
