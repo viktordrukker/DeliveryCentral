@@ -65,7 +65,23 @@ export default defineConfig({
     {
       name: 'chromium',
       dependencies: ['auth-setup'],
-      testIgnore: /(auth\.setup\.ts|v2\/baseline\.spec\.ts)/,
+      // The position-lifecycle journey (PR-19) self-authenticates via the auth
+      // API per-test, so it deliberately does NOT depend on auth-setup — it
+      // runs under its own `position-lifecycle` project below. Ignore it here
+      // to avoid double-running it (and coupling it to the auth-setup fixtures).
+      testIgnore: /(auth\.setup\.ts|v2\/baseline\.spec\.ts|v2\/position-lifecycle\.spec\.ts)/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      // PR-19 — the one true position-lifecycle journey. Self-contained
+      // (logs in via the auth API in-spec), so it needs no auth-setup
+      // dependency and runs identically locally (webServer) and against
+      // V2_STAGING_BASE_URL. Tagged @smoke so `--grep @smoke` (the e2e-smoke
+      // merge gate) picks it up.
+      name: 'position-lifecycle',
+      testMatch: /v2\/position-lifecycle\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },

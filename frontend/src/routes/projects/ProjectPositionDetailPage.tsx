@@ -307,7 +307,13 @@ export function ProjectPositionDetailPage(): JSX.Element {
             key: 'action',
             title: '',
             render: (c: PositionCandidate) => (
-              <Button variant="secondary" size="sm" onClick={() => setProposeFor(c)} type="button">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setProposeFor(c)}
+                type="button"
+                data-testid="position-propose-candidate"
+              >
                 Propose
               </Button>
             ),
@@ -373,11 +379,13 @@ export function ProjectPositionDetailPage(): JSX.Element {
                 <h3 className="section-card__title" style={{ margin: 0 }}>
                   Current fill{position.fillStatus === 'PROPOSED' ? ' — proposed' : ''}
                 </h3>
-                <StatusBadge
-                  tone={STATUS_TONE[position.fillStatus]}
-                  label={position.fillStatus}
-                  variant="chip"
-                />
+                <span data-testid="position-fill-status" data-status={position.fillStatus}>
+                  <StatusBadge
+                    tone={STATUS_TONE[position.fillStatus]}
+                    label={position.fillStatus}
+                    variant="chip"
+                  />
+                </span>
               </div>
               {HAS_FILL.has(position.fillStatus) && position.activePersonId ? (
                 <div
