@@ -1,0 +1,11 @@
+[
+  {
+    "id": "F-CAPTION-1", "altId": "SC-7", "severity": "P2", "class": "UX / raw-id shown instead of caption — SYSTEMIC", "verified": true,
+    "title": "History/audit/timeline/forensics views render raw person (and entity) UUIDs instead of names",
+    "exampleObserved": "Position detail → Fill history: Person transition shows '— → bbbb0001-…001' and the 'by' actor shows 'bbbb0001-…006' — raw UUIDs where the person's display name belongs. (URL itself is fine: /positions/pos_Q7wzX49cqbG uses a publicId.)",
+    "rootCause": "The PositionForensics DTO (frontend/src/lib/api/project-positions.ts) and its backend service (src/modules/project-positions/application/position-forensics.service.ts:79,108) expose previousPersonId/newPersonId/changedByPersonId as bare UUIDs and never resolve names. The page resolves only the HEADER person (ProjectPositionDetailPage.tsx:215 activePersonName); the Fill-history rows render the forensics IDs raw. Systemic: 53 distinct *PersonId fields in DTOs vs only 4 *PersonName — ~49 person refs ship without a caption; history/audit/timeline components (AssignmentHistoryTimeline, BusinessAuditTable, PersonActivityFeed, case steps/comments) render them raw.",
+    "userImpact": "Users see meaningless UUIDs in audit trails, fill history, activity feeds, and admin audit — exactly where 'who did what' must be human-readable.",
+    "suggestedFix": "Convention: (1) backend — for every display-facing *PersonId/actorId field, batch-resolve + emit a sibling *PersonName (start with PositionForensics: previousPersonName/newPersonName/changedByPersonName). (2) frontend — a shared <PersonName id/> (cached directory lookup) + <EntityCaption> for project/case refs; render names everywhere, id only as fallback/tooltip. This is concern B (captions); distinct from concern A (UUID→publicId on the wire/URL).",
+    "evidence": "position-forensics.service.ts:16,79,108; project-positions.ts PositionForensics (IDs only); ProjectPositionDetailPage.tsx:215 (header resolves, history does not); grep: 53 *PersonId vs 4 *PersonName fields."
+  }
+]

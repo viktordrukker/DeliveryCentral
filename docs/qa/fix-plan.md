@@ -89,3 +89,12 @@ Make route/nav visibility match each endpoint's `@RequireRoles`, and catch the u
 - **Frontend:** Phases 2-FE, 4, 5, 3-FE (one owner).
 - **Design:** Phase 7.
 Phase 0 blocks the cutover; Phases 1–2 are the bulk of the value; 3–6 are cleanup; 7 is parallel polish.
+
+---
+
+## Phase 8 — Representation cleanup: UUIDs → publicIds + human captions (cross-cutting epic)
+Two distinct tracks (do NOT entangle with Phase 0–1):
+
+**Track A — no raw UUIDs on the wire/URL (security, finishes DM-2.5 + F-1b-B/F-SYS-1).** Only persons have publicIds today (~18 refs / 104 models); projects/cases/positions-list/resource-pools expose raw UUIDs and ~25 FE deep-links use `.id`. Add `publicId` (or slug) + backfill to every browser-reachable aggregate, accept it on every `:id` route via `ParsePublicIdOrUuid`, migrate the ~25 FE links. **Decision gate:** opaque publicId vs human slug vs both.
+
+**Track B — no raw ids shown to humans (UX captions, `F-CAPTION-1`/SC-7).** 53 `*PersonId` DTO fields vs 4 `*PersonName`; history/audit/timeline/forensics views render UUIDs (e.g. position Fill history). Convention: backend emits a sibling `*PersonName` for every display-facing id; FE renders via a shared `<PersonName>`/`<EntityCaption>` resolver. First slice: `PositionForensics` → add `previousPersonName`/`newPersonName`/`changedByPersonName` (fixes the observed Fill-history screen).
