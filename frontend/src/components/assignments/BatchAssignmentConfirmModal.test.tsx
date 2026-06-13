@@ -6,9 +6,11 @@ import { renderRoute } from '@test/render-route';
 import { BatchAssignmentConfirmModal, type BatchPositionCreationResponse } from './BatchAssignmentConfirmModal';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
 
+let principalRoles: string[] = ['project_manager'];
+
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
-    principal: { personId: 'actor-1', roles: ['project_manager'] },
+    principal: { personId: 'actor-1', roles: principalRoles },
     isAuthenticated: true,
     isLoading: false,
   }),
@@ -18,6 +20,10 @@ const mockCreateAndBookPosition = vi.fn();
 
 vi.mock('@/lib/api/project-positions', () => ({
   createAndBookPosition: (req: unknown) => mockCreateAndBookPosition(req),
+  // Mirror the real predicate closely enough for the modal logic under test:
+  // detect the Σ-allocation guard 409 by its kind/message.
+  isOverallocationError: (err: unknown) =>
+    err instanceof Error && /over-allocation|OVERALLOCATION/i.test(err.message),
 }));
 
 function buildItem(over: Partial<AssignmentModalPreFill> = {}): AssignmentModalPreFill {
@@ -47,6 +53,7 @@ async function fillAndSubmit(user: ReturnType<typeof renderRoute>['user']): Prom
 describe('BatchAssignmentConfirmModal — atomic create-and-book fan-out', () => {
   beforeEach(() => {
     mockCreateAndBookPosition.mockReset();
+    principalRoles = ['project_manager'];
   });
 
   it('calls createAndBookPosition once per row with the shared role/allocation/date', async () => {
@@ -106,5 +113,56 @@ describe('BatchAssignmentConfirmModal — atomic create-and-book fan-out', () =>
     expect(response.failedCount).toBe(1);
     expect(response.failedItems[0].personId).toBe('person-404');
     expect(response.failedItems[0].message).toContain('Position not created');
+  }, 15000);
+
+  it('PR-20 (issue 679): RM sees an override checkbox after an over-allocation 409, and retrying threads allowOverallocation', async () => {
+    principalRoles = ['resource_manager'];
+    // First submit: the only row 409s on over-allocation.
+    mockCreateAndBookPosition.mockRejectedValueOnce(
+      new Error('Over-allocation: person would exceed 100%.'),
+    );
+    const onSuccess = vi.fn();
+    const items = [buildItem({ personId: 'person-1' })];
+
+    const { user } = renderRoute(
+      <BatchAssignmentConfirmModal open items={items} onCancel={() => {}} onSuccess={onSuccess} />,
+    );
+
+    await fillAndSubmit(user);
+
+    // The override checkbox appears for RM after the over-allocation failure.
+    const checkbox = await screen.findByRole('checkbox');
+    expect(checkbox).toBeInTheDocument();
+    await user.click(checkbox);
+
+    // Retry: this time the booking succeeds with the override threaded.
+    mockCreateAndBookPosition.mockResolvedValueOnce({
+      id: 'pos-1', projectId: 'proj-1', role: 'Engineer',
+      requiredAllocationPercent: 100, fillStatus: 'BOOKED', version: 3,
+    });
+    const submit = await screen.findByRole('button', { name: /Create \d+ Position/ });
+    await user.click(submit);
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(mockCreateAndBookPosition).toHaveBeenLastCalledWith(
+      expect.objectContaining({ allowOverallocation: true }),
+    );
+  }, 15000);
+
+  it('PR-20 (issue 679): a PM does NOT get the override checkbox on an over-allocation 409', async () => {
+    principalRoles = ['project_manager'];
+    mockCreateAndBookPosition.mockRejectedValueOnce(
+      new Error('Over-allocation: person would exceed 100%.'),
+    );
+    const onSuccess = vi.fn();
+    const items = [buildItem({ personId: 'person-1' })];
+
+    const { user } = renderRoute(
+      <BatchAssignmentConfirmModal open items={items} onCancel={() => {}} onSuccess={onSuccess} />,
+    );
+
+    await fillAndSubmit(user);
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   }, 15000);
 });

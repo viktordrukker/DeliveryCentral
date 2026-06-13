@@ -13,6 +13,9 @@ export interface QuickAssignForm {
   staffingRole: string;
   startDate: string;
   success: string | null;
+  // PR-20 (issue 679) — Σ-allocation guard 409 retry affordance.
+  overallocBlocked: boolean;
+  allowOverallocation: boolean;
 }
 
 interface RmQuickAssignModalProps {
@@ -20,6 +23,8 @@ interface RmQuickAssignModalProps {
   form: QuickAssignForm;
   managedPeople: Array<{ id: string; displayName: string }>;
   projects: ProjectDirectoryItem[];
+  /** RM/DM/admin only — gates the over-allocation override checkbox. */
+  canOverrideOveralloc: boolean;
   onClose: () => void;
   onChange: (patch: Partial<QuickAssignForm>) => void;
   onSubmit: (e: FormEvent) => void;
@@ -30,6 +35,7 @@ export function RmQuickAssignModal({
   form,
   managedPeople,
   projects,
+  canOverrideOveralloc,
   onClose,
   onChange,
   onSubmit,
@@ -156,6 +162,17 @@ export function RmQuickAssignModal({
               value={form.startDate}
             />
           </label>
+          {/* PR-20 (issue 679) — over-allocation override + retry (RM/DM/admin only) */}
+          {form.overallocBlocked && canOverrideOveralloc && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.allowOverallocation}
+                onChange={(e) => onChange({ allowOverallocation: e.target.checked })}
+              />
+              <span>Override and book anyway (records an over-allocation override)</span>
+            </label>
+          )}
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
             <Button variant="primary" disabled={form.isSubmitting} type="submit">
               {form.isSubmitting ? 'Submitting...' : 'Create position'}

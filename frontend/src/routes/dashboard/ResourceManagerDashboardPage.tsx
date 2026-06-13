@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 
 import { useAuth } from '@/app/auth-context';
+import { hasAnyRole, OVERALLOCATION_OVERRIDE_ROLES } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { DateRangePreset } from '@/components/common/DateRangePreset';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -17,7 +18,7 @@ import { DemandPipelineChart } from '@/components/charts/DemandPipelineChart';
 import { PendingApprovalsCard } from '@/components/dashboard/PendingApprovalsCard';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
 import { useResourceManagerDashboard } from '@/features/dashboard/useResourceManagerDashboard';
-import { createAndBookPosition } from '@/lib/api/project-positions';
+import { createAndBookPosition, isOverallocationError } from '@/lib/api/project-positions';
 import { ORG_DATA_CHANGED_EVENT } from '@/features/org-chart/useOrgChart';
 import { fetchProjectDirectory, ProjectDirectoryItem } from '@/lib/api/project-registry';
 import { ResourcePersonAllocationIndicator } from '@/lib/api/dashboard-resource-manager';
@@ -66,6 +67,8 @@ const INITIAL_QUICK_ASSIGN: QuickAssignForm = {
   staffingRole: '',
   startDate: '',
   success: null,
+  overallocBlocked: false,
+  allowOverallocation: false,
 };
 
 /* ── Component ───────────────────────────────────────────────────── */
@@ -80,6 +83,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
   const [projects, setProjects] = useState<ProjectDirectoryItem[]>([]);
   const [lastFetch, setLastFetch] = useState(new Date());
   const [quickForm, setQuickForm] = useState<QuickAssignForm>(INITIAL_QUICK_ASSIGN);
+  const canOverrideOveralloc = hasAnyRole(principal?.roles, OVERALLOCATION_OVERRIDE_ROLES);
 
   useEffect(() => {
     void fetchProjectDirectory({ status: 'ACTIVE' }).then((res) => setProjects(res.items));
@@ -142,6 +146,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
       // OPEN→BOOKED edge and orphaned OPEN positions.
       const allocation = Number(quickForm.allocationPercent);
       const startIso = `${quickForm.startDate}T00:00:00.000Z`;
+      const overrideArmed = quickForm.allowOverallocation && canOverrideOveralloc;
       await createAndBookPosition({
         projectId: quickForm.projectId,
         personId: quickForm.personId,
@@ -149,6 +154,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
         allocationPercent: allocation,
         startDate: startIso,
         endDate: startIso,
+        ...(overrideArmed ? { allowOverallocation: true } : {}),
       });
       setQuickForm({
         ...INITIAL_QUICK_ASSIGN,
@@ -156,9 +162,12 @@ export function ResourceManagerDashboardPage(): JSX.Element {
       });
       window.dispatchEvent(new CustomEvent(ORG_DATA_CHANGED_EVENT));
     } catch (err) {
+      // PR-20 (issue 679) — Σ-allocation guard 409 keeps the modal open with
+      // the server message; RM/DM/admin get an override-and-retry checkbox.
       setQuickForm((prev) => ({
         ...prev,
         error: err instanceof Error ? err.message : 'Failed to create assignment.',
+        overallocBlocked: isOverallocationError(err),
         isSubmitting: false,
       }));
     }
@@ -330,6 +339,7 @@ export function ResourceManagerDashboardPage(): JSX.Element {
         form={quickForm}
         managedPeople={managedPeople}
         projects={projects}
+        canOverrideOveralloc={canOverrideOveralloc}
         onClose={() => setShowModal(false)}
         onChange={(patch) => setQuickForm((prev) => ({ ...prev, ...patch }))}
         onSubmit={(e) => { void handleQuickAssign(e); }}
