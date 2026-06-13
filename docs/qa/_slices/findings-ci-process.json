@@ -1,0 +1,17 @@
+[
+  {
+    "id": "F-CI-1", "severity": "P2", "class": "process / supply-chain", "verified": true,
+    "title": "main branch is NOT protected — no required status checks enforce 'green before merge'",
+    "rootCause": "GET repos/.../branches/main/protection → 404 'Branch not protected'. Anyone (or any automation) can merge to main with red/absent checks; main auto-builds+deploys to staging + V2 (build-and-stage / build-and-stage-v2), so an ungated bad merge ships to deliverit-test-v2 with no gate.",
+    "suggestedFix": "Enable branch protection on main requiring the gating checks (build-and-stage-v2, Backend fast checks, Frontend quality, architecture, Schema drift) + at least 1 review. Keeps the established green-before-merge discipline enforced, not optional.",
+    "evidence": "gh api repos/viktordrukker/DeliveryCentral/branches/main/protection → 404 Branch not protected."
+  },
+  {
+    "id": "F-CI-2", "severity": "P3", "class": "test-suite / CI coverage", "verified": true,
+    "title": "14 radiator-scorers band-boundary unit tests fail on main HEAD (test vs code boundary semantics)",
+    "rootCause": "radiator-scorers.spec.ts asserts inclusive boundaries (overallScoreToBand(25)=CRITICAL, (50)=RED, (75)=AMBER; scoreToBand(3)=AMBER), but radiator-scorers.ts uses strict '<' (boundary → better band) and the doc comment matches the code ('score < 1.0 → CRITICAL'). So the TEST contradicts the documented+implemented semantics. Fails on pristine b70f0aae (not introduced by any QA fix).",
+    "impact": "main's local unit suite is red. Either CI's 'Backend fast' job is also red (and unprotected-main lets merges through) or it excludes these tests (coverage gap). Low USER impact (only exact-boundary scores 25.0/50.0/75.0 differ RED↔CRITICAL etc.).",
+    "suggestedFix": "Decide the boundary semantics: if strict-< is intended (code+doc), fix the 14 test assertions; if a score exactly at the cutoff should be the WORSE band (conservative risk), change cutoffs to '<=' in scoreToBand/overallScoreToBand and update the doc. Then confirm CI 'Backend fast' actually runs this spec.",
+    "evidence": "radiator-scorers.ts:152-171 (strict '<' + doc); radiator-scorers.spec.ts:170-176 (inclusive expectations); local jest: 14 failed / 86 passed on pristine main."
+  }
+]
