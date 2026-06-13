@@ -17377,7 +17377,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_2",
@@ -17388,7 +17388,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_3",
@@ -17399,7 +17399,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_4",
@@ -17410,18 +17410,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_5",
     "kind": "route",
     "ref": "/",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Workload Overview nav=true obsoleteV2=true flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "obsolete in V2"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_6",
@@ -17476,7 +17476,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=PM Dashboard nav=false obsoleteV2=false flag=dashProjectManager",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_11",
@@ -17487,7 +17487,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=RM Dashboard nav=false obsoleteV2=false flag=dashResourceManager",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_12",
@@ -17498,7 +17498,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=HR Dashboard nav=false obsoleteV2=false flag=dashHr",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_13",
@@ -17509,18 +17509,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Delivery Dashboard nav=false obsoleteV2=false flag=dashDeliveryManager",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_14",
     "kind": "route",
     "ref": "/dashboard/director",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Director Dashboard nav=false obsoleteV2=false flag=dashDirector",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "rendered clean"
   },
   {
     "id": "rt_15",
@@ -17531,7 +17531,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_16",
@@ -17542,7 +17542,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_17",
@@ -17553,7 +17553,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_18",
@@ -17608,7 +17608,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_23",
@@ -17619,29 +17619,29 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_24",
     "kind": "route",
     "ref": "/people",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=People nav=true obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "BROKEN",
+    "rawVerdict": "RENDER-ERROR(js)",
+    "evidence": "driven roles=[director,resource_manager,employee] verdict=RENDER-ERROR(js) js:wa: Insufficient role for this operation.",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_25",
     "kind": "route",
     "ref": "/people/bench",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Bench nav=true obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[resource_manager] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_26",
@@ -17652,7 +17652,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_27",
@@ -17669,12 +17669,12 @@
     "id": "rt_28",
     "kind": "route",
     "ref": "/approvals",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Approvals nav=true obsoleteV2=false flag=dsRefresh",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director,delivery_manager] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_29",
@@ -17685,7 +17685,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_30",
@@ -17707,29 +17707,29 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_32",
     "kind": "route",
     "ref": "/people/:id",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=- nav=null obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[director] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_33",
     "kind": "route",
     "ref": "/projects",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Projects nav=true obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[director,employee] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_34",
@@ -17740,29 +17740,29 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_35",
     "kind": "route",
     "ref": "/projects/:id",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=- nav=null obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[director] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_36",
     "kind": "route",
     "ref": "/projects/:id/dashboard",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=- nav=null obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[director] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_37",
@@ -17817,7 +17817,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_42",
@@ -17828,7 +17828,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_43",
@@ -17839,18 +17839,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_44",
     "kind": "route",
     "ref": "/me",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Home nav=true obsoleteV2=false flag=workspaceMe",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[director,employee] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_45",
@@ -17861,7 +17861,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_46",
@@ -17872,7 +17872,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_47",
@@ -17883,7 +17883,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_48",
@@ -17894,7 +17894,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_49",
@@ -17905,7 +17905,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_50",
@@ -17916,7 +17916,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_51",
@@ -17927,7 +17927,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_52",
@@ -17938,7 +17938,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_53",
@@ -17949,7 +17949,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_54",
@@ -17971,7 +17971,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_56",
@@ -17993,7 +17993,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Workload Matrix nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_58",
@@ -18004,18 +18004,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Workload Planning nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_59",
     "kind": "route",
     "ref": "/my-time",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=My Time nav=true obsoleteV2=true flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[employee] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "obsolete in V2"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_60",
@@ -18032,12 +18032,12 @@
     "id": "rt_61",
     "kind": "route",
     "ref": "/timesheets",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=My Timesheet nav=false obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "DEGRADED",
+    "rawVerdict": "CONSOLE-ERRORS",
+    "evidence": "driven roles=[employee] verdict=CONSOLE-ERRORS",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "see fix-list (Phase 1b finding)"
   },
   {
     "id": "rt_62",
@@ -18048,7 +18048,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Timesheet Approval nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_63",
@@ -18059,18 +18059,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Time Off nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_64",
     "kind": "route",
     "ref": "/reports",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Reports nav=true obsoleteV2=false flag=dsRefresh",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_65",
@@ -18131,12 +18131,12 @@
     "id": "rt_70",
     "kind": "route",
     "ref": "/cases",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=HR Queue nav=true obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_71",
@@ -18147,7 +18147,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_72",
@@ -18158,18 +18158,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_73",
     "kind": "route",
     "ref": "/staffing-desk",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=Staffing Desk nav=true obsoleteV2=false flag=dsRefresh",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director,resource_manager] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "rendered clean"
   },
   {
     "id": "rt_74",
@@ -18180,7 +18180,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_75",
@@ -18191,7 +18191,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_76",
@@ -18202,7 +18202,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_77",
@@ -18213,7 +18213,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_78",
@@ -18224,18 +18224,18 @@
     "rawVerdict": "render-pending",
     "evidence": "title=- nav=null obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_79",
     "kind": "route",
     "ref": "/cases/:id",
-    "tested": "registered in manifest + data-layer endpoints probed",
-    "result": "RENDER-PENDING",
-    "rawVerdict": "render-pending",
-    "evidence": "title=- nav=null obsoleteV2=false flag=-",
+    "tested": "Playwright render + console/network (Phase 1b)",
+    "result": "OK",
+    "rawVerdict": "OK",
+    "evidence": "driven roles=[director] verdict=OK",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "rendered clean"
   },
   {
     "id": "rt_80",
@@ -18246,7 +18246,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Admin nav=true obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "V2 nav route — not in driven set"
   },
   {
     "id": "rt_81",
@@ -18257,7 +18257,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Admin Dictionaries (legacy) nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_82",
@@ -18356,7 +18356,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Settings nav=true obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": "V2 nav-visible route — prioritize for Phase 1b render sweep"
+    "notes": "V2 nav route — not in driven set"
   },
   {
     "id": "rt_91",
@@ -18455,7 +18455,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Role Permissions nav=false obsoleteV2=false flag=-",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_100",
@@ -18466,7 +18466,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=Governance nav=false obsoleteV2=false flag=dsRefresh",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_101",
@@ -18477,7 +18477,7 @@
     "rawVerdict": "render-pending",
     "evidence": "title=V2 Soak Checklist nav=false obsoleteV2=false flag=dsRefresh",
     "dataConsistent": "n/a",
-    "notes": ""
+    "notes": "registered + data-layer probed"
   },
   {
     "id": "rt_102",

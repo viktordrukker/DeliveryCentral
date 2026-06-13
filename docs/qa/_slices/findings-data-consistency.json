@@ -1,0 +1,38 @@
+[
+  {
+    "id": "F-DC-1",
+    "title": "Sidebar nav badges don't match their drilldown list counts (Law 9)",
+    "severity": "P3",
+    "class": "data-consistency / UX-Law-9",
+    "verified": true,
+    "surface": "frontend + backend",
+    "rootCause": "sidebar-counts.service.ts counts a deliberately narrower population than each destination page lists: projects badge = count(status in ACTIVE/DRAFT/PENDING_APPROVAL/ON_HOLD)=10 while /projects lists all 40; approvals badge = sum of 5 pending sources (PROPOSED positions + PENDING budget + null-decision activation + PENDING leave + OPEN cases)=8 while /approvals renders 7 sources (adds skill-review + timesheet)=25; hrQueue badge = composite (OPEN cases + Person field counts)=203 vs /api/hr/action-cards=50. Bench is the one that matches exactly (135=135) because the badge and page share the canonical countBench().",
+    "userImpact": "A user clicking a badge of N lands on a page showing a different count — erodes trust and violates UX Law 9 (every count links to the filtered list that produced it). Not breakage; the numbers are individually correct for their own definition.",
+    "suggestedFix": "Either (a) make each badge count the SAME query the destination page's default view runs (e.g. approvals badge should include all 7 unified sources, or the page should default-filter to the 5 pending ones), or (b) label the badge as 'N need action' so it reads as an actionable subset, not a list total. Product decision needed per badge. Bench is the reference pattern (shared canonical query).",
+    "evidence": "src/modules/dashboard/application/sidebar-counts.service.ts:41-106; live /api/me/sidebar-counts={projects:10,approvals:8,bench:135,hrQueue:203} vs /api/projects=40, /api/approvals/unified=25, /api/people/bench=135, /api/hr/action-cards=50."
+  },
+  {
+    "id": "F-SYS-1",
+    "title": "Systemic: publicId deep-links hit UUID-only endpoints (201 ParseUUIDPipe vs 13 publicId-tolerant)",
+    "severity": "P2",
+    "class": "id-type-contract / systemic",
+    "verified": "partial",
+    "surface": "backend + frontend",
+    "rootCause": "The no-UUIDs-in-browser migration made the FE deep-link with opaque publicIds, but only 13 controller params adopted ParsePublicIdOrUuid while 201 still use ParseUUIDPipe (UUID-only). Any FE surface that deep-links a publicId into a UUID-only endpoint 400s. CONFIRMED instance: the person-detail page (finding F-1b-B) — /people/:id/profile, /suggested-positions, /skills, /360 are all UUID-only yet receive the publicId. UNAUDITED: project/case/resource-pool/team detail drilldowns may have the same latent mismatch depending on whether their FE links use publicId or UUID.",
+    "userImpact": "Confirmed: whole person-detail surface broken on dsRefresh (see F-1b-B). Potential: other detail drilldowns if they deep-link publicId.",
+    "suggestedFix": "Audit every FE deep-link param (grep `/<entity>/${...publicId ?? ...id}`) against the backend param pipe for that route; migrate UUID-only endpoints that receive a publicId to ParsePublicIdOrUuid(<Aggregate>) (the W1-09 pattern). Prioritise the entities whose FE links use publicId.",
+    "evidence": "grep ParseUUIDPipe (201) vs ParsePublicIdOrUuid (13) across src/modules/**/*.controller.ts; person sub-resource endpoints UUID-only: skills.controller.ts:81,92; people-360.controller.ts:40; person-profile.controller.ts:29; project-positions.controller.ts:367."
+  },
+  {
+    "id": "F-FLAG-1",
+    "title": "Flag hygiene: 46/90 feature flags are declared but not consumed by any gate",
+    "severity": "P3",
+    "class": "hygiene / dead-config",
+    "verified": true,
+    "surface": "backend + frontend",
+    "rootCause": "Per the Phase-3 census, 46 of 90 flags in feature-flags.ts / PLATFORM_FLAGS are registry-declared but never read by a route-manifest `flag:` entry or an isFeatureEnabled() call — they gate nothing (e.g. actionItems, authTwoFactor, cmdkPeopleSearch). 3 (workflowDefinitions, customFields, entityLayouts) correctly hide scaffolded never-consumed features (good — keep OFF).",
+    "userImpact": "None at runtime; config noise + false sense of control. An operator toggling a dead flag sees no effect.",
+    "suggestedFix": "Sweep: for each declared-but-ungated flag, either wire the gate it was meant for or remove the flag from the registry + FE mirror. Keep the 3 half-built-hider flags. See docs/qa/feature-toggles.md for the full list.",
+    "evidence": "docs/qa/feature-toggles.md; 46/90 rows whose gates note 'NOT consumed / NOT wired / no gate'."
+  }
+]
