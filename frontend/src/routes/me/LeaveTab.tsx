@@ -66,6 +66,18 @@ interface Loaded {
  *
  * No new tokens. Uses Calendar + BalanceMeter (ds-trunk-2 / ds-trunk-3).
  */
+
+// A native <input type="date"> emits intermediate values while the user types
+// the year (e.g. "0202-07-07" before "2026-07-07"). Treat a date as complete
+// only when it is a well-formed ISO date with a sane 4-digit year, so the
+// server preview isn't fired on half-typed input (which 400s).
+export function isCompleteDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  if (year < 2000 || year > 2100) return false;
+  return !Number.isNaN(new Date(value).getTime());
+}
+
 export function LeaveTab(): JSX.Element {
   const { principal } = useAuth();
   const year = new Date().getFullYear();
@@ -138,7 +150,9 @@ export function LeaveTab(): JSX.Element {
   // from the backend (project positions + team leave in same OrgUnit).
   useEffect(() => {
     if (!dsRefresh) return;
-    if (!startDate || !endDate) {
+    // Wait for both dates to be fully formed (sane year) before hitting the
+    // server — avoids 400s from intermediate values while typing the year.
+    if (!isCompleteDate(startDate) || !isCompleteDate(endDate)) {
       setServerPreview(null);
       return;
     }
