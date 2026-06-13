@@ -337,3 +337,52 @@ describe('UnifiedApprovalQueueService — leave source', () => {
     expect(out.items).toHaveLength(0);
   });
 });
+
+/**
+ * PR-20 — every approval-queue loader (not just position-proposal) now reads
+ * a stable newest-first window (orderBy updatedAt desc) instead of an
+ * unordered take:100, so a busy queue never silently drops recent rows.
+ */
+describe('UnifiedApprovalQueueService — stable ordering across all loaders', () => {
+  function buildStub(): {
+    prisma: PrismaService;
+    args: () => Record<string, unknown>;
+  } {
+    const captured: Record<string, unknown> = {};
+    const capture =
+      (model: string) =>
+      async (a: unknown) => {
+        captured[model] = a;
+        return [];
+      };
+    const prisma = {
+      projectPosition: { findMany: capture('projectPosition') },
+      budgetApproval: { findMany: capture('budgetApproval') },
+      projectActivationApproval: { findMany: capture('projectActivationApproval') },
+      leaveRequest: { findMany: capture('leaveRequest') },
+      caseRecord: { findMany: capture('caseRecord') },
+      timesheetWeek: { findMany: capture('timesheetWeek') },
+      project: { findMany: async () => [] },
+      person: { findMany: async () => [] },
+    } as unknown as PrismaService;
+    return { prisma, args: () => captured };
+  }
+
+  it.each([
+    ['budget', 'budgetApproval'],
+    ['activation', 'projectActivationApproval'],
+    ['leave', 'leaveRequest'],
+    ['case', 'caseRecord'],
+  ])('%s loader orders by updatedAt desc with take 100', async (source, model) => {
+    const { prisma, args } = buildStub();
+    const svc = new UnifiedApprovalQueueService(
+      prisma,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSkillEndorsement,
+    );
+    await svc.list({ sources: [source as never] });
+    expect(args()[model]).toMatchObject({
+      orderBy: { updatedAt: 'desc' },
+      take: 100,
+    });
+  });
+});
