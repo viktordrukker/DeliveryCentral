@@ -200,13 +200,15 @@ export const SOAK_JOURNEYS: readonly SoakJourneyDefinition[] = [
   },
   {
     id: 'J-09',
-    title: 'RM runs auto-match candidates',
+    title: 'RM reviews the candidate slate for an open position',
     persona: 'resource_manager',
     steps: [
-      { action: 'navigate', target: '/staffing-desk?view=planner' },
+      { action: 'navigate', target: '/staffing-desk?view=board' },
       { action: 'selectRow', value: 'first open position' },
-      { action: 'click', target: 'Auto-match' },
-      { action: 'expectVisible', value: 'candidate ranking' },
+      { action: 'expectRoute', value: '/staffing-desk/positions/:id' },
+      // The ranked candidate slate (GET /:id/candidates) loads with the page —
+      // no Auto-match click (that button was removed in issue 677).
+      { action: 'expectVisible', value: 'candidate slate' },
       { action: 'expectMinResults', value: 1 },
     ],
     expectedOutcome: passFor(['admin', 'director', 'delivery_manager', 'resource_manager', 'project_manager', 'dual_role']),
@@ -215,12 +217,13 @@ export const SOAK_JOURNEYS: readonly SoakJourneyDefinition[] = [
   },
   {
     id: 'J-10',
-    title: 'RM proposes a candidate',
+    title: 'RM proposes a candidate from the slate',
     persona: 'resource_manager',
     steps: [
-      { action: 'navigate', target: '/staffing-desk?view=planner' },
-      { action: 'selectRow', value: 'candidate from J-09' },
+      { action: 'navigate', target: '/staffing-desk?view=board' },
+      { action: 'selectRow', value: 'open position from J-09' },
       { action: 'click', target: 'Propose' },
+      { action: 'confirmDialog' },
       { action: 'expectStatus', value: 'PROPOSED' },
     ],
     expectedOutcome: passFor(['admin', 'director', 'delivery_manager', 'resource_manager', 'project_manager', 'dual_role']),
