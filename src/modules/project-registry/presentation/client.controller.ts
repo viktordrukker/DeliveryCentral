@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -32,15 +32,15 @@ export class ClientController {
   @ApiOperation({ summary: 'Create a client' })
   @ApiCreatedResponse({ description: 'Client created.' })
   @RequireRoles('admin', 'project_manager')
-  public async create(@Body() dto: CreateClientDto) {
-    return this.clientService.create(dto);
+  public async create(@Body() dto: CreateClientDto, @Req() req: { principal?: { personId?: string } }) {
+    return this.clientService.create(dto, req.principal?.personId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a client' })
   @ApiOkResponse({ description: 'Client updated.' })
   @RequireRoles('admin', 'project_manager')
-  public async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateClientDto) {
-    return this.clientService.update(id, dto);
+  public async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateClientDto, @Req() req: { principal?: { personId?: string } }) {
+    return this.clientService.update(id, dto, req.principal?.personId);
   }
 }

@@ -23,6 +23,7 @@ import {
 import { Button, FormField, Input, Table, type Column } from '@/components/ds';
 import { AdminRightRail } from './AdminRightRail';
 import { BusinessAuditAdminContent } from './BusinessAuditPage';
+import { ClientRegistryAdminContent } from './ClientRegistryPage';
 import { DictionariesAdminContent } from './DictionariesPage';
 import { FeatureFlagsAdminContent } from './FeatureFlagsAdminPage';
 import { IntegrationsAdminContent } from './IntegrationsAdminPage';
@@ -245,6 +246,9 @@ function AdminTabContent({
           </SectionCard>
           <SectionCard title="Dictionaries">
             <DictionariesAdminContent />
+          </SectionCard>
+          <SectionCard title="Clients">
+            <ClientRegistryAdminContent />
           </SectionCard>
         </div>
       );
