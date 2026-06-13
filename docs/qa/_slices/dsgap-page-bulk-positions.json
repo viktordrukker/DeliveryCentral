@@ -1,0 +1,34 @@
+[
+  {
+    "canvas": "page-bulk-positions",
+    "implementingRoute": "/staffing-requests/bulk (router.tsx:451; lazy import router.tsx:147; guarded by STAFFING_DESK_ROLES)",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/staffing-desk/BulkCreatePositionsPage.tsx",
+      "/tmp/dc-qa/frontend/src/app/router.tsx",
+      "/tmp/dc-qa/frontend/src/components/ds/Table.tsx",
+      "/tmp/dc-qa/frontend/src/components/common/StatusBadge.tsx"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "Count column on the entry grid — canvas spec (page-bulk-positions.jsx:101-104, BULK_ROWS count field, spec-note lines 16-17) makes count×alloc the core 'one row → N positions' expansion. FE columns are idx/project/role/start/end/alloc/status/remove (BulkCreatePositionsPage.tsx:375-546) — no count; each row creates exactly one ProjectPosition (handleSubmit loop, lines 196-217).",
+      "Aggregate validation banner — canvas section 4 (banner banner-danger, page-bulk-positions.jsx:140-147: 'N rows block submission · M warnings' + 'Jump to error'). FE has no banner; surfaces a generic ErrorState 'Fix N invalid row(s)' only after submit (BulkCreatePositionsPage.tsx:186-189, 260).",
+      "Summary footer metrics — canvas section 5 (page-bulk-positions.jsx:151-163) shows Rows / Positions / Total FTE (Σ count×alloc%) tiles. FE has only a one-line counter '{n} rows · pending · opened · failed' (BulkCreatePositionsPage.tsx:322-325); no Positions total, no Total FTE.",
+      "Paste-from-spreadsheet hint — canvas add-row strip (page-bulk-positions.jsx:135 'or paste rows… ⌘V maps role → count → alloc → start → end'). FE add-row strip has no paste hint (BulkCreatePositionsPage.tsx:312-326).",
+      "Per-row validation 'Check' state via StatusBadge — canvas Check column renders StatusBadge tone=active/danger/warning with the message (page-bulk-positions.jsx:121-125). FE Status column instead shows submission lifecycle (Pending/Opening…/Opened/Failed) as a plain colored <span> (BulkCreatePositionsPage.tsx:518-544), not the live validation verdict.",
+      "Warning (non-blocking) row state — canvas distinguishes error (blocks) vs warning (freeze-window, submittable, routes to Director approval) with row tint + warning StatusBadge (page-bulk-positions.jsx:38, 113-114, 124). FE validateRow only produces hard errors (BulkCreatePositionsPage.tsx:97-111); no warning tier."
+    ],
+    "extraSections": [
+      "Default-project selector + 'Apply to empty rows' button (BulkCreatePositionsPage.tsx:270-296) — not in canvas (canvas fixes one project via the drawer header 'Change project' picker, page-bulk-positions.jsx:83-91; FE instead has a per-row Project select column, line 383-407).",
+      "'Open immediately (skip DRAFT)' checkbox (BulkCreatePositionsPage.tsx:328-337) — not in canvas; canvas spec-note states positions are always created OPEN on submit (page-bulk-positions.jsx:25-26).",
+      "Per-row submission Status column with retry semantics (Pending/Opening/Opened/Failed, BulkCreatePositionsPage.tsx:518-544; partial-failure retry lines 176-233) — canvas models submit as an atomic disabled-while-error action with no per-row progress."
+    ],
+    "orderIssues": "Header → entry grid → add-row strip → submit/cancel ordering is preserved. The canvas's two terminal zones are absent/relocated: the aggregate validation banner (canvas places it after the grid, before the footer) does not exist; the summary footer is collapsed into the inline counter + button row. Also FE is a full PageContainer page, not the wide drawer-over-Desk the canvas specifies (page-bulk-positions.jsx:1-5, 75-81) — so the 'land back on the filtered Desk' continuity is via navigate('/staffing-desk?view=table') (BulkCreatePositionsPage.tsx:223,350) rather than a drawer dismiss.",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "BulkCreatePositionsPage.tsx:533-542 — status cell is a raw <span> with inline token color; canvas (page-bulk-positions.jsx:122-124) specifies <StatusBadge> here. StatusBadge atom exists at components/common/StatusBadge.tsx but is not used.",
+      "BulkCreatePositionsPage.tsx:298-310 — DS Table is used (good) but error/warning row tint is not applied; DS Table exposes rowStyle (components/ds/Table.tsx:143, applied line 465) which the canvas row-tint (page-bulk-positions.jsx:112-115) maps to, so the affordance exists and is unused.",
+      "BulkCreatePositionsPage.tsx:328-337 — raw <input type=checkbox> + <label> for 'Open immediately'; no DS checkbox atom in components/ds, so this is a forced raw primitive (and the field itself is extra vs canvas)."
+    ],
+    "evidence": "Implementing component BulkCreatePositionsPage.tsx routed at /staffing-requests/bulk (router.tsx:451). DS primitives used: Table + Button from @/components/ds (BulkCreatePositionsPage.tsx:11,298-310,287-295), SectionCard/PageContainer/PageHeader from common (lines 8-10,241-247). No raw hex (grep #[0-9a-fA-F]{3,8} → 0 hits); no raw <table>/<button> (grep → 0 hits); inline colors all use var() tokens (lines 322,379,526-531). Verdict PARTIAL: header + grid + add-row + submit zones present, but canvas Count column, aggregate validation banner, and Rows/Positions/Total-FTE summary footer are MISSING (column keys idx/project/role/start/end/alloc/status/remove, lines 375-546; counter line 322-325). Status cell uses plain <span> instead of canvas StatusBadge (lines 533-542 vs page-bulk-positions.jsx:121-125). FE adds default-project selector, open-immediately checkbox, and per-row submission lifecycle not in canvas. FE is a full page, not the wide drawer-over-Desk the canvas mandates (page-bulk-positions.jsx:1-5)."
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "canvas": "page-reports",
+    "implementingRoute": "/reports",
+    "files": [
+      "frontend/src/routes/reports/ReportsPage.tsx",
+      "frontend/src/routes/reports/TimeReportPage.tsx",
+      "frontend/src/routes/reports/UtilizationPage.tsx",
+      "frontend/src/app/route-manifest.ts"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "Tab strip mismatch: canvas specifies EXACTLY two live tabs — 'Time analytics' and 'Utilization' (page-reports.jsx:36-39, spec note line 12-15 'V2 ships exactly TWO live tabs'). FE renders SIX tabs (ReportsPage.tsx:59-66: exceptions, time, capitalisation/CAPEX, export, utilization, evidence).",
+      "Time tab — canvas hero is a single grouped-bar chart 'Submitted vs approved hours · weekly' (page-reports.jsx:167-183). FE TimeReportPage hero is a stacked AREA chart 'Weekly Time Distribution' of Standard/Overtime/Bench (TimeReportPage.tsx:172-190) — different metric (no submitted-vs-approved encoding) and different chart type.",
+      "Time tab — canvas 'Approval gap widening' warning banner with 'Open Time Management' drill CTA (page-reports.jsx:174-181) is absent in FE.",
+      "Time tab — canvas breakdown table is 'by org unit' with columns Org unit / Submitted / Approved / Approval rate / Late submissions / Trend·6w (page-reports.jsx:195-233). FE detail table is 'Detail by Person' with Standard/Overtime/Bench/Total columns (TimeReportPage.tsx:271-295) — different grouping and columns; no approval-rate/late/trend-sparkline.",
+      "Utilization tab — canvas hero is a per-team horizontal bar with billable+allocated overlay and 70/110% threshold marks (page-reports.jsx:310-344). FE hero is a per-PERSON vertical bar of a single utilizationPercent value (UtilizationPage.tsx:201-233) — no team rollup, no billable-vs-allocated dual encoding, no 70/110 threshold marks.",
+      "Utilization tab — canvas supporting table is 'By person · outside 70–110%' showing Person/Team/Billable/Allocated(util-bar)/Flag, flagged rows floated to top, drill to Profile (page-reports.jsx:347-395). FE table shows Person/Available Hrs/Assigned Hrs/Actual Hrs/Utilization with no Team column, no over/under Flag badges, no outside-band sort, no Profile drilldown (UtilizationPage.tsx:250-262).",
+      "Utilization tab — canvas reuses the Staffing-Desk .util-bar/.over-track cell with 70/110 marks (page-reports.jsx:267-282). FE uses a bespoke inline UtilizationBar div (UtilizationPage.tsx:45-70) — not the shared util-cell encoding."
+    ],
+    "extraSections": [
+      "ReportsPage.tsx:60 — 'Exceptions' tab (canvas page-reports.jsx does not list it; folded in via route-manifest D-137, not part of the Reports canvas).",
+      "ReportsPage.tsx:62 — 'CAPEX'/Capitalisation tab (canvas explicitly RETIRES capitalisation — page-reports.jsx:30 'capitalisation (retired)').",
+      "ReportsPage.tsx:63 — 'Export' / Export Centre tab (canvas omits scheduled/export center; Export is a per-tab ghost button, not a tab — page-reports.jsx:30-31).",
+      "ReportsPage.tsx:65 — 'Evidence' tab (canvas does not list it; folded in via route-manifest D-138).",
+      "TimeReportPage.tsx:143-170 — KPI strip of 6 tiles. Canvas deliberately omits a KPI strip ('KPI strip (the hero chart IS the summary)' — page-reports.jsx:31).",
+      "TimeReportPage.tsx:192-268 — 2x2 chart grid (Hours by Project / Hours by Person / CAPEX vs OPEX pie / Daily Hours). Canvas Time tab has only one hero chart + one breakdown table; these four panels are extra.",
+      "UtilizationPage.tsx:164-198 — KPI strip of 4 tiles (People / Avg Utilization / Over-allocated / Under-utilized). Canvas Utilization tab has no KPI strip."
+    ],
+    "orderIssues": "For the two canvas-blessed tabs the high-level zone order (header > filter bar > hero > table > export) is preserved, but FE inserts an un-specced KPI strip ahead of the hero on both tabs (TimeReportPage.tsx:144 before hero at :173; UtilizationPage.tsx:165 before hero at :201), and the Time tab inserts a 2x2 chart grid (TimeReportPage.tsx:192) between hero and detail table. The umbrella tab strip itself carries 6 tabs vs the canvas-specified 2.",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "frontend/src/routes/reports/UtilizationPage.tsx:45-70 — bespoke inline UtilizationBar built from raw <div>s with inline styles; canvas calls for the shared Staffing-Desk .util-bar/.over-track util-cell (page-reports.jsx:267-282). Token-clean but not the DS/shared primitive the canvas blesses.",
+      "frontend/src/routes/reports/TimeReportPage.tsx:285-291 — custom CSS-grid table footer via raw <div>/<span> with inline styles instead of a DS footer atom (acceptable as Table footer slot, noted for completeness)."
+    ],
+    "evidence": "Implementing route /reports -> ReportsPage.tsx (dsRefresh-flagged 'Reports umbrella', route-manifest.ts:336; nav group reports->workspace at route-manifest.ts:47, matching canvas 'Workspace > Reports' / AppShell active='reports' page-reports.jsx:43). Chrome contract MATCHES. Tab count MISMATCH: canvas spec (page-reports.jsx:36-39 + note lines 12-15) mandates exactly two tabs Time analytics + Utilization and retires the rest; FE TABS array (ReportsPage.tsx:59-66) and ReportsPage.dstabs.test.tsx:66-75 both enumerate six (exceptions/time/capitalisation/export/utilization/evidence). Both canvas tabs ARE implemented and follow the header>filter>hero>table>export grammar, but each diverges in hero chart type/metric, breakdown grouping/columns, and adds an un-specced KPI strip (+ a 2x2 chart grid on Time). NO raw hex found (grep '#[0-9a-fA-F]{3,8}' clean across ReportsPage/TimeReportPage/UtilizationPage); NO raw <table>/<button> (DS Table, Button, DatePicker, Tabs, Pct used throughout). Verdict PARTIAL: correct route + chrome + DS primitives + token-clean, but tab inventory (6 vs 2), hero encodings, and table compositions deviate from the canvas, with several extra sections (KPI strips, chart grid, 4 retired/folded tabs)."
+  }
+]

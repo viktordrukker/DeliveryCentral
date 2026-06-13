@@ -1,0 +1,39 @@
+[
+  {
+    "canvas": "page-profile",
+    "implementingRoute": "/people/:id",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/people/EmployeeDetailsPage.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/PersonProfilePanel.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/PersonSkillsTab.tsx"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "PageHeader badges trio: canvas shows StatusBadge 'Proposed · MCB-UK' + outline 'L5 · Senior Engineer' + mono 'EID-04812' (page-profile.jsx:46-50); impl PageHeader only shows lifecycle StatusBadge (EmployeeDetailsPage.tsx:393), and the canonical dsRefresh-ON path's identityCard collapses identity into a single line with no employee-ID / grade-badge trio (PersonProfilePanel.tsx:133-166)",
+      "PageHeader 'Propose to position' + 'Message' header actions (page-profile.jsx:53-54): impl header actions are lifecycle-only (Deactivate/Terminate, EmployeeDetailsPage.tsx:292-319); Message/Propose moved into the right-rail Quick actions instead (PersonProfilePanel.tsx:505-513), not the header",
+      "Tab counts: canvas tabs carry counts Positions:4 / Skills:12 (page-profile.jsx:59-60); impl V2_TABS have no counts (PersonProfilePanel.tsx:36-43). The OFF-path TabBar shows a Positions count but no Skills count (EmployeeDetailsPage.tsx:405-415)",
+      "KPI strip content mismatch: canvas tiles = Utilization·L30D (with Sparkline), Billable hours (with delta), Cost/day, Leave balance (page-profile.jsx:71-92); impl tiles = Active positions, Total allocation, Last-4-weeks hours, Overtime (PersonProfilePanel.tsx:168-207). No Sparkline, no delta, no utilization %, no leave-balance KPI tile",
+      "Identity + Employment two-card dl block (page-profile.jsx:94-126: Employee ID/Email/Office/Working pattern/DOJ/Time-in-company and Grade/Role family/Org unit/Line manager/Cost centre/Employment type) — not rendered on the canonical dsRefresh-ON Overview tab, which shows only Manager chain + Resource pools cards (PersonProfilePanel.tsx:453-458, 391-437). Most of those fields (office, working pattern, cost centre, role family, employment type, time-in-company) are absent entirely",
+      "Position history as a dedicated table with Project/Role/Alloc/Start/End/Status columns (page-profile.jsx:128-163): impl Positions tab renders a DS Timeline + DS Table but omits the End-date column and Start/End split, using Since-only (PersonProfilePanel.tsx:281-291)",
+      "Cost rates history table (Effective / Kind / Rate-per-day rows, page-profile.jsx:192-208): impl Cost tab shows only a single current-rate line, no effective-dated history (PersonProfilePanel.tsx:459-474). OFF-path is an EmptyState pointing to rate-cards admin (EmployeeDetailsPage.tsx:627-638)",
+      "Time · this week 7-day hour grid with per-day tone + Total/target + Edit-week/Submit-for-approval footer (page-profile.jsx:211-249): impl Time&leave tab shows only a 'last 4 weeks' dl summary (logged/overtime/leave hours), no weekday grid, no submit action (PersonProfilePanel.tsx:475-501). OFF-path is an EmptyState redirect to /me (EmployeeDetailsPage.tsx:640-656)",
+      "Leave card detail: canvas dl (Annual entitlement / Taken YTD / Pending / Remaining / In-lieu) + 'Upcoming leave' info banner + 'Request leave' link (page-profile.jsx:251-268); impl leaveCard renders a generic per-type used/pending/remaining grid with no entitlement/YTD breakdown, no upcoming-leave banner, no request-leave action (PersonProfilePanel.tsx:351-389)",
+      "Suggested next positions: canvas shows project+role+match-donut+start-date+per-row Propose button + '5d remaining on proposal' header note (page-profile.jsx:285-303); impl renders donut+role+project but no start date, no per-row Propose button, no proposal-countdown header (PersonProfilePanel.tsx:553-595)"
+    ],
+    "extraSections": [
+      "Resource pools card on Overview tab (PersonProfilePanel.tsx:419-437) — not in canvas profile",
+      "Manager chain card on Overview tab (PersonProfilePanel.tsx:391-417) — canvas surfaces line-manager only inside the Employment dl, not as a standalone manager-chain card",
+      "Lifecycle action header (Deactivate / Terminate) + ConfirmDialogs (EmployeeDetailsPage.tsx:261-320) — operational header not present in canvas (canvas header actions are Message/Propose/more)",
+      "OFF-path only: Reporting Relationships + Reporting Line Management scheduler cards (EmployeeDetailsPage.tsx:514-587), 360 View card (EmployeeDetailsPage.tsx:589-593), Lifecycle Actions + AuthTokenField card (EmployeeDetailsPage.tsx:675-686), Linked entities rail card (EmployeeDetailsPage.tsx:729-745), Change History audit timeline on Activity tab (EmployeeDetailsPage.tsx:663-671) — none of these appear in the canvas"
+    ],
+    "orderIssues": "Top-level order matches canvas on the dsRefresh-ON path (Identity → KPI strip → tabs → 1fr/320px body+right-rail; rail order Quick actions → Suggested next positions → Activity = canvas page-profile.jsx:273-321). The deviation is intra-tab: the canvas is a single scrolling Overview body (snapshot → identity/employment → position history → skills/cost → time/leave) whereas the impl splits that content across the 6 tabs, so canvas's always-visible Identity/Employment/Position-history/Skills/Cost/Time sections are now tab-gated rather than co-visible. The right-rail Quick-actions ordering also adds an extra 'View activity' button (PersonProfilePanel.tsx:541-549) and drops the canvas 'Deactivate…' danger item (page-profile.jsx:281).",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "/tmp/dc-qa/frontend/src/routes/people/EmployeeDetailsPage.tsx:447 — raw <input className=\"input\"> in the Terminate form (OFF-path only) where a DS TextField/Input atom would belong; sibling date field already uses the DS DatePicker (line 457)",
+      "/tmp/dc-qa/frontend/src/components/people/PersonProfilePanel.tsx:46,168-207 — KPI strip is a hand-rolled inline-styled <div> grid (KPI const + kpiStrip) rather than the global '.kpi-strip'/'.kpi' grammar the canvas uses (page-profile.jsx:71); functionally fine and token-clean, but not the shared KPI primitive",
+      "/tmp/dc-qa/frontend/src/components/people/PersonProfilePanel.tsx:306-346,356-386,396-414,424-434 — skills/leave/manager-chain/pools rendered as raw inline-styled <ul>/<li> lists rather than a DS Table/list atom (skills pip-bar list is intentional per V2-B.21 note, but leave/manager/pools could use DS Table)"
+    ],
+    "evidence": "Canonical impl path is PersonProfilePanel (dsRefresh ON), delegated from EmployeeDetailsPage.tsx:254-329; OFF-path fallback lives in EmployeeDetailsPage.tsx:350-754. Verdict PARTIAL: top-level Detail-Surface grammar (Identity → KPI → 6 tabs → 1fr/320px split → rail Quick-actions/Suggested/Activity) faithfully matches page-profile.jsx, and all DS atoms are used (Avatar, Donut, Money, Pct, Tabs, Timeline, Table — components/ds/ confirmed) with ZERO raw hex (grep #[0-9a-fA-F]{3,8} clean in both files) and ZERO raw <table>/<thead>. But content fidelity is partial: KPI tiles are different metrics (positions/allocation/hours vs canvas utilization/billable/cost/leave + sparkline + delta), no Identity/Employment field dl, no effective-dated cost-rate history (canvas page-profile.jsx:192-208), no weekly time grid + submit (page-profile.jsx:211-249), thinner Leave card (no entitlement/upcoming banner), and header badges/actions trimmed (no EID/grade badges, Message+Propose relocated to rail). Extra impl-only sections: Resource pools + Manager chain Overview cards, and OFF-path reporting-line scheduler / 360 / audit / lifecycle cards. One non-DS raw <input> at EmployeeDetailsPage.tsx:447.",
+    "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dsgap-page-profile.json"
+  }
+]

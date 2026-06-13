@@ -1,0 +1,30 @@
+[
+  {
+    "canvas": "page-bench",
+    "implementingRoute": "/people/bench",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/people/BenchPage.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/BenchEnrichedPanel.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/BenchInspector.tsx",
+      "/tmp/dc-qa/frontend/src/app/route-manifest.ts"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "Filter bar '+ Filter' add-filter button (canvas page-bench.jsx:71) — FE filter bar (BenchEnrichedPanel.tsx:364-415) has search+chips+sort but no add-filter affordance",
+      "Master list 'Cost/d' column (canvas page-bench.jsx:111,139) — FE table (BenchEnrichedPanel.tsx:523-671) omits cost column; DTO carries no cost rate (documented BenchEnrichedPanel.tsx:18-24)",
+      "Inspector definition-list meta (canvas page-bench.jsx:179-185: Last project / Released / Cost-day / Office / Manager) — FE inspector (BenchInspector.tsx:172-190) renders only Days idle / Availability 14d / Headroom; no Released/Cost/day/Manager",
+      "Inspector 'Skills' chip section (canvas page-bench.jsx:187-192) — absent from BenchInspector.tsx entirely",
+      "Inspector per-fill 'Compare' button + alloc badge + cost StatusBadge (canvas page-bench.jsx:217-223) — FE suggested-fill rows (BenchInspector.tsx:213-251) show only role/project/match% + project deep-link, no Compare/alloc/cost"
+    ],
+    "extraSections": [
+      "Per-row & header select-all checkboxes wired to a live selection set (BenchEnrichedPanel.tsx:523-568) — canvas shows static checkboxes only",
+      "Inspector prev/next stepper '<index/total>' (BenchInspector.tsx:134-167) — canvas footer has 'Previous bench'/'Skip' buttons instead",
+      "Inspector 'Headroom %' metric (BenchInspector.tsx:186-189) — not in canvas",
+      "no-fill-history basis note (BenchInspector.tsx:176-180) — not in canvas"
+    ],
+    "orderIssues": "Section order matches canvas (PageHeader -> KPI strip -> filter bar -> bulk-action bar -> master/inspector grid). No reordering. Content swaps within sections: KPI tile 3 'Cost of bench (week)' (canvas page-bench.jsx:49-53) is replaced by 'Availability · 14d' (BenchEnrichedPanel.tsx:339-348); bulk-bar actions differ — canvas 'Propose to position / Add to slate / Plan training' (page-bench.jsx:93-95) vs FE 'Suggest position / Send message / Export' (BenchEnrichedPanel.tsx:442-489); breadcrumb root 'Workforce' (canvas page-bench.jsx:26) vs 'People' (BenchEnrichedPanel.tsx:297).",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [],
+    "evidence": "Canvas DS/page-bench.jsx (List-Detail + Inspector). Implementing route /people/bench (route-manifest.ts:291, group people-org->workforce, navVisible, titleV2 'Bench'); router.tsx:430 -> BenchPage; BenchPage.tsx:99-105 renders BenchEnrichedPanel under dsRefresh flag (legacy SectionCard+Table path is fallback). BenchEnrichedPanel.tsx covers PageHeader (294-315), 4-tile KPI strip (318-359, each a Link drilldown UX Law 9), filter bar (364-415: SearchInput + 4 chips matching canvas labels + Sort select with all 3 canvas options, cost/match degrade-to-days per 18-24/267-270), bulk-action bar (419-501, selection-gated like canvas), master/inspector grid (504-740). BenchInspector.tsx is the inspector: identity+stepper (122-170), 3-up meta (172-190), suggested fills list (192-254), CTA row Open profile + Propose to position (256-282). Token/primitive compliance: zero raw hex in all 3 files (grep #[0-9a-fA-F]{3,8} clean); zero raw <table>/<button>/<thead> (uses DS Table/Button/Checkbox/Select/SearchInput/Avatar + common StatusBadge/SectionCard/PageHeader). TERMINOLOGY-CONTRACT LEAK: BenchEnrichedPanel.tsx:243 empty-state copy 'All people currently have active project assignments.' uses banned word 'Assignment' (design-request-2026-06-11.md:12 — only entity is 'Position'). chrome.jsx is empty (0 lines / 177B stale schemas echo) so no granular chrome contract beyond nav-group placement, which is correct."
+  }
+]

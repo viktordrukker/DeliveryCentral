@@ -1,0 +1,31 @@
+[
+  {
+    "canvas": "page-admin-setup",
+    "implementingRoute": "/admin (AdminPanelPage, ~30 sub-pages) + /setup (SetupWizardPage)",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/admin/AdminPanelPage.tsx",
+      "/tmp/dc-qa/frontend/src/routes/setup/SetupWizardPage.tsx",
+      "/tmp/dc-qa/frontend/src/app/route-manifest.ts"
+    ],
+    "verdict": "NO-CANVAS",
+    "missingSections": [
+      "ENTIRE admin/setup spec absent: DS/page-admin-setup.jsx is a mislabeled duplicate of the Foundations/tokens reference sheet (header reads '// ds-foundations.jsx', component is FoundationsView, registers window.FoundationsView). It renders token swatches (Surfaces/Text/Brand accent/Status/Chart palette/Util heatmap), type scale, spacing/radii/shadows, and breakpoints — NOT an admin or setup page.",
+      "No AppShell/Sidebar/Topbar/PageHeader chrome (file does not wrap in chrome.jsx like real page-*.jsx specs do).",
+      "No admin control surface spec (no settings tabs, RBAC/governance, integrations registry, monitoring, feature flags, rate cards, etc.).",
+      "No setup-wizard spec (no preflight/migrations/tenant/admin/integrations/monitoring/seed/complete screens)."
+    ],
+    "extraSections": [
+      "FE /admin AdminPanelPage renders a consolidated admin control surface with no canvas counterpart.",
+      "FE ships ~30 admin sub-pages with no canvas: Settings, IntegrationsAdmin, IntegrationsRegistry, SsoAdmin, Monitoring, FeatureFlags, RateCards, LeavePolicy, PeriodLocks, AccessPolicies, RolePermission, ResponsibilityMatrix, CustomRole, BusinessAudit, Notifications, Webhooks, HrisConfig, Vendors, BulkImport, Help, RadiatorThresholds, OrganizationConfig, V2SoakChecklist, SetupOps, etc.",
+      "FE ships a full /setup SetupWizardPage (routes/setup/{SetupWizardPage.tsx,useSetupWizard.ts,screens,components}) plus app/setup-gate.tsx — entirely unspecced by this canvas."
+    ],
+    "orderIssues": "N/A — canvas contains no page section list to order against (it is a tokens reference, not a page spec).",
+    "tokenDeviations": [
+      "Not assessed against this canvas: NO-CANVAS means there is no admin/setup spec to validate FE token usage against. (The canvas file ITSELF is token-clean — uses var(--color-*) / var(--shadow-*) / var(--radius-*) throughout, consistent with the token system, but it specs Foundations, not admin/setup.)"
+    ],
+    "nonDsPrimitives": [
+      "Not assessed: no canvas admin/setup primitive contract exists to compare the FE AdminPanelPage / SetupWizardPage primitives against."
+    ],
+    "evidence": "DS/page-admin-setup.jsx:1 header literally reads '// ds-foundations.jsx — Tokens reference: colors, type, spacing, radii, shadows.'; line 31 'function FoundationsView()'; line 198 'window.FoundationsView = FoundationsView'. diff page-admin-setup.jsx vs ds-foundations.jsx: only the line-1 header comment differs (md5 df293281... vs the chrome diff was a mismatched pairing; the two files share the identical FoundationsView body lines 3-196). It is NOT referenced anywhere in DS/index.html (grep for 'admin-setup|FoundationsView|admin|setup' returned nothing). No DS/*.jsx file specs an admin/setup surface (grep for 'Setup Wizard|X-Setup-Token|preflight|PlatformSetting|RolePermission|RBAC|admin-config|RadiatorThreshold' across DS/*.jsx returned only page-staffing-desk.jsx, an incidental 'integration' match). FE side, by contrast, is fully built: route-manifest.ts:356 registers path '/admin' title 'Admin'; lines 360-394 register ~30 '/admin/*' sub-routes; line 379 path '/admin/setup'; routes/admin/ holds AdminPanelPage.tsx + 28 sibling admin pages; routes/setup/ holds SetupWizardPage.tsx, useSetupWizard.ts, screens/, components/; app/setup-gate.tsx gates first-run. Because the canvas provides no admin/setup design, a section-by-section conformance comparison is impossible — verdict NO-CANVAS rather than MATCH/PARTIAL/MISSING."
+  }
+]

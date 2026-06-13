@@ -1,0 +1,37 @@
+[
+  {
+    "canvas": "page-extras",
+    "implementingRoute": "/projects/new (CreateProjectWizard) ; /login (AuthForm) ; /projects/:projectId/positions/:positionId (PositionDetail)",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/projects/CreateProjectPage.tsx",
+      "/tmp/dc-qa/frontend/src/components/projects/ProjectLifecycleForm.tsx",
+      "/tmp/dc-qa/frontend/src/routes/auth/LoginPage.tsx",
+      "/tmp/dc-qa/frontend/src/routes/projects/ProjectPositionDetailPage.tsx"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "CreateProjectWizard: step-2 'Positions & Milestones' content missing entirely — no 'Start from template' chip row (canvas L52-59), no Positions table Role/Skills/Alloc/Start/Weeks (canvas L69-99), no Milestones GanttRow list + totals (canvas L109-125). FE step 2 renders only engagement fields (ProjectLifecycleForm.tsx:141-181). FE comment at CreateProjectPage.tsx:104-119 admits positions/milestones are deferred to the project Plan tab.",
+      "CreateProjectWizard: banded stepper with done/current/todo states + check-icon (canvas L16-41) is not implemented — FE uses 3 tab-style Buttons (ProjectLifecycleForm.tsx:73-85).",
+      "CreateProjectWizard: 'Save draft' footer button (canvas L130) missing — FE footer has only Previous / Next / Create Project (ProjectLifecycleForm.tsx:210-230).",
+      "AuthForm: entire left hero panel missing — brand mark+DeliverIT (canvas L163-166), eyebrow + headline (canvas L169-175), 3-tile stat grid Projects/People/Open positions (canvas L178-189), version/WCAG footer (canvas L192-195). FE is a single centered card (LoginPage.tsx:88-99).",
+      "AuthForm: two-column split layout (canvas L144 gridTemplateColumns '1fr 1fr') missing — FE centers one Card (LoginPage.tsx:89-98).",
+      "AuthForm: 'Remember this device for 30 days' checkbox (canvas L224-227) missing from FE form (LoginPage.tsx:131-179).",
+      "AuthForm: AUP / audited-activity footer line (canvas L230-232) missing.",
+      "PositionDetail right rail: SLA countdown card with progress bar (canvas L364-373) missing.",
+      "PositionDetail right rail: 'Approval chain' timeline card (canvas L374-392) missing — FE surfaces approvals as a main-column 'Pending approvals' table instead.",
+      "PositionDetail right rail: 'Quick keys' keyboard-shortcut card (canvas L407-423) missing."
+    ],
+    "extraSections": [
+      "PositionDetail main column: 'Position lifecycle' WorkflowStages card (ProjectPositionDetailPage.tsx:638-644) — not in canvas.",
+      "PositionDetail main column: 'Pending approvals' table card (ProjectPositionDetailPage.tsx:668-711) — canvas placed approval chain in the right rail, not a main-column table.",
+      "PositionDetail right rail: 'Quick actions' card (ProjectPositionDetailPage.tsx:731-758) — canvas right rail has SLA / Approval chain / Linked / Quick keys; no Quick-actions card."
+    ],
+    "orderIssues": "CreateProjectWizard: canvas step order is Identity -> Positions & Milestones -> Activation; FE renames middle step to 'Setup' (engagement fields) so the wizard's defining middle stage is replaced, not reordered (ProjectLifecycleForm.tsx:74). PositionDetail main column: canvas order Current fill -> Position spec -> Candidates -> Fill history; FE inserts 'Position lifecycle' between spec and candidates and 'Pending approvals' between candidates and history (ProjectPositionDetailPage.tsx:561,638,647,668,714). PositionDetail right rail order differs: canvas SLA/Approval chain/Linked/Quick keys vs FE Quick actions/Linked (ProjectPositionDetailPage.tsx:731,760).",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "/tmp/dc-qa/frontend/src/routes/auth/LoginPage.tsx:3-13 — login built entirely on raw MUI (Box, Card, CardContent, TextField, Button, Alert, Divider, Typography) instead of DS atoms (Button from @/components/ds, field/input pattern, Card/SectionCard); the canvas AuthForm uses .btn/.input/.field/.checkbox primitives.",
+      "/tmp/dc-qa/frontend/src/routes/auth/LoginPage.tsx:99-211 — entire form/card markup is MUI sx-based, no DS Card/SectionCard or DS Button used."
+    ],
+    "evidence": "CreateProjectWizard: FE step labels Identity/Setup/Activation at ProjectLifecycleForm.tsx:74; step-2 body is engagement-only fields (ProjectLifecycleForm.tsx:141-181) with NO positions table, milestones gantt, or template chips that the canvas mandates at page-extras.jsx:52-125; CreateProjectPage.tsx:104-119 comment explicitly defers positions+milestones to the project Plan tab. AuthForm: FE renders one centered MUI Card (LoginPage.tsx:88-99) — canvas page-extras.jsx:144 specifies a 2-col '1fr 1fr' split with an accent hero panel (L146-196) and a remember-device checkbox (L224-227) both absent in FE. PositionDetail: FE 2-col grid matches canvas (ProjectPositionDetailPage.tsx:373-378 vs page-extras.jsx:260) and uses DS atoms (Avatar/Table/DescriptionList/StatusBadge/SectionCard/Button/WorkflowStages, ProjectPositionDetailPage.tsx:16) with zero raw hex and zero raw <table>/<button>; but FE omits the right-rail SLA card (canvas L364-373), Approval chain card (canvas L374-392) and Quick keys card (canvas L407-423), and adds extra Position-lifecycle (L638) and Pending-approvals (L668) cards. Raw-hex grep over all four implementing files returned zero matches; raw <table>/<button> grep over CreateProjectPage and ProjectPositionDetailPage returned zero; the only non-DS-primitive deviation is the MUI-based LoginPage."
+  }
+]

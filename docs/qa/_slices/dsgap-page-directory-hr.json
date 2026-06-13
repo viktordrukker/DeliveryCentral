@@ -1,0 +1,40 @@
+[
+  {
+    "canvas": "page-directory-hr",
+    "implementingRoute": "/people (EmployeeDirectoryPage, exported as PeoplePage); HR Queue tab mounts CasesPanel",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/people/PeoplePage.tsx",
+      "/tmp/dc-qa/frontend/src/routes/people/EmployeeDirectoryPage.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/EmployeeDirectoryTable.tsx",
+      "/tmp/dc-qa/frontend/src/components/people/BenchEnrichedPanel.tsx",
+      "/tmp/dc-qa/frontend/src/components/cases/CasesPanel.tsx",
+      "/tmp/dc-qa/frontend/src/components/cases/CaseListTable.tsx"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "Directory table columns: canvas table = Person / Workstream / Office / Status / Util·L30D (inline util progress bar) / Joined date. FE EmployeeDirectoryTable (EmployeeDirectoryTable.tsx:31-72) renders Person Name / Org Unit / Line Manager / Dotted-Line Summary / Active Positions / Status — MISSING the Office column, the Util·L30D utilization progress bar (canvas page-directory-hr.jsx:102-109), and the Joined date column.",
+      "Directory row select: canvas has a per-row + header checkbox column for bulk selection (page-directory-hr.jsx:71,84). FE directory table has no row-checkbox column (selection only exists inside the separate dsRefresh bulk-reassign panel, not in the directory table itself).",
+      "HR Queue is the wrong surface: canvas HRQueue (page-directory-hr.jsx:151-326) specifies an HR approval queue. FE mounts a generic CasesPanel instead. MISSING: the 4-tile KPI strip (Awaiting approval / Approved·L7D / Onboardings in flight / Avg leave balance, page-directory-hr.jsx:177-198).",
+      "HR Queue bulk action bar (3 selected · Approve all 3 / Reject with comment / Reassign approver / Clear, page-directory-hr.jsx:200-208) — absent from CasesPanel.",
+      "HR Queue leave-approval table with inline Comment / Reject / Approve actions per row and columns Employee / Request / Dates / Manager / Balance / Flag / Decide (page-directory-hr.jsx:213-257). FE CaseListTable columns are Case / Status / Subject / Owner / Participants / Summary / Opened (CaseListTable.tsx:44-89) with no inline approve/reject.",
+      "HR Queue 'Active onboarding cases' panel with per-case onboarding checklist + progress meter (page-directory-hr.jsx:262-322) — absent.",
+      "HR Queue sub-tabs Leave / Onboarding / Offboarding / Skills review (page-directory-hr.jsx:166-172) — absent (CasesPanel is a flat case list, no leave/onboarding/offboarding segmentation).",
+      "HR Queue header badges '3 awaiting you' + 'SLA · 24h' and HR-specific actions (Filters / History, page-directory-hr.jsx:157-165) — not present on the HR Queue tab."
+    ],
+    "extraSections": [
+      "Bulk org-unit reassign panel inside the Directory tab (accent-soft box with org-unit select, effective-from date, per-person checkbox list, ConfirmDialog) — EmployeeDirectoryPage.tsx:362-482; not specified in the canvas.",
+      "Directory FilterBar adds Department / Resource Pool / Status(lifecycle) / Role / Grade selects and a Group-by select (flat/role/grade/office) — EmployeeDirectoryPage.tsx:483-602. Canvas filter-bar specifies only search + role/London/L4+/Active chips + view toggle + group-by-workstream (page-directory-hr.jsx:44-63).",
+      "List-detail PersonDirectoryInspector right-rail drawer in flat+list layout — EmployeeDirectoryPage.tsx:697-730; canvas directory has no inspector (it navigates via the row chevron).",
+      "ColumnVisibilityMenu toolbar on the directory table — EmployeeDirectoryTable.tsx:87-92; not in canvas.",
+      "Directory grid/card layout variant — EmployeeDirectoryPage.tsx:640-680; canvas defines a Grid toggle but the spec only renders the list view (view==='list')."
+    ],
+    "orderIssues": "Top-level shell order matches the canvas (PageHeader → Tabs → FilterBar → table). The bulk-reassign panel is injected between the FilterBar and table inside the Directory tab (EmployeeDirectoryPage.tsx:362 before FilterBar at 483), so it actually renders ABOVE the FilterBar — not a canvas-specified zone. Within the HR Queue tab the canvas order (KPI strip → bulk bar → approval table → onboarding panel) cannot be assessed because those zones are not implemented; CasesPanel renders FilterBar → SectionCard(case list) only.",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "EmployeeDirectoryPage.tsx:381,496,510,523,539,553,567 — raw <select> filter controls (use the platform .field/.field__control pattern, consistent with the canvas which also uses raw <select className='select input-sm'>; not a DS-atom violation, listed for completeness).",
+      "EmployeeDirectoryPage.tsx:395 — raw <input type='date'> in bulk-reassign panel (.field__control class, matches canvas input pattern).",
+      "EmployeeDirectoryPage.tsx:461 — raw <input type='checkbox'> in bulk-select list (no DS Checkbox atom; canvas uses className='checkbox')."
+    ],
+    "evidence": "Implementing route: PeoplePage.tsx:1 re-exports EmployeeDirectoryPage; router.tsx:293 binds it to path 'people'. Directory shell matches canvas: PageHeader title 'People' (EmployeeDirectoryPage.tsx:331-349) with people/bench badges, 3-tab TabBar Directory/Bench/HR Queue (EmployeeDirectoryPage.tsx:267-290,351-357), FilterBar (483-602), table region (604-749) — all DS primitives (PageHeader, TabBar, FilterBar, StatusBadge, Button, Avatar, DataView via EmployeeDirectoryTable). No raw hex in any implementing file (grep #[0-9a-fA-F]{3,8} returned none across EmployeeDirectoryPage/EmployeeDirectoryTable/CasesPanel/CaseListTable/CaseInspector/BenchEnrichedPanel/PersonDirectoryInspector). The directory table column set diverges from the canvas (no Office / Util·L30D bar / Joined; adds Line Manager / Dotted-Line / Active Positions — EmployeeDirectoryTable.tsx:31-72 vs canvas page-directory-hr.jsx:68-119). The HR Queue tab mounts the generic CasesPanel (EmployeeDirectoryPage.tsx:359) which lacks the canvas HRQueue's KPI strip, bulk action bar, leave-approval table with inline approve/reject, onboarding-checklist panel, and Leave/Onboarding/Offboarding/Skills-review sub-tabs (grep for kpi/onboarding/bulk/leave in CasesPanel.tsx found none). PARTIAL: directory shell + DS-primitive + zero-hex conformance is good, but directory columns are wrong and the HR Queue surface is substantially under-implemented vs the canvas."
+  }
+]

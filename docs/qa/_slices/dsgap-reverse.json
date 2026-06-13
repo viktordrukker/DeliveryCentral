@@ -1,0 +1,14 @@
+[
+  {
+    "canvas": null,
+    "implementingRoute": "/admin",
+    "verdict": "NO-CANVAS",
+    "evidence": "rt_80: navVisible=true, obsoleteInV2=false, titleV2=null (title='Admin', group=admin-config, roles=ADMIN_ROLES). Admin landing/hub route is reachable from V2 nav but no page-*.jsx canvas in /DS implements it. No DS canvas maps to /admin in any forward-pass dsgap-page-*.json implementingRoute field, and no canvas file references /admin or an admin hub. The only admin-named canvas (page-admin-setup.jsx) is a design-token/brand spec sheet (Surfaces, Text, Brand accent, Status semantics, Chart palette, Utilization heatmap) and would map to the obsolete /admin/setup (rt_92, obsoleteInV2=true), not to /admin."
+  },
+  {
+    "canvas": null,
+    "implementingRoute": "/admin/settings",
+    "verdict": "NO-CANVAS",
+    "evidence": "rt_90: navVisible=true, obsoleteInV2=false, titleV2='Settings' (title='Platform Settings', group=admin-config, roles=ADMIN_ROLES). Carries an explicit V2 title ('Settings') so it is a first-class V2 nav surface, yet no page-*.jsx canvas in /DS implements it. No forward-pass dsgap-page-*.json maps a canvas to /admin/settings, and no DS canvas references 'Platform Settings' or /admin/settings. page-admin-setup.jsx is a token reference sheet, not the Platform Settings admin surface."
+  }
+]

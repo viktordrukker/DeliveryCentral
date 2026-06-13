@@ -1,0 +1,31 @@
+[
+  {
+    "canvas": "page-pulse",
+    "implementingRoute": "/projects/:id (tab=pulse, dsRefresh flag on) — router.tsx:310",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/projects/ProjectDetailPage.tsx",
+      "/tmp/dc-qa/frontend/src/routes/projects/tabs/PulseTab.tsx",
+      "/tmp/dc-qa/frontend/src/components/layout/DetailLayout.tsx"
+    ],
+    "verdict": "PARTIAL",
+    "missingSections": [
+      "Section 1 (Title bar): canvas specifies a 3-tab Pulse/Plan/Money strip with a count badge on Plan ('8') and breadcrumb ['Projects','Mercury Core Banking — UK','Pulse']; FE DetailLayout/PageHeader renders the 3 tabs (ProjectDetailPage.tsx:52-56) but NO per-tab count badge and NO breadcrumb (DetailLayout is invoked with eyebrow='Projects' only, breadcrumbs prop omitted — ProjectDetailPage.tsx:256-261). Canvas header actions Export/Edit project/Add position become only 'Create Position' (+Plan-tab-only Add milestone/Add change request/Manage positions) — ProjectDetailPage.tsx:262-284; Export and Edit-project actions are absent.",
+      "Section 3 (KPI strip): canvas pins 5 explicit tiles (Open positions 3/8, Budget variance −8.2%, Milestone progress 62%, Days to next gate 11d, Burn rate 4w $248k with a <Sparkline>). FE renders pulse.signals dynamically (PulseTab.tsx:383-404) — keys are velocity/cpi/avgMood/openRisks/openCases/teamSize, NOT the canvas KPIs; no Sparkline tile, no delta-up/down rows, no per-KPI drilldown to plan/money (every tile links to ?tab=radiator). UX Law 9 drill targets diverge from schemas.json projectPulseKpiCards hrefs.",
+      "Section 5a (Open positions table): canvas columns Role / Alloc / Start / Status / Active fill / Suggest / actions plus a per-card filter ('Filter role…' input + Filter button + + Position button) — page-pulse.jsx:198-216. FE positionColumns (PulseTab.tsx:120-178) drops the Start and Suggest columns and the actions/more-menu column, and the card has NO filter/search/Position controls. Active-fill renders literal 'Booked' text instead of Avatar+name.",
+      "Section 5b (Top risks): canvas card has a footer with 'Log risk' + 'Mitigation plan' buttons and a 'View all 11' header link (page-pulse.jsx:259-277); FE Top-risks SectionCard (PulseTab.tsx:507-544) has neither the footer actions nor the View-all link.",
+      "Section 6a (Next milestone): canvas shows Donut(68) + eyebrow/gate name + Due date + Tasks 17/25 / Blockers 2 / Slip risk +3d sub-stats and a 'Plan tab' link (page-pulse.jsx:283-312); FE (PulseTab.tsx:549-585) shows Donut + hit/total + in-progress/missed + next-milestone name only — no Due date, no Tasks/Blockers/Slip-risk stat trio, no Plan-tab link.",
+      "Section 7 (External link tiles): canvas uses <Icon name={kind}> atoms and meta strings; FE uses emoji glyph literals (PulseTab.tsx:343-346, e.g. '\\u{1F4CB}') rather than the Icon DS atom, and omits the 'Linked workspaces' card header + '+ Link' action (renders a bare grid, not a card — PulseTab.tsx:663-737)."
+    ],
+    "extraSections": [
+      "Section 6b Activity: FE adds an All/Mine scope toggle (PulseTab.tsx:592-610) — canvas Activity card has All/Mine ghost buttons too, so this is canvas-faithful, not extra.",
+      "ProjectDetailPage still renders a legacy kpi-strip (Status/Active Staff/Fill Rate/Time to Fill/Days Remaining — ProjectDetailPage.tsx:178-229) but it is explicitly suppressed on the Pulse tab (kpiStrip={activeTab==='pulse'?undefined:kpiStrip}, ProjectDetailPage.tsx:291), so no double-strip on Pulse."
+    ],
+    "orderIssues": "Section order matches the canvas 8-zone grammar exactly (Banner → KPI strip → RAG quad + Decisions → Positions + Risks → Milestone + Activity → External tiles → Freshness footer; PulseTab.tsx:351-770). One content swap inside section 4: canvas 4th RAG quadrant is 'Quality' (defect escape rate / P0), FE 4th quadrant is 'Overall' (composite of schedule/budget/people — PulseTab.tsx:415-419). The People quadrant maps to rag.staffingRag. So RAG grid is present and ordered but the 4th cell semantics differ.",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [
+      "PulseTab.tsx:343-346 — external-link tiles use raw emoji glyph literals ('\\u{1F4CB}' Jira, '\\u{1F4D6}' Confluence, '\\u{1F4AC}' Teams, '\\u{1F4CA}' Smartsheet) instead of the Icon DS atom the canvas specifies (<Icon name={l.kind}>, page-pulse.jsx:358).",
+      "PulseTab.tsx:663-737 — Linked-workspaces grid is a bare <div> grid with inline-styled <a>/<div> tiles, not wrapped in a SectionCard with header + '+ Link' action as the canvas card pattern requires (page-pulse.jsx:337-369). No raw <table>/<button> anywhere (positions use DS <Table>, all actions use DS <Button>)."
+    ],
+    "evidence": "Canvas spec page-pulse.jsx:1-8 (8-zone grammar) + 55-384 (full JSX). Implementing route: router.tsx:310 ('projects/:id' → ProjectDetailPage), gated on dsRefresh feature flag (ProjectDetailPage.tsx:81-83,299 — PulseTab only mounts when dsRefresh on AND activeTab==='pulse'). PulseTab.tsx:180-189 self-documents the 8-section mapping and renders all 8 zones in order (banner 351, kpi 383, rag+decisions 407, positions+risks 489, milestone+activity 548, external tiles 663, freshness 740). DS primitives confirmed: Button/Donut/Table/Pct from components/ds (ds/index.ts:11,84,92,104), SectionCard/StatusBadge from components/common. Raw-color sweep clean: grep '#[0-9a-fA-F]{3,8}' and 'rgba?\\(' across PulseTab.tsx + ProjectDetailPage.tsx both return zero matches — every color is a var(--color-*) token. Title bar = DetailLayout→PageHeader+TabBar (DetailLayout.tsx:85-103); breadcrumb prop omitted at call site (ProjectDetailPage.tsx:256-261) so canvas breadcrumb trail is not rendered. Verdict PARTIAL: structure, order, DS primitives and tokens all conform, but KPI tiles, positions columns/filters, milestone sub-stats, risk footer actions, external-tile icons, and the Plan-tab count badge / breadcrumb / Export+Edit header actions diverge from the canvas."
+  }
+]

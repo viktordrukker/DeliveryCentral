@@ -1,0 +1,20 @@
+[
+  {
+    "canvas": "page-director",
+    "implementingRoute": "/dashboard/director (router.tsx:214, RoleGuard DIRECTOR_ADMIN_ROLES, FeatureGuard flag=dashDirector)",
+    "files": [
+      "/tmp/dc-qa/frontend/src/routes/dashboard/DirectorDashboardPage.tsx",
+      "/tmp/dc-qa/frontend/src/components/dashboard/director/DirectorKpiStrip.tsx",
+      "/tmp/dc-qa/frontend/src/components/dashboard/DirectorAnomalyRail.tsx"
+    ],
+    "verdict": "MATCH",
+    "missingSections": [],
+    "extraSections": [
+      "PageHeader breadcrumb prepends a {href:'/', label:'Home'} crumb (DirectorDashboardPage.tsx:383) not present in the canvas breadcrumb=['Dashboards','Director']; benign navigation aid, not a structural section."
+    ],
+    "orderIssues": "None. FE section order (PageHeader -> What needs you now -> KPI strip -> Hero 2-col burn+variance -> Portfolio 4-axis RAG table -> 3-col Headcount/Cash/Recent decisions -> Freshness footer) matches DS/page-director.jsx exactly.",
+    "tokenDeviations": [],
+    "nonDsPrimitives": [],
+    "evidence": "All 7 canvas zones present in order. (1) PageHeader DirectorDashboardPage.tsx:350-389 with title 'Portfolio · this week', badges (projects, $M committed), period select + Export brief + Open in Reports actions — matches canvas L16-29. (2) 'What needs you now' anomaly strip in <section className='section-card-emphasized' borderLeft 3px> L392-398 rendering DirectorAnomalyRail (DirectorAnomalyRail.tsx:106-157 uses .card/.card-header/.tone-dot/.btn-tertiary per canvas L33-55). (3) KPI strip 5 tiles DirectorKpiStrip.tsx:66-154 in canvas order Active/At-risk/Budget variance·portfolio/Utilisation/Open positions (canvas L58-84); every tile is a <Link> with token-driven left border (UX Law 9). (4) Hero 2-col grid 2fr/1fr L412-420: BurnChart (L613-706, planned baseline + 6 var(--color-chart-N) project lines, Today marker — matches canvas BurnChart L270-312) + VarianceByDriver (L713-744, 6 signed drivers via VarianceBar — matches canvas L113-131). (5) Portfolio 4-axis RAG DS Table L423-442 with columns Project/Stage/PM/Del/Bud/Peo/Qua/Budget var/Util/Milestones/go (portfolioColumns L200-340 — matches canvas table L144-194). (6) 3-col grid L445-466: HeadcountMix Donut+legend (L480-511) + CashPosition MiniBars (L538-578) + Recent decisions AuditTimeline (L454-465) — matches canvas L199-255. (7) DataFreshness footer L469 — matches canvas L258-263. Tokens: grep -E '#[0-9a-fA-F]{3,8}' across all 3 files = 0 hits; all colors are var(--color-*) tokens. Primitives: grep -E '<table|<button' across all 3 files = 0 hits; uses DS atoms Table/Button/Donut/MiniBars/VarianceBar/Avatar/Pct (all exist in components/ds/) and DS classNames (.select/.badge/.btn/.tone-dot) exactly as the canvas itself specifies (canvas L25-27 also uses raw className select/btn). Chrome contract: canvas asserts <AppShell active='home' context='Portfolio'>; DS/chrome.jsx is an empty/stray-JSON file (0 lines) so the only chrome assertion is the AppShell wrapper inside page-director.jsx, satisfied by the global router layout + PageContainer (DirectorDashboardPage.tsx:343)."
+  }
+]
