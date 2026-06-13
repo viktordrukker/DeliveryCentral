@@ -1,0 +1,286 @@
+[
+  {
+    "route": "/",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/dashboard/director",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/me",
+    "role": "director",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/me?tab=overview",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/director_-me.png"
+  },
+  {
+    "route": "/people",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/people",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/projects",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/projects",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/cases",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/cases",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/approvals",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/reports",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/staffing-desk",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/dashboard/director",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/dashboard/director",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/people/usr_ed542313b886",
+    "role": "director",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/people/usr_ed542313b886",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()",
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/director_-people-usr-ed542313b886.png"
+  },
+  {
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001",
+    "role": "director",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/director_-projects-bbbb0008-0000-0000-0000-000000000001.png"
+  },
+  {
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001/dashboard",
+    "role": "director",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=pulse",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/director_-projects-bbbb0008-0000-0000-0000-000000000001-dashboard.png"
+  },
+  {
+    "route": "/cases/bbbb001f-0000-0000-0000-000000000001",
+    "role": "director",
+    "verdict": "OK",
+    "finalUrl": "/cases/bbbb001f-0000-0000-0000-000000000001",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/staffing-desk",
+    "role": "resource_manager",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/people/bench",
+    "role": "resource_manager",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/people",
+    "role": "resource_manager",
+    "verdict": "OK",
+    "finalUrl": "/people",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/approvals",
+    "role": "delivery_manager",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/me",
+    "role": "employee",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/me?tab=overview",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/employee_-me.png"
+  },
+  {
+    "route": "/my-time",
+    "role": "employee",
+    "verdict": "OK",
+    "finalUrl": "/my-time",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": ""
+  },
+  {
+    "route": "/timesheets",
+    "role": "employee",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/me?tab=time",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 400 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/employee_-timesheets.png"
+  },
+  {
+    "route": "/people",
+    "role": "employee",
+    "verdict": "RENDER-ERROR(js)",
+    "finalUrl": "/people",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 403 ()",
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrs": [
+      "wa: Insufficient role for this operation."
+    ],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/employee_-people.png"
+  },
+  {
+    "route": "/projects",
+    "role": "employee",
+    "verdict": "CONSOLE-ERRORS",
+    "finalUrl": "/projects",
+    "settled": true,
+    "rateLimited": 0,
+    "consoleErrs": [
+      "Failed to load resource: the server responded with a status of 403 ()"
+    ],
+    "pageErrs": [],
+    "netErrs": [],
+    "screenshot": "docs/qa/_screens/employee_-projects.png"
+  }
+]
