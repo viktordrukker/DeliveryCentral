@@ -1,0 +1,338 @@
+[
+  {
+    "flagId": "outboxEnabled",
+    "settingKey": "flag.outboxEnabled",
+    "default": false,
+    "gates": "Backend-only. Master switch for the OutboxEvent dual-write seam. Read via PlatformFlagsService.isEnabled('outboxEnabled') at src/modules/audit-observability/application/outbox-event-publisher.service.ts:83 (gates whether the OutboxEventPublisher background timer starts) and src/modules/notifications/application/notification-event-translator.service.ts:299 (gates dual-write vs synchronous dispatch). NOTE: the live registry default in platform-flags.service.ts:55 is true (F-6.5/D-142 flipped ON), but flags.json records false.",
+    "gatedSurfaces": [
+      "src/modules/audit-observability/application/outbox-event-publisher.service.ts:83",
+      "src/modules/notifications/application/notification-event-translator.service.ts:299"
+    ],
+    "stagingEffective": "ON",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) short-circuits PlatformFlagsService.isEnabledByKey to true (platform-flags.service.ts:977). Backend-only flag, so FE force-set (workspaceMe,dsRefresh) is irrelevant.",
+    "hidesHalfBuilt": false,
+    "evidence": "Flag has a real gate, but the feature it gates (outbox publisher + translator + handler registry) is fully built and wired end-to-end. Registry already promoted it to maturityLevel 'ga' / default true. Not half-built."
+  },
+  {
+    "flagId": "tenancyMultiTenantEnabled",
+    "settingKey": "flag.tenancy.multiTenant.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled('tenancyMultiTenantEnabled') / isEnabledByKey('flag.tenancy.multiTenant.enabled') call exists in src/ or frontend/src/. No @RequireFeature usage (the decorator is defined at src/shared/config/require-feature.decorator.ts but never applied anywhere). Registry-only flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true would return true if any code read it, but no code reads it. docker-compose.v2-staging.yml:38.",
+    "hidesHalfBuilt": false,
+    "evidence": "Flag gates nothing (zero consumption sites), so it cannot hide any feature. Multi-tenant RLS is a future posture (maturityLevel beta, v2.0) but the OFF flag is inert — single-tenant behaviour is unconditional in code."
+  },
+  {
+    "flagId": "publicIdStrict",
+    "settingKey": "flag.publicIdStrict",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled('publicIdStrict') / isEnabledByKey('flag.publicIdStrict') in src/ or frontend/src/. Registry-only flag (DM-2.5 rollout gate, never wired to controllers).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) would force true if read, but no code reads it.",
+    "hidesHalfBuilt": false,
+    "evidence": "No consumption site; flag gates nothing. Controllers do not branch on it, so it hides no surface. Inert."
+  },
+  {
+    "flagId": "idempotencyKeyEnforced",
+    "settingKey": "flag.idempotencyKey.enforced",
+    "default": false,
+    "gates": "NONE FOUND as a flag gate. The Idempotency-Key interceptor exists at src/shared/http/idempotency.interceptor.ts but does NOT read the platform flag (no isEnabled call inside it). Registry-only flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) would force true if read, but the interceptor never consults the flag.",
+    "hidesHalfBuilt": false,
+    "evidence": "Interceptor logic is unconditional (does not branch on the flag); flag has zero consumption sites. maturityLevel 'scaffolded' but the flag itself hides nothing because it is not wired."
+  },
+  {
+    "flagId": "staffingMakeAssignment",
+    "settingKey": "flag.feature.staffing.makeAssignment.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled('staffingMakeAssignment') / isFeatureEnabled / route-manifest flag entry / settingKey read in src/ or frontend/src/. Registry-only flag (Decision-10 keeps direct-assign path in code but the flag is not consulted).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) would force true if read, but no code reads it. FE bundle only force-sets workspaceMe,dsRefresh (.github/workflows/build-and-stage-v2.yml:38).",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; the flag gates nothing. The direct-assign path is governed by routing/UI choices, not this flag."
+  },
+  {
+    "flagId": "staffingBulkAssignment",
+    "settingKey": "flag.feature.staffing.bulkAssignment.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled / route-manifest / settingKey consumption. Registry says 'OFF in main sidebar; route remains accessible via direct URL' but no code reads the flag. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). FE force-set is workspaceMe,dsRefresh only.",
+    "hidesHalfBuilt": false,
+    "evidence": "No gate exists; sidebar/route visibility is controlled elsewhere (route-manifest navVisible), not this flag. Inert."
+  },
+  {
+    "flagId": "staffingProposalSlate",
+    "settingKey": "flag.feature.staffing.proposalSlate.enabled",
+    "default": true,
+    "gates": "NONE FOUND as a runtime gate. Only appears in a doc-comment example at src/shared/config/require-feature.decorator.ts:11 (illustrative @RequireFeature('staffingProposalSlate') in the decorator's JSDoc — not an actual application). No real isEnabled / @RequireFeature usage. Registry-only; the slate flow is the unconditional canonical staffing path.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (default true; backend force also ON)",
+    "stagingSource": "Default true in both registry (platform-flags.service.ts:117) and flags.json. Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) is redundant. No actual gate.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and no real consumption site. Proposal-slate flow is built and is the canonical staffing path; flag is inert. Not hiding anything."
+  },
+  {
+    "flagId": "staffingDistributionStudio",
+    "settingKey": "flag.feature.staffing.distributionStudio.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled('staffingDistributionStudio'). The Distribution Studio IS rendered unconditionally in frontend/src/routes/staffing-desk/StaffingDeskPage.tsx (imports + renders <DistributionStudio> at line ~405) and is only branched on dsRefresh, never on this flag. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate; feature visible regardless",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). The Studio surface is gated by dsRefresh in FE, which v2-staging force-sets (build-and-stage-v2.yml:38).",
+    "hidesHalfBuilt": false,
+    "evidence": "Flag gates nothing; the Distribution Studio (heatmap + scenarios) is a real, shipped, always-rendered surface in StaffingDeskPage. This flag is inert."
+  },
+  {
+    "flagId": "staffingDirectorApproval",
+    "settingKey": "flag.feature.staffing.directorApproval.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled / @RequireFeature / route / settingKey consumption in src/ or frontend/src/. Registry-only flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; flag gates nothing. maturityLevel 'scaffolded' — a director-approval gate on high-allocation assignments is not wired, but the OFF flag hides nothing because no code path checks it."
+  },
+  {
+    "flagId": "staffingWorkflowFullState",
+    "settingKey": "flag.feature.staffing.workflowFullState.enabled",
+    "default": true,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled consumption. Registry-only (depends-on declared in registry but never enforced in code). The 9-state assignment workflow is unconditional.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (default true)",
+    "stagingSource": "Default true in registry (platform-flags.service.ts:147) and flags.json. Backend force redundant. No actual gate.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON, no consumption site. Full-state workflow is built and unconditional. Inert flag."
+  },
+  {
+    "flagId": "staffingSlaSweep",
+    "settingKey": "flag.feature.staffing.slaSweep.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled('staffingSlaSweep'). No AssignmentSlaSweepService file exists anywhere in src/ (searched: no match for AssignmentSlaSweep). Registry-only flag describing an unbuilt service.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate and no backing service",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread; nothing to enable).",
+    "hidesHalfBuilt": false,
+    "evidence": "The registry advertises an AssignmentSlaSweepService (HD-10) that does NOT exist in the tree, and the flag has zero consumption sites. Because nothing reads the flag, it gates nothing and therefore hides nothing — the feature is simply absent, not flag-hidden. (hidesHalfBuilt requires the flag to actively gate a half-built surface; here there is no gate.)"
+  },
+  {
+    "flagId": "staffingProposalNudge",
+    "settingKey": "flag.feature.staffing.proposalNudge.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this platform flag. A nudge-sweeper DOES exist (src/modules/notifications/application/nudge-sweeper.service.ts) for overdue staffing-proposal acknowledgements, but it is gated by an ENV flag ('Nudge sweep disabled by env flag', line ~72) and a setting key 'staffing.proposalAck.slaHours' — NOT by the platform flag staffingProposalNudge. The platform flag has zero consumption sites. NOTE: registry default is true (platform-flags.service.ts:167) while flags.json says false.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — platform flag not read; sweeper gated by separate env flag",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) does not affect the nudge sweeper, which keys off its own env flag, not the platform flag.",
+    "hidesHalfBuilt": false,
+    "evidence": "Platform flag has no consumption site. The actual proposal-nudge sweeper is built and gated independently (env flag + setting key). The platform flag is inert and hides nothing."
+  },
+  {
+    "flagId": "staffingMatchingEngineV2",
+    "settingKey": "flag.feature.staffing.matchingEngineV2.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled('staffingMatchingEngineV2'). No weighted/proficiency-band match-engine v2 file exists (grep for MatchingEngineV2 / proficiencyBand / weightedMatch returns nothing). A v1 solver exists (src/modules/staffing-desk/presentation/solver.controller.ts POST /run). Registry-only flag describing an unbuilt v2 engine.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate and no v2 engine",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread; no v2 engine to enable).",
+    "hidesHalfBuilt": false,
+    "evidence": "Registry advertises a weighted skill-match engine (HARDEN-WIRING S-10, maturityLevel 'scaffolded') with no implementation in the tree, and the flag has zero consumption sites. The flag gates nothing, so it hides nothing — the v2 engine is absent rather than flag-hidden."
+  },
+  {
+    "flagId": "projectDirectorApprovalGate",
+    "settingKey": "flag.feature.project.directorApprovalGate.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled / @RequireFeature / route / settingKey consumption. Registry-only flag (maturityLevel 'scaffolded').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; no project-activation approval gate is wired to this flag. Flag gates nothing and hides nothing."
+  },
+  {
+    "flagId": "projectRadiator",
+    "settingKey": "flag.feature.project.radiator.enabled",
+    "default": false,
+    "gates": "FRONTEND-only. isFeatureEnabled('projectRadiator') at frontend/src/routes/projects/ProjectDetailPage.tsx:133 (const radiatorEnabled). When OFF: suppresses the duplicate 'Overall RAG' KPI tile and skips the fetchComputedRag(id) call in the load effect (line ~144). The Radiator tab component itself (RadiatorTab.tsx) is rendered under dsRefresh-based tab routing, not this flag. No backend isEnabled('projectRadiator') call.",
+    "gatedSurfaces": [
+      "frontend/src/routes/projects/ProjectDetailPage.tsx:133",
+      "frontend/src/routes/projects/ProjectDetailPage.tsx:144"
+    ],
+    "stagingEffective": "OFF (frontend) — gate is FE-only and v2-staging does NOT force this flag in the FE bundle",
+    "stagingSource": "FE gating reads isFeatureEnabled (static registry default false). v2-staging FE bundle force-sets ONLY workspaceMe,dsRefresh (build-and-stage-v2.yml:38; frontend/src/lib/feature-flags.ts:213-219), so projectRadiator stays OFF on v2-staging unless frontend_force_all=true is passed. Backend FORCE_ALL_FLAGS_ON does not affect this FE-only check.",
+    "hidesHalfBuilt": false,
+    "evidence": "Flag is OFF-by-default and has a real FE gate, but what it gates is a redundant 'Overall RAG' KPI tile + an optional computed-RAG fetch (the code comment at lines 128-132 calls it a duplicate health signal). The Radiator feature/tab itself is fully built (RadiatorTab.tsx, fetchComputedRag endpoint exists). The flag hides a polished-but-redundant tile, not a stub/half-built surface — registry note D-55 cold-start is a tuning concern, not a missing endpoint. Judged not half-built."
+  },
+  {
+    "flagId": "projectRadiatorThresholds",
+    "settingKey": "flag.feature.project.radiatorThresholds.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled consumption. Registry-only (depends-on projectRadiator declared in registry but not enforced in code).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). FE force-set is workspaceMe,dsRefresh only.",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; admin-tunable per-axis thresholds are not wired to this flag. Flag gates nothing and hides nothing."
+  },
+  {
+    "flagId": "projectRisks",
+    "settingKey": "flag.feature.project.risks.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. The Risks/Issues tab (frontend/src/routes/projects/tabs/RisksIssuesTab.tsx) is real and is gated in ProjectDetailPage.tsx by the dsRefresh-based tab routing, NOT by projectRisks. The projectRisks flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; tab visibility governed by dsRefresh",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). Tab surfacing is dsRefresh-driven, which v2-staging force-sets (build-and-stage-v2.yml:38).",
+    "hidesHalfBuilt": false,
+    "evidence": "RisksIssuesTab.tsx (12 KB) is a fully built tab with its own backend (project-exceptions/risk endpoints). The projectRisks flag is inert (no consumption), so it hides nothing — the feature ships gated by dsRefresh, not this flag."
+  },
+  {
+    "flagId": "projectChangeRequests",
+    "settingKey": "flag.feature.project.changeRequests.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. ChangeRequestsTab.tsx is real and rendered in ProjectDetailPage.tsx:317 gated on !dsRefreshEnabled (dsRefresh), NOT on projectChangeRequests. The projectChangeRequests flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; tab governed by dsRefresh",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). Tab surfacing is dsRefresh-driven.",
+    "hidesHalfBuilt": false,
+    "evidence": "ChangeRequestsTab.tsx (16 KB) is fully built and rendered (ProjectDetailPage.tsx:317). The projectChangeRequests flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "projectVendors",
+    "settingKey": "flag.feature.project.vendors.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. Vendor engagement lives in TeamVendorsTab.tsx, rendered in ProjectDetailPage.tsx:319 gated on !dsRefreshEnabled, NOT on projectVendors. The projectVendors flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; tab governed by dsRefresh",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "TeamVendorsTab.tsx (20 KB) is fully built and rendered. projectVendors flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "projectWorkstreams",
+    "settingKey": "flag.feature.project.workstreams.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled consumption. No dedicated WorkstreamsTab file (workstreams are not a standalone surface). Registry-only flag (maturityLevel 'scaffolded').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; workstream sub-structure is scaffolded/absent but the flag gates nothing, so it hides nothing. Feature absent rather than flag-hidden."
+  },
+  {
+    "flagId": "projectRetrospective",
+    "settingKey": "flag.feature.project.retrospective.enabled",
+    "default": false,
+    "gates": "NONE FOUND. No isEnabled / isFeatureEnabled consumption. No RetrospectiveTab file. Registry-only flag (maturityLevel 'scaffolded').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — no gate",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Zero consumption sites; retrospective capture is scaffolded/absent but the flag gates nothing, so it hides nothing. Feature absent rather than flag-hidden."
+  },
+  {
+    "flagId": "projectMilestones",
+    "settingKey": "flag.feature.project.milestones.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. MilestonesTab.tsx is real and rendered in ProjectDetailPage.tsx:316 gated on !dsRefreshEnabled; MilestonesTab.tsx:230 additionally branches on isFeatureEnabled('dsRefresh'). Neither path reads projectMilestones. The projectMilestones flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; tab governed by dsRefresh",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "MilestonesTab.tsx (18 KB) is fully built and rendered. projectMilestones flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "projectBudgetApproval",
+    "settingKey": "flag.feature.project.budgetApproval.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. BudgetTab.tsx is real and rendered in ProjectDetailPage.tsx:320 gated on !dsRefreshEnabled; BudgetTab.tsx:151 branches on isFeatureEnabled('dsRefresh'). Neither reads projectBudgetApproval. The projectBudgetApproval flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; tab governed by dsRefresh",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "BudgetTab.tsx (19 KB) is fully built and rendered. The budget-change-request approval workflow is not wired to this flag; flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "featureCases",
+    "settingKey": "flag.feature.cases.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. CasesPage.tsx (frontend/src/routes/cases/CasesPage.tsx) reads only isFeatureEnabled('dsRefresh'), not featureCases. Backend case-management module has full CRUD/lifecycle endpoints (cases.controller.ts: POST /, GET /, GET /:id, close/open/cancel/approve/reject/archive). The featureCases flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). Cases surfacing is dsRefresh-driven in FE.",
+    "hidesHalfBuilt": false,
+    "evidence": "Case management is fully built (real controller with 10+ endpoints + CasesPage + CasesPanel + ProjectCasesTab). featureCases flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "featureWorkEvidence",
+    "settingKey": "flag.feature.workEvidence.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. Work-evidence has a real backend module (src/modules/work-evidence/presentation/work-evidence.controller.ts) and FE route (frontend/src/routes/work-evidence). FE evidence gating uses a SEPARATE mechanism — useEvidenceManagement() / FeatureGuard feature='evidenceManagement' (platform-settings-context), NOT the featureWorkEvidence flag. The featureWorkEvidence flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read; evidence gated by platform-settings evidenceManagement instead",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread). Actual evidence gating is via PlatformSettings evidenceManagement, a different switch.",
+    "hidesHalfBuilt": false,
+    "evidence": "Work-evidence module is built (controller + route). The featureWorkEvidence platform flag is inert; the real gate is the evidenceManagement platform setting. Flag hides nothing."
+  },
+  {
+    "flagId": "featureExceptions",
+    "settingKey": "flag.feature.exceptions.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. Exceptions has a real backend module (src/modules/exceptions/presentation/exceptions.controller.ts) and FE route (frontend/src/routes/exceptions). Exceptions reach the nav via route-manifest with EXCEPTIONS_ROLES + the dsRefresh-gated /reports umbrella, not via featureExceptions. The featureExceptions flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Exceptions module is built (controller + route + ExceptionDetailPanel). featureExceptions flag is inert — gates nothing, hides nothing."
+  },
+  {
+    "flagId": "featureTeams",
+    "settingKey": "flag.feature.teams.enabled",
+    "default": false,
+    "gates": "NONE FOUND for this flag. Teams has a real backend controller (src/modules/organization/presentation/teams.controller.ts) and FE route (frontend/src/routes/teams). The featureTeams flag has zero consumption sites. Registry-only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / N/A — flag not read",
+    "stagingSource": "Backend FORCE_ALL_FLAGS_ON=true (docker-compose.v2-staging.yml:38) inert (unread).",
+    "hidesHalfBuilt": false,
+    "evidence": "Teams module is built (controller + route). featureTeams flag is inert — gates nothing, hides nothing. (Registry note: Teams OFF in v1 in favour of ResourcePools, but that is a routing/nav decision, not enforced by this flag.)"
+  },
+  {
+    "flagId": "featureResourcePools",
+    "settingKey": "flag.feature.resourcePools.enabled",
+    "default": true,
+    "gates": "NONE FOUND as a runtime gate. Resource pools have a real backend controller (src/modules/resource-pools/presentation/resource-pools.controller.ts). The featureResourcePools flag has zero consumption sites. Registry-only; default true and canonical grouping is unconditional.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (default true)",
+    "stagingSource": "Default true in registry (platform-flags.service.ts:326) and flags.json. Backend force redundant. No actual gate.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON, fully built, no consumption site. Inert flag. Not hiding anything."
+  },
+  {
+    "flagId": "timesheetBasic",
+    "settingKey": "flag.feature.timesheet.basic.enabled",
+    "default": true,
+    "gates": "NONE FOUND as a runtime gate. Timesheets have real backend controllers (timesheets.controller.ts, my-time.controller.ts, time-management.controller.ts) and FE routes (timesheets, my-time, time-management). The timesheetBasic flag has zero consumption sites. Registry-only; default true and unconditional.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (default true)",
+    "stagingSource": "Default true in registry (platform-flags.service.ts:338) and flags.json. Backend force redundant. No actual gate.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON, fully built (weekly submission + entry), no consumption site. Inert flag. Not hiding anything."
+  },
+  {
+    "flagId": "timesheetPeriodLock",
+    "settingKey": "flag.feature.timesheet.periodLock.enabled",
+    "default": true,
+    "gates": "NONE FOUND as a runtime gate. Period-lock logic lives in the timesheets module (time-management.controller.ts) and is applied unconditionally. The timesheetPeriodLock flag has zero consumption sites. Registry-only; default true.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (default true)",
+    "stagingSource": "Default true in registry (platform-flags.service.ts:343) and flags.json. Backend force redundant. No actual gate.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON, period-lock enforcement is built and unconditional, no consumption site. Inert flag. Not hiding anything."
+  }
+]

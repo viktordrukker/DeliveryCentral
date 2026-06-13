@@ -1,0 +1,359 @@
+[
+  {
+    "flagId": "timesheetApproval",
+    "settingKey": "flag.feature.timesheet.approval.enabled",
+    "default": true,
+    "gates": "Backend registry-declared (platform-flags.service.ts:350-357, default true) for manager timesheet approval workflow. NOT wired to any runtime gate: no isEnabled('timesheetApproval') call, no @RequireFeature, no FE isFeatureEnabled, no route-manifest flag: entry. The /timesheets/approval -> /time-management route is gated by RoleGuard(TIMESHEET_MANAGER_ROLES) only (router.tsx:394). The flag is descriptive metadata only.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true -> platform-flags.service.ts:977. Frontend: build-and-stage-v2.yml default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (this flag not in list) -> feature-flags.ts:226 returns registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and the timesheet-approval workflow ships (router.tsx:394 redirects to /time-management; backend timesheet approval services exist). No gating wires the flag to anything; flipping it OFF changes nothing at runtime."
+  },
+  {
+    "flagId": "featureLeaveRequests",
+    "settingKey": "flag.feature.leaveRequests.enabled",
+    "default": false,
+    "gates": "Backend registry-declared (platform-flags.service.ts:358-366, default false) for leave request submission + approval. NOT wired to any runtime gate. The /leave route renders LeaveRequestPage unconditionally (router.tsx:395, no RoleGuard, no FeatureGuard); /me?tab=leave (LeaveTab) is gated only by workspaceMe shell + dsRefresh styling. Backend LeaveRequestsService is fully wired into the unified approval queue (unified-approval-queue.service.ts:68,135-136) with no flag check.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build-and-stage-v2.yml default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (not listed) -> feature-flags.ts:226 returns registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but hides nothing: the /leave route and LeaveRequestPage are not flag-gated and leave is fully built end-to-end (LeaveRequestPage, LeaveTab, LeaveRequestsService approve/reject, unified-approval-queue wiring, admin/leave-policies route). The flag is unwired metadata; feature is live regardless."
+  },
+  {
+    "flagId": "featureOvertime",
+    "settingKey": "flag.feature.overtime.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:367-375, default false) for overtime policy + exception tracking. NOT wired to this flag at runtime. The operational gate is a SEPARATE PlatformSetting key 'overtime.enabled' (platform-settings.service.ts:64,277) consumed by overtime-resolver.service.ts:31 (if (!settings.overtime.enabled) ...) — a different config surface from flag.feature.overtime.enabled. No FE isFeatureEnabled('featureOvertime'), no route flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (but this flag is not the consumed key). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but the feature-flag is not the runtime gate. The real overtime gate is the 'overtime.enabled' PlatformSetting (default true, platform-settings.service.ts:64) read by overtime-resolver.service.ts:31. Overtime module is built (src/modules/overtime). flag.feature.overtime.enabled is orphaned metadata."
+  },
+  {
+    "flagId": "featurePublicHolidays",
+    "settingKey": "flag.feature.publicHolidays.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:376-384, default false, maturity 'scaffolded') for per-region public-holiday calendar. NOT wired: no isEnabled('featurePublicHolidays'), no @RequireFeature, no FE isFeatureEnabled, no route-manifest flag entry.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Maturity 'scaffolded' and off-by-default, but the flag gates NOTHING at runtime (no consumer). It cannot hide a surface because no surface is wired to it. Backend PublicHoliday multi-region work shipped in Sprint F-7 (D-163). Classified false: hidesHalfBuilt requires the flag to actually hide a feature; this flag hides nothing."
+  },
+  {
+    "flagId": "pulseBasic",
+    "settingKey": "flag.feature.pulse.basic.enabled",
+    "default": true,
+    "gates": "Registry-declared (platform-flags.service.ts:389-396, default true) for anonymous mood capture. NOT wired to this flag. The runtime Pulse gate is a SEPARATE PlatformSetting key 'pulse.enabled' (platform-settings.service.ts:26,231) and the registry flag 'pulseEnabled' (flag.pulse.enabled). No isEnabled('pulseBasic'), no FE isFeatureEnabled('pulseBasic'), no route flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and unwired. The operational Pulse switch is 'pulse.enabled' (platform-settings.service.ts:26) / flag.pulse.enabled, not this flag. flag.feature.pulse.basic.enabled is descriptive metadata."
+  },
+  {
+    "flagId": "pulseDeclineDetect",
+    "settingKey": "flag.feature.pulse.declineDetect.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:397-405, default false, maturity 'scaffolded') for mood decline detection + manager alerts. NOT wired: no isEnabled, no @RequireFeature, no FE consumer, no route flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Maturity 'scaffolded' and off-by-default, but the flag has zero runtime consumers, so it hides no surface. hidesHalfBuilt=false because there is no wired feature behind it to hide."
+  },
+  {
+    "flagId": "pulseManagerTrend",
+    "settingKey": "flag.feature.pulse.managerTrend.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:406-414, default false, maturity 'scaffolded') for per-team Pulse trend visualisation. NOT wired: no isEnabled, no @RequireFeature, no FE isFeatureEnabled, no route flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Maturity 'scaffolded', off-by-default, but no runtime consumer wires this flag to any surface. Cannot hide a half-built feature because nothing is gated by it."
+  },
+  {
+    "flagId": "dashEmployee",
+    "settingKey": "flag.feature.dashboard.employee.enabled",
+    "default": true,
+    "gates": "Registry-declared (platform-flags.service.ts:419-426, default true) for per-employee self-dashboard. NOT wired to the flag: the route-manifest entry for /dashboard/employee (route-manifest.ts:249) has NO flag: field, so it is never flag-gated. No FE isFeatureEnabled('dashEmployee'). /dashboard/employee redirects to /me (legacy-path-map.ts:22).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON; route-manifest.ts:249 has no flag binding. The employee dashboard is fully built (now redirects to /me). Flag is unwired metadata."
+  },
+  {
+    "flagId": "dashMergedManager",
+    "settingKey": "flag.feature.dashboard.merged.manager.enabled",
+    "default": true,
+    "gates": "WIRED for nav/route visibility. route-manifest.ts:256 flag: 'dashMergedManager' on /dashboard/manager. Consumed by canAccessRoute (route-manifest.ts:115 'if (entry.flag && !isFeatureEnabled(entry.flag)) return false'), SidebarNavV2.tsx:83, CommandPalette.tsx:131. Gates sidebar entry + nav access to the merged Manager Dashboard (/dashboard/manager).",
+    "gatedSurfaces": [
+      "frontend/src/app/route-manifest.ts:256 (/dashboard/manager nav+access)",
+      "frontend/src/components/layout/SidebarNavV2.tsx:83 (sidebar item)",
+      "frontend/src/components/common/CommandPalette.tsx:131 (Cmd+K nav)"
+    ],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (not listed) -> registry default true. Either way effective ON.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and feature (merged Manager Dashboard) is built and canonical per Decision-11. Off-by-default is not the case; nothing half-built."
+  },
+  {
+    "flagId": "dashMergedExec",
+    "settingKey": "flag.feature.dashboard.merged.exec.enabled",
+    "default": true,
+    "gates": "WIRED for nav/route visibility. route-manifest.ts:266 flag: 'dashMergedExec' on /dashboard/exec. Consumed by canAccessRoute (route-manifest.ts:115), SidebarNavV2.tsx:83, CommandPalette.tsx:131. Gates sidebar entry + nav access to the merged Exec Dashboard.",
+    "gatedSurfaces": [
+      "frontend/src/app/route-manifest.ts:266 (/dashboard/exec nav+access)",
+      "frontend/src/components/layout/SidebarNavV2.tsx:83 (sidebar item)",
+      "frontend/src/components/common/CommandPalette.tsx:131 (Cmd+K nav)"
+    ],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (not listed) -> registry default true. Effective ON.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON; merged Exec Dashboard is built and canonical per Decision-11. Nothing half-built."
+  },
+  {
+    "flagId": "dashWorkloadOverview",
+    "settingKey": "flag.feature.dashboard.workloadOverview.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:447-455, default false) — standalone Workload Overview, intended OFF per Decision-11 (merged into /dashboard/exec). NOT actually wired: no route-manifest flag: entry references dashWorkloadOverview, no FE isFeatureEnabled('dashWorkloadOverview'), no backend isEnabled. The Workload Overview content is the canonical reference dashboard (DashboardPage.tsx) and remains reachable.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 but maturity 'ga' and the surface is fully built (it is the gold-standard Workload Overview / DashboardPage). The flag has no runtime consumer, so it hides nothing. Not half-built."
+  },
+  {
+    "flagId": "dashProjectManager",
+    "settingKey": "flag.feature.dashboard.projectManager.enabled",
+    "default": false,
+    "gates": "WIRED. router.tsx:198 <FeatureGuard flag=\"dashProjectManager\"> wraps ProjectManagerDashboardPage on /dashboard/project-manager. route-manifest.ts:275 flag: 'dashProjectManager' (navVisible:false) hides it from sidebar + canAccessRoute. When OFF, direct-URL access renders FeatureGuard FeatureNotEnabled empty-state.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:198 (/dashboard/project-manager page, FeatureGuard)",
+      "frontend/src/app/route-manifest.ts:275 (nav visibility + canAccessRoute)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant; FE FeatureGuard governs this surface). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (not listed) -> registry default false, so FeatureGuard hides the page on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 (merged into /dashboard/manager?scope=portfolio), maturity 'ga'. ProjectManagerDashboardPage is fully built and deliberately superseded, not half-built. Hides a working-but-deprecated standalone page, not an unbuilt feature."
+  },
+  {
+    "flagId": "dashResourceManager",
+    "settingKey": "flag.feature.dashboard.resourceManager.enabled",
+    "default": false,
+    "gates": "WIRED. router.tsx:202 <FeatureGuard flag=\"dashResourceManager\"> wraps ResourceManagerDashboardPage on /dashboard/resource-manager. route-manifest.ts:276 flag: 'dashResourceManager' (navVisible:false). OFF -> sidebar hidden + direct-URL shows FeatureNotEnabled.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:202 (/dashboard/resource-manager page, FeatureGuard)",
+      "frontend/src/app/route-manifest.ts:276 (nav visibility + canAccessRoute)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant for FE-gated page). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false; FeatureGuard hides page on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 (merged into /dashboard/manager?scope=pool), maturity 'ga'. Page is built and superseded, not half-built."
+  },
+  {
+    "flagId": "dashHr",
+    "settingKey": "flag.feature.dashboard.hr.enabled",
+    "default": false,
+    "gates": "WIRED. router.tsx:206 <FeatureGuard flag=\"dashHr\"> wraps HrDashboardPage on /dashboard/hr. route-manifest.ts:277 flag: 'dashHr' (navVisible:false). OFF -> sidebar hidden + direct-URL FeatureNotEnabled.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:206 (/dashboard/hr page, FeatureGuard)",
+      "frontend/src/app/route-manifest.ts:277 (nav visibility + canAccessRoute)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant for FE-gated page). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false; FeatureGuard hides page on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 (merged into /dashboard/exec), maturity 'ga'. HrDashboardPage is built (and itself shows dsRefresh-gated HrActionCardsPanel at HrDashboardPage.tsx:247). Superseded standalone page, not half-built."
+  },
+  {
+    "flagId": "dashDeliveryManager",
+    "settingKey": "flag.feature.dashboard.deliveryManager.enabled",
+    "default": false,
+    "gates": "WIRED. router.tsx:210 <FeatureGuard flag=\"dashDeliveryManager\"> wraps DeliveryManagerDashboardPage on /dashboard/delivery-manager. route-manifest.ts:278 flag: 'dashDeliveryManager' (navVisible:false). OFF -> sidebar hidden + direct-URL FeatureNotEnabled.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:210 (/dashboard/delivery-manager page, FeatureGuard)",
+      "frontend/src/app/route-manifest.ts:278 (nav visibility + canAccessRoute)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant for FE-gated page). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false; FeatureGuard hides page on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 (merged into /dashboard/manager?scope=squad), maturity 'ga'. DeliveryManagerDashboardPage is built (shows dsRefresh-gated DmEscalationsCard at line 144). Superseded standalone page, not half-built."
+  },
+  {
+    "flagId": "dashDirector",
+    "settingKey": "flag.feature.dashboard.director.enabled",
+    "default": false,
+    "gates": "WIRED. router.tsx:214 <FeatureGuard flag=\"dashDirector\"> wraps DirectorDashboardPage on /dashboard/director. route-manifest.ts:279 flag: 'dashDirector' (navVisible:false). router.tsx:180,230 comments note prior bugs where dsRefresh-driven redirects leaked this default-off surface. OFF -> sidebar hidden + direct-URL FeatureNotEnabled.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:214 (/dashboard/director page, FeatureGuard)",
+      "frontend/src/app/route-manifest.ts:279 (nav visibility + canAccessRoute)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant for FE-gated page). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false; FeatureGuard hides page on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per Decision-11 (merged into /dashboard/exec), maturity 'ga'. DirectorDashboardPage is built and superseded. router.tsx:180/230 confirm it is a deliberately-hidden working surface, not half-built."
+  },
+  {
+    "flagId": "dashPortfolioRadiator",
+    "settingKey": "flag.feature.dashboard.portfolioRadiator.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:501-510, default false, dependsOn flag.feature.project.radiator.enabled) for the portfolio radiator page. NOT wired to this flag: route-manifest.ts:284 (/dashboards/portfolio-radiator) has NO flag: field; router.tsx:232 gates the page by RoleGuard(DELIVERY_DASHBOARD_ROLES) + V2Redirect to /me (under dsRefresh). No isFeatureEnabled('dashPortfolioRadiator').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (but flag unconsumed; page reachability driven by RoleGuard + dsRefresh redirect).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default and depends on projectRadiator (which is OFF/cold-start-broken per D-55), but THIS flag has no runtime consumer. PortfolioRadiatorPage exists (router.tsx:232) and is redirected to /me under dsRefresh. The dashPortfolioRadiator flag hides nothing because it is unwired; the half-built radiator concern belongs to the projectRadiator flag (outside this slice)."
+  },
+  {
+    "flagId": "dashPlannedVsActual",
+    "settingKey": "flag.feature.dashboard.plannedVsActual.enabled",
+    "default": true,
+    "gates": "Registry-declared (platform-flags.service.ts:511-518, default true) for Planned-vs-Actual variance dashboard. NOT wired to the flag: route-manifest.ts:248 (/dashboard/planned-vs-actual) has NO flag: field; router.tsx:166 gates by RoleGuard(MANAGEMENT_ROLES) only. No isFeatureEnabled('dashPlannedVsActual').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON, fully built (PlannedVsActualPage, router.tsx:166), and the flag is not wired to any gate. Nothing hidden."
+  },
+  {
+    "flagId": "reportsTimeAnalytics",
+    "settingKey": "flag.feature.reports.timeAnalytics.enabled",
+    "default": true,
+    "gates": "Registry-declared (platform-flags.service.ts:543-550, default true) for the time analytics report. NOT wired: /reports/time route gated by RoleGuard(TIMESHEET_MANAGER_ROLES) only (router.tsx:401). No FE isFeatureEnabled, no @RequireFeature, no route-manifest flag entry. ReportsPage tab visibility is driven by dsRefresh (ReportsPage.tsx:115), not by this flag.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and built (TimeReportPage). Flag unwired; hides nothing."
+  },
+  {
+    "flagId": "reportsUtilization",
+    "settingKey": "flag.feature.reports.utilization.enabled",
+    "default": true,
+    "gates": "Registry-declared (platform-flags.service.ts:551-558, default true) for the utilization report. NOT wired: /reports/utilization route gated by RoleGuard(EXCEPTIONS_ROLES) only (router.tsx:413). No FE isFeatureEnabled, no @RequireFeature, no route-manifest flag entry.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / default true (frontend)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default true.",
+    "hidesHalfBuilt": false,
+    "evidence": "Default ON and built (UtilizationPage). Flag unwired; hides nothing."
+  },
+  {
+    "flagId": "reportsCapitalisation",
+    "settingKey": "flag.feature.reports.capitalisation.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:559-567, default false) for capitalisation report. NOT wired to the flag at runtime: /reports/capitalisation FE route gated by RoleGuard(CAPITALISATION_ROLES) only (router.tsx:405); backend GET reports/capitalisation gated by RBAC, not @RequireFeature (capitalisation.controller.ts:40). No FE isFeatureEnabled('reportsCapitalisation').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (but flag unconsumed; page reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default ('OFF until fiscal calendar lands' per registry desc) but the flag is NOT wired to any gate — CapitalisationPage + backend controller are reachable by RBAC regardless. Because nothing is gated by this flag, it hides nothing. The capitalisation page itself exists end-to-end (router.tsx:405, capitalisation.controller.ts:40). hidesHalfBuilt=false: the flag is inert, not hiding a stub."
+  },
+  {
+    "flagId": "reportsBuilder",
+    "settingKey": "flag.feature.reports.builder.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:568-576, default false) for the custom report builder. NOT wired: /reports/builder route gated by RoleGuard(EXCEPTIONS_ROLES) only (router.tsx:417). No FE isFeatureEnabled('reportsBuilder'), no @RequireFeature, no route-manifest flag entry.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; ReportBuilderPage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but the flag is inert (no consumer). ReportBuilderPage is routed (router.tsx:417). The flag hides nothing because it is not wired; cannot classify as hiding a half-built feature."
+  },
+  {
+    "flagId": "reportsExportCentre",
+    "settingKey": "flag.feature.reports.exportCentre.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:577-585, default false) for the Export Centre (CSV/XLSX/JSON). NOT wired: /reports/export route gated by RoleGuard(EXPORT_CENTRE_ROLES) only (router.tsx:409); route-manifest.ts:339 entry has no flag field. No FE isFeatureEnabled('reportsExportCentre').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; ExportCentrePage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but inert (no consumer). ExportCentrePage routed (router.tsx:409) and listed in manifest (route-manifest.ts:339). Flag hides nothing; not classifiable as hiding a half-built feature."
+  },
+  {
+    "flagId": "adminWebhooks",
+    "settingKey": "flag.feature.admin.webhooks.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:590-598, default false; desc 'currently in-memory; not production-grade') for webhook config admin. NOT wired: /admin/webhooks route gated by RoleGuard(ADMIN_ROLES) only (router.tsx:535). No FE isFeatureEnabled('adminWebhooks'), no @RequireFeature. Backend webhook service is in-memory (in-memory-webhook.service.ts).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; WebhooksAdminPage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default AND the backing webhook service is admittedly not production-grade (in-memory-webhook.service.ts; registry desc says so). BUT the flag is NOT wired to any gate — the /admin/webhooks page is reachable by any admin regardless of the flag (router.tsx:535). Since the flag does not hide the surface, it does not 'hide' a half-built feature per the definition (the half-built webhook surface is exposed, not hidden). hidesHalfBuilt=false (flag is inert)."
+  },
+  {
+    "flagId": "adminAccessPolicies",
+    "settingKey": "flag.feature.admin.accessPolicies.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:599-607, default false, maturity 'scaffolded'; desc 'ABAC access policy admin (not enabled)') . NOT wired to THIS flag: /admin/access-policies route gated by RoleGuard(ADMIN_ROLES) + V2Redirect (router.tsx:556). The access-policies EDIT surface is instead gated by adminRolePermissionUI (router.tsx:561). No isFeatureEnabled('adminAccessPolicies').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed).",
+    "hidesHalfBuilt": false,
+    "evidence": "Maturity 'scaffolded', desc 'not enabled', off-by-default — but the adminAccessPolicies flag has NO runtime consumer, so it hides nothing. AccessPoliciesPage is reachable by RoleGuard (router.tsx:556); the gated edit page uses a DIFFERENT flag (adminRolePermissionUI). hidesHalfBuilt=false because this flag is inert."
+  },
+  {
+    "flagId": "adminBulkImport",
+    "settingKey": "flag.feature.admin.bulkImport.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:608-616, default false) for bulk-import people via CSV/XLSX. NOT wired: /admin/people/import route gated by RoleGuard(HR_DIRECTOR_ADMIN_ROLES) only (router.tsx:531). No FE isFeatureEnabled('adminBulkImport'), no @RequireFeature.",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; BulkImportPage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but inert (no consumer). BulkImportPage routed (router.tsx:531). Flag hides nothing."
+  },
+  {
+    "flagId": "adminHris",
+    "settingKey": "flag.feature.admin.hris.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:617-625, default false; desc 'M365 covers v1; full HRIS deferred') for HRIS adapter. NOT wired to THIS flag: /admin/hris route gated by RoleGuard(ADMIN_ROLES) only (router.tsx:539); backend hris.controller.ts:16 @Controller('admin/hris') is RBAC-guarded, no @RequireFeature. No isFeatureEnabled('adminHris').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; HrisConfigPage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default and 'full HRIS deferred', but the flag is not wired — HrisConfigPage + hris.controller are reachable by RBAC regardless (router.tsx:539, hris.controller.ts:16). Flag is inert; hides nothing. hidesHalfBuilt=false."
+  },
+  {
+    "flagId": "adminTenantSettingsCatalog",
+    "settingKey": "flag.feature.admin.tenantSettingsCatalog.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:626-635, default false; desc 'Tenant Settings Catalog admin page (renders 60-flag registry); Lights up in F-1.1') . NOT wired to THIS flag: the actual /admin/feature-flags route (FeatureFlagsAdminPage) is gated by RoleGuard(ADMIN_ROLES) only (router.tsx:517). No isFeatureEnabled('adminTenantSettingsCatalog').",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed; FeatureFlagsAdminPage reachable via RoleGuard).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default but inert. The Tenant Settings Catalog (FeatureFlagsAdminPage at /admin/feature-flags) shipped in F-1.1 and is reachable by RoleGuard regardless of this flag (router.tsx:517). Flag hides nothing."
+  },
+  {
+    "flagId": "adminPlatformSettings",
+    "settingKey": "flag.feature.admin.platformSettings.tenantOverride.enabled",
+    "default": false,
+    "gates": "Registry-declared (platform-flags.service.ts:636-644, default false, maturity 'developing') for per-tenant override editing of PlatformSetting values. NOT wired to THIS flag: no FE isFeatureEnabled('adminPlatformSettings'), no @RequireFeature, no route-manifest flag entry. /admin/settings + /admin/feature-flags pages are RoleGuard(ADMIN_ROLES)-gated (router.tsx:512,517).",
+    "gatedSurfaces": [],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true. Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh -> registry default false (flag unconsumed).",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default, maturity 'developing' (per-tenant override editing not fully shipped), but the flag has NO runtime consumer — it does not gate any UI control or endpoint. Because it hides nothing, hidesHalfBuilt=false (the under-built tenant-override path is simply not surfaced anywhere, not flag-hidden)."
+  },
+  {
+    "flagId": "adminRolePermissionUI",
+    "settingKey": "flag.feature.admin.rolePermissionUI.enabled",
+    "default": false,
+    "gates": "WIRED (the only adminX flag in this slice with a real gate). router.tsx:561 <FeatureGuard flag=\"adminRolePermissionUI\"> wraps RolePermissionAdminPage on /admin/access-policies/edit. AccessPoliciesPage.tsx:45 'const adminRoleUiOn = isFeatureEnabled(\"adminRolePermissionUI\")' conditionally shows the role-edit entry; AccessPoliciesPage.tsx:183 documents it. route-manifest.ts:388 describes /admin/access-policies/edit as flag-gated by adminRolePermissionUI. OFF -> edit page shows FeatureNotEnabled + the link is hidden.",
+    "gatedSurfaces": [
+      "frontend/src/app/router.tsx:561 (/admin/access-policies/edit page, FeatureGuard)",
+      "frontend/src/routes/admin/AccessPoliciesPage.tsx:45 (role-edit entry link visibility)",
+      "frontend/src/routes/admin/RolePermissionAdminPage.tsx:44 (page itself, doc)"
+    ],
+    "stagingEffective": "ON (backend) / OFF (frontend default)",
+    "stagingSource": "Backend: docker-compose.v2-staging.yml:38 FORCE_ALL_FLAGS_ON=true (irrelevant for FE-gated page). Frontend: build default VITE_FORCE_FLAGS_ON=workspaceMe,dsRefresh (not listed) -> registry default false; FeatureGuard hides RolePermissionAdminPage on v2-staging.",
+    "hidesHalfBuilt": false,
+    "evidence": "Off-by-default per registry: 'Ships behind flag for soak; promote post 30-day staging' and maturity 'developing'. RolePermissionAdminPage is a real, built page (router.tsx:561, RolePermissionAdminPage.tsx) wired to the role-preset override backend (D-159). It is gated for soak/risk reasons, not because it is a stub/missing-endpoint. hidesHalfBuilt=false: feature is built end-to-end, flag exists for staged rollout."
+  }
+]
