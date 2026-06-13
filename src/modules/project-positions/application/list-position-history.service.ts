@@ -38,9 +38,16 @@ export class ListPositionHistoryService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  public async execute(positionId: string): Promise<PositionHistoryResponseDto> {
+  public async execute(idOrPublicId: string): Promise<PositionHistoryResponseDto> {
+    // W1-11 — accept both legacy uuid and `pos_…` publicId (mirrors
+    // PositionForensicsService). The ParsePublicIdOrUuid pipe passes the value
+    // verbatim; resolution happens here so a `pos_…` string isn't fed into the
+    // uuid `id` column (which 500s on an invalid-uuid cast).
+    const where = /^pos_[A-Za-z0-9]{10,}$/.test(idOrPublicId)
+      ? { publicId: idOrPublicId }
+      : { id: idOrPublicId };
     const position = await this.prisma.projectPosition.findUnique({
-      where: { id: positionId },
+      where,
       select: {
         id: true,
         fillHistory: {
@@ -62,7 +69,7 @@ export class ListPositionHistoryService {
     });
 
     if (!position) {
-      throw new NotFoundException(`ProjectPosition ${positionId} not found.`);
+      throw new NotFoundException(`ProjectPosition ${idOrPublicId} not found.`);
     }
 
     return {
