@@ -1,0 +1,31 @@
+[
+  {
+    "id": "F-1b-E",
+    "title": "/cases (\"HR Queue\") is nav-visible to ALL_ROLES but its list endpoint is HR_GOVERNANCE_ROLES-only → dead-end for PM/RM/employee",
+    "severity": "P2",
+    "class": "RBAC route↔endpoint mismatch / UX-Law-2 dead-end",
+    "verified": true,
+    "reproduced": true,
+    "surface": "frontend + backend",
+    "rootCause": "route-manifest.ts:342 registers /cases with allowedRoles: ALL_ROLES, navVisible:true, titleV2:'HR Queue' — so EVERY role sees the HR Queue nav item and can navigate there. But the page's primary data call GET /api/cases is @RequireRoles(...HR_GOVERNANCE_ROLES) (cases.controller.ts:102) → 403 for project_manager, resource_manager, employee. The page's core list cannot load for the majority of roles, while the nav advertises it to them.",
+    "userImpact": "PM, RM, and employee click 'HR Queue' from their sidebar and hit a forbidden/empty/error page — a dead-end nav entry (UX Law 2). Confirmed live: project_manager /cases → 403 GET /api/cases; employee /cases → 403 GET /api/cases. (Page renders the shell, so it's an error/empty state, not a crash.)",
+    "suggestedFix": "Align the /cases route's allowedRoles to the endpoint's HR_GOVERNANCE_ROLES (so it's hidden from roles that can't use it), OR if cases are intended to be broadly visible, relax the endpoint. Pick one so route visibility == data authorization.",
+    "evidence": "src/modules/case-management/presentation/cases.controller.ts:102 (@RequireRoles HR_GOVERNANCE_ROLES on @Get()); frontend/src/app/route-manifest.ts:342 (/cases allowedRoles ALL_ROLES navVisible true); live: PM+employee /cases → 403 GET /api/cases (avail-routes-render-r4.json)."
+  },
+  {
+    "id": "F-1b-CDE-class",
+    "title": "Finding class: nav-visible routes call endpoints their own roles can't access → 403s for lower-priv roles",
+    "severity": "P2 (umbrella)",
+    "class": "RBAC route↔endpoint mismatch",
+    "verified": true,
+    "members": {
+      "F-1b-C (P3)": "/people side-fetches GET /api/resource-pools + /api/people/bench (manager-only) ungated in FE → 403 for employee, project_manager, hr_manager. Page renders; empty pool filter + hidden bench chip + 1 uncaught console ApiError.",
+      "F-1b-D (P3)": "/projects health badges GET /api/projects/health (manager-only) → 403 for employee, hr_manager. List renders; health column shows em-dash + console noise.",
+      "F-1b-E (P2)": "/cases primary list GET /api/cases (HR_GOVERNANCE_ROLES) on an ALL_ROLES route → dead-end page for PM/RM/employee."
+    },
+    "rootCause": "Systematic: FE surfaces (routes + in-page fetches) were not consistently gated to match their backend endpoints' @RequireRoles. The route/nav layer is more permissive than the data layer.",
+    "suggestedFix": "Sweep every nav-visible route + its unconditional data fetches; ensure FE role gating (route allowedRoles + hasAnyRole around side-fetches) matches each endpoint's @RequireRoles. Catch any uncaught promise so a 403 never bubbles as a console error.",
+    "evidence": "avail-routes-render-r4.json (5 roles × V2 routes); cross-role render sweep — invisible when only director is driven.",
+    "note": "Render sweep also CONFIRMED LIVE & WIDENED P1-1: GET /api/project-positions?...&take=… 400 fires on the /me shell for EVERY tab and EVERY role (director/PM/HR/dual/employee) + project-detail pulse tab — the /me workspace landing degrades for all users regardless of tab, not just the Projects tab. AND confirmed clean: project-detail Money/Plan/Change/Activity tabs rendered with no 4xx (finance surface OK)."
+  }
+]

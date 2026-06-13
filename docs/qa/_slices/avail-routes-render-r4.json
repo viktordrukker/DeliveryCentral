@@ -1,0 +1,639 @@
+[
+  {
+    "role": "director",
+    "route": "/people",
+    "verdict": "OK",
+    "finalUrl": "/people",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/people/bench",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/approvals",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/projects",
+    "verdict": "OK",
+    "finalUrl": "/projects",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/me",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me.png"
+  },
+  {
+    "role": "director",
+    "route": "/reports",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/cases",
+    "verdict": "OK",
+    "finalUrl": "/cases",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/staffing-desk",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=projects",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=projects",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-projects.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=leave",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=leave",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-leave.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=skills",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=skills",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-skills.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=inbox",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=inbox",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-inbox.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=cases",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=cases",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-cases.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=time",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=time",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-time.png"
+  },
+  {
+    "role": "director",
+    "route": "/me?tab=overview",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000002&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-me-tab-overview.png"
+  },
+  {
+    "role": "director",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=money",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=money",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=plan",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=plan",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=change",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=change",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=activity",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=activity",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "director",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=pulse",
+    "verdict": "API-4xx",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=pulse",
+    "bad": [
+      "400 GET /api/project-positions?projectId=bbbb0008-0000-0000-0000-000000000001&take=50"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_director_-projects-bbbb0008-0000-0000-0000-000000000001-tab-pulse.png"
+  },
+  {
+    "role": "project_manager",
+    "route": "/people",
+    "verdict": "RENDER-ERROR(js)",
+    "finalUrl": "/people",
+    "bad": [
+      "403 GET /api/resource-pools"
+    ],
+    "jserr": [
+      "wa: Insufficient role for this operation."
+    ],
+    "screenshot": "docs/qa/_screens/r4_project_manager_-people.png"
+  },
+  {
+    "role": "project_manager",
+    "route": "/people/bench",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/approvals",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects",
+    "verdict": "OK",
+    "finalUrl": "/projects",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/me",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000007&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_project_manager_-me.png"
+  },
+  {
+    "role": "project_manager",
+    "route": "/reports",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/cases",
+    "verdict": "API-4xx",
+    "finalUrl": "/cases",
+    "bad": [
+      "403 GET /api/cases"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_project_manager_-cases.png"
+  },
+  {
+    "role": "project_manager",
+    "route": "/staffing-desk",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=money",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=money",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=plan",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=plan",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=change",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=change",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=activity",
+    "verdict": "OK",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=activity",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "project_manager",
+    "route": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=pulse",
+    "verdict": "API-4xx",
+    "finalUrl": "/projects/bbbb0008-0000-0000-0000-000000000001?tab=pulse",
+    "bad": [
+      "400 GET /api/project-positions?projectId=bbbb0008-0000-0000-0000-000000000001&take=50"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_project_manager_-projects-bbbb0008-0000-0000-0000-000000000001-tab-pulse.png"
+  },
+  {
+    "role": "hr_manager",
+    "route": "/people",
+    "verdict": "API-4xx",
+    "finalUrl": "/people",
+    "bad": [
+      "403 GET /api/people/bench"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_hr_manager_-people.png"
+  },
+  {
+    "role": "hr_manager",
+    "route": "/people/bench",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "hr_manager",
+    "route": "/approvals",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "hr_manager",
+    "route": "/projects",
+    "verdict": "API-4xx",
+    "finalUrl": "/projects",
+    "bad": [
+      "403 GET /api/projects/health?ids=bbbb0008-0000-0000-0000-000000000001%2Cbbbb0008-0000-00"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_hr_manager_-projects.png"
+  },
+  {
+    "role": "hr_manager",
+    "route": "/me",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000005&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_hr_manager_-me.png"
+  },
+  {
+    "role": "hr_manager",
+    "route": "/reports",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "hr_manager",
+    "route": "/cases",
+    "verdict": "OK",
+    "finalUrl": "/cases",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "hr_manager",
+    "route": "/staffing-desk",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/people",
+    "verdict": "OK",
+    "finalUrl": "/people",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/people/bench",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/approvals",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/projects",
+    "verdict": "OK",
+    "finalUrl": "/projects",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/me",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-00000000000a&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_dual_rm_hr_-me.png"
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/reports",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/cases",
+    "verdict": "OK",
+    "finalUrl": "/cases",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "dual_rm_hr",
+    "route": "/staffing-desk",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "employee",
+    "route": "/people",
+    "verdict": "RENDER-ERROR(js)",
+    "finalUrl": "/people",
+    "bad": [
+      "403 GET /api/resource-pools",
+      "403 GET /api/people/bench"
+    ],
+    "jserr": [
+      "wa: Insufficient role for this operation."
+    ],
+    "screenshot": "docs/qa/_screens/r4_employee_-people.png"
+  },
+  {
+    "role": "employee",
+    "route": "/people/bench",
+    "verdict": "OK",
+    "finalUrl": "/people/bench",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "employee",
+    "route": "/approvals",
+    "verdict": "OK",
+    "finalUrl": "/approvals",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "employee",
+    "route": "/projects",
+    "verdict": "API-4xx",
+    "finalUrl": "/projects",
+    "bad": [
+      "403 GET /api/projects/health?ids=bbbb0008-0000-0000-0000-000000000001%2Cbbbb0008-0000-00"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-projects.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me.png"
+  },
+  {
+    "role": "employee",
+    "route": "/reports",
+    "verdict": "OK",
+    "finalUrl": "/reports",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "employee",
+    "route": "/cases",
+    "verdict": "API-4xx",
+    "finalUrl": "/cases",
+    "bad": [
+      "403 GET /api/cases"
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-cases.png"
+  },
+  {
+    "role": "employee",
+    "route": "/staffing-desk",
+    "verdict": "OK",
+    "finalUrl": "/staffing-desk",
+    "bad": [],
+    "jserr": [],
+    "screenshot": ""
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=projects",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=projects",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-projects.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=leave",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=leave",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-leave.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=skills",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=skills",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-skills.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=inbox",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=inbox",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-inbox.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=cases",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=cases",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-cases.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=time",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=time",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-time.png"
+  },
+  {
+    "role": "employee",
+    "route": "/me?tab=overview",
+    "verdict": "API-4xx",
+    "finalUrl": "/me?tab=overview",
+    "bad": [
+      "400 GET /api/project-positions?activePersonId=bbbb0001-0000-0000-0000-000000000009&take="
+    ],
+    "jserr": [],
+    "screenshot": "docs/qa/_screens/r4_employee_-me-tab-overview.png"
+  }
+]
