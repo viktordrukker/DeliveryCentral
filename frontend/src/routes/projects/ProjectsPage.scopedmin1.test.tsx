@@ -103,6 +103,24 @@ describe('SCOPED-MIN-1 — ProjectsPage dsRefresh additions', () => {
     expect(atRisk).toHaveAttribute('href', '/projects?sort=asc');
   });
 
+  it('F-DC-3: lowercase ?status=active drilldown filters to ACTIVE projects (case-insensitive)', async () => {
+    mockedFetchProjectDirectory.mockResolvedValue(
+      buildProjectDirectoryResponse({
+        items: [
+          buildProjectDirectoryItem({ id: 'prj-1', status: 'ACTIVE' }),
+          buildProjectDirectoryItem({ id: 'prj-2', name: 'Bravo', projectCode: 'PRJ-200', status: 'CLOSED' }),
+        ],
+      }),
+    );
+
+    // DM-dashboard KPI sends lowercase `status=active`; it must still match the
+    // uppercase ProjectStatus enum (regression for the 'ACTIVE' !== 'active' bug).
+    renderWithRouter('/projects?status=active');
+
+    expect(await screen.findByText('Atlas ERP Rollout')).toBeInTheDocument();
+    expect(screen.queryByText('Bravo')).not.toBeInTheDocument();
+  });
+
   it('opens the inspector drawer on row click', async () => {
     mockedFetchProjectDirectory.mockResolvedValue(
       buildProjectDirectoryResponse({
@@ -170,12 +188,12 @@ describe('SCOPED-MIN-1 — ProjectsPage dsRefresh additions', () => {
   });
 });
 
-function renderWithRouter() {
+function renderWithRouter(path = '/projects') {
   return renderRoute(
     <Routes>
       <Route element={<ProjectsPage />} path="/projects" />
       <Route element={<div>Project Details</div>} path="/projects/:id" />
     </Routes>,
-    { initialEntries: ['/projects'] },
+    { initialEntries: [path] },
   );
 }
