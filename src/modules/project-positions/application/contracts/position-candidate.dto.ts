@@ -15,7 +15,7 @@ export class PositionCandidateDto {
   @ApiProperty() matchScore!: number;
   @ApiProperty({ type: [String] }) matchedSkills!: string[];
   @ApiProperty({ type: [String] }) missingSkills!: string[];
-  @ApiProperty({ description: 'Free hours over the next 14 days (bench → 80).' })
+  @ApiProperty({ description: 'Free hours over the next 14 days: 80 h capacity minus Σ active allocation.' })
   availabilityHours14d!: number;
 }
 

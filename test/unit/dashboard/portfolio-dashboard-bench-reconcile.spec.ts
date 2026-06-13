@@ -39,6 +39,10 @@ function buildPrismaStub(args: {
     // the canonical ProjectPosition aggregate, not legacy ProjectAssignment.
     projectPosition: {
       findMany: async (_q: unknown) => args.positions,
+      // PR-16 (Decision E) — getPortfolioSummary counts canonical OPEN demand.
+      // These fixtures carry no OPEN rows, so the count is 0.
+      count: async (q: { where?: { fillStatus?: unknown } }) =>
+        args.positions.filter((p) => (p as { fillStatus?: string }).fillStatus === q?.where?.fillStatus).length,
     },
     project: {
       findMany: async (_q: unknown) => [],

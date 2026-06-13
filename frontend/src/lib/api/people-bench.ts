@@ -14,9 +14,15 @@ export interface BenchEnrichedRowDto {
   office: string | null;
   grade: string | null;
   isOnBench: boolean;
-  /** Days since the person's last RELEASED fill (or since hire if never assigned). */
+  /** Days since the person's last RELEASED fill, or since hire when none exists. */
   daysOnBench: number;
-  /** 80 minus scheduled hours over the next 14 calendar days. */
+  /**
+   * PR-16 (Decision E) — provenance of {@link daysOnBench}. `no-fill-history`
+   * means the person has never held a fill and the count is time-since-hire;
+   * the UI labels this explicitly rather than presenting it as a real tenure.
+   */
+  daysOnBenchBasis: 'fill-history' | 'no-fill-history';
+  /** Free hours over the next 14 days: 80 h capacity minus Σ active allocation. */
   availabilityHours14d: number;
   /**
    * Top-N suggested project IDs for this bench person, computed server-side

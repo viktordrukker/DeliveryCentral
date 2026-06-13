@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import {
+  availabilityHours14d,
+  benchTenure,
+} from '@src/shared/persistence/active-fill-window';
+import {
   canonicalActivePersonWhere,
   listBenchPersonIds,
 } from '@src/shared/persistence/bench-query';
@@ -105,16 +109,23 @@ export class ListEnrichedBenchService {
       }),
     );
 
-    const now = asOf.getTime();
+    // PR-16 (Decision E) — derive real 14-day availability per bench person
+    // (capacity minus Σ active allocation) instead of a hardcoded 80 h.
+    const availabilityByPerson = new Map<string, number>();
+    await Promise.all(
+      benchPeople.map(async (p) => {
+        availabilityByPerson.set(p.id, await availabilityHours14d(this.prisma, { personId: p.id, from: asOf }));
+      }),
+    );
+
     return benchPeople.map((p) => {
-      const lastReleased = lastReleasedByPerson.get(p.id) ?? p.hiredAt ?? asOf;
-      const daysOnBench = Math.max(
-        0,
-        Math.floor((now - lastReleased.getTime()) / (24 * 60 * 60 * 1000)),
-      );
-      // Every bench person has 0 scheduled hours (no active fills); full 80h
-      // available over the next two weeks.
-      const availabilityHours14d = 80;
+      // PR-16 (Decision E) — explicit provenance: `no-fill-history` when no
+      // RELEASED fill exists and the count falls back to time-since-hire.
+      const tenure = benchTenure({
+        asOf,
+        lastReleased: lastReleasedByPerson.get(p.id) ?? null,
+        fallback: p.hiredAt ?? null,
+      });
       return {
         personId: p.id,
         personPublicId: p.publicId ?? null,
@@ -123,8 +134,9 @@ export class ListEnrichedBenchService {
         office: p.location,
         grade: p.grade,
         isOnBench: true,
-        daysOnBench,
-        availabilityHours14d,
+        daysOnBench: tenure.days,
+        daysOnBenchBasis: tenure.basis,
+        availabilityHours14d: availabilityByPerson.get(p.id) ?? 0,
         suggestedProjectIds: suggestionsByPerson.get(p.id) ?? [],
       };
     });

@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ProjectPositionFillStatus } from '@prisma/client';
 
+import { activeFillWindowWhere } from '@src/shared/persistence/active-fill-window';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import type {
@@ -28,7 +30,11 @@ interface PortfolioPositionRow {
   activePerson: { id: string; displayName: string } | null;
 }
 
-const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED'] as const;
+const ACTIVE_FILL_STATUSES: readonly ProjectPositionFillStatus[] = [
+  ProjectPositionFillStatus.BOOKED,
+  ProjectPositionFillStatus.ONBOARDING,
+  ProjectPositionFillStatus.ASSIGNED,
+];
 const WEEKS_IN_WINDOW = 4;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_WEEK = 7 * MS_PER_DAY;
@@ -60,22 +66,13 @@ export class TeamConflictsService {
 
     const positions = (await this.prisma.projectPosition.findMany({
       where: {
-        fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
         activePersonId: { not: null },
         project: { deliveryManagerId: command.deliveryManagerPersonId },
-        // Position's active interval must overlap the window.
-        OR: [
-          { activeValidFrom: null },
-          { activeValidFrom: { lt: windowEnd } },
-        ],
-        AND: [
-          {
-            OR: [
-              { activeValidTo: null },
-              { activeValidTo: { gt: windowStart } },
-            ],
-          },
-        ],
+        // PR-16 (Decision E) — canonical active-fill window predicate as the DB
+        // pre-filter; the precise per-week overlap is still computed in-memory
+        // by `intervalOverlaps`, so inclusive bounds only widen the candidate
+        // set without changing the conflict output.
+        ...activeFillWindowWhere({ from: windowStart, to: windowEnd, statuses: ACTIVE_FILL_STATUSES }),
       },
       select: {
         id: true,

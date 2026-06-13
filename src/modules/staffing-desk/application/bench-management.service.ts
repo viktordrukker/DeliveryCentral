@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { benchTenure } from '@src/shared/persistence/active-fill-window';
 import {
   ACTIVE_FILL_STATUSES,
   canonicalActivePersonWhere,
@@ -48,6 +49,11 @@ export interface BenchPersonDto {
   availablePercent: number;
   benchStartDate: string;
   daysOnBench: number;
+  /**
+   * PR-16 (Decision E) — provenance of {@link daysOnBench}. `no-fill-history`
+   * when the person has never held a fill and the count is time-since-hire.
+   */
+  daysOnBenchBasis: 'fill-history' | 'no-fill-history';
   lastProjectName: string | null;
   lastProjectEndDate: string | null;
   bestMatchRequestId: string | null;
@@ -257,7 +263,15 @@ export class BenchManagementService {
 
       const last = lastAssignment.get(p.id);
       const benchStart = last?.validTo ?? p.hiredAt ?? p.createdAt;
-      const daysOnBench = Math.max(0, Math.round((now.getTime() - benchStart.getTime()) / 86400000));
+      // PR-16 (Decision E) — explicit provenance: `no-fill-history` when no
+      // RELEASED fill / closeout-lag end date exists and the count falls back
+      // to time-since-hire.
+      const tenure = benchTenure({
+        asOf: now,
+        lastReleased: last?.validTo ?? null,
+        fallback: p.hiredAt ?? p.createdAt,
+      });
+      const daysOnBench = tenure.days;
       const skills = skillsByPerson.get(p.id) ?? [];
 
       // Walk only requests that share ≥1 skill with this person; tally matches per request.
@@ -287,6 +301,7 @@ export class BenchManagementService {
         availablePercent: 100,
         benchStartDate: benchStart.toISOString(),
         daysOnBench,
+        daysOnBenchBasis: tenure.basis,
         lastProjectName: last ? (projectNameMap.get(last.projectId) ?? null) : null,
         lastProjectEndDate: last?.validTo.toISOString() ?? null,
         bestMatchRequestId: bestReq?.id ?? null,

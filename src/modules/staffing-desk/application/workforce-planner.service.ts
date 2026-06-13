@@ -1,9 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { ProjectPositionFillStatus, type Prisma } from '@prisma/client';
 
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
+import { activeFillWindowWhere } from '@src/shared/persistence/active-fill-window';
 import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+/**
+ * PR-16 (Decision E) — the planner's allocation-window status set. Distinct
+ * from the bench helper's default (which excludes PROPOSED): the planner
+ * counts a PROPOSED fill as reserved capacity, plus ON_HOLD positions still
+ * hold a person. Passed explicitly to `activeFillWindowWhere` so the planner's
+ * window math stays byte-for-byte identical while sharing the canonical bound
+ * predicate.
+ */
+const PLANNER_ALLOCATION_FILL_STATUSES: readonly ProjectPositionFillStatus[] = [
+  ProjectPositionFillStatus.PROPOSED,
+  ProjectPositionFillStatus.BOOKED,
+  ProjectPositionFillStatus.ONBOARDING,
+  ProjectPositionFillStatus.ASSIGNED,
+  ProjectPositionFillStatus.ON_HOLD,
+];
 
 /* ── Auto-Match types ── */
 
@@ -364,9 +381,12 @@ export class WorkforcePlannerService {
     // `status`). `id` is preserved as the legacy assignment id so downstream
     // `applyPlan` extension calls keep working until P1-6/P1-7.
     const positionWhere: Record<string, unknown> = {
-      fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-      activeValidFrom: { lte: endDate },
-      OR: [{ activeValidTo: { gte: new Date(from) } }, { activeValidTo: null }],
+      // PR-16 (Decision E) — canonical active-fill window predicate.
+      ...activeFillWindowWhere({
+        from: new Date(from),
+        to: endDate,
+        statuses: PLANNER_ALLOCATION_FILL_STATUSES,
+      }),
     };
     if (personScope) positionWhere.activePersonId = { in: [...personScope] };
 
@@ -1759,9 +1779,12 @@ export class WorkforcePlannerService {
           where: {
             activePersonId: person.id,
             id: { not: position.id },
-            fillStatus: { in: ['PROPOSED', 'BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-            activeValidFrom: { lte: newValidToDate },
-            OR: [{ activeValidTo: { gte: currentValidToDate } }, { activeValidTo: null }],
+            // PR-16 (Decision E) — canonical active-fill window predicate.
+            ...activeFillWindowWhere({
+              from: currentValidToDate,
+              to: newValidToDate,
+              statuses: PLANNER_ALLOCATION_FILL_STATUSES,
+            }),
           },
           select: {
             activeAllocationPercent: true,

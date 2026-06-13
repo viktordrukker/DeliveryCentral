@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { openDemandWhere } from '@src/shared/persistence/active-fill-window';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectRolePlanService } from '@src/modules/project-registry/application/project-role-plan.service';
 
@@ -194,12 +195,20 @@ export class PortfolioDashboardService {
 
     const benchSize = await this.getAvailablePoolCount();
 
+    // PR-16 (Decision E) — "open positions" is the canonical OPEN-demand count
+    // (`fillStatus = OPEN`), not the RolePlan planned-minus-filled gap. This is
+    // the same definition the staffing-desk OPEN counter and the bench-matching
+    // pool read, so all three surfaces agree on what "open" counts.
+    const totalOpenGaps = await this.prisma.projectPosition.count({
+      where: openDemandWhere(),
+    });
+
     return {
       totalProjects: heatmap.summary.totalProjects,
       byRag: { green: heatmap.summary.greenCount, amber: heatmap.summary.amberCount, red: heatmap.summary.redCount },
       totalInternalHC: heatmap.summary.totalFilledHC - (totalVendorHC._sum?.headcount ?? 0),
       totalVendorHC: totalVendorHC._sum?.headcount ?? 0,
-      totalOpenGaps: heatmap.summary.totalPlannedHC - heatmap.summary.totalFilledHC,
+      totalOpenGaps,
       overallFillRate: heatmap.summary.overallFillRate,
       benchSize,
     };

@@ -16,10 +16,24 @@ function buildStub(seed: {
   position?: { id: string; role: string | null; skills: string[] } | null;
   people?: FakePerson[];
   activeFills?: Array<{ activePersonId: string }>;
+  /** PR-16 (Decision E) — per-person Σ active allocation (default 0 ⇒ 80h free). */
+  allocationByPerson?: Record<string, number>;
 }): PrismaService {
   const projectPosition = {
     findUnique: async (_q: unknown) => seed.position ?? null,
-    findMany: async (_q: unknown) => seed.activeFills ?? [],
+    // PR-16 (Decision E) — two callers hit findMany:
+    //  - the busy anti-join (where.activePersonId = { in: [...] })
+    //  - availabilityHours14d's Σ-allocation read (where.activePersonId = '<id>')
+    // The allocation read selects allocation columns and filters by a single
+    // personId; return that person's allocation rows.
+    findMany: async (q: { where?: { activePersonId?: unknown } }) => {
+      const ap = q?.where?.activePersonId;
+      if (typeof ap === 'string') {
+        const pct = seed.allocationByPerson?.[ap] ?? 0;
+        return pct > 0 ? [{ activeAllocationPercent: pct, requiredAllocationPercent: pct }] : [];
+      }
+      return seed.activeFills ?? [];
+    },
   };
   const person = {
     findMany: async (_q: unknown): Promise<FakePerson[]> => seed.people ?? [],
@@ -100,6 +114,25 @@ describe('SuggestFillsService.suggestForPosition', () => {
     const svc = new SuggestFillsService(buildStub({ position, people: [] }));
     const res = await svc.suggestForPosition('pos1');
     expect(res.candidates).toEqual([]);
+  });
+
+  it('PR-16: derives availabilityHours14d from Σ active allocation (not a hardcoded 80)', async () => {
+    const svc = new SuggestFillsService(
+      buildStub({
+        position,
+        people: [
+          { id: 'free', displayName: 'Free', role: 'Engineer', grade: 'L5', personSkills: [skill('React', 5), skill('Node', 5)] },
+          { id: 'half', displayName: 'Half', role: 'Engineer', grade: 'L5', personSkills: [skill('React', 5), skill('Node', 5)] },
+        ],
+        activeFills: [], // neither is fully busy → both are bench candidates
+        allocationByPerson: { half: 50 }, // 50% allocated → 40h free
+      }),
+    );
+    const res = await svc.suggestForPosition('pos1', 5);
+    const free = res.candidates.find((c) => c.personId === 'free')!;
+    const half = res.candidates.find((c) => c.personId === 'half')!;
+    expect(free.availabilityHours14d).toBe(80);
+    expect(half.availabilityHours14d).toBe(40);
   });
 });
 

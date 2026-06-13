@@ -24,6 +24,7 @@
  */
 import { ProjectPositionFillStatus } from '@prisma/client';
 
+import { activeFillWindowWhere } from './active-fill-window';
 import type { PrismaService } from './prisma.service';
 
 export const ACTIVE_FILL_STATUSES: readonly ProjectPositionFillStatus[] = [
@@ -62,9 +63,8 @@ export async function listBenchPersonIds(
       by: ['activePersonId'],
       where: {
         activePersonId: { not: null },
-        fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
-        activeValidFrom: { lte: asOf },
-        OR: [{ activeValidTo: null }, { activeValidTo: { gte: asOf } }],
+        // PR-16 (Decision E) — canonical active-fill window predicate.
+        ...activeFillWindowWhere({ from: asOf, to: asOf }),
       },
     }),
   ]);

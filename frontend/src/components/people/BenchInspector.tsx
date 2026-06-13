@@ -173,6 +173,11 @@ export function BenchInspector({ row, onClose, position }: BenchInspectorProps):
         <div>
           <div style={S_META_LABEL}>Days idle</div>
           <div style={{ ...S_META_VALUE, color: toneColor[tone] }}>{row.daysOnBench}d</div>
+          {row.daysOnBenchBasis === 'no-fill-history' && (
+            <div style={{ fontSize: 10, color: 'var(--color-text-subtle)' }} data-testid="bench-no-fill-history">
+              no fill history — since hire
+            </div>
+          )}
         </div>
         <div>
           <div style={S_META_LABEL}>Availability 14d</div>
