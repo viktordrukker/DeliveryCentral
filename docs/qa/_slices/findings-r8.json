@@ -1,0 +1,27 @@
+[
+  {
+    "id": "F-FILTER-SYSTEMIC", "severity": "P2", "class": "data-consistency / backend filtering — SYSTEMIC (SC-3 root)", "verified": true,
+    "title": "List endpoints systematically ignore documented filter query params server-side",
+    "rootCause": "Live discriminating probes (real value vs garbage value, director): GET /api/org/people?lifecycleStatus=ACTIVE → 201 (==TERMINATED → 201, ==ZZZGARBAGE → 201; dataset is 198 ACTIVE/1 LEAVE/1 TERMINATED) = IGNORED; GET /api/project-positions?fillStatus=OPEN → 343 (==FILLED/garbage → 343) = IGNORED; GET /api/cases?status=OPEN → 12 (==CLOSED/garbage → 12) = IGNORED; GET /api/projects?status=ACTIVE → 40 (round 7) = IGNORED. By contrast GET /api/exceptions?status and GET /api/approvals/unified?source ARE honored (discrimination confirmed). So filter-honoring is inconsistent and MISSING on the high-traffic list endpoints.",
+    "userImpact": "This is the backend half of SC-3: even when a KPI drilldown sends the correct filter param, the list endpoint returns the full unfiltered set. Any feature relying on server-side list filtering (drilldowns, scoped views, deep-links) is broken on these endpoints. (FE pages compensate with client-side filtering, which is itself broken for status — see SC-3 case-sensitivity.)",
+    "suggestedFix": "Implement server-side filtering for the documented query params on org/people (lifecycleStatus, departmentId...), project-positions (fillStatus...), cases (status...), projects (status, rag...). Add a contract test per list endpoint asserting a filter value changes the result. Pairs with SC-3 (FE drilldown params).",
+    "evidence": "live director probes with discriminating garbage-value method; contrast exceptions/approvals honored. Note: a less-rigorous round-7/8 agent initially called org/people?lifecycleStatus 'working' from the 200+items shape — the garbage-value discrimination disproves it."
+  },
+  {
+    "id": "F-EXPORT-PLACEHOLDER", "altId": "SC-5", "severity": "P2", "class": "feature-completeness / misleading-export", "verified": true,
+    "title": "Report Builder XLSX export ships hardcoded '(sample value)' cells while promising real data",
+    "rootCause": "ReportBuilderPage.tsx:82-88 handleExport() writes buildPreviewData() (lines 73-80) to the XLSX — every cell is the literal string '(sample value)'. Export button is enabled when selectedCols.length>0 (:281); helper text (:305) says 'Preview shows synthetic placeholder rows. Export for real data.' — i.e. it promises the export has real data, but it is byte-for-byte the synthetic preview. There is NO data-query endpoint (reports backend exposes only /reports/builder/sources + /reports/templates; report-builder.ts api client has no fetch-rows fn), so the page CANNOT produce real rows.",
+    "flagContext": "reportsBuilder flag default=false → hidden in prod, but forced ON on v2-staging (the QA surface). A half-built feature whose export is actively misleading when exposed.",
+    "userImpact": "On any deployment where reportsBuilder is on, a user builds a report and exports it expecting their data — and gets a sheet of '(sample value)'.",
+    "suggestedFix": "Either build the data-query endpoint + wire fetch-rows before enabling export, or disable the Export button (and fix the 'Export for real data' copy) until the backend exists. Keep reportsBuilder default-OFF until end-to-end.",
+    "evidence": "ReportBuilderPage.tsx:73-88,281,305; report-builder.ts (no fetch-rows); contrast ExportCentrePage.tsx:89-170 + StaffingDeskExportButton.tsx:34 fetch real data."
+  },
+  {
+    "id": "F-CSV-INJECTION", "severity": "P3", "class": "security / CSV formula injection", "verified": true,
+    "title": "escapeCsv does not neutralize formula-injection lead characters (= + - @)",
+    "rootCause": "frontend/src/components/common/ExportButton.tsx escapeCsv (lines 19-24) quotes commas/quotes/newlines but does NOT prefix-guard cells beginning with =, +, -, @ or tab. A cell value like '=cmd|...' or '=HYPERLINK(...)' executes as a formula when the exported CSV is opened in Excel/Sheets.",
+    "userImpact": "If any exported field can contain user-controlled text starting with a formula char (names, notes, descriptions), the CSV becomes a formula-injection vector for whoever opens it.",
+    "suggestedFix": "In escapeCsv, prefix any cell starting with = + - @ \\t with a single quote (') or neutralize per OWASP CSV-injection guidance.",
+    "evidence": "ExportButton.tsx:19-24."
+  }
+]
