@@ -37,7 +37,9 @@ export function useCreateCasePage(): UseCreateCasePageState {
     setError(null);
 
     void Promise.all([
-      fetchPersonDirectory({ page: 1, pageSize: 100 }),
+      // SC-7 — widen so the Owner/Subject selects + Related-Position label
+      // resolution cover the full directory (was 100; it-company has 200+).
+      fetchPersonDirectory({ page: 1, pageSize: 500 }),
       fetchProjectDirectory(),
       listProjectPositions(),
     ])

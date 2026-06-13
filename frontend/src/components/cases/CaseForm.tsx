@@ -42,6 +42,12 @@ export function CaseForm({
   projects,
   values,
 }: CaseFormProps): JSX.Element {
+  // SC-7 / no-UUIDs-in-browser — resolve the "Related Position" option labels to
+  // human names from the already-loaded directory (the positions list endpoint
+  // doesn't populate activePersonName/projectName). Never fall back to a raw UUID.
+  const personNameById = new Map(people.map((p) => [p.id, p.displayName]));
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
+
   return (
     <form className="entity-form" noValidate onSubmit={onSubmit}>
       <div className="entity-form__grid">
@@ -126,8 +132,15 @@ export function CaseForm({
           >
             <option value="">Optional assignment context</option>
             {assignments.map((assignment) => {
-              const personLabel = assignment.activePersonName ?? assignment.activePersonId ?? 'Unassigned';
-              const projectLabel = assignment.projectName ?? assignment.projectCode ?? assignment.projectId;
+              const personLabel =
+                (assignment.activePersonId ? personNameById.get(assignment.activePersonId) : undefined) ??
+                assignment.activePersonName ??
+                'Unassigned';
+              const projectLabel =
+                projectNameById.get(assignment.projectId) ??
+                assignment.projectName ??
+                assignment.projectCode ??
+                'Project';
               return (
                 <option key={assignment.id} value={assignment.id}>
                   {`${personLabel} -> ${projectLabel} · ${assignment.role}`}
