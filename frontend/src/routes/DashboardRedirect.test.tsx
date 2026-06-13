@@ -1,11 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppRole } from '@/app/route-manifest';
 import { DashboardRedirect } from './DashboardRedirect';
 
 let currentRoles: AppRole[] = [];
+// F-REDIRECT-DASH — per-role dashboards are feature-flag gated. The redirect
+// must only target one when its flag is on, else fall back to the workspace
+// home. Control the flags here (default: all off, matching the real defaults).
+let enabledFlags = new Set<string>();
+
+vi.mock('@/lib/feature-flags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
+  return {
+    ...actual,
+    isFeatureEnabled: (id: string) => enabledFlags.has(id),
+  };
+});
 
 vi.mock('@/app/auth-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/auth-context')>();
@@ -40,70 +52,103 @@ function renderAt(): ReturnType<typeof render> {
   );
 }
 
+function locationText(): string | null {
+  return screen.getByTestId('location').textContent;
+}
+
 describe('DashboardRedirect — /dashboard per-role redirect', () => {
-  it('redirects director to /dashboard/director', () => {
-    currentRoles = ['director'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/director');
+  beforeEach(() => {
+    enabledFlags = new Set<string>();
+    currentRoles = [];
   });
 
-  it('redirects admin to /dashboard/director', () => {
-    currentRoles = ['admin'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/director');
+  describe('routes to the per-role dashboard when its flag is enabled', () => {
+    it('director → /dashboard/director (dashDirector ON)', () => {
+      enabledFlags.add('dashDirector');
+      currentRoles = ['director'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/director');
+    });
+
+    it('admin → /dashboard/director (dashDirector ON)', () => {
+      enabledFlags.add('dashDirector');
+      currentRoles = ['admin'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/director');
+    });
+
+    it('delivery_manager → /dashboard/delivery-manager (dashDeliveryManager ON)', () => {
+      enabledFlags.add('dashDeliveryManager');
+      currentRoles = ['delivery_manager'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/delivery-manager');
+    });
+
+    it('project_manager → /dashboard/project-manager (dashProjectManager ON)', () => {
+      enabledFlags.add('dashProjectManager');
+      currentRoles = ['project_manager'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/project-manager');
+    });
+
+    it('resource_manager → /dashboard/resource-manager (dashResourceManager ON)', () => {
+      enabledFlags.add('dashResourceManager');
+      currentRoles = ['resource_manager'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/resource-manager');
+    });
+
+    it('hr_manager → /dashboard/hr (dashHr ON)', () => {
+      enabledFlags.add('dashHr');
+      currentRoles = ['hr_manager'];
+      renderAt();
+      expect(locationText()).toBe('/dashboard/hr');
+    });
   });
 
-  it('redirects delivery_manager to /dashboard/delivery-manager', () => {
-    currentRoles = ['delivery_manager'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/delivery-manager');
-  });
+  describe('F-REDIRECT-DASH — falls back to /me when the dashboard flag is OFF (default / v2)', () => {
+    it('director → /me?tab=overview when dashDirector is OFF', () => {
+      currentRoles = ['director'];
+      renderAt();
+      expect(locationText()).toBe('/me?tab=overview');
+    });
 
-  it('redirects project_manager to /dashboard/project-manager', () => {
-    currentRoles = ['project_manager'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/project-manager');
-  });
+    it('admin → /me?tab=overview when dashDirector is OFF', () => {
+      currentRoles = ['admin'];
+      renderAt();
+      expect(locationText()).toBe('/me?tab=overview');
+    });
 
-  it('redirects resource_manager to /dashboard/resource-manager', () => {
-    currentRoles = ['resource_manager'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/resource-manager');
-  });
-
-  it('redirects hr_manager to /dashboard/hr', () => {
-    currentRoles = ['hr_manager'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/hr');
+    it('hr_manager → /me?tab=overview when dashHr is OFF', () => {
+      currentRoles = ['hr_manager'];
+      renderAt();
+      expect(locationText()).toBe('/me?tab=overview');
+    });
   });
 
   it('redirects employee to /me?tab=overview', () => {
     currentRoles = ['employee'];
     renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/me?tab=overview');
+    expect(locationText()).toBe('/me?tab=overview');
   });
 
   it('redirects a principal with no recognized role to /me?tab=overview', () => {
     currentRoles = [];
     renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/me?tab=overview');
+    expect(locationText()).toBe('/me?tab=overview');
   });
 
-  it('prefers admin over other roles for dual-role accounts', () => {
+  it('prefers admin (director dashboard) over other roles for dual-role accounts when enabled', () => {
+    enabledFlags.add('dashDirector');
     currentRoles = ['admin', 'hr_manager'];
     renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/director');
+    expect(locationText()).toBe('/dashboard/director');
   });
 
-  it('prefers director over manager roles for dual-role accounts', () => {
-    currentRoles = ['director', 'project_manager'];
-    renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/director');
-  });
-
-  it('prefers delivery_manager over project_manager for dual-role accounts', () => {
+  it('prefers delivery_manager over project_manager for dual-role accounts when enabled', () => {
+    enabledFlags.add('dashDeliveryManager');
     currentRoles = ['delivery_manager', 'project_manager'];
     renderAt();
-    expect(screen.getByTestId('location').textContent).toBe('/dashboard/delivery-manager');
+    expect(locationText()).toBe('/dashboard/delivery-manager');
   });
 });

@@ -1,18 +1,20 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AppRole } from '@/app/route-manifest';
 import { HomeRedirect } from './HomeRedirect';
 
 let dsRefreshEnabled = false;
+let dashDirectorEnabled = false;
 let currentRoles: AppRole[] = ['employee'];
 
 vi.mock('@/lib/feature-flags', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/feature-flags')>();
   return {
     ...actual,
-    isFeatureEnabled: (id: string) => (id === 'dsRefresh' ? dsRefreshEnabled : false),
+    isFeatureEnabled: (id: string) =>
+      id === 'dsRefresh' ? dsRefreshEnabled : id === 'dashDirector' ? dashDirectorEnabled : false,
   };
 });
 
@@ -49,6 +51,12 @@ function renderHome(): ReturnType<typeof render> {
 }
 
 describe('HomeRedirect — Phase E1', () => {
+  beforeEach(() => {
+    dsRefreshEnabled = false;
+    dashDirectorEnabled = false;
+    currentRoles = ['employee'];
+  });
+
   it('renders the legacy DashboardPage when dsRefresh is OFF', async () => {
     dsRefreshEnabled = false;
     currentRoles = ['employee'];
@@ -68,15 +76,35 @@ describe('HomeRedirect — Phase E1', () => {
     expect(screen.getByTestId('me')).toBeInTheDocument();
   });
 
-  it('redirects director to /dashboard/director when dsRefresh is ON', () => {
+  // F-REDIRECT-DASH — when the director dashboard is flag-disabled (v2 default),
+  // director/admin must fall back to /me, NOT land on the "Module disabled" page.
+  it('redirects director to /me when dsRefresh is ON but dashDirector is OFF', () => {
     dsRefreshEnabled = true;
+    dashDirectorEnabled = false;
+    currentRoles = ['director'];
+    renderHome();
+    expect(screen.getByTestId('me')).toBeInTheDocument();
+  });
+
+  it('redirects admin to /me when dsRefresh is ON but dashDirector is OFF', () => {
+    dsRefreshEnabled = true;
+    dashDirectorEnabled = false;
+    currentRoles = ['admin'];
+    renderHome();
+    expect(screen.getByTestId('me')).toBeInTheDocument();
+  });
+
+  it('redirects director to /dashboard/director when dsRefresh AND dashDirector are ON', () => {
+    dsRefreshEnabled = true;
+    dashDirectorEnabled = true;
     currentRoles = ['director'];
     renderHome();
     expect(screen.getByTestId('director')).toBeInTheDocument();
   });
 
-  it('redirects admin to /dashboard/director when dsRefresh is ON', () => {
+  it('redirects admin to /dashboard/director when dsRefresh AND dashDirector are ON', () => {
     dsRefreshEnabled = true;
+    dashDirectorEnabled = true;
     currentRoles = ['admin'];
     renderHome();
     expect(screen.getByTestId('director')).toBeInTheDocument();
@@ -96,8 +124,9 @@ describe('HomeRedirect — Phase E1', () => {
     expect(screen.getByTestId('me')).toBeInTheDocument();
   });
 
-  it('redirects a dual-role admin+something to /dashboard/director', () => {
+  it('redirects a dual-role admin+something to /dashboard/director when dashDirector is ON', () => {
     dsRefreshEnabled = true;
+    dashDirectorEnabled = true;
     currentRoles = ['admin', 'hr_manager'];
     renderHome();
     expect(screen.getByTestId('director')).toBeInTheDocument();

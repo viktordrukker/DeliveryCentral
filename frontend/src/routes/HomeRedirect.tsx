@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { isRouteEnabled } from '@/app/route-manifest';
 import { LoadingState } from '@/components/common/LoadingState';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
@@ -18,8 +19,13 @@ const DashboardPage = lazy(() =>
  * When `dsRefresh` is on, the canvas drops "Workload Overview" as a
  * sidebar item — `/` becomes a redirect to the role's primary home:
  *
- *   director / admin → `/dashboard/director`  (Director Home)
+ *   director / admin → `/dashboard/director`  (Director Home, when enabled)
  *   everyone else    → `/me`                  (Workspace Home)
+ *
+ * F-REDIRECT-DASH — `/dashboard/director` is gated by `dashDirector` (default
+ * off; off on v2 where dashboards are obsolete). Only redirect there when the
+ * flag is actually on; otherwise fall back to the always-on workspace home so
+ * admins never land on the "Module disabled" dead-end.
  *
  * When `dsRefresh` is off, the legacy `DashboardPage` (Workload Overview)
  * renders unchanged.
@@ -36,7 +42,10 @@ export function HomeRedirect(): JSX.Element {
   }
   const { principal } = useAuth();
   const roles = principal?.roles ?? [];
-  if (roles.includes('director') || roles.includes('admin')) {
+  if (
+    (roles.includes('director') || roles.includes('admin')) &&
+    isRouteEnabled('/dashboard/director', roles)
+  ) {
     return <Navigate to="/dashboard/director" replace />;
   }
   return <Navigate to="/me" replace />;
