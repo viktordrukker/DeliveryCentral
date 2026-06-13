@@ -157,7 +157,16 @@ describe('DM-R-9 migration categories', () => {
     });
     // Known baseline: the 2026-04-18 canonical_assignment_status migration
     // is documented as the historical exception (see enum-evolution-baseline.json).
-    const unknown = violating.filter((m) => m.name !== '20260418_canonical_assignment_status');
+    // Honour the same `-- ALLOW_SINGLE_STEP_ENUM:` first-line bypass marker that
+    // the authoritative DM-R-6 guard (scripts/check-enum-evolution.cjs) respects,
+    // so a migration blessed there (e.g. 20260609_lean_p3_2_drop_legacy_tables,
+    // FORWARD_ONLY under DM-R-29) does not double-fail here.
+    const ALLOW_SINGLE_STEP_ENUM = /^\s*--\s*ALLOW_SINGLE_STEP_ENUM:/m;
+    const unknown = violating.filter(
+      (m) =>
+        m.name !== '20260418_canonical_assignment_status' &&
+        !ALLOW_SINGLE_STEP_ENUM.test(m.sql),
+    );
     expect(unknown.map((m) => m.name)).toEqual([]);
   });
 });

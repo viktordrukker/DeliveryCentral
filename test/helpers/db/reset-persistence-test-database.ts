@@ -5,14 +5,15 @@ const TABLES = [
   '"CaseStep"',
   '"CaseRecord"',
   '"CaseType"',
-  '"AssignmentApproval"',
-  '"AssignmentHistory"',
+  // AssignmentApproval / AssignmentHistory / ProjectAssignment were dropped by
+  // migration 20260609_lean_p3_2_drop_legacy_tables (lean migration, PR
+  // LEAN-P3-2). ProjectPosition is the durable replacement aggregate.
   '"WorkEvidenceLink"',
   '"WorkEvidence"',
   '"WorkEvidenceSource"',
   '"ExternalSyncState"',
   '"ProjectExternalLink"',
-  '"ProjectAssignment"',
+  '"ProjectPosition"',
   '"Project"',
   '"CustomFieldValue"',
   '"CustomFieldDefinition"',
@@ -54,10 +55,20 @@ export async function resetPersistenceTestDatabase(prisma: PrismaClient): Promis
   }
 
   await prisma.$executeRawUnsafe(
-    'ALTER TABLE "ProjectAssignment" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;',
-  );
-  await prisma.$executeRawUnsafe(
     'ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "version" INTEGER NOT NULL DEFAULT 1;',
   );
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${TABLES.join(', ')} RESTART IDENTITY CASCADE;`);
+
+  // TRUNCATE ... CASCADE chains through the Tenant FK graph and wipes the
+  // `platform_settings` row that marks setup complete. Without restoring it,
+  // the global RequireSetupCompleteGuard 503s every subsequent app-booting
+  // suite in the same single-worker DB run (order-dependent flakiness). Re-seed
+  // it so the gate stays satisfied — this mirrors the "mark setup as complete"
+  // step the CI backend-db job runs before the suite.
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO platform_settings (key, value, "updatedAt")
+     VALUES ('setup.completedAt', to_jsonb(now()::text), now())
+     ON CONFLICT (key) DO UPDATE
+       SET value = EXCLUDED.value, "updatedAt" = EXCLUDED."updatedAt";`,
+  );
 }

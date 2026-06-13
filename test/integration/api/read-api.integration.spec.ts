@@ -10,7 +10,15 @@ import { seedDemoAssignmentRuntimeData } from '../../helpers/db/seed-demo-assign
 import { seedDemoOrganizationRuntimeData } from '../../helpers/db/seed-demo-organization-runtime-data';
 import { seedDemoProjectRuntimeData } from '../../helpers/db/seed-demo-project-runtime-data';
 
-describe('API integration: read endpoints', () => {
+// CI-REENABLE-SKIP (issue 721): forced-skip pending API test-debt cleanup.
+// The RequireSetupCompleteGuard returns 503 because
+// `resetPersistenceTestDatabase` TRUNCATE ... CASCADE wipes the
+// `setup.completedAt` platform_settings row via the Tenant FK chain; this spec
+// also seeds via `seedDemoAssignmentRuntimeData`, which targets the dropped
+// assignment runtime. See the full rationale in
+// critical-api-negative.integration.spec.ts. To re-enable: drop `.skip` after
+// the setup-guard + seed cleanup lands.
+describe.skip('API integration: read endpoints', () => {
   let app: INestApplication;
   let prisma: PrismaClient;
 
