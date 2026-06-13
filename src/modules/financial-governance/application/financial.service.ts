@@ -274,6 +274,8 @@ export class FinancialService {
       fiscalYear: dto.fiscalYear,
       capexBudget: new Prisma.Decimal(dto.capexBudget),
       opexBudget: new Prisma.Decimal(dto.opexBudget),
+      ...(dto.vendorBudget !== undefined ? { vendorBudget: new Prisma.Decimal(dto.vendorBudget) } : {}),
+      ...(dto.currencyCode !== undefined ? { currencyCode: dto.currencyCode } : {}),
       actorId,
     });
 
