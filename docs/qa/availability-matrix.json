@@ -4568,12 +4568,12 @@
     "id": "act_admin-config_2",
     "kind": "action",
     "ref": "admin-config: Disable / Enable (account row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/AdminPanelPage.tsx:357 → PATCH /api/admin/accounts/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_3",
@@ -4601,12 +4601,12 @@
     "id": "act_admin-config_5",
     "kind": "action",
     "ref": "admin-config: Delete account (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/AdminPanelPage.tsx:327 → DELETE /api/admin/accounts/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_6",
@@ -4634,12 +4634,12 @@
     "id": "act_admin-config_8",
     "kind": "action",
     "ref": "admin-config: Create account (form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/AdminPanelPage.tsx:447 → POST /api/admin/accounts",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_9",
@@ -4711,12 +4711,12 @@
     "id": "act_admin-config_15",
     "kind": "action",
     "ref": "admin-config: Save changes (per platform-settings section)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/SettingsPage.tsx:459 → PATCH /api/admin/platform-settings/{section.key}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_16",
@@ -4788,8 +4788,8 @@
     "id": "act_admin-config_22",
     "kind": "action",
     "ref": "admin-config: Re-arm wizard (confirm setup reset)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/SetupResetSection.tsx:120 → POST /api/admin/setup/reset",
     "dataConsistent": "n/a",
@@ -4887,23 +4887,23 @@
     "id": "act_admin-config_31",
     "kind": "action",
     "ref": "admin-config: Save (per-field assignment workflow setting)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/AssignmentWorkflowSettings.tsx:177 → PATCH /api/admin/platform-settings/{key}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_32",
     "kind": "action",
     "ref": "admin-config: Reset (per-field workflow setting to default)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/AssignmentWorkflowSettings.tsx:187 → PATCH /api/admin/platform-settings/{key}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_33",
@@ -4953,12 +4953,12 @@
     "id": "act_admin-config_37",
     "kind": "action",
     "ref": "admin-config: Disable card / Enable card (toggle selected card)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:511 → PATCH /api/admin/rate-cards/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_38",
@@ -5008,12 +5008,12 @@
     "id": "act_admin-config_42",
     "kind": "action",
     "ref": "admin-config: Disable / Enable entry (row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:427 → PATCH /api/admin/rate-cards/{cardId}/entries/{entryId}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_43",
@@ -5041,8 +5041,8 @@
     "id": "act_admin-config_45",
     "kind": "action",
     "ref": "admin-config: Card form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:557 → POST|PATCH /api/admin/rate-cards[/{id}]",
     "dataConsistent": "n/a",
@@ -5074,8 +5074,8 @@
     "id": "act_admin-config_48",
     "kind": "action",
     "ref": "admin-config: Entry form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:605 → POST|PATCH /api/admin/rate-cards/{id}/entries[/{entryId}]",
     "dataConsistent": "n/a",
@@ -5096,12 +5096,12 @@
     "id": "act_admin-config_50",
     "kind": "action",
     "ref": "admin-config: Archive rate card (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:658 → DELETE /api/admin/rate-cards/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_51",
@@ -5118,12 +5118,12 @@
     "id": "act_admin-config_52",
     "kind": "action",
     "ref": "admin-config: Archive entry (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RateCardsAdminPage.tsx:671 → DELETE /api/admin/rate-cards/{cardId}/entries/{entryId}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_53",
@@ -5184,12 +5184,12 @@
     "id": "act_admin-config_58",
     "kind": "action",
     "ref": "admin-config: Disable / Enable rule (row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/ResponsibilityMatrixAdminPage.tsx:333 → PATCH /api/admin/responsibility-rules/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_59",
@@ -5294,8 +5294,8 @@
     "id": "act_admin-config_68",
     "kind": "action",
     "ref": "admin-config: Rule form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/ResponsibilityMatrixAdminPage.tsx:418 → POST|PATCH /api/admin/responsibility-rules[/{id}]",
     "dataConsistent": "n/a",
@@ -5316,12 +5316,12 @@
     "id": "act_admin-config_70",
     "kind": "action",
     "ref": "admin-config: Archive rule (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/ResponsibilityMatrixAdminPage.tsx:518 → DELETE /api/admin/responsibility-rules/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_71",
@@ -5393,12 +5393,12 @@
     "id": "act_admin-config_77",
     "kind": "action",
     "ref": "admin-config: Reactivate custom role (row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/CustomRoleAdminPage.tsx:275 → POST /api/admin/custom-roles/{id}/reactivate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_78",
@@ -5415,8 +5415,8 @@
     "id": "act_admin-config_79",
     "kind": "action",
     "ref": "admin-config: Custom-role form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/CustomRoleAdminPage.tsx:381 → POST|PATCH /api/admin/custom-roles[/{id}]",
     "dataConsistent": "n/a",
@@ -5437,12 +5437,12 @@
     "id": "act_admin-config_81",
     "kind": "action",
     "ref": "admin-config: Deactivate custom role (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/CustomRoleAdminPage.tsx:456 → DELETE /api/admin/custom-roles/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_82",
@@ -5569,12 +5569,12 @@
     "id": "act_admin-config_93",
     "kind": "action",
     "ref": "admin-config: Save override (Modal footer)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RolePermissionAdminPage.tsx:226 → PUT /api/admin/role-presets/{preset}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_94",
@@ -5602,12 +5602,12 @@
     "id": "act_admin-config_96",
     "kind": "action",
     "ref": "admin-config: Reset preset (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RolePermissionAdminPage.tsx:292 → PUT /api/admin/role-presets/{preset}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_97",
@@ -5668,12 +5668,12 @@
     "id": "act_admin-config_102",
     "kind": "action",
     "ref": "admin-config: Unpublish / Publish (row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/HelpAdminPage.tsx:302 → PATCH /api/admin/help/articles/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_103",
@@ -5767,8 +5767,8 @@
     "id": "act_admin-config_111",
     "kind": "action",
     "ref": "admin-config: Article form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/HelpAdminPage.tsx:390 → POST|PATCH /api/admin/help/articles[/{id}]",
     "dataConsistent": "n/a",
@@ -5789,12 +5789,12 @@
     "id": "act_admin-config_113",
     "kind": "action",
     "ref": "admin-config: Archive article (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/HelpAdminPage.tsx:479 → PATCH /api/admin/help/articles/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_114",
@@ -5856,7 +5856,7 @@
     "kind": "action",
     "ref": "admin-config: IntegrationCard onSelect (select provider — fetches status/history)",
     "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "result": "WIRE-APPROX",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/IntegrationsAdminPage.tsx:146 → GET /api/integrations/{provider}/status",
     "dataConsistent": "n/a",
@@ -5866,8 +5866,8 @@
     "id": "act_admin-config_120",
     "kind": "action",
     "ref": "admin-config: Trigger sync (SyncButton — provider-specific)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/IntegrationsAdminPage.tsx:207 → POST /api/integrations/{provider}/.../sync",
     "dataConsistent": "n/a",
@@ -5877,8 +5877,8 @@
     "id": "act_admin-config_121",
     "kind": "action",
     "ref": "admin-config: Retry sync (remediation — provider-specific)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/IntegrationsAdminPage.tsx:233 → POST /api/integrations/{provider}/.../retry-sync",
     "dataConsistent": "n/a",
@@ -5888,8 +5888,8 @@
     "id": "act_admin-config_122",
     "kind": "action",
     "ref": "admin-config: Reset sync state (Jira only)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/IntegrationsAdminPage.tsx:242 → POST /api/integrations/jira/projects/reset-sync",
     "dataConsistent": "n/a",
@@ -5899,8 +5899,8 @@
     "id": "act_admin-config_123",
     "kind": "action",
     "ref": "admin-config: Test connection (remediation — provider-specific)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/IntegrationsAdminPage.tsx:250 → POST /api/integrations/{provider}/.../test-connection",
     "dataConsistent": "n/a",
@@ -6097,12 +6097,12 @@
     "id": "act_admin-config_141",
     "kind": "action",
     "ref": "admin-config: Test connection (jsm/ldap/llm probe)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/IntegrationsRegistryPage.tsx:182 → POST /api/admin/integrations/registry/{provider}/test-connection",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_142",
@@ -6262,8 +6262,8 @@
     "id": "act_admin-config_156",
     "kind": "action",
     "ref": "admin-config: Policy form submit (Create / Save changes)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRED-FN",
     "rawVerdict": "WIRED-FN",
     "evidence": "frontend/src/routes/admin/LeavePolicyAdminPage.tsx:388 → POST|PATCH /api/admin/leave-policies[/{id}]",
     "dataConsistent": "n/a",
@@ -6284,12 +6284,12 @@
     "id": "act_admin-config_158",
     "kind": "action",
     "ref": "admin-config: Deactivate policy (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/LeavePolicyAdminPage.tsx:453 → DELETE /api/admin/leave-policies/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_159",
@@ -6339,12 +6339,12 @@
     "id": "act_admin-config_163",
     "kind": "action",
     "ref": "admin-config: Confirm flag toggle (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/FeatureFlagsAdminPage.tsx:305 → PATCH /api/admin/feature-flags/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_164",
@@ -6449,12 +6449,12 @@
     "id": "act_admin-config_173",
     "kind": "action",
     "ref": "admin-config: Requeue (failed-terminal row action, admin only)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/NotificationsPage.tsx:260 → POST /api/notifications/queue/{id}/requeue",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_174",
@@ -6493,12 +6493,12 @@
     "id": "act_admin-config_177",
     "kind": "action",
     "ref": "admin-config: Send test (notification test form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/SendTestPanel.tsx:34 → POST /api/notifications/test-send",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_178",
@@ -6603,23 +6603,23 @@
     "id": "act_admin-config_187",
     "kind": "action",
     "ref": "admin-config: Save (SSO config)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/SsoAdminPage.tsx:318 → PUT /api/admin/sso/config",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_188",
     "kind": "action",
     "ref": "admin-config: Test connection (SSO discovery)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/SsoAdminPage.tsx:327 → POST /api/admin/sso/test",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_189",
@@ -6658,12 +6658,12 @@
     "id": "act_admin-config_192",
     "kind": "action",
     "ref": "admin-config: Save observations (persist checklist)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/V2SoakChecklistPage.tsx:162 → PUT /api/admin/v2-soak/checklist/{sessionId}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_193",
@@ -6768,12 +6768,12 @@
     "id": "act_admin-config_202",
     "kind": "action",
     "ref": "admin-config: Create Vendor (vendor form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/VendorRegistryPage.tsx:102 → POST /api/vendors",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_203",
@@ -6801,23 +6801,23 @@
     "id": "act_admin-config_205",
     "kind": "action",
     "ref": "admin-config: Deactivate / Activate (vendor row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/VendorRegistryPage.tsx:157 → PATCH /api/vendors/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_206",
     "kind": "action",
     "ref": "admin-config: Save all (bulk save dirty valid thresholds)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RadiatorThresholdsPage.tsx:282 → PUT /api/admin/radiator-thresholds/{key} (×N)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_207",
@@ -6889,12 +6889,12 @@
     "id": "act_admin-config_213",
     "kind": "action",
     "ref": "admin-config: Save (per-row threshold upsert)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/RadiatorThresholdsPage.tsx:351 → PUT /api/admin/radiator-thresholds/{subDimensionKey}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_214",
@@ -6922,12 +6922,12 @@
     "id": "act_admin-config_216",
     "kind": "action",
     "ref": "admin-config: Lock period (create-lock form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/PeriodLocksAdminPage.tsx:140 → POST /api/admin/period-locks",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_217",
@@ -6955,12 +6955,12 @@
     "id": "act_admin-config_219",
     "kind": "action",
     "ref": "admin-config: Unlock period (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/PeriodLocksAdminPage.tsx:188 → DELETE /api/admin/period-locks/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_220",
@@ -7043,34 +7043,34 @@
     "id": "act_admin-config_227",
     "kind": "action",
     "ref": "admin-config: Save Configuration",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/HrisConfigPage.tsx:170 → POST /api/admin/hris/config",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_228",
     "kind": "action",
     "ref": "admin-config: Run Sync Now",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/HrisConfigPage.tsx:173 → POST /api/admin/hris/sync",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_229",
     "kind": "action",
     "ref": "admin-config: Test Connection",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/HrisConfigPage.tsx:176 → POST /api/admin/hris/test",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_230",
@@ -7087,12 +7087,12 @@
     "id": "act_admin-config_231",
     "kind": "action",
     "ref": "admin-config: Save changes (org config patch)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/OrganizationConfigPage.tsx:119 → PATCH /api/admin/organization-config",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_232",
@@ -7318,12 +7318,12 @@
     "id": "act_admin-config_252",
     "kind": "action",
     "ref": "admin-config: Reset configuration (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/OrganizationConfigPage.tsx:356 → POST /api/admin/organization-config/reset",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_253",
@@ -7417,23 +7417,23 @@
     "id": "act_admin-config_261",
     "kind": "action",
     "ref": "admin-config: Validate & Preview (preview import)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/BulkImportPage.tsx:182 → POST /api/admin/people/import/preview",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_262",
     "kind": "action",
     "ref": "admin-config: Confirm Import (commit import)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/admin/BulkImportPage.tsx:219 → POST /api/admin/people/import/confirm",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_263",
@@ -7451,7 +7451,7 @@
     "kind": "action",
     "ref": "admin-config: Previous (audit pagination)",
     "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "result": "WIRE-APPROX",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/BusinessAuditPage.tsx:93 → GET /api/admin/audit/business?page=...",
     "dataConsistent": "n/a",
@@ -7462,7 +7462,7 @@
     "kind": "action",
     "ref": "admin-config: Next (audit pagination)",
     "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "result": "WIRE-APPROX",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/admin/BusinessAuditPage.tsx:99 → GET /api/admin/audit/business?page=...",
     "dataConsistent": "n/a",
@@ -7572,7 +7572,7 @@
     "kind": "action",
     "ref": "admin-config: Apply filters (submit — fetch audit)",
     "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "result": "WIRE-APPROX",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/components/admin/BusinessAuditFilters.tsx:108 → GET /api/admin/audit/business",
     "dataConsistent": "n/a",
@@ -7626,12 +7626,12 @@
     "id": "act_admin-config_280",
     "kind": "action",
     "ref": "admin-config: Disable / Enable entry (onToggleEntry row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/DictionaryEditor.tsx:88 → PATCH /api/metadata/dictionaries/entries/{entryId}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_281",
@@ -7681,12 +7681,12 @@
     "id": "act_admin-config_285",
     "kind": "action",
     "ref": "admin-config: Add entry (dictionary entry form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/DictionaryEntryForm.tsx:22 → POST /api/metadata/dictionaries/{type}/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_286",
@@ -7736,23 +7736,23 @@
     "id": "act_admin-config_290",
     "kind": "action",
     "ref": "admin-config: System flag Checkbox (toggle per-flag, optimistic)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/admin/SystemFlagsSettingsList.tsx:103 → PATCH /api/admin/feature-flags/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_291",
     "kind": "action",
     "ref": "admin-config: Notification channel checkbox (toggle pref — auto-save)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/settings/AccountSettingsPage.tsx:249 → PATCH /api/me/notification-prefs",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_292",
@@ -7835,8 +7835,8 @@
     "id": "act_admin-config_299",
     "kind": "action",
     "ref": "admin-config: Change password (form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/settings/AccountSettingsPage.tsx:343 → POST /api/admin/accounts/change-password",
     "dataConsistent": "n/a",
@@ -7890,12 +7890,12 @@
     "id": "act_admin-config_304",
     "kind": "action",
     "ref": "admin-config: Save digest settings (form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/settings/DigestAndQuietHoursCard.tsx:103 → PATCH /api/me/notification-digest",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_305",
@@ -7945,19 +7945,19 @@
     "id": "act_admin-config_309",
     "kind": "action",
     "ref": "admin-config: Run pre-flight check (onRunPreflight)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/PreflightScreen.tsx:46 → POST /api/setup/preflight (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_310",
     "kind": "action",
     "ref": "admin-config: Create database + role (onCreateDatabase)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/setup/screens/PreflightScreen.tsx:139 → POST /api/setup/create-database (token-gated)",
     "dataConsistent": "n/a",
@@ -7978,19 +7978,19 @@
     "id": "act_admin-config_312",
     "kind": "action",
     "ref": "admin-config: Re-run pre-flight (onRunPreflight)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/PreflightScreen.tsx:152 → POST /api/setup/preflight (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_313",
     "kind": "action",
     "ref": "admin-config: Apply migrations (onApply)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/setup/screens/MigrationsScreen.tsx:58 → POST /api/setup/migrate (token-gated)",
     "dataConsistent": "n/a",
@@ -8011,8 +8011,8 @@
     "id": "act_admin-config_315",
     "kind": "action",
     "ref": "admin-config: Wipe + recreate schema (onApply wipeFirst)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/setup/screens/MigrationsScreen.tsx:83 → POST /api/setup/migrate?wipeFirst=true (token-gated)",
     "dataConsistent": "n/a",
@@ -8077,12 +8077,12 @@
     "id": "act_admin-config_321",
     "kind": "action",
     "ref": "admin-config: Save tenant (form submit → onSave)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/TenantScreen.tsx:89 → POST /api/setup/tenant (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_322",
@@ -8132,12 +8132,12 @@
     "id": "act_admin-config_326",
     "kind": "action",
     "ref": "admin-config: Create admin account (form submit → onSave)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/AdminAccountScreen.tsx:88 → POST /api/setup/admin (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_327",
@@ -8220,8 +8220,8 @@
     "id": "act_admin-config_334",
     "kind": "action",
     "ref": "admin-config: Send test (onTestSmtp)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/setup/screens/IntegrationsScreen.tsx:123 → POST /api/setup/test-smtp (token-gated)",
     "dataConsistent": "n/a",
@@ -8242,12 +8242,12 @@
     "id": "act_admin-config_336",
     "kind": "action",
     "ref": "admin-config: Save and continue (form submit → onSave)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/IntegrationsScreen.tsx:149 → POST /api/setup/integrations (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_337",
@@ -8396,12 +8396,12 @@
     "id": "act_admin-config_350",
     "kind": "action",
     "ref": "admin-config: Save and continue (form submit → onSave)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/MonitoringScreen.tsx:159 → POST /api/setup/monitoring (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_351",
@@ -8429,19 +8429,19 @@
     "id": "act_admin-config_353",
     "kind": "action",
     "ref": "admin-config: Install with <profile> (onPick — seed)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/setup/screens/SeedProfileScreen.tsx:96 → POST /api/setup/seed (token-gated)",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_admin-config_354",
     "kind": "action",
     "ref": "admin-config: Finish setup & go to login (onFinish)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/routes/setup/screens/CompleteScreen.tsx:62 → POST /api/setup/finish (token-gated)",
     "dataConsistent": "n/a",
@@ -8462,12 +8462,12 @@
     "id": "act_integrations-misc_2",
     "kind": "action",
     "ref": "integrations-misc: Trigger project sync",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/integrations/IntegrationsPage.tsx:88 → POST /api/integrations/jira/projects/sync",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_3",
@@ -8561,12 +8561,12 @@
     "id": "act_integrations-misc_11",
     "kind": "action",
     "ref": "integrations-misc: Create pool (form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/resource-pools/ResourcePoolsPage.tsx:103 → POST /api/resource-pools",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_12",
@@ -8638,12 +8638,12 @@
     "id": "act_integrations-misc_18",
     "kind": "action",
     "ref": "integrations-misc: Add member",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx:193 → POST /api/resource-pools/:poolId/members",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_19",
@@ -8704,12 +8704,12 @@
     "id": "act_integrations-misc_24",
     "kind": "action",
     "ref": "integrations-misc: Remove pool member? — Confirm (DELETE member)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/resource-pools/ResourcePoolDetailPage.tsx:259 → DELETE /api/resource-pools/:poolId/members/:personId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_25",
@@ -8825,12 +8825,12 @@
     "id": "act_integrations-misc_35",
     "kind": "action",
     "ref": "integrations-misc: Record work evidence (form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/work-evidence/CreateWorkEvidenceForm.tsx:144 → POST /api/work-evidence",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_36",
@@ -8902,23 +8902,23 @@
     "id": "act_integrations-misc_42",
     "kind": "action",
     "ref": "integrations-misc: Effort (h) inline edit cell (commit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx:62 → PATCH /api/work-evidence/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_43",
     "kind": "action",
     "ref": "integrations-misc: Summary inline edit cell (commit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/work-evidence/WorkEvidenceTable.tsx:86 → PATCH /api/work-evidence/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_44",
@@ -9034,12 +9034,12 @@
     "id": "act_integrations-misc_54",
     "kind": "action",
     "ref": "integrations-misc: Mark all as read",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/notifications/InboxPage.tsx:107 → POST /api/notifications/inbox/read-all",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_55",
@@ -9056,23 +9056,23 @@
     "id": "act_integrations-misc_56",
     "kind": "action",
     "ref": "integrations-misc: Notification row click (mark read + navigate link)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/notifications/InboxPage.tsx:148 → POST /api/notifications/inbox/:id/read",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_57",
     "kind": "action",
     "ref": "integrations-misc: Mark as read (per-item ×)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/notifications/InboxPage.tsx:174 → POST /api/notifications/inbox/:id/read",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_58",
@@ -9199,12 +9199,12 @@
     "id": "act_integrations-misc_69",
     "kind": "action",
     "ref": "integrations-misc: Submit feedback",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/help/HelpArticleDetailPage.tsx:195 → POST /api/help/articles/:id/feedback",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_70",
@@ -9232,34 +9232,34 @@
     "id": "act_integrations-misc_72",
     "kind": "action",
     "ref": "integrations-misc: Mark all read (bell panel)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/layout/NotificationBell.tsx:227 → POST /api/notifications/inbox/read-all",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_73",
     "kind": "action",
     "ref": "integrations-misc: Notification click (mark read + navigate link)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/layout/NotificationBell.tsx:264 → POST /api/notifications/inbox/:id/read",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_74",
     "kind": "action",
     "ref": "integrations-misc: Mark as read (per-item ×)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/layout/NotificationBell.tsx:316 → POST /api/notifications/inbox/:id/read",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_integrations-misc_75",
@@ -9958,23 +9958,23 @@
     "id": "act_org-teams_36",
     "kind": "action",
     "ref": "org-teams: Create Team form submit",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/teams/TeamsPage.tsx:73 → POST /api/teams",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_org-teams_37",
     "kind": "action",
     "ref": "org-teams: Create team (submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/teams/TeamsPage.tsx:106 → POST /api/teams",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_org-teams_38",
@@ -10046,12 +10046,12 @@
     "id": "act_org-teams_44",
     "kind": "action",
     "ref": "org-teams: Remove (ConfirmDialog confirm) — fires updateTeamMember remove",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/teams/TeamDetails.tsx:50 → POST /api/teams/{id}/members",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_org-teams_45",
@@ -10068,12 +10068,12 @@
     "id": "act_org-teams_46",
     "kind": "action",
     "ref": "org-teams: Add member (fires updateTeamMember add)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/teams/MemberSelector.tsx:35 → POST /api/teams/{id}/members",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_org-teams_47",
@@ -10717,34 +10717,34 @@
     "id": "act_people-bench-profile_34",
     "kind": "action",
     "ref": "people-bench-profile: Create position form (onSubmit → createProjectPosition)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:320 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_35",
     "kind": "action",
     "ref": "people-bench-profile: Create — auto OPEN transition (openImmediately, DRAFT→OPEN)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:239 → POST /api/project-positions/:id/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_36",
     "kind": "action",
     "ref": "people-bench-profile: Create — auto PROPOSED transition (pinned candidate)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:248 → POST /api/project-positions/:id/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_37",
@@ -10783,12 +10783,12 @@
     "id": "act_people-bench-profile_40",
     "kind": "action",
     "ref": "people-bench-profile: Create position (submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:309 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_41",
@@ -10992,12 +10992,12 @@
     "id": "act_people-bench-profile_59",
     "kind": "action",
     "ref": "people-bench-profile: Confirm Deactivate dialog onConfirm (deactivateEmployee)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:261 → POST /api/org/people/:id/deactivate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_60",
@@ -11014,12 +11014,12 @@
     "id": "act_people-bench-profile_61",
     "kind": "action",
     "ref": "people-bench-profile: Confirm Terminate dialog onConfirm (terminateEmployee)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:272 → POST /api/org/people/:id/terminate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_62",
@@ -11091,12 +11091,12 @@
     "id": "act_people-bench-profile_68",
     "kind": "action",
     "ref": "people-bench-profile: Confirm termination (legacy inline form → terminateEmployee)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:464 → POST /api/org/people/:id/terminate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_69",
@@ -11124,12 +11124,12 @@
     "id": "act_people-bench-profile_71",
     "kind": "action",
     "ref": "people-bench-profile: End relationship (terminateReportingLine)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:567 → PATCH /api/org/reporting-lines/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_72",
@@ -11245,12 +11245,12 @@
     "id": "act_people-bench-profile_82",
     "kind": "action",
     "ref": "people-bench-profile: Reporting line form (onSubmit → createReportingLine)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/ReportingLineForm.tsx:37 → POST /api/org/reporting-lines",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_83",
@@ -11300,12 +11300,12 @@
     "id": "act_people-bench-profile_87",
     "kind": "action",
     "ref": "people-bench-profile: Save reporting line (submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/ReportingLineForm.tsx:93 → POST /api/org/reporting-lines",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_88",
@@ -11366,12 +11366,12 @@
     "id": "act_people-bench-profile_93",
     "kind": "action",
     "ref": "people-bench-profile: Save Skills (upsertPersonSkills)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/PersonSkillsTab.tsx:178 → PUT /api/people/:personId/skills",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-bench-profile_94",
@@ -11982,12 +11982,12 @@
     "id": "act_people-directory_30",
     "kind": "action",
     "ref": "people-directory: Confirm bulk reassign (ConfirmDialog onConfirm, requires reason)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDirectoryPage.tsx:759 → POST /api/org/bulk-reassign-membership",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_31",
@@ -12136,12 +12136,12 @@
     "id": "act_people-directory_44",
     "kind": "action",
     "ref": "people-directory: Create employee? (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeLifecycleAdminPage.tsx:116 → POST /api/org/people",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_45",
@@ -12312,12 +12312,12 @@
     "id": "act_people-directory_60",
     "kind": "action",
     "ref": "people-directory: Deactivate Employee (ConfirmDialog onConfirm) — dsRefresh ON",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:265 → POST /api/org/people/:id/deactivate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_61",
@@ -12334,12 +12334,12 @@
     "id": "act_people-directory_62",
     "kind": "action",
     "ref": "people-directory: Terminate Employee (ConfirmDialog onConfirm) — dsRefresh ON",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:276 → POST /api/org/people/:id/terminate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_63",
@@ -12400,12 +12400,12 @@
     "id": "act_people-directory_68",
     "kind": "action",
     "ref": "people-directory: Deactivate Employee (ConfirmDialog onConfirm) — dsRefresh OFF",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:356 → POST /api/org/people/:id/deactivate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_69",
@@ -12422,12 +12422,12 @@
     "id": "act_people-directory_70",
     "kind": "action",
     "ref": "people-directory: Terminate Employee (ConfirmDialog onConfirm) — dsRefresh OFF",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:367 → POST /api/org/people/:id/terminate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_71",
@@ -12543,12 +12543,12 @@
     "id": "act_people-directory_81",
     "kind": "action",
     "ref": "people-directory: Confirm termination (inline terminate form)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:464 → POST /api/org/people/:id/terminate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_82",
@@ -12576,12 +12576,12 @@
     "id": "act_people-directory_84",
     "kind": "action",
     "ref": "people-directory: End relationship",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/people/EmployeeDetailsPage.tsx:567 → PATCH /api/org/reporting-lines/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_85",
@@ -12686,12 +12686,12 @@
     "id": "act_people-directory_94",
     "kind": "action",
     "ref": "people-directory: Save reporting line (form onSubmit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/ReportingLineForm.tsx:37 → POST /api/org/reporting-lines",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_95",
@@ -12796,12 +12796,12 @@
     "id": "act_people-directory_104",
     "kind": "action",
     "ref": "people-directory: Save Skills",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/PersonSkillsTab.tsx:178 → PUT /api/people/:id/skills",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_105",
@@ -13181,12 +13181,12 @@
     "id": "act_people-directory_139",
     "kind": "action",
     "ref": "people-directory: CreatePositionDrawer (armed with bench candidate) -> create position",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/people/BenchEnrichedPanel.tsx:743 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_people-directory_140",
@@ -13291,12 +13291,12 @@
     "id": "act_projects-money-positions_4",
     "kind": "action",
     "ref": "projects-money-positions: Create Position",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/ProjectDetailPage.tsx:281 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_5",
@@ -13346,12 +13346,12 @@
     "id": "act_projects-money-positions_9",
     "kind": "action",
     "ref": "projects-money-positions: Project CPI",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/CpiWhatIfCard.tsx:209 → POST /api/projects/:projectId/cpi-what-if",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_10",
@@ -13401,12 +13401,12 @@
     "id": "act_projects-money-positions_14",
     "kind": "action",
     "ref": "projects-money-positions: Create (change request form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:267 → POST /api/projects/:projectId/change-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_15",
@@ -13423,23 +13423,23 @@
     "id": "act_projects-money-positions_16",
     "kind": "action",
     "ref": "projects-money-positions: Approve (change request row)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:402 → POST /api/projects/:projectId/change-requests/:crId/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_17",
     "kind": "action",
     "ref": "projects-money-positions: Reject (change request row)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:403 → POST /api/projects/:projectId/change-requests/:crId/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_18",
@@ -13456,12 +13456,12 @@
     "id": "act_projects-money-positions_19",
     "kind": "action",
     "ref": "projects-money-positions: Save (change request inline edit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:395 → PATCH /api/projects/:projectId/change-requests/:crId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_20",
@@ -13478,23 +13478,23 @@
     "id": "act_projects-money-positions_21",
     "kind": "action",
     "ref": "projects-money-positions: Save Budget",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/BudgetTab.tsx:190 → PUT /api/projects/:projectId/budget",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_22",
     "kind": "action",
     "ref": "projects-money-positions: Approve (budget change request row)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/BudgetTab.tsx:253 → POST /api/projects/:projectId/budget-change-requests/:approvalId/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_23",
@@ -13533,23 +13533,23 @@
     "id": "act_projects-money-positions_26",
     "kind": "action",
     "ref": "projects-money-positions: Approve budget change (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/BudgetTab.tsx:319 → POST /api/projects/:projectId/budget-change-requests/:approvalId/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_27",
     "kind": "action",
     "ref": "projects-money-positions: Reject budget change (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/BudgetTab.tsx:334 → POST /api/projects/:projectId/budget-change-requests/:approvalId/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_28",
@@ -13632,12 +13632,12 @@
     "id": "act_projects-money-positions_35",
     "kind": "action",
     "ref": "projects-money-positions: Propose (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/ProjectPositionDetailPage.tsx:822 → POST /api/project-positions/:id/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_36",
@@ -13830,12 +13830,12 @@
     "id": "act_projects-money-positions_53",
     "kind": "action",
     "ref": "projects-money-positions: Open N positions (bulk submit form)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/staffing-desk/BulkCreatePositionsPage.tsx:253 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_54",
@@ -13852,34 +13852,34 @@
     "id": "act_projects-money-positions_55",
     "kind": "action",
     "ref": "projects-money-positions: Create position (drawer form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:320 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_56",
     "kind": "action",
     "ref": "projects-money-positions: Open immediately follow-up transition (DRAFT→OPEN)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:239 → POST /api/project-positions/:id/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_57",
     "kind": "action",
     "ref": "projects-money-positions: Auto-propose pinned candidate (PROPOSED transition)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:248 → POST /api/project-positions/:id/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-money-positions_58",
@@ -14974,12 +14974,12 @@
     "id": "act_projects-registry-detail_55",
     "kind": "action",
     "ref": "projects-registry-detail: Create position (submit → POST project-position; transitions to OPEN/PROPOSED)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:309 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_56",
@@ -15128,12 +15128,12 @@
     "id": "act_projects-registry-detail_69",
     "kind": "action",
     "ref": "projects-registry-detail: ProjectLifecycleForm onSubmit (create project)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/CreateProjectPage.tsx:80 → POST /api/projects",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_70",
@@ -15359,12 +15359,12 @@
     "id": "act_projects-registry-detail_90",
     "kind": "action",
     "ref": "projects-registry-detail: Create Project (wizard submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectLifecycleForm.tsx:225 → POST /api/projects",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_91",
@@ -15502,12 +15502,12 @@
     "id": "act_projects-registry-detail_103",
     "kind": "action",
     "ref": "projects-registry-detail: Delete Milestone ConfirmDialog onConfirm",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/MilestonesTab.tsx:219 → DELETE /api/projects/:id/milestones/:milestoneId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_104",
@@ -15535,12 +15535,12 @@
     "id": "act_projects-registry-detail_106",
     "kind": "action",
     "ref": "projects-registry-detail: Create milestone form onSubmit",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/MilestonesTab.tsx:326 → POST /api/projects/:id/milestones",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_107",
@@ -15590,12 +15590,12 @@
     "id": "act_projects-registry-detail_111",
     "kind": "action",
     "ref": "projects-registry-detail: Create (milestone submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/MilestonesTab.tsx:369 → POST /api/projects/:id/milestones",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_112",
@@ -15678,12 +15678,12 @@
     "id": "act_projects-registry-detail_119",
     "kind": "action",
     "ref": "projects-registry-detail: Save (edit row → updateMilestone)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/MilestonesTab.tsx:444 → PATCH /api/projects/:id/milestones/:milestoneId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_120",
@@ -15744,12 +15744,12 @@
     "id": "act_projects-registry-detail_125",
     "kind": "action",
     "ref": "projects-registry-detail: Drag diamond to reschedule / click to edit (pointer handlers → updateMilestone or onOpenEditor)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/InteractiveGantt.tsx:302 → PATCH /api/projects/:id/milestones/:milestoneId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_126",
@@ -15799,12 +15799,12 @@
     "id": "act_projects-registry-detail_130",
     "kind": "action",
     "ref": "projects-registry-detail: Create change request form onSubmit",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:267 → POST /api/projects/:id/change-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_131",
@@ -15887,12 +15887,12 @@
     "id": "act_projects-registry-detail_138",
     "kind": "action",
     "ref": "projects-registry-detail: Create (CR submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:335 → POST /api/projects/:id/change-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_139",
@@ -15953,12 +15953,12 @@
     "id": "act_projects-registry-detail_144",
     "kind": "action",
     "ref": "projects-registry-detail: Save (CR edit → updateChangeRequest)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:395 → PATCH /api/projects/:id/change-requests/:crId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_145",
@@ -15975,23 +15975,23 @@
     "id": "act_projects-registry-detail_146",
     "kind": "action",
     "ref": "projects-registry-detail: Approve (CR row → approveChangeRequest)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:402 → POST /api/projects/:id/change-requests/:crId/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_147",
     "kind": "action",
     "ref": "projects-registry-detail: Reject (CR row → rejectChangeRequest)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/ChangeRequestsTab.tsx:403 → POST /api/projects/:id/change-requests/:crId/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_148",
@@ -16019,12 +16019,12 @@
     "id": "act_projects-registry-detail_150",
     "kind": "action",
     "ref": "projects-registry-detail: Create Risk form onSubmit",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:190 → POST /api/projects/:id/risks",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_151",
@@ -16140,12 +16140,12 @@
     "id": "act_projects-registry-detail_161",
     "kind": "action",
     "ref": "projects-registry-detail: Create (risk submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:240 → POST /api/projects/:id/risks",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_162",
@@ -16162,56 +16162,56 @@
     "id": "act_projects-registry-detail_163",
     "kind": "action",
     "ref": "projects-registry-detail: RiskRegister onCreateRisk (handler → createRisk)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:256 → POST /api/projects/:id/risks",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_164",
     "kind": "action",
     "ref": "projects-registry-detail: RiskRegister onUpdateRisk (handler → updateRisk)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:257 → PATCH /api/projects/:id/risks/:riskId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_165",
     "kind": "action",
     "ref": "projects-registry-detail: RiskRegister onConvertToIssue (handler → convertRiskToIssue)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:258 → POST /api/projects/:id/risks/:riskId/convert-to-issue",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_166",
     "kind": "action",
     "ref": "projects-registry-detail: RiskRegister onResolve (handler → resolveRisk)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:259 → POST /api/projects/:id/risks/:riskId/resolve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_167",
     "kind": "action",
     "ref": "projects-registry-detail: RiskRegister onClose (handler → closeRisk)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RisksIssuesTab.tsx:260 → POST /api/projects/:id/risks/:riskId/close",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_168",
@@ -16261,23 +16261,23 @@
     "id": "act_projects-registry-detail_172",
     "kind": "action",
     "ref": "projects-registry-detail: Resolve (risk row action → onResolve)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/RiskRegister.tsx:132 → POST /api/projects/:id/risks/:riskId/resolve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_173",
     "kind": "action",
     "ref": "projects-registry-detail: Close (risk row action → onClose)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/RiskRegister.tsx:133 → POST /api/projects/:id/risks/:riskId/close",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_174",
@@ -16360,23 +16360,23 @@
     "id": "act_projects-registry-detail_181",
     "kind": "action",
     "ref": "projects-registry-detail: ProjectTeamAssignmentForm onSubmit (assign team)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/TeamVendorsTab.tsx:340 → POST /api/projects/:id/assign-team",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_182",
     "kind": "action",
     "ref": "projects-registry-detail: Remove (role plan row → deleteRolePlanEntry)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/RolePlanBuilder.tsx:98 → DELETE /api/projects/:id/role-plan/:entryId",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_183",
@@ -16437,19 +16437,19 @@
     "id": "act_projects-registry-detail_188",
     "kind": "action",
     "ref": "projects-registry-detail: Add (upsert role plan entry)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/RolePlanBuilder.tsx:139 → POST /api/projects/:id/role-plan",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_189",
     "kind": "action",
     "ref": "projects-registry-detail: Generate Requests for Gaps (generateRequestsFromPlan)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/components/projects/RolePlanBuilder.tsx:145 → POST /api/projects/:id/role-plan/generate-requests",
     "dataConsistent": "n/a",
@@ -16459,12 +16459,12 @@
     "id": "act_projects-registry-detail_190",
     "kind": "action",
     "ref": "projects-registry-detail: Assign-team form onSubmit",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectTeamAssignmentForm.tsx:40 → POST /api/projects/:id/assign-team",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_191",
@@ -16547,12 +16547,12 @@
     "id": "act_projects-registry-detail_198",
     "kind": "action",
     "ref": "projects-registry-detail: Assign team (submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectTeamAssignmentForm.tsx:118 → POST /api/projects/:id/assign-team",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_199",
@@ -16602,12 +16602,12 @@
     "id": "act_projects-registry-detail_203",
     "kind": "action",
     "ref": "projects-registry-detail: Close Project ConfirmDialog onConfirm (closeProject)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectLifecycleControls.tsx:139 → POST /api/projects/:id/close",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_204",
@@ -16624,12 +16624,12 @@
     "id": "act_projects-registry-detail_205",
     "kind": "action",
     "ref": "projects-registry-detail: Closure Override ConfirmDialog onConfirm (closeProjectOverride)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectLifecycleControls.tsx:147 → POST /api/projects/:id/close-override",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_206",
@@ -16646,12 +16646,12 @@
     "id": "act_projects-registry-detail_207",
     "kind": "action",
     "ref": "projects-registry-detail: Activate project (lifecycle controls)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/ProjectLifecycleControls.tsx:172 → POST /api/projects/:id/activate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_208",
@@ -16701,12 +16701,12 @@
     "id": "act_projects-registry-detail_212",
     "kind": "action",
     "ref": "projects-registry-detail: Submit override (panel submit → onSubmit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/common/GovernanceOverridePanel.tsx:63 → POST /api/projects/:id/close-override",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_213",
@@ -16723,45 +16723,45 @@
     "id": "act_projects-registry-detail_214",
     "kind": "action",
     "ref": "projects-registry-detail: DimensionDetailModal onSaved (apply override + reload radiator)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:381 → POST /api/projects/:id/radiator/override",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_215",
     "kind": "action",
     "ref": "projects-registry-detail: Close Project ConfirmDialog onConfirm/onCancel (radiator tab)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:391 → POST /api/projects/:id/close",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_216",
     "kind": "action",
     "ref": "projects-registry-detail: Closure Override ConfirmDialog onConfirm/onCancel (radiator tab)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:399 → POST /api/projects/:id/close-override",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_217",
     "kind": "action",
     "ref": "projects-registry-detail: Refresh now (refreshRadiator)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:450 → POST /api/projects/:id/radiator/refresh",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_218",
@@ -16888,12 +16888,12 @@
     "id": "act_projects-registry-detail_229",
     "kind": "action",
     "ref": "projects-registry-detail: Update project form onSubmit (name/description)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:575 → PATCH /api/projects/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_230",
@@ -16921,12 +16921,12 @@
     "id": "act_projects-registry-detail_232",
     "kind": "action",
     "ref": "projects-registry-detail: Save changes (update project submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/projects/tabs/RadiatorTab.tsx:587 → PATCH /api/projects/:id",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_233",
@@ -17086,23 +17086,23 @@
     "id": "act_projects-registry-detail_247",
     "kind": "action",
     "ref": "projects-registry-detail: Save draft (pulse report)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/PulseReportForm.tsx:236 → PUT /api/projects/:id/pulse-report",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_248",
     "kind": "action",
     "ref": "projects-registry-detail: Submit (pulse report)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/PulseReportForm.tsx:239 → PUT /api/projects/:id/pulse-report",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_249",
@@ -17152,23 +17152,23 @@
     "id": "act_projects-registry-detail_253",
     "kind": "action",
     "ref": "projects-registry-detail: Save draft (dimension modal → overrides + pulse-report upsert)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/DimensionDetailModal.tsx:280 → PUT /api/projects/:id/pulse-report",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_254",
     "kind": "action",
     "ref": "projects-registry-detail: Save + Submit (dimension modal → radiator override + pulse-report submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/DimensionDetailModal.tsx:283 → POST /api/projects/:id/radiator/override",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_255",
@@ -17229,12 +17229,12 @@
     "id": "act_projects-registry-detail_260",
     "kind": "action",
     "ref": "projects-registry-detail: Mark reviewed (exception row → markRiskReviewed)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/PulseExceptionConsole.tsx:336 → POST /api/projects/:id/risks/:riskId/mark-reviewed",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_261",
@@ -17251,12 +17251,12 @@
     "id": "act_projects-registry-detail_262",
     "kind": "action",
     "ref": "projects-registry-detail: Save Weekly Status (form submit, dead-code — not rendered)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/projects/WeeklyStatusForm.tsx:114 → POST /api/projects/:id/rag-snapshots",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_projects-registry-detail_263",
@@ -17504,23 +17504,23 @@
     "id": "act_queues_12",
     "kind": "action",
     "ref": "queues: Reject (position-proposal source gated to POSITION_DECIDE_ROLES; other sources visible to all queue roles)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/approvals/ApprovalInspector.tsx:496 → POST /api/approvals/:approvalId/decision",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_13",
     "kind": "action",
     "ref": "queues: Approve (position-proposal source gated to POSITION_DECIDE_ROLES; other sources visible to all queue roles)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/approvals/ApprovalInspector.tsx:506 → POST /api/approvals/:approvalId/decision",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_14",
@@ -17669,12 +17669,12 @@
     "id": "act_queues_27",
     "kind": "action",
     "ref": "queues: Confirm (submit resolve note → POST .../resolve OR suppress note → POST .../suppress)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/exceptions/ExceptionQueueTable.tsx:136 → POST /api/exceptions/:id/resolve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_28",
@@ -18010,12 +18010,12 @@
     "id": "act_queues_58",
     "kind": "action",
     "ref": "queues: Case intake form submit (onSubmit → createCase)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/cases/CaseForm.tsx:46 → POST /api/cases",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_59",
@@ -18087,12 +18087,12 @@
     "id": "act_queues_65",
     "kind": "action",
     "ref": "queues: Create case (form submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/cases/CaseForm.tsx:152 → POST /api/cases",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_66",
@@ -18230,12 +18230,12 @@
     "id": "act_queues_78",
     "kind": "action",
     "ref": "queues: Close case (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:246 → POST /api/cases/:id/close",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_79",
@@ -18252,12 +18252,12 @@
     "id": "act_queues_80",
     "kind": "action",
     "ref": "queues: Archive case (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:257 → POST /api/cases/:id/archive",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_81",
@@ -18274,12 +18274,12 @@
     "id": "act_queues_82",
     "kind": "action",
     "ref": "queues: Cancel case (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:268 → POST /api/cases/:id/cancel",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_83",
@@ -18296,12 +18296,12 @@
     "id": "act_queues_84",
     "kind": "action",
     "ref": "queues: Approve case (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:279 → POST /api/cases/:id/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_85",
@@ -18318,12 +18318,12 @@
     "id": "act_queues_86",
     "kind": "action",
     "ref": "queues: Reject case (ConfirmDialog confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:290 → POST /api/cases/:id/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_87",
@@ -18340,23 +18340,23 @@
     "id": "act_queues_88",
     "kind": "action",
     "ref": "queues: Complete (workflow step row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:504 → POST /api/cases/:id/steps/:stepKey/complete",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_89",
     "kind": "action",
     "ref": "queues: Remove (workflow step row action)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:508 → POST /api/cases/:id/steps/:stepKey/remove",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_90",
@@ -18373,12 +18373,12 @@
     "id": "act_queues_91",
     "kind": "action",
     "ref": "queues: Add Step",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:528 → POST /api/cases/:id/steps",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_92",
@@ -18395,12 +18395,12 @@
     "id": "act_queues_93",
     "kind": "action",
     "ref": "queues: Post Comment",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/cases/CaseDetailsPage.tsx:561 → POST /api/cases/:id/comments",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_queues_94",
@@ -18626,23 +18626,23 @@
     "id": "act_reports_15",
     "kind": "action",
     "ref": "reports: Lock Period",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/reports/CapitalisationPage.tsx:463 → POST /api/admin/period-locks",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_reports_16",
     "kind": "action",
     "ref": "reports: Unlock (period lock row)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/reports/CapitalisationPage.tsx:483 → DELETE /api/admin/period-locks/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_reports_17",
@@ -18934,12 +18934,12 @@
     "id": "act_reports_43",
     "kind": "action",
     "ref": "reports: Save Template",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/reports/ReportBuilderPage.tsx:278 → POST /api/reports/templates",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_reports_44",
@@ -18967,12 +18967,12 @@
     "id": "act_reports_46",
     "kind": "action",
     "ref": "reports: Delete (saved template row)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/reports/ReportBuilderPage.tsx:336 → DELETE /api/reports/templates/{id}",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_reports_47",
@@ -20331,12 +20331,12 @@
     "id": "act_staffing-desk_80",
     "kind": "action",
     "ref": "staffing-desk: Approve (PROPOSED→BOOKED)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/StaffingDeskInlineActions.tsx:113 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_81",
@@ -20397,12 +20397,12 @@
     "id": "act_staffing-desk_86",
     "kind": "action",
     "ref": "staffing-desk: Confirm reason dialog (reject/end/release/cancel → transition)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/StaffingDeskInlineActions.tsx:147 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_87",
@@ -20430,12 +20430,12 @@
     "id": "act_staffing-desk_89",
     "kind": "action",
     "ref": "staffing-desk: Confirm Proposal (propose modal → OPEN→PROPOSED)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/StaffingDeskInlineActions.tsx:159 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_90",
@@ -20507,12 +20507,12 @@
     "id": "act_staffing-desk_96",
     "kind": "action",
     "ref": "staffing-desk: Apply bulk reassign",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/BulkReassignModal.tsx:123 → POST /api/project-positions/bulk-reassign",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_97",
@@ -20573,34 +20573,34 @@
     "id": "act_staffing-desk_102",
     "kind": "action",
     "ref": "staffing-desk: Create position (drawer form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:309 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_103",
     "kind": "action",
     "ref": "staffing-desk: Auto-open created DRAFT position (DRAFT→OPEN on openImmediately)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:239 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_104",
     "kind": "action",
     "ref": "staffing-desk: Auto-propose pinned candidate (OPEN→PROPOSED)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-requests/CreatePositionDrawer.tsx:248 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_105",
@@ -20683,12 +20683,12 @@
     "id": "act_staffing-desk_112",
     "kind": "action",
     "ref": "staffing-desk: Open N positions (bulk create form submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/staffing-desk/BulkCreatePositionsPage.tsx:340 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_113",
@@ -21123,12 +21123,12 @@
     "id": "act_staffing-desk_152",
     "kind": "action",
     "ref": "staffing-desk: Auto-Distribute (run auto-match)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerBenchSidebar.tsx:107 → POST /api/staffing-desk/planner/auto-match",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_153",
@@ -21255,12 +21255,12 @@
     "id": "act_staffing-desk_164",
     "kind": "action",
     "ref": "staffing-desk: Submit scenario name (Save → POST create / Fork)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerScenariosMenu.tsx:259 → POST /api/staffing-desk/planner/scenarios",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_165",
@@ -21277,8 +21277,8 @@
     "id": "act_staffing-desk_166",
     "kind": "action",
     "ref": "staffing-desk: Confirm load/archive (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-APPROX-NOT-EXECUTED",
     "rawVerdict": "WIRE-APPROX",
     "evidence": "frontend/src/components/staffing-desk/PlannerScenariosMenu.tsx:253 → POST /api/staffing-desk/planner/scenarios/<id>/archive",
     "dataConsistent": "n/a",
@@ -21354,12 +21354,12 @@
     "id": "act_staffing-desk_173",
     "kind": "action",
     "ref": "staffing-desk: Apply All actions (commit plan)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerApplyDrawer.tsx:123 → POST /api/staffing-desk/planner/apply",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_174",
@@ -21552,12 +21552,12 @@
     "id": "act_staffing-desk_191",
     "kind": "action",
     "ref": "staffing-desk: New end date picker (debounced validate)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerExtendAssignmentModal.tsx:140 → POST /api/staffing-desk/planner/extension-validate",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_192",
@@ -21607,23 +21607,23 @@
     "id": "act_staffing-desk_196",
     "kind": "action",
     "ref": "staffing-desk: Save draft (DRAFT position, openImmediately=false)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerDraftAssignmentModal.tsx:123 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_197",
     "kind": "action",
     "ref": "staffing-desk: Create & book (atomic create-and-book)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/staffing-desk/PlannerDraftAssignmentModal.tsx:131 → POST /api/project-positions/create-and-book",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_198",
@@ -21739,23 +21739,23 @@
     "id": "act_staffing-desk_208",
     "kind": "action",
     "ref": "staffing-desk: Save Draft (CreateAssignmentModal, reconciliation flow)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/assignments/CreateAssignmentModal.tsx:211 → POST /api/project-positions",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_209",
     "kind": "action",
     "ref": "staffing-desk: Create & Book / Override & Create (CreateAssignmentModal)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/assignments/CreateAssignmentModal.tsx:214 → POST /api/project-positions/create-and-book",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_210",
@@ -21794,12 +21794,12 @@
     "id": "act_staffing-desk_213",
     "kind": "action",
     "ref": "staffing-desk: Accept Overlap (overlap ConfirmDialog → retry submit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/assignments/CreateAssignmentModal.tsx:381 → POST /api/project-positions/create-and-book",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_214",
@@ -21849,12 +21849,12 @@
     "id": "act_staffing-desk_218",
     "kind": "action",
     "ref": "staffing-desk: Schedule onboarding (BOOKED→ONBOARDING)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/assignments/OnboardingScheduleModal.tsx:79 → POST /api/project-positions/<id>/transition",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_staffing-desk_219",
@@ -22025,23 +22025,23 @@
     "id": "act_time-self_11",
     "kind": "action",
     "ref": "time-self: Fill from Assignments",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:600 → POST /api/my-time/auto-fill?month=<ms>",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_12",
     "kind": "action",
     "ref": "time-self: Copy Last Month",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:601 → POST /api/my-time/copy-previous?month=<ms>",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_13",
@@ -22069,45 +22069,45 @@
     "id": "act_time-self_15",
     "kind": "action",
     "ref": "time-self: Day-cell hours input (project row) — debounced upsert",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:721 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_16",
     "kind": "action",
     "ref": "time-self: Day-cell hours input (bench row) — debounced upsert",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:730 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_17",
     "kind": "action",
     "ref": "time-self: Day-cell hours input (overtime row) — debounced upsert",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:738 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_18",
     "kind": "action",
     "ref": "time-self: Inline rename row input (Enter commits / Escape cancels / blur commits)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:816 → POST /api/my-time/rename-row",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_19",
@@ -22124,12 +22124,12 @@
     "id": "act_time-self_20",
     "kind": "action",
     "ref": "time-self: Delete row (x) — opens delete confirm or drops draft",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:837 → POST /api/my-time/delete-row",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_21",
@@ -22168,12 +22168,12 @@
     "id": "act_time-self_24",
     "kind": "action",
     "ref": "time-self: Submit (week DRAFT) — saves pending edits then submits",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:1036 → POST /api/timesheets/my/<weekStart>/submit",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_25",
@@ -22201,12 +22201,12 @@
     "id": "act_time-self_27",
     "kind": "action",
     "ref": "time-self: Resubmit (week REJECTED)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:1094 → POST /api/timesheets/my/<weekStart>/submit",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_28",
@@ -22234,12 +22234,12 @@
     "id": "act_time-self_30",
     "kind": "action",
     "ref": "time-self: Delete confirm — Delete (confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:1198 → POST /api/my-time/delete-row",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_31",
@@ -22267,12 +22267,12 @@
     "id": "act_time-self_33",
     "kind": "action",
     "ref": "time-self: Reset week confirm — Reset (confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:1212 → POST /api/timesheets/my/<weekStart>/reset",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_34",
@@ -22300,12 +22300,12 @@
     "id": "act_time-self_36",
     "kind": "action",
     "ref": "time-self: Revoke submission confirm — Revoke (confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/my-time/MyTimePage.tsx:1249 → POST /api/timesheets/my/<weekStart>/revoke",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_37",
@@ -22333,12 +22333,12 @@
     "id": "act_time-self_39",
     "kind": "action",
     "ref": "time-self: Report issue — FormModal onSubmit (creates case)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/employee/ReportIssueModal.tsx:63 → POST /api/cases",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_40",
@@ -22553,12 +22553,12 @@
     "id": "act_time-self_59",
     "kind": "action",
     "ref": "time-self: Approve Selected (bulk approve)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/time-management/TimeManagementPage.tsx:452 → POST /api/timesheets/<id>/approve + POST /api/leave-requests/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_60",
@@ -22674,12 +22674,12 @@
     "id": "act_time-self_70",
     "kind": "action",
     "ref": "time-self: Reject modal — Reject (confirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/time-management/TimeManagementPage.tsx:105 → POST /api/timesheets/<id>/reject + POST /api/leave-requests/<id>/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_71",
@@ -22729,23 +22729,23 @@
     "id": "act_time-self_75",
     "kind": "action",
     "ref": "time-self: Leave drawer — Reject… / Confirm reject (two-step)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/time-management/LeaveDecisionDrawer.tsx:223 → POST /api/leave-requests/<id>/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_76",
     "kind": "action",
     "ref": "time-self: Leave drawer — Approve",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/time-management/LeaveDecisionDrawer.tsx:231 → POST /api/leave-requests/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_77",
@@ -22828,23 +22828,23 @@
     "id": "act_time-self_84",
     "kind": "action",
     "ref": "time-self: Timesheet drawer — Reject… / Confirm reject (two-step)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/time-management/TimesheetInspectorDrawer.tsx:191 → POST /api/timesheets/<id>/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_85",
     "kind": "action",
     "ref": "time-self: Timesheet drawer — Approve",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/components/time-management/TimesheetInspectorDrawer.tsx:199 → POST /api/timesheets/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_86",
@@ -22872,12 +22872,12 @@
     "id": "act_time-self_88",
     "kind": "action",
     "ref": "time-self: Request Leave — form onSubmit (Submit Request)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/leave/LeaveRequestPage.tsx:142 → POST /api/leave-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_89",
@@ -22927,34 +22927,34 @@
     "id": "act_time-self_93",
     "kind": "action",
     "ref": "time-self: Submit Request",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/leave/LeaveRequestPage.tsx:195 → POST /api/leave-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_94",
     "kind": "action",
     "ref": "time-self: Pending queue row — Approve",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/leave/LeaveRequestPage.tsx:254 → POST /api/leave-requests/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_95",
     "kind": "action",
     "ref": "time-self: Pending queue row — Reject",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/leave/LeaveRequestPage.tsx:255 → POST /api/leave-requests/<id>/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_96",
@@ -22982,12 +22982,12 @@
     "id": "act_time-self_98",
     "kind": "action",
     "ref": "time-self: Submit (title bar)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:521 → POST /api/timesheets/my/<weekStart>/submit",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_99",
@@ -23081,23 +23081,23 @@
     "id": "act_time-self_107",
     "kind": "action",
     "ref": "time-self: Copy popover — Copy with hours",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:785 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_108",
     "kind": "action",
     "ref": "time-self: Copy popover — Copy projects only",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:788 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_109",
@@ -23125,12 +23125,12 @@
     "id": "act_time-self_111",
     "kind": "action",
     "ref": "time-self: Day-cell hours input (auto-save on blur; arrow/enter keyboard nav)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:874 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_112",
@@ -23169,12 +23169,12 @@
     "id": "act_time-self_115",
     "kind": "action",
     "ref": "time-self: Submit for Approval (footer)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:979 → POST /api/timesheets/my/<weekStart>/submit",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_116",
@@ -23213,12 +23213,12 @@
     "id": "act_time-self_119",
     "kind": "action",
     "ref": "time-self: Add-project dialog — Add",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:1030 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_120",
@@ -23246,12 +23246,12 @@
     "id": "act_time-self_122",
     "kind": "action",
     "ref": "time-self: Description modal — Save",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetPage.tsx:1079 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_123",
@@ -23334,12 +23334,12 @@
     "id": "act_time-self_130",
     "kind": "action",
     "ref": "time-self: Approve Selected (bulk)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetApprovalPage.tsx:267 → POST /api/timesheets/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_131",
@@ -23378,12 +23378,12 @@
     "id": "act_time-self_134",
     "kind": "action",
     "ref": "time-self: Row — Approve",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetApprovalPage.tsx:319 → POST /api/timesheets/<id>/approve",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_135",
@@ -23400,12 +23400,12 @@
     "id": "act_time-self_136",
     "kind": "action",
     "ref": "time-self: Reject confirm dialog — Reject (confirm with reason)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/timesheets/TimesheetApprovalPage.tsx:359 → POST /api/timesheets/<id>/reject",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_time-self_137",
@@ -23708,12 +23708,12 @@
     "id": "act_workspace-me_22",
     "kind": "action",
     "ref": "workspace-me: Editable hours cell (project × day — DS EditableCell, commit upserts entry)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/TimeTab.tsx:237 → PUT /api/timesheets/my/entries",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_23",
@@ -23741,12 +23741,12 @@
     "id": "act_workspace-me_25",
     "kind": "action",
     "ref": "workspace-me: Submit week",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/TimeTab.tsx:375 → POST /api/timesheets/my/:weekStart/submit",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_26",
@@ -23763,12 +23763,12 @@
     "id": "act_workspace-me_27",
     "kind": "action",
     "ref": "workspace-me: Request leave (form onSubmit)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/LeaveTab.tsx:295 → POST /api/leave-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_28",
@@ -23818,12 +23818,12 @@
     "id": "act_workspace-me_32",
     "kind": "action",
     "ref": "workspace-me: Request leave (submit button)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/LeaveTab.tsx:439 → POST /api/leave-requests",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_33",
@@ -23873,12 +23873,12 @@
     "id": "act_workspace-me_37",
     "kind": "action",
     "ref": "workspace-me: Cancel request (ConfirmDialog onConfirm)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/LeaveTab.tsx:482 → POST /api/leave-requests/:id/cancel",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_38",
@@ -23928,23 +23928,23 @@
     "id": "act_workspace-me_42",
     "kind": "action",
     "ref": "workspace-me: Add skill (self-endorse)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/SkillsTab.tsx:150 → POST /api/me/skills",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_43",
     "kind": "action",
     "ref": "workspace-me: Proficiency (per-skill row DS Select → immediate update)",
-    "tested": "static trace + triggeredApi↔controller reconcile",
-    "result": "OK",
+    "tested": "static trace + route-existence reconcile (write — not executed)",
+    "result": "WIRE-OK-NOT-EXECUTED",
     "rawVerdict": "WIRED-OK",
     "evidence": "frontend/src/routes/me/SkillsTab.tsx:202 → POST /api/me/skills",
     "dataConsistent": "n/a",
-    "notes": "triggeredApi matches a real controller route"
+    "notes": "triggeredApi matches a real controller route; mutating wire — route+method exist; body/role/side-effect NOT live-executed (zero-mutation policy)"
   },
   {
     "id": "act_workspace-me_44",
