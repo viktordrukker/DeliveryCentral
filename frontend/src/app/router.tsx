@@ -57,6 +57,7 @@ import { NotificationsPage } from '@/routes/admin/NotificationsPage';
 import { WebhooksAdminPage } from '@/routes/admin/WebhooksAdminPage';
 import { HrisConfigPage } from '@/routes/admin/HrisConfigPage';
 import { AccessPoliciesPage } from '@/routes/admin/AccessPoliciesPage';
+import { ClientRegistryPage } from '@/routes/admin/ClientRegistryPage';
 import { RolePermissionAdminPage } from '@/routes/admin/RolePermissionAdminPage';
 import { V2SoakChecklistPage } from '@/routes/admin/V2SoakChecklistPage';
 import { VendorRegistryPage } from '@/routes/admin/VendorRegistryPage';
@@ -542,6 +543,10 @@ const dashboardChildren = [
   {
     element: <RoleGuard allowedRoles={ADMIN_ROLES}><VendorRegistryPage /></RoleGuard>,
     path: 'admin/vendors',
+  },
+  {
+    element: <RoleGuard allowedRoles={ADMIN_ROLES}><ClientRegistryPage /></RoleGuard>,
+    path: 'admin/clients',
   },
   {
     // W4-11 — legacy direct route redirects to the consolidated governance
