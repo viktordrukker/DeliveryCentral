@@ -59,6 +59,7 @@ import {
   PositionHistoryResponseDto,
 } from '../application/list-position-history.service';
 import { ListProjectPositionsService } from '../application/list-project-positions.service';
+import { PrismaService } from '@src/shared/persistence/prisma.service';
 import {
   PositionForensicsDto,
   PositionForensicsService,
@@ -108,6 +109,7 @@ export class ProjectPositionsController {
     private readonly forensicsService: PositionForensicsService,
     private readonly historyService: ListPositionHistoryService,
     private readonly bulkReassignService: BulkReassignPositionsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -125,8 +127,34 @@ export class ProjectPositionsController {
       skip: query.skip,
       take: query.take,
     });
+    // SC-7 — enrich with human names at the presentation boundary so the FE
+    // never renders raw UUIDs (the positions domain entity carries only ids).
+    const personIds = [
+      ...new Set(result.positions.map((p) => p.activePersonId).filter((id): id is string => !!id)),
+    ];
+    const projectIds = [...new Set(result.positions.map((p) => p.projectId))];
+    const [persons, projects] = await Promise.all([
+      personIds.length
+        ? this.prisma.person.findMany({ where: { id: { in: personIds } }, select: { id: true, displayName: true } })
+        : Promise.resolve([] as { id: string; displayName: string }[]),
+      projectIds.length
+        ? this.prisma.project.findMany({
+            where: { id: { in: projectIds } },
+            select: { id: true, name: true, projectCode: true },
+          })
+        : Promise.resolve([] as { id: string; name: string; projectCode: string }[]),
+    ]);
+    const personNameById = new Map(persons.map((person) => [person.id, person.displayName]));
+    const projectById = new Map(projects.map((project) => [project.id, project]));
+
     return {
-      positions: result.positions.map((p) => ProjectPositionResponseDto.from(p)),
+      positions: result.positions.map((p) =>
+        ProjectPositionResponseDto.from(p, {
+          activePersonName: p.activePersonId ? personNameById.get(p.activePersonId) : undefined,
+          projectName: projectById.get(p.projectId)?.name,
+          projectCode: projectById.get(p.projectId)?.projectCode,
+        }),
+      ),
       total: result.total,
     };
   }

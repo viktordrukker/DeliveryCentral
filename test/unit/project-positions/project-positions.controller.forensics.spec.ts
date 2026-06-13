@@ -36,6 +36,7 @@ function makeController(opts: {
     forensicsService,
     noop, // historyService
     noop, // bulkReassignService
+    noop, // prisma
   );
 
   return { controller, svc: forensicsService };

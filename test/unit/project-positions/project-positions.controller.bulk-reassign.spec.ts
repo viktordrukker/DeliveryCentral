@@ -31,7 +31,8 @@ function makeController(
     noop, // suggestFillsService
     noop, // forensicsService
     noop, // historyService
-    svc,
+    svc, // bulkReassignService
+    noop, // prisma
   );
   return { controller, svc };
 }
