@@ -74,9 +74,9 @@ const CANDIDATES = {
   ],
 };
 
-function renderAt(): void {
+function renderAt(search = ''): void {
   render(
-    <MemoryRouter initialEntries={['/projects/prj-1/positions/pos-1']}>
+    <MemoryRouter initialEntries={[`/projects/prj-1/positions/pos-1${search}`]}>
       <Routes>
         <Route element={<ProjectPositionDetailPage />} path="/projects/:projectId/positions/:positionId" />
       </Routes>
@@ -174,6 +174,29 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
         allocationPercent: 80,
       }),
     );
+  });
+
+  it('PR-20: pre-arms the propose dialog from a ?proposePersonId= deep-link once the slate loads', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+
+    renderAt('?proposePersonId=p-ada');
+
+    // The propose dialog opens automatically for the armed candidate — no click.
+    expect(await screen.findByText('Propose candidate?')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Propose Ada Lovelace for "Senior Engineer"/i),
+    ).toBeInTheDocument();
+  });
+
+  it('PR-20: ignores a ?proposePersonId= that is not in the candidate slate', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+
+    renderAt('?proposePersonId=p-ghost');
+
+    await screen.findByText('Ada Lovelace');
+    expect(screen.queryByText('Propose candidate?')).not.toBeInTheDocument();
   });
 
   it('shows an empty-state instead of candidates when the position is not seeking a fill', async () => {

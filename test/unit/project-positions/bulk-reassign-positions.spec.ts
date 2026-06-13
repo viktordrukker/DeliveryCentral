@@ -7,6 +7,7 @@ import {
 
 import { BulkReassignPositionsService } from '@src/modules/project-positions/application/bulk-reassign-positions.service';
 import type { ProjectPositionReferenceRepositoryPort } from '@src/modules/project-positions/application/ports/project-position-reference.repository.port';
+import { InvalidPositionFillTransitionError } from '@src/modules/project-positions/domain/value-objects/position-fill-status';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 interface FakeRow {
@@ -37,7 +38,7 @@ function makeRow(overrides: Partial<FakeRow> = {}): FakeRow {
     id: overrides.id ?? 'pos-1',
     projectId: overrides.projectId ?? 'proj-1',
     role: 'Engineer',
-    requiredAllocationPercent: '100',
+    requiredAllocationPercent: overrides.requiredAllocationPercent ?? '100',
     startDate: new Date('2026-06-01'),
     endDate: new Date('2026-12-31'),
     fillStatus: overrides.fillStatus ?? 'OPEN',
@@ -107,10 +108,25 @@ function buildPrisma(seed: {
 
   const prisma = {
     projectPosition: {
-      findMany: async (q: { where: { id: { in: string[] } } }) => {
-        return q.where.id.in
-          .map((id) => rowsById.get(id))
-          .filter((r): r is FakeRow => Boolean(r));
+      findMany: async (q: {
+        where: { id?: { in: string[] }; activePersonId?: string };
+      }) => {
+        // Pre-fetch query — selects by id.in.
+        if (q.where.id?.in) {
+          return q.where.id.in
+            .map((id) => rowsById.get(id))
+            .filter((r): r is FakeRow => Boolean(r));
+        }
+        // PR-20 Σ-allocation guard query — selects the target person's
+        // active allocation-consuming fills. The fake ignores the active-fill
+        // window predicate (all fakes share the same wide window) and just
+        // filters by activePersonId.
+        if (q.where.activePersonId) {
+          return Array.from(rowsById.values()).filter(
+            (r) => r.activePersonId === q.where.activePersonId,
+          );
+        }
+        return [];
       },
     },
     $transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
@@ -263,11 +279,13 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1 / PR-15 hardening)', (
           id: 'pos-1',
           fillStatus: 'BOOKED',
           activePersonId: 'old-person',
+          requiredAllocationPercent: '50',
         }),
         makeRow({
           id: 'pos-2',
           fillStatus: 'ASSIGNED',
           activePersonId: 'old-person',
+          requiredAllocationPercent: '50',
         }),
       ],
     });
@@ -415,8 +433,18 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1 / PR-15 hardening)', (
   it('returns 422 (not 200) when the transaction rolls back and every row failed', async () => {
     const { prisma, state } = buildPrisma({
       rows: [
-        makeRow({ id: 'pos-1', fillStatus: 'BOOKED', activePersonId: 'x' }),
-        makeRow({ id: 'pos-2', fillStatus: 'BOOKED', activePersonId: 'x' }),
+        makeRow({
+          id: 'pos-1',
+          fillStatus: 'BOOKED',
+          activePersonId: 'x',
+          requiredAllocationPercent: '50',
+        }),
+        makeRow({
+          id: 'pos-2',
+          fillStatus: 'BOOKED',
+          activePersonId: 'x',
+          requiredAllocationPercent: '50',
+        }),
       ],
       failOnId: 'pos-2',
     });
@@ -497,5 +525,129 @@ describe('BulkReassignPositionsService (LEAN-P4-missing-1 / PR-15 hardening)', (
     });
     expect(result.reassigned).toBe(1);
     expect(state.updates).toHaveLength(1);
+  });
+
+  it('PR-20 Σ-guard: rejects a bulk move that would push the target person past 100% (OVERALLOCATION) before any write', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        makeRow({
+          id: 'pos-1',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+        makeRow({
+          id: 'pos-2',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    await expect(
+      svc.execute({
+        positionIds: ['pos-1', 'pos-2'],
+        toPersonId: 'new-person',
+        actorId,
+        actorRoles,
+      }),
+    ).rejects.toThrow(InvalidPositionFillTransitionError);
+    // Guard fires before the transaction — nothing was written.
+    expect(state.updates).toHaveLength(0);
+    expect(state.historyWrites).toHaveLength(0);
+  });
+
+  it('PR-20 Σ-guard: counts the target person existing active load against the cap', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        // Already on new-person at 70% — not part of the move.
+        makeRow({
+          id: 'pos-existing',
+          fillStatus: 'ASSIGNED',
+          activePersonId: 'new-person',
+          requiredAllocationPercent: '70',
+        }),
+        // Being moved onto new-person at 50% → 70 + 50 = 120% > 100.
+        makeRow({
+          id: 'pos-move',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '50',
+        }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    await expect(
+      svc.execute({
+        positionIds: ['pos-move'],
+        toPersonId: 'new-person',
+        actorId,
+        actorRoles,
+      }),
+    ).rejects.toThrow(InvalidPositionFillTransitionError);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('PR-20 Σ-guard: RM can override an over-allocating bulk move and the override is recorded on the ledger', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        makeRow({
+          id: 'pos-1',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+        makeRow({
+          id: 'pos-2',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    const result = await svc.execute({
+      positionIds: ['pos-1', 'pos-2'],
+      toPersonId: 'new-person',
+      reason: 'Critical cover',
+      allowOverallocation: true,
+      actorId,
+      actorRoles: ['resource_manager'],
+    });
+    expect(result.reassigned).toBe(2);
+    expect(state.updates).toHaveLength(2);
+    expect(state.historyWrites[0].changeReason).toContain('over-allocation override by');
+  });
+
+  it('PR-20 Σ-guard: ignores allowOverallocation for an actor without an override role', async () => {
+    const { prisma, state } = buildPrisma({
+      rows: [
+        makeRow({
+          id: 'pos-1',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+        makeRow({
+          id: 'pos-2',
+          fillStatus: 'BOOKED',
+          activePersonId: 'old-person',
+          requiredAllocationPercent: '60',
+        }),
+      ],
+    });
+    const svc = new BulkReassignPositionsService(prisma, buildReferenceRepo());
+    await expect(
+      svc.execute({
+        positionIds: ['pos-1', 'pos-2'],
+        toPersonId: 'new-person',
+        allowOverallocation: true,
+        actorId,
+        // project_manager is not in the override allow-list.
+        actorRoles: ['project_manager'],
+      }),
+    ).rejects.toThrow(InvalidPositionFillTransitionError);
+    expect(state.updates).toHaveLength(0);
   });
 });

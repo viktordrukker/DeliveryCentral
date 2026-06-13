@@ -84,13 +84,13 @@ Persona: **project_manager**. Expected: PASS for admin/director/DM/RM/PM. NOT_AP
 
 ---
 
-### J-09 — RM runs auto-match candidates
-Persona: **resource_manager**. Expected: PASS for admin/director/DM/RM/PM/dual_role. NOT_APPLICABLE for HR/employee.
+### J-09 — RM reviews the candidate slate for an open position
+Persona: **resource_manager**. Open a position from the staffing-desk board; the ranked candidate slate (`GET /:id/candidates`) loads with the detail page — the Auto-match button was removed in issue 677. Expected: PASS for admin/director/DM/RM/PM/dual_role. NOT_APPLICABLE for HR/employee.
 
 ---
 
-### J-10 — RM proposes a candidate
-Persona: **resource_manager**. Blocked by J-09. Expected: PASS for admin/director/DM/RM/PM/dual_role. NOT_APPLICABLE for HR/employee.
+### J-10 — RM proposes a candidate from the slate
+Persona: **resource_manager**. Blocked by J-09. Click Propose on a slate candidate and confirm the dialog to move the position to PROPOSED. Expected: PASS for admin/director/DM/RM/PM/dual_role. NOT_APPLICABLE for HR/employee.
 
 ---
 

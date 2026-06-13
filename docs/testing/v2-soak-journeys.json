@@ -203,13 +203,13 @@
     },
     {
       "id": "J-09",
-      "title": "RM runs auto-match candidates for a position",
+      "title": "RM reviews the candidate slate for an open position",
       "persona": "resource_manager",
       "steps": [
-        { "action": "navigate", "target": "/staffing-desk?view=planner" },
+        { "action": "navigate", "target": "/staffing-desk?view=board" },
         { "action": "selectRow", "value": "first open position" },
-        { "action": "click", "target": "Auto-match" },
-        { "action": "expectVisible", "value": "candidate ranking" },
+        { "action": "expectRoute", "value": "/staffing-desk/positions/:id" },
+        { "action": "expectVisible", "value": "candidate slate" },
         { "action": "expectMinResults", "value": 1 }
       ],
       "expectedOutcome": {
@@ -227,12 +227,13 @@
     },
     {
       "id": "J-10",
-      "title": "RM proposes a candidate",
+      "title": "RM proposes a candidate from the slate",
       "persona": "resource_manager",
       "steps": [
-        { "action": "navigate", "target": "/staffing-desk?view=planner" },
-        { "action": "selectRow", "value": "candidate from J-09" },
+        { "action": "navigate", "target": "/staffing-desk?view=board" },
+        { "action": "selectRow", "value": "open position from J-09" },
         { "action": "click", "target": "Propose" },
+        { "action": "confirmDialog" },
         { "action": "expectStatus", "value": "PROPOSED" }
       ],
       "expectedOutcome": {

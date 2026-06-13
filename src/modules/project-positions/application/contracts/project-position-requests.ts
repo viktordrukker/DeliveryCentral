@@ -106,6 +106,22 @@ export class CreateAndBookProjectPositionRequestDto {
   @IsDateString()
   endDate!: string;
 
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  skills?: string[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  summary?: string;
+
+  @ApiProperty({ required: false, enum: POSITION_PRIORITY_VALUES, default: 'MEDIUM' })
+  @IsOptional()
+  @IsIn(POSITION_PRIORITY_VALUES)
+  priority?: PositionPriorityValue;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
@@ -264,6 +280,18 @@ export class BulkReassignPositionsRequestDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @ApiProperty({
+    required: false,
+    default: false,
+    description:
+      'PR-14 (Decision D) — explicitly override the Σ-allocation guard when the bulk move ' +
+      'would push the target person past 100%. Only honoured for RM/DM/admin actors; the ' +
+      'override is recorded on the fill-history rows.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowOverallocation?: boolean;
 }
 
 export class BulkReassignPositionsResponseDto {

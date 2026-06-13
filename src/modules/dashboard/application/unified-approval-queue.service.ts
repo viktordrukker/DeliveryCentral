@@ -363,6 +363,9 @@ export class UnifiedApprovalQueueService {
           },
         },
       },
+      // PR-20 — stable newest-first window instead of an unordered take:100,
+      // so the queue never silently drops the most recently touched approvals.
+      orderBy: { updatedAt: 'desc' },
       take: 100,
     });
     // W1-12 — ProjectBudget has no Project Prisma relation; look up the
@@ -406,6 +409,8 @@ export class UnifiedApprovalQueueService {
         requestedBy: { select: { id: true, displayName: true } },
         project: { select: { name: true, publicId: true } },
       },
+      // PR-20 — stable newest-first window (see loadBudgetApprovals).
+      orderBy: { updatedAt: 'desc' },
       take: 100,
     });
     return rows.map((r) => {
@@ -437,6 +442,8 @@ export class UnifiedApprovalQueueService {
         createdAt: true,
         createdByPerson: { select: { id: true, displayName: true } },
       },
+      // PR-20 — stable newest-first window (see loadBudgetApprovals).
+      orderBy: { updatedAt: 'desc' },
       take: 100,
     });
     return rows.map((r) => itemFor({
@@ -507,6 +514,8 @@ export class UnifiedApprovalQueueService {
         createdAt: true,
         ownerPerson: { select: { id: true, displayName: true } },
       },
+      // PR-20 — stable newest-first window (see loadBudgetApprovals).
+      orderBy: { updatedAt: 'desc' },
       take: 100,
     });
     return rows.map((r) => itemFor({

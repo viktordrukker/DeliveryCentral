@@ -12,6 +12,7 @@ import {
   UseFilters,
 } from '@nestjs/common';
 import {
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -196,6 +197,10 @@ export class ProjectPositionsController {
   @Post()
   @ApiOperation({ summary: 'Create a project position (demand record)' })
   @ApiCreatedResponse({ type: ProjectPositionResponseDto })
+  @ApiConflictResponse({
+    description:
+      'Closed/archived project (positions cannot be created on a non-active project) or a non-active requested-by person.',
+  })
   @RequireRoles(...STAFFING_ROLES)
   public async create(
     @Body() body: CreateProjectPositionRequestDto,
@@ -228,6 +233,10 @@ export class ProjectPositionsController {
   })
   @ApiCreatedResponse({ type: ProjectPositionResponseDto })
   @ApiNotFoundResponse({ description: 'Project or person does not exist.' })
+  @ApiConflictResponse({
+    description:
+      'Σ-allocation conflict (booking would push the person past 100% — RM/DM/admin can retry with allowOverallocation), closed/archived project, or non-active person.',
+  })
   @RequireRoles(...PROJECT_DELIVERY_ROLES, 'resource_manager')
   public async createAndBook(
     @Body() body: CreateAndBookProjectPositionRequestDto,
@@ -243,6 +252,9 @@ export class ProjectPositionsController {
       allocationPercent: body.allocationPercent,
       startDate: body.startDate,
       endDate: body.endDate,
+      skills: body.skills,
+      summary: body.summary,
+      priority: body.priority,
       note: body.note,
       allowOverallocation: body.allowOverallocation,
     });
@@ -272,6 +284,7 @@ export class ProjectPositionsController {
       toPersonId: body.toPersonId,
       toProjectId: body.toProjectId,
       reason: body.reason,
+      allowOverallocation: body.allowOverallocation,
       actorId,
       actorRoles,
     });

@@ -1,7 +1,12 @@
 import { useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
-import { createAndBookPosition, type ProjectPosition } from '@/lib/api/project-positions';
+import { hasAnyRole, OVERALLOCATION_OVERRIDE_ROLES } from '@/app/route-manifest';
+import {
+  createAndBookPosition,
+  isOverallocationError,
+  type ProjectPosition,
+} from '@/lib/api/project-positions';
 import { STAFFING_ROLES } from '@/lib/staffing-roles';
 import type { AssignmentModalPreFill } from './CreateAssignmentModal';
 import { DatePicker, FormField, FormModal, Input, Select, Table, type Column } from '@/components/ds';
@@ -50,6 +55,12 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
   const [allocationPercent, setAllocationPercent] = useState(100);
   const [startDate, setStartDate] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // PR-20 (issue 679) — Σ-allocation guard 409 retry affordance, mirroring
+  // CreateAssignmentModal. When a row 409s on over-allocation, RM/DM/admin get
+  // an explicit override checkbox; re-submitting retries the batch with it set.
+  const [overallocBlocked, setOverallocBlocked] = useState(false);
+  const [allowOverallocation, setAllowOverallocation] = useState(false);
+  const canOverrideOveralloc = hasAnyRole(principal?.roles, OVERALLOCATION_OVERRIDE_ROLES);
 
   const actorId = principal?.personId ?? '';
   const effectiveRole = staffingRole === '__custom__' ? customRole : staffingRole;
@@ -74,8 +85,10 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
       // a failed row leaves no orphaned OPEN position behind. Successes/
       // failures aggregated into a local response envelope so the consumer
       // (PlannedVsActualPage) can show toast counts.
+      const overrideArmed = allowOverallocation && canOverrideOveralloc;
       const createdPositions: ProjectPosition[] = [];
       const failedItems: BatchPositionCreationFailure[] = [];
+      let sawOverallocation = false;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         try {
@@ -86,11 +99,13 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
             allocationPercent,
             startDate,
             endDate: startDate,
+            ...(overrideArmed ? { allowOverallocation: true } : {}),
           });
           createdPositions.push(booked);
         } catch (rowErr) {
+          if (isOverallocationError(rowErr)) sawOverallocation = true;
           failedItems.push({
-            code: 'CREATE_FAILED',
+            code: isOverallocationError(rowErr) ? 'OVERALLOCATION' : 'CREATE_FAILED',
             index: i,
             message: rowErr instanceof Error
               ? `Position not created: ${rowErr.message}`
@@ -101,6 +116,16 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
           });
         }
       }
+      // PR-20 — when a row 409s on over-allocation and no override is armed
+      // yet, keep the modal open with the override checkbox so RM/DM/admin can
+      // retry the same batch with the override set — no reset, no premature
+      // success envelope (mirrors CreateAssignmentModal's retry affordance).
+      if (sawOverallocation && !overrideArmed && canOverrideOveralloc) {
+        setOverallocBlocked(true);
+        setError('Over-allocation blocked this booking. Override and retry to book anyway.');
+        return;
+      }
+      setOverallocBlocked(false);
       const response: BatchPositionCreationResponse = {
         createdCount: createdPositions.length,
         createdPositions,
@@ -150,6 +175,18 @@ function BatchInner({ items, onCancel, onSuccess, open }: BatchAssignmentConfirm
       </div>
 
       {error && <div style={{ color: 'var(--color-status-danger)', fontSize: 12, marginBottom: 'var(--space-2)' }}>{error}</div>}
+
+      {/* PR-20 (issue 679) — over-allocation override + retry (RM/DM/admin only) */}
+      {overallocBlocked && canOverrideOveralloc && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 'var(--space-2)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={allowOverallocation}
+            onChange={(e) => setAllowOverallocation(e.target.checked)}
+          />
+          <span>Override and book anyway (records an over-allocation override)</span>
+        </label>
+      )}
 
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>
         These fields apply to all {items.length} assignments:
