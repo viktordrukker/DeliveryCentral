@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { fetchProjectBudgetDashboard, type ProjectBudgetDashboard } from '@/lib/api/project-budget';
 import type { ProjectDetails } from '@/lib/api/project-registry';
 
+import { BudgetEditForm } from './BudgetEditForm';
 import { CpiWhatIfCard } from './CpiWhatIfCard';
 import { MoneyPanel } from './MoneyPanel';
 
@@ -30,29 +31,26 @@ export function MoneyTab({ projectId }: MoneyTabProps): JSX.Element {
   const [dashboard, setDashboard] = useState<ProjectBudgetDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const loadDashboard = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
-    void (async () => {
-      try {
-        const data = await fetchProjectBudgetDashboard(projectId);
-        if (active) {
-          setDashboard(data);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : 'Failed to load budget dashboard.');
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
+    try {
+      const data = await fetchProjectBudgetDashboard(projectId);
+      setDashboard(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load budget dashboard.');
+    } finally {
+      setLoading(false);
+    }
   }, [projectId]);
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  const budget = dashboard?.budget ?? null;
 
   return (
     <div
@@ -60,9 +58,22 @@ export function MoneyTab({ projectId }: MoneyTabProps): JSX.Element {
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
     >
       {loading ? <LoadingState label="Loading budget…" variant="skeleton" skeletonType="detail" /> : null}
-      {error ? <ErrorState description={error} /> : null}
+      {error ? <ErrorState description={error} onRetry={() => void loadDashboard()} /> : null}
+
+      {showBudgetForm ? (
+        <BudgetEditForm
+          projectId={projectId}
+          initial={budget ? { fiscalYear: budget.fiscalYear, capex: budget.capex, opex: budget.opex } : null}
+          onSaved={() => {
+            setShowBudgetForm(false);
+            void loadDashboard();
+          }}
+          onCancel={() => setShowBudgetForm(false)}
+        />
+      ) : null}
+
       {!loading && !error && dashboard ? (
-        <MoneyPanel dashboard={dashboard} projectId={projectId} />
+        <MoneyPanel dashboard={dashboard} projectId={projectId} onEditBudget={() => setShowBudgetForm(true)} />
       ) : null}
 
       <CpiWhatIfCard projectId={projectId} />
