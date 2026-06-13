@@ -79,6 +79,15 @@ const LIFECYCLE_ORDER: PositionFillStatus[] = [
   'ASSIGNED',
 ];
 
+// F-POSITION-NO-CTA — linear lifecycle advances that don't require picking a new
+// candidate here (OPEN→PROPOSED and PROPOSED→BOOKED happen via the candidate
+// slate). The active person/allocation carries over.
+const ADVANCE_WITHOUT_CANDIDATE: Partial<Record<PositionFillStatus, PositionFillStatus>> = {
+  DRAFT: 'OPEN',
+  BOOKED: 'ONBOARDING',
+  ONBOARDING: 'ASSIGNED',
+};
+
 const LIFECYCLE_DESCRIPTIONS: Record<PositionFillStatus, string> = {
   DRAFT: 'Position drafted, not yet open to candidates.',
   OPEN: 'Position is open and accepting candidate proposals.',
@@ -279,6 +288,28 @@ export function ProjectPositionDetailPage(): JSX.Element {
       await load();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to propose candidate.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // F-POSITION-NO-CTA — advance the position to the next linear lifecycle stage,
+  // carrying the active person/allocation. Used by the Quick-actions CTA.
+  async function advanceLifecycle(toStatus: PositionFillStatus): Promise<void> {
+    if (!position) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await transitionProjectPositionFill(position.publicId ?? position.id, {
+        toStatus,
+        ...(position.activePersonId ? { personId: position.activePersonId } : {}),
+        ...(position.activeAllocationPercent !== undefined
+          ? { allocationPercent: position.activeAllocationPercent }
+          : {}),
+      });
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to advance the position.');
     } finally {
       setBusy(false);
     }
@@ -751,9 +782,22 @@ export function ProjectPositionDetailPage(): JSX.Element {
                     Re-open
                   </Button>
                 ) : null}
-                <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
-                  Edit + lifecycle actions ship in the next slice.
-                </span>
+                {ADVANCE_WITHOUT_CANDIDATE[position.fillStatus] ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    type="button"
+                    disabled={busy}
+                    data-testid="position-advance-cta"
+                    onClick={() => void advanceLifecycle(ADVANCE_WITHOUT_CANDIDATE[position.fillStatus]!)}
+                  >
+                    Advance to {ADVANCE_WITHOUT_CANDIDATE[position.fillStatus]}
+                  </Button>
+                ) : PROPOSABLE.has(position.fillStatus) ? (
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>
+                    Propose a candidate from the slate below to advance this position.
+                  </span>
+                ) : null}
               </div>
             </SectionCard>
 
