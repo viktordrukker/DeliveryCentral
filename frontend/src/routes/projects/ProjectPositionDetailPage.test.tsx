@@ -110,6 +110,23 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     expect(screen.getByText('Node')).toBeInTheDocument();
   });
 
+  it('F-POSITION-NO-CTA: advances a position to the next lifecycle stage via the Quick-actions CTA', async () => {
+    mockedGet.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'DRAFT' as const });
+    mockedCandidates.mockResolvedValue({ ...CANDIDATES, candidates: [] });
+    mockedTransition.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'OPEN' as const });
+
+    renderAt();
+
+    const cta = await screen.findByTestId('position-advance-cta');
+    expect(cta).toHaveTextContent('Advance to OPEN');
+
+    await userEvent.click(cta);
+
+    await waitFor(() =>
+      expect(mockedTransition).toHaveBeenCalledWith('pos-1', expect.objectContaining({ toStatus: 'OPEN' })),
+    );
+  });
+
   it('lays out the page as a 2-col canvas: main column + right rail (DS canvas PositionDetail)', async () => {
     mockedGet.mockResolvedValue(OPEN_POSITION);
     mockedCandidates.mockResolvedValue(CANDIDATES);
