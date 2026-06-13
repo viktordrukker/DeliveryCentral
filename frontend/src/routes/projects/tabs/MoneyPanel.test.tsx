@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { MoneyPanel } from './MoneyPanel';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
@@ -99,5 +100,27 @@ describe('MoneyPanel — D2 fidelity', () => {
     const dash = { ...baseDashboard, byRole: [] };
     renderWith(dash);
     expect(screen.getByText(/No cost data recorded yet/)).toBeInTheDocument();
+  });
+
+  it('EPIC A: shows an "Edit" budget button on the BAC tile when onEditBudget is provided', async () => {
+    const onEdit = vi.fn();
+    render(
+      <MemoryRouter>
+        <MoneyPanel dashboard={baseDashboard} projectId="p1" onEditBudget={onEdit} />
+      </MemoryRouter>,
+    );
+    const btn = screen.getByTestId('money-edit-budget');
+    expect(btn).toHaveTextContent('Edit');
+    await userEvent.click(btn);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('EPIC A: shows a "Set budget" button when BAC is unset', () => {
+    render(
+      <MemoryRouter>
+        <MoneyPanel dashboard={{ ...baseDashboard, budget: null }} projectId="p1" onEditBudget={() => undefined} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('money-edit-budget')).toHaveTextContent('Set budget');
   });
 });

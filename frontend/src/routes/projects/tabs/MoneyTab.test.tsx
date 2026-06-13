@@ -16,7 +16,9 @@ describe('SoT PR 5 — MoneyTab surface', () => {
   });
 
   it('renders MoneyPanel as the canvas-faithful primary surface', () => {
-    expect(src).toMatch(/<MoneyPanel dashboard=\{dashboard\} projectId=\{projectId\} \/>/);
+    // EPIC A added an onEditBudget prop, so MoneyPanel is no longer self-closing
+    // right after projectId — assert it's the surface with dashboard + projectId.
+    expect(src).toMatch(/<MoneyPanel dashboard=\{dashboard\} projectId=\{projectId\}/);
   });
 
   it('does NOT render the legacy "Budget administration" collapsible', () => {

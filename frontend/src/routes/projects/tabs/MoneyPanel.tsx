@@ -2,13 +2,15 @@ import { Link } from 'react-router-dom';
 
 import { Money } from '@/components/ds/Money';
 import { Pct } from '@/components/ds/Pct';
-import { Table, VarianceBar, type Column } from '@/components/ds';
+import { Button, Table, VarianceBar, type Column } from '@/components/ds';
 import { SectionCard } from '@/components/common/SectionCard';
 import type { ProjectBudgetDashboard } from '@/lib/api/project-budget';
 
 interface MoneyPanelProps {
   dashboard: ProjectBudgetDashboard;
   projectId: string;
+  /** EPIC A — opens the inline budget set/edit form on the Money tab. */
+  onEditBudget?: () => void;
 }
 
 type Tone = 'active' | 'warning' | 'danger' | 'critical' | 'info';
@@ -42,7 +44,7 @@ function varianceTone(variancePct: number): Tone {
  *
  * Reference: DS/page-plan-money.jsx:333-540.
  */
-export function MoneyPanel({ dashboard, projectId }: MoneyPanelProps): JSX.Element {
+export function MoneyPanel({ dashboard, projectId, onEditBudget }: MoneyPanelProps): JSX.Element {
   const budget = dashboard.budget;
   const budgetTotal = budget?.total ?? 0;
   const projected = dashboard.forecast.projectedTotalCost;
@@ -103,6 +105,18 @@ export function MoneyPanel({ dashboard, projectId }: MoneyPanelProps): JSX.Eleme
           ) : (
             <span className="kpi-foot">not set</span>
           )}
+          {onEditBudget ? (
+            <Button
+              variant="link"
+              size="sm"
+              type="button"
+              onClick={onEditBudget}
+              data-testid="money-edit-budget"
+              style={{ marginTop: 2, alignSelf: 'flex-start', padding: 0 }}
+            >
+              {budget ? 'Edit' : 'Set budget'}
+            </Button>
+          ) : null}
         </div>
 
         <div className={`kpi tone-${bTone}`}>

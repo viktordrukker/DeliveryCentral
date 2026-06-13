@@ -53,8 +53,9 @@ import { RateCardsAdminController } from './presentation/rate-cards-admin.contro
       useFactory: (
         repo: FinancialRepository,
         autoTrigger: BudgetApprovalAutoTriggerService,
-      ) => new FinancialService(repo, undefined, autoTrigger),
-      inject: [FinancialRepository, BudgetApprovalAutoTriggerService],
+        evm: EvmComputationService,
+      ) => new FinancialService(repo, undefined, autoTrigger, evm),
+      inject: [FinancialRepository, BudgetApprovalAutoTriggerService, EvmComputationService],
     },
     {
       provide: RequestBudgetChangeService,

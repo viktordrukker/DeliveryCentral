@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { AuditLoggerService } from '@src/modules/audit-observability/application/audit-logger.service';
 
 import { BudgetApprovalAutoTriggerService } from './budget-approval-auto-trigger.service';
+import { EvmComputationService } from './evm-computation.service';
 import { FinancialRepository } from '../infrastructure/financial.repository';
 import {
   BurnDownPoint,
@@ -58,6 +59,9 @@ export class FinancialService {
     private readonly auditLogger?: AuditLoggerService,
     // Sprint 4 / S4-5 — optional so test fixtures + DI bootstrap stays simple.
     private readonly budgetApprovalAutoTrigger?: BudgetApprovalAutoTriggerService,
+    // EPIC A — optional so existing fixtures/DI stay simple; reconnects EVM on
+    // every budget upsert.
+    private readonly evmComputation?: EvmComputationService,
   ) {}
 
   // ─── Capitalisation ───────────────────────────────────────────────────────
@@ -286,6 +290,19 @@ export class FinancialService {
         newOpex: Number(budget.opexBudget),
         actorId,
       });
+    }
+
+    // EPIC A — reconnect EVM: recompute CPI/EAC/EV/AC against the new budget so
+    // the Money tab + Radiator Budget quadrant stop showing stale seeded values.
+    // Best-effort: a recompute failure must never fail the budget write. Runs
+    // server-side here (not via the EXEC-only recompute endpoint) so PM/DM
+    // budget edits also refresh EVM.
+    if (this.evmComputation) {
+      try {
+        await this.evmComputation.recomputeForProject(projectId, dto.fiscalYear, actorId ?? '');
+      } catch {
+        // swallow — budget is saved; EVM refresh is non-critical and idempotent.
+      }
     }
 
     return {
