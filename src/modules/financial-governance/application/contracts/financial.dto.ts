@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 // ─── Capitalisation Report ────────────────────────────────────────────────────
 
@@ -77,6 +77,18 @@ export class UpsertProjectBudgetDto {
   @IsNumber()
   @Min(0)
   opexBudget!: number;
+
+  // EPIC G — vendorBudget + currencyCode are read by finance consumers but were
+  // only settable via seed; make them writable through the budget upsert.
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  vendorBudget?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  currencyCode?: string;
 }
 
 // ─── Person Cost Rate ─────────────────────────────────────────────────────────

@@ -55,4 +55,30 @@ describe('FinancialService.upsertProjectBudget — EVM reconnect (EPIC A)', () =
     const result = await service.upsertProjectBudget('p1', { fiscalYear: 2026, capexBudget: 1, opexBudget: 1 });
     expect(result.id).toBe('b1');
   });
+
+  it('persists vendorBudget + currencyCode when provided (EPIC G)', async () => {
+    const repo = makeRepo();
+    const service = new FinancialService(repo as never);
+
+    await service.upsertProjectBudget(
+      'p1',
+      { fiscalYear: 2026, capexBudget: 100_000, opexBudget: 50_000, vendorBudget: 25_000, currencyCode: 'USD' },
+      'actor-1',
+    );
+
+    const arg = (repo.upsertProjectBudget as jest.Mock).mock.calls[0][0];
+    expect(arg.currencyCode).toBe('USD');
+    expect(Number(arg.vendorBudget)).toBe(25_000); // passed as a Prisma.Decimal
+  });
+
+  it('omits vendorBudget + currencyCode when not provided', async () => {
+    const repo = makeRepo();
+    const service = new FinancialService(repo as never);
+
+    await service.upsertProjectBudget('p1', { fiscalYear: 2026, capexBudget: 1, opexBudget: 1 });
+
+    const arg = (repo.upsertProjectBudget as jest.Mock).mock.calls[0][0];
+    expect(arg.vendorBudget).toBeUndefined();
+    expect(arg.currencyCode).toBeUndefined();
+  });
 });

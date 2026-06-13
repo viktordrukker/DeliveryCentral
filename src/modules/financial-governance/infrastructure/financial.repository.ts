@@ -132,6 +132,9 @@ export class FinancialRepository {
     fiscalYear: number;
     capexBudget: Prisma.Decimal;
     opexBudget: Prisma.Decimal;
+    // EPIC G — optional vendor budget + currency, writable through the upsert.
+    vendorBudget?: Prisma.Decimal;
+    currencyCode?: string;
     // F-111 / D-103-write-path — optional actor for both create + update.
     actorId?: string;
   }): Promise<{
@@ -148,12 +151,16 @@ export class FinancialRepository {
         fiscalYear: data.fiscalYear,
         capexBudget: data.capexBudget,
         opexBudget: data.opexBudget,
+        ...(data.vendorBudget !== undefined ? { vendorBudget: data.vendorBudget } : {}),
+        ...(data.currencyCode !== undefined ? { currencyCode: data.currencyCode } : {}),
         createdByPersonId: data.actorId ?? null,
         updatedByPersonId: data.actorId ?? null,
       },
       update: {
         capexBudget: data.capexBudget,
         opexBudget: data.opexBudget,
+        ...(data.vendorBudget !== undefined ? { vendorBudget: data.vendorBudget } : {}),
+        ...(data.currencyCode !== undefined ? { currencyCode: data.currencyCode } : {}),
         updatedByPersonId: data.actorId ?? null,
       },
     });

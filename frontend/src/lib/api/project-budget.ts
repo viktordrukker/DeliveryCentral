@@ -38,6 +38,9 @@ export interface UpsertProjectBudgetInput {
   fiscalYear: number;
   capexBudget: number;
   opexBudget: number;
+  // EPIC G — optional vendor (third-party) budget + reporting currency.
+  vendorBudget?: number;
+  currencyCode?: string;
 }
 
 export async function upsertProjectBudget(

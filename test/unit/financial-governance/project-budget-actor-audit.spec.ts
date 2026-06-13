@@ -12,7 +12,10 @@ describe('D-103 write-path — ProjectBudget actor-audit (source-shape)', () => 
   it('upsertProjectBudget: create + update branches both set actor-audit', () => {
     const section = src.slice(
       src.indexOf('this.prisma.projectBudget.upsert'),
-      src.indexOf('this.prisma.projectBudget.upsert') + 800,
+      // EPIC G added optional vendorBudget/currencyCode spreads to both
+      // branches, lengthening the block — widen the window so the update
+      // branch's updatedByPersonId stays inside it.
+      src.indexOf('this.prisma.projectBudget.upsert') + 1300,
     );
     // create branch: BOTH cols
     expect(section).toMatch(/createdByPersonId:\s*data\.actorId\s*\?\?\s*null/);
