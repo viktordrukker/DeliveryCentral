@@ -4,7 +4,10 @@ import { PlatformRole } from '@src/modules/identity-access/domain/platform-role'
 import { sumOverlappingActiveAllocation } from '@src/shared/persistence/active-fill-window';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
-import { ProjectPosition } from '../domain/entities/project-position.entity';
+import {
+  ProjectPosition,
+  type PositionPriorityValue,
+} from '../domain/entities/project-position.entity';
 import { ProjectPositionFillChangedEvent } from '../domain/events/project-position-fill-changed.event';
 import { ProjectPositionRepositoryPort } from '../domain/repositories/project-position-repository.port';
 import { InvalidPositionFillTransitionError } from '../domain/value-objects/position-fill-status';
@@ -20,6 +23,10 @@ export interface CreateAndBookProjectPositionCommand {
   allocationPercent: number;
   startDate: string;
   endDate: string;
+  /** Demand metadata mirrored from the plain create path (issue 671). */
+  skills?: string[];
+  summary?: string;
+  priority?: PositionPriorityValue;
   note?: string;
   /**
    * PR-14 (Decision D) — explicit Σ-allocation override. Only honoured for
@@ -133,6 +140,9 @@ export class CreateAndBookProjectPositionService {
           requiredAllocationPercent: command.allocationPercent,
           startDate: command.startDate,
           endDate: command.endDate,
+          skills: command.skills,
+          summary: command.summary,
+          priority: command.priority,
           openImmediately: true,
           // requestedByPersonId intentionally omitted — the create service
           // defaults it to actorId, and an explicit pass would subject the

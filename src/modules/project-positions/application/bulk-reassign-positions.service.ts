@@ -8,8 +8,14 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+import {
+  ALLOCATION_CONSUMING_FILL_STATUSES,
+  activeFillWindowWhere,
+} from '@src/shared/persistence/active-fill-window';
+import { decimalToNumber } from '@src/shared/persistence/decimal';
 import type { PlatformRole } from '@src/modules/identity-access/domain/platform-role';
 
+import { InvalidPositionFillTransitionError } from '../domain/value-objects/position-fill-status';
 import { ProjectPositionPrismaMapper } from '../infrastructure/repositories/prisma/project-position-prisma.mapper';
 import { ProjectPositionReferenceRepositoryPort } from './ports/project-position-reference.repository.port';
 
@@ -20,6 +26,28 @@ export interface BulkReassignPositionsCommand {
   reason?: string;
   actorId: string;
   actorRoles: readonly PlatformRole[];
+  /**
+   * PR-14 (Decision D) — explicit Σ-allocation override. Only honoured for
+   * RM/DM/admin actors; bulk moves cannot push the target person past 100%
+   * without it.
+   */
+  allowOverallocation?: boolean;
+}
+
+const OVERALLOCATION_OVERRIDE_ROLES: readonly PlatformRole[] = [
+  'resource_manager',
+  'delivery_manager',
+  'admin',
+];
+
+/** Fields the Σ-allocation guard reads off each pre-fetched position row. */
+interface BulkReassignRow {
+  activeAllocationPercent: unknown;
+  requiredAllocationPercent: unknown;
+  activeValidFrom: Date | null;
+  activeValidTo: Date | null;
+  startDate: Date;
+  endDate: Date;
 }
 
 export interface BulkReassignPositionsResult {
@@ -138,6 +166,22 @@ export class BulkReassignPositionsService {
       });
     }
 
+    // PR-14 (Decision D) — Σ-allocation guard. When a non-null person is
+    // booked onto the eligible rows, their total allocation across overlapping
+    // allocation-consuming positions plus every reassigned row must not exceed
+    // 100%. The eligible rows are excluded from the existing-Σ query (they are
+    // about to carry the new person, so they cannot count as prior load), then
+    // each row's own allocation is added back. RM/DM/admin can override.
+    let overrideNote: string | null = null;
+    if (typeof command.toPersonId === 'string') {
+      overrideNote = await this.enforceAllocationCap(
+        command.toPersonId,
+        eligibleIds,
+        found,
+        command,
+      );
+    }
+
     try {
       await this.prisma.$transaction(async (tx) => {
         for (const id of eligibleIds) {
@@ -193,9 +237,12 @@ export class BulkReassignPositionsService {
           // in-place person swap / project move records REASSIGNED with the
           // unchanged status on both sides. Project / person change details
           // are encoded in changeReason.
-          const reasonPrefix = command.reason
+          const baseReason = command.reason
             ? `bulk_reassign:${command.reason}`
             : 'bulk_reassign';
+          const reasonPrefix = overrideNote
+            ? `${baseReason} — ${overrideNote}`
+            : baseReason;
           const projectChange =
             fromProjectId !== position.projectId
               ? `;project:${fromProjectId}->${position.projectId}`
@@ -241,5 +288,78 @@ export class BulkReassignPositionsService {
       positionIds: eligibleIds,
       errors: rowErrors,
     };
+  }
+
+  /**
+   * Σ-allocation invariant for the bulk-move path. The target person's total
+   * allocation across all overlapping allocation-consuming positions — minus
+   * the rows being reassigned (they are about to carry this person and cannot
+   * also count as prior load) plus each reassigned row's own allocation — must
+   * not exceed 100%. Returns the audit note when an authorised override
+   * (allowOverallocation + RM/DM/admin) was applied; null when within cap.
+   */
+  private async enforceAllocationCap(
+    toPersonId: string,
+    eligibleIds: string[],
+    found: Map<string, BulkReassignRow>,
+    command: BulkReassignPositionsCommand,
+  ): Promise<string | null> {
+    const eligibleSet = new Set(eligibleIds);
+    // Union window spanning every reassigned row, against the canonical
+    // active-fill-window predicate (issue 679): only allocation-consuming
+    // fills whose active window overlaps the move are prior load.
+    const windowStart = eligibleIds.reduce<Date>((min, id) => {
+      const row = found.get(id)!;
+      const start = row.activeValidFrom ?? row.startDate;
+      return start < min ? start : min;
+    }, found.get(eligibleIds[0])!.activeValidFrom ?? found.get(eligibleIds[0])!.startDate);
+    const windowEnd = eligibleIds.reduce<Date>((max, id) => {
+      const row = found.get(id)!;
+      const end = row.activeValidTo ?? row.endDate;
+      return end > max ? end : max;
+    }, found.get(eligibleIds[0])!.activeValidTo ?? found.get(eligibleIds[0])!.endDate);
+
+    // Existing Σ for the target person, excluding the rows we are about to
+    // reassign onto them so they are not double-counted.
+    const existingRows = await this.prisma.projectPosition.findMany({
+      where: {
+        ...activeFillWindowWhere({
+          from: windowStart,
+          to: windowEnd,
+          statuses: ALLOCATION_CONSUMING_FILL_STATUSES,
+        }),
+        activePersonId: toPersonId,
+      },
+      select: { id: true, activeAllocationPercent: true, requiredAllocationPercent: true },
+    });
+    const existingTotal = existingRows
+      .filter((row) => !eligibleSet.has(row.id))
+      .reduce(
+        (sum, row) =>
+          sum + decimalToNumber(row.activeAllocationPercent ?? row.requiredAllocationPercent),
+        0,
+      );
+    // Allocation the bulk move adds: each eligible row's own allocation.
+    const addedTotal = eligibleIds.reduce((sum, id) => {
+      const row = found.get(id)!;
+      return sum + decimalToNumber(row.activeAllocationPercent ?? row.requiredAllocationPercent);
+    }, 0);
+
+    const projectedTotal = existingTotal + addedTotal;
+    if (projectedTotal <= 100) {
+      return null;
+    }
+    const overrideAllowed =
+      command.allowOverallocation === true &&
+      command.actorRoles.some((role) => OVERALLOCATION_OVERRIDE_ROLES.includes(role));
+    if (!overrideAllowed) {
+      throw new InvalidPositionFillTransitionError(
+        `Over-allocation: person ${toPersonId} already has ${existingTotal}% active allocation in ` +
+          `the overlapping window; this bulk reassign of ${addedTotal}% would take them to ` +
+          `${projectedTotal}%. RM/DM/admin can retry with allowOverallocation to override.`,
+        'OVERALLOCATION',
+      );
+    }
+    return `over-allocation override by ${command.actorId}`;
   }
 }

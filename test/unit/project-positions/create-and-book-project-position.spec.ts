@@ -139,6 +139,23 @@ describe('CreateAndBookProjectPositionService — atomic create-and-book', () =>
     });
   });
 
+  it('PR-20 — threads explicit skills/summary/priority through to the persistence shape (issue 671 parity)', async () => {
+    const { service } = buildHarness();
+
+    const position = await service.execute({
+      ...baseCommand(),
+      skills: ['React', 'NestJS'],
+      summary: 'Senior FE for the payments squad',
+      priority: 'HIGH',
+    });
+
+    expect(ProjectPositionPrismaMapper.toPersistence(position)).toMatchObject({
+      skills: ['React', 'NestJS'],
+      summary: 'Senior FE for the payments squad',
+      priority: 'HIGH',
+    });
+  });
+
   it('threads the optional note into both ledger rows as the change reason', async () => {
     const { service, historyWrites } = buildHarness();
 
