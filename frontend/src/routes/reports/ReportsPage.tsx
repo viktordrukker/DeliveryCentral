@@ -54,12 +54,19 @@ interface ReportsTab {
   description: string;
   /** W1-26 — role allowlist matching the underlying route's @RequireRoles. */
   allowedRoles: readonly AppRole[];
+  /**
+   * Optional feature-flag gate. When set, the tab is only shown if the flag is
+   * enabled. CAPEX (`reportsCapitalisation`) is default-OFF and pre-GA
+   * (data-starved — nothing populates TimesheetEntry.capex; see
+   * docs/qa/capex-gap-list.md), so it stays hidden until GA.
+   */
+  flag?: Parameters<typeof isFeatureEnabled>[0];
 }
 
 const TABS: ReportsTab[] = [
   { id: 'exceptions', label: 'Exceptions', description: 'Unified operational queue', allowedRoles: EXCEPTIONS_ROLES },
   { id: 'time', label: 'Time', description: 'Time analytics: hours, OT, bench, CAPEX/OPEX', allowedRoles: TIMESHEET_MANAGER_ROLES },
-  { id: 'capitalisation', label: 'CAPEX', description: 'Capitalisation breakdown', allowedRoles: CAPITALISATION_ROLES },
+  { id: 'capitalisation', label: 'CAPEX', description: 'Capitalisation breakdown', allowedRoles: CAPITALISATION_ROLES, flag: 'reportsCapitalisation' },
   { id: 'export', label: 'Export', description: 'XLSX export center', allowedRoles: EXPORT_CENTRE_ROLES },
   { id: 'utilization', label: 'Utilization', description: 'Available vs assigned vs actual hours', allowedRoles: EXCEPTIONS_ROLES },
   { id: 'evidence', label: 'Evidence', description: 'Observed-work records + diagnostics', allowedRoles: EVIDENCE_MANAGEMENT_ROLES },
@@ -98,7 +105,7 @@ export function ReportsPage(): JSX.Element {
   // `?section=X` is not visible for this role, fall back to the first visible
   // tab (or `exceptions` if none — page entry already requires EXCEPTIONS_ROLES).
   const visibleTabs = useMemo(
-    () => TABS.filter((t) => hasAnyRole(principal?.roles, [...t.allowedRoles])),
+    () => TABS.filter((t) => hasAnyRole(principal?.roles, [...t.allowedRoles]) && (!t.flag || isFeatureEnabled(t.flag))),
     [principal?.roles],
   );
   const requestedTab = isValidSection(sectionParam) ? sectionParam : null;

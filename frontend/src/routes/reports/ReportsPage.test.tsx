@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ReportsPage } from './ReportsPage';
 
@@ -47,6 +47,15 @@ vi.mock('@/routes/reports/UtilizationPage', () => ({
   UtilizationPage: () => <div data-testid="stub-utilization">Utilization content</div>,
 }));
 
+// CAPEX is gated behind the `reportsCapitalisation` flag (default OFF, pre-GA —
+// data-starved, nothing populates TimesheetEntry.capex; see
+// docs/qa/capex-gap-list.md). dsRefresh stays OFF here so the tab strip renders
+// via the PageHeader TabBar path (its real default). Tests drive both via this mock.
+const isFeatureEnabledMock = vi.fn((_flag: string) => false);
+vi.mock('@/lib/feature-flags', () => ({
+  isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
+}));
+
 function renderReports(initialEntries: string[] = ['/reports']): ReturnType<typeof render> {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -56,16 +65,32 @@ function renderReports(initialEntries: string[] = ['/reports']): ReturnType<type
 }
 
 describe('ReportsPage — Phase E3 umbrella shell', () => {
-  it('renders 6 tabs in the header strip', async () => {
+  beforeEach(() => {
+    isFeatureEnabledMock.mockReset();
+    isFeatureEnabledMock.mockImplementation((_flag: string) => false);
+  });
+
+  it('renders 5 tabs by default — CAPEX is hidden behind the reportsCapitalisation flag (pre-GA)', async () => {
     renderReports();
     await waitFor(() => expect(screen.getByText('Reports')).toBeInTheDocument());
     expect(screen.getByRole('tab', { name: 'Exceptions' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Time' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'CAPEX' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Export' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Utilization' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Evidence' })).toBeInTheDocument();
+    // CAPEX is data-starved + pre-GA — gated OFF by default (docs/qa/capex-gap-list.md).
+    expect(screen.queryByRole('tab', { name: 'CAPEX' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Builder' })).not.toBeInTheDocument();
+  });
+
+  it('shows the CAPEX tab when the reportsCapitalisation flag is enabled', async () => {
+    const user = userEvent.setup();
+    isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'reportsCapitalisation');
+    renderReports();
+    await waitFor(() => expect(screen.getByText('Reports')).toBeInTheDocument());
+    expect(screen.getByRole('tab', { name: 'CAPEX' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'CAPEX' }));
+    await waitFor(() => expect(screen.getByTestId('stub-capitalisation')).toBeInTheDocument());
   });
 
   it('defaults to the Exceptions tab', async () => {
@@ -83,8 +108,8 @@ describe('ReportsPage — Phase E3 umbrella shell', () => {
     const user = userEvent.setup();
     renderReports();
     await waitFor(() => expect(screen.getByTestId('stub-exceptions')).toBeInTheDocument());
-    await user.click(screen.getByRole('tab', { name: 'CAPEX' }));
-    await waitFor(() => expect(screen.getByTestId('stub-capitalisation')).toBeInTheDocument());
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
+    await waitFor(() => expect(screen.getByTestId('stub-export')).toBeInTheDocument());
     expect(screen.queryByTestId('stub-exceptions')).not.toBeInTheDocument();
   });
 
