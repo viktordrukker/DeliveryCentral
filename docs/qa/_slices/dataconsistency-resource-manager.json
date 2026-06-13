@@ -1,0 +1,95 @@
+{
+  "target": "data-consistency:resource-manager",
+  "verdict": "ISSUES-FOUND",
+  "checked": 5,
+  "law": "UX Law 9 — every KPI is a clickable drilldown to the list that produced it",
+  "liveContext": {
+    "host": "https://deliverit-test-v2.agentic.uz",
+    "account": "sophia.kim@itco.local (resource_manager)",
+    "personId": "bbbb0001-0000-0000-0000-000000000006",
+    "kpiEndpoint": "GET /api/dashboard/resource-manager/bbbb0001-0000-0000-0000-000000000006 -> 200",
+    "summary": {
+      "totalManagedPeopleCount": 5,
+      "peopleWithoutAssignmentsCount": 5,
+      "managedTeamCount": 1,
+      "futureAssignmentPipelineCount": 0,
+      "pendingAssignmentApprovalCount": 0
+    },
+    "derived": {
+      "allocationIndicators.length": 5,
+      "indicatorDistribution": { "UNASSIGNED": 5 },
+      "OVERALLOCATED": 0
+    }
+  },
+  "files": {
+    "page": "/tmp/dc-qa/frontend/src/routes/dashboard/ResourceManagerDashboardPage.tsx",
+    "kpiStrip": "/tmp/dc-qa/frontend/src/routes/dashboard/rm-sections/RmKpiStrip.tsx",
+    "drilldownTarget": "/tmp/dc-qa/frontend/src/routes/people/EmployeeDirectoryPage.tsx",
+    "filterHook": "/tmp/dc-qa/frontend/src/hooks/useFilterParams.ts",
+    "api": "/tmp/dc-qa/frontend/src/lib/api/dashboard-resource-manager.ts"
+  },
+  "kpis": [
+    {
+      "label": "Utilization",
+      "displayed": "0% (utilPct = round(allocatedPeople/totalPeople*100) = round(0/5*100))",
+      "source": "summary.totalManagedPeopleCount(5) & summary.peopleWithoutAssignmentsCount(5) -> allocatedPeople=max(0,5-5)=0",
+      "drilldown": "/workload",
+      "status": "CONSISTENT (number matches source; bare list link, no param to ignore)"
+    },
+    {
+      "label": "Managed Teams",
+      "displayed": "1",
+      "source": "summary.managedTeamCount = 1 (teamCapacitySummary.length also 1)",
+      "drilldown": "/teams",
+      "status": "CONSISTENT (matches; bare list link)"
+    },
+    {
+      "label": "Managed People",
+      "displayed": "5 (context: 0 assigned / 5 idle)",
+      "source": "summary.totalManagedPeopleCount = 5",
+      "drilldown": "/people",
+      "status": "CONSISTENT-VALUE / WEAK-DRILLDOWN: KPI is RM-scoped (5 managed) but /people lands on the org-wide ACTIVE directory (198). No filter applied, so the destination shows 198, not the 5 the KPI counts. Soft Law-9 gap (no param emitted, so not the ignored-param bug class)."
+    },
+    {
+      "label": "Idle Resources",
+      "displayed": "5",
+      "source": "summary.peopleWithoutAssignmentsCount = 5 (peopleWithoutAssignments.length = 5)",
+      "drilldown": "/people?filter=idle",
+      "status": "FAIL (Law-9 lie + ignored-param bug)"
+    },
+    {
+      "label": "Overallocated",
+      "displayed": "0",
+      "source": "allocationIndicators.filter(indicator==='OVERALLOCATED') = 0 (all 5 are UNASSIGNED)",
+      "drilldown": "/staffing-desk",
+      "status": "CONSISTENT (matches; bare list link, no param to ignore)"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "high",
+      "kpi": "Idle Resources",
+      "type": "ignored-param drilldown (same class as ProjectsPage rag) + Law-9 lie",
+      "displayed": 5,
+      "drilldownLandsOn": 198,
+      "detail": "RmKpiStrip.tsx:94 links the 'Idle Resources' KPI (value 5) to /people?filter=idle. The destination EmployeeDirectoryPage (EmployeeDirectoryPage.tsx:48) builds its URL-filter set with useFilterParams(defaults) where defaults = {departmentId, lifecycleStatus:'ACTIVE', resourcePoolId, search, view:'directory', role, grade, layout, groupBy, selected}. 'filter' is NOT a default key. useFilterParams (useFilterParams.ts:22-28) only reads keys present in defaults, so ?filter=idle is silently dropped — identical mechanism to the ProjectsPage 'rag' ignored-param finding. The page then renders the full lifecycleStatus=ACTIVE directory. Live: KPI=5 idle, but the drilldown lands on 198 ACTIVE people (GET /api/org/people total=201, ACTIVE=198). The KPI promises a filtered list of 5 and delivers an unfiltered list of 198.",
+      "correctTarget": "/people?view=bench (the directory already has a Bench tab via ?view=bench backed by fetchEnrichedBench/isOnBench); 'filter=idle' has no handler at all."
+    },
+    {
+      "severity": "medium",
+      "kpi": "Idle (duplicate link site)",
+      "type": "same ignored-param link reused in chart legend",
+      "detail": "ResourcePoolUtilizationDonut.tsx:19 also links the 'Idle' slice to /org/people?filter=idle — same dead param, same destination behavior. Confirms the broken pattern is not a one-off typo."
+    },
+    {
+      "severity": "low",
+      "kpi": "Managed People",
+      "type": "scope-mismatch drilldown (no param, soft Law-9)",
+      "displayed": 5,
+      "drilldownLandsOn": 198,
+      "detail": "KPI counts the RM's 5 managed people; /people drilldown shows the org-wide ACTIVE directory (198) with no manager/scope filter. Number is correct vs its source, but the drilldown does not reproduce the 5. Not an ignored-param bug (no param emitted), but it violates the spirit of Law-9 (KPI should link to the filtered list that produced it)."
+    }
+  ],
+  "evidence": "Live as resource_manager sophia.kim (personId bbbb0001-0000-0000-0000-000000000006). GET /api/dashboard/resource-manager/<pid> -> 200; summary.peopleWithoutAssignmentsCount=5, totalManagedPeopleCount=5, managedTeamCount=1, allocationIndicators all UNASSIGNED (OVERALLOCATED=0). RmKpiStrip 'Idle Resources' KPI shows 5 and links to /people?filter=idle. EmployeeDirectoryPage's useFilterParams default set has no 'filter' key (EmployeeDirectoryPage.tsx:48); useFilterParams.ts only reads default keys, so ?filter=idle is ignored — same class as ProjectsPage 'rag'. The drilldown therefore lands on the full ACTIVE directory: GET /api/org/people?pageSize=200 -> 200, total=201, ACTIVE=198. KPI=5 vs drilldown list=198. Second instance of the same dead link at ResourcePoolUtilizationDonut.tsx:19 (/org/people?filter=idle). All 5 KPI values themselves match their dashboard-endpoint source fields; only the drilldown filtering is broken.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dataconsistency-resource-manager.json"
+}

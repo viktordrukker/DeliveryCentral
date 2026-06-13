@@ -1,0 +1,91 @@
+{
+  "target": "data-consistency:hr",
+  "verdict": "ISSUES-FOUND",
+  "checked": 6,
+  "persona": "hr_manager (diana.walsh@itco.local, personId bbbb0001-0000-0000-0000-000000000005)",
+  "host": "https://deliverit-test-v2.agentic.uz",
+  "component": "frontend/src/routes/dashboard/HrDashboardPage.tsx",
+  "kpiSource": "GET /api/dashboard/hr-manager/{personId} (+ GET /api/cases for Open Cases, GET /api/hr/action-cards for the action-cards rail)",
+  "liveSourceNumbers": {
+    "headcountSummary": { "totalHeadcount": 201, "activeHeadcount": 200, "inactiveHeadcount": 0 },
+    "employeesWithoutManager": 3,
+    "employeesWithoutOrgUnit": 2,
+    "atRiskEmployees": 20,
+    "openCaseDistinctSubjects": 7,
+    "actionCardsCount": 50,
+    "orgPeopleTotal": 201,
+    "orgPeopleStatusBreakdown": { "ACTIVE": 199, "LEAVE": 1, "TERMINATED": 1 }
+  },
+  "kpis": [
+    {
+      "kpi": "Total Headcount",
+      "displayed": 201,
+      "sourceField": "headcountSummary.totalHeadcount",
+      "drilldown": "/people",
+      "drilldownTotal": 201,
+      "consistent": true,
+      "note": "Directory header badge shows 201 people. Match."
+    },
+    {
+      "kpi": "Active Employees",
+      "displayed": 200,
+      "sourceField": "headcountSummary.activeHeadcount (counts ACTIVE+LEAVE)",
+      "drilldown": "/people?status=active",
+      "drilldownTotal": 201,
+      "consistent": false,
+      "severity": "high",
+      "note": "TRIPLE Law-9 break. (1) Param-name mismatch (ProjectsPage class bug): the link uses ?status=active but EmployeeDirectoryPage reads filter key `lifecycleStatus` via useFilterParams, whose defaults do NOT include `status` -> the param is silently ignored, directory falls back to default lifecycleStatus=ACTIVE. (2) Case-sensitivity: even if read, the client-side filter is `item.lifecycleStatus === 'active'` exact-match; live statuses are uppercase ACTIVE/LEAVE/TERMINATED, so lowercase 'active' matches 0 rows. (3) Count mismatch: KPI counts ACTIVE+LEAVE=200, but the directory's ACTIVE filter only matches ACTIVE=199. Backend GET /api/org/people accepts NO status/lifecycleStatus param at all (only page/pageSize/departmentId/resourcePoolId/role) and returns total=201 for both /people and /people?status=active. Net: KPI says 200, drilldown header shows 201 people, list (default ACTIVE filter, page-local over 25 rows) reflects 199 active."
+    },
+    {
+      "kpi": "Data Issues",
+      "displayed": 5,
+      "sourceField": "employeesWithoutManager.length (3) + employeesWithoutOrgUnit.length (2)",
+      "drilldown": "#data-quality (in-page tab; HrDataQualityTab fed by same dashboard response)",
+      "drilldownTotal": 5,
+      "consistent": true,
+      "note": "In-page tab consumes employeesWithoutManager + employeesWithoutOrgUnit from the same payload. Consistent by construction."
+    },
+    {
+      "kpi": "At Risk",
+      "displayed": 20,
+      "sourceField": "atRiskEmployees.length",
+      "drilldown": "#lifecycle (in-page tab; HrLifecycleTab fed by same dashboard response)",
+      "drilldownTotal": 20,
+      "consistent": true,
+      "note": "In-page tab consumes atRiskEmployees from the same payload. Consistent."
+    },
+    {
+      "kpi": "Open Cases",
+      "displayed": 7,
+      "sourceField": "fetchCases({}) filtered to status OPEN|IN_PROGRESS, then distinct subjectPersonId (openCaseSubjects.length)",
+      "drilldown": "/cases",
+      "drilldownTotal": 7,
+      "consistent": true,
+      "note": "GET /api/cases returns 12 cases, 7 OPEN|IN_PROGRESS across 7 distinct subjects. KPI counts distinct subjects = 7. Match (though /cases page shows all 12 cases, not a status-filtered view — minor scope-loss, not a number lie)."
+    },
+    {
+      "kpi": "HR action cards (rail, dsRefresh-gated)",
+      "displayed": "list (no numeric KPI)",
+      "sourceField": "GET /api/hr/action-cards",
+      "drilldown": "per-card href (deep-link to person)",
+      "drilldownTotal": 50,
+      "consistent": true,
+      "note": "HTTP 200, 50 cards. Not a numeric KPI; each card deep-links to a person profile. No Law-9 number to reconcile."
+    }
+  ],
+  "endpointHealth": {
+    "GET /api/dashboard/hr-manager/{id}": "200",
+    "GET /api/org/people": "200",
+    "GET /api/org/people?status=active": "200 (status param ignored by server)",
+    "GET /api/cases": "200",
+    "GET /api/hr/action-cards": "200"
+  },
+  "findings": [
+    "Active Employees KPI = 200 but drilldown /people?status=active returns total=201 (server ignores `status`) and the directory filter is the ProjectsPage bug class: param name `status` != directory's `lifecycleStatus`, AND value `active` (lowercase) != case-sensitive client filter `=== 'ACTIVE'`. Lowercase 'active' matches 0 rows; the page falls back to its default ACTIVE filter showing 199 active, not 200.",
+    "Additional count drift on the same KPI: activeHeadcount=200 counts ACTIVE+LEAVE; the directory ACTIVE filter only matches ACTIVE=199 (live breakdown: 199 ACTIVE, 1 LEAVE, 1 TERMINATED). So no directory filter value can reproduce the KPI's 200.",
+    "Total Headcount (201->/people), Data Issues (5->#data-quality tab), At Risk (20->#lifecycle tab), Open Cases (7->/cases) are all consistent. The three in-page tab drilldowns are fed by the same dashboard response so cannot drift.",
+    "All 5 KPI/source endpoints return HTTP 200; no errors."
+  ],
+  "evidence": "Live as hr_manager diana.walsh (personId ...0005). GET /api/dashboard/hr-manager/{id} -> headcountSummary={active:200,inactive:0,total:201}, withoutMgr=3, withoutOrg=2, atRisk=20 (HTTP 200). GET /api/org/people?status=active -> total=201 (identical to /api/org/people; status param dropped). Full org pageSize=300 -> statusBreakdown {ACTIVE:199, LEAVE:1, TERMINATED:1}; lowercase 'active' client-match=0, 'ACTIVE' match=199. Backend person-directory.controller.ts @Get() accepts only page/pageSize/departmentId/resourcePoolId/role -- no status. Frontend useEmployeeDirectory.ts filters client-side `item.lifecycleStatus === statusFilter` (case-sensitive); EmployeeDirectoryPage.tsx useFilterParams defaults key is `lifecycleStatus` (not `status`, default 'ACTIVE'). GET /api/cases -> 12 cases, 7 OPEN|IN_PROGRESS, 7 distinct subjects = KPI 7 (HTTP 200). GET /api/hr/action-cards -> 50 (HTTP 200).",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dataconsistency-hr.json"
+}

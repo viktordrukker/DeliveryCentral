@@ -1,0 +1,125 @@
+{
+  "target": "data-consistency:exec-workload",
+  "verdict": "ISSUES-FOUND",
+  "checked": 10,
+  "generatedBy": "data-consistency QA subagent (UX Law 9)",
+  "asOf": "2026-06-13",
+  "liveHost": "https://deliverit-test-v2.agentic.uz",
+  "liveIdentity": "noah.bennett@itco.local (director)",
+  "scope": "The exec-workload dashboard surface = Workload Overview (DashboardPage.tsx, workload/summary+trend) + Director KPI strip (DirectorKpiStrip.tsx, exec/sla-summary + portfolio/summary). Both KPI strips audited because the prompt names both endpoint families.",
+  "components": {
+    "workloadOverview": "frontend/src/routes/dashboard/DashboardPage.tsx",
+    "directorKpiStrip": "frontend/src/components/dashboard/director/DirectorKpiStrip.tsx",
+    "directorPage": "frontend/src/routes/dashboard/DirectorDashboardPage.tsx",
+    "projectsListTarget": "frontend/src/routes/projects/ProjectsPage.tsx",
+    "filterHook": "frontend/src/hooks/useFilterParams.ts"
+  },
+  "liveEndpointResults": {
+    "GET /api/dashboard/exec/sla-summary": {"http": 200, "slaBreaches24h": 0, "timeToFillSampleSize": 9, "timeToFillMedianDays": 2.78e-7},
+    "GET /api/dashboard/workload/summary": {"http": 200, "totalActiveProjects": 10, "totalActiveAssignments": 95, "unassignedActivePeopleCount": 137, "projectsWithNoStaffCount": 0, "peopleWithNoActiveAssignmentsCount": 137},
+    "GET /api/dashboard/workload/trend?weeks=24": {"http": 200, "points": 24, "lastActiveAssignments": 95},
+    "GET /api/dashboard/workload/planned-vs-actual": {"http": 200, "weeksIncluded": 4, "projectSummaries": 10, "anomalies": 0, "staffingCoverage_open": 12, "staffingCoverage_unfilled": 12},
+    "GET /api/dashboard/portfolio/summary": {"http": 200, "totalProjects": 10, "byRag": {"green": 3, "amber": 5, "red": 2}, "totalOpenGaps": 36},
+    "GET /api/projects": {"http": 200, "total": 40, "byStatus": {"ACTIVE": 10, "CLOSED": 20, "COMPLETED": 10}, "itemHasBudgetStatus": true, "budgetStatusEnumSeen": ["RED", "YELLOW"], "itemHasOpenPositionsCount": true, "itemHasRagField": false}
+  },
+  "kpiAudit": [
+    {
+      "kpi": "Director · Active projects",
+      "source": "portfolio/summary.totalProjects",
+      "displayed": 10,
+      "drilldown": "/projects?status=ACTIVE",
+      "drilldownResult": "10 (status is a parsed filter key; enum value 'ACTIVE' matches item.status uppercase via strict !==)",
+      "status": "CONSISTENT"
+    },
+    {
+      "kpi": "Director · At-risk projects",
+      "source": "portfolio/summary.byRag.amber+red (5+2)",
+      "displayed": 7,
+      "drilldown": "/projects?rag=AMBER,RED",
+      "drilldownResult": "40 projects (ENTIRE registry, unfiltered)",
+      "status": "ISSUE",
+      "bugClass": "ignored-param + missing-field",
+      "detail": "'rag' is NOT a key in ProjectsPage FILTER_DEFAULTS. useFilterParams (line 21) only reads Object.keys(defaults), so 'rag' is silently dropped. ProjectDirectoryItem also carries no rag/ragStatus field (verified live: itemHasRagField=false). KPI says 7 at-risk but the drilldown lands on all 40 projects with NO at-risk filter applied. Same bug class as the prior-round ProjectsPage ignored-param finding."
+    },
+    {
+      "kpi": "Director · Budget variance · portfolio",
+      "source": "financeSummary derived %",
+      "displayed": "signed %",
+      "drilldown": "/projects?budgetStatus=over",
+      "drilldownResult": "0 projects (empty)",
+      "status": "ISSUE",
+      "bugClass": "value-mismatch (case/enum)",
+      "detail": "budgetStatus IS a parsed filter key AND the field exists on items, but the link value 'over' does not exist in the enum. ProjectBudgetStatus = 'GREEN'|'YELLOW'|'RED'|'UNSET' (project-registry.ts:11); live data shows only RED/YELLOW. ProjectsPage compares item.budgetStatus !== filters.budgetStatus (line 201), so 'over' matches NOTHING -> over-budget KPI drilldown yields an empty list. Directly analogous to the prior 'ACTIVE'!=='active' case-mismatch class."
+    },
+    {
+      "kpi": "Director · Utilisation",
+      "source": "useDirectorDashboard summary.staffingUtilisationRate",
+      "displayed": "%",
+      "drilldown": "/people",
+      "drilldownResult": "unfiltered people directory",
+      "status": "CONSISTENT (no filter claimed; broad but acceptable)"
+    },
+    {
+      "kpi": "Director · Open positions",
+      "source": "portfolio/summary.totalOpenGaps",
+      "displayed": 36,
+      "drilldown": "/projects?hasOpenGaps=true",
+      "drilldownResult": "33 projects have openPositionsCount>0 (10 of them ACTIVE); sum of openPositionsCount across all = 36",
+      "status": "WEAK-CONSISTENT",
+      "detail": "hasOpenGaps IS parsed and openPositionsCount IS on items, so the filter works (33 projects shown). But KPI counts 36 OPEN POSITIONS (sum of gaps) while the drilldown counts PROJECTS-with-gaps (33). Number shown (36) != rows in list (33) — a units mismatch, not a hard lie, since one click does reach the gap-bearing projects."
+    },
+    {
+      "kpi": "Workload · Active Positions",
+      "source": "workload/summary.totalActiveAssignments",
+      "displayed": 95,
+      "drilldown": "/staffing-desk",
+      "drilldownResult": "trend last point = 95 (matches); /staffing-desk is unfiltered",
+      "status": "CONSISTENT (number matches source + trend; drilldown unfiltered)"
+    },
+    {
+      "kpi": "Workload · Utilization",
+      "source": "derived 95/(95+137)",
+      "displayed": "41%",
+      "drilldown": "/workload",
+      "drilldownResult": "unfiltered workload matrix",
+      "status": "CONSISTENT"
+    },
+    {
+      "kpi": "Workload · Available People",
+      "source": "workload/summary.unassignedActivePeopleCount",
+      "displayed": 137,
+      "drilldown": "/people",
+      "drilldownResult": "unfiltered people directory (137 in peopleWithNoActiveAssignments list)",
+      "status": "CONSISTENT (number matches source; drilldown unfiltered)"
+    },
+    {
+      "kpi": "Workload · Active Projects",
+      "source": "workload/summary.totalActiveProjects",
+      "displayed": 10,
+      "drilldown": "/projects",
+      "drilldownResult": "40 projects (no status filter applied)",
+      "status": "WEAK-ISSUE",
+      "bugClass": "missing-filter-on-drilldown",
+      "detail": "KPI shows 10 active projects but the link is bare '/projects' with NO status filter, landing on the full 40-row registry. Unlike the Director strip, this link does not even attempt status=ACTIVE. KPI number (10) != drilldown list (40). Milder than a wrong-value param but still a Law-9 number/list divergence."
+    },
+    {
+      "kpi": "Workload · Open Issues",
+      "source": "workload/summary.projectsWithNoStaffCount",
+      "displayed": 0,
+      "drilldown": "/exceptions",
+      "drilldownResult": "exceptions queue (0 unstaffed projects in source)",
+      "status": "CONSISTENT"
+    }
+  ],
+  "findings": [
+    "LAW-9 LIE (ignored-param) — Director 'At-risk projects' KPI = 7 (byRag amber 5 + red 2) links to /projects?rag=AMBER,RED, but 'rag' is NOT in ProjectsPage FILTER_DEFAULTS; useFilterParams drops unknown params, so the drilldown shows ALL 40 projects with no at-risk filter. ProjectDirectoryItem also has no rag field (live itemHasRagField=false). Same ignored-param class as the prior ProjectsPage finding.",
+    "LAW-9 LIE (value-mismatch) — Director 'Budget variance' KPI links to /projects?budgetStatus=over, but the enum is GREEN|YELLOW|RED|UNSET (no 'over'); strict item.budgetStatus !== 'over' (ProjectsPage:201) matches 0 rows, so the over-budget drilldown lands on an EMPTY list. Same case/value-mismatch class as 'ACTIVE'!=='active'.",
+    "UNITS-MISMATCH — Director 'Open positions' KPI = 36 (sum of openPositionsCount / totalOpenGaps) but /projects?hasOpenGaps=true returns 33 projects-with-gaps; KPI counts positions, list counts projects (36 != 33).",
+    "MISSING-FILTER — Workload Overview 'Active Projects' KPI = 10 links to bare /projects (no status=ACTIVE), so the list shows all 40 registry rows (10 != 40).",
+    "CONSISTENT — Director 'Active projects' (10) drilldown /projects?status=ACTIVE correctly filters to 10 (status key parsed, 'ACTIVE' matches uppercase enum).",
+    "CONSISTENT — Workload Active Positions (95) matches workload/summary AND trend last point; Available People (137) and Open Issues (0) match their summary fields.",
+    "ALL KPI ENDPOINTS HEALTHY — exec/sla-summary, workload/summary, workload/trend, workload/planned-vs-actual, portfolio/summary all returned HTTP 200 with director token. No errored KPI endpoint."
+  ],
+  "evidence": "Live as director noah.bennett. workload/summary HTTP200 {totalActiveProjects:10, totalActiveAssignments:95, unassignedActivePeopleCount:137, projectsWithNoStaffCount:0}. workload/trend last point activeAssignments=95 (matches summary). exec/sla-summary HTTP200 (sampleSize 9). portfolio/summary HTTP200 {totalProjects:10, byRag green3/amber5/red2 => at-risk 7, totalOpenGaps:36}. GET /api/projects HTTP200: 40 total {ACTIVE:10,CLOSED:20,COMPLETED:10}; items carry budgetStatus(enum RED/YELLOW)+openPositionsCount but NO rag field. Replayed ProjectsPage filter logic against live rows: status=ACTIVE->10 (OK); rag=AMBER,RED->'rag' not in FILTER_DEFAULTS (useFilterParams.ts:21) so dropped -> all 40 shown vs KPI 7 (LIE); budgetStatus=over->0 rows (enum has no 'over', ProjectsPage.tsx:201 strict !==) vs over-budget KPI (LIE); hasOpenGaps=true->33 projects vs KPI 36 positions (units mismatch). Workload Active Projects KPI=10 links bare /projects -> 40 rows.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/dataconsistency-exec-workload.json"
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "F-WP-1-CLASS", "severity": "P2", "class": "security / audit-integrity (actor spoofing) — SYSTEMIC", "verified": true,
+    "title": "Actor-spoofing class: 5 endpoints persist a client-supplied actor into DB audit columns",
+    "members": [
+      "POST /api/staffing-desk/planner/apply — body.actorId → ProjectPosition.createdByPersonId/updatedByPersonId + FillHistory.changedByPersonId (workforce-planner.service.ts:1613-1683)",
+      "POST /api/staffing-desk/planner/scenarios — dto.actorId → PlannerScenario.createdByPersonId (planner-scenario.service.ts:119)",
+      "POST /api/org/people/:id/terminate — body.actorId → EmployeeActivityEvent.actorId + ProjectPositionFillHistory.changedByPersonId (person-directory.controller.ts:102; terminate-employee.service.ts:61,69,91). Sibling deactivate is correct.",
+      "POST /api/cases/:id/comments — body.authorPersonId → CaseRecord.updatedByPersonId + comment author (cases.controller.ts:407; prisma-case-comment.service.ts:40)",
+      "POST /api/projects/:id/assign-team — body.actorId → ProjectPosition.created/updated/requestedByPersonId + FillHistory.changedByPersonId (projects.controller.ts:263; create-project-position.service.ts:123-125)"
+    ],
+    "rootCause": "These handlers read the actor from @Body() and persist it as the canonical audit author, with no req.principal override. The vast majority of write endpoints (rate-cards, budget, feature-flags, sso, help, project lifecycle submit/approve/reject/close, org bulk-reassign, teams, reporting-lines, undo, project-positions create/transition) correctly source the actor from req.principal — these 5 are the outliers.",
+    "userImpact": "Any user authorized for the endpoint can forge the audit trail / attribution to an arbitrary personId.",
+    "suggestedFix": "Source the actor from req.principal.personId server-side and ignore/strip any body-supplied actor field across all 5. Pair with F-WP-2 (the interface bindings are why the body actor isn't stripped). Audit the remaining schema-only actor columns per the D-103 write-path item.",
+    "soundScope": "fin-admin (18 handlers), most org/positions/cases/integrations writes — verified to use req.principal. Integrations hardcode actorId:null. exceptions resolve/suppress + admin webhook read body actor but sink to in-memory stores (not DB) — data smell, not DB spoof."
+  },
+  {
+    "id": "F-WP-2-CLASS", "severity": "P2", "class": "input-validation — SYSTEMIC (two opposite failure modes)", "verified": true,
+    "title": "Undecorated @Body() DTOs: interfaces pass unvalidated bodies through; undecorated classes get whitelist-stripped to empty → silent no-op",
+    "subclasses": {
+      "interface-passthrough (unvalidated, enables spoofing + malformed writes)": "planner/apply (PlannerApplyRequestDto), planner/scenarios (CreatePlannerScenarioDto), team-builder (TeamBuilderRequestDto) bind @Body() to TS INTERFACES — no runtime metatype, so ValidationPipe cannot validate or whitelist-strip; the full body (incl actorId) passes through to Prisma.",
+      "undecorated-class-stripped (SILENT NO-OP / data-loss)": "PATCH /api/projects/:id (UpdateProjectRequestDto, projects.controller.ts:60-66) is a CLASS with name/description/projectManagerId/deliveryManagerId and ZERO class-validator decorators. With whitelist:true (main.ts:64-70), class-validator STRIPS all undecorated props → the service receives an empty object → the project update SILENTLY SAVES NOTHING (200 OK, edits lost). Same undecorated-class pattern (lower impact): PATCH /api/org/reporting-lines/:id (TerminateReportingLineRequestDto), POST/PATCH /api/resource-pools[/:id][/members]."
+    },
+    "userImpact": "Project edits (name/description/PM/DM) via PATCH /projects/:id appear to succeed but persist nothing (P2 data-loss). Planner/team-builder accept arbitrary unvalidated/malformed bodies (P2).",
+    "suggestedFix": "Convert every @Body() target to a class-validator DTO CLASS with proper @IsString/@IsUUID/@IsOptional/@IsDateString decorators. This both validates AND lets whitelist work correctly (keeps decorated props, strips the rest). Verifies-fixes F-WP-1 spoofing (strips body actorId) and the UpdateProject no-op (keeps the real fields).",
+    "evidence": "projects.controller.ts:60-66,290-305 (UpdateProjectRequestDto no decorators); main.ts:64-70 (whitelist:true); workforce-planner.service.ts:144 / planner-scenario.service.ts:28 / team-builder.service.ts:12 (interfaces); reporting-lines.controller.ts:23-25; resource-pools.controller.ts:29-43."
+  },
+  {
+    "id": "F-DC-CLASS", "severity": "P2", "class": "data-consistency / UX-Law-9 — SYSTEMIC", "verified": true,
+    "title": "Dashboard KPI drilldowns emit filter params the destination pages silently drop → land on unfiltered lists",
+    "rootCause": "Destination list pages use useFilterParams(defaults) (useFilterParams.ts:22-28) which only reads URL params whose KEY is in the page's defaults set; any other param is silently dropped. KPI drilldown links across dashboards emit params the pages don't define, so the drilldown lands on the full unfiltered list. Compounded by case-sensitive value matching ('ACTIVE' !== 'active') and wrong param NAMES (status vs lifecycleStatus).",
+    "members": [
+      "Director At-risk 7 vs 40 — /projects?rag=AMBER,RED (rag not a ProjectsPage filter key) [F-DC-2]",
+      "DM Active Projects 10 vs 0 — /projects?status=active, case-sensitive 'ACTIVE'!=='active' (ProjectsPage.tsx:186) [F-DC-3]",
+      "HR Active Employees 200 vs 201 — /people?status=active (directory key is lifecycleStatus, lowercase, + count-definition drift ACTIVE+LEAVE) [F-DC-6]",
+      "RM Idle Resources 5 vs 198 — /people?filter=idle (filter not a directory key; correct target is ?view=bench) [F-DC-8]; duplicated in ResourcePoolUtilizationDonut.tsx:19",
+      "Workload Active Projects 10 vs 40 — bare /projects link, no status param [F-DC-7]",
+      "Director Open positions 36 vs 33 — unit mismatch (positions vs projects) [F-DC-4]",
+      "Director Budget variance — /projects?budgetStatus=over, 'over' not in GREEN|YELLOW|RED enum → always 0 [F-DC-5]",
+      "RM Managed People 5 vs 198 — bare /people, no manager-scope filter (soft) "
+    ],
+    "consistentControls": "Director Active projects (uppercase ?status=ACTIVE) = 10 ✓; Workload Active Positions/Available People/Open Issues ✓; HR Total Headcount/Data Issues/At Risk/Open Cases ✓; bench badge 135=135 ✓.",
+    "userImpact": "Clicking a KPI of N lands on a list of a different size — pervasive Law-9 violation across director/DM/HR/RM/exec/workload dashboards; undermines trust and makes drilldowns useless for the at-risk/idle/over-budget triage they're meant for.",
+    "suggestedFix": "Per KPI: emit only filter params the destination page's filter schema defines (and add the missing keys: rag on ProjectsPage, a real idle/bench filter, manager-scope), normalize case in value comparisons, fix param names (status→lifecycleStatus), and reconcile unit (positions vs projects). Consider an integration test asserting each KPI value == its drilldown count."
+  },
+  {
+    "id": "F-WP-4", "severity": "P3", "class": "audit-loss", "verified": true,
+    "title": "PATCH /api/admin/platform-settings/:key reads actor from req.user (never populated) → every setting change has a null actor",
+    "rootCause": "platform-settings.controller.ts:63 reads actorId from req.user?.personId ?? req.user?.sub, but the auth middleware only sets request.principal (request-principal.middleware.ts:12) — request.user is undefined everywhere. So updatedBy/updatedByPersonId/createdByPersonId persist as null on every platform-setting change (platform-settings.service.ts:362-372).",
+    "suggestedFix": "Source from req.principal like every other admin controller.",
+    "evidence": "platform-settings.controller.ts:63; request-principal.middleware.ts:12; platform-settings.service.ts:362-372."
+  },
+  {
+    "id": "F-AUDIT-GAPS", "severity": "P3", "class": "missing-attribution (not spoofable)", "verified": true,
+    "title": "Audit-attribution gaps: writes that don't thread the available principal into createdBy/updatedBy",
+    "members": [
+      "help-admin updateArticle (help-admin.controller.ts:85) + createTip (:94) — don't pass req.principal → editor/creator columns null (help.service.ts:177,215-216)",
+      "POST /api/admin/people/import/confirm (admin-config.controller.ts:304-313) — prisma.person.create with no createdByPersonId despite principal available"
+    ],
+    "suggestedFix": "Thread req.principal.personId into these create/update calls. Low priority (audit completeness, no security/correctness impact)."
+  }
+]

@@ -1,0 +1,75 @@
+{
+  "target": "actor-sweep:org-positions-cases",
+  "verdict": "ISSUES-FOUND",
+  "scope": "Static actor-spoofing sweep (no POST executed). Modules: organization (teams, person-directory, reporting-lines, org-chart, manager-scope, organization), project-positions, case-management (cases, me-cases), undo. Reference incident F-WP-1: client-supplied actorId persisted to author/audit columns instead of req.principal.",
+  "checkedHandlers": 28,
+  "method": "Grepped every *.controller.ts in the four modules for actor-ish fields (actorId, performedBy, changedBy, requestedBy, createdBy, resolvedBy, approvedBy, authorPersonId). For each mutating handler, traced the body value into its service/repo and inspected the Prisma create/update to see whether a client-controlled actor field reaches a DB author/audit column without a req.principal override.",
+  "spoofable": [
+    {
+      "endpoint": "POST /api/org/people/:id/terminate",
+      "handler": "PersonDirectoryController.terminateEmployee",
+      "file": "src/modules/organization/presentation/person-directory.controller.ts:97-108 (body.actorId at :102)",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES) — hr_manager, director, admin",
+      "clientField": "TerminatePersonRequestDto.actorId (optional uuid, validated only as uuid shape; NOT cross-checked against the caller)",
+      "persistedColumn": "EmployeeActivityEvent.actorId — written via prisma.employeeActivityEvent.create({ data: { actorId } }) in EmployeeActivityService.record (src/modules/organization/application/employee-activity.service.ts:35). Also flows as actorId into the position RELEASED transitions and into the (in-memory) AuditLogger.",
+      "rootCause": "Controller passes actorId: body.actorId straight into TerminateEmployeeService.execute; the service never overrides it with req.principal.personId. Sibling handler deactivateEmployee (:82) correctly derives actorId from req.principal — terminate is the outlier.",
+      "impact": "Any HR-role caller can attribute a termination's persisted activity-feed author (and downstream position-release audit actor) to an arbitrary personId."
+    },
+    {
+      "endpoint": "POST /api/cases/:id/comments",
+      "handler": "CasesController.addCaseComment",
+      "file": "src/modules/case-management/presentation/cases.controller.ts:402-411 (body.authorPersonId at :407)",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES) — hr_manager, director, admin",
+      "clientField": "AddCaseNoteRequestDto.authorPersonId (required uuid; uuid-shape validation only)",
+      "persistedColumn": "CaseRecord.updatedByPersonId — written via prisma.caseRecord.update({ data: { updatedByPersonId: authorPersonId } }) in PrismaCaseCommentService.addComment (src/modules/case-management/infrastructure/services/prisma-case-comment.service.ts:40). Also stored as the comment author in CaseRecord.payload.comments[].authorPersonId.",
+      "rootCause": "Controller forwards body.authorPersonId (not req.principal) to caseCommentService.addComment, which uses it as both the comment author and the canonical case updatedByPersonId edit-audit column. No principal override.",
+      "impact": "Any HR-role caller can forge both the comment author and the case's last-editor audit column to an arbitrary personId. This is the same class as F-WP-1 (client actor -> updatedByPersonId)."
+    }
+  ],
+  "sound": [
+    {
+      "endpoint": "POST /api/project-positions",
+      "handler": "ProjectPositionsController.create",
+      "file": "src/modules/project-positions/presentation/project-positions.controller.ts:205-224",
+      "note": "Canonical author columns createdByPersonId/updatedByPersonId are set from actorId = req.principal (CreateProjectPositionService :117-118). body.requestedByPersonId at :220 IS persisted but to the distinct business-data column ProjectPosition.requestedByPersonId ('who requested the role'), validated against personExists/personIsActive — it is NOT the create/update audit author. Not an actor-spoof under the F-WP-1 definition."
+    },
+    {
+      "endpoint": "POST /api/project-positions/create-and-book | /bulk-reassign | /:id/transition",
+      "handler": "createAndBook / bulkReassign / transition",
+      "file": "src/modules/project-positions/presentation/project-positions.controller.ts:241,276,298",
+      "note": "actorId + actorRoles sourced from request.principal; no actor field read from body."
+    },
+    {
+      "endpoint": "POST /api/cases | /:id/close|open|cancel|approve|reject|archive|steps* ",
+      "handler": "CasesController.createCase/closeCase/reopenCase/cancelCase/approveCase/rejectCase/archiveCase/completeCaseStep/addCaseStep",
+      "file": "src/modules/case-management/presentation/cases.controller.ts:72-323",
+      "note": "All derive actorId from httpRequest.principal.personId/userId. createCase spreads {...request, actorId} but CreateCaseRequestDto has no createdBy/actor field, so principal-derived actorId -> createdByPersonId/updatedByPersonId is authoritative (create-case.service.ts:79,82)."
+    },
+    {
+      "endpoint": "POST /api/teams | /:id/members ; POST /api/org/bulk-reassign-membership ; POST /api/org/people | /:id/deactivate",
+      "handler": "createTeam/updateTeamMembers; OrganizationController.bulkReassign; createEmployee/deactivateEmployee",
+      "file": "teams.controller.ts:60,142; organization.controller.ts:49; person-directory.controller.ts:82",
+      "note": "actorId taken from req.principal (organization.controller hard-fails 400 if absent). deactivateEmployee (the terminate sibling) is correct — contrast with the spoofable terminate path."
+    },
+    {
+      "endpoint": "POST /api/org/reporting-lines ; PATCH /api/org/reporting-lines/:id",
+      "handler": "createReportingLine/terminateReportingLine",
+      "file": "reporting-lines.controller.ts:41,55",
+      "note": "CreateReportingLineRequestDto carries no actor/author field. assign-line-manager.service uses actorId: command.managerId for an event, but managerId is the legitimate business subject (the manager being assigned), not a client-forged performer, and no createdBy audit column is sourced from a body actor."
+    },
+    {
+      "endpoint": "POST /api/undo/:id/consume",
+      "handler": "UndoController.consume",
+      "file": "undo.controller.ts:44",
+      "note": "actorId = req.principal.personId; 400 if absent. Not body-sourced."
+    },
+    {
+      "endpoint": "GET (read-only)",
+      "handler": "org-chart.getOrgChart, manager-scope.getManagerScope, me-cases.listMyCases, all GET list/detail handlers",
+      "file": "org-chart.controller.ts, manager-scope.controller.ts, me-cases.controller.ts",
+      "note": "No writes; me-cases is self-scoped on req.principal.personId."
+    }
+  ],
+  "evidence": "person-directory.controller.ts:102 passes actorId: body.actorId into TerminateEmployeeService.execute, whose actorId reaches prisma.employeeActivityEvent.create({ data: { actorId } }) (employee-activity.service.ts:35) — a persistent DB audit column — with no principal override; the sibling deactivateEmployee (:82) correctly uses req.principal. cases.controller.ts:407 passes body.authorPersonId into PrismaCaseCommentService.addComment, which writes updatedByPersonId: authorPersonId to CaseRecord (prisma-case-comment.service.ts:40). Both DTOs (TerminatePersonRequestDto, AddCaseNoteRequestDto) validate only the uuid shape, never that the value equals the caller. All other write handlers across the four modules source the actor from req.principal.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/actorsweep-org-positions-cases.json"
+}

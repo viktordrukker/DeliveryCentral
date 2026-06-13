@@ -7,11 +7,26 @@ _Autonomous full-surface QA run, 2026-06-13. Branch `qa/v2-full-surface-2026-06-
 | Sev | Count | Headline |
 |-----|------:|----------|
 | **P1** | 2 | `project-positions` list 400s on pagination → `/me` Projects tab + paginated callers broken; person-detail page 400s via publicId → profile/skills/360/suggested all dead on dsRefresh surface |
-| **P2** | 8 | missing query-param validation→500; systemic publicId→UUID id-type mismatch; `/cases` dead-end for PM/RM/employee (F-1b-E); **actor-spoofing** on planner writes (F-WP-1); `@Body()` interface = unvalidated writes (F-WP-2); cases-participants no-op write (F-WP-3); director At-risk KPI 7≠40 (F-DC-2); DM Active KPI 10≠0 case-sensitive filter (F-DC-3) |
-| **P3** | 8 | overtime UUID pipe; setup-token hardening; `/people` 403 console-noise (3 roles); `/projects` health badge 403; sidebar badge↔drilldown (Law 9); 46/90 dead flags; open-positions KPI unit-mismatch (F-DC-4); budget-variance fragile drilldown (F-DC-5) |
+| **P2** | 5 classes | query-param→500; publicId→UUID id-type; `/cases` dead-end (F-1b-E); **3 systemic classes below**: actor-spoofing (5 eps), undecorated-`@Body` (project-update silent no-op + unvalidated planner writes), Law-9 KPI-drilldowns (~8 KPIs) |
+| **P3** | ~10 | overtime UUID pipe; setup-token; `/people` 403 noise (3 roles); `/projects` health 403; 46/90 dead flags; platform-settings null actor (F-WP-4); audit-attribution gaps; KPI unit/fragile-drilldown (F-DC-4/5) |
 | Design | 15 | DS canvas PARTIAL conformance (see `ds-fe-gap.md`) — mostly polish |
 
-_Findings F-1b-E and F-WP/F-DC-* were surfaced during the validation campaign (rounds 4–5: cross-role render sweep, static write-path tracing, dashboard data-consistency) — the first pass missed them. Full detail in `_slices/findings-r5.json` + `findings-phase1b-r4.json`; summarized in the P2/P3 sections below._
+_The F-1b-E / F-WP-* / F-DC-* findings were surfaced during the validation campaign (rounds 4–6: cross-role render sweep, static write-path tracing, dashboard data-consistency) — the first pass missed them entirely. The three systemic classes are in **`## Systemic classes`** below; full per-finding detail in `_slices/findings-r5.json` + `findings-r6.json` + `findings-phase1b-r4.json`._
+
+## Systemic classes (validation rounds 5–6)
+
+These three classes each span multiple endpoints/surfaces with one root mechanism — fix the mechanism, not just the instances.
+
+### SC-1 · Actor-spoofing (P2, security) — `F-WP-1-CLASS`
+5 write endpoints persist a **client-supplied** actor into DB audit columns instead of `req.principal`: `POST /staffing-desk/planner/apply`, `/planner/scenarios`, `/org/people/:id/terminate`, `/cases/:id/comments`, `/projects/:id/assign-team`. Any authorized user can forge the audit trail. **Fix:** source actor from `req.principal` everywhere; the body actor field is only readable because of SC-2. (The other ~18 write handlers correctly use the principal.)
+
+### SC-2 · Undecorated `@Body()` DTOs (P2) — `F-WP-2-CLASS` — two opposite failure modes
+- **Interface bindings** (`planner/apply`, `planner/scenarios`, `team-builder`) have no runtime metatype → `ValidationPipe` can't validate or whitelist-strip → the full body (incl `actorId`) passes through unvalidated (enables SC-1 + malformed writes).
+- **Undecorated classes** (`UpdateProjectRequestDto`, `reporting-lines` terminate, `resource-pools`) → with `whitelist:true` class-validator **strips every undecorated prop** → the service gets an empty object. **`PATCH /api/projects/:id` therefore SILENTLY SAVES NOTHING — project name/description/PM/DM edits return 200 but are discarded (data-loss).**
+**Fix:** convert all `@Body()` targets to class-validator DTO classes with proper decorators — this both validates and makes whitelist keep the real fields (fixes the no-op) while stripping body `actorId` (fixes SC-1).
+
+### SC-3 · Law-9 KPI-drilldown mismatches (P2) — `F-DC-CLASS`
+~8 dashboard KPIs (director At-risk 7≠40, DM Active 10≠0, HR Active-Employees 200≠201, RM Idle 5≠198, Workload Active 10≠40, Open-positions 36≠33, Budget-variance, RM Managed 5≠198) link to drilldowns whose filter params the destination page **silently drops** (`useFilterParams` ignores keys not in the page's `defaults`), compounded by case-sensitive value matching and wrong param names. Clicking a KPI lands on a differently-sized (usually unfiltered) list. **Fix:** align each KPI's drilldown params to the page's filter schema (add missing keys: `rag`, idle/bench, manager-scope; normalize case; fix `status`→`lifecycleStatus`; reconcile units), and add a test asserting KPI value == drilldown count.
 
 Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconciled (re-traced in validation round 2 after an independent audit caught a ~35% undercount in the first pass), 22 route renders driven (4 roles), 18 DS canvases, 90 flags. See `availability-matrix.json` / `action-inventory.json` for per-row verdicts.
 

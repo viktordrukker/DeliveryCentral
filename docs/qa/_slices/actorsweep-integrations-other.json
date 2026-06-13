@@ -1,0 +1,86 @@
+{
+  "target": "actor-sweep:integrations-other",
+  "verdict": "ISSUES-FOUND",
+  "checkedHandlers": 18,
+  "scope": "integrations (jira, m365, radius, hris) + all other controllers reading actor-ish fields (actorId/performedBy/changedBy/requestedBy/createdBy/resolvedBy/approvedBy) from @Body()/dto/@Query/@Headers rather than req.principal",
+  "method": "Grepped every *.controller.ts for actor-ish field references; isolated the 6 that source the actor from body/request/dto (vs the ~40 that source from req.principal); traced each into its service/repo to confirm whether the body value lands in a DB audit/author column via Prisma create/update.",
+  "spoofable": [
+    {
+      "endpoint": "POST /people/:id/terminate",
+      "controller": "src/modules/organization/presentation/person-directory.controller.ts:102",
+      "bodyField": "actorId (TerminatePersonRequestDto.actorId — optional, UUID-validated, client-settable)",
+      "flow": "controller passes body.actorId -> TerminateEmployeeService.execute({ actorId: body.actorId }). Handler NEVER reads req.principal (sibling deactivate handler one method up DOES correctly use req.principal).",
+      "dbColumnsPersisted": [
+        "EmployeeActivityEvent.actorId — src/modules/organization/application/employee-activity.service.ts:33 prisma.employeeActivityEvent.create({ data: { actorId: command.actorId } })",
+        "ProjectPositionFillHistory.changedByPersonId — src/modules/project-positions/application/transition-project-position-fill.service.ts:138 (RELEASED transition per active fill) tx.projectPositionFillHistory.create({ data: { changedByPersonId: command.actorId } })",
+        "ProjectPosition.updatedByPersonId — transition-project-position-fill.service.ts:116 position.setUpdatedBy(command.actorId)"
+      ],
+      "notPersistedToDb": "auditLogger.record({ actorId: command.actorId }) goes to InMemoryAuditLogStore (not Prisma) — not a DB sink, but the two DB sinks above are.",
+      "guard": "@RequireRoles(...HR_GOVERNANCE_ROLES)",
+      "severity": "HIGH — caller controls who terminate is attributed to in the persisted employee activity ledger and the position fill-history audit trail."
+    },
+    {
+      "endpoint": "POST /projects/:id/assign-team",
+      "controller": "src/modules/project-registry/presentation/projects.controller.ts:263",
+      "bodyField": "actorId (AssignProjectTeamRequestDto.actorId)",
+      "flow": "controller passes request.actorId -> AssignProjectTeamService.execute({ actorId: request.actorId }). Handler NEVER reads req.principal.",
+      "dbColumnsPersisted": [
+        "ProjectPosition.createdByPersonId — via CreateProjectPositionService.execute (create-project-position.service.ts:124 createdByPersonId: command.actorId)",
+        "ProjectPosition.updatedByPersonId — create-project-position.service.ts:125 + transition setUpdatedBy",
+        "ProjectPosition.requestedByPersonId — assign-project-team.service.ts:171 requestedByPersonId: command.actorId -> create-project-position.service.ts:123",
+        "ProjectPositionFillHistory.changedByPersonId — two transitions (PROPOSED, BOOKED) per created assignment, transition-project-position-fill.service.ts:138"
+      ],
+      "notPersistedToDb": "auditLogger.record({ actorId }) is in-memory only.",
+      "guard": "@RequireRoles('project_manager', 'resource_manager', 'director', 'admin')",
+      "severity": "HIGH — caller controls the create/update author + fill-history changedBy on every position created by the team expansion."
+    }
+  ],
+  "sound": [
+    {
+      "endpoint": "POST /integrations/jira/projects/sync | retry-sync | reset-sync | test-connection",
+      "controller": "src/modules/integrations/jira/presentation/jira-integrations.controller.ts",
+      "reason": "No @Body() actor field; audit records hardcode actorId: null and go to InMemoryAuditLogStore. No client-controlled actor persisted.",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "m365-directory.controller.ts (sync/reconcile handlers)",
+      "reason": "actorId hardcoded null; only Prisma access in module is read-only (m365-directory-reconciliation-query.service findMany). No body actor.",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "radius.controller.ts (sync/reconcile handlers)",
+      "reason": "actorId hardcoded null in all audit records; no body actor field.",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "hris.controller.ts updateConfig",
+      "reason": "@Body() is UpdateHrisConfigRequestDto (config only, no actor field); no DB author column written from body.",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "POST /exceptions/:id/resolve and /:id/suppress",
+      "controller": "src/modules/exceptions/presentation/exceptions.controller.ts:82,115",
+      "reason": "resolvedBy/suppressedBy come from body (ResolveExceptionRequestDto.resolvedBy / SuppressExceptionRequestDto.suppressedBy) BUT the sink is ExceptionResolutionStore — a pure in-memory Map (exception-resolution.store.ts). No Prisma persistence, so not a DB audit-column spoof. (Data-integrity smell: body-supplied resolvedBy, but out of scope for DB-persisted actor spoofing.)",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "POST /admin/config/webhooks (createWebhook)",
+      "controller": "src/modules/admin/presentation/admin-config.controller.ts:334",
+      "reason": "body.createdByPersonId passed to webhookService.create, but the bound service is InMemoryWebhookService (admin.module.ts:44) — no Prisma model (webhook service has no DB table per project rules). Not a DB spoof.",
+      "guard": "@RequireRoles('admin')"
+    },
+    {
+      "endpoint": "POST /staffing-desk/positions (create project position)",
+      "controller": "src/modules/project-positions/presentation/project-positions.controller.ts:220",
+      "reason": "body.requestedByPersonId is persisted to ProjectPosition.requestedByPersonId (a business demand field), but the CANONICAL audit columns createdByPersonId/updatedByPersonId are sourced from actorId = req.principal (controller line 209). Body field is not the canonical actor -> SOUND per sweep criteria.",
+      "guard": "@RequireRoles(...STAFFING_ROLES)"
+    },
+    {
+      "endpoint": "POST /projects/:id/change-requests",
+      "controller": "src/modules/project-registry/presentation/change-request.controller.ts:44",
+      "reason": "requesterPersonId is overridden with principal: { ...dto, requesterPersonId: actorId ?? null } where actorId = httpRequest.principal?.personId. Spread-then-override means any client value is clobbered by principal. SOUND.",
+      "guard": "@RequireRoles(...PROJECT_DELIVERY_ROLES)"
+    }
+  ],
+  "evidence": "person-directory.controller.ts:102 actorId: body.actorId -> TerminateEmployeeService -> employee-activity.service.ts:33 prisma.employeeActivityEvent.create({data:{actorId}}) AND transition-project-position-fill.service.ts:138 changedByPersonId: command.actorId. projects.controller.ts:263 actorId: request.actorId -> assign-project-team.service.ts -> create-project-position.service.ts:124 createdByPersonId + transition-project-position-fill.service.ts:138. Both handlers never read req.principal. By contrast jira/m365/radius/hris controllers hardcode actorId:null and have no body actor field; exceptions resolvedBy/suppressedBy + admin webhook createdByPersonId hit in-memory stores (not Prisma); project-positions requestedByPersonId and change-request requesterPersonId are non-canonical/principal-overridden."
+}

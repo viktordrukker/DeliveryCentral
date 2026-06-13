@@ -1,0 +1,44 @@
+{
+  "target": "writepath:org-admin-writes",
+  "verdict": "ISSUES-FOUND",
+  "checked": 30,
+  "findings": [
+    {
+      "severity": "medium",
+      "pattern": "F-WP-1 (actor sourced from body, not principal)",
+      "endpoint": "POST /api/org/people/:id/terminate",
+      "file": "src/modules/organization/presentation/person-directory.controller.ts:95-108",
+      "detail": "terminateEmployee threads command.actorId from body.actorId (line 102) instead of req.principal. The sibling deactivateEmployee (line 82) correctly uses req.principal?.personId ?? req.principal?.userId. TerminatePersonRequestDto.actorId is a trusted, UUID-validated body field (terminate-person.request.ts:6-8) and is persisted as the actor for the termination audit log and ProjectPosition release (terminate-employee.service.ts:61,69,91). A caller can spoof the audit actor."
+    },
+    {
+      "severity": "medium",
+      "pattern": "actor null-sourced (wrong request field) — actor-audit silently lost",
+      "endpoint": "PATCH /api/admin/platform-settings/:key",
+      "file": "src/modules/platform-settings/presentation/platform-settings.controller.ts:63",
+      "detail": "updateKey reads actorId from req.user?.personId ?? req.user?.sub, but the auth middleware only populates request.principal (request-principal.middleware.ts:12); request.user is never set anywhere in src. actorId is therefore always undefined, so platform-settings.service.updateKey persists updatedBy/updatedByPersonId/createdByPersonId as null (platform-settings.service.ts:362-372). Every platform-setting change is recorded with a null actor. Fix: source from req.principal like every other admin controller."
+    },
+    {
+      "severity": "low",
+      "pattern": "F-WP-2 (request body validated by a bare TS class with no class-validator decorators)",
+      "endpoint": "PATCH /api/org/reporting-lines/:id",
+      "file": "src/modules/organization/presentation/reporting-lines.controller.ts:23-25",
+      "detail": "TerminateReportingLineRequestDto is an inline class with endDate!: string and zero class-validator decorators. The body is unvalidated; an empty/garbage endDate reaches terminate-reporting-line.service.ts which only guards with Number.isNaN. Other DTOs in this module (CreateReportingLineRequestDto) are properly decorated. Add @IsDateString()/@IsNotEmpty()."
+    },
+    {
+      "severity": "low",
+      "pattern": "F-WP-2 (bare TS classes, no class-validator decorators)",
+      "endpoint": "POST /api/resource-pools, PATCH /api/resource-pools/:id, POST /api/resource-pools/:id/members",
+      "file": "src/modules/resource-pools/presentation/resource-pools.controller.ts:29-43",
+      "detail": "CreateResourcePoolRequestDto, UpdateResourcePoolRequestDto, AddResourcePoolMemberRequestDto are bare inline classes with no decorators. Manual checks exist for code/name (create) and personId presence (addMember), but personId/orgUnitId shape is unvalidated and update has no validation at all. NOTE: persistence is sound — the module rebinds the InMemoryResourcePoolRepository injection token to useClass: PrismaResourcePoolRepository (resource-pools.module.ts:11-12), so all writes hit Prisma (prisma-resource-pool.repository.ts); the in-memory class is only the DI token name, not the runtime impl."
+    },
+    {
+      "severity": "info",
+      "pattern": "actor-audit gap on bulk import (not body-spoof, just missing)",
+      "endpoint": "POST /api/admin/people/import/confirm",
+      "file": "src/modules/admin/presentation/admin-config.controller.ts:304-313",
+      "detail": "importConfirm persists prisma.person.create with no createdByPersonId, despite the principal being available on the request. Minor audit gap, not a correctness/security defect."
+    }
+  ],
+  "evidence": "Traced controller -> service -> repo for all org/admin write endpoints. SOUND (persist via Prisma, validated DTO, guard fits, actor from principal): bulk-reassign-membership (BulkReassignOrgMembershipService.$transaction, HR_GOVERNANCE_ROLES, actor from principal); POST reporting-lines (PrismaReportingLineRepository via token rebind org module:92-93, repo.save); POST/deactivate people (create/deactivate-employee.service Prisma $transaction/save, actor from principal); rate-cards 7 endpoints (rate-card-admin.service prisma.rateCard(.Entry).create/update, validated rate-card.dto, admin guard, actor from principal); custom-roles 4 (custom-role.service prisma.customRole.create/update, validated custom-role.dto, admin, principal); leave-policies 3 (leave-policy.service prisma.leavePolicy.create/update, validated leave-policy.dto, admin, principal); platform-settings (prisma.platformSetting.upsert, validated UpdateSettingDto, admin) but actor null-sourced; accounts create/update/delete (prisma.localAccount.create/update/delete, validated CreateAccountRequestDto/UpdateAccountDto, admin, actor from principal); period-locks create/delete (financial.service -> repo prisma.periodLock.create/delete, validated CreatePeriodLockDto, admin, actor from principal); resource-pools 4 (PrismaResourcePoolRepository, admin/resource_manager, actor from principal) but DTOs undecorated. No no-op/stub handlers found (no F-WP-3-style missing-save). request.user is never populated in src (only request.principal via RequestPrincipalMiddleware), which is the root cause of the platform-settings null-actor.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/writepath-org-admin-writes.json"
+}

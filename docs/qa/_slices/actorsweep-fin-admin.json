@@ -1,0 +1,142 @@
+{
+  "target": "actor-sweep:fin-admin",
+  "verdict": "ALL-SOUND",
+  "checked": 18,
+  "scope": {
+    "modules": [
+      "financial-governance (evm, rate-cards-admin, budget, capitalisation)",
+      "admin-feature-flags",
+      "auth (sso-admin, auth, oidc)",
+      "help-center (help-admin, help)"
+    ],
+    "method": "For every *.controller.ts handler: grep for actor-ish fields (actorId, performedBy, changedBy, requestedBy, createdBy, resolvedBy, approvedBy, lockedBy, authorPersonId) read from @Body()/dto vs req.principal; trace each into service/repo to confirm whether a client value reaches a DB author/audit column."
+  },
+  "pattern_compared": "F-WP-1 staffing-desk POST /planner/apply persists a CLIENT-SUPPLIED actorId from @Body() into createdByPersonId. NONE of the fin/admin handlers replicate this — all derive the actor from req.principal and no request DTO declares a writable actor field.",
+  "handlers_examined": [
+    {
+      "endpoint": "POST /api/projects/:id/cpi-what-if",
+      "file": "src/modules/financial-governance/presentation/evm.controller.ts:114",
+      "guard": "@RequireRoles(...PROJECT_DELIVERY_ROLES)",
+      "actor_source": "n/a — read-only, never persists",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/projects/:id/evm/recompute",
+      "file": "src/modules/financial-governance/presentation/evm.controller.ts:146",
+      "guard": "@RequireRoles(...EXEC_ROLES)",
+      "actor_source": "req.principal.personId ?? userId (line 152-153)",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/admin/evm/recompute-all",
+      "file": "src/modules/financial-governance/presentation/evm.controller.ts:179",
+      "guard": "@RequireRoles(...EXEC_ROLES)",
+      "actor_source": "req.principal.personId ?? userId (line 183-184); body carries only fiscalYear",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/admin/rate-cards (+ PATCH/:id, DELETE/:id, POST/:id/entries, PATCH/:id/entries/:eid, DELETE/:id/entries/:eid)",
+      "file": "src/modules/financial-governance/presentation/rate-cards-admin.controller.ts:61-139",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "req.principal.personId, rejects empty (line 65-66 et al). Service stamps createdByPersonId/updatedByPersonId from actorId param ONLY (rate-card-admin.service.ts:113-114,153,183,218-219,261,298). DTOs declare no actor field.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/projects/:id/budget (upsert)",
+      "file": "src/modules/financial-governance/presentation/budget.controller.ts:67",
+      "guard": "@RequireRoles(...BUDGET_ROLES)",
+      "actor_source": "req.principal (line 74); auto-BudgetApproval requestedByPersonId stamped from actorId. UpsertProjectBudgetDto = fiscalYear/capex/opex only.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/projects/:id/budget/request-change",
+      "file": "src/modules/financial-governance/presentation/budget.controller.ts:121",
+      "guard": "@RequireRoles(...BUDGET_REQUEST_ROLES)",
+      "actor_source": "req.principal (line 125-129). RequestBudgetChangeBodyDto declares no actor field; requestedByPersonId exists only on the RESPONSE DTO (budget-change-request.response.ts:27).",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST budget approve/reject (decide)",
+      "file": "src/modules/financial-governance/presentation/budget.controller.ts:155,179",
+      "guard": "@RequireRoles(...BUDGET_DECIDE_ROLES)",
+      "actor_source": "req.principal (line 159-160,183-184); body carries reason only",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/people/:id/cost-rate",
+      "file": "src/modules/financial-governance/presentation/budget.controller.ts:223",
+      "guard": "@RequireRoles('admin','hr_manager')",
+      "actor_source": "req.principal (line 229). CreatePersonCostRateDto = effectiveFrom/hourlyRate/rateType only.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/.../period-lock (create)",
+      "file": "src/modules/financial-governance/presentation/capitalisation.controller.ts:70",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "req.principal.personId ?? userId (line 74) -> service lockedBy param (financial.service.ts:206,219). CreatePeriodLockDto = from/to only; lockedBy exists only on RESPONSE interface PeriodLockDto (financial.dto.ts:41).",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "PATCH /api/admin/feature-flags/:id",
+      "file": "src/modules/admin-feature-flags/feature-flags.controller.ts:71",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "req.principal.personId ?? userId (line 87). Service stamps createdByPersonId/updatedByPersonId from actorId param (feature-flag-admin.service.ts:84-87). UpdateFeatureFlagDto = value/enabled booleans only.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "PUT /api/admin/sso/config",
+      "file": "src/modules/auth/sso-admin.controller.ts:85",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "req.principal.personId ?? userId (line 89) threaded into platformSettings.updateKey actorId (sso-admin.service.ts:106-149). UpdateSsoConfigDto = provider/clientId/discoveryUrl/clientSecret/autoProvisionUsers; no actor field.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/admin/help/articles (create)",
+      "file": "src/modules/help-center/presentation/help-admin.controller.ts:68",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "req.principal.personId (line 72). Service writes authorPersonId/createdByPersonId/updatedByPersonId from actorId param ONLY (help.service.ts:135,139,140). CreateHelpArticleDto declares NO author field (authorPersonId is response-only).",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "PATCH /api/admin/help/articles/:id (update)",
+      "file": "src/modules/help-center/presentation/help-admin.controller.ts:81",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "Controller does NOT pass actorId (line 85); service disconnects updatedByPerson (help.service.ts:177). DATA-QUALITY GAP (editor not recorded) but NOT spoofable — UpdateHelpArticleDto declares no author field, so no client value can forge the editor.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/admin/help/tips (create)",
+      "file": "src/modules/help-center/presentation/help-admin.controller.ts:88",
+      "guard": "@RequireRoles('admin')",
+      "actor_source": "Controller does NOT pass actorId (line 94); service defaults audit cols to null (help.service.ts:215-216). DATA-QUALITY GAP but NOT spoofable — CreateHelpTipDto declares no author field.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/help/articles/:id/feedback",
+      "file": "src/modules/help-center/presentation/help.controller.ts:82",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES)",
+      "actor_source": "req.principal.personId ?? userId (line 86). Service writes actorPersonId from actorId param (help.service.ts:254). CreateHelpFeedbackDto = wasHelpful/comment only.",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "PUT /api/help/tour-progress (upsert)",
+      "file": "src/modules/help-center/presentation/help.controller.ts:111",
+      "guard": "@RequireRoles(...ALL_AUTHENTICATED_ROLES)",
+      "actor_source": "req.principal.personId (line 116); UpsertTourProgressDto carries no actor field",
+      "status": "SOUND"
+    },
+    {
+      "endpoint": "POST /api/auth/* (login, password-reset, 2fa, change-password)",
+      "file": "src/modules/auth/auth.controller.ts:47-185",
+      "guard": "various (public + authed)",
+      "actor_source": "Actor IS the credential/session subject; auth DTOs declare no persisted author/actor field (me.dto.ts personId/userId are response-only).",
+      "status": "SOUND"
+    }
+  ],
+  "spoofable_findings": [],
+  "data_quality_notes": [
+    "help-admin updateArticle (help-admin.controller.ts:85) and createTip (line 94) do NOT thread req.principal into the service, so the editor/creator audit column is written as null/disconnected. This is a missing-actor-attribution gap, NOT an actor-spoofing vulnerability (no client-controlled author field exists). Out of scope for this spoofing sweep but worth a follow-up ticket."
+  ],
+  "evidence": "grep across all *.controller.ts in the 4 modules found ZERO handlers reading actor-ish fields (actorId/performedBy/changedBy/requestedBy/createdBy/resolvedBy/approvedBy/lockedBy) from @Body()/dto. Every write handler that persists an author/audit column sources the actor from req.principal.personId (falling back to userId). All write DTOs were read directly: none declare a client-settable actor field — actor-ish identifiers (requestedByPersonId, lockedBy, authorPersonId, personId, actorPersonId) appear ONLY on RESPONSE shapes. Services were traced to confirm DB author columns (createdByPersonId, updatedByPersonId, authorPersonId, requestedByPersonId, lockedBy, actorPersonId) are written from the principal-derived param, never from the body. The F-WP-1 staffing-desk pattern (client-supplied actorId reaching createdByPersonId) does NOT recur in any of these modules.",
+  "sliceFile": "/tmp/dc-qa/docs/qa/_slices/actorsweep-fin-admin.json"
+}
