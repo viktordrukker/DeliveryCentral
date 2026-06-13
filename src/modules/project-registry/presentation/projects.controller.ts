@@ -23,6 +23,7 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -58,10 +59,24 @@ import { UpdateProjectService } from '../application/update-project.service';
 import { Project, ProjectStatus } from '../domain/entities/project.entity';
 
 class UpdateProjectRequestDto {
+  @IsOptional()
+  @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
   status?: ProjectStatus;
+
+  @IsOptional()
+  @IsString()
   projectManagerId?: string;
+
+  @IsOptional()
+  @IsString()
   deliveryManagerId?: string;
 }
 
