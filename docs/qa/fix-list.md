@@ -7,15 +7,15 @@ _Autonomous full-surface QA run, 2026-06-13. Branch `qa/v2-full-surface-2026-06-
 | Sev | Count | Headline |
 |-----|------:|----------|
 | **P1** | 2 | `project-positions` list 400s on pagination → `/me` Projects tab + paginated callers broken; person-detail page 400s via publicId → profile/skills/360/suggested all dead on dsRefresh surface |
-| **P2** | 4 systemic classes + 3 | query-param→500; publicId→UUID id-type; `/cases` dead-end (F-1b-E); **4 systemic classes below**: actor-spoofing (5 eps), undecorated-`@Body` (project-update silent no-op + unvalidated planner writes), Law-9 KPI-drilldowns (~8 KPIs + backend ignores filters), timezone date off-by-one (~21 sites) |
-| **P3** | ~10 | overtime UUID pipe; setup-token; `/people` 403 noise (3 roles); `/projects` health 403; 46/90 dead flags; platform-settings null actor (F-WP-4); audit-attribution gaps; KPI unit/fragile-drilldown (F-DC-4/5) |
+| **P2** | 6 systemic classes + ~6 | **6 classes below**: SC-1 actor-spoofing (5 eps), SC-2 undecorated-`@Body` (project-update silent no-op), SC-3 Law-9 KPI-drilldowns + backend filter-ignoring, SC-4 timezone date off-by-one (~21 sites), SC-5 placeholder export, SC-6 cmdk render-whitelist desync · plus query-param→500, publicId→UUID id-type, `/cases` dead-end (F-1b-E), cases-participants no-op write (F-WP-3), WorkloadMatrix stuck-spinner (F-LOADING-1), reporting-line stale (F-STALE-1) |
+| **P3** | ~13 | overtime UUID pipe; setup-token; `/people` 403 noise (3 roles); `/projects` health 403; 46/90 dead flags; platform-settings null actor (F-WP-4); audit-attribution gaps; KPI unit/fragile-drilldown (F-DC-4/5); CSV formula-injection; over-allocation clamp (F-ALLOC-1) |
 | Design | 15 | DS canvas PARTIAL conformance (see `ds-fe-gap.md`) — mostly polish |
 
-_The F-1b-E / F-WP-* / F-DC-* findings were surfaced during the validation campaign (rounds 4–6: cross-role render sweep, static write-path tracing, dashboard data-consistency) — the first pass missed them entirely. The three systemic classes are in **`## Systemic classes`** below; full per-finding detail in `_slices/findings-r5.json` + `findings-r6.json` + `findings-phase1b-r4.json`._
+_Most P2/P3 findings were surfaced during the 9-round validation campaign (cross-role render sweep, static write-path tracing, dashboard data-consistency, i18n/export/modality sweeps) — the first single-pass QA found only ~7 of these. Full per-finding detail in `_slices/findings-r5.json` … `findings-r9.json`. The validation campaign was **stopped by user decision after round 9** (P0/P1 exhausted, severity declined to localized P2/P3, asymptotic new-class discovery) — see `## Open coverage` for what a further pass would add._
 
-## Systemic classes (validation rounds 5–7)
+## Systemic classes (validation rounds 5–9)
 
-These four classes each span multiple endpoints/surfaces with one root mechanism — fix the mechanism, not just the instances.
+These six classes each span multiple endpoints/surfaces with one root mechanism — fix the mechanism, not just the instances. (SC-6 cmdk render-whitelist desync is in the **Round-9** table near the end.)
 
 ### SC-1 · Actor-spoofing (P2, security) — `F-WP-1-CLASS`
 5 write endpoints persist a **client-supplied** actor into DB audit columns instead of `req.principal`: `POST /staffing-desk/planner/apply`, `/planner/scenarios`, `/org/people/:id/terminate`, `/cases/:id/comments`, `/projects/:id/assign-team`. Any authorized user can forge the audit trail. **Fix:** source actor from `req.principal` everywhere; the body actor field is only readable because of SC-2. (The other ~18 write handlers correctly use the principal.)
@@ -130,3 +130,12 @@ Coverage: 414 endpoints probed (zero-mutation), **1,781 action wires** reconcile
 | `F-LOADING-1` | P2 | WorkloadMatrix Retry **sticks on the spinner** — `onRetry` (`WorkloadMatrixPage.tsx:307`) flips loading without refetching (no reload token). → bump a reload token; add an `active`-flag cancel guard. |
 | `F-STALE-1` | P2 | Reporting-line assign/end leaves **Line Manager stale** until reload (`EmployeeDetailsPage.tsx:209-230,518`; no refetch). → refetch / dispatch `ORG_DATA_CHANGED_EVENT` like `handleDeactivate`. |
 | `F-ALLOC-1` | P3 | Over-allocation **clamped to 100%** in `WeeklyAllocationArea.tsx:53` + `UtilisationPeek.tsx:80,98` (text understates overflow). → allow >100% / compute text from uncapped value. |
+
+## Open coverage (validation stopped after round 9, by decision)
+
+The 9-round validation campaign characterized the major bug **classes**; it did not exhaustively enumerate every instance, nor cover two environment-bound gaps. A further pass would add:
+- **Full membership of known classes** — every spoofable write endpoint (SC-1 found 5; more of the 23 actor-from-body sites may qualify), every Law-9 KPI drilldown (SC-3, ~8 found across 6 dashboards), every undecorated `@Body()` DTO (SC-2), every timezone date-render site (SC-4, 21/39 flagged). Mechanism + representative members are documented; the fixes are per-class, so remaining instances are found cheaply once the class fix lands.
+- **Niche depth not yet swept** — accessibility (focus/ARIA beyond the structural Law-2 check), performance/N+1 query analysis, and per-feature business-logic correctness (e.g. does the planner solver produce correct assignments; is CPI/EVM math right).
+- **Irreducible (need operator/another environment):** write-path **live execution** (mutations blocked on shared staging — verified statically + via no-token auth only); the **admin** happy-path (staging admin login 401s — needs the operator's `SEED_ADMIN_PASSWORD`); and runtime render of the ~90 obsolete/admin routes not in the V2 driven set.
+
+Empirically (9 rounds), a fresh critic kept finding ~1 new specialized **P2/P3** class per round — no P0/P1 since round 4. Reach for another campaign when the listed fixes land (to verify) or before GA if the niche-depth areas matter for the release.
