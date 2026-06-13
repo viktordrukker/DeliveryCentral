@@ -1,0 +1,542 @@
+[
+  {
+    "id": "outboxEnabled",
+    "kind": "flag",
+    "settingKey": "flag.outboxEnabled",
+    "default": false
+  },
+  {
+    "id": "tenancyMultiTenantEnabled",
+    "kind": "flag",
+    "settingKey": "flag.tenancy.multiTenant.enabled",
+    "default": false
+  },
+  {
+    "id": "publicIdStrict",
+    "kind": "flag",
+    "settingKey": "flag.publicIdStrict",
+    "default": false
+  },
+  {
+    "id": "idempotencyKeyEnforced",
+    "kind": "flag",
+    "settingKey": "flag.idempotencyKey.enforced",
+    "default": false
+  },
+  {
+    "id": "staffingMakeAssignment",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.makeAssignment.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingBulkAssignment",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.bulkAssignment.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingProposalSlate",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.proposalSlate.enabled",
+    "default": true
+  },
+  {
+    "id": "staffingDistributionStudio",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.distributionStudio.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingDirectorApproval",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.directorApproval.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingWorkflowFullState",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.workflowFullState.enabled",
+    "default": true
+  },
+  {
+    "id": "staffingSlaSweep",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.slaSweep.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingProposalNudge",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.proposalNudge.enabled",
+    "default": false
+  },
+  {
+    "id": "staffingMatchingEngineV2",
+    "kind": "flag",
+    "settingKey": "flag.feature.staffing.matchingEngineV2.enabled",
+    "default": false
+  },
+  {
+    "id": "projectDirectorApprovalGate",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.directorApprovalGate.enabled",
+    "default": false
+  },
+  {
+    "id": "projectRadiator",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.radiator.enabled",
+    "default": false
+  },
+  {
+    "id": "projectRadiatorThresholds",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.radiatorThresholds.enabled",
+    "default": false
+  },
+  {
+    "id": "projectRisks",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.risks.enabled",
+    "default": false
+  },
+  {
+    "id": "projectChangeRequests",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.changeRequests.enabled",
+    "default": false
+  },
+  {
+    "id": "projectVendors",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.vendors.enabled",
+    "default": false
+  },
+  {
+    "id": "projectWorkstreams",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.workstreams.enabled",
+    "default": false
+  },
+  {
+    "id": "projectRetrospective",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.retrospective.enabled",
+    "default": false
+  },
+  {
+    "id": "projectMilestones",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.milestones.enabled",
+    "default": false
+  },
+  {
+    "id": "projectBudgetApproval",
+    "kind": "flag",
+    "settingKey": "flag.feature.project.budgetApproval.enabled",
+    "default": false
+  },
+  {
+    "id": "featureCases",
+    "kind": "flag",
+    "settingKey": "flag.feature.cases.enabled",
+    "default": false
+  },
+  {
+    "id": "featureWorkEvidence",
+    "kind": "flag",
+    "settingKey": "flag.feature.workEvidence.enabled",
+    "default": false
+  },
+  {
+    "id": "featureExceptions",
+    "kind": "flag",
+    "settingKey": "flag.feature.exceptions.enabled",
+    "default": false
+  },
+  {
+    "id": "featureTeams",
+    "kind": "flag",
+    "settingKey": "flag.feature.teams.enabled",
+    "default": false
+  },
+  {
+    "id": "featureResourcePools",
+    "kind": "flag",
+    "settingKey": "flag.feature.resourcePools.enabled",
+    "default": true
+  },
+  {
+    "id": "timesheetBasic",
+    "kind": "flag",
+    "settingKey": "flag.feature.timesheet.basic.enabled",
+    "default": true
+  },
+  {
+    "id": "timesheetPeriodLock",
+    "kind": "flag",
+    "settingKey": "flag.feature.timesheet.periodLock.enabled",
+    "default": true
+  },
+  {
+    "id": "timesheetApproval",
+    "kind": "flag",
+    "settingKey": "flag.feature.timesheet.approval.enabled",
+    "default": true
+  },
+  {
+    "id": "featureLeaveRequests",
+    "kind": "flag",
+    "settingKey": "flag.feature.leaveRequests.enabled",
+    "default": false
+  },
+  {
+    "id": "featureOvertime",
+    "kind": "flag",
+    "settingKey": "flag.feature.overtime.enabled",
+    "default": false
+  },
+  {
+    "id": "featurePublicHolidays",
+    "kind": "flag",
+    "settingKey": "flag.feature.publicHolidays.enabled",
+    "default": false
+  },
+  {
+    "id": "pulseBasic",
+    "kind": "flag",
+    "settingKey": "flag.feature.pulse.basic.enabled",
+    "default": true
+  },
+  {
+    "id": "pulseDeclineDetect",
+    "kind": "flag",
+    "settingKey": "flag.feature.pulse.declineDetect.enabled",
+    "default": false
+  },
+  {
+    "id": "pulseManagerTrend",
+    "kind": "flag",
+    "settingKey": "flag.feature.pulse.managerTrend.enabled",
+    "default": false
+  },
+  {
+    "id": "dashEmployee",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.employee.enabled",
+    "default": true
+  },
+  {
+    "id": "dashMergedManager",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.merged.manager.enabled",
+    "default": true
+  },
+  {
+    "id": "dashMergedExec",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.merged.exec.enabled",
+    "default": true
+  },
+  {
+    "id": "dashWorkloadOverview",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.workloadOverview.enabled",
+    "default": false
+  },
+  {
+    "id": "dashProjectManager",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.projectManager.enabled",
+    "default": false
+  },
+  {
+    "id": "dashResourceManager",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.resourceManager.enabled",
+    "default": false
+  },
+  {
+    "id": "dashHr",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.hr.enabled",
+    "default": false
+  },
+  {
+    "id": "dashDeliveryManager",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.deliveryManager.enabled",
+    "default": false
+  },
+  {
+    "id": "dashDirector",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.director.enabled",
+    "default": false
+  },
+  {
+    "id": "dashPortfolioRadiator",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.portfolioRadiator.enabled",
+    "default": false
+  },
+  {
+    "id": "dashPlannedVsActual",
+    "kind": "flag",
+    "settingKey": "flag.feature.dashboard.plannedVsActual.enabled",
+    "default": true
+  },
+  {
+    "id": "reportsTimeAnalytics",
+    "kind": "flag",
+    "settingKey": "flag.feature.reports.timeAnalytics.enabled",
+    "default": true
+  },
+  {
+    "id": "reportsUtilization",
+    "kind": "flag",
+    "settingKey": "flag.feature.reports.utilization.enabled",
+    "default": true
+  },
+  {
+    "id": "reportsCapitalisation",
+    "kind": "flag",
+    "settingKey": "flag.feature.reports.capitalisation.enabled",
+    "default": false
+  },
+  {
+    "id": "reportsBuilder",
+    "kind": "flag",
+    "settingKey": "flag.feature.reports.builder.enabled",
+    "default": false
+  },
+  {
+    "id": "reportsExportCentre",
+    "kind": "flag",
+    "settingKey": "flag.feature.reports.exportCentre.enabled",
+    "default": false
+  },
+  {
+    "id": "adminWebhooks",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.webhooks.enabled",
+    "default": false
+  },
+  {
+    "id": "adminAccessPolicies",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.accessPolicies.enabled",
+    "default": false
+  },
+  {
+    "id": "adminBulkImport",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.bulkImport.enabled",
+    "default": false
+  },
+  {
+    "id": "adminHris",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.hris.enabled",
+    "default": false
+  },
+  {
+    "id": "adminTenantSettingsCatalog",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.tenantSettingsCatalog.enabled",
+    "default": false
+  },
+  {
+    "id": "adminPlatformSettings",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.platformSettings.tenantOverride.enabled",
+    "default": false
+  },
+  {
+    "id": "adminRolePermissionUI",
+    "kind": "flag",
+    "settingKey": "flag.feature.admin.rolePermissionUI.enabled",
+    "default": false
+  },
+  {
+    "id": "integrationsM365",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.m365.enabled",
+    "default": true
+  },
+  {
+    "id": "integrationsJira",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.jira.enabled",
+    "default": true
+  },
+  {
+    "id": "integrationsRadius",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.radius.enabled",
+    "default": false
+  },
+  {
+    "id": "integrationsOidc",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.oidc.enabled",
+    "default": false
+  },
+  {
+    "id": "integrationsLdap",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.ldap.enabled",
+    "default": false
+  },
+  {
+    "id": "integrationsJsm",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.jsm.enabled",
+    "default": false
+  },
+  {
+    "id": "integrationsWebhookRegistry",
+    "kind": "flag",
+    "settingKey": "flag.feature.integrations.webhookRegistry.enabled",
+    "default": false
+  },
+  {
+    "id": "notificationsBell",
+    "kind": "flag",
+    "settingKey": "flag.feature.notifications.bell.enabled",
+    "default": true
+  },
+  {
+    "id": "notificationsSse",
+    "kind": "flag",
+    "settingKey": "flag.feature.notifications.sse.enabled",
+    "default": false
+  },
+  {
+    "id": "notificationsPreferences",
+    "kind": "flag",
+    "settingKey": "flag.feature.notifications.preferences.enabled",
+    "default": false
+  },
+  {
+    "id": "helpCenter",
+    "kind": "flag",
+    "settingKey": "flag.feature.helpCenter.enabled",
+    "default": false
+  },
+  {
+    "id": "onboardingTour",
+    "kind": "flag",
+    "settingKey": "flag.feature.onboardingTour.enabled",
+    "default": false
+  },
+  {
+    "id": "cmdkPeopleSearch",
+    "kind": "flag",
+    "settingKey": "flag.feature.cmdk.peopleSearch.enabled",
+    "default": false
+  },
+  {
+    "id": "workflowDefinitions",
+    "kind": "flag",
+    "settingKey": "flag.feature.workflowDefinitions.enabled",
+    "default": false
+  },
+  {
+    "id": "customFields",
+    "kind": "flag",
+    "settingKey": "flag.feature.customFields.enabled",
+    "default": false
+  },
+  {
+    "id": "entityLayouts",
+    "kind": "flag",
+    "settingKey": "flag.feature.entityLayouts.enabled",
+    "default": false
+  },
+  {
+    "id": "metadataDictionaries",
+    "kind": "flag",
+    "settingKey": "flag.feature.metadata.tenantDictionaries.enabled",
+    "default": false
+  },
+  {
+    "id": "rbacResponsibilityRuleReads",
+    "kind": "flag",
+    "settingKey": "flag.feature.rbac.responsibilityRule.reads.enabled",
+    "default": false
+  },
+  {
+    "id": "authTwoFactor",
+    "kind": "flag",
+    "settingKey": "flag.feature.auth.twoFactor.enabled",
+    "default": false
+  },
+  {
+    "id": "featureViewAs",
+    "kind": "flag",
+    "settingKey": "flag.feature.viewAs.enabled",
+    "default": true
+  },
+  {
+    "id": "financialMultiCurrency",
+    "kind": "flag",
+    "settingKey": "flag.feature.financial.multiCurrency.enabled",
+    "default": false
+  },
+  {
+    "id": "financialFiscalCalendarEntity",
+    "kind": "flag",
+    "settingKey": "flag.feature.financial.fiscalCalendar.entity.enabled",
+    "default": false
+  },
+  {
+    "id": "perfMaterialisedRollups",
+    "kind": "flag",
+    "settingKey": "flag.feature.perf.materialisedRollups.enabled",
+    "default": false
+  },
+  {
+    "id": "kpiDrilldown",
+    "kind": "flag",
+    "settingKey": "flag.feature.kpiDrilldown.enabled",
+    "default": true
+  },
+  {
+    "id": "actionItems",
+    "kind": "flag",
+    "settingKey": "flag.feature.actionItems.enabled",
+    "default": true
+  },
+  {
+    "id": "pulseEnabled",
+    "kind": "flag",
+    "settingKey": "flag.pulse.enabled",
+    "default": false
+  },
+  {
+    "id": "helpCenterMaster",
+    "kind": "flag",
+    "settingKey": "flag.helpCenter.enabled",
+    "default": false
+  },
+  {
+    "id": "undoToast",
+    "kind": "flag",
+    "settingKey": "flag.undo.toast.enabled",
+    "default": false
+  },
+  {
+    "id": "workspaceMe",
+    "kind": "flag",
+    "settingKey": "flag.workspaceMe.enabled",
+    "default": false
+  },
+  {
+    "id": "dsRefresh",
+    "kind": "flag",
+    "settingKey": "flag.dsRefresh.enabled",
+    "default": false
+  }
+]
