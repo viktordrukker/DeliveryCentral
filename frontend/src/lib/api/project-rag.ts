@@ -32,6 +32,12 @@ export interface ComputedRag {
   budgetRag: RagRating;
   budgetExplanation: string;
   overallRag: RagRating;
+  // F-HEALTH-EMPTY — per-dimension data presence. A card renders N/A (not a
+  // fabricated GREEN/88) only on an explicit `false`; undefined keeps the score.
+  staffingHasData?: boolean;
+  scheduleHasData?: boolean;
+  budgetHasData?: boolean;
+  overallHasData?: boolean;
 }
 
 export interface SubCriterionValue {

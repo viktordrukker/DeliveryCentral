@@ -409,29 +409,33 @@ export function PulseTab({ projectId }: PulseTabProps): JSX.Element {
           <SectionCard title="RAG quadrant — this week">
             <div data-testid="pulse-rag-quadrant" className="quad-grid">
               {[
-                { title: 'Delivery', rag: rag.scheduleRag, explanation: rag.scheduleExplanation },
-                { title: 'Budget', rag: rag.budgetRag, explanation: rag.budgetExplanation },
-                { title: 'People', rag: rag.staffingRag, explanation: rag.staffingExplanation },
+                { title: 'Delivery', rag: rag.scheduleRag, explanation: rag.scheduleExplanation, hasData: rag.scheduleHasData },
+                { title: 'Budget', rag: rag.budgetRag, explanation: rag.budgetExplanation, hasData: rag.budgetHasData },
+                { title: 'People', rag: rag.staffingRag, explanation: rag.staffingExplanation, hasData: rag.staffingHasData },
                 {
                   title: 'Overall',
                   rag: rag.overallRag,
                   explanation: 'Composite of schedule, budget, people',
+                  hasData: rag.overallHasData,
                 },
               ].map((q) => {
-                const tone = RAG_TO_TONE[q.rag];
+                // F-HEALTH-EMPTY — no input for this dimension → N/A, not a
+                // fabricated GREEN/88. Only an explicit `false` triggers it.
+                const noData = q.hasData === false;
+                const tone = noData ? 'neutral' : RAG_TO_TONE[q.rag];
                 const score = RAG_SCORE[q.rag];
                 return (
                   <div key={q.title} className={`quad tone-${tone}`}>
                     <div className="quad-head">
                       <span className="quad-title">{q.title}</span>
-                      <StatusBadge tone={tone} label={RAG_LABEL[q.rag]} variant="chip" />
+                      <StatusBadge tone={tone} label={noData ? 'No data' : RAG_LABEL[q.rag]} variant="chip" />
                     </div>
                     <div className="quad-score">
-                      {score}
-                      <span className="out"> / 100</span>
+                      {noData ? 'N/A' : score}
+                      {noData ? null : <span className="out"> / 100</span>}
                     </div>
                     <div className="quad-bar">
-                      <i style={{ width: `${score}%` }} />
+                      <i style={{ width: `${noData ? 0 : score}%` }} />
                     </div>
                     <div className="quad-meta">{q.explanation}</div>
                   </div>

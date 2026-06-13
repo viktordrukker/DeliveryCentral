@@ -252,6 +252,28 @@ describe('PulseTab — DS canvas conformance (SoT PR 5)', () => {
     expect(screen.getByText('Overall')).toBeInTheDocument();
   });
 
+  it('F-HEALTH-EMPTY: renders N/A (not a fabricated 88) for dimensions with no input', async () => {
+    fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
+    fetchComputedRag.mockResolvedValue({
+      ...sampleRag,
+      budgetRag: 'GREEN',
+      budgetExplanation: 'No budget defined.',
+      budgetHasData: false,
+      staffingRag: 'GREEN',
+      staffingExplanation: 'No role plan defined — no gaps detected.',
+      staffingHasData: false,
+      scheduleHasData: true,
+      overallHasData: true,
+    });
+    fetchRisks.mockResolvedValue([]);
+    renderRoute(<PulseTab projectId="p1" />);
+    await waitFor(() => expect(screen.getByTestId('pulse-rag-quadrant')).toBeInTheDocument());
+    const quad = screen.getByTestId('pulse-rag-quadrant');
+    // Budget + People have no input → "N/A" + "No data", never GREEN/88.
+    expect((quad.textContent?.match(/No data/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect((quad.textContent?.match(/N\/A/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
   it('renders the top-risks card with bucket badge', async () => {
     fetchProjectPulseSummary.mockResolvedValue(sampleSummary);
     fetchComputedRag.mockResolvedValue(null);

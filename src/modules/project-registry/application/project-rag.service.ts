@@ -34,6 +34,13 @@ export interface ComputedRag {
   budgetRag: RagRating;
   budgetExplanation: string;
   overallRag: RagRating;
+  // F-HEALTH-EMPTY — per-dimension data presence. Optional + backward-safe:
+  // consumers render N/A only on an explicit `false`. computeRag always sets them
+  // so an empty project shows N/A instead of a fabricated GREEN/"Healthy".
+  staffingHasData?: boolean;
+  scheduleHasData?: boolean;
+  budgetHasData?: boolean;
+  overallHasData?: boolean;
 }
 
 export interface DimensionDetailsJson {
@@ -96,14 +103,30 @@ export class ProjectRagService {
     const scores = [staffing.rag, schedule.rag, budget.rag];
     const overallRag = scores.includes('RED') ? 'RED' : scores.includes('AMBER') ? 'AMBER' : 'GREEN';
 
+    // F-HEALTH-EMPTY — a dimension with no input must render N/A, not a fabricated
+    // GREEN. Derive data presence from the same inputs the sub-scorers use, so an
+    // empty/DRAFT project stops reporting "Healthy 88".
+    const budgetRow = await this.prisma.projectBudget.findFirst({
+      where: { projectId },
+      orderBy: { fiscalYear: 'desc' },
+    });
+    const budgetHasData = !!budgetRow && Number(budgetRow.capexBudget) + Number(budgetRow.opexBudget) > 0;
+    const scheduleHasData = !!project.endsOn;
+    const staffingSummary = await this.rolePlanService.getStaffingSummary(projectId);
+    const staffingHasData = staffingSummary.totalPlanned > 0;
+
     return {
       staffingRag: staffing.rag,
       staffingExplanation: staffing.explanation,
+      staffingHasData,
       scheduleRag: schedule.rag,
       scheduleExplanation: schedule.explanation,
+      scheduleHasData,
       budgetRag: budget.rag,
       budgetExplanation: budget.explanation,
+      budgetHasData,
       overallRag,
+      overallHasData: budgetHasData || scheduleHasData || staffingHasData,
     };
   }
 
