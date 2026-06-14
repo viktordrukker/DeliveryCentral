@@ -10,7 +10,7 @@ interface OpenCaseSubject {
 }
 
 /**
- * #712 — org-wide "People with Open Cases" surfaced on the v2 /me workspace
+ * PR-712 — org-wide "People with Open Cases" surfaced on the v2 /me workspace
  * (HR/people-manager roles). The legacy home for this was the HR dashboard's
  * LifecycleTab, which is behind the dashHr flag (OFF on v2) and unreachable.
  * Names come from the case list's BE-enriched subjectPersonName (never a UUID).

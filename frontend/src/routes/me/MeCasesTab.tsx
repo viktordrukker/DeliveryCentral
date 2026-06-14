@@ -34,7 +34,7 @@ function formatCallerRole(row: CaseRecord, personId: string): string {
 export function MeCasesTab(): JSX.Element {
   const { principal } = useAuth();
   const personId = principal?.personId ?? '';
-  // #712 — people-managers also see the org-wide "People with Open Cases"
+  // PR-712 — people-managers also see the org-wide "People with Open Cases"
   // panel here (its legacy HR-dashboard home is flag-off/unreachable on v2).
   const isPeopleManager = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
 
