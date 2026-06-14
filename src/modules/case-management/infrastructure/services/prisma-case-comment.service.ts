@@ -7,6 +7,8 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 export interface CaseCommentDto {
   authorPersonId: string;
+  // SC-7 — resolved author name (list path) so the Author column never shows a UUID.
+  authorPersonName?: string;
   body: string;
   createdAt: string;
   id: string;
@@ -52,6 +54,17 @@ export class PrismaCaseCommentService {
     });
 
     const payload = (caseRecord?.payload as Record<string, unknown>) ?? {};
-    return Array.isArray(payload.comments) ? (payload.comments as CaseCommentDto[]) : [];
+    const comments = Array.isArray(payload.comments) ? (payload.comments as CaseCommentDto[]) : [];
+    if (comments.length === 0) return comments;
+
+    // SC-7 — batch-resolve author display names (comments are stored in JSON
+    // without a name; CaseComment has no relation).
+    const authorIds = [...new Set(comments.map((c) => c.authorPersonId).filter(Boolean))];
+    const people = await this.prisma.person.findMany({
+      where: { id: { in: authorIds } },
+      select: { id: true, displayName: true },
+    });
+    const nameById = new Map(people.map((p) => [p.id, p.displayName]));
+    return comments.map((c) => ({ ...c, authorPersonName: nameById.get(c.authorPersonId) }));
   }
 }
