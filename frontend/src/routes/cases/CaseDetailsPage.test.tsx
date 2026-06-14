@@ -53,6 +53,7 @@ describe('CaseDetailsPage', () => {
         },
       ],
       relatedAssignmentId: 'asn-1',
+      relatedAssignmentRole: 'Senior Engineer',
       relatedProjectId: 'prj-1',
       status: 'OPEN',
       subjectPersonId: 'subject-1',
@@ -67,7 +68,9 @@ describe('CaseDetailsPage', () => {
     expect(screen.getByText('Follow up on onboarding access approvals.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'subject-1' })).toHaveAttribute('href', '/people/subject-1');
     expect(screen.getByRole('link', { name: 'prj-1' })).toHaveAttribute('href', '/projects/prj-1');
-    expect(screen.getByRole('link', { name: 'asn-1' })).toHaveAttribute('href', '/projects/prj-1?position=asn-1');
+    // SC-7 — Related Position link shows the role label, not the raw position id.
+    expect(screen.getByRole('link', { name: 'Senior Engineer' })).toHaveAttribute('href', '/projects/prj-1?position=asn-1');
+    expect(screen.queryByText('asn-1')).not.toBeInTheDocument();
     expect(screen.getByText('OWNER')).toBeInTheDocument();
     // SC-7 — Participants table shows the resolved name, not the raw UUID.
     expect(screen.getByText('Owner One')).toBeInTheDocument();

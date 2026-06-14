@@ -46,6 +46,11 @@ export class CaseResponseDto {
   @ApiPropertyOptional()
   public relatedAssignmentId?: string;
 
+  // SC-7 — resolved position role so the "Related Position" link shows a label,
+  // not a raw position UUID.
+  @ApiPropertyOptional()
+  public relatedAssignmentRole?: string;
+
   @ApiPropertyOptional()
   public summary?: string;
 

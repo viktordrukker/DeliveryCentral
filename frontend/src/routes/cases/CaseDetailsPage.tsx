@@ -584,7 +584,8 @@ export function CaseDetailsPage(): JSX.Element {
                   <dd>
                     {displayCase.relatedAssignmentId && displayCase.relatedProjectId ? (
                       <Link to={`/projects/${displayCase.relatedProjectId}?position=${displayCase.relatedAssignmentId}`}>
-                        {displayCase.relatedAssignmentId}
+                        {/* SC-7 — show the position role, never the raw id. */}
+                        {displayCase.relatedAssignmentRole ?? 'View position'}
                       </Link>
                     ) : (
                       'No related position'
