@@ -442,6 +442,8 @@ describe('PulseTab — DS canvas conformance (SoT PR 5)', () => {
     await waitFor(() => expect(screen.getByTestId('pulse-positions')).toBeInTheDocument());
     expect(screen.getByText('Lead Backend Engineer')).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
+    // Bug fix — "Open →" navigates to the position detail page, not a no-op ?position= param.
+    expect(screen.getByRole('link', { name: 'Open →' })).toHaveAttribute('href', '/positions/pp1');
   });
 
   it('shows empty state when there are no open positions', async () => {

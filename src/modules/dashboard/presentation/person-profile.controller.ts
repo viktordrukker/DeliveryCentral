@@ -1,6 +1,7 @@
-import { Controller, Get, Param, ParseUUIDPipe, Req } from '@nestjs/common';
+import { Controller, Get, Param, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import { AggregateType, ParsePublicIdOrUuid } from '@src/infrastructure/public-id';
 import { AllowSelfScope } from '@src/modules/identity-access/application/self-scope.decorator';
 import { RequestPrincipal } from '@src/modules/identity-access/application/request-principal';
 import { RequireRoles } from '@src/modules/identity-access/application/roles.decorator';
@@ -26,7 +27,7 @@ export class PersonProfileController {
   })
   @ApiOkResponse({ type: Object })
   public async getProfile(
-    @Param('id', ParseUUIDPipe) personId: string,
+    @Param('id', ParsePublicIdOrUuid(AggregateType.Person)) personId: string,
     @Req() req: { principal?: RequestPrincipal },
   ): Promise<PersonProfileDto> {
     return this.service.getProfile(personId, {
