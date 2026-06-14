@@ -77,6 +77,35 @@ describe('CaseDetailsPage', () => {
     expect(screen.getByRole('link', { name: 'Open person' })).toHaveAttribute('href', '/people/owner-1');
   });
 
+  it('shows the comment author name, not a UUID (SC-7)', async () => {
+    mockedFetchCaseById.mockResolvedValue({
+      caseNumber: 'CASE-4002',
+      caseTypeDisplayName: 'Onboarding',
+      caseTypeKey: 'ONBOARDING',
+      id: 'case-2',
+      openedAt: '2026-04-04T12:00:00.000Z',
+      ownerPersonId: 'owner-1',
+      participants: [],
+      status: 'OPEN',
+      subjectPersonId: 'subject-1',
+      summary: 'x',
+    });
+    mockedFetchCaseComments.mockResolvedValue([
+      {
+        authorPersonId: '99999999-aaaa-bbbb-cccc-dddddddddddd',
+        authorPersonName: 'Cara Diaz',
+        body: 'Looks good.',
+        createdAt: '2026-04-05T09:00:00.000Z',
+        id: 'cmt-1',
+      },
+    ]);
+
+    renderWithRouter('/cases/case-2');
+
+    expect(await screen.findByText('Cara Diaz')).toBeInTheDocument();
+    expect(screen.queryByText(/99999999/)).not.toBeInTheDocument();
+  });
+
   it('shows not found state for missing cases', async () => {
     mockedFetchCaseById.mockRejectedValue(new ApiError('Request failed for /cases/missing', 404));
 

@@ -228,7 +228,9 @@ export function CaseDetailsPage(): JSX.Element {
     setCommentError(null);
     try {
       const comment = await addCaseComment(id, principal.personId, newComment.trim());
-      setComments((prev) => [...prev, comment]);
+      // SC-7 — the author is the current user; show their name immediately
+      // (the create response carries no resolved name).
+      setComments((prev) => [...prev, { ...comment, authorPersonName: comment.authorPersonName ?? principal.displayName }]);
       setNewComment('');
     } catch (error) {
       setCommentError(error instanceof Error ? error.message : 'Failed to add comment.');
@@ -542,7 +544,7 @@ export function CaseDetailsPage(): JSX.Element {
                   variant="compact"
                   columns={[
                     { key: 'body', title: 'Comment', getValue: (c) => c.body, render: (c) => <span style={{ fontWeight: 500 }}>{c.body}</span> },
-                    { key: 'author', title: 'Author', getValue: (c) => c.authorPersonId, render: (c) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.authorPersonId}</span> },
+                    { key: 'author', title: 'Author', getValue: (c) => c.authorPersonName ?? c.authorPersonId, render: (c) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{c.authorPersonName ?? c.authorPersonId}</span> },
                     { key: 'date', title: 'Date', getValue: (c) => c.createdAt, render: (c) => <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{formatDateTime(c.createdAt)}</span> },
                   ] as Column<CaseComment>[]}
                   rows={comments}

@@ -45,6 +45,8 @@ export interface CasesQuery {
 
 export interface CaseComment {
   authorPersonId: string;
+  // SC-7 — resolved author name (BE-enriched on list). Falls back to id when absent.
+  authorPersonName?: string;
   body: string;
   createdAt: string;
   id: string;
