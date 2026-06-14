@@ -97,7 +97,11 @@ export function EmployeeLifecycleAdminPage(): JSX.Element {
                 </div>
                 <div>
                   <dt>Org Unit</dt>
-                  <dd>{state.createdEmployee.orgUnitId}</dd>
+                  <dd>
+                    {/* SC-7 — show the org-unit name (already loaded as options), not the raw id. */}
+                    {state.orgUnitOptions.find((o) => o.value === state.createdEmployee?.orgUnitId)?.label
+                      ?? state.createdEmployee.orgUnitId}
+                  </dd>
                 </div>
               </dl>
               <div className="section-card__actions-row section-card__actions-row--start">
