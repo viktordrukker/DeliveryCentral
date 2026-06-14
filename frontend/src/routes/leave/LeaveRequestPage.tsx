@@ -240,7 +240,7 @@ export function LeaveRequestPage(): JSX.Element {
             <Table
               variant="compact"
               columns={[
-                { key: 'person', title: 'Person', getValue: (r) => r.personId, render: (r) => <span style={{ fontSize: '12px' }}>{r.personId.slice(0, 8)}…</span> },
+                { key: 'person', title: 'Person', getValue: (r) => r.personName ?? r.personId, render: (r) => <span style={{ fontSize: '12px' }}>{r.personName ?? `${r.personId.slice(0, 8)}…`}</span> },
                 { key: 'type', title: 'Type', getValue: (r) => LEAVE_TYPE_LABELS[r.type], render: (r) => LEAVE_TYPE_LABELS[r.type] },
                 { key: 'start', title: 'Start', getValue: (r) => r.startDate, render: (r) => r.startDate },
                 { key: 'end', title: 'End', getValue: (r) => r.endDate, render: (r) => r.endDate },

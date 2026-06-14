@@ -29,6 +29,8 @@ export interface LeaveRequestDto {
   id: string;
   notes: string | null;
   personId: string;
+  // SC-7 — resolved requester name (list paths). Undefined on single-record paths.
+  personName?: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
   // Track B.1 — reviewer's justification surfaced in audit / decision drawer.
@@ -315,6 +317,7 @@ export class LeaveRequestsService {
       id: record.id,
       notes: record.notes,
       personId: record.personId,
+      personName: record.personName,
       reviewedAt: record.reviewedAt?.toISOString() ?? null,
       reviewedBy: record.reviewedBy,
       reviewComment: record.reviewComment,

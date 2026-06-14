@@ -9,6 +9,8 @@ export interface LeaveRequestDto {
   id: string;
   notes: string | null;
   personId: string;
+  // SC-7 — resolved requester name (BE-enriched on list paths).
+  personName?: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
   /** Track B.1 — reviewer's free-text justification on approve/reject. NULL when blank. */

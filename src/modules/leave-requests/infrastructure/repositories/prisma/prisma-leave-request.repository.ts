@@ -41,14 +41,15 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
   }
 
   public async findManyByPerson(personId: string): Promise<LeaveRequestRow[]> {
-    return this.prisma.leaveRequest.findMany({
+    const rows = await this.prisma.leaveRequest.findMany({
       orderBy: { createdAt: 'desc' },
       where: { personId },
     });
+    return this.attachPersonNames(rows);
   }
 
   public async findMany(filter: FindLeaveRequestsFilter): Promise<LeaveRequestRow[]> {
-    return this.prisma.leaveRequest.findMany({
+    const rows = await this.prisma.leaveRequest.findMany({
       orderBy: { createdAt: 'desc' },
       where: {
         ...(filter.personId ? { personId: filter.personId } : {}),
@@ -56,6 +57,19 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepositoryPort 
         ...(filter.status ? { status: filter.status as any } : {}),
       },
     });
+    return this.attachPersonNames(rows);
+  }
+
+  // SC-7 — LeaveRequest.personId has no Prisma relation, so batch-resolve
+  // display names in one extra query (mirrors CasePresenterService).
+  private async attachPersonNames(rows: LeaveRequestRow[]): Promise<LeaveRequestRow[]> {
+    if (rows.length === 0) return rows;
+    const people = await this.prisma.person.findMany({
+      where: { id: { in: [...new Set(rows.map((r) => r.personId))] } },
+      select: { id: true, displayName: true },
+    });
+    const nameById = new Map(people.map((p) => [p.id, p.displayName]));
+    return rows.map((r) => ({ ...r, personName: nameById.get(r.personId) }));
   }
 
   public async findFirstOverlappingApproved(

@@ -12,6 +12,10 @@ export type LeaveRequestKind = 'ANNUAL' | 'SICK' | 'PARENTAL' | 'COMPASSIONATE' 
 export interface LeaveRequestRow {
   id: string;
   personId: string;
+  // SC-7 — resolved requester name, populated by the list paths (findMany /
+  // findManyByPerson) so the approval queue never shows a truncated UUID.
+  // Optional: single-record paths leave it undefined.
+  personName?: string;
   type: string;
   status: string;
   startDate: Date;
