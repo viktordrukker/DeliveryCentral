@@ -77,7 +77,7 @@ export function MoneyTab({ projectId }: MoneyTabProps): JSX.Element {
         <MoneyPanel dashboard={dashboard} projectId={projectId} onEditBudget={() => setShowBudgetForm(true)} />
       ) : null}
 
-      {/* SC-7 / #713 — budget-change approval queue (with resolved "Requested by"
+      {/* SC-7 / PR-713 — budget-change approval queue (with resolved "Requested by"
           name) was previously only in the legacy BudgetTab, which v2 never
           renders. Surface it on the v2 Money tab via the shared panel. */}
       <BudgetChangeRequestsPanel projectId={projectId} onAfterDecision={() => void loadDashboard()} />
