@@ -5,6 +5,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { fetchProjectBudgetDashboard, type ProjectBudgetDashboard } from '@/lib/api/project-budget';
 import type { ProjectDetails } from '@/lib/api/project-registry';
 
+import { BudgetChangeRequestsPanel } from './BudgetChangeRequestsPanel';
 import { BudgetEditForm } from './BudgetEditForm';
 import { CpiWhatIfCard } from './CpiWhatIfCard';
 import { MoneyPanel } from './MoneyPanel';
@@ -75,6 +76,11 @@ export function MoneyTab({ projectId }: MoneyTabProps): JSX.Element {
       {!loading && !error && dashboard ? (
         <MoneyPanel dashboard={dashboard} projectId={projectId} onEditBudget={() => setShowBudgetForm(true)} />
       ) : null}
+
+      {/* SC-7 / #713 — budget-change approval queue (with resolved "Requested by"
+          name) was previously only in the legacy BudgetTab, which v2 never
+          renders. Surface it on the v2 Money tab via the shared panel. */}
+      <BudgetChangeRequestsPanel projectId={projectId} onAfterDecision={() => void loadDashboard()} />
 
       <CpiWhatIfCard projectId={projectId} />
     </div>
