@@ -34,7 +34,8 @@ export class CasePresenterService {
    */
   public async presentSingle(caseRecord: CaseRecord): Promise<CaseResponseDto> {
     const peopleMap = await this.loadPeopleMap();
-    return this.mapCase(caseRecord, peopleMap);
+    const positionRoleMap = await this.loadPositionRoleMap([caseRecord]);
+    return this.mapCase(caseRecord, peopleMap, positionRoleMap);
   }
 
   /**
@@ -45,7 +46,8 @@ export class CasePresenterService {
   public async presentMany(caseRecords: CaseRecord[]): Promise<CaseResponseDto[]> {
     if (caseRecords.length === 0) return [];
     const peopleMap = await this.loadPeopleMap();
-    return caseRecords.map((record) => this.mapCase(record, peopleMap));
+    const positionRoleMap = await this.loadPositionRoleMap(caseRecords);
+    return caseRecords.map((record) => this.mapCase(record, peopleMap, positionRoleMap));
   }
 
   private async loadPeopleMap(): Promise<Map<string, PersonNameRow>> {
@@ -55,9 +57,30 @@ export class CasePresenterService {
     return new Map(dbPeople.map((p) => [p.id, p]));
   }
 
+  // SC-7 — resolve related-position ids to their role so the "Related Position"
+  // link shows a label instead of a UUID. Loads only the referenced positions.
+  private async loadPositionRoleMap(
+    caseRecords: CaseRecord[],
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(
+        caseRecords
+          .map((c) => c.relatedAssignmentId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    if (ids.length === 0) return new Map();
+    const positions = await this.prisma.projectPosition.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, role: true },
+    });
+    return new Map(positions.map((p) => [p.id, p.role]));
+  }
+
   private mapCase(
     caseRecord: CaseRecord,
     allPeopleById: Map<string, PersonNameRow>,
+    positionRoleById: Map<string, string>,
   ): CaseResponseDto {
     const subjectPerson = allPeopleById.get(caseRecord.subjectPersonId);
     const ownerPerson = allPeopleById.get(caseRecord.ownerPersonId);
@@ -79,6 +102,9 @@ export class CasePresenterService {
         personName: allPeopleById.get(participant.personId)?.displayName,
       })),
       relatedAssignmentId: caseRecord.relatedAssignmentId,
+      relatedAssignmentRole: caseRecord.relatedAssignmentId
+        ? positionRoleById.get(caseRecord.relatedAssignmentId)
+        : undefined,
       relatedProjectId: caseRecord.relatedProjectId,
       status: caseRecord.status,
       subjectPersonId: caseRecord.subjectPersonId,

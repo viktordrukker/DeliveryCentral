@@ -19,6 +19,8 @@ export interface CaseRecord {
   ownerPersonName?: string;
   participants: CaseParticipant[];
   relatedAssignmentId?: string;
+  // SC-7 — resolved position role for the Related Position link label.
+  relatedAssignmentRole?: string;
   relatedProjectId?: string;
   status: string;
   subjectPersonId: string;
