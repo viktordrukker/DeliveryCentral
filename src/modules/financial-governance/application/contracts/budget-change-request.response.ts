@@ -26,6 +26,10 @@ export class BudgetChangeRequestDto {
   @ApiProperty({ description: 'Person who requested the change.' })
   public requestedByPersonId!: string;
 
+  // SC-7 — resolved requester name so the approval queue never shows a raw UUID.
+  @ApiPropertyOptional({ description: 'Resolved requester display name.', nullable: true })
+  public requestedByPersonName?: string;
+
   @ApiProperty({ description: 'When the request was made (ISO-8601).' })
   public requestedAt!: string;
 

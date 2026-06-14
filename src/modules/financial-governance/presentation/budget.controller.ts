@@ -94,12 +94,23 @@ export class ProjectBudgetController {
       where: { projectBudget: { projectId }, status: 'PENDING' },
       orderBy: { requestedAt: 'desc' },
     });
+    // SC-7 — batch-resolve requester display names so the approval queue
+    // shows who asked, not a raw UUID.
+    const requesterIds = [...new Set(rows.map((r) => r.requestedByPersonId).filter(Boolean))];
+    const people = requesterIds.length
+      ? await this.prisma.person.findMany({
+          where: { id: { in: requesterIds } },
+          select: { id: true, displayName: true },
+        })
+      : [];
+    const nameById = new Map(people.map((p) => [p.id, p.displayName]));
     return rows.map((r) => ({
       id: r.id,
       publicId: null,
       projectBudgetId: r.projectBudgetId,
       status: r.status,
       requestedByPersonId: r.requestedByPersonId,
+      requestedByPersonName: nameById.get(r.requestedByPersonId),
       requestedAt: r.requestedAt.toISOString(),
       requestedChange: (r.requestedChange as { capexBudget: number; opexBudget: number } | null) ?? null,
       decidedByPersonId: r.decidedByPersonId,
