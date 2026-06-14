@@ -63,6 +63,8 @@ export interface BudgetChangeRequest {
   projectBudgetId: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   requestedByPersonId: string;
+  // SC-7 — resolved requester name (BE-enriched). Falls back to id when absent.
+  requestedByPersonName?: string;
   requestedAt: string;
   requestedChange: { capexBudget: number; opexBudget: number } | null;
   decidedByPersonId: string | null;

@@ -208,7 +208,7 @@ export function BudgetTab({ projectId, canvasMode = false }: BudgetTabProps): JS
               const NUM = { fontVariantNumeric: 'tabular-nums' as const };
               const approvalColumns: Column<Approval>[] = [
                 { key: 'requested', title: 'Requested', getValue: (a) => a.requestedAt, render: (a) => new Date(a.requestedAt).toLocaleString() },
-                { key: 'requestedBy', title: 'Requested by', getValue: (a) => a.requestedByPersonId, render: (a) => a.requestedByPersonId },
+                { key: 'requestedBy', title: 'Requested by', getValue: (a) => a.requestedByPersonName ?? a.requestedByPersonId, render: (a) => a.requestedByPersonName ?? a.requestedByPersonId },
                 {
                   key: 'capex',
                   title: 'New CAPEX',
