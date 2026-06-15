@@ -166,7 +166,7 @@ function positionColumns(projectId: string): Column<ProjectPosition>[] {
       getValue: () => null,
       render: (r) => (
         <Link
-          to={`/projects/${projectId}?position=${r.id}`}
+          to={`/positions/${r.publicId ?? r.id}`}
           className="compact"
           style={{ color: 'var(--color-accent)' }}
         >

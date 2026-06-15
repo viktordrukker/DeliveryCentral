@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -392,7 +391,7 @@ export class PeopleBenchController {
   @ApiOkResponse({ type: PersonSuggestedPositionsResponseDto })
   @RequireRoles(...STAFFING_ROLES)
   public async suggestedPositions(
-    @Param('personId', ParseUUIDPipe) personId: string,
+    @Param('personId', ParsePublicIdOrUuid(AggregateType.Person)) personId: string,
     @Query('limit') limit?: string,
   ): Promise<PersonSuggestedPositionsResponseDto> {
     const parsed = limit ? Number.parseInt(limit, 10) : undefined;
