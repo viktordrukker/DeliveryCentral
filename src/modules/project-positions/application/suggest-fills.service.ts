@@ -12,6 +12,11 @@ import {
 const ACTIVE_FILL_STATUSES = ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] as const;
 const DEFAULT_LIMIT = 5;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function looksLikeUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 interface ScoredCandidate {
   matchScore: number;
   matchedSkills: string[];
@@ -141,8 +146,10 @@ export class SuggestFillsService {
     limit: number = DEFAULT_LIMIT,
     _asOf: Date = new Date(),
   ): Promise<PersonSuggestedPositionsResponseDto> {
+    // `personId` is a publicId (usr_…) in v2 or a raw uuid in the transition
+    // window; the ParsePublicIdOrUuid pipe validates but does not resolve.
     const person = await this.prisma.person.findUnique({
-      where: { id: personId },
+      where: looksLikeUuid(personId) ? { id: personId } : { publicId: personId },
       select: {
         id: true,
         role: true,
