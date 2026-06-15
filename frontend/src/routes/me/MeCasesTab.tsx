@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/app/auth-context';
+import { PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -9,6 +10,8 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { Table, type Column } from '@/components/ds';
 import { fetchMyCases, type CaseRecord } from '@/lib/api/cases';
 import { formatCaseType } from '@/lib/labels';
+
+import { HrOpenCasesPanel } from './HrOpenCasesPanel';
 
 function formatCallerRole(row: CaseRecord, personId: string): string {
   if (row.subjectPersonId === personId) return 'Subject';
@@ -31,6 +34,9 @@ function formatCallerRole(row: CaseRecord, personId: string): string {
 export function MeCasesTab(): JSX.Element {
   const { principal } = useAuth();
   const personId = principal?.personId ?? '';
+  // PR-712 — people-managers also see the org-wide "People with Open Cases"
+  // panel here (its legacy HR-dashboard home is flag-off/unreachable on v2).
+  const isPeopleManager = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
 
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -59,18 +65,29 @@ export function MeCasesTab(): JSX.Element {
   }, [personId]);
 
   if (loading) return <LoadingState variant="skeleton" skeletonType="page" />;
+
+  const hrPanel = isPeopleManager ? <HrOpenCasesPanel /> : null;
+
   if (error) {
-    return <ErrorState title="Couldn't load your cases" description={error} />;
+    return (
+      <>
+        {hrPanel}
+        <ErrorState title="Couldn't load your cases" description={error} />
+      </>
+    );
   }
 
   if (cases.length === 0) {
     return (
-      <SectionCard title="Your HR cases">
-        <EmptyState
-          title="No cases yet"
-          description="When HR opens a case about you (onboarding, transfer, performance, etc.) or adds you as a participant, it will appear here."
-        />
-      </SectionCard>
+      <>
+        {hrPanel}
+        <SectionCard title="Your HR cases">
+          <EmptyState
+            title="No cases yet"
+            description="When HR opens a case about you (onboarding, transfer, performance, etc.) or adds you as a participant, it will appear here."
+          />
+        </SectionCard>
+      </>
     );
   }
 
@@ -130,14 +147,17 @@ export function MeCasesTab(): JSX.Element {
   ];
 
   return (
-    <SectionCard title={`Your HR cases (${cases.length})`}>
-      <Table
-        columns={columns}
-        rows={cases}
-        getRowKey={(row) => row.id}
-        variant="compact"
-        caption="Your HR cases"
-      />
-    </SectionCard>
+    <>
+      {hrPanel}
+      <SectionCard title={`Your HR cases (${cases.length})`}>
+        <Table
+          columns={columns}
+          rows={cases}
+          getRowKey={(row) => row.id}
+          variant="compact"
+          caption="Your HR cases"
+        />
+      </SectionCard>
+    </>
   );
 }
