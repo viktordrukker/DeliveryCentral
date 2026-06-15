@@ -99,6 +99,19 @@ const LIFECYCLE_DESCRIPTIONS: Record<PositionFillStatus, string> = {
   RELEASED: 'Position is closed — person rolled off.',
 };
 
+// Position-workflow — button label per transition target. The BE returns the
+// caller's legal transitions (admin = all); we render one button each.
+const TRANSITION_LABEL: Record<PositionFillStatus, string> = {
+  DRAFT: 'Move to Draft',
+  OPEN: 'Open / reopen',
+  PROPOSED: 'Propose candidate',
+  BOOKED: 'Book',
+  ONBOARDING: 'Start onboarding',
+  ASSIGNED: 'Mark assigned',
+  ON_HOLD: 'Put on hold',
+  RELEASED: 'Release',
+};
+
 // W2-04 — match an approval queue item to the current position. The unified
 // queue exposes `meta.positionId` on position-proposal sources; we also fall
 // back to the `href` field which contains `/projects/.../positions/<id>`.
@@ -173,6 +186,9 @@ export function ProjectPositionDetailPage(): JSX.Element {
   // guards single-shot arming so a dismissal isn't undone by a re-render.
   const armedProposeRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  // Position-workflow — a reason-requiring transition awaiting its reason text.
+  const [transitionTarget, setTransitionTarget] = useState<{ to: PositionFillStatus; requiresReason: boolean } | null>(null);
+  const [transitionReason, setTransitionReason] = useState('');
   const [activePersonName, setActivePersonName] = useState<string | null>(null);
   const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
   // W2-04 — lifecycle history + pending approvals for this position.
@@ -310,6 +326,32 @@ export function ProjectPositionDetailPage(): JSX.Element {
       await load();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to advance the position.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Position-workflow — run any legal lifecycle transition (the BE returns the
+  // caller's allowed set; admin = all). Carries the active person/allocation;
+  // `reason` is required for hold/release/reject transitions.
+  async function runTransition(toStatus: PositionFillStatus, reason?: string): Promise<void> {
+    if (!position) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await transitionProjectPositionFill(position.publicId ?? position.id, {
+        toStatus,
+        ...(reason ? { reason } : {}),
+        ...(position.activePersonId ? { personId: position.activePersonId } : {}),
+        ...(position.activeAllocationPercent !== undefined
+          ? { allocationPercent: position.activeAllocationPercent }
+          : {}),
+      });
+      setTransitionTarget(null);
+      setTransitionReason('');
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to change the position status.');
     } finally {
       setBusy(false);
     }
@@ -759,6 +801,55 @@ export function ProjectPositionDetailPage(): JSX.Element {
               top: 'var(--space-4)',
             }}
           >
+            {position.availableTransitions && position.availableTransitions.filter((t) => t.to !== 'PROPOSED').length > 0 ? (
+              <SectionCard title="Lifecycle actions">
+                <div data-testid="position-lifecycle-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                  {position.availableTransitions
+                    .filter((t) => t.to !== 'PROPOSED')
+                    .map((t) => (
+                      <Button
+                        key={t.to}
+                        variant={t.to === 'RELEASED' ? 'secondary' : 'primary'}
+                        size="sm"
+                        type="button"
+                        disabled={busy}
+                        data-testid={`lifecycle-action-${t.to}`}
+                        onClick={() => (t.requiresReason ? setTransitionTarget(t) : void runTransition(t.to))}
+                      >
+                        {TRANSITION_LABEL[t.to]}
+                      </Button>
+                    ))}
+                </div>
+                {transitionTarget ? (
+                  <div style={{ marginTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+                    <label className="field">
+                      <span className="field__label">Reason (required) — {TRANSITION_LABEL[transitionTarget.to]}</span>
+                      <textarea
+                        className="field__control"
+                        rows={3}
+                        value={transitionReason}
+                        onChange={(e) => setTransitionReason(e.target.value)}
+                      />
+                    </label>
+                    <div className="entity-form__actions" style={{ marginTop: 'var(--space-2)' }}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        type="button"
+                        disabled={busy || !transitionReason.trim()}
+                        onClick={() => void runTransition(transitionTarget.to, transitionReason.trim())}
+                      >
+                        {busy ? 'Applying…' : 'Confirm'}
+                      </Button>
+                      <Button variant="secondary" size="sm" type="button" onClick={() => { setTransitionTarget(null); setTransitionReason(''); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </SectionCard>
+            ) : null}
+
             <SectionCard title="Quick actions">
               <div
                 style={{

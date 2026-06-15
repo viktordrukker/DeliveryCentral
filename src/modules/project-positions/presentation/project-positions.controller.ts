@@ -44,6 +44,7 @@ import {
   ListProjectPositionsResponseDto,
   ProjectPositionResponseDto,
 } from '../application/contracts/project-position-responses';
+import { availableFillTransitionsFor } from '../domain/value-objects/position-fill-status';
 import { BulkReassignPositionsService } from '../application/bulk-reassign-positions.service';
 import { PositionCandidatesResponseDto } from '../application/contracts/position-candidate.dto';
 import { PersonSuggestedPositionsResponseDto } from '../application/contracts/person-suggested-position.dto';
@@ -167,9 +168,17 @@ export class ProjectPositionsController {
     // so the FE can flip URLs incrementally. Flip to strict ParsePublicId
     // once all deep-link emitters have shipped.
     @Param('id', ParsePublicIdOrUuid(AggregateType.ProjectPosition)) id: string,
+    @Req() req: RequestWithPrincipal,
   ): Promise<ProjectPositionResponseDto> {
     const position = await this.getService.execute(id);
-    return ProjectPositionResponseDto.from(position);
+    // Position-workflow — expose exactly the lifecycle transitions THIS caller
+    // may perform (admin sees all via break-glass), so the FE renders the legal
+    // action set with no FE/BE drift.
+    const transitions = availableFillTransitionsFor(
+      position.fillStatus.value,
+      req.principal?.roles ?? [],
+    ).map((t) => ({ to: t.to, requiresReason: t.requiresReason === true }));
+    return ProjectPositionResponseDto.from(position, undefined, transitions);
   }
 
   @Get(':id/forensics')

@@ -47,6 +47,9 @@ export interface ProjectPosition {
   summary?: string;
   requiredAllocationPercent: number;
   fillStatus: PositionFillStatus;
+  // Position-workflow — the lifecycle transitions the CURRENT caller may perform
+  // from `fillStatus` (admin sees all). Populated by the detail endpoint only.
+  availableTransitions?: Array<{ to: PositionFillStatus; requiresReason: boolean }>;
   activePersonId?: string;
   // W1-10 — optional displayName projection for the active person. When the
   // BE DTO enriches with a name join, FE callers (TeamVendorsTab, mapper)
