@@ -96,8 +96,11 @@ function buildStub(seed: { positions: SeedPosition[]; people: SeedPerson[] }): P
   const person = {
     findMany: async (_q: unknown) =>
       seed.people.map((p) => ({ ...p, personSkills: [], email: null, employmentStatus: 'ACTIVE' })),
-    findUnique: async (q: { where?: { id?: string } }) => {
-      const found = seed.people.find((p) => p.id === q?.where?.id);
+    findUnique: async (q: { where?: { id?: string; publicId?: string } }) => {
+      // suggestForPerson now resolves publicId-or-uuid (#721); the seed uses
+      // non-uuid ids ('bench1'), so match on either key.
+      const key = q?.where?.id ?? q?.where?.publicId;
+      const found = seed.people.find((p) => p.id === key);
       return found ? { ...found, personSkills: [] } : null;
     },
   };

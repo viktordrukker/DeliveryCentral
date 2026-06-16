@@ -23,6 +23,11 @@ const COST_RATE_VISIBLE_ROLES = new Set([
   'admin',
 ]);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function looksLikeUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 /**
  * FE-#262 — Person profile aggregator.
  *
@@ -43,8 +48,12 @@ export class PersonProfileService {
     personId: string,
     caller: CallerContext,
   ): Promise<PersonProfileDto> {
+    // `personId` is the controller `:id` param, which in v2 is a publicId
+    // (usr_…) but may still be a raw uuid during the transition window. The
+    // ParsePublicIdOrUuid pipe validates the shape but does NOT resolve — so we
+    // resolve here, then key every downstream read off the canonical uuid.
     const person = await this.prisma.person.findUnique({
-      where: { id: personId },
+      where: looksLikeUuid(personId) ? { id: personId } : { publicId: personId },
       select: {
         id: true,
         displayName: true,
@@ -60,20 +69,21 @@ export class PersonProfileService {
       },
     });
     if (!person) throw new NotFoundException(`Person ${personId} not found.`);
+    const resolvedId = person.id;
 
     const [assignments, costRateRow, timesheet, leaveBalance, managerChain, skills, pools] =
       await Promise.all([
-        this.loadAssignments(personId),
-        this.loadCostRate(personId),
-        this.loadTimesheetSummary(personId),
-        this.loadLeaveBalance(personId),
-        this.loadManagerChain(personId),
-        this.loadSkills(personId),
-        this.loadPools(personId),
+        this.loadAssignments(resolvedId),
+        this.loadCostRate(resolvedId),
+        this.loadTimesheetSummary(resolvedId),
+        this.loadLeaveBalance(resolvedId),
+        this.loadManagerChain(resolvedId),
+        this.loadSkills(resolvedId),
+        this.loadPools(resolvedId),
       ]);
 
     const canSeeCost =
-      caller.callerPersonId === personId ||
+      caller.callerPersonId === resolvedId ||
       caller.callerRoles.some((r) => COST_RATE_VISIBLE_ROLES.has(r));
 
     const payload: PersonProfileDto = {

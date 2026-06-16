@@ -203,6 +203,26 @@ describe('SuggestFillsService.suggestForPerson', () => {
     expect(res.candidates).toEqual([]);
   });
 
+  it('resolves a publicId via { publicId } and a uuid via { id } (no UUID-column crash)', async () => {
+    // Regression: suggestForPerson 500'd on v2 when given a `usr_…` publicId
+    // because it queried `where: { id: <publicId> }` against a UUID column.
+    const calls: Array<{ id?: string; publicId?: string }> = [];
+    const prisma = {
+      person: {
+        findUnique: async (q: { where: { id?: string; publicId?: string } }) => {
+          calls.push(q.where);
+          return { id: 'bbbb0001-0000-0000-0000-000000000003', role: 'Engineer', personSkills: [] };
+        },
+      },
+      projectPosition: { findMany: async () => [] },
+    } as unknown as PrismaService;
+    const svc = new SuggestFillsService(prisma);
+    await svc.suggestForPerson('usr_a444cfe3ab85');
+    await svc.suggestForPerson('bbbb0001-0000-0000-0000-000000000003');
+    expect(calls[0]).toEqual({ publicId: 'usr_a444cfe3ab85' });
+    expect(calls[1]).toEqual({ id: 'bbbb0001-0000-0000-0000-000000000003' });
+  });
+
   it('uses identical scoring to suggestForPosition for the same (person, position) pair', async () => {
     // Same skills + roles on both sides; score must match exactly.
     const personId = 'ada';

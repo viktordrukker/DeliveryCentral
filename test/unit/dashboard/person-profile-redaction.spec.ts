@@ -4,8 +4,8 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
 function buildStub(personId: string, costRate: number | null): PrismaService {
   const empty = async () => [];
   const person = {
-    findUnique: async (q: { where: { id: string } }) =>
-      q.where.id === personId
+    findUnique: async (q: { where: { id?: string; publicId?: string } }) =>
+      (q.where.id ?? q.where.publicId) === personId
         ? {
             id: personId,
             displayName: 'Subject',
