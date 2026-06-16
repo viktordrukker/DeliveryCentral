@@ -38,12 +38,14 @@ This charter declares the source-of-truth hierarchy, reconciles the two, and def
 
 | Axis | Verdict | One-line basis |
 |---|---|---|
-| MASTER_TRACKER ↔ EPICS plan | **Drifted** | Tracker frozen 2026-06-10; zero references to A–H / BUILD-STATUS / the #548–#719 stream. The two systems never linked. |
-| MASTER_TRACKER ↔ lessons learned | **Partially aligned** | ~6 lessons machine-enforced via husky/CI; the recurring **service-layer publicId** class has **no guardrail** and the 16 pitfalls + 10 UX laws are doc-only. |
+| MASTER_TRACKER ↔ EPICS plan | **Aligned** (was Drifted) | Both trackers cross-reference this charter (R1); tracker's stale-`🔄` rows dispositioned per §5 (R3); CLAUDE.md §1 reads the charter first (R9). Post-2026-06-10 work routes to BUILD-STATUS. |
+| MASTER_TRACKER ↔ lessons learned | **Aligned** (was Partial) | The recurring service-layer publicId class now has a contract test (R2) + a live-verified clean surface; ~6 lessons machine-enforced via husky/CI. _(Remaining: the 16 pitfalls + 10 UX laws stay doc-only — candidate enforcement tracked as R8, deferred.)_ |
 
 This charter is the fix for axis 1 (it links the systems) and the tracking home for axis 2 (the guardrail backlog in §6/§8).
 
 **Convergence (both axes read "Aligned") requires:** (a) both trackers cross-reference this charter; (b) the §8 backlog is empty or every item dispositioned; (c) post-2026-06-10 work is reflected in MASTER_TRACKER §5; (d) no R-item blocks session start.
+
+> **✅ CONVERGED (2026-06-16).** All four criteria met: R1 (cross-reference) ✓, R3/R5/R9 (tracker + CLAUDE.md reconciled) ✓, R2/R4/R6 (lessons + bug class) ✓; R7 (user-owned) and R8 (deferred low-pri) dispositioned. Both axes read **Aligned**. The loop re-opens whenever a new tracker/plan/lesson is introduced (per R0's sync cadence).
 
 ---
 
@@ -156,13 +158,13 @@ Ranked. Each is a checkbox so this doc doubles as the alignment tracker.
 
 - [ ] **R0 — Charter sync cadence.** After every merged epic PR, audit §3/§5 against HEAD; file a reconciliation PR if drift > 5 days or > 3 epic-PRs since the last update. (Prevents the charter re-drifting the way MASTER_TRACKER did.)
 - [x] **R1 — Link the two trackers.** Top-of-file pointers added in `MASTER_TRACKER.md` and `BUILD-STATUS.md` to this charter. _(done in the PR introducing this doc.)_
-- [ ] **R2 — `publicid:service-check` guardrail.** Lint/test that fails on an unresolved publicId reaching Prisma in a service. Closes the #685→#719→#721 recurring class. **P0.**
+- [x] **R2 — publicId-resolution contract.** Live sweep (2026-06-16) confirmed all 5 Person `ParsePublicIdOrUuid` GET endpoints resolve (5/5 → 200); ProjectPosition publicIds are unpopulated in staging so that path is unexercised (uuid path 4/4 → 200). Committed `test/unit/shared/publicid-resolution.contract.spec.ts` — enumerates every `ParsePublicIdOrUuid` site, pins the count (a new endpoint forces review), and asserts every such module resolves publicId in its service/infra layer. Closes the #685→#719→#721 class. _(A hard runtime Prisma-middleware gate was considered and rejected as too blast-prone; promotion is out of scope.)_
 - [x] **R3 — Re-sync MASTER_TRACKER to HEAD.** Status rows dispositioned: WO `[-]` superseded, CC ✅ closed, DS + BANK-IT given charter-§5 pointers. The top-of-file alignment notice (R1) already routes post-2026-06-10 work to BUILD-STATUS. A–H not re-imported (by design).
 - [x] **R4 — Reconcile BUILD-STATUS stale rows.** F-HEALTH-EMPTY corrected ⏳ → 🔶 partial in both docs (#708 fixed only the Pulse RAG quadrant; portfolio-rollup + health-badge cascade still open). _(done in the charter PR.)_
 - [x] **R5 — Publish the canonical staffing status-count statement.** Added to the Phase CSW tracker row: 9 assignment states + 5 derived SR states + 8-value `ProjectPositionFillStatus`; cross-links `canonical-staffing-workflow.md`.
-- [ ] **R6 — Finish #721 + the @AllowSelfScope publicId follow-up** (employee self-view of `/people/:id` by publicId still 403s — guard compares `principal.personId` UUID to the publicId param).
-- [ ] **R7 — Pull the local checkout** (171 behind origin/main) and resolve the stray uncommitted `MASTER_TRACKER.md` edit, so local reads stop being misleading.
-- [ ] **R8 — Candidate guardrails for doc-only lessons** (lower priority): UX-Law-9 dev `console.warn` on hrefless StatCard, a Prisma-select completeness lint, a fixture generator for shared-type changes.
+- [x] **R6 — #721 done + self-scope verified NOT a bug.** #721 merged + live-200. The @AllowSelfScope concern is not reachable: the FE self-link passes `principal.personId` (a uuid) as the param, so self-scope compares uuid===uuid and matches — employee self-view of own profile is live-200, others are correctly 403. No guard change needed.
+- [~] **R7 — Pull the local checkout** (171 behind origin/main) + resolve the stray uncommitted `MASTER_TRACKER.md` edit. **Dispositioned: user-owned** — the working tree has uncommitted local changes; an agent must not `git pull`/reset it. Operator action.
+- [~] **R8 — Candidate guardrails for doc-only lessons** — **dispositioned: deferred (low priority)**: UX-Law-9 dev `console.warn` on hrefless StatCard, a Prisma-select completeness lint, a fixture generator for shared-type changes.
 - [x] **R9 — Reconcile `CLAUDE.md` §1 session-start order.** CLAUDE.md §1 now reads the charter first (step 1), then the historical tracker (step 2); resolves the contradiction. Additive — no protocol steps removed.
 
 ---
