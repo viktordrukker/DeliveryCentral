@@ -1,5 +1,7 @@
 # DeliveryCentral — Master Implementation Tracker
 
+> **⚑ Alignment notice (2026-06-16):** This tracker is the **historical** phase backlog (Phases 1–21 / A–G / DM / DS / V2 / BANK-IT) and is **frozen as of the 2026-06-10 update below** — it does **not** track the post-2026-06-10 work. Current feature/integration work (epics **A–H**) is tracked in [`docs/product-discovery/BUILD-STATUS.md`](../product-discovery/BUILD-STATUS.md). The source-of-truth hierarchy, the supersession dispositions for the still-`🔄`-marked phases here, and the development loop are defined in [`docs/planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md`](ALIGNMENT-AND-DEVELOPMENT-LOOP.md) — **read that first.**
+
 **Version:** 1.2  
 **Created:** 2026-04-05  
 **Updated:** 2026-06-10 (SoT PR 18 follow-up sweep — V2-H.15 + V2-H.16 marked [x] per SoT PR 17a + 17b FE deletion; jtbd-matrix re-pointed off legacy `POST /api/staffing-requests` to canonical `POST /api/project-positions`; MANUAL_TEST_PLAN §3.2 + §3.3 struck through with replacement pointers. Prior 2026-06-09 sweep: V2-H.13/V2-H.14 marked [x] per LEAN-P1/P2/P3 completion; account references switched to @itco.local; jtbd-matrix criticalJtbds count corrected.)  

@@ -1,5 +1,7 @@
 # Build Status — epic-build loop (2026-06-13/14)
 
+> **Alignment:** governed by [`docs/planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md`](../planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md) — the charter that reconciles this live epic loop with the historical `MASTER_TRACKER.md`, the guardrail ledger, and the development-loop protocol.
+
 Single source of truth for where the depth-first epic build stands. Cadence: per-epic flag-gated PRs → merge to `main` → deploy to **v2-staging** (`deliverit-test-v2`) → never prod. Decisions: depth-first per epic; external integrations count as done when flag-gated + contract-tested. Inventory = `docs/qa/action-inventory.json` (branch `qa/v2-full-surface-2026-06-13`).
 
 ## ✅ Merged to `main` this session
@@ -37,7 +39,7 @@ Single source of truth for where the depth-first epic build stands. Cadence: per
 | **G** Budget/param import + EVM cron | ⏳ not started (depends on A) | XLSX import via SheetJS; persist vendorBudget/currencyCode (UpsertProjectBudgetDto+repo); EVM auto-refresh cron. |
 | **H** Custom Integration Connector Builder | ⏳ not started (depends on D/E/F) | XL, last; **security-gate**: SafeURL + admin allowlist + field-allowlist + credential vault before flag promotion. |
 | **SC-7** UUID→name captions | 🔶 keystone done (#706) + Create-Case (#705) | Backend enrichment now populates positions-list names → cmdk/Staffing Desk/Create-Case fixed at source. Audit remaining ~90 sites for other entity types (people/projects/cases) needing the same enrichment pattern. |
-| **F-HEALTH-EMPTY** empty-project metrics → N/A | ⏳ not started (high-blast) | `radiator-scorers.ts` absent-signal scorers return non-null GREEN; make absent → null so `quadrantScore` yields N/A. Cascades into portfolio rollup + health badge + FE render + spec suite → dedicated careful PR. |
+| **F-HEALTH-EMPTY** empty-project metrics → N/A | 🔶 partial (#708 — Pulse RAG quadrant) | #708 made the Pulse-tab RAG quadrant return N/A instead of a fabricated "Healthy 88" (`project-rag.service.ts` + `PulseTab.tsx`). **Remaining:** propagate absent→null through the portfolio rollup + health-badge surfaces (the original high-blast cascade). |
 | **E10** chunk-resilience | ✅ merged (#704) | — |
 
 ## Parallel-QA findings (user, during the loop) — disposition
