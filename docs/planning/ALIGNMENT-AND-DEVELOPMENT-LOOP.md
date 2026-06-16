@@ -43,6 +43,8 @@ This charter declares the source-of-truth hierarchy, reconciles the two, and def
 
 This charter is the fix for axis 1 (it links the systems) and the tracking home for axis 2 (the guardrail backlog in §6/§8).
 
+**Convergence (both axes read "Aligned") requires:** (a) both trackers cross-reference this charter; (b) the §8 backlog is empty or every item dispositioned; (c) post-2026-06-10 work is reflected in MASTER_TRACKER §5; (d) no R-item blocks session start.
+
 ---
 
 ## 3. Live epic ledger — A–H (grounded in PR history + BUILD-STATUS)
@@ -52,15 +54,15 @@ This charter is the fix for axis 1 (it links the systems) and the tracking home 
 | **A** Budget Edit & EVM Reconnect | P0 | ✅ merged | #701 |
 | **B** Client Management UI | P0 | ✅ merged | #700 (+ actor-audit) |
 | **C** Planning Toolbar + Workspace Density | P1 | 📐 spec'd (design-led) | `E7-planning-gantt-density.md`; backlog `EPIC-C-*`. Next: Claude Design prompt → C1 PlanToolbar / C2 Gantt-headline |
-| **D** Real Directory Sync (M365 Graph + LDAP + OIDC) | P1 | 🔶 partial | D1 ✅ (#703 OIDC governance); D2 verified honest. **Next: D3** concrete M365 Graph adapter, **D4** wire LDAP adapter + admin Run-sync/Test-connection |
+| **D** Real Directory Sync (M365 Graph + LDAP + OIDC) | P1 | 🔶 partial | D1 ✅ (#703 OIDC governance). **D2 NOT started** — BUILD-STATUS claims "verified honest" but `m365-directory-status.service.ts` hardcodes `status:'configured'` + `supportsDirectorySync/ManagerSync:true` with no credential check; `test-connection` still uses the in-memory stub. **Next: D2** honest M365 status (gate on real creds) → **D3** Graph adapter → **D4** wire LDAP adapter + admin Run-sync/Test-connection |
 | **E** Jira PPM + JSM Case Sync | P1 (dep D) | ⏳ not started | extends D's reconciliation engine |
 | **F** 1C (1С:Предприятие) HRIS Adapter | P1 (dep D) | ⏳ not started | dominant CIS HRIS; rides D's engine |
-| **G** Budget/Param Import + EVM cron | P2 (dep A) | ⏳ not started | XLSX import via SheetJS through A's governed write path; batch/suppress approval flood |
+| **G** Budget/Param Import + EVM cron | P2 (dep A) | 🔶 partial | G-slice #709 merged (vendorBudget + currencyCode persistence via the governed budget upsert). **Next:** XLSX import via SheetJS through A's write path; EVM cron (batch/suppress the approval flood) |
 | **H** Custom Integration Connector Builder | P3 (dep D/E/F) | ⏳ not started | XL; **security-gate** SafeURL + allowlists + credential vault before flag promotion |
 
 **Cross-cutting (tracked in BUILD-STATUS):**
-- **SC-7** UUID→name captions — 🔶 keystone done (#706 positions-list enrichment) + Create-Case (#705); **~90 sites remain** (people/projects/cases) — same DTO-enrichment pattern.
-- **F-HEALTH-EMPTY** empty-project RAG → N/A — ✅ shipped #708 (was: empty DRAFT projects fabricated "Healthy"). _BUILD-STATUS still lists it ⏳ — stale; reconcile._
+- **SC-7** UUID→name captions — 🔶 ongoing sprint. Keystone #706 + Create-Case #705, then **#710–#718** (participant / requester / subject / org-unit / related-position-by-role / comment-author names; budget + leave queues; `/me` open-cases). Same DTO-enrichment pattern. **~70 sites remain** (was ~90 at the 2026-06-13 BUILD-STATUS snapshot) — track as a running sprint, not a single keystone.
+- **F-HEALTH-EMPTY** empty-project RAG → N/A — 🔶 **partial** (#708): the **Pulse-tab RAG quadrant** now shows N/A instead of a fabricated "Healthy 88" (touched `project-rag.service.ts` + `PulseTab.tsx`). **Remaining:** propagate the absent→null signal through the **portfolio rollup + health-badge** surfaces (the original "high-blast cascade"). BUILD-STATUS row corrected from ⏳ to 🔶.
 - **E10** chunk-load resilience — ✅ #704.
 
 **Build sequence:** Wave 1 `[A][B][C]` → Wave 2 `[D]` (identity engine, gates E/F/H) → Wave 3 `[E][F]` → Wave 4 `[G]` → Wave 5 `[H]`.
@@ -136,6 +138,10 @@ A repeatable cycle. Each pass advances one epic/slice and keeps the alignment ho
 7. VERIFY   → probe the EXACT endpoint the PAGE calls, with a real role token, on
               deliverit-test-v2. 200 + correct body, or pull the stack trace from
               `docker logs dc-v2-staging-backend-1`. Never claim "works" from an adjacent probe.
+7.5 ALIGN   → if the work surfaced a discrepancy across the source-of-truth hierarchy (§§1–2),
+              a stale status, or a recurring bug class, file/append an R-item in §8 BEFORE merge.
+              Don't let the same class ship twice without a guardrail item queued (the
+              #719-controller → #721-service split is the cautionary example).
 8. RECORD   → tick BUILD-STATUS.md; if a new lesson emerged, add it to §6 and (if enforceable)
               file a guardrail item in §8. Update this charter's verdict if alignment changed.
 ```
@@ -148,14 +154,16 @@ A repeatable cycle. Each pass advances one epic/slice and keeps the alignment ho
 
 Ranked. Each is a checkbox so this doc doubles as the alignment tracker.
 
+- [ ] **R0 — Charter sync cadence.** After every merged epic PR, audit §3/§5 against HEAD; file a reconciliation PR if drift > 5 days or > 3 epic-PRs since the last update. (Prevents the charter re-drifting the way MASTER_TRACKER did.)
 - [x] **R1 — Link the two trackers.** Top-of-file pointers added in `MASTER_TRACKER.md` and `BUILD-STATUS.md` to this charter. _(done in the PR introducing this doc.)_
 - [ ] **R2 — `publicid:service-check` guardrail.** Lint/test that fails on an unresolved publicId reaching Prisma in a service. Closes the #685→#719→#721 recurring class. **P0.**
 - [ ] **R3 — Re-sync MASTER_TRACKER to HEAD.** Apply the §5 supersession dispositions (mark WO `[-]`, CC ✅, fold DS); add a one-line "post-2026-06-10 work tracked in BUILD-STATUS" note. Do **not** re-import A–H into MASTER_TRACKER.
-- [ ] **R4 — Reconcile BUILD-STATUS stale rows.** F-HEALTH-EMPTY is ✅ #708 but listed ⏳; correct it.
+- [x] **R4 — Reconcile BUILD-STATUS stale rows.** F-HEALTH-EMPTY corrected ⏳ → 🔶 partial in both docs (#708 fixed only the Pulse RAG quadrant; portfolio-rollup + health-badge cascade still open). _(done in the charter PR.)_
 - [ ] **R5 — Publish the canonical staffing status-count statement** (§5) and cross-link `canonical-staffing-workflow.md`.
 - [ ] **R6 — Finish #721 + the @AllowSelfScope publicId follow-up** (employee self-view of `/people/:id` by publicId still 403s — guard compares `principal.personId` UUID to the publicId param).
 - [ ] **R7 — Pull the local checkout** (171 behind origin/main) and resolve the stray uncommitted `MASTER_TRACKER.md` edit, so local reads stop being misleading.
 - [ ] **R8 — Candidate guardrails for doc-only lessons** (lower priority): UX-Law-9 dev `console.warn` on hrefless StatCard, a Prisma-select completeness lint, a fixture generator for shared-type changes.
+- [ ] **R9 — Reconcile `CLAUDE.md` §1 session-start order.** CLAUDE.md still routes sessions to MASTER_TRACKER first, contradicting this charter's "read this first." Update CLAUDE.md §1 step 1 to read the charter first (source-of-truth hierarchy + live epic status + reconciliation backlog), then defer to the doc it routes to.
 
 ---
 
