@@ -157,13 +157,13 @@ Ranked. Each is a checkbox so this doc doubles as the alignment tracker.
 - [ ] **R0 — Charter sync cadence.** After every merged epic PR, audit §3/§5 against HEAD; file a reconciliation PR if drift > 5 days or > 3 epic-PRs since the last update. (Prevents the charter re-drifting the way MASTER_TRACKER did.)
 - [x] **R1 — Link the two trackers.** Top-of-file pointers added in `MASTER_TRACKER.md` and `BUILD-STATUS.md` to this charter. _(done in the PR introducing this doc.)_
 - [ ] **R2 — `publicid:service-check` guardrail.** Lint/test that fails on an unresolved publicId reaching Prisma in a service. Closes the #685→#719→#721 recurring class. **P0.**
-- [ ] **R3 — Re-sync MASTER_TRACKER to HEAD.** Apply the §5 supersession dispositions (mark WO `[-]`, CC ✅, fold DS); add a one-line "post-2026-06-10 work tracked in BUILD-STATUS" note. Do **not** re-import A–H into MASTER_TRACKER.
+- [x] **R3 — Re-sync MASTER_TRACKER to HEAD.** Status rows dispositioned: WO `[-]` superseded, CC ✅ closed, DS + BANK-IT given charter-§5 pointers. The top-of-file alignment notice (R1) already routes post-2026-06-10 work to BUILD-STATUS. A–H not re-imported (by design).
 - [x] **R4 — Reconcile BUILD-STATUS stale rows.** F-HEALTH-EMPTY corrected ⏳ → 🔶 partial in both docs (#708 fixed only the Pulse RAG quadrant; portfolio-rollup + health-badge cascade still open). _(done in the charter PR.)_
-- [ ] **R5 — Publish the canonical staffing status-count statement** (§5) and cross-link `canonical-staffing-workflow.md`.
+- [x] **R5 — Publish the canonical staffing status-count statement.** Added to the Phase CSW tracker row: 9 assignment states + 5 derived SR states + 8-value `ProjectPositionFillStatus`; cross-links `canonical-staffing-workflow.md`.
 - [ ] **R6 — Finish #721 + the @AllowSelfScope publicId follow-up** (employee self-view of `/people/:id` by publicId still 403s — guard compares `principal.personId` UUID to the publicId param).
 - [ ] **R7 — Pull the local checkout** (171 behind origin/main) and resolve the stray uncommitted `MASTER_TRACKER.md` edit, so local reads stop being misleading.
 - [ ] **R8 — Candidate guardrails for doc-only lessons** (lower priority): UX-Law-9 dev `console.warn` on hrefless StatCard, a Prisma-select completeness lint, a fixture generator for shared-type changes.
-- [ ] **R9 — Reconcile `CLAUDE.md` §1 session-start order.** CLAUDE.md still routes sessions to MASTER_TRACKER first, contradicting this charter's "read this first." Update CLAUDE.md §1 step 1 to read the charter first (source-of-truth hierarchy + live epic status + reconciliation backlog), then defer to the doc it routes to.
+- [x] **R9 — Reconcile `CLAUDE.md` §1 session-start order.** CLAUDE.md §1 now reads the charter first (step 1), then the historical tracker (step 2); resolves the contradiction. Additive — no protocol steps removed.
 
 ---
 
