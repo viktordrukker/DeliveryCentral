@@ -1,5 +1,7 @@
 # Build Status — epic-build loop (2026-06-13/14)
 
+> **Alignment:** governed by [`docs/planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md`](../planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md) — the charter that reconciles this live epic loop with the historical `MASTER_TRACKER.md`, the guardrail ledger, and the development-loop protocol.
+
 Single source of truth for where the depth-first epic build stands. Cadence: per-epic flag-gated PRs → merge to `main` → deploy to **v2-staging** (`deliverit-test-v2`) → never prod. Decisions: depth-first per epic; external integrations count as done when flag-gated + contract-tested. Inventory = `docs/qa/action-inventory.json` (branch `qa/v2-full-surface-2026-06-13`).
 
 ## ✅ Merged to `main` this session
