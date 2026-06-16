@@ -8,11 +8,12 @@ These rules apply to every session in this repository. Read them before doing an
 
 Every session must begin with these steps, in order:
 
-1. **Read the tracker:** `docs/planning/MASTER_TRACKER.md` — find the current phase and the first unchecked `[ ]` item.
-2. **Read current state:** `docs/planning/current-state.md` — understand what is implemented vs outstanding.
-3. **Read memory index:** check `/memory/MEMORY.md` for any session-specific notes from prior work.
-4. **Identify the next task** — start from the first unchecked item in the lowest-numbered active phase. Do not skip ahead to a later phase unless all prior-phase items are checked.
-5. **State the plan** — tell the user what you are about to implement (one sentence) before writing any code.
+1. **Read the alignment charter first:** `docs/planning/ALIGNMENT-AND-DEVELOPMENT-LOOP.md` — the source-of-truth hierarchy, current alignment verdict, live epic status (it routes you to `docs/product-discovery/BUILD-STATUS.md` for current epic work), and the reconciliation backlog. **Current feature/integration work lives there, not in MASTER_TRACKER.**
+2. **Read the historical tracker:** `docs/planning/MASTER_TRACKER.md` — phase context for shipped work (frozen ~2026-06-10; see the charter for what supersedes its still-`🔄` rows).
+3. **Read current state:** `docs/planning/current-state.md` — understand what is implemented vs outstanding.
+4. **Read memory index:** check `/memory/MEMORY.md` for any session-specific notes from prior work.
+5. **Identify the next task** — from the charter's live status / reconciliation backlog (or the lowest-numbered active phase if doing historical-phase work).
+6. **State the plan** — tell the user what you are about to implement (one sentence) before writing any code.
 
 ---
 
