@@ -213,8 +213,6 @@ const dm = pushPerson({
   hiredAt: monthsAgo(32), terminatedAt: null, managerId: director.id,
 });
 
-const pms = [pm1, pm2];
-
 // --- ICs (17). One bench star, one over-allocated, the rest a healthy mix. ---
 // Generated explicitly so each one is narratable. managerId set to dm.
 
@@ -1203,10 +1201,8 @@ export function generateDemoTimesheets(): {
   // completed week so the approval queue has exactly 2 pending submissions.
   const submitterIds = new Set<string>([employee.id, ics[3].id]);
 
-  let personIdx = -1;
   for (const person of people) {
     if (!assignedNow.has(person.id)) continue;
-    personIdx += 1;
     const asgns = assignedNow.get(person.id)!;
 
     for (let w = 7; w >= 0; w--) {
