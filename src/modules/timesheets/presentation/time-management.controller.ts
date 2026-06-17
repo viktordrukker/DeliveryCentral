@@ -162,10 +162,10 @@ export class TimeManagementController {
   @ApiOperation({ summary: 'Team absence calendar for a month' })
   @ApiQuery({ name: 'month', required: true, type: String })
   @ApiOkResponse({ description: 'Per-person calendar of leave and holiday days for the requested month.' })
-  public async getTeamCalendar(@Query('month') monthStr: string): Promise<TeamCalendarPerson[]> {
-    const [yearStr, monthNumStr] = monthStr.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthNumStr, 10);
+  public async getTeamCalendar(@Query('month') monthStr?: string): Promise<TeamCalendarPerson[]> {
+    const now = new Date();
+    const year = monthStr ? parseInt(monthStr.split('-')[0], 10) : now.getUTCFullYear();
+    const month = monthStr ? parseInt(monthStr.split('-')[1], 10) : now.getUTCMonth() + 1;
     const monthStart = new Date(Date.UTC(year, month - 1, 1));
     const monthEnd = new Date(Date.UTC(year, month, 0));
 
@@ -205,10 +205,10 @@ export class TimeManagementController {
   @ApiOperation({ summary: 'Team time compliance status for a month' })
   @ApiQuery({ name: 'month', required: true, type: String })
   @ApiOkResponse({ description: 'Per-person compliance status, gap days, and overtime totals.' })
-  public async getCompliance(@Query('month') monthStr: string): Promise<ComplianceRow[]> {
-    const [yearStr, monthNumStr] = monthStr.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthNumStr, 10);
+  public async getCompliance(@Query('month') monthStr?: string): Promise<ComplianceRow[]> {
+    const now = new Date();
+    const year = monthStr ? parseInt(monthStr.split('-')[0], 10) : now.getUTCFullYear();
+    const month = monthStr ? parseInt(monthStr.split('-')[1], 10) : now.getUTCMonth() + 1;
     const monthStart = new Date(Date.UTC(year, month - 1, 1));
     const monthEnd = new Date(Date.UTC(year, month, 0));
 

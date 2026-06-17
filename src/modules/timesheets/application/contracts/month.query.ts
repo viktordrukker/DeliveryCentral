@@ -19,7 +19,13 @@ export class MonthQueryDto {
   public personId?: string;
 }
 
-export function parseMonthQuery(month: string): { year: number; month: number } {
+export function parseMonthQuery(month: string | undefined): { year: number; month: number } {
+  // A missing `month` query param must not 500 the endpoint — default to the
+  // current month (matches the time-management queue endpoint's behaviour).
+  if (!month) {
+    const now = new Date();
+    return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
+  }
   const match = month.match(YEAR_MONTH_PATTERN);
   if (!match) {
     throw new Error(`Invalid month format: ${month}`);
