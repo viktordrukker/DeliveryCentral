@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { BENCH_PAGE_ROLES, PROJECT_CREATE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { useTitleBarActions } from '@/app/title-bar-context';
 import { DataView, type Column } from '@/components/ds';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -68,6 +68,10 @@ export function ProjectsPage(): JSX.Element {
   const dsRefreshEnabled = isFeatureEnabled('dsRefresh');
 
   const canCreateProject = hasAnyRole(principal?.roles, PROJECT_CREATE_ROLES);
+  // Project-health batch is gated to STAFFING_ROLES server-side (mirrored by
+  // BENCH_PAGE_ROLES); only fetch for those roles so the directory list (which
+  // every role may view) doesn't fire a guaranteed 403 for lower roles.
+  const canSeeHealth = hasAnyRole(principal?.roles, BENCH_PAGE_ROLES);
   const { setActions } = useTitleBarActions();
 
   // Title bar actions — stabilized with useMemo (20d-04)
@@ -163,7 +167,7 @@ export function ProjectsPage(): JSX.Element {
   // Phase 4 walker measured 30+ separate /:id/health calls on a default
   // /projects load; one batch call replaces the whole burst.
   useEffect(() => {
-    if (state.visibleItems.length === 0) return;
+    if (state.visibleItems.length === 0 || !canSeeHealth) return;
     let active = true;
     void fetchProjectHealthBatch(state.visibleItems.map((item) => item.id)).then((map) => {
       if (!active) return;
@@ -175,7 +179,7 @@ export function ProjectsPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [state.visibleItems]);
+  }, [state.visibleItems, canSeeHealth]);
 
   const filteredItems = state.visibleItems.filter((item) => {
     if (filters.engagement && item.engagementModel !== filters.engagement) return false;
