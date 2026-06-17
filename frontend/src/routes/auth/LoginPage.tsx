@@ -32,6 +32,7 @@ const DEMO_ACCOUNTS: ReadonlyArray<{ label: string; email: string; password: str
   { label: 'Project Manager', email: 'priya.shah@demo.local', password: 'ProjectMgrPass1!', blurb: 'Project delivery & demand' },
   { label: 'Delivery Manager', email: 'dana.whitfield@demo.local', password: 'DeliveryMgrPass1!', blurb: 'Conflicts & escalations' },
   { label: 'Employee', email: 'ethan.brooks@demo.local', password: 'EmployeePass1!', blurb: 'My time & assignments' },
+  { label: 'Super Admin', email: 'admin@demo.local', password: 'DemoAdmin2026!', blurb: 'Full access — config & governance' },
 ];
 
 export function LoginPage(): JSX.Element {
