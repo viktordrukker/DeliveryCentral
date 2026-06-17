@@ -213,6 +213,16 @@ const dm = pushPerson({
   hiredAt: monthsAgo(32), terminatedAt: null, managerId: director.id,
 });
 
+// Demo Super Admin (maps to LocalAccount role `admin` — full platform access).
+// A dedicated identity so the login "Super Admin" chip is clearly the admin,
+// not a borrowed engineer. Not staffed on any project.
+const demoAdmin = pushPerson({
+  givenName: 'Demo', familyName: 'Admin',
+  primaryEmail: 'admin@demo.local', grade: 'G13', role: 'IT Administrator',
+  skillsets: ['LEADERSHIP', 'STRATEGY'], employmentStatus: 'ACTIVE',
+  hiredAt: monthsAgo(50), terminatedAt: null, managerId: ceo.id,
+});
+
 // --- ICs (17). One bench star, one over-allocated, the rest a healthy mix. ---
 // Generated explicitly so each one is narratable. managerId set to dm.
 
@@ -1502,6 +1512,7 @@ export const demoAccounts = [
   { email: 'priya.shah@demo.local',       password: 'ProjectMgrPass1!',  displayName: 'Priya Shah',       roles: ['project_manager'],   personId: pm1.id },
   { email: 'dana.whitfield@demo.local',   password: 'DeliveryMgrPass1!', displayName: 'Dana Whitfield',   roles: ['delivery_manager'],  personId: dm.id },
   { email: 'ethan.brooks@demo.local',     password: 'EmployeePass1!',    displayName: 'Ethan Brooks',     roles: ['employee'],          personId: employee.id },
+  { email: 'admin@demo.local',            password: 'DemoAdmin2026!',    displayName: 'Demo Admin',       roles: ['admin'],             personId: demoAdmin.id },
 ];
 
 export const demoDatasetSummary = {

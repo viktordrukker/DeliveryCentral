@@ -43,7 +43,13 @@ on:
         type: choice
         options: ['false', 'true']
       frontend_demo_mode:
-        description: 'Render the one-click role selector on the login page (demo stand).'
+        description: 'Read-only demo mode: banner + disables all write buttons.'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+      frontend_demo_login:
+        description: 'Render the one-click role/admin selector on the login page.'
         required: false
         default: 'true'
         type: choice
@@ -109,6 +115,7 @@ jobs:
             VITE_FORCE_FLAGS_ON=${{ inputs.frontend_force_flags }}
             VITE_FORCE_ALL_FLAGS_ON=${{ inputs.frontend_force_all }}
             VITE_DEMO_MODE=${{ inputs.frontend_demo_mode }}
+            VITE_DEMO_LOGIN=${{ inputs.frontend_demo_login }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

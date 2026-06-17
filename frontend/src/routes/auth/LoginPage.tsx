@@ -32,6 +32,7 @@ const DEMO_ACCOUNTS: ReadonlyArray<{ label: string; email: string; password: str
   { label: 'Project Manager', email: 'priya.shah@demo.local', password: 'ProjectMgrPass1!', blurb: 'Project delivery & demand' },
   { label: 'Delivery Manager', email: 'dana.whitfield@demo.local', password: 'DeliveryMgrPass1!', blurb: 'Conflicts & escalations' },
   { label: 'Employee', email: 'ethan.brooks@demo.local', password: 'EmployeePass1!', blurb: 'My time & assignments' },
+  { label: 'Super Admin', email: 'admin@demo.local', password: 'DemoAdmin2026!', blurb: 'Full access — config & governance' },
 ];
 
 export function LoginPage(): JSX.Element {
@@ -39,7 +40,11 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const demoMode = (import.meta.env.VITE_DEMO_MODE as string | undefined) === 'true';
+  // VITE_DEMO_LOGIN gates ONLY the login role selector. It is intentionally
+  // separate from VITE_DEMO_MODE (which puts the whole app in read-only demo
+  // mode) so a demo stand can show the one-click role picker while still
+  // allowing live write workflows.
+  const demoMode = (import.meta.env.VITE_DEMO_LOGIN as string | undefined) === 'true';
 
   const [providers, setProviders] = useState<Providers>({ local: true, ldap: false, azureAd: false });
   const [email, setEmail] = useState('');

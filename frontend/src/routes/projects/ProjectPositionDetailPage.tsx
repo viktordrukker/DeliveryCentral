@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
 import { useDrilldown } from '@/app/drilldown-context';
@@ -173,6 +173,8 @@ export function ProjectPositionDetailPage(): JSX.Element {
   // guards single-shot arming so a dismissal isn't undone by a re-render.
   const armedProposeRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const navigate = useNavigate();
   const [activePersonName, setActivePersonName] = useState<string | null>(null);
   const [projectMeta, setProjectMeta] = useState<ProjectDetails | null>(null);
   // W2-04 — lifecycle history + pending approvals for this position.
@@ -310,6 +312,26 @@ export function ProjectPositionDetailPage(): JSX.Element {
       await load();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to advance the position.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Reject the proposed candidate — position returns to OPEN (reason required
+  // by the fill state machine for PROPOSED → OPEN).
+  async function confirmReject(reason?: string): Promise<void> {
+    if (!position) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await transitionProjectPositionFill(position.publicId ?? position.id, {
+        toStatus: 'OPEN',
+        reason: reason?.trim() || 'Candidate rejected',
+      });
+      setRejectOpen(false);
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to reject candidate.');
     } finally {
       setBusy(false);
     }
@@ -559,18 +581,44 @@ export function ProjectPositionDetailPage(): JSX.Element {
                   >
                     {position.fillStatus === 'PROPOSED' ? (
                       <>
-                        <Button variant="primary" size="md" type="button" disabled>
-                          Confirm · Book
+                        <Button
+                          variant="primary"
+                          size="md"
+                          type="button"
+                          disabled={busy}
+                          data-testid="current-fill-book"
+                          onClick={() => void advanceLifecycle('BOOKED')}
+                        >
+                          {busy ? 'Working…' : 'Confirm · Book'}
                         </Button>
-                        <Button variant="secondary" size="md" type="button" disabled>
+                        <Button
+                          variant="secondary"
+                          size="md"
+                          type="button"
+                          disabled={busy || !position.activePersonId}
+                          onClick={() => position.activePersonId && navigate(`/people/${position.activePersonId}`)}
+                        >
                           View profile
                         </Button>
-                        <Button variant="ghost" size="md" type="button" disabled>
+                        <Button
+                          variant="ghost"
+                          size="md"
+                          type="button"
+                          disabled={busy}
+                          data-testid="current-fill-reject"
+                          onClick={() => setRejectOpen(true)}
+                        >
                           Reject
                         </Button>
                       </>
                     ) : (
-                      <Button variant="secondary" size="md" type="button" disabled>
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        type="button"
+                        disabled={busy || !position.activePersonId}
+                        onClick={() => position.activePersonId && navigate(`/people/${position.activePersonId}`)}
+                      >
                         View profile
                       </Button>
                     )}
@@ -874,6 +922,15 @@ export function ProjectPositionDetailPage(): JSX.Element {
         confirmLabel={busy ? 'Proposing…' : 'Propose'}
         onCancel={() => setProposeFor(null)}
         onConfirm={() => void confirmPropose()}
+      />
+
+      <ConfirmDialog
+        open={rejectOpen}
+        title="Reject candidate?"
+        message={`Reject the proposed candidate for "${position?.role}"? The position returns to OPEN so a new candidate can be proposed.`}
+        confirmLabel={busy ? 'Rejecting…' : 'Reject'}
+        onCancel={() => setRejectOpen(false)}
+        onConfirm={(reason) => void confirmReject(reason)}
       />
     </PageContainer>
   );
