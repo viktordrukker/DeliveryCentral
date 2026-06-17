@@ -42,6 +42,12 @@ on:
         default: 'false'
         type: choice
         options: ['false', 'true']
+      frontend_demo_mode:
+        description: 'Render the one-click role selector on the login page (demo stand).'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
 
 concurrency:
   group: build-and-stage-v2-${{ github.ref }}
@@ -102,6 +108,7 @@ jobs:
           build-args: |
             VITE_FORCE_FLAGS_ON=${{ inputs.frontend_force_flags }}
             VITE_FORCE_ALL_FLAGS_ON=${{ inputs.frontend_force_all }}
+            VITE_DEMO_MODE=${{ inputs.frontend_demo_mode }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
