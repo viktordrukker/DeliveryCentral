@@ -34,6 +34,11 @@ ARG VITE_FORCE_ALL_FLAGS_ON=""
 ENV VITE_FORCE_FLAGS_ON=$VITE_FORCE_FLAGS_ON
 ENV VITE_FORCE_ALL_FLAGS_ON=$VITE_FORCE_ALL_FLAGS_ON
 
+# Demo stand: pass `--build-arg VITE_DEMO_MODE=true` to render the one-click
+# role selector on the login page. Prod + regular staging leave this empty.
+ARG VITE_DEMO_MODE=""
+ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
+
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts index.html ./

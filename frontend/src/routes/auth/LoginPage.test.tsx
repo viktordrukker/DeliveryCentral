@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { LoginPage } from './LoginPage';
 
@@ -96,6 +96,52 @@ describe('LoginPage — W2-17 SSO/LDAP buttons', () => {
 
     expect(screen.queryByTestId('sso-azuread-button')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /forgot password/i })).toBeInTheDocument();
+  });
+});
+
+describe('LoginPage — demo role selector (VITE_DEMO_MODE)', () => {
+  beforeEach(() => {
+    httpGetMock.mockReset();
+    loginMock.mockReset();
+    vi.stubEnv('VITE_DEMO_MODE', 'true');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('renders one button per demo role instead of the password form', async () => {
+    httpGetMock.mockResolvedValueOnce({ local: true, ldap: false, azureAd: false });
+    renderLogin();
+    await waitFor(() => expect(httpGetMock).toHaveBeenCalledWith('/auth/providers'));
+
+    expect(screen.getByTestId('demo-role-director')).toBeInTheDocument();
+    expect(screen.getByTestId('demo-role-resource-manager')).toBeInTheDocument();
+    expect(screen.getByTestId('demo-role-employee')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^email$/i)).not.toBeInTheDocument();
+  });
+
+  it('logs in with the role credentials when a role button is clicked', async () => {
+    httpGetMock.mockResolvedValueOnce({ local: true, ldap: false, azureAd: false });
+    loginMock.mockResolvedValueOnce({ status: 'ok' });
+    renderLogin();
+    await waitFor(() => expect(screen.getByTestId('demo-role-director')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('demo-role-director'));
+    expect(loginMock).toHaveBeenCalledWith('daniel.cross@demo.local', 'DirectorPass1!');
+  });
+
+  it('reveals the password form via the toggle and can return to the role picker', async () => {
+    httpGetMock.mockResolvedValueOnce({ local: true, ldap: false, azureAd: false });
+    renderLogin();
+    await waitFor(() => expect(screen.getByTestId('demo-role-director')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: /sign in with email/i }));
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('demo-role-director')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /back to demo roles/i }));
+    expect(screen.getByTestId('demo-role-director')).toBeInTheDocument();
   });
 });
 

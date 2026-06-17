@@ -25,10 +25,21 @@ interface Providers {
 
 type LoginStep = 'credentials' | 'totp';
 
+const DEMO_ACCOUNTS: ReadonlyArray<{ label: string; email: string; password: string; blurb: string }> = [
+  { label: 'Director', email: 'daniel.cross@demo.local', password: 'DirectorPass1!', blurb: 'Portfolio health & finance' },
+  { label: 'HR Manager', email: 'hannah.reyes@demo.local', password: 'HrManagerPass1!', blurb: 'People & org structure' },
+  { label: 'Resource Manager', email: 'ravi.menon@demo.local', password: 'ResourceMgrPass1!', blurb: 'Staffing desk & bench' },
+  { label: 'Project Manager', email: 'priya.shah@demo.local', password: 'ProjectMgrPass1!', blurb: 'Project delivery & demand' },
+  { label: 'Delivery Manager', email: 'dana.whitfield@demo.local', password: 'DeliveryMgrPass1!', blurb: 'Conflicts & escalations' },
+  { label: 'Employee', email: 'ethan.brooks@demo.local', password: 'EmployeePass1!', blurb: 'My time & assignments' },
+];
+
 export function LoginPage(): JSX.Element {
   const { login, completeTwoFactor, isAuthenticated, principal } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const demoMode = (import.meta.env.VITE_DEMO_MODE as string | undefined) === 'true';
 
   const [providers, setProviders] = useState<Providers>({ local: true, ldap: false, azureAd: false });
   const [email, setEmail] = useState('');
@@ -38,6 +49,7 @@ export function LoginPage(): JSX.Element {
   const [step, setStep] = useState<LoginStep>('credentials');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(!demoMode);
 
   useEffect(() => {
     if (isAuthenticated && principal) {
@@ -60,6 +72,22 @@ export function LoginPage(): JSX.Element {
     try {
       const outcome = await login(email, password);
 
+      if (outcome.status === 'requires_2fa') {
+        setTempToken(outcome.tempToken);
+        setStep('totp');
+      } else if (outcome.status === 'error') {
+        setError(outcome.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDemoLogin(creds: { email: string; password: string }): Promise<void> {
+    setError('');
+    setLoading(true);
+    try {
+      const outcome = await login(creds.email, creds.password);
       if (outcome.status === 'requires_2fa') {
         setTempToken(outcome.tempToken);
         setStep('totp');
@@ -111,7 +139,42 @@ export function LoginPage(): JSX.Element {
             </Alert>
           )}
 
-          {step === 'credentials' && providers.azureAd && (
+          {demoMode && step === 'credentials' && !showPasswordForm && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+                Demo stand — pick a role to sign in instantly.
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {DEMO_ACCOUNTS.map((acct) => (
+                  <Button
+                    key={acct.email}
+                    variant="outlined"
+                    fullWidth
+                    disabled={loading}
+                    onClick={() => void handleDemoLogin(acct)}
+                    data-testid={`demo-role-${acct.label.toLowerCase().replace(/\s+/g, '-')}`}
+                    sx={{ justifyContent: 'flex-start', textTransform: 'none', py: 1 }}
+                  >
+                    <Box sx={{ textAlign: 'left' }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        {acct.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {acct.blurb}
+                      </Typography>
+                    </Box>
+                  </Button>
+                ))}
+              </Box>
+              <Box mt={2} textAlign="center">
+                <Button variant="text" size="small" onClick={() => setShowPasswordForm(true)}>
+                  Sign in with email &amp; password
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {step === 'credentials' && providers.azureAd && (!demoMode || showPasswordForm) && (
             <Box mb={providers.local || providers.ldap ? 2 : 0}>
               <Button
                 variant="outlined"
@@ -124,11 +187,11 @@ export function LoginPage(): JSX.Element {
             </Box>
           )}
 
-          {step === 'credentials' && providers.azureAd && (providers.local || providers.ldap) && (
+          {step === 'credentials' && providers.azureAd && (providers.local || providers.ldap) && (!demoMode || showPasswordForm) && (
             <Divider sx={{ mb: 2 }}>or</Divider>
           )}
 
-          {step === 'credentials' && (providers.local || providers.ldap) && (
+          {step === 'credentials' && (providers.local || providers.ldap) && (!demoMode || showPasswordForm) && (
             <Box component="form" onSubmit={(e) => void handleLogin(e)}>
               {providers.ldap && !providers.local && (
                 <Typography variant="caption" color="text.secondary" display="block" mb={1}>
@@ -172,6 +235,13 @@ export function LoginPage(): JSX.Element {
                     onClick={() => navigate('/forgot-password')}
                   >
                     Forgot password?
+                  </Button>
+                </Box>
+              )}
+              {demoMode && (
+                <Box mt={1} textAlign="center">
+                  <Button variant="text" size="small" onClick={() => setShowPasswordForm(false)}>
+                    Back to demo roles
                   </Button>
                 </Box>
               )}
