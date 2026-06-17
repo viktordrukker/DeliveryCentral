@@ -34,10 +34,16 @@ ARG VITE_FORCE_ALL_FLAGS_ON=""
 ENV VITE_FORCE_FLAGS_ON=$VITE_FORCE_FLAGS_ON
 ENV VITE_FORCE_ALL_FLAGS_ON=$VITE_FORCE_ALL_FLAGS_ON
 
-# Demo stand: pass `--build-arg VITE_DEMO_MODE=true` to render the one-click
-# role selector on the login page. Prod + regular staging leave this empty.
+# Demo stand read-only mode: `--build-arg VITE_DEMO_MODE=true` shows the
+# "read-only" banner and disables all write buttons. Prod/staging leave empty.
 ARG VITE_DEMO_MODE=""
 ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
+
+# Demo stand login selector: `--build-arg VITE_DEMO_LOGIN=true` renders the
+# one-click role/admin picker on the login page. Independent of VITE_DEMO_MODE
+# so a demo can show the picker AND still allow live write workflows.
+ARG VITE_DEMO_LOGIN=""
+ENV VITE_DEMO_LOGIN=$VITE_DEMO_LOGIN
 
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/package.json ./package.json

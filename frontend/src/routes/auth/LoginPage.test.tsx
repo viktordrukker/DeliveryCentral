@@ -99,11 +99,11 @@ describe('LoginPage — W2-17 SSO/LDAP buttons', () => {
   });
 });
 
-describe('LoginPage — demo role selector (VITE_DEMO_MODE)', () => {
+describe('LoginPage — demo role selector (VITE_DEMO_LOGIN)', () => {
   beforeEach(() => {
     httpGetMock.mockReset();
     loginMock.mockReset();
-    vi.stubEnv('VITE_DEMO_MODE', 'true');
+    vi.stubEnv('VITE_DEMO_LOGIN', 'true');
   });
 
   afterEach(() => {

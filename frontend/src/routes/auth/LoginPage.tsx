@@ -40,7 +40,11 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const demoMode = (import.meta.env.VITE_DEMO_MODE as string | undefined) === 'true';
+  // VITE_DEMO_LOGIN gates ONLY the login role selector. It is intentionally
+  // separate from VITE_DEMO_MODE (which puts the whole app in read-only demo
+  // mode) so a demo stand can show the one-click role picker while still
+  // allowing live write workflows.
+  const demoMode = (import.meta.env.VITE_DEMO_LOGIN as string | undefined) === 'true';
 
   const [providers, setProviders] = useState<Providers>({ local: true, ldap: false, azureAd: false });
   const [email, setEmail] = useState('');
