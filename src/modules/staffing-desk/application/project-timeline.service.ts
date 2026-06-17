@@ -3,6 +3,16 @@ import { Injectable } from '@nestjs/common';
 import { decimalToNumber } from '@src/shared/persistence/decimal';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
+/** The Monday (UTC, 00:00) of the week containing `d`. Used to default a
+ * missing/invalid `from` so the timeline never crashes on `Invalid time value`. */
+function mondayOfUtc(d: Date): Date {
+  const day = d.getUTCDay();
+  const daysFromMonday = day === 0 ? 6 : day - 1;
+  const m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  m.setUTCDate(m.getUTCDate() - daysFromMonday);
+  return m;
+}
+
 export interface TimelineAssignmentBlock {
   assignmentId: string;
   personId: string;
@@ -60,9 +70,12 @@ export class ProjectTimelineService {
   }): Promise<ProjectTimelineResponseDto> {
     const { from, weeks: weekCount, poolId, projectId } = params;
 
-    // Generate week start dates
+    // Generate week start dates. Guard `from`: a missing/unparseable value
+    // yields an Invalid Date and d.toISOString() then throws RangeError,
+    // 500-ing the timeline. Default to the current week's UTC Monday.
     const weekStarts: string[] = [];
-    const startDate = new Date(from);
+    const parsedFrom = from ? new Date(from) : new Date(NaN);
+    const startDate = Number.isNaN(parsedFrom.getTime()) ? mondayOfUtc(new Date()) : parsedFrom;
     for (let i = 0; i < weekCount; i++) {
       const d = new Date(startDate);
       d.setUTCDate(d.getUTCDate() + i * 7);

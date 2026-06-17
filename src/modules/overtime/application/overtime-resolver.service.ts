@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { PlatformSettingsService } from '@src/modules/platform-settings/application/platform-settings.service';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export interface ResolvedPolicy {
   standardHoursPerWeek: number;
   maxOvertimeHoursPerWeek: number;
@@ -30,10 +32,18 @@ export class OvertimeResolverService {
 
     if (!settings.overtime.enabled) return orgDefault;
 
+    // The :personId param may be a publicId (usr_…) or a uuid. Resolve to the
+    // internal uuid before any Prisma filter — a publicId in a uuid column
+    // throws PrismaClientKnownRequestError. Unknown person → org default.
+    const personUuid = UUID_RE.test(personId)
+      ? personId
+      : (await this.prisma.person.findUnique({ where: { publicId: personId }, select: { id: true } }))?.id;
+    if (!personUuid) return orgDefault;
+
     // 1. Person-level exception (highest priority)
     const exception = await this.prisma.overtimeException.findFirst({
       where: {
-        personId,
+        personId: personUuid,
         effectiveFrom: { lte: date },
         effectiveTo: { gte: date },
       },
@@ -53,7 +63,7 @@ export class OvertimeResolverService {
 
     // 2. Resource pool policy
     const poolMembership = await this.prisma.personResourcePoolMembership.findFirst({
-      where: { personId, archivedAt: null },
+      where: { personId: personUuid, archivedAt: null },
       orderBy: { validFrom: 'desc' },
       select: { resourcePoolId: true, resourcePool: { select: { name: true } } },
     });
@@ -82,7 +92,7 @@ export class OvertimeResolverService {
 
     // 3. Department policy
     const orgMembership = await this.prisma.personOrgMembership.findFirst({
-      where: { personId, archivedAt: null },
+      where: { personId: personUuid, archivedAt: null },
       orderBy: { validFrom: 'desc' },
       select: { orgUnitId: true, orgUnit: { select: { name: true } } },
     });
