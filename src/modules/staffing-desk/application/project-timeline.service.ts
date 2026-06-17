@@ -101,7 +101,7 @@ export class ProjectTimelineService {
       activePersonId: { not: null },
       activeValidFrom: { lte: endDate },
       OR: [
-        { activeValidTo: { gte: new Date(from) } },
+        { activeValidTo: { gte: startDate } },
         { activeValidTo: null },
       ],
     };
@@ -120,7 +120,7 @@ export class ProjectTimelineService {
     const openWhere: Record<string, unknown> = {
       fillStatus: { in: ['OPEN', 'PROPOSED'] },
       startDate: { lte: endDate },
-      endDate: { gte: new Date(from) },
+      endDate: { gte: startDate },
     };
     if (projectId) openWhere.projectId = projectId;
 
