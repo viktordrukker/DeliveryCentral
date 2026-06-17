@@ -1566,6 +1566,22 @@ async function main(): Promise<void> {
     await seedResponsibilityRules();
     await seedFullNotificationInfrastructure();
 
+    // Demo profile ships ready-to-use: override the setup sentinels that
+    // seedPlatformSettings() initialises to null, so RequireSetupCompleteGuard
+    // does not 503 the whole app after a fresh demo seed (a normal install
+    // flips these via the wizard's `complete` step; CI does it manually).
+    const demoSetupCompletedAt = new Date().toISOString();
+    await prismaSeed.platformSetting.upsert({
+      where: { key: 'setup.completedAt' },
+      create: { key: 'setup.completedAt', value: demoSetupCompletedAt as never },
+      update: { value: demoSetupCompletedAt as never },
+    });
+    await prismaSeed.platformSetting.upsert({
+      where: { key: 'setup.profile' },
+      create: { key: 'setup.profile', value: 'demo' as never },
+      update: { value: 'demo' as never },
+    });
+
     await seedDemoPersonSkills();
 
     console.log('Demo dataset seeded.', demoDatasetSummary);
