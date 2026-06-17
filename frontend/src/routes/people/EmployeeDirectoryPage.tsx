@@ -137,7 +137,9 @@ export function EmployeeDirectoryPage(): JSX.Element {
   }
 
   useEffect(() => {
-    void fetchResourcePools().then((r) => setResourcePools(r.items));
+    // Resource pools are an RM/HR enrichment — fail soft for lower roles
+    // (an unhandled 403 rejection otherwise surfaces as an uncaught pageerror).
+    void fetchResourcePools().then((r) => setResourcePools(r.items)).catch(() => setResourcePools([]));
   }, []);
 
   // W3-05 — load department options once for the FilterBar select.

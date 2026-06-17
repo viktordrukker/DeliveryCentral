@@ -168,6 +168,9 @@ export function ProjectsPage(): JSX.Element {
     void fetchProjectHealthBatch(state.visibleItems.map((item) => item.id)).then((map) => {
       if (!active) return;
       setHealthMap(map);
+    }).catch(() => {
+      // Health batch is an enrichment — fail soft (don't surface an uncaught
+      // rejection if the caller's role can't read project health).
     });
     return () => {
       active = false;
