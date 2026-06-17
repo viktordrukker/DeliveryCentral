@@ -21,7 +21,7 @@ import { bulkReassignOrgMembership } from '@/lib/api/organization';
 import { fetchOrgChart, OrgChartNode } from '@/lib/api/org-chart';
 import { fetchResourcePools, ResourcePool } from '@/lib/api/resource-pools';
 import { exportToXlsx } from '@/lib/export';
-import { HR_ADMIN_ROLES, HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
+import { BENCH_PAGE_ROLES, HR_ADMIN_ROLES, HR_DIRECTOR_ADMIN_ROLES, PEOPLE_MANAGE_ROLES, hasAnyRole } from '@/app/route-manifest';
 import { Avatar, Button } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import { TabBar } from '@/components/common/TabBar';
@@ -37,6 +37,10 @@ export function EmployeeDirectoryPage(): JSX.Element {
   const navigate = useNavigate();
   const { principal } = useAuth();
   const canManagePeople = hasAnyRole(principal?.roles, PEOPLE_MANAGE_ROLES);
+  // Bench enrichment is gated to STAFFING_ROLES server-side (mirrored by
+  // BENCH_PAGE_ROLES) — only fetch it for those roles so lower roles don't
+  // fire a guaranteed 403.
+  const canSeeBench = hasAnyRole(principal?.roles, BENCH_PAGE_ROLES);
   const canBulkReassign = hasAnyRole(principal?.roles, HR_DIRECTOR_ADMIN_ROLES);
   // W3-05 — only HR/admin see HR Queue (leave approvals fold in as a sub-tab).
   const canSeeHrActions = hasAnyRole(principal?.roles, HR_ADMIN_ROLES);
@@ -137,10 +141,15 @@ export function EmployeeDirectoryPage(): JSX.Element {
   }
 
   useEffect(() => {
-    // Resource pools are an RM/HR enrichment — fail soft for lower roles
-    // (an unhandled 403 rejection otherwise surfaces as an uncaught pageerror).
+    // Resource pools are a PEOPLE_MANAGE_ROLES enrichment — only fetch for
+    // those roles (avoids a guaranteed 403 for lower roles); .catch is kept as
+    // a belt-and-braces guard against any unhandled rejection.
+    if (!canManagePeople) {
+      setResourcePools([]);
+      return;
+    }
     void fetchResourcePools().then((r) => setResourcePools(r.items)).catch(() => setResourcePools([]));
-  }, []);
+  }, [canManagePeople]);
 
   // W3-05 — load department options once for the FilterBar select.
   useEffect(() => {
@@ -170,7 +179,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    if (!dsRefreshEnabled) return;
+    if (!dsRefreshEnabled || !canSeeBench) return;
     let active = true;
     void fetchEnrichedBench()
       .then((rows) => {
@@ -182,7 +191,7 @@ export function EmployeeDirectoryPage(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [dsRefreshEnabled]);
+  }, [dsRefreshEnabled, canSeeBench]);
 
   // V2-B.17 — HR-Queue tab count via sidebar-counts.
   useEffect(() => {
