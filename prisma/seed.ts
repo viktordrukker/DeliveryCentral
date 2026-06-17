@@ -1581,6 +1581,14 @@ async function main(): Promise<void> {
       create: { key: 'setup.profile', value: 'demo' as never },
       update: { value: 'demo' as never },
     });
+    // Demo stand: allow submitting the in-progress week so "submit my
+    // timesheet" works live (default is false, which blocks submitting a week
+    // before its last day). The current week is seeded DRAFT for each person.
+    await prismaSeed.platformSetting.upsert({
+      where: { key: 'timeEntry.allowSubmitInAdvance' },
+      create: { key: 'timeEntry.allowSubmitInAdvance', value: true as never },
+      update: { value: true as never },
+    });
 
     await seedDemoPersonSkills();
 
