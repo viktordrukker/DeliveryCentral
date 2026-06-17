@@ -51,6 +51,7 @@
     "test:migrations:check": "node scripts/gen-migration-tests.cjs check",
     "seed:verify": "node scripts/verify-seed.cjs phase2",
     "seed:verify:refresh": "node scripts/verify-seed.cjs phase2 --refresh",
+    "demo-seed:check": "ts-node --transpile-only --project tsconfig.json scripts/check-demo-seed-integrity.cjs",
     "tz:check": "node scripts/check-tz-is-utc.cjs",
     "publicid:check": "node scripts/check-public-id-leak.cjs",
     "publicid:baseline": "node scripts/check-public-id-leak.cjs --write-baseline",

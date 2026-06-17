@@ -46,6 +46,45 @@ import {
   itCompanyWorkEvidenceSources,
 } from './seeds/it-company-profile';
 
+import {
+  demoAccounts,
+  demoBudgetApprovals,
+  demoCases,
+  demoClients,
+  demoContacts,
+  demoDatasetSummary,
+  demoEmploymentEvents,
+  demoExternalSyncStates,
+  demoOrgUnits,
+  demoPeople,
+  demoPersonOrgMemberships,
+  demoPersonSkillAssignments,
+  demoPositions,
+  demoProjectBudgets,
+  demoProjectChangeRequests,
+  demoProjectExternalLinks,
+  demoProjectMilestones,
+  demoProjectPositionCandidates,
+  demoProjectPositionFillHistory,
+  demoProjectPositions,
+  demoProjectRagSnapshots,
+  demoProjectRetrospectives,
+  demoProjectRisks,
+  demoProjectRolePlans,
+  demoProjects,
+  demoReportingLines,
+  demoResourcePoolMemberships,
+  demoResourcePools,
+  demoWorkEvidence,
+  demoWorkEvidenceLinks,
+  demoWorkEvidenceSources,
+  generateDemoCaseSteps,
+  generateDemoLeaveRequests,
+  generateDemoNotifications,
+  generateDemoPulseEntries,
+  generateDemoTimesheets,
+} from './seeds/demo-profile';
+
 const prisma = new PrismaClient();
 const prismaSeed = prisma as any;
 
@@ -1073,6 +1112,92 @@ async function seedItCompanyPersonSkills(): Promise<void> {
   console.log(`  Person skills: ${count} assignments`);
 }
 
+// Demo profile uses currencyCode 'USD' on every ProjectBudget. The FK to
+// Currency is onDelete: Restrict, so the USD row must exist before budgets
+// land. Idempotent upsert by the `code` primary key.
+async function seedDemoCurrencies(): Promise<void> {
+  await prismaSeed.currency.upsert({
+    where: { code: 'USD' },
+    create: { code: 'USD', name: 'US Dollar', minorUnit: 2, isDefault: true },
+    update: {},
+  });
+}
+
+async function seedDemoAccounts(): Promise<void> {
+  const adminPersonId = '00000000-0000-0000-0000-000000000001';
+
+  await prisma.person.upsert({
+    where: { id: adminPersonId },
+    create: {
+      id: adminPersonId,
+      givenName: 'System',
+      familyName: 'Administrator',
+      displayName: 'System Administrator',
+      primaryEmail: 'admin@deliverycentral.local',
+      employmentStatus: 'ACTIVE',
+    },
+    update: {},
+  });
+
+  for (const account of demoAccounts) {
+    const existing = await prisma.localAccount.findUnique({ where: { email: account.email } });
+    if (existing) {
+      console.log(`  Account already exists, skipping: ${account.email}`);
+      continue;
+    }
+
+    const passwordHash = await bcrypt.hash(account.password, 12);
+    await prisma.localAccount.create({
+      data: {
+        email: account.email,
+        displayName: account.displayName,
+        passwordHash,
+        roles: account.roles,
+        source: 'local',
+        personId: account.personId,
+        twoFactorEnabled: false,
+        backupCodesHash: [],
+        mustChangePw: false,
+      },
+    });
+
+    console.log(`  Account seeded: ${account.email} [${account.roles.join(', ')}]`);
+  }
+}
+
+async function seedDemoPersonSkills(): Promise<void> {
+  // Skills are stored with explicit IDs by seedSkills(). Match on the catalog
+  // `name` so the generator can use display names ("TypeScript").
+  const allSkills = await prismaSeed.skill.findMany({ select: { id: true, name: true } }) as Array<{ id: string; name: string }>;
+  const skillIdByLowerName = new Map<string, string>();
+  for (const s of allSkills) {
+    skillIdByLowerName.set(s.name.toLowerCase(), s.id);
+  }
+
+  let count = 0;
+  const rows: Array<Record<string, unknown>> = [];
+  for (const a of demoPersonSkillAssignments) {
+    const skillId = skillIdByLowerName.get(a.skillName.toLowerCase());
+    if (!skillId) continue;
+    count += 1;
+    rows.push({
+      id: `cccc0005-dm00-0000-${String(count).padStart(4, '0')}-000000000000`,
+      personId: a.personId,
+      skillId,
+      proficiency: a.proficiency,
+      certified: a.certified,
+    });
+  }
+  for (let index = 0; index < rows.length; index += 1000) {
+    await prismaSeed.personSkill.createMany({
+      data: rows.slice(index, index + 1000),
+      skipDuplicates: true,
+    });
+  }
+
+  console.log(`  Person skills: ${count} assignments`);
+}
+
 async function createManyInChunks(table: string, data: unknown[], chunkSize = 1000): Promise<void> {
   for (let index = 0; index < data.length; index += chunkSize) {
     await prismaSeed[table].createMany({
@@ -1221,9 +1346,9 @@ async function main(): Promise<void> {
   // tenantId backfill, …) and would have produced rows missing fields
   // the runtime now requires. The dispatch workflows accept a `profile`
   // input for forward-compat with future profiles.
-  if (profile !== 'it-company') {
+  if (profile !== 'it-company' && profile !== 'demo') {
     throw new Error(
-      `Unsupported seed profile "${profile}". Only "it-company" is currently wired up.`,
+      `Unsupported seed profile "${profile}". Only "it-company" and "demo" are currently wired up.`,
     );
   }
 
@@ -1341,6 +1466,119 @@ async function main(): Promise<void> {
     await seedItCompanyAccounts();
     return;
   }
+
+  if (profile === 'demo') {
+    // Clients must land before Projects (Project.clientId FK references clients).
+    await createManyInChunks('client', demoClients);
+
+    await seedDataset({
+      externalSyncStates: demoExternalSyncStates,
+      orgUnits: demoOrgUnits,
+      people: demoPeople,
+      personOrgMemberships: demoPersonOrgMemberships,
+      positionFillHistory: demoProjectPositionFillHistory,
+      positions: demoPositions,
+      projectExternalLinks: demoProjectExternalLinks,
+      projectPositionCandidates: demoProjectPositionCandidates,
+      projectPositions: demoProjectPositions,
+      projects: demoProjects,
+      reportingLines: demoReportingLines,
+      resourcePoolMemberships: demoResourcePoolMemberships,
+      resourcePools: demoResourcePools,
+      summary: demoDatasetSummary,
+      workEvidence: demoWorkEvidence,
+      workEvidenceLinks: demoWorkEvidenceLinks,
+      workEvidenceSources: demoWorkEvidenceSources,
+    });
+
+    // Per-project context: milestones, change requests, RAG snapshots,
+    // budgets, role plans, risks, retrospectives.
+    await createManyInChunks('projectMilestone', demoProjectMilestones);
+    await createManyInChunks('projectChangeRequest', demoProjectChangeRequests);
+    await createManyInChunks('projectRagSnapshot', demoProjectRagSnapshots);
+    // ProjectBudget rows carry currencyCode 'USD'; the FK to Currency has
+    // onDelete: Restrict, so the USD row must exist first.
+    await seedDemoCurrencies();
+    await createManyInChunks('projectBudget', demoProjectBudgets);
+    // BudgetApproval depends on projectBudget rows landing first.
+    await createManyInChunks('budgetApproval', demoBudgetApprovals);
+    await createManyInChunks('projectRolePlan', demoProjectRolePlans);
+    await createManyInChunks('projectRisk', demoProjectRisks);
+    await createManyInChunks('projectRetrospective', demoProjectRetrospectives);
+
+    // Contact + EmploymentEvent (reference Person, inserted above).
+    await createManyInChunks('contact', demoContacts);
+    await createManyInChunks('employmentEvent', demoEmploymentEvents);
+
+    // Timesheets — last 8 weeks for assigned ICs, incl. 2 SUBMITTED weeks.
+    const { weeks: demoWeeks, entries: demoEntries } = generateDemoTimesheets();
+    await createManyInChunks('timesheetWeek', demoWeeks);
+    await createManyInChunks('timesheetEntry', demoEntries);
+
+    // Pulse — 8 weeks for ICs.
+    const demoPulse = generateDemoPulseEntries();
+    await createManyInChunks('pulseEntry', demoPulse);
+
+    // Leave — 1 PENDING + historical APPROVED.
+    const demoLeave = generateDemoLeaveRequests();
+    await createManyInChunks('leaveRequest', demoLeave);
+
+    // Cases — 1 ONBOARDING + 1 PERFORMANCE with steps.
+    await seedCaseTypes();
+    const onboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'ONBOARDING' } }) as { id: string } | null;
+    const performanceType = await prismaSeed.caseType.findFirst({ where: { key: 'PERFORMANCE' } }) as { id: string } | null;
+    const offboardingType = await prismaSeed.caseType.findFirst({ where: { key: 'OFFBOARDING' } }) as { id: string } | null;
+    const transferType = await prismaSeed.caseType.findFirst({ where: { key: 'TRANSFER' } }) as { id: string } | null;
+
+    const demoCaseTypeMap: Record<string, string> = {
+      ONBOARDING: onboardingType?.id ?? '',
+      PERFORMANCE: performanceType?.id ?? '',
+      OFFBOARDING: offboardingType?.id ?? '',
+      TRANSFER: transferType?.id ?? '',
+    };
+
+    for (const c of demoCases) {
+      await prismaSeed.caseRecord.create({
+        data: {
+          id: c.id,
+          caseNumber: c.caseNumber,
+          caseTypeId: demoCaseTypeMap[c.caseTypeKey],
+          subjectPersonId: c.subjectPersonId,
+          ownerPersonId: c.ownerPersonId,
+          status: c.status,
+          summary: c.summary,
+        },
+      });
+    }
+
+    const demoCaseSteps = generateDemoCaseSteps();
+    await createManyInChunks('caseStep', demoCaseSteps);
+
+    // In-app notifications for every role-test account.
+    const demoNotifications = generateDemoNotifications();
+    await createManyInChunks('inAppNotification', demoNotifications);
+
+    // Profile-agnostic infrastructure (idempotent upserts).
+    await seedMetadata();
+    await seedPlatformSettings();
+    await seedSkills();
+    await seedRadiatorThresholds();
+    await seedResponsibilityRules();
+    await seedFullNotificationInfrastructure();
+
+    await seedDemoPersonSkills();
+
+    console.log('Demo dataset seeded.', demoDatasetSummary);
+    console.log(`  Timesheets: ${demoWeeks.length} weeks, ${demoEntries.length} entries`);
+    console.log(`  Pulse entries: ${demoPulse.length}`);
+    console.log(`  Leave requests: ${demoLeave.length}`);
+    console.log(`  Case steps: ${demoCaseSteps.length}`);
+    console.log(`  Notifications: ${demoNotifications.length}`);
+
+    await seedSuperadmin();
+    await seedDemoAccounts();
+    return;
+  }
 }
 
 // DM-R-10 — atomic-like seed guarantee.
@@ -1391,5 +1629,8 @@ export {
   seedPlatformSettings,
   seedItCompanyAccounts,
   seedItCompanyPersonSkills,
+  seedDemoAccounts,
+  seedDemoPersonSkills,
+  seedDemoCurrencies,
   seedDataset,
 };
