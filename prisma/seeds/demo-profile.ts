@@ -594,11 +594,20 @@ positionSpecs.forEach((spec) => {
   const startDate = addDays(proj.startsOn, spec.startOffsetDays ?? 0);
   const endDate = proj.endsOn ?? addMonths(NOW, 12);
   const filled = spec.fillStatus === 'ASSIGNED' || spec.fillStatus === 'BOOKED' || spec.fillStatus === 'RELEASED';
-  const activeValidFrom = filled ? (spec.activeValidFrom ?? startDate) : null;
+  const isProposed = spec.fillStatus === 'PROPOSED';
+  // A real PROPOSE transition stamps the leading candidate onto the active-fill
+  // fields so the unified approvals queue can surface the candidate and the
+  // PROPOSED → BOOKED decision (which requires a person) succeeds. The seed
+  // builds positions directly, so mirror that here: the first slate candidate
+  // becomes the proposed person, with an open-ended active window (validTo
+  // null) — satisfying the 4-tuple "3-set, validTo-null" integrity rule.
+  const proposedPerson =
+    isProposed && spec.candidates && spec.candidates.length > 0 ? spec.candidates[0] : null;
+  const hasActive = filled || proposedPerson !== null;
+  const activeValidFrom = hasActive ? (spec.activeValidFrom ?? startDate) : null;
   const activeValidTo = filled
     ? (spec.fillStatus === 'RELEASED' ? (spec.activeValidTo ?? proj.endsOn ?? NOW) : null)
     : null;
-  const isProposed = spec.fillStatus === 'PROPOSED';
   const requestedAt = daysAgo(spec.fillStatus === 'OPEN' || isProposed ? 6 : 30);
 
   projectPositions.push({
@@ -613,8 +622,10 @@ positionSpecs.forEach((spec) => {
     priority: spec.priority,
     requestedByPersonId: proj.projectManagerId,
     fillStatus: spec.fillStatus,
-    activePersonId: filled ? spec.person!.id : null,
-    activeAllocationPercent: filled ? (spec.activeAllocationPercent ?? spec.requiredAllocationPercent) : null,
+    activePersonId: filled ? spec.person!.id : (proposedPerson ? proposedPerson.id : null),
+    activeAllocationPercent: filled
+      ? (spec.activeAllocationPercent ?? spec.requiredAllocationPercent)
+      : (proposedPerson ? spec.requiredAllocationPercent : null),
     activeValidFrom,
     activeValidTo,
     releaseReason: spec.fillStatus === 'RELEASED' ? 'Project closed' : null,
@@ -779,7 +790,10 @@ budgetApprovals.push({
   decisionAt: null,
   decisionReason: null,
   requestedAt: daysAgo(3),
-  requestedChange: { reason: 'Schedule slip + scope creep', opexBudgetDelta: 150000, newOpexBudget: 850000 },
+  // DecideBudgetChangeService applies `capexBudget`/`opexBudget` as the new
+  // absolute values, so the PENDING request must carry both as numbers (capex
+  // unchanged at 500k; opex 700k → 850k for the +150k schedule-slip increase).
+  requestedChange: { capexBudget: 500000, opexBudget: 850000, reason: 'Schedule slip + scope creep' },
   createdAt: daysAgo(3),
   updatedAt: daysAgo(3),
 });
