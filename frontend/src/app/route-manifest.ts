@@ -339,7 +339,7 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: EXPORT_CENTRE_ROLES, description: 'Generate and download XLSX reports for headcount, assignments, timesheets, capitalisation, and workload.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/reports/export', title: 'Export Centre' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Available vs assigned vs actual hours per person — utilization drill-down.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/reports/utilization', title: 'Utilization' },
   { allowedRoles: EXCEPTIONS_ROLES, description: 'Build custom reports from any data source, save templates, and export to XLSX.', group: 'reports', navVisible: true, obsoleteInV2: true, path: '/reports/builder', title: 'Report Builder' },
-  { allowedRoles: ALL_ROLES, description: 'Onboarding and operational case workflows.', group: 'time', groupV2: 'workforce', navVisible: true, titleV2: 'HR Queue', path: '/cases', title: 'Cases' },
+  { allowedRoles: CASE_CREATE_ROLES, description: 'Onboarding and operational case workflows.', group: 'time', groupV2: 'workforce', navVisible: true, titleV2: 'HR Queue', path: '/cases', title: 'Cases' },
   // LEAN-P2 exit-gate: legacy /staffing-requests and /staffing-board
   // surfaces deleted; entries kept for the registry (router redirects them)
   // but hidden from nav.

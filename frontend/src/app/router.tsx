@@ -418,7 +418,7 @@ const dashboardChildren = [
     element: <RoleGuard allowedRoles={EXCEPTIONS_ROLES}><LazyPage><ReportBuilderPage /></LazyPage></RoleGuard>,
     path: 'reports/builder',
   },
-  { element: <RoleGuard allowedRoles={ALL_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
+  { element: <RoleGuard allowedRoles={CASE_CREATE_ROLES}><CasesPage /></RoleGuard>, path: 'cases' },
   // LEAN-P2 exit-gate: legacy /staffing-requests surfaces removed. Redirect
   // to the canonical staffing-desk and position-detail surfaces.
   { element: <Navigate to="/staffing-desk?view=board" replace />, path: 'staffing-requests' },
