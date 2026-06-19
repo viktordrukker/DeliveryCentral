@@ -7,6 +7,11 @@ import {
 } from '../../domain/entities/project-position.entity';
 import { PositionFillStatusValue } from '../../domain/value-objects/position-fill-status';
 
+export interface AvailableTransition {
+  to: PositionFillStatusValue;
+  requiresReason: boolean;
+}
+
 export class ProjectPositionResponseDto {
   @ApiProperty() id!: string;
   // W1-11 — opaque tenant-scoped identifier (`pos_…`) preferred for URLs and
@@ -36,10 +41,16 @@ export class ProjectPositionResponseDto {
   @ApiProperty() version!: number;
   @ApiProperty({ required: false }) createdByPersonId?: string;
   @ApiProperty({ required: false }) updatedByPersonId?: string;
+  // Position-workflow — the lifecycle transitions the CALLER may perform from
+  // the current fillStatus (admin sees all). Populated only on the detail
+  // endpoint so the FE can render exactly the legal actions, no FE/BE drift.
+  @ApiProperty({ required: false, type: [Object] })
+  availableTransitions?: AvailableTransition[];
 
   public static from(
     position: ProjectPosition,
     names?: { activePersonName?: string; projectName?: string; projectCode?: string },
+    availableTransitions?: AvailableTransition[],
   ): ProjectPositionResponseDto {
     return {
       id: position.positionId.value,
@@ -64,6 +75,7 @@ export class ProjectPositionResponseDto {
       version: position.version,
       createdByPersonId: position.createdByPersonId,
       updatedByPersonId: position.updatedByPersonId,
+      availableTransitions,
     };
   }
 }

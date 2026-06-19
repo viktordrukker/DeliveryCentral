@@ -127,6 +127,55 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     );
   });
 
+  it('Position-workflow: renders a lifecycle button per availableTransition and runs a no-reason transition', async () => {
+    mockedGet.mockResolvedValue({
+      ...OPEN_POSITION,
+      fillStatus: 'BOOKED' as const,
+      activePersonId: 'p-ada',
+      activeAllocationPercent: 80,
+      availableTransitions: [
+        { to: 'ONBOARDING', requiresReason: false },
+        { to: 'ASSIGNED', requiresReason: false },
+        { to: 'RELEASED', requiresReason: true },
+      ],
+    });
+    mockedCandidates.mockResolvedValue({ ...CANDIDATES, candidates: [] });
+    mockedTransition.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'ONBOARDING' as const });
+
+    renderAt();
+
+    const onboardBtn = await screen.findByTestId('lifecycle-action-ONBOARDING');
+    expect(onboardBtn).toHaveTextContent('Start onboarding');
+    expect(screen.getByTestId('lifecycle-action-RELEASED')).toBeInTheDocument();
+
+    await userEvent.click(onboardBtn);
+    await waitFor(() =>
+      expect(mockedTransition).toHaveBeenCalledWith('pos-1', expect.objectContaining({ toStatus: 'ONBOARDING', personId: 'p-ada' })),
+    );
+  });
+
+  it('Position-workflow: a requiresReason transition prompts for a reason before applying', async () => {
+    mockedGet.mockResolvedValue({
+      ...OPEN_POSITION,
+      fillStatus: 'ASSIGNED' as const,
+      activePersonId: 'p-ada',
+      availableTransitions: [{ to: 'RELEASED', requiresReason: true }],
+    });
+    mockedCandidates.mockResolvedValue({ ...CANDIDATES, candidates: [] });
+    mockedTransition.mockResolvedValue({ ...OPEN_POSITION, fillStatus: 'RELEASED' as const });
+
+    renderAt();
+
+    await userEvent.click(await screen.findByTestId('lifecycle-action-RELEASED'));
+    // No call yet — reason required.
+    expect(mockedTransition).not.toHaveBeenCalled();
+    await userEvent.type(screen.getByRole('textbox'), 'Rolled off project');
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() =>
+      expect(mockedTransition).toHaveBeenCalledWith('pos-1', expect.objectContaining({ toStatus: 'RELEASED', reason: 'Rolled off project' })),
+    );
+  });
+
   it('lays out the page as a 2-col canvas: main column + right rail (DS canvas PositionDetail)', async () => {
     mockedGet.mockResolvedValue(OPEN_POSITION);
     mockedCandidates.mockResolvedValue(CANDIDATES);
