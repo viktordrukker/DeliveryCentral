@@ -937,8 +937,8 @@ export const PLATFORM_FLAGS = {
   workspaceMe: {
     key: 'flag.workspaceMe.enabled',
     description:
-      'Master switch for the /me Employee Workspace shell (Overview/Time/Leave/Projects/Inbox/Settings tabs). OFF keeps the existing /my-time, /leave, /notifications, /settings/account, /timesheets routes as the canonical surfaces; ON activates the unified /me shell that hosts them. Lean-simplification employee-workspace amendment.',
-    default: false,
+      'Master switch for the /me Employee Workspace shell (Overview/Time/Leave/Projects/Inbox/Settings tabs). OFF keeps the existing /my-time, /leave, /notifications, /settings/account, /timesheets routes as the canonical surfaces; ON activates the unified /me shell that hosts them. Lean-simplification employee-workspace amendment. C0-FLIP-PR: default flipped to true as v2 cutover trigger — see docs/runbooks/CUTOVER_RUNBOOK.md and the 22-gate C0 ledger.',
+    default: true,
     maturityLevel: 'developing',
     expectedGaSprint: 'v1.2',
     owner: 'frontend-eng',
@@ -947,8 +947,8 @@ export const PLATFORM_FLAGS = {
   dsRefresh: {
     key: 'flag.dsRefresh.enabled',
     description:
-      'DS visual refresh (lifecycle Timeline colors, Calendar/BalanceMeter primitives, page chrome refresh per lean-simplification amendments). Additive primitives stay shipped; this flag gates the consumer-visible adoption sites until staging review signs off.',
-    default: false,
+      'DS visual refresh (lifecycle Timeline colors, Calendar/BalanceMeter primitives, page chrome refresh per lean-simplification amendments). Additive primitives stay shipped; this flag gates the consumer-visible adoption sites until staging review signs off. C0-FLIP-PR: default flipped to true as v2 cutover trigger — see docs/runbooks/CUTOVER_RUNBOOK.md and the 22-gate C0 ledger.',
+    default: true,
     maturityLevel: 'developing',
     expectedGaSprint: 'v1.2',
     owner: 'frontend-eng',

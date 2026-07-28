@@ -195,8 +195,8 @@ export const FEATURE_FLAGS: Record<FeatureFlagId, FeatureFlagMirror> = {
   pulseEnabled: { key: 'flag.pulse.enabled', default: false },
   helpCenterMaster: { key: 'flag.helpCenter.enabled', default: false },
   undoToast: { key: 'flag.undo.toast.enabled', default: false },
-  workspaceMe: { key: 'flag.workspaceMe.enabled', default: false },
-  dsRefresh: { key: 'flag.dsRefresh.enabled', default: false },
+  workspaceMe: { key: 'flag.workspaceMe.enabled', default: true },
+  dsRefresh: { key: 'flag.dsRefresh.enabled', default: true },
 };
 
 // Build-time overrides for non-prod previews (e.g., the v2 staging container
