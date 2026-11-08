@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -10,6 +11,8 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { Button, FormField, FormModal, Input, Table, type Column } from '@/components/ds';
+import { AccessPoliciesContent } from './AccessPoliciesPage';
+import { ResponsibilityMatrixAdminContent } from './ResponsibilityMatrixAdminPage';
 import {
   createCustomRole,
   deactivateCustomRole,
@@ -456,15 +459,86 @@ export function CustomRoleAdminContent(): JSX.Element {
   );
 }
 
+// W4-11 — consolidated governance surface. Three tabs live under one URL:
+//   /admin/governance/roles?tab=roles                 — custom-role admin (default)
+//   /admin/governance/roles?tab=access-policies       — ABAC policy registry
+//   /admin/governance/roles?tab=responsibility-matrix — action → approver matrix
+//
+// The legacy /admin/access-policies + /admin/responsibility-matrix routes
+// stay deep-linkable under dsRefresh=OFF; the V2Redirect wrappers in
+// `router.tsx` retarget them to the equivalent tab under dsRefresh=ON.
+type GovernanceTabKey = 'roles' | 'access-policies' | 'responsibility-matrix';
+
+const GOVERNANCE_TABS: { id: GovernanceTabKey; label: string; description: string }[] = [
+  {
+    id: 'roles',
+    label: 'Custom Roles',
+    description:
+      'Tenant-defined role shapes (Squad Lead, Tribe Lead, IT Service Owner). Built-in PlatformRole values are read-only; only custom rows can be edited or deactivated.',
+  },
+  {
+    id: 'access-policies',
+    label: 'Access Policies',
+    description:
+      'Active ABAC (Attribute-Based Access Control) policies governing data-level access restrictions per role and resource.',
+  },
+  {
+    id: 'responsibility-matrix',
+    label: 'Responsibility Matrix',
+    description:
+      'Configurable matrix that decides who approves each governed action. Lower priority numbers win; non-tenant scopes win over the tenant default.',
+  },
+];
+
+function isGovernanceTab(value: string | null): value is GovernanceTabKey {
+  return value === 'roles' || value === 'access-policies' || value === 'responsibility-matrix';
+}
+
 export function CustomRoleAdminPage(): JSX.Element {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab: GovernanceTabKey = isGovernanceTab(tabParam) ? tabParam : 'roles';
+  const [selectedTab, setSelectedTab] = useState<GovernanceTabKey>(initialTab);
+
+  useEffect(() => {
+    if (isGovernanceTab(tabParam) && tabParam !== selectedTab) {
+      setSelectedTab(tabParam);
+    }
+  }, [tabParam, selectedTab]);
+
+  const handleTabChange = useCallback(
+    (id: string): void => {
+      if (!isGovernanceTab(id)) return;
+      setSelectedTab(id);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('tab', id);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const activeTab = GOVERNANCE_TABS.find((t) => t.id === selectedTab) ?? GOVERNANCE_TABS[0];
+
   return (
     <PageContainer testId="custom-role-admin-page">
       <PageHeader
         eyebrow="Admin · Governance"
-        subtitle="Tenant-defined role shapes (Squad Lead, Tribe Lead, IT Service Owner). Built-in PlatformRole values are listed read-only; only custom roles can be edited or deactivated."
-        title="Custom Roles"
+        subtitle={activeTab.description}
+        title="Governance"
+        tabs={GOVERNANCE_TABS.map((t) => ({ id: t.id, label: t.label }))}
+        activeTab={selectedTab}
+        onTabChange={handleTabChange}
       />
-      <CustomRoleAdminContent />
+      <section data-testid={`governance-tab-${selectedTab}`}>
+        {selectedTab === 'roles' ? <CustomRoleAdminContent /> : null}
+        {selectedTab === 'access-policies' ? <AccessPoliciesContent /> : null}
+        {selectedTab === 'responsibility-matrix' ? <ResponsibilityMatrixAdminContent /> : null}
+      </section>
     </PageContainer>
   );
 }

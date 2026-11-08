@@ -226,7 +226,16 @@ const dashboardChildren = [
     path: 'admin/radiator-thresholds',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ROLES}><ResponsibilityMatrixAdminPage /></RoleGuard>,
+    // W4-11 — under dsRefresh the unified `/admin/governance/roles?tab=responsibility-matrix`
+    // owns this surface. Legacy URL keeps rendering the standalone page when the
+    // flag is off so deep-link bookmarks continue to work.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <V2Redirect to="/admin/governance/roles?tab=responsibility-matrix">
+          <ResponsibilityMatrixAdminPage />
+        </V2Redirect>
+      </RoleGuard>
+    ),
     path: 'admin/responsibility-matrix',
   },
   {
@@ -520,7 +529,16 @@ const dashboardChildren = [
     path: 'admin/vendors',
   },
   {
-    element: <RoleGuard allowedRoles={ADMIN_ROLES}><AccessPoliciesPage /></RoleGuard>,
+    // W4-11 — under dsRefresh the unified `/admin/governance/roles?tab=access-policies`
+    // owns this surface. Legacy URL keeps rendering the standalone page when
+    // the flag is off so deep-link bookmarks continue to work.
+    element: (
+      <RoleGuard allowedRoles={ADMIN_ROLES}>
+        <V2Redirect to="/admin/governance/roles?tab=access-policies">
+          <AccessPoliciesPage />
+        </V2Redirect>
+      </RoleGuard>
+    ),
     path: 'admin/access-policies',
   },
   {
