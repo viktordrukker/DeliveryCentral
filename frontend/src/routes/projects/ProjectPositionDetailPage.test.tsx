@@ -112,6 +112,25 @@ describe('ProjectPositionDetailPage (NEW-LGL-7)', () => {
     expect(screen.getByText('Node')).toBeInTheDocument();
   });
 
+  // W3-03 — hero KPI strip surfaces the at-a-glance facts above the
+  // SectionCards, mirroring the Workload Overview reference dashboard.
+  it('renders the hero KPI strip with status, required %, active person, and skills', async () => {
+    mockedGet.mockResolvedValue(OPEN_POSITION);
+    mockedCandidates.mockResolvedValue(CANDIDATES);
+
+    renderAt();
+    await screen.findByText('Ada Lovelace');
+
+    const strip = screen.getByTestId('position-kpi-strip');
+    expect(strip).toBeInTheDocument();
+    // Labels of the five KPI tiles.
+    expect(strip.textContent).toContain('Status');
+    expect(strip.textContent).toContain('Required allocation');
+    expect(strip.textContent).toContain('Active person');
+    expect(strip.textContent).toContain('Active allocation');
+    expect(strip.textContent).toContain('Required skills');
+  });
+
   it('Propose → confirm → transitions the position to PROPOSED with the candidate', async () => {
     mockedGet.mockResolvedValue(OPEN_POSITION);
     mockedCandidates.mockResolvedValue(CANDIDATES);

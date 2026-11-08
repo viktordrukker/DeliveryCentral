@@ -159,6 +159,18 @@ describe('ApprovalsPage', () => {
     await waitFor(() => expect(fetchUnifiedApprovals).toHaveBeenCalled());
   });
 
+  // W3-03 — page chrome (badges + Refresh + Tip) is injected into the shared
+  // title bar via useTitleBarActions, not duplicated in a per-page PageHeader.
+  it('injects awaiting + Refresh into the shared title bar actions slot', async () => {
+    fetchUnifiedApprovals.mockResolvedValue(response(sampleItems));
+    renderRoute(<ApprovalsPage />);
+    await waitFor(() => expect(screen.getByTestId('approvals-list')).toBeInTheDocument());
+    const titleBar = screen.getByTestId('title-bar-actions');
+    expect(titleBar.textContent).toContain('2 awaiting');
+    // Refresh button is inside the title bar actions slot, not the body.
+    expect(titleBar.contains(screen.getByTestId('approvals-refresh'))).toBe(true);
+  });
+
   // LEAN-P4c-3 — HR (and authorized managers) decide leave from /approvals
   // instead of navigating to /leave-requests separately.
   it('renders leave items and refetches with the leave source when chip clicked', async () => {

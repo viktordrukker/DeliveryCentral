@@ -325,6 +325,77 @@ export function ProjectPositionDetailPage(): JSX.Element {
 
       {!isLoading && !error && position && (
         <>
+          {/* W3-03 — hero KPI strip matches the Workload Overview grammar.
+              Five at-a-glance facts (status, required %, active person,
+              active %, required-skill count) so an RM can size up the
+              position before scrolling into the candidate slate. */}
+          <div className="kpi-strip" aria-label="Position metrics" data-testid="position-kpi-strip">
+            <div
+              className="kpi-strip__item"
+              style={{
+                borderLeft: `3px solid ${
+                  position.fillStatus === 'ASSIGNED'
+                    ? 'var(--color-status-active)'
+                    : position.fillStatus === 'ON_HOLD'
+                      ? 'var(--color-status-warning)'
+                      : position.fillStatus === 'RELEASED'
+                        ? 'var(--color-status-neutral)'
+                        : 'var(--color-accent)'
+                }`,
+              }}
+            >
+              <span className="kpi-strip__value">
+                <StatusBadge tone={STATUS_TONE[position.fillStatus]} label={position.fillStatus} />
+              </span>
+              <span className="kpi-strip__label">Status</span>
+            </div>
+            <div
+              className="kpi-strip__item"
+              style={{ borderLeft: '3px solid var(--color-chart-5)' }}
+            >
+              <span className="kpi-strip__value">
+                <Pct value={position.requiredAllocationPercent} fractionDigits={0} />
+              </span>
+              <span className="kpi-strip__label">Required allocation</span>
+            </div>
+            <div
+              className="kpi-strip__item"
+              style={{ borderLeft: '3px solid var(--color-status-info)' }}
+            >
+              <span className="kpi-strip__value" style={{ fontSize: 16 }}>
+                {position.activePersonId
+                  ? activePersonName ?? (
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>resolving…</span>
+                    )
+                  : '—'}
+              </span>
+              <span className="kpi-strip__label">Active person</span>
+            </div>
+            <div
+              className="kpi-strip__item"
+              style={{ borderLeft: '3px solid var(--color-chart-3)' }}
+            >
+              <span className="kpi-strip__value">
+                {position.activeAllocationPercent !== undefined ? (
+                  <Pct value={position.activeAllocationPercent} fractionDigits={0} />
+                ) : (
+                  '—'
+                )}
+              </span>
+              <span className="kpi-strip__label">Active allocation</span>
+            </div>
+            <div
+              className="kpi-strip__item"
+              style={{ borderLeft: '3px solid var(--color-chart-2)' }}
+            >
+              <span className="kpi-strip__value">{requiredSkills.length}</span>
+              <span className="kpi-strip__label">Required skills</span>
+              <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>
+                {requiredSkills.length > 0 ? requiredSkills.slice(0, 3).join(', ') + (requiredSkills.length > 3 ? '…' : '') : 'none specified'}
+              </span>
+            </div>
+          </div>
+
           <SectionCard
             title={
               projectMeta

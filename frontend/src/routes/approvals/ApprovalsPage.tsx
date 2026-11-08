@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useTitleBarActions } from '@/app/title-bar-context';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
-import { PageHeader } from '@/components/common/PageHeader';
+import { TipTrigger } from '@/components/common/TipBalloon';
 import { Avatar } from '@/components/ds/Avatar';
 import { Button } from '@/components/ds';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -108,6 +109,7 @@ export function ApprovalsPage(): JSX.Element {
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
   // B24 — header Refresh re-triggers the load effect.
   const [reloadTick, setReloadTick] = useState(0);
+  const { setActions } = useTitleBarActions();
 
   useEffect(() => {
     let active = true;
@@ -138,6 +140,36 @@ export function ApprovalsPage(): JSX.Element {
   // B24 — SLA-breach count drives a header alert badge.
   const breachedCount = items?.filter((it) => it.slaStage === 'breached').length ?? 0;
 
+  // W3-03 — chrome unification: surface queue status badges, Refresh, and
+  // Tip trigger via the shared title bar (matches dashboard pattern). The
+  // source filter chips remain in the body where they sit next to the list
+  // (Law 4 — action-data adjacency).
+  useEffect(() => {
+    setActions(
+      <>
+        <StatusBadge
+          tone={total > 0 ? 'warning' : 'active'}
+          label={`${total} awaiting`}
+          variant="chip"
+        />
+        {breachedCount > 0 ? (
+          <StatusBadge tone="danger" label={`${breachedCount} SLA breached`} variant="chip" />
+        ) : null}
+        <Button
+          variant="secondary"
+          size="sm"
+          type="button"
+          onClick={() => setReloadTick((t) => t + 1)}
+          data-testid="approvals-refresh"
+        >
+          ↻ Refresh
+        </Button>
+        <TipTrigger />
+      </>,
+    );
+    return () => setActions(null);
+  }, [setActions, total, breachedCount]);
+
   function setFilter(id: ApprovalQueueSource | 'all'): void {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -160,35 +192,6 @@ export function ApprovalsPage(): JSX.Element {
 
   return (
     <PageContainer testId="approvals-page">
-      <PageHeader
-        eyebrow="Workspace"
-        title="Approvals"
-        subtitle="Unified queue across position proposals, budgets, activations, leave, cases, and skill reviews."
-        badges={
-          <>
-            <StatusBadge
-              tone={total > 0 ? 'warning' : 'active'}
-              label={`${total} awaiting`}
-              variant="chip"
-            />
-            {breachedCount > 0 ? (
-              <StatusBadge tone="danger" label={`${breachedCount} SLA breached`} variant="chip" />
-            ) : null}
-          </>
-        }
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            type="button"
-            onClick={() => setReloadTick((t) => t + 1)}
-            data-testid="approvals-refresh"
-          >
-            ↻ Refresh
-          </Button>
-        }
-      />
-
       {/* Source filter chips */}
       <div
         className="approvals-filters"
