@@ -73,6 +73,61 @@ describe('DeliveryManagerDashboardPage', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 
+  // W4-04 — staffing gaps row shows displayName, not a truncated UUID, and the
+  // title-bar quick action points to /staffing-desk (lean canonical), not the
+  // retired /assignments route.
+  it('shows person display name in staffing gaps and retargets Staffing CTA', async () => {
+    const dashboardMod = await import('@/lib/api/dashboard-delivery-manager');
+    vi.mocked(dashboardMod.fetchScorecardHistory).mockResolvedValue([]);
+    const pendingActionsMod = await import('@/lib/api/dashboard-pending-actions');
+    vi.mocked(pendingActionsMod.fetchPendingActions).mockResolvedValue({ items: [], totalCount: 0 });
+    vi.mocked(dashboardMod.fetchDeliveryManagerDashboard).mockResolvedValue({
+      asOf: '2025-03-15T00:00:00.000Z',
+      burnRateTrend: [],
+      dataSources: [],
+      projectsMissingApprovedTime: [],
+      openRequestsByProject: [],
+      portfolioHealth: [],
+      timeAlignment: {
+        approvedTimeAfterAssignmentEndCount: 0,
+        approvedTimeWithoutAssignmentCount: 0,
+        matchedCount: 0,
+        plannedWithoutApprovedTimeCount: 0,
+      },
+      staffingGaps: [
+        {
+          assignmentId: 'asn-1',
+          daysUntilEnd: 7,
+          endDate: '2025-03-22',
+          personId: '11111111-1111-1111-1111-111111111111',
+          personName: 'Carlos Vega',
+          projectCode: 'ITC-01',
+          projectId: 'prj-1',
+          projectName: 'Core Platform',
+        },
+      ],
+      summary: {
+        projectsMissingApprovedTimeCount: 0,
+        projectsWithNoStaff: 0,
+        projectsWithTimeVariance: 0,
+        totalActiveAssignments: 5,
+        totalActiveProjects: 3,
+      },
+    });
+
+    const { DeliveryManagerDashboardPage } = await import('./DeliveryManagerDashboardPage');
+    renderRoute(<DeliveryManagerDashboardPage />);
+
+    expect(await screen.findByText('Carlos Vega')).toBeInTheDocument();
+    // Old behaviour rendered the first 8 chars of the UUID — make sure that
+    // is gone.
+    expect(screen.queryByText('11111111...')).not.toBeInTheDocument();
+
+    // Title-bar quick action retargets to /staffing-desk (W3-12 / lean canonical).
+    const staffingLink = screen.getByRole('link', { name: 'Staffing' });
+    expect(staffingLink).toHaveAttribute('href', '/staffing-desk');
+  });
+
   it('shows error state on API failure', async () => {
     const mod = await import('@/lib/api/dashboard-delivery-manager');
     vi.mocked(mod.fetchDeliveryManagerDashboard).mockRejectedValueOnce(new Error('Network error'));

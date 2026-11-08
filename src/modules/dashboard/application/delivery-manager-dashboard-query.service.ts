@@ -131,14 +131,24 @@ export class DeliveryManagerDashboardQueryService {
 
     const gapCutoff = new Date(asOf);
     gapCutoff.setUTCDate(gapCutoff.getUTCDate() + staffingGapDays);
-    const staffingGaps = allAssignments
-      .filter((assignment) => {
-        if (!activeProjectIds.has(assignment.projectId)) return false;
-        if (!assignment.isActiveAt(asOf)) return false;
-        const endDate = assignment.validTo;
-        if (!endDate) return false;
-        return endDate >= asOf && endDate <= gapCutoff;
-      })
+    const gapAssignments = allAssignments.filter((assignment) => {
+      if (!activeProjectIds.has(assignment.projectId)) return false;
+      if (!assignment.isActiveAt(asOf)) return false;
+      const endDate = assignment.validTo;
+      if (!endDate) return false;
+      return endDate >= asOf && endDate <= gapCutoff;
+    });
+    // W4-04 — resolve person display names so the FE shows a human label instead
+    // of a truncated UUID (UX Law 6).
+    const gapPersonIds = Array.from(new Set(gapAssignments.map((a) => a.personId)));
+    const personRows = gapPersonIds.length === 0
+      ? []
+      : await this.prisma.person.findMany({
+          select: { personId: true, displayName: true },
+          where: { personId: { in: gapPersonIds } },
+        });
+    const personNameById = new Map(personRows.map((p) => [p.personId, p.displayName]));
+    const staffingGaps = gapAssignments
       .map((assignment) => {
         const project = activeProjectMap.get(assignment.projectId);
         const endDate = assignment.validTo!;
@@ -148,6 +158,7 @@ export class DeliveryManagerDashboardQueryService {
           daysUntilEnd,
           endDate: endDate.toISOString().slice(0, 10),
           personId: assignment.personId,
+          personName: personNameById.get(assignment.personId) ?? assignment.personId,
           projectCode: project?.projectCode ?? assignment.projectId,
           projectId: assignment.projectId,
           projectName: project?.name ?? assignment.projectId,
