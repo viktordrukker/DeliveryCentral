@@ -373,6 +373,11 @@ export const routeManifest: RouteManifestEntry[] = [
   { allowedRoles: ADMIN_ROLES, description: 'Configure per-leave-type accrual, max carry-over, and approval chains used by the leave-request workflow.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/leave-policies', title: 'Leave Policies' },
   { allowedRoles: ADMIN_ROLES, description: 'Author and publish Help Center articles end users see from the in-app `?` button.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/admin/help', title: 'Help Center' },
   { allowedRoles: ALL_ROLES, description: 'Browse Help Center articles published by your platform admins.', group: 'admin-config', navVisible: true, obsoleteInV2: true, path: '/help', title: 'Help' },
+  // W4-10 — Help article detail registered for manifest/router parity. The
+  // router already mounts `/help/:slug` (HelpArticleDetailPage). Hidden from
+  // nav (parameterised deep-link only). Inherits `admin-config` grouping from
+  // `/help`; reachable by every role.
+  { allowedRoles: ALL_ROLES, group: 'admin-config', navVisible: false, obsoleteInV2: true, path: '/help/:slug' },
 ];
 
 const routeManifestByPath = new Map(routeManifest.map((route) => [route.path, route]));

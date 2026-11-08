@@ -186,3 +186,60 @@ describe('Phase E — canvas-exact v2 sidebar', () => {
     expect(bench?.titleV2).toBe('Bench');
   });
 });
+
+/**
+ * W4-10 — audit-doc / matrix / manifest refresh.
+ *
+ * The route catalogue, jtbd-matrix and audit doc need to stay in sync. These
+ * tests pin the routes that were missing prior to the W4-10 refresh so future
+ * drift fails fast.
+ */
+describe('W4-10 — audit-doc parity for v2 routes', () => {
+  it('registers /help/:slug in the manifest (router parity)', () => {
+    const slug = routeManifest.find((r) => r.path === '/help/:slug');
+    expect(slug).toBeDefined();
+    // Detail view, parameterised — keep it routable, hide from sidebar.
+    expect(slug?.navVisible).toBe(false);
+    expect(slug?.group).toBe('admin-config');
+  });
+
+  it('/help and /help/:slug share the same group so audit doc grouping is stable', () => {
+    const help = routeManifest.find((r) => r.path === '/help');
+    const slug = routeManifest.find((r) => r.path === '/help/:slug');
+    expect(help?.group).toBeDefined();
+    expect(slug?.group).toBe(help?.group);
+  });
+
+  it('every people-org route has a defined group (no unclassified entries)', () => {
+    // Audit-doc invariant: every /org, /people, /teams entry must carry a
+    // group field so phase18-route-jtbd-audit.md taxonomy stays exhaustive.
+    const orgRoots = ['/org', '/people', '/people/bench', '/teams'];
+    for (const path of orgRoots) {
+      const entry = routeManifest.find((r) => r.path === path);
+      expect(entry, `manifest missing ${path}`).toBeDefined();
+      expect(entry?.group, `${path} must declare a group`).toBeDefined();
+    }
+  });
+
+  it('exposes v2-era routes the audit-doc + jtbd-matrix depend on', () => {
+    // These were added during V2 and must remain manifest-registered so the
+    // audit-doc parity check and downstream jtbd-matrix stay aligned.
+    const required = [
+      '/me',
+      '/approvals',
+      '/staffing-desk',
+      '/staffing-desk/positions/new',
+      '/admin/integrations/sso',
+      '/admin/integrations/registry',
+      '/admin/v2-soak-checklist',
+      '/admin/governance/roles',
+      '/reports',
+      '/people/bench',
+      '/help/:slug',
+    ];
+    const paths = new Set(routeManifest.map((r) => r.path));
+    for (const p of required) {
+      expect(paths.has(p), `manifest missing v2 route ${p}`).toBe(true);
+    }
+  });
+});
