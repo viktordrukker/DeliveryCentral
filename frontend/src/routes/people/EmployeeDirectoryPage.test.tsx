@@ -9,11 +9,9 @@ import { buildPersonDirectoryItem, buildPersonDirectoryResponse } from '@test/fi
 import { renderRoute } from '@test/render-route';
 import { EmployeeDirectoryPage } from './EmployeeDirectoryPage';
 
+const useAuthMock = vi.fn();
 vi.mock('@/app/auth-context', () => ({
-  useAuth: () => ({
-    principal: { personId: 'user-1', roles: ['hr_manager'] },
-    isAuthenticated: true,
-  }),
+  useAuth: () => useAuthMock(),
 }));
 
 vi.mock('@/lib/api/person-directory', () => ({
@@ -29,6 +27,8 @@ vi.mock('@/lib/api/resource-pools', () => ({
 const isFeatureEnabledMock = vi.fn();
 const fetchEnrichedBenchMock = vi.fn();
 const fetchSidebarCountsMock = vi.fn();
+// W3-05 — department filter is now sourced from the org chart on mount.
+const fetchOrgChartMock = vi.fn();
 vi.mock('@/lib/feature-flags', () => ({
   isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
 }));
@@ -37,6 +37,9 @@ vi.mock('@/lib/api/people-bench', () => ({
 }));
 vi.mock('@/lib/api/sidebar-counts', () => ({
   fetchSidebarCounts: (...args: unknown[]) => fetchSidebarCountsMock(...args),
+}));
+vi.mock('@/lib/api/org-chart', () => ({
+  fetchOrgChart: (...args: unknown[]) => fetchOrgChartMock(...args),
 }));
 
 const mockedFetchPersonDirectory = vi.mocked(fetchPersonDirectory);
@@ -50,6 +53,11 @@ describe('EmployeeDirectoryPage', () => {
     isFeatureEnabledMock.mockReturnValue(false);
     fetchEnrichedBenchMock.mockResolvedValue([]);
     fetchSidebarCountsMock.mockResolvedValue({ projects: 0, approvals: 0, bench: 0, hrQueue: 0 });
+    fetchOrgChartMock.mockResolvedValue({ dottedLineRelationships: [], roots: [] });
+    useAuthMock.mockReturnValue({
+      principal: { personId: 'user-1', roles: ['hr_manager'] },
+      isAuthenticated: true,
+    });
   });
 
   it('shows loading state', () => {
@@ -216,6 +224,55 @@ describe('EmployeeDirectoryPage', () => {
     expect(within(inspector).getByText('Grace Hopper')).toBeInTheDocument();
     // Stepper reports position 2 of 2 (Grace is the second row).
     expect(within(inspector).getByText('2 / 2')).toBeInTheDocument();
+  });
+
+  it('W3-05: Department filter is a select populated from org-chart roots', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    fetchOrgChartMock.mockResolvedValue({
+      dottedLineRelationships: [],
+      roots: [
+        { id: 'unit-eng', code: 'ENG', kind: 'department', name: 'Engineering', manager: null, members: [], children: [] },
+        { id: 'unit-hr', code: 'HR', kind: 'department', name: 'People Ops', manager: null, members: [], children: [] },
+      ],
+    });
+    mockedFetchPersonDirectory.mockResolvedValue(buildPersonDirectoryResponse({ items: [], total: 0 }));
+
+    renderWithRouter();
+
+    const select = await screen.findByTestId('directory-department-filter');
+    await waitFor(() => expect(select.querySelectorAll('option').length).toBeGreaterThan(1));
+    expect(select.textContent).toMatch(/Engineering/);
+    expect(select.textContent).toMatch(/People Ops/);
+  });
+
+  it('W3-05: HR Queue + Leave Approvals tabs are hidden for non-HR roles', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    useAuthMock.mockReturnValue({
+      principal: { personId: 'rm-1', roles: ['resource_manager'] },
+      isAuthenticated: true,
+    });
+    mockedFetchPersonDirectory.mockResolvedValue(buildPersonDirectoryResponse({ items: [], total: 0 }));
+
+    renderWithRouter();
+
+    // Directory + Bench remain visible. HR Queue + Leave Approvals are hidden.
+    await screen.findByTestId('tab-directory');
+    expect(screen.getByTestId('tab-bench')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-cases')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tab-leave-approvals')).not.toBeInTheDocument();
+  });
+
+  it('W3-05: HR Queue + Leave Approvals tabs are visible for HR roles', async () => {
+    isFeatureEnabledMock.mockReturnValue(true);
+    // default useAuthMock = hr_manager via beforeEach
+    mockedFetchPersonDirectory.mockResolvedValue(buildPersonDirectoryResponse({ items: [], total: 0 }));
+
+    renderWithRouter();
+
+    await screen.findByTestId('tab-directory');
+    expect(screen.getByTestId('tab-bench')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-cases')).toBeInTheDocument();
+    expect(screen.getByTestId('tab-leave-approvals')).toBeInTheDocument();
   });
 
   it('V2 issue 179: inspector close button hides the drawer and keeps the user on the directory', async () => {

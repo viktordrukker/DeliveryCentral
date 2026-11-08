@@ -15,7 +15,7 @@ import { TabBar } from '@/components/common/TabBar';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
-import { formatDate, formatDateShort } from '@/lib/format-date';
+import { formatDate } from '@/lib/format-date';
 import { ReportingLineForm } from '@/components/people/ReportingLineForm';
 import { PersonSkillsTab } from '@/components/people/PersonSkillsTab';
 import { useStoredApiToken } from '@/features/auth/useStoredApiToken';
@@ -436,26 +436,6 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
 
       {state.data && activeTab !== '360' && activeTab !== 'skills' && activeTab !== 'history' ? (
         <>
-          <div className="kpi-strip">
-            <SummaryCard label="Person" value={state.data.displayName} />
-            <SummaryCard
-              label="Current Org Unit"
-              value={state.data.currentOrgUnit?.name ?? 'Not assigned'}
-            />
-            <SummaryCard
-              label="Line Manager"
-              value={state.data.currentLineManager?.displayName ?? 'No line manager'}
-            />
-            <SummaryCard
-              label="Active Assignments"
-              value={String(state.data.currentAssignmentCount)}
-            />
-            <SummaryCard
-              label="Lifecycle Status"
-              value={humanizeEnum(lifecycleStatus ?? state.data?.lifecycleStatus ?? 'Active', EMPLOYMENT_STATUS_LABELS)}
-            />
-          </div>
-
           <div className="dashboard-main-grid">
             <SectionCard title="Employee Summary">
               <dl className="details-list">
@@ -470,6 +450,23 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
                 <div>
                   <dt>Org Unit</dt>
                   <dd>{state.data.currentOrgUnit?.name ?? 'Not assigned'}</dd>
+                </div>
+                <div>
+                  <dt>Line Manager</dt>
+                  <dd>{state.data.currentLineManager?.displayName ?? 'No line manager'}</dd>
+                </div>
+                <div>
+                  <dt>Active Assignments</dt>
+                  <dd>{state.data.currentAssignmentCount}</dd>
+                </div>
+                <div>
+                  <dt>Lifecycle Status</dt>
+                  <dd>
+                    {humanizeEnum(
+                      lifecycleStatus ?? state.data?.lifecycleStatus ?? 'Active',
+                      EMPLOYMENT_STATUS_LABELS,
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt>Resource Pools</dt>
@@ -603,18 +600,3 @@ export function EmployeeDetailsPlaceholderPage(): JSX.Element {
   );
 }
 
-interface SummaryCardProps {
-  label: string;
-  value: string;
-}
-
-function SummaryCard({ label, value }: SummaryCardProps): JSX.Element {
-  return (
-    <SectionCard>
-      <div className="metric-card">
-        <div className="metric-card__value metric-card__value--compact">{value}</div>
-        <div className="metric-card__label">{label}</div>
-      </div>
-    </SectionCard>
-  );
-}
