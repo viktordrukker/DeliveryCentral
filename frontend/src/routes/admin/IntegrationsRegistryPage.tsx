@@ -141,7 +141,23 @@ export function IntegrationsRegistryPage(): JSX.Element {
                 return <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>{text}</span>;
               },
             },
-            { key: 'manualSync', title: 'Manual sync', getValue: (r) => (r.supportsManualSync ? 'yes' : 'no'), render: (r) => (r.supportsManualSync ? 'Available on /admin/integrations' : '—') },
+            {
+              key: 'manualSync',
+              title: 'Manual sync',
+              getValue: (r) => (r.supportsManualSync ? 'yes' : 'no'),
+              render: (r) =>
+                r.supportsManualSync ? (
+                  <Link
+                    to="/admin/integrations"
+                    data-testid={`registry-manual-sync-${r.provider}`}
+                    style={{ color: 'var(--color-accent)' }}
+                  >
+                    Open manual sync
+                  </Link>
+                ) : (
+                  '—'
+                ),
+            },
             {
               key: 'actions',
               title: 'Actions',

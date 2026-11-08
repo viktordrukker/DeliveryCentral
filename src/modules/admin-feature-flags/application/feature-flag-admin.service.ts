@@ -1,10 +1,25 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import {
   PLATFORM_FLAGS,
   PlatformFlagsService,
 } from '@src/shared/config/platform-flags.service';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
+
+/**
+ * W4-07 — Flag ids whose rollout is owned by a separate (staged) cutover path
+ * and MUST NEVER be flipped from the admin surface. Toggling these via
+ * `/admin/feature-flags` would bypass the controlled v2 rollout, so the
+ * backend hard-rejects the PATCH with 403. The frontend already renders the
+ * row as "Rollout-locked", but the service is the source of truth.
+ *
+ * Keep in sync with `ROLLOUT_LOCKED_FLAG_IDS` in
+ * `frontend/src/routes/admin/FeatureFlagsAdminPage.tsx`.
+ */
+export const ROLLOUT_LOCKED_FLAGS: ReadonlySet<string> = new Set([
+  'dsRefresh',
+  'workspaceMe',
+]);
 
 /**
  * LEAN-P4d-2 — extracted from the inline controller body so the
@@ -55,6 +70,13 @@ export class FeatureFlagAdminService {
     )[id];
     if (!flag) {
       throw new NotFoundException(`Unknown feature flag: ${id}`);
+    }
+    // W4-07 — rollout-locked flags are flipped only by the staged cutover
+    // path, not by admins clicking in /admin/feature-flags.
+    if (ROLLOUT_LOCKED_FLAGS.has(id)) {
+      throw new ForbiddenException(
+        `Feature flag '${id}' is rollout-locked and cannot be toggled from the admin UI.`,
+      );
     }
     const previousValue = await this.flags.isEnabledByKey(flag.key, flag.default);
     // D-103-write-path — stamp actorId on every flip so the

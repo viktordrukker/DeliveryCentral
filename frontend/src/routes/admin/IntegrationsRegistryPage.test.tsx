@@ -159,4 +159,30 @@ describe('IntegrationsRegistryPage — W2-10 parity Test connection buttons (JSM
       expect(mockedTest).toHaveBeenCalledWith('ldap');
     });
   });
+
+  it('W4-07 — renders manualSync as a real <Link> to /admin/integrations for providers that support it', async () => {
+    render(
+      <MemoryRouter>
+        <IntegrationsRegistryPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Integrations Registry');
+    const jiraLink = await screen.findByTestId('registry-manual-sync-jira');
+    expect(jiraLink).toBeInTheDocument();
+    expect(jiraLink.tagName).toBe('A');
+    expect(jiraLink).toHaveAttribute('href', '/admin/integrations');
+    expect(screen.getByTestId('registry-manual-sync-m365')).toHaveAttribute(
+      'href',
+      '/admin/integrations',
+    );
+    expect(screen.getByTestId('registry-manual-sync-radius')).toHaveAttribute(
+      'href',
+      '/admin/integrations',
+    );
+    // Providers without manual-sync support render an em-dash, not a link.
+    expect(screen.queryByTestId('registry-manual-sync-jsm')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('registry-manual-sync-ldap')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('registry-manual-sync-llm')).not.toBeInTheDocument();
+  });
 });

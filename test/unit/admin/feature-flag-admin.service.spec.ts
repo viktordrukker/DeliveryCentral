@@ -1,6 +1,9 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
-import { FeatureFlagAdminService } from '@src/modules/admin-feature-flags/application/feature-flag-admin.service';
+import {
+  FeatureFlagAdminService,
+  ROLLOUT_LOCKED_FLAGS,
+} from '@src/modules/admin-feature-flags/application/feature-flag-admin.service';
 import { PLATFORM_FLAGS } from '@src/shared/config/platform-flags.service';
 
 /**
@@ -101,5 +104,31 @@ describe('FeatureFlagAdminService (LEAN-P4d-2)', () => {
     await svc.toggle(flagId, false, null);
     expect(upsertCalls[0].create.createdByPersonId).toBeNull();
     expect(upsertCalls[0].update.updatedByPersonId).toBeNull();
+  });
+
+  describe('W4-07 — ROLLOUT_LOCKED_FLAGS', () => {
+    it('exports the locked set containing dsRefresh + workspaceMe', () => {
+      expect(ROLLOUT_LOCKED_FLAGS.has('dsRefresh')).toBe(true);
+      expect(ROLLOUT_LOCKED_FLAGS.has('workspaceMe')).toBe(true);
+    });
+
+    it('toggle() rejects rollout-locked flags with ForbiddenException', async () => {
+      const { svc } = makeFixture();
+      await expect(svc.toggle('dsRefresh', true, 'actor-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(svc.toggle('workspaceMe', false, 'actor-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('toggle() never writes PlatformSetting when the flag is rollout-locked', async () => {
+      const { svc, upsertCalls, invalidate } = makeFixture();
+      await expect(svc.toggle('dsRefresh', true, 'actor-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(upsertCalls).toHaveLength(0);
+      expect(invalidate).not.toHaveBeenCalled();
+    });
   });
 });
