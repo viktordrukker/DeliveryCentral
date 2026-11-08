@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
+import { useEvidenceManagement } from '@/app/platform-settings-context';
 import {
   type AppRole,
   CAPITALISATION_ROLES,
@@ -18,6 +19,7 @@ import { Tabs } from '@/components/ds';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
 import { ExceptionsPage } from '@/routes/exceptions/ExceptionsPage';
+import { FeatureGuard } from '@/routes/FeatureGuard';
 import { WorkEvidencePage } from '@/routes/work-evidence/WorkEvidencePage';
 
 const TimeReportPage = lazy(() =>
@@ -90,6 +92,11 @@ export function ReportsPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get('section');
   const { principal } = useAuth();
+  // W4-12 — tab visibility honours the same FeatureGuard wiring as the
+  // standalone `/work-evidence` route. When the `evidenceManagement` feature
+  // is OFF, the Evidence tab is hidden from the strip and a deep-linked
+  // `?section=evidence` falls through the `FeatureGuard` wrap below.
+  const evidenceManagement = useEvidenceManagement();
 
   // W1-26 — tabs are filtered by role so HR-only tabs are hidden from PM and
   // PM-/RM-only tabs are hidden from HR. The underlying sub-pages keep their
@@ -97,9 +104,14 @@ export function ReportsPage(): JSX.Element {
   // the surface is consistent with the in-page RBAC. If the deep-linked
   // `?section=X` is not visible for this role, fall back to the first visible
   // tab (or `exceptions` if none — page entry already requires EXCEPTIONS_ROLES).
+  // W4-12 — also drops `evidence` when the `evidenceManagement` feature is
+  // disabled so the tab strip matches the underlying FeatureGuard.
   const visibleTabs = useMemo(
-    () => TABS.filter((t) => hasAnyRole(principal?.roles, [...t.allowedRoles])),
-    [principal?.roles],
+    () =>
+      TABS.filter((t) => hasAnyRole(principal?.roles, [...t.allowedRoles])).filter(
+        (t) => t.id !== 'evidence' || evidenceManagement.enabled,
+      ),
+    [principal?.roles, evidenceManagement.enabled],
   );
   const requestedTab = isValidSection(sectionParam) ? sectionParam : null;
   const requestedAllowed = requestedTab && visibleTabs.some((t) => t.id === requestedTab);
@@ -167,7 +179,11 @@ export function ReportsPage(): JSX.Element {
           {activeTab === 'export' ? <ExportCentrePage /> : null}
           {activeTab === 'utilization' ? <UtilizationPage /> : null}
           {activeTab === 'builder' ? <ReportBuilderPage /> : null}
-          {activeTab === 'evidence' ? <WorkEvidencePage /> : null}
+          {activeTab === 'evidence' ? (
+            <FeatureGuard feature="evidenceManagement">
+              <WorkEvidencePage />
+            </FeatureGuard>
+          ) : null}
         </Suspense>
       </div>
     </PageContainer>

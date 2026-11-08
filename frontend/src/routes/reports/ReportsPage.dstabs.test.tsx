@@ -75,4 +75,20 @@ describe('V2 Scope §4 item 15 — ReportsPage DS Tabs + dsRefresh gate', () => 
   it('exposes a testId on the DS Tabs strip for FE-side targeting', () => {
     expect(src).toMatch(/<Tabs[\s\S]*?testId="reports-ds-tabs"/);
   });
+
+  // W4-12 — FeatureGuard alignment for the Evidence tab.
+  it('imports FeatureGuard and the useEvidenceManagement hook', () => {
+    expect(src).toMatch(/import \{ FeatureGuard \} from '@\/routes\/FeatureGuard';/);
+    expect(src).toMatch(/import \{ useEvidenceManagement \} from '@\/app\/platform-settings-context';/);
+  });
+
+  it('wraps the embedded WorkEvidencePage in <FeatureGuard feature="evidenceManagement">', () => {
+    expect(src).toMatch(
+      /activeTab === 'evidence' \? \(\s*<FeatureGuard feature="evidenceManagement">\s*<WorkEvidencePage \/>\s*<\/FeatureGuard>/,
+    );
+  });
+
+  it('filters the evidence tab out of visibleTabs when the feature is disabled', () => {
+    expect(src).toMatch(/t\.id !== 'evidence' \|\| evidenceManagement\.enabled/);
+  });
 });

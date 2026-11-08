@@ -15,6 +15,19 @@ vi.mock('@/app/auth-context', () => ({
   }),
 }));
 
+// W4-12 — the Evidence tab is now also gated on the `evidenceManagement`
+// platform feature (matching the standalone `/work-evidence` FeatureGuard).
+// The default test mock keeps the feature ON so the 7-tabs assertions stay
+// green; the OFF behaviour is covered by ReportsPage.featureguard.test.tsx.
+vi.mock('@/app/platform-settings-context', () => ({
+  useEvidenceManagement: () => ({
+    allowManualEntry: true,
+    enabled: true,
+    isLoading: false,
+    showDiagnosticsInCoreDashboards: false,
+  }),
+}));
+
 // Stub the heavy embedded pages — we only test the shell composition, not
 // the inner page rendering (which is covered by each page's own tests).
 vi.mock('@/routes/exceptions/ExceptionsPage', () => ({
