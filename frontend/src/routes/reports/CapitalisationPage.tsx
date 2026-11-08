@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -17,7 +16,8 @@ import { formatDateShort } from '@/lib/format-date';
 
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
-import { AnalysisLayout } from '@/components/layout/AnalysisLayout';
+import { PageContainer } from '@/components/common/PageContainer';
+import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useAuth } from '@/app/auth-context';
 import { ADMIN_ROLES, hasAnyRole } from '@/app/route-manifest';
@@ -63,36 +63,13 @@ function getDateRange(period: Period): { from: string; to: string } {
   return { from: '', to: '' };
 }
 
-function isValidPeriod(s: string | null): s is Period {
-  return s === 'this_month' || s === 'this_quarter' || s === 'this_year' || s === 'custom';
-}
-
 export function CapitalisationPage(): JSX.Element {
   const { principal } = useAuth();
   const isAdmin = hasAnyRole(principal?.roles, ADMIN_ROLES);
 
-  // UX Law 5 — filter persistence via URL search params.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const periodParam = searchParams.get('period');
-  const period: Period = isValidPeriod(periodParam) ? periodParam : 'this_month';
-  const customFrom = searchParams.get('from') ?? '';
-  const customTo = searchParams.get('to') ?? '';
-
-  const updateParam = (key: string, value: string | null): void => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value === null || value === '') next.delete(key);
-        else next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
-  };
-
-  const setPeriod = (p: Period): void => updateParam('period', p === 'this_month' ? null : p);
-  const setCustomFrom = (v: string): void => updateParam('from', v || null);
-  const setCustomTo = (v: string): void => updateParam('to', v || null);
+  const [period, setPeriod] = useState<Period>('this_month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
   const [report, setReport] = useState<CapitalisationReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -234,27 +211,31 @@ export function CapitalisationPage(): JSX.Element {
   }));
 
   return (
-    <AnalysisLayout
-      viewport
-      eyebrow="Reports"
-      title="Capitalisation Report"
-      subtitle="CAPEX/OPEX capitalisation breakdown for approved timesheets"
-      actions={
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleExportXlsx} type="button">
-            Export XLSX
-          </Button>
-          <Button variant="secondary" onClick={handleExportPdf} type="button">
-            Export PDF
-          </Button>
-        </div>
-      }
-      filters={
-        <>
-          <label className="field">
-            <span className="field__label">Period</span>
+    <PageContainer viewport>
+      <PageHeader
+        actions={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExportXlsx} type="button">
+              Export XLSX
+            </Button>
+            <Button variant="secondary" onClick={handleExportPdf} type="button">
+              Export PDF
+            </Button>
+          </div>
+        }
+        subtitle="CAPEX/OPEX capitalisation breakdown for approved timesheets"
+        title="Capitalisation Report"
+      />
+
+      {/* Period selector */}
+      <SectionCard title="Period">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="form-label" htmlFor="period-select">
+              Period
+            </label>
             <select
-              className="field__control"
+              className="form-control"
               id="period-select"
               onChange={(e) => setPeriod(e.target.value as Period)}
               value={period}
@@ -264,95 +245,47 @@ export function CapitalisationPage(): JSX.Element {
               <option value="this_year">This Year</option>
               <option value="custom">Custom</option>
             </select>
-          </label>
+          </div>
 
           {period === 'custom' ? (
             <>
-              <label className="field">
-                <span className="field__label">From</span>
+              <div>
+                <label className="form-label" htmlFor="custom-from">
+                  From
+                </label>
                 <DatePicker
-                  id="custom-from"
-                  onValueChange={(value) => setCustomFrom(value)}
-                  value={customFrom}
-                />
-              </label>
-              <label className="field">
-                <span className="field__label">To</span>
+ className="form-control"
+ id="custom-from"
+ onValueChange={(value) => setCustomFrom(value)} value={customFrom}
+ />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="custom-to">
+                  To
+                </label>
                 <DatePicker
-                  id="custom-to"
-                  onValueChange={(value) => setCustomTo(value)}
-                  value={customTo}
-                />
-              </label>
+ className="form-control"
+ id="custom-to"
+ onValueChange={(value) => setCustomTo(value)} value={customTo}
+ />
+              </div>
             </>
           ) : null}
 
           {dateRange.from && dateRange.to ? (
-            <span style={{ alignSelf: 'center', color: 'var(--color-text-muted)', fontSize: 12 }}>
+            <p className="text-sm text-gray-500">
               {dateRange.from} — {dateRange.to}
-            </span>
+            </p>
           ) : null}
-        </>
-      }
-    >
+        </div>
+      </SectionCard>
+
       {isLoading ? (
         <LoadingState variant="skeleton" skeletonType="chart" />
       ) : error ? (
         <ErrorState description={error} />
       ) : report ? (
         <>
-          {/* ── KPI STRIP ── */}
-          <div className="kpi-strip" aria-label="Capitalisation summary">
-            <div
-              className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-chart-1)' }}
-              data-testid="kpi-capex"
-            >
-              <span className="kpi-strip__value">{report.totals.capexHours.toFixed(1)}h</span>
-              <span className="kpi-strip__label">CAPEX Hours</span>
-            </div>
-            <div
-              className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-chart-4)' }}
-              data-testid="kpi-opex"
-            >
-              <span className="kpi-strip__value">{report.totals.opexHours.toFixed(1)}h</span>
-              <span className="kpi-strip__label">OPEX Hours</span>
-            </div>
-            <div
-              className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-status-active)' }}
-              data-testid="kpi-total"
-            >
-              <span className="kpi-strip__value">{report.totals.totalHours.toFixed(1)}h</span>
-              <span className="kpi-strip__label">Total Hours</span>
-            </div>
-            <div
-              className="kpi-strip__item"
-              style={{ borderLeft: '3px solid var(--color-status-info)' }}
-              data-testid="kpi-capex-pct"
-            >
-              <span className="kpi-strip__value"><Pct value={report.totals.capexPercent} /></span>
-              <span className="kpi-strip__label">CAPEX %</span>
-            </div>
-            <div
-              className="kpi-strip__item"
-              style={{
-                borderLeft: `3px solid ${
-                  report.byProject.some((r) => r.alert)
-                    ? 'var(--color-status-warning)'
-                    : 'var(--color-status-active)'
-                }`,
-              }}
-              data-testid="kpi-alerts"
-            >
-              <span className="kpi-strip__value">
-                {report.byProject.filter((r) => r.alert).length}
-              </span>
-              <span className="kpi-strip__label">Deviation Alerts</span>
-            </div>
-          </div>
-
           {/* CAPEX/OPEX Breakdown Table (8-2-02) */}
           <SectionCard title="CAPEX / OPEX Breakdown by Project">
             <Table
@@ -446,22 +379,26 @@ export function CapitalisationPage(): JSX.Element {
       {isAdmin ? (
         <SectionCard title="Period Locks">
           <div className="flex flex-wrap gap-4 items-end mb-4">
-            <label className="field">
-              <span className="field__label">Lock From</span>
+            <div>
+              <label className="form-label" htmlFor="lock-from">
+                Lock From
+              </label>
               <DatePicker
-                id="lock-from"
-                onValueChange={(value) => setLockFrom(value)}
-                value={lockFrom}
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">Lock To</span>
+ className="form-control"
+ id="lock-from"
+ onValueChange={(value) => setLockFrom(value)} value={lockFrom}
+ />
+            </div>
+            <div>
+              <label className="form-label" htmlFor="lock-to">
+                Lock To
+              </label>
               <DatePicker
-                id="lock-to"
-                onValueChange={(value) => setLockTo(value)}
-                value={lockTo}
-              />
-            </label>
+ className="form-control"
+ id="lock-to"
+ onValueChange={(value) => setLockTo(value)} value={lockTo}
+ />
+            </div>
             <Button variant="primary" disabled={lockSubmitting} onClick={() => void handleLockPeriod()} type="button">
               Lock Period
             </Button>
@@ -503,6 +440,6 @@ export function CapitalisationPage(): JSX.Element {
           .sidebar { display: none !important; }
         }
       `}</style>
-    </AnalysisLayout>
+    </PageContainer>
   );
 }

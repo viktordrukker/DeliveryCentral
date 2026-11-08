@@ -1,10 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-import {
-  ACTIVE_FILL_STATUSES,
-  canonicalActivePersonWhere,
-  listBenchPersonIds,
-} from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 /* ── Response types ── */
@@ -107,10 +102,8 @@ export class BenchManagementService {
       personScope = personScope ? new Set([...personScope].filter((id) => orgIds.has(id))) : orgIds;
     }
 
-    // All active people — apply the canonical "active employee" predicate so
-    // headcount matches the bench query (deletedAt / archivedAt / terminatedAt
-    // / employmentStatus filters in lock-step with `bench-query.ts`).
-    const peopleWhere: Record<string, unknown> = { ...canonicalActivePersonWhere() };
+    // All active people
+    const peopleWhere: Record<string, unknown> = { employmentStatus: 'ACTIVE' };
     if (personScope) peopleWhere.id = { in: [...personScope] };
     const allPeople = await this.prisma.person.findMany({
       where: peopleWhere,
@@ -118,15 +111,13 @@ export class BenchManagementService {
     });
     const totalPeople = allPeople.length;
 
-    // Canonical bench person IDs (shared with sidebar + Director + Bench page).
-    // We still need per-person allocation for the supply-demand panel,
-    // so we load only fills that bracket `now` (matching the bench predicate).
+    // Current allocations (LEAN: ProjectPosition canonical, was ProjectAssignment).
+    // fillStatus in BOOKED/ONBOARDING/ASSIGNED/ON_HOLD + activePersonId!=null
+    // replaces the legacy AssignmentStatus set 1:1.
     const activeAssignments = await this.prisma.projectPosition.findMany({
       where: {
-        fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
+        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
         activePersonId: { not: null, ...(personScope ? { in: [...personScope] } : {}) },
-        activeValidFrom: { lte: now },
-        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
       },
       select: {
         activePersonId: true,
@@ -145,12 +136,8 @@ export class BenchManagementService {
       );
     }
 
-    // Bench people: intersection of canonical bench set with this dashboard's
-    // pool/org-unit scope filter.
-    const canonicalBench = await listBenchPersonIds(this.prisma, now);
-    const benchPersonIds = allPeople
-      .filter((p) => canonicalBench.has(p.id))
-      .map((p) => p.id);
+    // Bench people: allocation === 0
+    const benchPersonIds = allPeople.filter((p) => (allocByPerson.get(p.id) ?? 0) === 0).map((p) => p.id);
 
     // Bench start date: MAX(validTo) from ended assignments.
     // LEAN: two sources contribute —
@@ -251,9 +238,8 @@ export class BenchManagementService {
 
     // Build bench people list
     const benchPeople: BenchPersonDto[] = [];
-    const benchPersonIdSet = new Set(benchPersonIds);
     for (const p of allPeople) {
-      if (!benchPersonIdSet.has(p.id)) continue;
+      if ((allocByPerson.get(p.id) ?? 0) !== 0) continue;
 
       const last = lastAssignment.get(p.id);
       const benchStart = last?.validTo ?? p.hiredAt ?? p.createdAt;

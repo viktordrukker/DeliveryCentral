@@ -23,7 +23,6 @@ import {
   RESOURCE_POOL_ROLES,
   RM_DASHBOARD_ROLES,
   STAFFING_DESK_ROLES,
-  APPROVALS_ROLES,
   TIMESHEET_MANAGER_ROLES,
   WORKLOAD_ROLES,
 } from './route-manifest';
@@ -60,7 +59,6 @@ import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
 import { DashboardPage } from '@/routes/dashboard/DashboardPage';
-import { DashboardRedirect } from '@/routes/DashboardRedirect';
 import { HomeRedirect } from '@/routes/HomeRedirect';
 import { V2Redirect } from '@/routes/V2Redirect';
 import { isFeatureEnabled } from '@/lib/feature-flags';
@@ -137,10 +135,6 @@ function LazyPage({ children }: { children: React.ReactNode }): JSX.Element {
 
 const dashboardChildren = [
   { element: <HomeRedirect />, path: '/' },
-  // `/dashboard` bare URL — per-role redirect to the persona's default dashboard.
-  // Without this, `/dashboard` falls through to the catch-all 404 (hard-locked
-  // on the v2 QA walk for every persona).
-  { element: <DashboardRedirect />, path: 'dashboard' },
   { element: <RoleGuard allowedRoles={MANAGEMENT_ROLES}><LazyPage><PlannedVsActualPage /></LazyPage></RoleGuard>, path: 'dashboard/planned-vs-actual' },
   // Sprint F-0.11 (Decision-11) — merged Manager + Exec dashboards.
   // The per-role routes below remain for direct access; the merged routes
@@ -186,7 +180,7 @@ const dashboardChildren = [
     path: 'dashboard/director',
   },
   {
-    element: <RoleGuard allowedRoles={APPROVALS_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
+    element: <RoleGuard allowedRoles={STAFFING_DESK_ROLES}><LazyPage><ApprovalsPage /></LazyPage></RoleGuard>,
     path: 'approvals',
   },
   {

@@ -17,17 +17,15 @@ import { InboxPage } from '@/routes/notifications/InboxPage';
 import { LeaveTab } from './LeaveTab';
 import { OverviewTab } from './OverviewTab';
 import { ProjectsTab } from './ProjectsTab';
-import { SkillsTab } from './SkillsTab';
 import { TimeTab } from './TimeTab';
 
-export type WorkspaceTab = 'overview' | 'time' | 'leave' | 'projects' | 'skills' | 'inbox' | 'settings';
+export type WorkspaceTab = 'overview' | 'time' | 'leave' | 'projects' | 'inbox' | 'settings';
 
 const TABS: { id: WorkspaceTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'time', label: 'Time' },
   { id: 'leave', label: 'Leave' },
   { id: 'projects', label: 'Projects' },
-  { id: 'skills', label: 'Skills' },
   { id: 'inbox', label: 'Inbox' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -192,7 +190,6 @@ export function WorkspaceShellPage(): JSX.Element {
         {activeTab === 'time' && <TimeTab />}
         {activeTab === 'leave' && <LeaveTab />}
         {activeTab === 'projects' && <ProjectsTab />}
-        {activeTab === 'skills' && <SkillsTab />}
         {activeTab === 'inbox' && <InboxPage />}
         {activeTab === 'settings' && <AccountSettingsPage />}
       </div>

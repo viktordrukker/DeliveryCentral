@@ -8,8 +8,6 @@ import { LeaveRequestsModule } from '@src/modules/leave-requests/leave-requests.
 import { LeaveRequestsService } from '@src/modules/leave-requests/application/leave-requests.service';
 import { OrganizationModule } from '@src/modules/organization/organization.module';
 import { PlatformSettingsModule } from '@src/modules/platform-settings/platform-settings.module';
-import { ProjectPositionsModule } from '@src/modules/project-positions/project-positions.module';
-import { TransitionProjectPositionFillService } from '@src/modules/project-positions/application/transition-project-position-fill.service';
 import { ProjectRegistryModule } from '@src/modules/project-registry/project-registry.module';
 import { DecideProjectActivationService } from '@src/modules/project-registry/application/decide-project-activation.service';
 import { StaffingRequestsModule } from '@src/modules/staffing-requests/staffing-requests.module';
@@ -36,7 +34,6 @@ import { WorkloadDashboardQueryService } from './application/workload-dashboard-
 import { DirectorAnomalyDetectionService } from './application/director-anomaly-detection.service';
 import { OrgHealthService } from './application/org-health.service';
 import { PortfolioFinanceSummaryService } from './application/portfolio-finance-summary.service';
-import { BenchAgingByDimensionService } from './application/bench-aging-by-dimension.service';
 import { PersonProfileService } from './application/person-profile.service';
 import { PortfolioDashboardService } from './application/portfolio-dashboard.service';
 import { HrActionCardsService } from './application/hr-action-cards.service';
@@ -55,7 +52,7 @@ import { MeHomeController } from './presentation/me-home.controller';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 @Module({
-  imports: [AssignmentsModule, CaseManagementModule, FinancialGovernanceModule, LeaveRequestsModule, OrganizationModule, PlatformSettingsModule, ProjectPositionsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
+  imports: [AssignmentsModule, CaseManagementModule, FinancialGovernanceModule, LeaveRequestsModule, OrganizationModule, PlatformSettingsModule, ProjectRegistryModule, StaffingRequestsModule, TimesheetsModule, WorkEvidenceModule],
   controllers: [WorkloadDashboardController, RoleDashboardController, PortfolioDashboardController, HrActionCardsController, UnifiedApprovalQueueController, PersonProfileController, DirectorAnomaliesController, MeHomeController, SidebarCountsController],
   providers: [
     {
@@ -72,7 +69,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
         decideProjectActivationService: DecideProjectActivationService,
         approveCaseService: ApproveCaseService,
         timesheetsService: TimesheetsService,
-        transitionProjectPositionFillService: TransitionProjectPositionFillService,
       ) =>
         new UnifiedApprovalQueueService(
           prisma,
@@ -81,7 +77,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
           decideProjectActivationService,
           approveCaseService,
           timesheetsService,
-          transitionProjectPositionFillService,
         ),
       inject: [
         PrismaService,
@@ -90,7 +85,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
         DecideProjectActivationService,
         ApproveCaseService,
         TimesheetsService,
-        TransitionProjectPositionFillService,
       ],
     },
     {
@@ -111,11 +105,6 @@ import { PrismaService } from '@src/shared/persistence/prisma.service';
     {
       provide: OrgHealthService,
       useFactory: (prisma: PrismaService) => new OrgHealthService(prisma),
-      inject: [PrismaService],
-    },
-    {
-      provide: BenchAgingByDimensionService,
-      useFactory: (prisma: PrismaService) => new BenchAgingByDimensionService(prisma),
       inject: [PrismaService],
     },
     MeHomeService,

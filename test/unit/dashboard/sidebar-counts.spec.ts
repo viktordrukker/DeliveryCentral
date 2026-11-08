@@ -13,11 +13,8 @@ function buildStub(values: Partial<Record<string, number>>): PrismaService {
     leaveRequest: { count: async () => values['leaveRequest'] ?? 0 },
     caseRecord: { count: async () => values['caseRecord'] ?? 0 },
     person: {
-      // Canonical bench helper uses findMany; HR card counts use count().
-      // Distinguish HR's probation/contract/review by inspecting the where
-      // clause shape.
-      findMany: async (_q: unknown) =>
-        Array.from({ length: values['personActive'] ?? 0 }, (_, i) => ({ id: `p${i}` })),
+      // Distinguish bench's "active people" from HR's probation/contract/review
+      // by inspecting the where clause shape.
       count: async (q: { where: Record<string, unknown> }) => {
         if ('probationEndsAt' in q.where) return values['probationDue'] ?? 0;
         if ('contractEndsAt' in q.where) return values['contractDue'] ?? 0;

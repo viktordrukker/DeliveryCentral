@@ -1,10 +1,9 @@
 import { UnifiedApprovalQueueService } from '@src/modules/dashboard/application/unified-approval-queue.service';
 import type { PrismaService } from '@src/shared/persistence/prisma.service';
 
-// The constructor now takes 6 source services (#470 added 5 for the
-// decide() dispatcher; this PR added TransitionProjectPositionFillService
-// for the position-proposal delegate). list()/loadTimesheets() never
-// touches them, so we stub with empty objects.
+// The constructor now takes 5 source services (added by PR #470 for the
+// decide() dispatcher). list()/loadTimesheets() never touches them, so we
+// stub with empty objects.
 const stubSvc = {} as never;
 
 /**
@@ -52,7 +51,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
         ],
         persons: [{ id: 'p-1', displayName: 'Ethan Brooks' }],
       }),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
     );
     const out = await svc.list({ sources: ['timesheet'] });
     expect(out.items).toHaveLength(1);
@@ -80,7 +79,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
         ],
         persons: [{ id: 'p-2', displayName: 'Other' }],
       }),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
     );
     const out = await svc.list({ sources: ['leave'] });
     expect(out.items).toHaveLength(0);
@@ -101,7 +100,7 @@ describe('UnifiedApprovalQueueService — timesheet source', () => {
         ],
         persons: [{ id: 'p-3', displayName: 'Alex' }],
       }),
-      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
+      stubSvc, stubSvc, stubSvc, stubSvc, stubSvc,
     );
     const out = await svc.list({ sources: ['timesheet'] });
     expect(out.items).toHaveLength(1);
