@@ -21,10 +21,28 @@ function buildStub(seed: {
   memberships: FakeMembership[];
   positions: FakePosition[];
 }): PrismaService {
+  // Active people = union of all membership personIds (matches the
+  // canonical-active-person predicate downstream consumers rely on).
+  const activePersonIds = Array.from(new Set(seed.memberships.map((m) => m.personId)));
+  const filledRows = seed.positions
+    .filter((p): p is { activePersonId: string } => p.activePersonId !== null)
+    .map((p) => ({ activePersonId: p.activePersonId }));
+
   const orgUnit = { findMany: async (_q: unknown) => seed.orgUnits };
   const personOrgMembership = { findMany: async (_q: unknown) => seed.memberships };
-  const projectPosition = { findMany: async (_q: unknown) => seed.positions };
-  return { orgUnit, personOrgMembership, projectPosition } as unknown as PrismaService;
+  const person = {
+    findMany: async (_q: unknown) => activePersonIds.map((id) => ({ id })),
+  };
+  const projectPosition = {
+    findMany: async (_q: unknown) => seed.positions,
+    groupBy: async (_q: unknown) => filledRows,
+  };
+  return {
+    orgUnit,
+    personOrgMembership,
+    person,
+    projectPosition,
+  } as unknown as PrismaService;
 }
 
 describe('OrgHealthService (LEAN-P4-missing-5)', () => {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { countBench, listBenchPersonIds } from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 import { ProjectRolePlanService } from '@src/modules/project-registry/application/project-role-plan.service';
 
@@ -185,7 +186,7 @@ export class PortfolioDashboardService {
       where: { status: 'ACTIVE' },
     });
 
-    const benchSize = await this.getAvailablePoolCount();
+    const benchSize = await countBench(this.prisma);
 
     return {
       totalProjects: heatmap.summary.totalProjects,
@@ -199,77 +200,35 @@ export class PortfolioDashboardService {
   }
 
   public async getAvailablePool(): Promise<AvailablePoolPerson[]> {
+    // W4-02 — Unified bench definition: the available pool is exactly the
+    // canonical bench set (active employees with NO active fill on a
+    // ProjectPosition). This matches `/dashboard/director/org-health`'s
+    // totalBenchSize, the sidebar nav badge, the Bench page, and the
+    // Staffing Desk supply panel — they all read from `bench-query.ts`.
+    //
+    // Earlier this endpoint widened the set to include people with
+    // partial allocation or an assignment ending within 30 days, which
+    // made the dashboard show two different bench numbers for the same
+    // dataset. That divergence is the bug this slice fixes.
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const benchIds = await listBenchPersonIds(this.prisma, now);
+    if (benchIds.size === 0) return [];
 
-    // Active employees — canonical predicate so the denominator matches
-    // the bench / Org Health / sidebar counts surfaces.
-    const allPeople = await this.prisma.person.findMany({
-      where: {
-        employmentStatus: 'ACTIVE',
-        deletedAt: null,
-        archivedAt: null,
-        terminatedAt: null,
-      },
+    const benchPeople = await this.prisma.person.findMany({
+      where: { id: { in: [...benchIds] } },
       select: { id: true, displayName: true, skillsets: true, location: true },
     });
 
-    // Pull active fills from the canonical staffing aggregate
-    // (ProjectPosition), not the legacy ProjectAssignment table — the
-    // two diverge on activation rules and previously produced an
-    // "Available Pool" count that didn't reconcile against bench size
-    // on the same dashboard.
-    const activePositions = await this.prisma.projectPosition.findMany({
-      where: {
-        fillStatus: { in: ['BOOKED', 'ONBOARDING', 'ASSIGNED', 'ON_HOLD'] },
-        activePersonId: { not: null },
-        activeValidFrom: { lte: now },
-        OR: [{ activeValidTo: null }, { activeValidTo: { gte: now } }],
-      },
-      select: {
-        activePersonId: true,
-        activeAllocationPercent: true,
-        activeValidTo: true,
-      },
-    });
-
-    // Calculate current allocation per person.
-    const allocationByPerson = new Map<string, { total: number; earliestEnd: Date | null }>();
-    for (const a of activePositions) {
-      if (!a.activePersonId) continue;
-      const existing = allocationByPerson.get(a.activePersonId) ?? { total: 0, earliestEnd: null };
-      existing.total += Number(a.activeAllocationPercent ?? 0);
-      if (a.activeValidTo && (!existing.earliestEnd || a.activeValidTo < existing.earliestEnd)) {
-        existing.earliestEnd = a.activeValidTo;
-      }
-      allocationByPerson.set(a.activePersonId, existing);
-    }
-
-    return allPeople
-      .filter((person) => {
-        const alloc = allocationByPerson.get(person.id);
-        if (!alloc) return true; // No assignments = available (bench)
-        if (alloc.total < 100) return true; // Partial allocation = has headroom
-        if (alloc.earliestEnd && alloc.earliestEnd <= thirtyDaysFromNow) return true; // Ending soon
-        return false;
-      })
-      .map((person) => {
-        const alloc = allocationByPerson.get(person.id);
-        return {
-          id: person.id,
-          displayName: person.displayName,
-          currentAllocation: alloc?.total ?? 0,
-          availableFrom: alloc?.earliestEnd?.toISOString().slice(0, 10) ?? null,
-          skills: person.skillsets,
-          location: person.location,
-        };
-      })
-      .sort((a, b) => a.currentAllocation - b.currentAllocation);
-  }
-
-  private async getAvailablePoolCount(): Promise<number> {
-    const pool = await this.getAvailablePool();
-    return pool.length;
+    return benchPeople
+      .map((person) => ({
+        id: person.id,
+        displayName: person.displayName,
+        currentAllocation: 0,
+        availableFrom: null,
+        skills: person.skillsets,
+        location: person.location,
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   private fillRateToRag(fillRate: number, isFixedPrice: boolean): 'GREEN' | 'AMBER' | 'RED' {

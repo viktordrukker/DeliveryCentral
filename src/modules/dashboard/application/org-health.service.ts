@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { ACTIVE_FILL_STATUSES } from '@src/shared/persistence/bench-query';
+import { listBenchPersonIds } from '@src/shared/persistence/bench-query';
 import { PrismaService } from '@src/shared/persistence/prisma.service';
 
 import { OrgHealthResponseDto, OrgHealthUnitDto } from './contracts/org-health.dto';
@@ -9,11 +9,10 @@ import { OrgHealthResponseDto, OrgHealthUnitDto } from './contracts/org-health.d
  * LEAN-P4-missing-5 — Director "Org Health" aggregation.
  *
  * Single read pass: per active OrgUnit, count active PersonOrgMembership rows,
- * intersect against active ProjectPosition rows (canonical staffing aggregate),
- * derive bench size and unfill rate. Person employment-status filter is the
- * canonical "active employee" predicate (see bench-query.ts) so the
- * portfolio bench number on this dashboard matches the sidebar nav badge,
- * the Bench page, and the Staffing Desk supply panel.
+ * intersect against the canonical bench set (see bench-query.ts) so the
+ * portfolio bench number on this dashboard reconciles 1:1 with the sidebar
+ * nav badge, the Bench page, the Staffing Desk supply panel, AND the
+ * `/dashboard/portfolio/available-pool` endpoint (W4-02 unification).
  */
 
 @Injectable()
@@ -26,7 +25,7 @@ export class OrgHealthService {
       throw new BadRequestException('Org health asOf is invalid.');
     }
 
-    const [orgUnits, memberships, activePositions] = await Promise.all([
+    const [orgUnits, memberships, benchPersonIds] = await Promise.all([
       this.prisma.orgUnit.findMany({
         where: { archivedAt: null, status: 'ACTIVE' },
         select: { id: true, code: true, name: true },
@@ -45,25 +44,8 @@ export class OrgHealthService {
         },
         select: { personId: true, orgUnitId: true },
       }),
-      this.prisma.projectPosition.findMany({
-        where: {
-          archivedAt: null,
-          fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
-          activePersonId: { not: null },
-          activeValidFrom: { lte: asOf },
-          OR: [
-            { activeValidTo: null },
-            { activeValidTo: { gte: asOf } },
-          ],
-        },
-        select: { activePersonId: true },
-      }),
+      listBenchPersonIds(this.prisma, asOf),
     ]);
-
-    const staffedPersonIds = new Set<string>();
-    for (const position of activePositions) {
-      if (position.activePersonId) staffedPersonIds.add(position.activePersonId);
-    }
 
     const membersByUnit = new Map<string, Set<string>>();
     for (const m of memberships) {
@@ -78,11 +60,11 @@ export class OrgHealthService {
     const units: OrgHealthUnitDto[] = orgUnits.map((unit) => {
       const memberIds = membersByUnit.get(unit.id) ?? new Set<string>();
       const headcount = memberIds.size;
-      let staffedCount = 0;
+      let benchSize = 0;
       for (const pid of memberIds) {
-        if (staffedPersonIds.has(pid)) staffedCount += 1;
+        if (benchPersonIds.has(pid)) benchSize += 1;
       }
-      const benchSize = headcount - staffedCount;
+      const staffedCount = headcount - benchSize;
       const unfillRatePct = headcount > 0 ? Number(((benchSize / headcount) * 100).toFixed(1)) : 0;
       return {
         orgUnitId: unit.id,

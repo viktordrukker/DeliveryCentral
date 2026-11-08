@@ -61,6 +61,7 @@ export async function listBenchPersonIds(
     prisma.projectPosition.groupBy({
       by: ['activePersonId'],
       where: {
+        archivedAt: null,
         activePersonId: { not: null },
         fillStatus: { in: [...ACTIVE_FILL_STATUSES] },
         activeValidFrom: { lte: asOf },

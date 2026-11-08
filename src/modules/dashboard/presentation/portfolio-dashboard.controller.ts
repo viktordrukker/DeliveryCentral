@@ -28,7 +28,10 @@ export class PortfolioDashboardController {
   }
 
   @Get('available-pool')
-  @ApiOperation({ summary: 'Available people pool (bench + partial allocation)' })
+  @ApiOperation({
+    summary:
+      'Available people pool — canonical bench set (matches /dashboard/director/org-health, sidebar bench badge, Staffing Desk supply).',
+  })
   @ApiOkResponse({ description: 'Available pool.' })
   @RequireRoles('resource_manager', 'delivery_manager', 'director', 'admin')
   public async getAvailablePool() {
