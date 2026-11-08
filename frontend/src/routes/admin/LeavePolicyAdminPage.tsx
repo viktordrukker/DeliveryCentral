@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -9,6 +10,7 @@ import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
 import { StatusBadge } from '@/components/common/StatusBadge';
+import { TipBalloon } from '@/components/common/TipBalloon';
 import { Button, FormField, FormModal, Input, Switch, Table, type Column } from '@/components/ds';
 import {
   createLeavePolicy,
@@ -294,6 +296,13 @@ export function LeavePolicyAdminPage(): JSX.Element {
     );
 
   const formOpen = creating || editing !== null;
+  const activeCount = policies.filter((p) => p.active).length;
+  const inactiveCount = policies.length - activeCount;
+  const distinctTypeCount = new Set(policies.map((p) => p.leaveType)).size;
+  const activeBorder =
+    activeCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-warning)';
+  const inactiveBorder =
+    inactiveCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-neutral)';
 
   return (
     <PageContainer testId="leave-policy-admin-page">
@@ -302,6 +311,38 @@ export function LeavePolicyAdminPage(): JSX.Element {
         subtitle="Configure per-leave-type accrual, max carry-over, and approval chains. Replaces hard-coded constants so HR governance can tune leave policy without code changes."
         title="Leave Policies"
       />
+
+      <div className="kpi-strip" aria-label="Leave policies summary" data-testid="leave-policies-kpi-strip">
+        <Link className="kpi-strip__item" to="/admin/leave-policies" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+          <TipBalloon tip="Total leave policies (active + inactive) currently configured." arrow="left" />
+          <span className="kpi-strip__value">{policies.length}</span>
+          <span className="kpi-strip__label">Total policies</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>across all types</span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/leave-policies" style={{ borderLeft: `3px solid ${activeBorder}` }}>
+          <TipBalloon tip="Policies currently in effect — used for balance lookups." arrow="left" />
+          <span className="kpi-strip__value">{activeCount}</span>
+          <span className="kpi-strip__label">Active</span>
+          <span className="kpi-strip__context" style={{ color: activeCount > 0 ? 'var(--color-status-active)' : 'var(--color-status-warning)' }}>
+            {activeCount > 0 ? 'in force' : 'none active'}
+          </span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/leave-policies" style={{ borderLeft: `3px solid ${inactiveBorder}` }}>
+          <TipBalloon tip="Deactivated policies retained for historical balance lookups." arrow="left" />
+          <span className="kpi-strip__value">{inactiveCount}</span>
+          <span className="kpi-strip__label">Inactive</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>historical</span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/leave-policies" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+          <TipBalloon tip="Distinct leave types covered by at least one policy." arrow="left" />
+          <span className="kpi-strip__value">{distinctTypeCount}</span>
+          <span className="kpi-strip__label">Leave types covered</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>of {LEAVE_TYPES.length} total</span>
+        </Link>
+      </div>
 
       <div
         style={{

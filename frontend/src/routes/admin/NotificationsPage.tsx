@@ -10,6 +10,9 @@ import { TemplatePreview } from '@/components/admin/TemplatePreview';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { PaginationControls } from '@/components/common/PaginationControls';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { TipBalloon } from '@/components/common/TipBalloon';
 import { formatDateTime } from '@/lib/format-date';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -55,7 +58,14 @@ export function NotificationsPage(): JSX.Element {
     }));
   }
 
-  const totalPages = Math.max(1, Math.ceil(queue.totalCount / queue.pageSize));
+  const failedQueueCount = queue.items.filter((i) => i.status === 'FAILED_TERMINAL').length;
+  const retryingQueueCount = queue.items.filter((i) => i.status === 'RETRYING').length;
+  const totalTemplates = state.templates.length;
+  const totalOutcomes = state.outcomes.length;
+  const failedBorder =
+    failedQueueCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)';
+  const retryingBorder =
+    retryingQueueCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-warning)';
 
   return (
     <PageContainer viewport>
@@ -69,6 +79,47 @@ export function NotificationsPage(): JSX.Element {
         subtitle="Review configured notification templates and send safe test messages without exposing channel secrets."
         title="Notification Templates"
       />
+
+      <div className="kpi-strip" aria-label="Notifications summary" data-testid="notifications-kpi-strip">
+        <Link className="kpi-strip__item" to="/admin/notifications" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+          <TipBalloon tip="Number of configured notification templates." arrow="left" />
+          <span className="kpi-strip__value">{totalTemplates}</span>
+          <span className="kpi-strip__label">Templates</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>across channels</span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/notifications" style={{ borderLeft: '3px solid var(--color-chart-5)' }}>
+          <TipBalloon tip="Recent delivery attempts captured from the queue." arrow="left" />
+          <span className="kpi-strip__value">{totalOutcomes}</span>
+          <span className="kpi-strip__label">Recent outcomes</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>last attempts</span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/notifications" style={{ borderLeft: `3px solid ${retryingBorder}` }}>
+          <TipBalloon tip="Items currently being retried by the outbox worker." arrow="left" />
+          <span className="kpi-strip__value">{retryingQueueCount}</span>
+          <span className="kpi-strip__label">Retrying</span>
+          <span className="kpi-strip__context" style={{ color: retryingQueueCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-warning)' }}>
+            {retryingQueueCount === 0 ? 'No retries' : 'in flight'}
+          </span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/notifications" style={{ borderLeft: `3px solid ${failedBorder}` }}>
+          <TipBalloon tip="Items that exhausted retries and require operator action (requeue)." arrow="left" />
+          <span className="kpi-strip__value">{failedQueueCount}</span>
+          <span className="kpi-strip__label">Failed (terminal)</span>
+          <span className="kpi-strip__context" style={{ color: failedQueueCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
+            {failedQueueCount === 0 ? 'All clear' : 'needs requeue'}
+          </span>
+        </Link>
+
+        <Link className="kpi-strip__item" to="/admin/notifications" style={{ borderLeft: '3px solid var(--color-status-neutral)' }}>
+          <TipBalloon tip="Total notification requests across the selected filter." arrow="left" />
+          <span className="kpi-strip__value">{queue.totalCount}</span>
+          <span className="kpi-strip__label">Queue total</span>
+          <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>{queue.selectedStatus || 'all statuses'}</span>
+        </Link>
+      </div>
 
       {state.isLoading ? <LoadingState label="Loading notification templates..." variant="skeleton" skeletonType="table" /> : null}
       {state.error && !state.selectedTemplate ? <ErrorState description={state.error} /> : null}
@@ -142,15 +193,6 @@ export function NotificationsPage(): JSX.Element {
 
         {!queue.isLoading && !queue.error ? (
           <>
-            <div className="results-meta">
-              <span>
-                {queue.totalCount === 0
-                  ? '0 requests'
-                  : `${(queue.page - 1) * queue.pageSize + 1}–${Math.min(queue.page * queue.pageSize, queue.totalCount)} of ${queue.totalCount} requests`}
-                {' '}&mdash; page {queue.page} of {totalPages}
-              </span>
-            </div>
-
             {queue.items.length === 0 ? (
               <EmptyState
                 description="No notification requests match the selected status filter."
@@ -163,7 +205,7 @@ export function NotificationsPage(): JSX.Element {
                   { key: 'recipient', title: 'Recipient', getValue: (i) => i.recipient, render: (i) => i.recipient },
                   { key: 'event', title: 'Event', getValue: (i) => i.eventName, render: (i) => i.eventName },
                   { key: 'status', title: 'Status', getValue: (i) => i.status, render: (i) => (
-                    <span className={`status-badge status-badge--${i.status.toLowerCase()}`}>{i.status}</span>
+                    <StatusBadge status={i.status} variant="chip" size="small" />
                   ) },
                   { key: 'attempts', title: 'Attempts', getValue: (i) => i.attemptCount, render: (i) => `${i.attemptCount} / ${i.maxAttempts}` },
                   { key: 'requestedAt', title: 'Requested At', getValue: (i) => i.requestedAt, render: (i) => formatDateTime(i.requestedAt) },
@@ -197,19 +239,17 @@ export function NotificationsPage(): JSX.Element {
               />
             )}
 
-            {queue.totalCount > queue.pageSize ? (
-              <div className="pagination">
-                <Button variant="secondary" disabled={queue.page <= 1 || queue.isLoading} onClick={queue.handlePrevPage} type="button">
-                  Previous
-                </Button>
-                <span className="pagination__info">
-                  Page {queue.page} of {totalPages}
-                </span>
-                <Button variant="secondary" disabled={queue.page >= totalPages || queue.isLoading} onClick={queue.handleNextPage} type="button">
-                  Next
-                </Button>
-              </div>
-            ) : null}
+            <PaginationControls
+              page={queue.page}
+              pageSize={queue.pageSize}
+              totalItems={queue.totalCount}
+              onPageChange={queue.handleGoToPage}
+              onPageSizeChange={() => {
+                /* page-size selection currently not configurable for this hook */
+              }}
+              pageSizes={[queue.pageSize]}
+              itemLabel="requests"
+            />
           </>
         ) : null}
       </SectionCard>

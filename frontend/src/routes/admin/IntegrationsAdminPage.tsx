@@ -6,6 +6,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
 import { PageHeader } from '@/components/common/PageHeader';
 import { SectionCard } from '@/components/common/SectionCard';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { TipBalloon } from '@/components/common/TipBalloon';
 import { formatDateTime } from '@/lib/format-date';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 import {
@@ -35,6 +37,17 @@ export function IntegrationsAdminContent(): JSX.Element {
   const showRemediationActions =
     dsRefreshEnabled && state.selectedProvider === 'jira';
 
+  const totalAdapters = state.integrations.length;
+  const configuredCount = state.integrations.filter((i) => i.status === 'configured').length;
+  const degradedCount = state.integrations.filter((i) => i.status === 'degraded').length;
+  const notConfiguredCount = totalAdapters - configuredCount - degradedCount;
+  const degradedBorder =
+    degradedCount > 0 ? 'var(--color-status-danger)' : 'var(--color-status-active)';
+  const configuredBorder =
+    configuredCount === totalAdapters && totalAdapters > 0
+      ? 'var(--color-status-active)'
+      : 'var(--color-status-warning)';
+
   return (
     <>
       {state.isLoading ? <LoadingState label="Loading integration status..." variant="skeleton" skeletonType="page" /> : null}
@@ -42,6 +55,40 @@ export function IntegrationsAdminContent(): JSX.Element {
       {state.successMessage ? (
         <div className="success-banner" role="status">
           {state.successMessage}
+        </div>
+      ) : null}
+
+      {!state.isLoading && !state.error && totalAdapters > 0 ? (
+        <div className="kpi-strip" aria-label="Integrations summary" data-testid="integrations-kpi-strip">
+          <Link className="kpi-strip__item" to="/admin/integrations/registry" style={{ borderLeft: '3px solid var(--color-accent)' }}>
+            <TipBalloon tip="Total integration adapters registered in the platform." arrow="left" />
+            <span className="kpi-strip__value">{totalAdapters}</span>
+            <span className="kpi-strip__label">Total adapters</span>
+            <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>across providers</span>
+          </Link>
+
+          <Link className="kpi-strip__item" to="/admin/integrations/registry" style={{ borderLeft: `3px solid ${configuredBorder}` }}>
+            <TipBalloon tip="Adapters reporting a healthy configuration." arrow="left" />
+            <span className="kpi-strip__value">{configuredCount}</span>
+            <span className="kpi-strip__label">Configured</span>
+            <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>healthy</span>
+          </Link>
+
+          <Link className="kpi-strip__item" to="/admin/integrations/registry" style={{ borderLeft: `3px solid ${degradedBorder}` }}>
+            <TipBalloon tip="Adapters in a degraded state — last sync failed or partial." arrow="left" />
+            <span className="kpi-strip__value">{degradedCount}</span>
+            <span className="kpi-strip__label">Degraded</span>
+            <span className="kpi-strip__context" style={{ color: degradedCount === 0 ? 'var(--color-status-active)' : 'var(--color-status-danger)' }}>
+              {degradedCount === 0 ? 'All healthy' : 'Action required'}
+            </span>
+          </Link>
+
+          <Link className="kpi-strip__item" to="/admin/integrations/registry" style={{ borderLeft: '3px solid var(--color-status-neutral)' }}>
+            <TipBalloon tip="Adapters that have not been configured yet." arrow="left" />
+            <span className="kpi-strip__value">{notConfiguredCount}</span>
+            <span className="kpi-strip__label">Not configured</span>
+            <span className="kpi-strip__context" style={{ color: 'var(--color-text-muted)' }}>pending setup</span>
+          </Link>
         </div>
       ) : null}
 
@@ -79,13 +126,15 @@ export function IntegrationsAdminContent(): JSX.Element {
                       </div>
                       <div className="section-card metadata-detail__stat">
                         <span className="metric-card__label">Status</span>
-                        <strong>
-                          <StatusIndicator status={selectedStatus.status} />
-                        </strong>
+                        <StatusIndicator status={selectedStatus.status} />
                       </div>
                       <div className="section-card metadata-detail__stat">
                         <span className="metric-card__label">Last Outcome</span>
-                        <strong>{getLastSyncOutcome(selectedStatus) ?? 'No sync yet'}</strong>
+                        {getLastSyncOutcome(selectedStatus) ? (
+                          <StatusBadge status={getLastSyncOutcome(selectedStatus)!} size="small" />
+                        ) : (
+                          <strong>No sync yet</strong>
+                        )}
                       </div>
                       <div className="section-card metadata-detail__stat">
                         <span className="metric-card__label">Last Sync</span>

@@ -8,6 +8,7 @@ import {
 
 interface NotificationQueueState {
   error: string | null;
+  handleGoToPage: (page: number) => void;
   handleNextPage: () => void;
   handlePrevPage: () => void;
   handleRequeue: (id: string) => Promise<void>;
@@ -65,6 +66,11 @@ export function useNotificationQueue(): NotificationQueueState {
   return useMemo(
     () => ({
       error,
+      handleGoToPage: (target: number) => {
+        const safe = Math.max(1, target);
+        setPage(safe);
+        void load(selectedStatus, safe);
+      },
       handleNextPage: () => {
         const next = page + 1;
         setPage(next);
