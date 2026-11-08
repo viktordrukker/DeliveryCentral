@@ -18,8 +18,9 @@ import { type StaffingSummary, fetchStaffingSummary } from '@/lib/api/project-ro
 import { type ProjectTimeToFill, fetchProjectTimeToFill } from '@/lib/api/project-time-to-fill';
 import { humanizeEnum, PROJECT_STATUS_LABELS } from '@/lib/labels';
 import { isFeatureEnabled } from '@/lib/feature-flags';
-import { Button, Pct } from '@/components/ds';
+import { Button, Drawer, Pct } from '@/components/ds';
 
+import { PositionsPanel } from './PositionsListPage';
 import { RadiatorTab } from './tabs/RadiatorTab';
 import { MilestonesTab } from './tabs/MilestonesTab';
 import { ChangeRequestsTab } from './tabs/ChangeRequestsTab';
@@ -102,6 +103,8 @@ export function ProjectDetailPage(): JSX.Element {
   // V2-B.7 — header-driven add signals for the Plan sub-tabs (open their create forms).
   const [milestoneAddSignal, setMilestoneAddSignal] = useState(0);
   const [crAddSignal, setCrAddSignal] = useState(0);
+  // W4-05 — inline "Manage positions" drawer state (UX Law 4 adjacency).
+  const [positionsDrawerOpen, setPositionsDrawerOpen] = useState(false);
 
   // Sprint F-0.6 (B-06 / D-54) — KPI-strip RAG and Project Pulse / Radiator
   // overall band were computed from different signals and could disagree on
@@ -248,7 +251,17 @@ export function ProjectDetailPage(): JSX.Element {
               <>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setMilestoneAddSignal((n) => n + 1)}>Add milestone</Button>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setCrAddSignal((n) => n + 1)}>Add change request</Button>
-                <Button as={Link} variant="secondary" size="sm" to={`/projects/${id}/positions`}>Manage positions</Button>
+                {/* W4-05 — inline drawer keeps Manage-positions adjacent to the
+                    project context (UX Law 4) instead of navigating away. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setPositionsDrawerOpen(true)}
+                  data-testid="manage-positions-open"
+                >
+                  Manage positions
+                </Button>
               </>
             ) : null}
             {/* Sprint F-0.10 (Decision-10) — single canonical staffing flow.
@@ -306,6 +319,18 @@ export function ProjectDetailPage(): JSX.Element {
           <div className="print-footer print-only">
             {project.projectCode} {'·'} Printed {new Date().toLocaleDateString()}
           </div>
+
+          {/* W4-05 — Manage positions drawer renders the PositionsPanel inline
+              so PMs stay in the project-detail context (UX Law 4). */}
+          <Drawer
+            open={positionsDrawerOpen}
+            onClose={() => setPositionsDrawerOpen(false)}
+            title="Manage positions"
+            width="lg"
+            testId="manage-positions-drawer"
+          >
+            <PositionsPanel projectId={id} />
+          </Drawer>
         </>
       ) : null}
     </DetailLayout>

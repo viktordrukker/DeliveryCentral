@@ -99,8 +99,12 @@ function buildPositionsColumns(
   ];
 }
 
-export function PositionsListPage(): JSX.Element {
-  const { projectId } = useParams<{ projectId: string }>();
+/**
+ * W4-05 — extracted from PositionsListPage so the same positions list can
+ * render both as a standalone page (`/projects/:projectId/positions`) and
+ * inline inside the project-detail "Manage positions" drawer (UX Law 4).
+ */
+export function PositionsPanel({ projectId }: { projectId: string | undefined }): JSX.Element {
   const [positions, setPositions] = useState<ProjectPosition[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,7 +141,7 @@ export function PositionsListPage(): JSX.Element {
   const columns = buildPositionsColumns(setForensicsPosition);
 
   return (
-    <PageContainer testId="positions-list-page">
+    <>
       <SectionCard
         title={`Project positions${total > 0 ? ` (${total})` : ''}`}
       >
@@ -167,6 +171,16 @@ export function PositionsListPage(): JSX.Element {
         positionRole={forensicsPosition?.role}
         onClose={() => setForensicsPosition(null)}
       />
+    </>
+  );
+}
+
+export function PositionsListPage(): JSX.Element {
+  const { projectId } = useParams<{ projectId: string }>();
+
+  return (
+    <PageContainer testId="positions-list-page">
+      <PositionsPanel projectId={projectId} />
     </PageContainer>
   );
 }

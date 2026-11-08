@@ -56,13 +56,18 @@ describe('V2-A.1 — ProjectDetailPage 3-tab consolidation', () => {
     expect(src).toMatch(/badges={titleBadges}/);
   });
 
-  it('B7: gated per-tab Plan actions + signal threading; Manage-positions uses the list route', () => {
+  it('B7: gated per-tab Plan actions + signal threading; Manage-positions opens an inline drawer (W4-05)', () => {
     // Plan-tab-only, dsRefresh-gated header actions
     expect(src).toMatch(/dsRefreshEnabled && activeTab === 'plan' \?/);
     expect(src).toMatch(/setMilestoneAddSignal\(\(n\) => n \+ 1\)/);
     expect(src).toMatch(/setCrAddSignal\(\(n\) => n \+ 1\)/);
-    // Manage positions → existing list route, NOT the non-existent /positions/new
-    expect(src).toMatch(/to={`\/projects\/\$\{id\}\/positions`}/);
+    // W4-05 — Manage positions no longer navigates; it opens an inline Drawer
+    // hosting the PositionsPanel so PMs keep the project-detail context
+    // (UX Law 4).
+    expect(src).toMatch(/setPositionsDrawerOpen\(true\)/);
+    expect(src).toMatch(/data-testid="manage-positions-open"/);
+    expect(src).toMatch(/<Drawer[\s\S]*?testId="manage-positions-drawer"/);
+    expect(src).toMatch(/<PositionsPanel projectId={id} \/>/);
     expect(src).not.toMatch(/positions\/new/);
     // signals passed into PlanTab
     expect(src).toMatch(/milestoneAddSignal={milestoneAddSignal}/);
