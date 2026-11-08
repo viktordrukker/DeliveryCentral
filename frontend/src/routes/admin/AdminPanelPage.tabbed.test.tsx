@@ -32,6 +32,12 @@ vi.mock('./BusinessAuditPage', () => ({
   BusinessAuditAdminContent: () => <div data-testid="mock-business-audit-content">Audit</div>,
   BusinessAuditPage: () => <div />,
 }));
+vi.mock('./ResponsibilityMatrixAdminPage', () => ({
+  ResponsibilityMatrixAdminContent: () => (
+    <div data-testid="mock-responsibility-matrix-content">Matrix</div>
+  ),
+  ResponsibilityMatrixAdminPage: () => <div />,
+}));
 vi.mock('./OrganizationConfigPage', () => ({
   OrganizationConfigAdminContent: () => <div data-testid="mock-org-config-content">Org</div>,
   OrganizationConfigPage: () => <div />,
@@ -106,7 +112,7 @@ describe('AdminPanelPage — LEAN-P4d-1 5-tab Admin Control Surface', () => {
     expect(screen.getByTestId('mock-integrations-content')).toBeInTheDocument();
   });
 
-  it('switching to Governance mounts RolePermissions + BusinessAudit inline', async () => {
+  it('switching to Governance mounts RolePermissions + ResponsibilityMatrix + BusinessAudit inline', async () => {
     const user = userEvent.setup();
     renderTabbed();
     await waitFor(() => expect(screen.getByTestId('admin-tabbed')).toBeInTheDocument());
@@ -115,6 +121,7 @@ describe('AdminPanelPage — LEAN-P4d-1 5-tab Admin Control Surface', () => {
       expect(screen.getByTestId('admin-tab-governance')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('mock-role-permissions-content')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-responsibility-matrix-content')).toBeInTheDocument();
     expect(screen.getByTestId('mock-business-audit-content')).toBeInTheDocument();
   });
 

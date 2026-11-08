@@ -27,7 +27,10 @@ export function PeriodLocksAdminPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // W4-08 — destructive create requires explicit confirm with range copy.
+  const [confirmCreate, setConfirmCreate] = useState(false);
+
+  const [confirmDeleteLock, setConfirmDeleteLock] = useState<PeriodLock | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function load(): Promise<void> {
@@ -47,7 +50,7 @@ export function PeriodLocksAdminPage(): JSX.Element {
     void load();
   }, []);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setFormError(null);
     setSuccessMsg(null);
@@ -60,7 +63,11 @@ export function PeriodLocksAdminPage(): JSX.Element {
       setFormError('From must be on or before To.');
       return;
     }
+    setConfirmCreate(true);
+  }
 
+  async function handleCreate(): Promise<void> {
+    setConfirmCreate(false);
     setIsSubmitting(true);
     try {
       const created = await createPeriodLock({ from, to });
@@ -76,11 +83,11 @@ export function PeriodLocksAdminPage(): JSX.Element {
   }
 
   async function handleDelete(): Promise<void> {
-    if (!confirmDeleteId) return;
+    if (!confirmDeleteLock) return;
     setDeleteError(null);
     try {
-      await deletePeriodLock(confirmDeleteId);
-      setConfirmDeleteId(null);
+      await deletePeriodLock(confirmDeleteLock.id);
+      setConfirmDeleteLock(null);
       await load();
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : 'Failed to delete period lock.');
@@ -119,7 +126,7 @@ export function PeriodLocksAdminPage(): JSX.Element {
         <Button
           size="sm"
           variant="danger"
-          onClick={() => setConfirmDeleteId(lock.id)}
+          onClick={() => setConfirmDeleteLock(lock)}
           type="button"
         >
           Unlock
@@ -137,7 +144,7 @@ export function PeriodLocksAdminPage(): JSX.Element {
       />
 
       <SectionCard title="Add a new lock">
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <FormField label="From" required>
             <DatePicker value={from} onValueChange={setFrom} />
           </FormField>
@@ -173,11 +180,30 @@ export function PeriodLocksAdminPage(): JSX.Element {
       </SectionCard>
 
       <ConfirmDialog
-        open={confirmDeleteId !== null}
+        open={confirmCreate}
+        title="Lock period"
+        message={
+          from && to
+            ? `This will lock ${formatDate(from)}–${formatDate(to)} preventing further edits.`
+            : ''
+        }
+        confirmLabel="Lock period"
+        tone="danger"
+        onCancel={() => setConfirmCreate(false)}
+        onConfirm={() => void handleCreate()}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteLock !== null}
         title="Unlock period"
-        message="Once unlocked, the period becomes editable again. Are you sure?"
+        message={
+          confirmDeleteLock
+            ? `This will unlock ${formatDate(confirmDeleteLock.periodFrom)}–${formatDate(confirmDeleteLock.periodTo)} allowing edits to historical rows. Are you sure?`
+            : ''
+        }
         confirmLabel="Unlock"
-        onCancel={() => setConfirmDeleteId(null)}
+        tone="danger"
+        onCancel={() => setConfirmDeleteLock(null)}
         onConfirm={() => void handleDelete()}
       />
     </PageContainer>

@@ -37,6 +37,7 @@ import { FeatureFlagsAdminContent } from './FeatureFlagsAdminPage';
 import { RolePermissionAdminContent } from './RolePermissionAdminPage';
 import { BusinessAuditAdminContent } from './BusinessAuditPage';
 import { OrganizationConfigAdminContent } from './OrganizationConfigPage';
+import { ResponsibilityMatrixAdminContent } from './ResponsibilityMatrixAdminPage';
 
 type AdminSectionKey =
   | 'accounts'
@@ -372,7 +373,6 @@ const INTEGRATIONS_DEEP_LINKS: AdminDeepLink[] = [
 
 const GOVERNANCE_DEEP_LINKS: AdminDeepLink[] = [
   { description: 'View and manage ABAC policies per role and resource.', label: 'Manage access policies →', to: '/admin/access-policies' },
-  { description: 'Configure who approves each governed action (activation, budget change, person release).', label: 'Open responsibility matrix →', to: '/admin/responsibility-matrix' },
   { description: 'Tenant-defined custom roles (Squad Lead, Tribe Lead, IT Service Owner).', label: 'Manage custom roles →', to: '/admin/governance/roles' },
   { description: 'Admin matrix of 30 V2 journeys × 8 roles — staging soak gate.', label: 'Open V2 soak checklist →', to: '/admin/v2-soak-checklist' },
   { description: 'Notification channel and template management.', label: 'Manage notifications →', to: '/admin/notifications' },
@@ -438,6 +438,9 @@ function AdminTabContent({
           </SectionCard>
           <SectionCard title="Role Permissions">
             <RolePermissionAdminContent />
+          </SectionCard>
+          <SectionCard title="Responsibility Matrix">
+            <ResponsibilityMatrixAdminContent />
           </SectionCard>
           <SectionCard title="Business Audit">
             <BusinessAuditAdminContent />

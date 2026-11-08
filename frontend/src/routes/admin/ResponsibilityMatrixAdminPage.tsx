@@ -71,7 +71,12 @@ function ruleToForm(rule: ResponsibilityRule): FormState {
   };
 }
 
-export function ResponsibilityMatrixAdminPage(): JSX.Element {
+/**
+ * W4-08 — inline-mountable content (no PageContainer/PageHeader chrome) so
+ * the AdminPanelPage Governance tab can surface the matrix inline while the
+ * standalone `/admin/responsibility-matrix` route keeps full page chrome.
+ */
+export function ResponsibilityMatrixAdminContent(): JSX.Element {
   const [rules, setRules] = useState<ResponsibilityRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,20 +240,9 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
   }
 
   if (loading && rules.length === 0)
-    return (
-      <PageContainer testId="responsibility-matrix-admin-page">
-        <PageHeader eyebrow="Admin" title="Responsibility Matrix" />
-        <LoadingState label="Loading rules…" skeletonType="table" variant="skeleton" />
-      </PageContainer>
-    );
+    return <LoadingState label="Loading rules…" skeletonType="table" variant="skeleton" />;
 
-  if (error)
-    return (
-      <PageContainer testId="responsibility-matrix-admin-page">
-        <PageHeader eyebrow="Admin" title="Responsibility Matrix" />
-        <ErrorState description={error} />
-      </PageContainer>
-    );
+  if (error) return <ErrorState description={error} />;
 
   const columns: Column<ResponsibilityRule>[] = [
     {
@@ -349,13 +343,7 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
   const formOpen = creating || editing !== null;
 
   return (
-    <PageContainer testId="responsibility-matrix-admin-page">
-      <PageHeader
-        eyebrow="Admin"
-        subtitle="Configurable matrix that decides who approves each governed action. Rules at lower priority numbers win; non-tenant scopes win over the tenant default."
-        title="Responsibility Matrix"
-      />
-
+    <div data-testid="responsibility-matrix-admin-content">
       <div
         style={{
           alignItems: 'center',
@@ -509,6 +497,25 @@ export function ResponsibilityMatrixAdminPage(): JSX.Element {
         onCancel={() => setArchivingRule(null)}
         onConfirm={() => void handleArchive()}
       />
+    </div>
+  );
+}
+
+/**
+ * Standalone /admin/responsibility-matrix route. Wraps the inline-mountable
+ * content with the page chrome (PageContainer + PageHeader). The
+ * AdminPanelPage Governance tab mounts the same content without chrome so
+ * users can configure rules without leaving /admin.
+ */
+export function ResponsibilityMatrixAdminPage(): JSX.Element {
+  return (
+    <PageContainer testId="responsibility-matrix-admin-page">
+      <PageHeader
+        eyebrow="Admin"
+        subtitle="Configurable matrix that decides who approves each governed action. Rules at lower priority numbers win; non-tenant scopes win over the tenant default."
+        title="Responsibility Matrix"
+      />
+      <ResponsibilityMatrixAdminContent />
     </PageContainer>
   );
 }

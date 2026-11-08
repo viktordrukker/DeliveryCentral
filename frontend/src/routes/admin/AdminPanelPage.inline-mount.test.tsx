@@ -55,6 +55,13 @@ describe('AdminPanelPage — inline admin mounts (V2 §4 item 10 + LEAN-P4d-1)',
     );
   });
 
+  // W4-08 — Responsibility Matrix is inline-mounted under Governance.
+  it('imports ResponsibilityMatrixAdminContent for Governance', () => {
+    expect(adminPanelSource).toMatch(
+      /import\s*\{\s*ResponsibilityMatrixAdminContent\s*\}\s*from\s*['"]\.\/ResponsibilityMatrixAdminPage['"]/,
+    );
+  });
+
   it('imports OrganizationConfigAdminContent for People Config', () => {
     expect(adminPanelSource).toMatch(
       /import\s*\{\s*OrganizationConfigAdminContent\s*\}\s*from\s*['"]\.\/OrganizationConfigPage['"]/,
@@ -69,6 +76,7 @@ describe('AdminPanelPage — inline admin mounts (V2 §4 item 10 + LEAN-P4d-1)',
     expect(adminPanelSource).toMatch(/<RolePermissionAdminContent\s*\/>/);
     expect(adminPanelSource).toMatch(/<BusinessAuditAdminContent\s*\/>/);
     expect(adminPanelSource).toMatch(/<OrganizationConfigAdminContent\s*\/>/);
+    expect(adminPanelSource).toMatch(/<ResponsibilityMatrixAdminContent\s*\/>/);
   });
 
   it('tags each tab body with a stable data-testid', () => {
