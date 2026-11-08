@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { SectionCard } from '@/components/common/SectionCard';
@@ -26,6 +27,7 @@ type GridRow =
  * monthly-grid work. No rewrite — additive only.
  */
 export function TimeTab(): JSX.Element {
+  const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   const monthKey = useMemo(() => `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`, [today]);
   const [data, setData] = useState<MonthlyTimesheetResponse | null>(null);
@@ -461,7 +463,12 @@ export function TimeTab(): JSX.Element {
                   rangeEnd={sunday.toISOString().slice(0, 10)}
                   showToday
                   ariaLabel="This week's logged hours by project"
-                  onSegmentClick={(seg) => seg.href && (window.location.href = seg.href)}
+                  onSegmentClick={(seg) => {
+                    // W4-03 — SPA navigation; full-page reload caused TimeTab
+                    // to re-mount and re-fetch the monthly timesheet on every
+                    // segment click.
+                    if (seg.href) navigate(seg.href);
+                  }}
                 />
               </div>
             </>

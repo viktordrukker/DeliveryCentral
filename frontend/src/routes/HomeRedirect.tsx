@@ -1,8 +1,16 @@
+import { lazy, Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/app/auth-context';
-import { DashboardPage } from '@/routes/dashboard/DashboardPage';
+import { LoadingState } from '@/components/common/LoadingState';
 import { isFeatureEnabled } from '@/lib/feature-flags';
+
+// W4-03 — code-split DashboardPage. Under dsRefresh it never mounts, so the
+// chunk only loads for OFF-flag tenants on the legacy "Workload Overview"
+// home. Keeps the dsRefresh-ON bundle lean for the v2 cutover.
+const DashboardPage = lazy(() =>
+  import('@/routes/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
 
 /**
  * Phase E1 — role-aware `/` Home redirect (DS canvas "Home").
@@ -20,7 +28,11 @@ import { isFeatureEnabled } from '@/lib/feature-flags';
  */
 export function HomeRedirect(): JSX.Element {
   if (!isFeatureEnabled('dsRefresh')) {
-    return <DashboardPage />;
+    return (
+      <Suspense fallback={<LoadingState label="Loading..." />}>
+        <DashboardPage />
+      </Suspense>
+    );
   }
   const { principal } = useAuth();
   const roles = principal?.roles ?? [];

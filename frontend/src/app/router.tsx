@@ -64,7 +64,6 @@ import { AssignmentDetailsPlaceholderPage } from '@/routes/assignments/Assignmen
 import { CasesPage } from '@/routes/cases/CasesPage';
 import { CaseDetailsPage } from '@/routes/cases/CaseDetailsPage';
 import { CreateCasePage } from '@/routes/cases/CreateCasePage';
-import { DashboardPage } from '@/routes/dashboard/DashboardPage';
 import { DashboardRedirect } from '@/routes/DashboardRedirect';
 import { HomeRedirect } from '@/routes/HomeRedirect';
 import { V2Redirect } from '@/routes/V2Redirect';

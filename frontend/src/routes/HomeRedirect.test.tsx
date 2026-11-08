@@ -49,11 +49,13 @@ function renderHome(): ReturnType<typeof render> {
 }
 
 describe('HomeRedirect — Phase E1', () => {
-  it('renders the legacy DashboardPage when dsRefresh is OFF', () => {
+  it('renders the legacy DashboardPage when dsRefresh is OFF', async () => {
     dsRefreshEnabled = false;
     currentRoles = ['employee'];
     renderHome();
-    expect(screen.getByTestId('legacy-dashboard-page')).toBeInTheDocument();
+    // DashboardPage is lazy-loaded (W4-03 code-split); await the Suspense
+    // fallback resolving to the stubbed chunk content.
+    expect(await screen.findByTestId('legacy-dashboard-page')).toBeInTheDocument();
   });
 
   it('redirects employee to /me when dsRefresh is ON', () => {

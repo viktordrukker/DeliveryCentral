@@ -15,6 +15,7 @@
  *     no Submit-week button).
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -52,6 +53,30 @@ vi.mock('@/routes/my-time/MyTimePage', () => ({
 }));
 
 import { TimeTab } from './TimeTab';
+
+// W4-03 — TimeTab now uses useNavigate for segment clicks, so renders require
+// a router context. A small wrapper keeps every existing test working without
+// rewriting per-call.
+function TimeTabWithRouter(): JSX.Element {
+  return (
+    <MemoryRouter initialEntries={['/me?tab=time']}>
+      <Routes>
+        <Route path="/me" element={<TimeTab />} />
+        <Route path="*" element={<LocationProbe />} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+function LocationProbe(): JSX.Element {
+  const loc = useLocation();
+  return (
+    <div data-testid="location">
+      {loc.pathname}
+      {loc.search}
+    </div>
+  );
+}
 
 const today = new Date();
 
@@ -120,7 +145,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
 
   it('renders the project×day grid + daily totals when dsRefresh is ON', async () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
-    render(<TimeTab />);
+    render(<TimeTabWithRouter />);
 
     const grid = await screen.findByTestId('me-time-weekly-grid');
     expect(grid).toBeInTheDocument();
@@ -142,7 +167,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
 
   it('renders the legacy Timeline strip (no grid) when dsRefresh is OFF', async () => {
     isFeatureEnabledMock.mockReturnValue(false);
-    render(<TimeTab />);
+    render(<TimeTabWithRouter />);
 
     // Wait for data to load — the "This week ·" SectionCard title pattern.
     await screen.findByText(/This week ·/);
@@ -157,7 +182,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     upsertTimesheetEntryMock.mockResolvedValue({});
     const user = userEvent.setup();
-    const { container } = render(<TimeTab />);
+    const { container } = render(<TimeTabWithRouter />);
 
     await screen.findByTestId('me-time-weekly-grid');
 
@@ -191,7 +216,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     upsertTimesheetEntryMock.mockRejectedValue(new Error('boom'));
     const user = userEvent.setup();
-    const { container } = render(<TimeTab />);
+    const { container } = render(<TimeTabWithRouter />);
 
     await screen.findByTestId('me-time-weekly-grid');
 
@@ -219,7 +244,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     submitTimesheetWeekMock.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<TimeTab />);
+    render(<TimeTabWithRouter />);
 
     const submit = await screen.findByTestId('me-time-submit-week');
     expect(submit).toBeEnabled();
@@ -234,7 +259,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   it('disables Submit-week + cell edits when the selected week is SUBMITTED', async () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     fetchMonthlyTimesheetMock.mockResolvedValue(buildResponse('SUBMITTED'));
-    const { container } = render(<TimeTab />);
+    const { container } = render(<TimeTabWithRouter />);
 
     const submit = await screen.findByTestId('me-time-submit-week');
     expect(submit).toBeDisabled();
@@ -246,7 +271,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   it('shows SUBMITTED status badge alongside the Submit button', async () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     fetchMonthlyTimesheetMock.mockResolvedValue(buildResponse('SUBMITTED'));
-    render(<TimeTab />);
+    render(<TimeTabWithRouter />);
 
     await screen.findByTestId('me-time-weekly-grid');
     // StatusBadge for the week renders the status label as text.
@@ -256,7 +281,7 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
   it('blocks a cell commit + shows an inline error when hours exceed 24/day', async () => {
     isFeatureEnabledMock.mockImplementation((flag: string) => flag === 'dsRefresh');
     const user = userEvent.setup();
-    const { container } = render(<TimeTab />);
+    const { container } = render(<TimeTabWithRouter />);
 
     await screen.findByTestId('me-time-weekly-grid');
 
@@ -274,6 +299,37 @@ describe('TimeTab weekly grid (dsRefresh)', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/Max 24h per day/);
     });
     expect(upsertTimesheetEntryMock).not.toHaveBeenCalled();
+  });
+
+  it('W4-03 — segment click navigates via useNavigate (SPA, no full reload)', async () => {
+    // dsRefresh OFF so the legacy Timeline strip renders with segments.
+    isFeatureEnabledMock.mockReturnValue(false);
+    const user = userEvent.setup();
+    const { container } = render(<TimeTabWithRouter />);
+
+    // Wait for the legacy "This week ·" SectionCard to render.
+    await screen.findByText(/This week ·/);
+
+    // Timeline segments render as buttons within the strip — find the
+    // Alpha-project segment by label substring.
+    const segmentButton = await waitFor(() => {
+      const btn = Array.from(container.querySelectorAll<HTMLElement>('button, a, [role="button"]')).find(
+        (el) => el.textContent?.includes('Alpha Project'),
+      );
+      expect(btn).toBeDefined();
+      return btn!;
+    });
+    await user.click(segmentButton);
+
+    // SPA navigation: LocationProbe at the catch-all reflects the new path.
+    // A full reload would have re-mounted TimeTab + re-fetched the monthly
+    // timesheet, which would assert the same fetch call count.
+    await waitFor(() => {
+      expect(screen.getByTestId('location').textContent).toBe('/projects/pj1');
+    });
+    // Original mount fetched once; the SPA navigate does not trigger another
+    // TimeTab fetch because TimeTab unmounted in favor of LocationProbe.
+    expect(fetchMonthlyTimesheetMock).toHaveBeenCalledTimes(1);
   });
 });
 
