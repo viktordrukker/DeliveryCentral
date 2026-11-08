@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { SectionCard } from '@/components/common/SectionCard';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { TeamCapacityHeatmap } from '@/components/charts/TeamCapacityHeatmap';
@@ -105,25 +106,13 @@ export function ResourceManagerDashboardPage(): JSX.Element {
           value={{ from: state.asOf.slice(0, 10), to: '' }}
           onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
         />
-        <label className="field field--inline" style={{ fontSize: 12 }}>
-          <input
-            className="field__control"
-            list="rm-people-list-tb"
-            onChange={(event) => {
-              const match = state.people.find((p) => p.displayName === event.target.value);
-              if (match) handlePersonChange(match.id);
-            }}
-            placeholder="Resource manager..."
-            type="text"
-            defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-            key={state.personId}
-          />
-          <datalist id="rm-people-list-tb">
-            {state.people.map((person) => (
-              <option key={person.id} value={person.displayName} />
-            ))}
-          </datalist>
-        </label>
+        {/* W4-01 — DS PersonSelect replaces input+datalist for consistent typeahead UX. */}
+        <PersonSelect
+          id="rm-people-overlay"
+          label="Resource manager"
+          onChange={handlePersonChange}
+          value={state.personId}
+        />
         <Button as={Link} variant="secondary" size="sm" to="/resource-pools">Resource pools</Button>
         <TipTrigger />
       </>

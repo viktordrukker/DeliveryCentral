@@ -34,9 +34,12 @@ vi.mock('@/lib/api/dashboard-pending-actions', () => ({
   fetchPendingActions: (...args: unknown[]) => fetchPendingActionsMock(...args),
 }));
 
+// W4-01 — `admin` role added so the director/admin-gated PersonSelect overlay
+// renders, enabling the DS typeahead assertion below. Existing assertions are
+// role-agnostic and still pass.
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
-    principal: { personId: 'pm-person-1', roles: ['project_manager'] },
+    principal: { personId: 'pm-person-1', roles: ['project_manager', 'admin'] },
     isAuthenticated: true,
     isLoading: false,
   }),
@@ -160,6 +163,9 @@ describe('ProjectManagerDashboardPage', () => {
       await screen.findByRole('heading', { name: 'Sophia Kim' }),
     ).toBeInTheDocument();
     expect(screen.getAllByText('Atlas ERP Rollout').length).toBeGreaterThan(0);
+
+    // W4-01 — DS PersonSelect renders in the title bar for director/admin role.
+    expect(screen.getByLabelText('Project manager')).toHaveProperty('tagName', 'SELECT');
   });
 
   // V2 Scope §4 item 9 — Timesheet-tile drilldown now targets the v2 unified

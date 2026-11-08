@@ -9,6 +9,7 @@ import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { ErrorState } from '@/components/common/ErrorState';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { TabBar } from '@/components/common/TabBar';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { AnomalyStrip } from '@/components/dashboard/AnomalyStrip';
@@ -73,26 +74,14 @@ export function ProjectManagerDashboardPage(): JSX.Element {
           onChange={(r) => { if (r.from) state.setAsOf(`${r.from}T00:00:00.000Z`); }}
         />
         {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {/* W4-01 — DS PersonSelect replaces input+datalist for consistent typeahead UX. */}
         {canOverlayOthers ? (
-          <label className="field field--inline" style={{ fontSize: 12 }}>
-            <input
-              className="field__control"
-              list="pm-people-list-tb"
-              onChange={(event) => {
-                const match = state.people.find((p) => p.displayName === event.target.value);
-                if (match) handlePersonChange(match.id);
-              }}
-              placeholder="Project manager..."
-              type="text"
-              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-              key={state.personId}
-            />
-            <datalist id="pm-people-list-tb">
-              {state.people.map((person) => (
-                <option key={person.id} value={person.displayName} />
-              ))}
-            </datalist>
-          </label>
+          <PersonSelect
+            id="pm-people-overlay"
+            label="Project manager"
+            onChange={handlePersonChange}
+            value={state.personId}
+          />
         ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/projects">Projects</Button>
         <TipTrigger />

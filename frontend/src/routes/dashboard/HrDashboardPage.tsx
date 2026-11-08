@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { DataFreshness } from '@/components/dashboard/DataFreshness';
 import { LoadingState } from '@/components/common/LoadingState';
 import { PageContainer } from '@/components/common/PageContainer';
+import { PersonSelect } from '@/components/common/PersonSelect';
 import { TabBar } from '@/components/common/TabBar';
 import { TipBalloon, TipTrigger } from '@/components/common/TipBalloon';
 import { RecentActivityRail } from '@/components/dashboard/RecentActivityRail';
@@ -129,26 +130,14 @@ export function HrDashboardPage(): JSX.Element {
     setActions(
       <>
         {/* W1-24 — only director/admin see the person-overlay search box. */}
+        {/* W4-01 — DS PersonSelect replaces input+datalist for consistent typeahead UX. */}
         {canOverlayOthers ? (
-          <label className="field field--inline" style={{ fontSize: 12 }}>
-            <input
-              className="field__control"
-              list="hr-people-list-tb"
-              onChange={(event) => {
-                const match = state.people.find((p) => p.displayName === event.target.value);
-                if (match) handlePersonChange(match.id);
-              }}
-              placeholder="Search HR managers..."
-              type="text"
-              defaultValue={state.people.find((p) => p.id === state.personId)?.displayName ?? ''}
-              key={state.personId}
-            />
-            <datalist id="hr-people-list-tb">
-              {state.people.map((person) => (
-                <option key={person.id} value={person.displayName} />
-              ))}
-            </datalist>
-          </label>
+          <PersonSelect
+            id="hr-people-overlay"
+            label="HR manager"
+            onChange={handlePersonChange}
+            value={state.personId}
+          />
         ) : null}
         <Button as={Link} variant="secondary" size="sm" to="/people">Employee directory</Button>
         <Button as={Link} variant="secondary" size="sm" to="/cases">Cases</Button>

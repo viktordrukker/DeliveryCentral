@@ -157,6 +157,9 @@ describe('ResourceManagerDashboardPage', () => {
     expect(
       screen.getByText((content) => content.includes('UNDERALLOCATED')),
     ).toBeInTheDocument();
+
+    // W4-01 — DS PersonSelect renders in the title bar replacing input+datalist.
+    expect(screen.getByLabelText('Resource manager')).toHaveProperty('tagName', 'SELECT');
   });
 });
 

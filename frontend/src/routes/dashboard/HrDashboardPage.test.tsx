@@ -12,9 +12,12 @@ import { fetchResourcePools } from '@/lib/api/resource-pools';
 import { renderRoute } from '@test/render-route';
 import { HrDashboardPage } from './HrDashboardPage';
 
+// W4-01 — `admin` role added so the director/admin-gated PersonSelect overlay
+// renders, enabling the DS typeahead assertion below. Existing assertions are
+// role-agnostic and still pass.
 vi.mock('@/app/auth-context', () => ({
   useAuth: () => ({
-    principal: { personId: '11111111-1111-1111-1111-111111111005', roles: ['hr_manager'] },
+    principal: { personId: '11111111-1111-1111-1111-111111111005', roles: ['hr_manager', 'admin'] },
     isAuthenticated: true,
     isLoading: false,
   }),
@@ -194,6 +197,9 @@ describe('HrDashboardPage', () => {
     // Wellbeing tab: mood heatmap
     await user.click(screen.getByRole('tab', { name: 'Wellbeing' }));
     expect(await screen.findByTestId('mood-heatmap')).toBeInTheDocument();
+
+    // W4-01 — DS PersonSelect renders in the title bar for director/admin role.
+    expect(screen.getByLabelText('HR manager')).toHaveProperty('tagName', 'SELECT');
   });
 
   it('falls back to EmptyState when the headcount trend endpoint fails', async () => {
